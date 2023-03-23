@@ -112,7 +112,7 @@ const signerAdd = await makeSignerAdd({ signer: signerBytes, name }, dataOptions
 | Name          | Type                                              | Description                                                                |
 | :------------ | :------------------------------------------------ | :------------------------------------------------------------------------- |
 | `body`        | [`SignerAddBody`](./Messages.md#signeraddbody)    | A valid VerificationAddEd25519 body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                              | Optional arguments to construct the message.                               |
+| `dataOptions` | [`DataOptions`](#data-options)                    | Optional arguments to construct the message.                               |
 | `signer`      | [`Eip712Signer`](./signers/EthersEip712Signer.md) | An Eip712Signer generated from the user's custody address.                 |
 
 ---
@@ -143,7 +143,7 @@ const signerRemove = await makeSignerRemove({ signer: signerBytes }, dataOptions
 | Name          | Type                                                 | Description                                                      |
 | :------------ | :--------------------------------------------------- | :--------------------------------------------------------------- |
 | `body`        | [`SignerRemoveBody`](./Messages.md#signerremovebody) | A valid SignerRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                                 | Optional metadata to construct the message.                      |
+| `dataOptions` | [`DataOptions`](#data-options)                       | Optional metadata to construct the message.                      |
 | `signer`      | [`Eip712Signer`](./signers/EthersEip712Signer.md)    | An Eip712Signer generated from the user's custody address.       |
 
 ---
@@ -175,7 +175,7 @@ const cast = await makeCastAdd(
 | Name          | Type                                               | Description                                                 |
 | :------------ | :------------------------------------------------- | :---------------------------------------------------------- |
 | `body`        | [`CastAddBody`](./Messages.md#castaddbody)         | A valid CastAdd body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                 |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                 |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                       |
 
 ---
@@ -214,7 +214,7 @@ const castRemove = await makeCastRemove(
 | Name          | Type                                               | Description                                                    |
 | :------------ | :------------------------------------------------- | :------------------------------------------------------------- |
 | `body`        | [`CastRemoveBody`](./Messages.md#castremovebody)   | A valid CastRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                    |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                    |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                          |
 
 ---
@@ -254,7 +254,7 @@ const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer)
 | Name          | Type                                               | Description                                                     |
 | :------------ | :------------------------------------------------- | :-------------------------------------------------------------- |
 | `body`        | [`ReactionBody`](./Messages.md#reactionbody)       | A valid ReactionAdd body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                     |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                     |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                           |
 
 ---
@@ -295,7 +295,7 @@ const like = await makeReactionRemove(reactionLikeBody, dataOptions, ed25519Sign
 | Name          | Type                                               | Description                                                        |
 | :------------ | :------------------------------------------------- | :----------------------------------------------------------------- |
 | `body`        | [`ReactionBody`](./Messages.md#reactionbody)       | A valid ReactionRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                        |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                        |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                              |
 
 ---
@@ -328,7 +328,7 @@ const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed255
 | Name          | Type                                               | Description                                                  |
 | :------------ | :------------------------------------------------- | :----------------------------------------------------------- |
 | `body`        | [`UserDataBody`](./Messages.md#userdatabody)       | A valid UserData body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                  |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                  |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                        |
 
 ---
@@ -385,7 +385,7 @@ if (claimResult.isOk()) {
 | Name          | Type                                               | Description                                                                            |
 | :------------ | :------------------------------------------------- | :------------------------------------------------------------------------------------- |
 | `body`        | [`VerificationAddEthAddressBody`](#)               | An object which contains an Eip712 Signature from the Ethereum Address being verified. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                                            |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                                            |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                                                  |
 
 ---
@@ -420,5 +420,5 @@ const verificationRemoveMessage = await makeVerificationRemove(verificationRemov
 | Name          | Type                                                             | Description                                                          |
 | :------------ | :--------------------------------------------------------------- | :------------------------------------------------------------------- |
 | `body`        | [`VerificationRemoveBody`](./Messages.md#verificationremovebody) | An object which contains data about the Verification being removed . |
-| `dataOptions` | `MessageDataOptions`                                             | Optional metadata to construct the message.                          |
+| `dataOptions` | [`DataOptions`](#data-options)                                   | Optional metadata to construct the message.                          |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md)               | A currently valid Signer for the fid.                                |
