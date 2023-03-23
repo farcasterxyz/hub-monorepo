@@ -170,7 +170,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   async commitTransaction(txn: Transaction, eventArgs: HubEventArgs[]): HubAsyncResult<number[]> {
     return this._lock
-      .acquire('default', async () => {
+      .acquire('commit', async () => {
         const events: HubEvent[] = [];
 
         for (const args of eventArgs) {
@@ -187,10 +187,8 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         await this._db.commit(txn);
 
         for (const event of events) {
-          if (this._storageCache) {
-            this._storageCache.processEvent(event);
-          }
-          this.broadcastEvent(event);
+          void this._storageCache.processEvent(event);
+          void this.broadcastEvent(event);
         }
 
         return ok(events.map((event) => event.id));

@@ -51,7 +51,9 @@ export class PruneMessagesJobScheduler {
         pageToken = nextPageToken;
       }
 
-      await Promise.all(fids.map((fid) => this._engine.pruneMessages(fid)));
+      for (const fid of fids) {
+        await this._engine.pruneMessages(fid);
+      }
     } while (!finished);
 
     log.info({}, 'finished prune messages job');
