@@ -132,7 +132,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
-    this._lock = new AsyncLock({ maxPending: 10_000, timeout: 10_000 });
+    this._lock = new AsyncLock({ maxPending: 1_000, timeout: 500, maxExecutionTime: 100 });
     this._storageCache = storageCache;
   }
 

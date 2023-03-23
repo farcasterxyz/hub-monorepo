@@ -24,6 +24,7 @@ import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { logger } from '~/utils/logger';
 import { StorageCache } from '~/storage/engine/storageCache';
+import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from '../jobs/revokeMessagesBySignerJob';
 
 const log = logger.child({
   component: 'Engine',
@@ -46,6 +47,8 @@ class Engine {
   private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<protobufs.Message>) => void>();
 
   private _storageCache: StorageCache;
+  private _revokeSignerQueue: RevokeMessagesBySignerJobQueue;
+  private _revokeSignerWorker: RevokeMessagesBySignerJobWorker;
 
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this._db = db;
@@ -60,6 +63,9 @@ class Engine {
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
 
+    this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
+    this._revokeSignerWorker = new RevokeMessagesBySignerJobWorker(this._revokeSignerQueue, db, this);
+
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
     this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
@@ -69,33 +75,37 @@ class Engine {
   async start(): Promise<void> {
     log.info('starting engine');
 
-    const workerPath = './build/storage/engine/validation.worker.js';
-    try {
-      if (fs.existsSync(workerPath)) {
-        this._validationWorker = new Worker(workerPath);
+    this._revokeSignerWorker.start();
 
-        logger.info({ workerPath }, 'created validation worker thread');
+    if (!this._validationWorker) {
+      const workerPath = './build/storage/engine/validation.worker.js';
+      try {
+        if (fs.existsSync(workerPath)) {
+          this._validationWorker = new Worker(workerPath);
 
-        this._validationWorker.on('message', (data) => {
-          const { id, message, errCode, errMessage } = data;
-          const resolve = this._validationWorkerPromiseMap.get(id);
+          logger.info({ workerPath }, 'created validation worker thread');
 
-          if (resolve) {
-            this._validationWorkerPromiseMap.delete(id);
-            if (message) {
-              resolve(ok(message));
+          this._validationWorker.on('message', (data) => {
+            const { id, message, errCode, errMessage } = data;
+            const resolve = this._validationWorkerPromiseMap.get(id);
+
+            if (resolve) {
+              this._validationWorkerPromiseMap.delete(id);
+              if (message) {
+                resolve(ok(message));
+              } else {
+                resolve(err(new HubError(errCode, errMessage)));
+              }
             } else {
-              resolve(err(new HubError(errCode, errMessage)));
+              logger.warn({ id }, 'validation worker promise.response not found');
             }
-          } else {
-            logger.warn({ id }, 'validation worker promise.response not found');
-          }
-        });
-      } else {
-        logger.warn({ workerPath }, 'validation.worker.js not found, falling back to main thread');
+          });
+        } else {
+          logger.warn({ workerPath }, 'validation.worker.js not found, falling back to main thread');
+        }
+      } catch (e) {
+        logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
       }
-    } catch (e) {
-      logger.warn({ workerPath, e }, 'failed to create validation worker, falling back to main thread');
     }
 
     this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
@@ -113,6 +123,8 @@ class Engine {
     this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent);
     this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.off('pruneMessage', this.handlePruneMessageEvent);
+
+    this._revokeSignerWorker.start();
 
     if (this._validationWorker) {
       await this._validationWorker.terminate();
@@ -188,7 +200,10 @@ class Engine {
           }
         },
         (e) => {
-          log.error({ errCode: e.errCode }, `Error revoking ${store} messages for fid ${fid}: ${e.message}`);
+          log.error(
+            { errCode: e.errCode },
+            `Error revoking ${store} messages from signer ${signerHex.value} for fid ${fid}: ${e.message}`
+          );
         }
       );
     };
@@ -672,13 +687,16 @@ class Engine {
     const { idRegistryEvent } = event.mergeIdRegistryEventBody;
     const fromAddress = idRegistryEvent.from;
     if (fromAddress && fromAddress.length > 0) {
-      const revokeResult = await this.revokeMessagesBySigner(idRegistryEvent.fid, fromAddress);
-      if (revokeResult.isErr()) {
+      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+        fid: idRegistryEvent.fid,
+        signer: fromAddress,
+      });
+      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
+      if (enqueueRevoke.isErr()) {
         log.error(
-          { errCode: revokeResult.error.errCode },
-          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+          { errCode: enqueueRevoke.error.errCode },
+          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`
         );
-        return err(revokeResult.error);
       }
     }
 
@@ -689,13 +707,16 @@ class Engine {
     const { message } = event.mergeMessageBody;
 
     if (protobufs.isSignerRemoveMessage(message)) {
-      const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerRemoveBody.signer);
-      if (revokeResult.isErr()) {
+      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+        fid: message.data.fid,
+        signer: message.data.signerRemoveBody.signer,
+      });
+      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
+      if (enqueueRevoke.isErr()) {
         log.error(
-          { errCode: revokeResult.error.errCode },
-          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+          { errCode: enqueueRevoke.error.errCode },
+          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`
         );
-        return err(revokeResult.error);
       }
     }
 
@@ -706,13 +727,16 @@ class Engine {
     const { message } = event.pruneMessageBody;
 
     if (protobufs.isSignerAddMessage(message)) {
-      const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerAddBody.signer);
-      if (revokeResult.isErr()) {
+      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+        fid: message.data.fid,
+        signer: message.data.signerAddBody.signer,
+      });
+      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
+      if (enqueueRevoke.isErr()) {
         log.error(
-          { errCode: revokeResult.error.errCode },
-          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+          { errCode: enqueueRevoke.error.errCode },
+          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`
         );
-        return err(revokeResult.error);
       }
     }
 
@@ -723,13 +747,16 @@ class Engine {
     const { message } = event.revokeMessageBody;
 
     if (protobufs.isSignerAddMessage(message)) {
-      const revokeResult = await this.revokeMessagesBySigner(message.data.fid, message.data.signerAddBody.signer);
-      if (revokeResult.isErr()) {
+      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+        fid: message.data.fid,
+        signer: message.data.signerAddBody.signer,
+      });
+      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
+      if (enqueueRevoke.isErr()) {
         log.error(
-          { errCode: revokeResult.error.errCode },
-          `revokeMessagesBySigner error: ${revokeResult.error.message}`
+          { errCode: enqueueRevoke.error.errCode },
+          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`
         );
-        return err(revokeResult.error);
       }
     }
 

@@ -34,7 +34,15 @@ export class UpdateNameRegistryEventExpiryJobWorker {
     this._ethEventsProvider = ethEventsProvider;
     this._status = 'waiting';
 
-    this._queue.on('enqueueJob', () => this.processJobs());
+    this.processJobs = this.processJobs.bind(this);
+  }
+
+  start() {
+    this._queue.on('enqueueJob', this.processJobs);
+  }
+
+  stop() {
+    this._queue.off('enqueueJob', this.processJobs);
   }
 
   async processJobs(): HubAsyncResult<void> {

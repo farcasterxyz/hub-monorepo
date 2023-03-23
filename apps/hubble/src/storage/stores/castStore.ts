@@ -1,7 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
-import { err, ResultAsync } from 'neverthrow';
+import { ok, err, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
   getAllMessagesBySigner,
@@ -331,7 +331,11 @@ class CastStore {
       events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
     }
 
-    return this._eventHandler.commitTransaction(txn, events);
+    if (events.length > 0) {
+      return this._eventHandler.commitTransaction(txn, events);
+    } else {
+      return ok([]);
+    }
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
@@ -395,7 +399,12 @@ class CastStore {
     }
 
     await pruneIterator.end();
-    return this._eventHandler.commitTransaction(pruneTxn, events);
+
+    if (events.length > 0) {
+      return this._eventHandler.commitTransaction(pruneTxn, events);
+    } else {
+      return ok([]);
+    }
   }
 
   /* -------------------------------------------------------------------------- */

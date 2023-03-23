@@ -1,8 +1,7 @@
 /* eslint-disable */
-import Long from 'long';
 import _m0 from 'protobufjs/minimal';
 
-export interface RevokeSignerJobPayload {
+export interface RevokeMessagesBySignerJobPayload {
   fid: number;
   signer: Uint8Array;
 }
@@ -11,14 +10,14 @@ export interface UpdateNameRegistryEventExpiryJobPayload {
   fname: Uint8Array;
 }
 
-function createBaseRevokeSignerJobPayload(): RevokeSignerJobPayload {
+function createBaseRevokeMessagesBySignerJobPayload(): RevokeMessagesBySignerJobPayload {
   return { fid: 0, signer: new Uint8Array() };
 }
 
-export const RevokeSignerJobPayload = {
-  encode(message: RevokeSignerJobPayload, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const RevokeMessagesBySignerJobPayload = {
+  encode(message: RevokeMessagesBySignerJobPayload, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.fid !== 0) {
-      writer.uint32(8).uint64(message.fid);
+      writer.uint32(8).uint32(message.fid);
     }
     if (message.signer.length !== 0) {
       writer.uint32(18).bytes(message.signer);
@@ -26,15 +25,15 @@ export const RevokeSignerJobPayload = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): RevokeSignerJobPayload {
+  decode(input: _m0.Reader | Uint8Array, length?: number): RevokeMessagesBySignerJobPayload {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseRevokeSignerJobPayload();
+    const message = createBaseRevokeMessagesBySignerJobPayload();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.fid = longToNumber(reader.uint64() as Long);
+          message.fid = reader.uint32();
           break;
         case 2:
           message.signer = reader.bytes();
@@ -47,14 +46,14 @@ export const RevokeSignerJobPayload = {
     return message;
   },
 
-  fromJSON(object: any): RevokeSignerJobPayload {
+  fromJSON(object: any): RevokeMessagesBySignerJobPayload {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
     };
   },
 
-  toJSON(message: RevokeSignerJobPayload): unknown {
+  toJSON(message: RevokeMessagesBySignerJobPayload): unknown {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.signer !== undefined &&
@@ -62,12 +61,16 @@ export const RevokeSignerJobPayload = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<RevokeSignerJobPayload>, I>>(base?: I): RevokeSignerJobPayload {
-    return RevokeSignerJobPayload.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<RevokeMessagesBySignerJobPayload>, I>>(
+    base?: I
+  ): RevokeMessagesBySignerJobPayload {
+    return RevokeMessagesBySignerJobPayload.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<RevokeSignerJobPayload>, I>>(object: I): RevokeSignerJobPayload {
-    const message = createBaseRevokeSignerJobPayload();
+  fromPartial<I extends Exact<DeepPartial<RevokeMessagesBySignerJobPayload>, I>>(
+    object: I
+  ): RevokeMessagesBySignerJobPayload {
+    const message = createBaseRevokeMessagesBySignerJobPayload();
     message.fid = object.fid ?? 0;
     message.signer = object.signer ?? new Uint8Array();
     return message;
@@ -190,18 +193,6 @@ type KeysOfUnion<T> = T extends T ? keyof T : never;
 type Exact<P, I extends P> = P extends Builtin
   ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
-
-function longToNumber(long: Long): number {
-  if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
-  }
-  return long.toNumber();
-}
-
-if (_m0.util.Long !== Long) {
-  _m0.util.Long = Long as any;
-  _m0.configure();
-}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;
