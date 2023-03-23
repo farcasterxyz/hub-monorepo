@@ -11,6 +11,7 @@ message GossipAddressInfo {
   string address = 1;
   uint32 family = 2;
   uint32 port = 3;
+  string dns_name = 4;
 }
 
 message ContactInfoContent {

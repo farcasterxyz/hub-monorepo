@@ -76,10 +76,16 @@ export const p2pMultiAddrStr = (addressInfo: AddressInfo, peerID: string): HubRe
 
 /* Converts GossipAddressInfo to net.AddressInfo */
 export const addressInfoFromGossip = (addressInfo: GossipAddressInfo): HubResult<AddressInfo> => {
-  const address = addressInfo.address;
+  const dnsName = addressInfo.dnsName;
   const port = addressInfo.port;
   const family = addressInfo.family;
+
+  let address = addressInfo.address;
+  if (dnsName && dnsName !== '') {
+    address = dnsName;
+  }
   if (!address || family === 0) return err(new HubError('bad_request.parse_failure', 'Invalid address'));
+
   const addrInfo: AddressInfo = {
     address,
     port,

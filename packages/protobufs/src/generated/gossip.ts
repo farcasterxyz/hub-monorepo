@@ -30,6 +30,7 @@ export interface GossipAddressInfo {
   address: string;
   family: number;
   port: number;
+  dnsName: string;
 }
 
 export interface ContactInfoContent {
@@ -49,7 +50,7 @@ export interface GossipMessage {
 }
 
 function createBaseGossipAddressInfo(): GossipAddressInfo {
-  return { address: '', family: 0, port: 0 };
+  return { address: '', family: 0, port: 0, dnsName: '' };
 }
 
 export const GossipAddressInfo = {
@@ -62,6 +63,9 @@ export const GossipAddressInfo = {
     }
     if (message.port !== 0) {
       writer.uint32(24).uint32(message.port);
+    }
+    if (message.dnsName !== '') {
+      writer.uint32(34).string(message.dnsName);
     }
     return writer;
   },
@@ -82,6 +86,9 @@ export const GossipAddressInfo = {
         case 3:
           message.port = reader.uint32();
           break;
+        case 4:
+          message.dnsName = reader.string();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -95,6 +102,7 @@ export const GossipAddressInfo = {
       address: isSet(object.address) ? String(object.address) : '',
       family: isSet(object.family) ? Number(object.family) : 0,
       port: isSet(object.port) ? Number(object.port) : 0,
+      dnsName: isSet(object.dnsName) ? String(object.dnsName) : '',
     };
   },
 
@@ -103,6 +111,7 @@ export const GossipAddressInfo = {
     message.address !== undefined && (obj.address = message.address);
     message.family !== undefined && (obj.family = Math.round(message.family));
     message.port !== undefined && (obj.port = Math.round(message.port));
+    message.dnsName !== undefined && (obj.dnsName = message.dnsName);
     return obj;
   },
 
@@ -115,6 +124,7 @@ export const GossipAddressInfo = {
     message.address = object.address ?? '';
     message.family = object.family ?? 0;
     message.port = object.port ?? 0;
+    message.dnsName = object.dnsName ?? '';
     return message;
   },
 };

@@ -51,6 +51,10 @@ app
     '--announce-ip <ip-address>',
     'The IP address libp2p should announce to other peers. If not provided, the IP address will be fetched from an external service'
   )
+  .option(
+    '--announce-server-name <name>',
+    'The name of the server to announce to peers. This is useful if you have SSL/TLS enabled. (default: "none")'
+  )
   .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 2282)')
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 2283)')
   .option(
@@ -244,6 +248,7 @@ app
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
       announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
+      announceServerName: cliOptions.announceServerName ?? hubConfig.announceServerName,
       gossipPort: hubAddressInfo.value.port,
       network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
