@@ -27,20 +27,27 @@ Returns a hex string from a bytes array.
 #### Usage
 
 ```typescript
-// TODO
+import { getHubRpcClient, bytesToHexString } from '@farcaster/hub-nodejs';
+
+const client = await getHubRpcClient('127.0.0.1:8080');
+
+const wrappedData = await client.getIdRegistryEvent({ fid: 1 });
+const data = wrappedData._unsafeUnwrap();
+const blockHashHex = bytesToHexString(data.blockHash);
+console.log('Block hash (hexadecimal):', blockHashHex); // 0x318c1013788674...
 ```
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
-| `TBD` | TBD         |
+| Value    | Description                                          |
+| :------- | :--------------------------------------------------- |
+| `string` | A hex string representation of the input byte array. |
 
 #### Parameters
 
-| Name  | Type  | Description |
-| :---- | :---- | :---------- |
-| `TBD` | `TBD` | TBD         |
+| Name    | Type         | Description                                        |
+| :------ | :----------- | :------------------------------------------------- |
+| `bytes` | `Uint8Array` | The input byte array to convert into a hex string. |
 
 ---
 
@@ -51,26 +58,50 @@ Returns a bytes array from a hex string.
 #### Usage
 
 ```typescript
-// TODO
+import { hexStringToBytes } from '@farcaster/hub-nodejs';
+
+const hexString = '0x010203'; // could be signature, address, etc
+const byteArray = hexStringToBytes(hexString)._unsafeUnwrap();
+console.log(byteArray); // Uint8Array [1, 2, 3]
 ```
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
-| `TBD` | TBD         |
+|    Value     | Description                                                  |
+| :----------: | ------------------------------------------------------------ |
+| `Uint8Array` | A byte array representation of the input hexadecimal string. |
 
 #### Parameters
 
-| Name  | Type  | Description |
-| :---- | :---- | :---------- |
-| `TBD` | `TBD` | TBD         |
+| Name  | Type     | Description                                                  |
+| :---- | :------- | :----------------------------------------------------------- |
+| `hex` | `string` | The hexadecimal string to convert into an output byte array. |
 
 ---
 
 ### bytesToUTF8String
 
 Returns a UTF-8 string from a bytes array.
+
+```typescript
+import { bytesToUtf8String } from './utils';
+
+const byteArray = new Uint8Array([72, 101, 108, 108, 111]); // "Hello" in ASCII encoding.
+const utfEncodedStr = bytesToUtf8String(byteArray)._unsafeUnwrap();
+console.log(utfEncodedStr); //"Hello"
+```
+
+#### Returns
+
+|  Value   | Description                                            |
+| :------: | ------------------------------------------------------ |
+| `string` | A UTF-8 string representation of the input byte array. |
+
+#### Parameters
+
+| Name    | Type         | Description                                        |
+| :------ | :----------- | :------------------------------------------------- |
+| `bytes` | `Uint8Array` | The input byte array to convert into a hex string. |
 
 ## Errors
 
