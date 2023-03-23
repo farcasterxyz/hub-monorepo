@@ -830,6 +830,9 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
   const message; // Any valid message constructed with a Builder
 
+  const authMetadata = getAuthMetadata('username', 'password'); // Only necessary if the hubble instance requires auth
+  const submitResult = await client.submitMessage(message, authMetadata);
+
   const submitResult = await client.submitMessage(message);
   console.log(submitResult);
 })();
@@ -843,11 +846,10 @@ import { getHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Parameters
 
-| Name        | Type      | Description                        |
-| :---------- | :-------- | :--------------------------------- |
-| `message`   | `Message` | The message being submitted        |
-| `username?` | `string`  | (optional) Username for basic auth |
-| `password?` | `string`  | (optional) Password for basic auth |
+| Name        | Type      | Description                                                  |
+| :---------- | :-------- | :----------------------------------------------------------- |
+| `message`   | `Message` | The message being submitted                                  |
+| `metadata?` | `string`  | (optional) Username and password metadata for authentication |
 
 ---
 
