@@ -144,20 +144,22 @@ Returns the current time in milliseconds as a Farcaster timestamp.
 #### Usage
 
 ```typescript
-// TODO
+import { getFarcasterTime } from '@farcaster/hub-nodejs';
+const timestamp = getFarcasterTime();
+console.log(timestamp._unsafeUnwrap()); // 70117755
 ```
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
-| `TBD` | TBD         |
+| Value    | Description                                                |
+| :------- | :--------------------------------------------------------- |
+| `number` | The current time in milliseconds as a Farcaster timestamp. |
 
 #### Parameters
 
-| Name  | Type  | Description |
-| :---- | :---- | :---------- |
-| `TBD` | `TBD` | TBD         |
+| Name   | Type   | Description                               |
+| :----- | :----- | :---------------------------------------- |
+| `null` | `null` | This function does not accept parameters. |
 
 ---
 
@@ -168,20 +170,21 @@ Converts a Unix milliseconds timestamp to a Farcaster milliseconds timestamp.
 #### Usage
 
 ```typescript
-// TODO
+const msTimestamp = Date.now(); // can be anything, e.g., ethereum transaction timestamp
+console.log(toFarcasterTime(msTimestamp)); // 70117500
 ```
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
-| `TBD` | TBD         |
+| Value    | Description                                                  |
+| :------- | :----------------------------------------------------------- |
+| `number` | The converted time in milliseconds as a Farcaster timestamp. |
 
 #### Parameters
 
-| Name  | Type  | Description |
-| :---- | :---- | :---------- |
-| `TBD` | `TBD` | TBD         |
+| Name   | Type     | Description                                                             |
+| :----- | :------- | :---------------------------------------------------------------------- |
+| `time` | `number` | The Unix timestamp in milliseconds to convert to a Farcaster timestamp. |
 
 ---
 
@@ -192,20 +195,26 @@ Converts a Farcaster milliseconds timestamp to a Unix milliseconds timestamp.
 #### Usage
 
 ```typescript
-// TODO
+import { getHubRpcClient, fromFarcasterTime } from '@farcaster/hub-nodejs';
+const client = await getHubRpcClient('127.0.0.1:8080');
+
+const wrappedData = await client.getCastsByFid({ fid: 1 });
+const data = wrappedData._unsafeUnwrap();
+const timestamp = fromFarcasterTime(data.messages[0].data?.timestamp);
+console.log(timestamp); // 1679014242000 (unix timestamp in millisecond)
 ```
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
-| `TBD` | TBD         |
+| Value    | Description                                             |
+| :------- | :------------------------------------------------------ |
+| `number` | The converted time in milliseconds as a Unix timestamp. |
 
 #### Parameters
 
-| Name  | Type  | Description |
-| :---- | :---- | :---------- |
-| `TBD` | `TBD` | TBD         |
+| Name   | Type     | Description                                                             |
+| :----- | :------- | :---------------------------------------------------------------------- |
+| `time` | `number` | The Farcaster timestamp in milliseconds to convert to a Unix timestamp. |
 
 ## Verifications
 
