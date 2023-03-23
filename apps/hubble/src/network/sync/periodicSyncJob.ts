@@ -38,7 +38,7 @@ export class PeriodicSyncJobScheduler {
   }
 
   async doJobs() {
-    log.info('starting doJobs');
+    log.info('starting periodic sync job');
 
     // Do a diff sync
     await this._syncEngine.diffSyncIfRequired(this._hub);
