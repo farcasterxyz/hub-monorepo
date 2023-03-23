@@ -39,9 +39,9 @@ console.log('Block hash (hexadecimal):', blockHashHex); // 0x318c1013788674...
 
 #### Returns
 
-| Value    | Description                                          |
-| :------- | :--------------------------------------------------- |
-| `string` | A hex string representation of the input byte array. |
+| Value               | Description                                          |
+| :------------------ | :--------------------------------------------------- |
+| `HubResult<string>` | A hex string representation of the input byte array. |
 
 #### Parameters
 
@@ -67,9 +67,9 @@ console.log(byteArray); // Uint8Array [1, 2, 3]
 
 #### Returns
 
-|    Value     | Description                                                  |
-| :----------: | ------------------------------------------------------------ |
-| `Uint8Array` | A byte array representation of the input hexadecimal string. |
+|          Value          | Description                                                  |
+| :---------------------: | ------------------------------------------------------------ |
+| `HubResult<Uint8Array>` | A byte array representation of the input hexadecimal string. |
 
 #### Parameters
 
@@ -93,9 +93,9 @@ console.log(utfEncodedStr); //"Hello"
 
 #### Returns
 
-|  Value   | Description                                            |
-| :------: | ------------------------------------------------------ |
-| `string` | A UTF-8 string representation of the input byte array. |
+|        Value        | Description                                            |
+| :-----------------: | ------------------------------------------------------ |
+| `HubResult<string>` | A UTF-8 string representation of the input byte array. |
 
 #### Parameters
 
@@ -151,9 +151,9 @@ console.log(timestamp._unsafeUnwrap()); // 70117755
 
 #### Returns
 
-| Value    | Description                                                |
-| :------- | :--------------------------------------------------------- |
-| `number` | The current time in milliseconds as a Farcaster timestamp. |
+| Value               | Description                                                |
+| :------------------ | :--------------------------------------------------------- |
+| `HubResult<number>` | The current time in milliseconds as a Farcaster timestamp. |
 
 #### Parameters
 
@@ -177,9 +177,9 @@ console.log(timestamp); // 70117500
 
 #### Returns
 
-| Value    | Description                                                  |
-| :------- | :----------------------------------------------------------- |
-| `number` | The converted time in milliseconds as a Farcaster timestamp. |
+| Value               | Description                                                  |
+| :------------------ | :----------------------------------------------------------- |
+| `HubResult<number>` | The converted time in milliseconds as a Farcaster timestamp. |
 
 #### Parameters
 
@@ -207,9 +207,9 @@ console.log(timestamp._unsafeUnwrap()); // 1679014242000 (unix timestamp in mill
 
 #### Returns
 
-| Value    | Description                                             |
-| :------- | :------------------------------------------------------ |
-| `number` | The converted time in milliseconds as a Unix timestamp. |
+| Value               | Description                                             |
+| :------------------ | :------------------------------------------------------ |
+| `HubResult<number>` | The converted time in milliseconds as a Unix timestamp. |
 
 #### Parameters
 
