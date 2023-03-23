@@ -1,16 +1,15 @@
 # Examples
 
-A collection of Typescript examples showcasing the things you can do with hub-nodejs.
+A collection of Typescript examples showcasing the things you can do with `hub-nodejs`. Each example is a self-
+contained repository that includes a StackBlitz link to run it in a cloud REPL.
 
-Each example is a self-contained repository that can be checked out and executed locally, and also includes a
-StackBlitz link to run it in a cloud REPL. Contributions are always welcome!
+- [Generate a chronological feed](./chron-feed/)
+- [Writing data for a user](./write-data/)
+- [Building casts correctly](./make-cast/)
 
-- [Generate a chronological feed](./feed/)
-- [Writing data with a signer](./write-data/)
-- [Constructing casts with mentions and embeds](./make-cast/)
-
-Other examples that would be useful to developers:
+Other examples that should be added:
 
 - Subscribe to updates about a user
+- Rotating signers without losing messages
 
-- Rotating Signers gracefully
+Contributions for these examples and more are welcome!
