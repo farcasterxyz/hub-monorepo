@@ -16,6 +16,8 @@ export class PeriodicSyncJobScheduler {
   private _syncEngine: SyncEngine;
   private _cronTask?: cron.ScheduledTask;
 
+  private _jobCount = 0;
+
   constructor(_hub: Hub, _syncEngine: SyncEngine) {
     this._hub = _hub;
     this._syncEngine = _syncEngine;
@@ -38,9 +40,12 @@ export class PeriodicSyncJobScheduler {
   }
 
   async doJobs() {
-    log.info('starting periodic sync job');
+    this._jobCount += 1;
+    log.info({ jobCount: this._jobCount, memory: process.memoryUsage() }, 'starting periodic sync job');
 
     // Do a diff sync
     await this._syncEngine.diffSyncIfRequired(this._hub);
+
+    this._jobCount -= 1;
   }
 }

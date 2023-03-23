@@ -442,9 +442,6 @@ export class Hub implements HubInterface {
         const result = await this.submitMessage(message, 'gossip');
         return result.map(() => undefined);
       }
-    } else if (gossipMessage.idRegistryEvent) {
-      const result = await this.submitIdRegistryEvent(gossipMessage.idRegistryEvent, 'gossip');
-      return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       if (peerIdResult.isOk()) {
         await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);

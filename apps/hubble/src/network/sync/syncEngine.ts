@@ -331,6 +331,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           // Just update the trie.
           await this.trie.insert(new SyncId(msg));
           mergeResults.push(result);
+        } else {
+          log.warn({ error: result.error, errorMessage: result.error.message }, 'Failed to merge message during sync');
         }
       } else {
         mergeResults.push(result);
