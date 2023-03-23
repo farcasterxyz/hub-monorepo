@@ -801,7 +801,7 @@ import { getHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
 
 ### submitMessage
 
-Submits a new message to the Hub. Basic authentication may be required by the Hub.
+Submits a new message to the Hub. A Hub can choose to require basic authentication or enforce IP-based rate limits for messages accepted over this endpoint from clients.
 
 #### Usage
 
