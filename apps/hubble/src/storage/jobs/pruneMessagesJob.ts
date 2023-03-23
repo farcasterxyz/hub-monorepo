@@ -4,7 +4,7 @@ import cron from 'node-cron';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
-export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = '0 * * * *'; // Every hour at :00
+export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = '*/20 * * * *'; // Every 20 minutes
 
 const log = logger.child({
   component: 'PruneMessagesJob',

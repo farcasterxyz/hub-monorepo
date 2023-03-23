@@ -188,7 +188,7 @@ class Engine {
           }
         },
         (e) => {
-          log.error(`Error pruning ${store} messages for fid ${fid}`, e);
+          log.error({ errCode: e.errCode }, `Error revoking ${store} messages for fid ${fid}: ${e.message}`);
         }
       );
     };
@@ -220,7 +220,7 @@ class Engine {
           }
         },
         (e) => {
-          log.error(`Error pruning ${store} messages for fid ${fid}`, e);
+          log.error({ errCode: e.errCode }, `Error pruning ${store} messages for fid ${fid}: ${e.message}`);
         }
       );
     };
