@@ -21,7 +21,6 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
-import { isIP } from 'net';
 import { Result, ResultAsync, err, ok } from 'neverthrow';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from '~/network/p2p/gossipNode';
@@ -83,6 +82,9 @@ export interface HubOptions {
 
   /** External IP address to announce to peers. If not provided, it'll fetch the IP from an external service */
   announceIp?: string;
+
+  /** External Server name to announce to peers. If provided, the RPC connection is made to this server name. Useful for SSL/TLS */
+  announceServerName?: string;
 
   /** Port for libp2p to listen for gossip */
   gossipPort?: number;
@@ -332,7 +334,12 @@ export class Hub implements HubInterface {
     const rpcPort = this.rpcServer.address?.map((addr) => addr.port).unwrapOr(0);
 
     const gossipAddressContactInfo = GossipAddressInfo.create({ address: announceIp, family, port: gossipPort });
-    const rpcAddressContactInfo = GossipAddressInfo.create({ address: announceIp, family, port: rpcPort });
+    const rpcAddressContactInfo = GossipAddressInfo.create({
+      address: announceIp,
+      family,
+      port: rpcPort,
+      dnsName: this.options.announceServerName ?? '',
+    });
 
     const snapshot = await this.syncEngine.getSnapshot();
     return snapshot.map((snapshot) => {
@@ -479,14 +486,17 @@ export class Hub implements HubInterface {
     }
 
     const rpcClient = await this.getRPCClientForPeer(peerId, message);
-    log.info({ identity: this.identity, peer: peerId }, 'received a Contact Info for sync');
+    log.info({ identity: this.identity, peer: peerId, message }, 'received a Contact Info for sync');
 
     // Check if we already have this client
     if (rpcClient) {
-      if (this.syncEngine.getContactInfoForPeerId(peerId.toString())) {
-        log.info('Already have this client, skipping sync');
+      const peerInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
+      if (peerInfo) {
+        log.info({ peerInfo }, 'Already have this peer, skipping sync');
         return;
       } else {
+        // If it is a new client, we do a sync against it
+        log.info({ peerInfo }, 'New Peer Contact Info, syncing');
         this.syncEngine.addContactInfoForPeerId(peerId, message);
         await this.syncEngine.diffSyncIfRequired(this, peerId.toString());
       }
@@ -509,7 +519,7 @@ export class Hub implements HubInterface {
       return;
     }
 
-    if (isIP(rpcAddressInfo.value.address)) {
+    if (rpcAddressInfo.value.address) {
       return await getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
     }
 

@@ -338,13 +338,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
     this._syncMergeQ -= messages.length;
 
-    log.info(
-      {
-        total: mergeResults.length,
-        success: mergeResults.filter((r) => r.isOk()).length,
-      },
-      'Merged messages'
-    );
+    if (mergeResults.length > 0) {
+      log.info(
+        {
+          total: mergeResults.length,
+          success: mergeResults.filter((r) => r.isOk()).length,
+        },
+        'Merged messages'
+      );
+    }
 
     // If there was a failed merge, log the error and move on. We'll only log one error, since they're likely all the same.
     const failedMerge = mergeResults.find((r) => r.isErr());
