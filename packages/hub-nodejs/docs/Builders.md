@@ -65,7 +65,7 @@ import { FarcasterNetwork, toFarcasterTime } from '@farcaster/hub-nodejs';
 
 const unixTimestamp = 1679029607159;
 
-// unsafeUnwrap() is safe here because we know the timestamp is valid
+// Safety: timestamp is known and cannot error
 const farcasterTimestamp = toFarcasterTime(unixTimestamp)._unsafeUnwrap();
 
 const dataOptions = {
@@ -95,7 +95,7 @@ Returns a message which authorizes a new Ed25519 Signer to create messages on be
 import { makeSignerAdd, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 const signerHex = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to authorize
-const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap();
+const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap(); // Safety: signerHex is known and cannot error
 const name = 'foo'; // label to help the user identify this signers
 
 const signerAdd = await makeSignerAdd({ signer: signerBytes, name }, dataOptions, eip712Signer);
@@ -112,7 +112,7 @@ const signerAdd = await makeSignerAdd({ signer: signerBytes, name }, dataOptions
 | Name          | Type                                              | Description                                                                |
 | :------------ | :------------------------------------------------ | :------------------------------------------------------------------------- |
 | `body`        | [`SignerAddBody`](./Messages.md#signeraddbody)    | A valid VerificationAddEd25519 body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                              | Optional arguments to construct the message.                               |
+| `dataOptions` | [`DataOptions`](#data-options)                    | Optional arguments to construct the message.                               |
 | `signer`      | [`Eip712Signer`](./signers/EthersEip712Signer.md) | An Eip712Signer generated from the user's custody address.                 |
 
 ---
@@ -127,7 +127,7 @@ Returns a message which revokes a previously authorized Ed25519 Signer.
 import { makeSignerRemove, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 const signerHex = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to revoke
-const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap();
+const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap(); // Safety: signerHex is known and cannot error
 
 const signerRemove = await makeSignerRemove({ signer: signerBytes }, dataOptions, eip712Signer);
 ```
@@ -143,7 +143,7 @@ const signerRemove = await makeSignerRemove({ signer: signerBytes }, dataOptions
 | Name          | Type                                                 | Description                                                      |
 | :------------ | :--------------------------------------------------- | :--------------------------------------------------------------- |
 | `body`        | [`SignerRemoveBody`](./Messages.md#signerremovebody) | A valid SignerRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                                 | Optional metadata to construct the message.                      |
+| `dataOptions` | [`DataOptions`](#data-options)                       | Optional metadata to construct the message.                      |
 | `signer`      | [`Eip712Signer`](./signers/EthersEip712Signer.md)    | An Eip712Signer generated from the user's custody address.       |
 
 ---
@@ -175,7 +175,7 @@ const cast = await makeCastAdd(
 | Name          | Type                                               | Description                                                 |
 | :------------ | :------------------------------------------------- | :---------------------------------------------------------- |
 | `body`        | [`CastAddBody`](./Messages.md#castaddbody)         | A valid CastAdd body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                 |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                 |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                       |
 
 ---
@@ -187,10 +187,12 @@ Returns a message that removes an existing Cast.
 #### Usage
 
 ```typescript
-import { makeCastRemove } from '@farcaster/hub-nodejs';
+import { hexStringToBytes, makeCastRemove } from '@farcaster/hub-nodejs';
 
-const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
-const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
+const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86';
+
+// Safety: targetHashHex is known and can't error
+const targetHashBytes = hexStringToBytes(targetHashHex)._unsafeUnwrap();
 
 const castRemove = await makeCastRemove(
   {
@@ -212,7 +214,7 @@ const castRemove = await makeCastRemove(
 | Name          | Type                                               | Description                                                    |
 | :------------ | :------------------------------------------------- | :------------------------------------------------------------- |
 | `body`        | [`CastRemoveBody`](./Messages.md#castremovebody)   | A valid CastRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                    |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                    |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                          |
 
 ---
@@ -224,10 +226,11 @@ Returns a message that adds a Reaction to an existing Cast.
 #### Usage
 
 ```typescript
-import { makeReactionAdd, ReactionType } from '@farcaster/hub-nodejs';
+import { hexStringToBytes, makeReactionAdd, ReactionType } from '@farcaster/hub-nodejs';
 
-const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
-const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
+const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86';
+// Safety: targetHashHex is known and can't error
+const targetHashBytes = hexStringToBytes(targetHashHex)._unsafeUnwrap();
 
 const reactionLikeBody = {
   type: ReactionType.LIKE,
@@ -251,7 +254,7 @@ const like = await makeReactionAdd(reactionLikeBody, dataOptions, ed25519Signer)
 | Name          | Type                                               | Description                                                     |
 | :------------ | :------------------------------------------------- | :-------------------------------------------------------------- |
 | `body`        | [`ReactionBody`](./Messages.md#reactionbody)       | A valid ReactionAdd body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                     |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                     |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                           |
 
 ---
@@ -263,10 +266,12 @@ Returns a message that removes an existing Reaction to an existing Cast.
 #### Usage
 
 ```typescript
-import { makeReactionRemove, ReactionType } from '@farcaster/hub-nodejs';
+import { hexStringToBytes, makeReactionRemove, ReactionType } from '@farcaster/hub-nodejs';
 
-const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86'; // Hash of the Cast being deleted as a hex string
-const targetHashBytes = new Uint8Array(Buffer.from(targetHashHex, 'hex')); //  Hash of the Cast being deleted as bytes
+const targetHashHex = '006f082f70dfb2de81e7852f3b79f1cdf2aa6b86';
+
+// Safety: targetHashHex is known and can't error
+const targetHashBytes = hexStringToBytes(targetHashHex)._unsafeUnwrap();
 
 const reactionLikeBody = {
   type: ReactionType.LIKE,
@@ -290,7 +295,7 @@ const like = await makeReactionRemove(reactionLikeBody, dataOptions, ed25519Sign
 | Name          | Type                                               | Description                                                        |
 | :------------ | :------------------------------------------------- | :----------------------------------------------------------------- |
 | `body`        | [`ReactionBody`](./Messages.md#reactionbody)       | A valid ReactionRemove body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                        |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                        |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                              |
 
 ---
@@ -323,7 +328,7 @@ const userDataPfpAdd = await makeUserDataAdd(userDataPfpBody, dataOptions, ed255
 | Name          | Type                                               | Description                                                  |
 | :------------ | :------------------------------------------------- | :----------------------------------------------------------- |
 | `body`        | [`UserDataBody`](./Messages.md#userdatabody)       | A valid UserData body object containing the data to be sent. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                  |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                  |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                        |
 
 ---
@@ -342,7 +347,7 @@ import {
   makeVerificationEthAddressClaim,
 } from '@farcaster/hub-nodejs';
 
-// Safety: input is known and cannot throw, so safe to unwrap in the example
+// Safety: eip712Signer is known and can't error
 const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
 
 const fid = 1;
@@ -356,7 +361,7 @@ if (claimResult.isOk()) {
 
   // Sign the claim
   const ethSignResult = await eip712Signer.signVerificationEthAddressClaim(claim);
-  const ethSignature = ethSignResult._unsafeUnwrap();
+  const ethSignature = ethSignResult._unsafeUnwrap(); // Safety: claim is known and can't error
 
   // Construct a Verification Add Message with the claim signature
   const verificationBody = {
@@ -380,7 +385,7 @@ if (claimResult.isOk()) {
 | Name          | Type                                               | Description                                                                            |
 | :------------ | :------------------------------------------------- | :------------------------------------------------------------------------------------- |
 | `body`        | [`VerificationAddEthAddressBody`](#)               | An object which contains an Eip712 Signature from the Ethereum Address being verified. |
-| `dataOptions` | `MessageDataOptions`                               | Optional metadata to construct the message.                                            |
+| `dataOptions` | [`DataOptions`](#data-options)                     | Optional metadata to construct the message.                                            |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md) | A currently valid Signer for the fid.                                                  |
 
 ---
@@ -394,7 +399,7 @@ Returns a message that removes a previously added Verification.
 ```typescript
 import { makeVerificationRemove } from '@farcaster/hub-nodejs';
 
-// Safety: input is known and cannot throw, so safe to unwrap in the example
+// Safety: eip712Signer is known and can't error
 const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
 
 const verificationRemoveBody = {
@@ -415,5 +420,5 @@ const verificationRemoveMessage = await makeVerificationRemove(verificationRemov
 | Name          | Type                                                             | Description                                                          |
 | :------------ | :--------------------------------------------------------------- | :------------------------------------------------------------------- |
 | `body`        | [`VerificationRemoveBody`](./Messages.md#verificationremovebody) | An object which contains data about the Verification being removed . |
-| `dataOptions` | `MessageDataOptions`                                             | Optional metadata to construct the message.                          |
+| `dataOptions` | [`DataOptions`](#data-options)                                   | Optional metadata to construct the message.                          |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md)               | A currently valid Signer for the fid.                                |

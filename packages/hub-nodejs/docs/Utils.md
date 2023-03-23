@@ -198,9 +198,9 @@ const eip712Signer = new EthersEip712Signer(wallet);
 
 // Construct the claim object with the block number of a recent block
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
-const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap();
+const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety: blockHashHex is known and can't error
 
-const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
+const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap(); // Safety: eip712Signer is known and can't error
 const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
 ```
 
