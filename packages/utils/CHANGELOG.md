@@ -1,12 +1,5 @@
 # @farcaster/utils
 
-## 0.3.1
-
-### Patch Changes
-
-- 12c9c40: chore: use minimally specified ethers signer type
-- dc69b66: feat: add EthersV5Eip712Signer
-
 ## 0.3.0
 
 ### Minor Changes
