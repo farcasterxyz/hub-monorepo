@@ -40,7 +40,7 @@ export enum RootPrefix {
   /* Used to store the state of the hub */
   HubState = 9,
   /* Revoke signer jobs */
-  JobRevokeSigner = 10,
+  JobRevokeMessageBySigner = 10,
   /* Sync Merkle Trie Node */
   SyncMerkleTrieNode = 11,
   /* Update NameRegistryEvent expiry job */

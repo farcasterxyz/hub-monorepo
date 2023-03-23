@@ -15,8 +15,8 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import RocksDB, { Iterator } from '~/storage/db/rocksdb';
 import { logger, nameRegistryEventToLog } from '~/utils/logger';
-import { getNameRegistryEvent, putNameRegistryEvent } from '../db/nameRegistryEvent';
-import { RootPrefix } from '../db/types';
+import { getNameRegistryEvent, putNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
+import { RootPrefix } from '~/storage/db/types';
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;
@@ -34,7 +34,15 @@ export class UpdateNameRegistryEventExpiryJobWorker {
     this._ethEventsProvider = ethEventsProvider;
     this._status = 'waiting';
 
-    this._queue.on('enqueueJob', () => this.processJobs());
+    this.processJobs = this.processJobs.bind(this);
+  }
+
+  start() {
+    this._queue.on('enqueueJob', this.processJobs);
+  }
+
+  stop() {
+    this._queue.off('enqueueJob', this.processJobs);
   }
 
   async processJobs(): HubAsyncResult<void> {

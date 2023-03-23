@@ -297,6 +297,10 @@ export class Hub implements HubInterface {
     // Start the sync engine
     await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
 
+    if (this.updateNameRegistryEventExpiryJobWorker) {
+      this.updateNameRegistryEventExpiryJobWorker.start();
+    }
+
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
@@ -364,6 +368,10 @@ export class Hub implements HubInterface {
 
     // Stop sync
     await this.syncEngine.stop();
+
+    if (this.updateNameRegistryEventExpiryJobWorker) {
+      this.updateNameRegistryEventExpiryJobWorker.stop();
+    }
 
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();
