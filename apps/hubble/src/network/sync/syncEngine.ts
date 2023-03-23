@@ -320,7 +320,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (result.isErr()) {
         if (
           result.error.errCode === 'bad_request.validation_failure' &&
-          (result.error.message === 'invalid signer' || result.error.message.startsWith('unknown fid'))
+          (result.error.message.startsWith('invalid signer') || result.error.message.startsWith('unknown fid'))
         ) {
           // Unknown user error. Fetch the custody event and retry the message.
           log.warn({ fid: msg.data?.fid }, 'Unknown user, fetching custody event');
@@ -510,9 +510,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
     if (custodyResult.isErr()) {
-      return err(
-        new HubError('unavailable.storage_failure', `Failed to merge custody event: ${custodyResult.error.message}`)
-      );
+      // It is possible we already have this (i.e., we have the fid but don't have the signer), so we
+      // won't fail if we can't merge it.
+      log.warn(custodyResult.error, `Failed to merge custody event for fid ${fid} during sync-retry`);
     }
 
     // Probably not required to fetch the signer messages, but doing it here means
