@@ -65,7 +65,7 @@ import { FarcasterNetwork, toFarcasterTime } from '@farcaster/hub-nodejs';
 
 const unixTimestamp = 1679029607159;
 
-// unsafeUnwrap() is safe here because we know the timestamp is valid
+// Safety: timestamp is known and cannot error
 const farcasterTimestamp = toFarcasterTime(unixTimestamp)._unsafeUnwrap();
 
 const dataOptions = {
@@ -95,7 +95,7 @@ Returns a message which authorizes a new Ed25519 Signer to create messages on be
 import { makeSignerAdd, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 const signerHex = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to authorize
-const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap();
+const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap(); // Safety: signerHex is known and cannot error
 const name = 'foo'; // label to help the user identify this signers
 
 const signerAdd = await makeSignerAdd({ signer: signerBytes, name }, dataOptions, eip712Signer);
@@ -127,7 +127,7 @@ Returns a message which revokes a previously authorized Ed25519 Signer.
 import { makeSignerRemove, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 const signerHex = '0x027fb58156b2733495acb24248e5e3ddf7ad8be4b85321c1e598e06ed030f51f'; // public key of the Ed25519 key-pair to revoke
-const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap();
+const signerBytes = hexStringToBytes(signerHex)._unsafeUnwrap(); // Safety: signerHex is known and cannot error
 
 const signerRemove = await makeSignerRemove({ signer: signerBytes }, dataOptions, eip712Signer);
 ```
@@ -342,7 +342,7 @@ import {
   makeVerificationEthAddressClaim,
 } from '@farcaster/hub-nodejs';
 
-// Safety: input is known and cannot throw, so safe to unwrap in the example
+// Safety: eip712Signer is known and can't error
 const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
 
 const fid = 1;
@@ -356,7 +356,7 @@ if (claimResult.isOk()) {
 
   // Sign the claim
   const ethSignResult = await eip712Signer.signVerificationEthAddressClaim(claim);
-  const ethSignature = ethSignResult._unsafeUnwrap();
+  const ethSignature = ethSignResult._unsafeUnwrap(); // Safety: claim is known and can't error
 
   // Construct a Verification Add Message with the claim signature
   const verificationBody = {
@@ -394,7 +394,7 @@ Returns a message that removes a previously added Verification.
 ```typescript
 import { makeVerificationRemove } from '@farcaster/hub-nodejs';
 
-// Safety: input is known and cannot throw, so safe to unwrap in the example
+// Safety: eip712Signer is known and can't error
 const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap();
 
 const verificationRemoveBody = {

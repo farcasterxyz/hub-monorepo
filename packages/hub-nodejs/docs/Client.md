@@ -670,7 +670,7 @@ import { getHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
   const client = await getHubRpcClient('127.0.0.1:2283');
 
   const addressHex = '0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5';
-  const addressBytes = hexStringToBytes(addressHex)._unsafeUnwrap(); // Safety: we know the address is valid
+  const addressBytes = hexStringToBytes(addressHex)._unsafeUnwrap(); // Safety: addressHex is known and can't error
 
   const verificationResult = await client.getVerification({ fid: 2, address: addressBytes });
 
