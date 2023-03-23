@@ -88,6 +88,23 @@ successful response of type `<T>` or an error value. There are three types of re
 - [MessagesResult<T>](#messagesresult)
 - [FidsResult<T>](#fidsresult)
 
+Results always return an object of type `Message` instead of a more specific type like `CastAddMessage` due to a quick of the protobuf-generated types. This can be easily remedied by passing responses through a typeguard:
+
+```typescript
+import { isCastAddMessage } from '@farcaster/hub-nodejs';
+
+// See getCast documentation below for more details on this
+const castResult = await client.getCast({ fid: 2, hash: castHashBytes });
+
+if (castResult.isOk()) {
+  const cast = castResult.value; // cast is of type Message
+
+  if (isCastAddMessage(cast)) {
+    console.log(cast); // cast is now a CastAddMessage
+  }
+}
+```
+
 ### Pagination
 
 Methods that return multiple values support pagination in requests with a `pageSize` and `pageToken` property.
