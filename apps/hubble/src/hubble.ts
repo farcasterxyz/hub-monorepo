@@ -410,7 +410,6 @@ export class Hub implements HubInterface {
     if (peerIdResult.isErr()) {
       return Promise.resolve(err(peerIdResult.error));
     }
-    const peerId = peerIdResult.value;
 
     if (gossipMessage.message) {
       const message = gossipMessage.message;
@@ -425,23 +424,9 @@ export class Hub implements HubInterface {
         return err(new HubError('unavailable', 'Sync queue is full'));
       }
 
-      // Get the RPC Client to use to merge this message
-      const contactInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo;
-      if (contactInfo) {
-        const rpcClient = await this.getRPCClientForPeer(peerId, contactInfo);
-        if (rpcClient) {
-          const results = await this.syncEngine.mergeMessages([message], rpcClient);
-          return Result.combine(results).map(() => undefined);
-        } else {
-          log.error('No RPC clients available to merge message, attempting to merge directly into the engine');
-          const result = await this.submitMessage(message, 'gossip');
-          return result.map(() => undefined);
-        }
-      } else {
-        log.error('No contact info available for peer, attempting to merge directly into the engine');
-        const result = await this.submitMessage(message, 'gossip');
-        return result.map(() => undefined);
-      }
+      // Merge the message
+      const result = await this.submitMessage(message, 'gossip');
+      return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       if (peerIdResult.isOk()) {
         await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
