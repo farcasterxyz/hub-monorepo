@@ -15,8 +15,8 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import RocksDB, { Iterator } from '~/storage/db/rocksdb';
 import { logger, nameRegistryEventToLog } from '~/utils/logger';
-import { getNameRegistryEvent, putNameRegistryEvent } from '../db/nameRegistryEvent';
-import { RootPrefix } from '../db/types';
+import { getNameRegistryEvent, putNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
+import { RootPrefix } from '~/storage/db/types';
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;

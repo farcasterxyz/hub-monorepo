@@ -408,17 +408,20 @@ describe('with listeners and workers', () => {
   };
 
   beforeAll(async () => {
-    await liveEngine.start();
     liveEngine.eventHandler.on('revokeMessage', handleRevokeMessage);
   });
 
   afterAll(async () => {
     liveEngine.eventHandler.off('revokeMessage', handleRevokeMessage);
-    await liveEngine.stop();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     revokedMessages = [];
+    await liveEngine.start();
+  });
+
+  afterEach(async () => {
+    await liveEngine.stop();
   });
 
   describe('with messages', () => {
@@ -439,7 +442,7 @@ describe('with listeners and workers', () => {
     test('revokes messages when SignerRemove is merged', async () => {
       await liveEngine.mergeMessage(signerRemove);
       expect(revokedMessages).toEqual([]);
-      await sleep(100); // Wait for engine to revoke messages
+      await sleep(200); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([castAdd, reactionAdd]);
     });
 
@@ -451,17 +454,30 @@ describe('with listeners and workers', () => {
       });
       await liveEngine.mergeIdRegistryEvent(custodyTransfer);
       expect(revokedMessages).toEqual([]);
-      await sleep(100); // Wait for engine to revoke messages
+      await sleep(200); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd]);
     });
 
     test('revokes messages when SignerAdd is pruned', async () => {
-      await liveEngine.eventHandler.commitTransaction(db.transaction(), [
-        { type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message: signerAdd } },
-      ]); // Hack to force prune
+      const event = protobufs.HubEvent.create({
+        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        pruneMessageBody: { message: signerAdd },
+      });
+      liveEngine.eventHandler.emit('pruneMessage', event as protobufs.PruneMessageHubEvent); // Hack to force prune
       expect(revokedMessages).toEqual([]);
-      await sleep(100); // Wait for engine to revoke messages
+      await sleep(200); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([castAdd, reactionAdd]);
+    });
+
+    test('revokes messages when SignerAdd is revoked', async () => {
+      const event = protobufs.HubEvent.create({
+        type: protobufs.HubEventType.REVOKE_MESSAGE,
+        revokeMessageBody: { message: signerAdd },
+      });
+      liveEngine.eventHandler.emit('revokeMessage', event as protobufs.RevokeMessageHubEvent); // Hack to force revoke
+      expect(revokedMessages).toEqual([signerAdd]);
+      await sleep(200); // Wait for engine to revoke messages
+      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd]);
     });
   });
 });

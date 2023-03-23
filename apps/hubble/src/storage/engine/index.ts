@@ -24,7 +24,10 @@ import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { logger } from '~/utils/logger';
 import { StorageCache } from '~/storage/engine/storageCache';
-import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from '../jobs/revokeMessagesBySignerJob';
+import {
+  RevokeMessagesBySignerJobQueue,
+  RevokeMessagesBySignerJobWorker,
+} from '~/storage/jobs/revokeMessagesBySignerJob';
 
 const log = logger.child({
   component: 'Engine',
