@@ -171,7 +171,8 @@ Converts a Unix milliseconds timestamp to a Farcaster milliseconds timestamp.
 
 ```typescript
 const msTimestamp = Date.now(); // can be anything, e.g., ethereum transaction timestamp
-console.log(toFarcasterTime(msTimestamp)); // 70117500
+const timestamp = toFarcasterTime(msTimestamp)._unsafeUnwrap();
+console.log(timestamp); // 70117500
 ```
 
 #### Returns
@@ -201,7 +202,7 @@ const client = await getHubRpcClient('127.0.0.1:8080');
 const wrappedData = await client.getCastsByFid({ fid: 1 });
 const data = wrappedData._unsafeUnwrap();
 const timestamp = fromFarcasterTime(data.messages[0].data?.timestamp);
-console.log(timestamp); // 1679014242000 (unix timestamp in millisecond)
+console.log(timestamp._unsafeUnwrap()); // 1679014242000 (unix timestamp in millisecond)
 ```
 
 #### Returns
@@ -246,12 +247,15 @@ const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNe
 
 #### Returns
 
-| Value | Description |
-| :---- | :---------- |
-| `TBD` | TBD         |
+| Value                                    | Description                                                         |
+| :--------------------------------------- | :------------------------------------------------------------------ |
+| `HubResult<VerificationEthAddressClaim>` | `VerificationEthAddressClaim object that can be submitted to Hubs.` |
 
 #### Parameters
 
-| Name  | Type  | Description |
-| :---- | :---- | :---------- |
-| `TBD` | `TBD` | TBD         |
+| Name         | Type               | Description                                         |
+| :----------- | :----------------- | :-------------------------------------------------- |
+| `fidNumber`  | `number`           | The Farcaster ID to verify.                         |
+| `ethAddress` | `Uint8Array`       | The Ethereum address to verify.                     |
+| `network`    | `FarcasterNetwork` | The Farcaster network value as defined in protobuf. |
+| `blockHash`  | `Uint8Array`       | The hash of a recent Ethereum block.                |
