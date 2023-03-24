@@ -475,21 +475,18 @@ export class Hub implements HubInterface {
       }
     }
 
-    const rpcClient = await this.getRPCClientForPeer(peerId, message);
     log.info({ identity: this.identity, peer: peerId, message }, 'received a Contact Info for sync');
 
     // Check if we already have this client
-    if (rpcClient) {
-      const peerInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
-      if (peerInfo) {
-        log.info({ peerInfo }, 'Already have this peer, skipping sync');
-        return;
-      } else {
-        // If it is a new client, we do a sync against it
-        log.info({ peerInfo }, 'New Peer Contact Info, syncing');
-        this.syncEngine.addContactInfoForPeerId(peerId, message);
-        await this.syncEngine.diffSyncIfRequired(this, peerId.toString());
-      }
+    const peerInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
+    if (peerInfo) {
+      log.info({ peerInfo }, 'Already have this peer, skipping sync');
+      return;
+    } else {
+      // If it is a new client, we do a sync against it
+      log.info({ peerInfo }, 'New Peer Contact Info, syncing');
+      this.syncEngine.addContactInfoForPeerId(peerId, message);
+      await this.syncEngine.diffSyncIfRequired(this, peerId.toString());
     }
   }
 
@@ -510,7 +507,12 @@ export class Hub implements HubInterface {
     }
 
     if (rpcAddressInfo.value.address) {
-      return await getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
+      try {
+        return await getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
+      } catch (e) {
+        log.error({ error: e, peer, peerId }, 'unable to connect to peer');
+        return undefined;
+      }
     }
 
     log.info({ peerId }, 'falling back to addressbook lookup for peer');
@@ -537,7 +539,12 @@ export class Hub implements HubInterface {
       port: rpcAddressInfo.value.port,
     };
 
-    return await getHubRpcClient(addressInfoToString(ai));
+    try {
+      return await getHubRpcClient(addressInfoToString(ai));
+    } catch (e) {
+      log.error({ error: e, peer, peerId, addressInfo: ai }, 'unable to connect to peer');
+      return undefined;
+    }
   }
 
   private registerEventHandlers() {
