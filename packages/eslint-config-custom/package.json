@@ -11,7 +11,5 @@
     "eslint-plugin-prefer-arrow-functions": "^3.1.4",
     "eslint-plugin-security": "^1.7.1"
   },
-  "publishConfig": {
-    "access": "public"
-  }
+  "private": true
 }

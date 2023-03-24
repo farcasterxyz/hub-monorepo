@@ -1,5 +1,23 @@
 # @farcaster/hubble
 
+## 1.0.17
+
+### Patch Changes
+
+- c26fafa: Add test data to testnet hubs via TEST_USERS env variable
+- 0f6737b: Add IP-based rate limiting for submitMessage()
+- 5c78405: upgrade ethers to 6.2.1
+- 6a0bf29: Gossip dnsName when sharing contact info
+- a89a5b9: Reset DB if DB_RESET_TOKEN is set
+- e29958e: Terminate webworkers when shutting down
+- Updated dependencies [12c9c40]
+- Updated dependencies [dc69b66]
+- Updated dependencies [5c78405]
+- Updated dependencies [6a0bf29]
+- Updated dependencies [23de6e7]
+  - @farcaster/utils@0.3.1
+  - @farcaster/protobufs@0.1.10
+
 ## 1.0.16
 
 ### Patch Changes
