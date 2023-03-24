@@ -486,7 +486,13 @@ export class Hub implements HubInterface {
       // If it is a new client, we do a sync against it
       log.info({ peerInfo }, 'New Peer Contact Info, syncing');
       this.syncEngine.addContactInfoForPeerId(peerId, message);
-      await this.syncEngine.diffSyncIfRequired(this, peerId.toString());
+      const syncResult = await ResultAsync.fromPromise(
+        this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
+        (e) => e
+      );
+      if (syncResult.isErr()) {
+        log.error({ error: syncResult.error, peerId }, 'failed to sync with new peer');
+      }
     }
   }
 
