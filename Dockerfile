@@ -56,10 +56,11 @@ RUN yarn install --production --ignore-scripts --prefer-offline --force --frozen
 
 FROM node:18-alpine as app
 
-# Set non-root user and expose port 8080
+# Requirement for runtime metrics integrations
+RUN apk add libc6-compat
+
+# Set non-root user and expose ports
 USER node
-EXPOSE 8080
-EXPOSE 9090
 
 # Many npm packages use this to trigger production optimized behaviors
 ENV NODE_ENV production
@@ -89,8 +90,8 @@ COPY --from=app / /
 
 # Repeat of above since it is lost between build stages
 USER node
-EXPOSE 8080
-EXPOSE 9090
+EXPOSE 2282
+EXPOSE 2283
 WORKDIR /home/node/app
 
-CMD ["yarn", "--cwd=apps/hubble", "start", "--rpc-port", "8080", "--ip", "0.0.0.0", "--gossip-port", "9090", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1", "--allowed-peers", "none"]
+CMD ["yarn", "--cwd=apps/hubble", "start", "--rpc-port", "2283", "--ip", "0.0.0.0", "--gossip-port", "2282", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1", "--allowed-peers", "none"]
