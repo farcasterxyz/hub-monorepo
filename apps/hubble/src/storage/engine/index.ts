@@ -191,7 +191,13 @@ class Engine {
 
     const iterator = getMessagesBySignerIterator(this._db, fid, signer);
 
-    for await (const [key] of iterator) {
+    const revokeNextMessage = async (): HubAsyncResult<number | undefined> => {
+      const nextRecord = await ResultAsync.fromPromise(iterator.next(), () => undefined);
+      if (nextRecord.isErr()) {
+        return ok(undefined);
+      }
+
+      const [key] = nextRecord.value;
       const length = (key as Buffer).length;
       const type = (key as Buffer).readUint8(length - TSHASH_LENGTH - 1);
       const setPostfix = typeToSetPostfix(type);
@@ -204,37 +210,38 @@ class Engine {
         return err(message.error);
       }
 
-      let revokeResult: HubResult<number>;
       switch (setPostfix) {
         case UserPostfix.ReactionMessage: {
-          revokeResult = await this._reactionStore.revoke(message.value);
-          break;
+          return this._reactionStore.revoke(message.value);
         }
         case UserPostfix.SignerMessage: {
-          revokeResult = await this._signerStore.revoke(message.value);
-          break;
+          return this._signerStore.revoke(message.value);
         }
         case UserPostfix.CastMessage: {
-          revokeResult = await this._castStore.revoke(message.value);
-          break;
+          return this._castStore.revoke(message.value);
         }
         case UserPostfix.UserDataMessage: {
-          revokeResult = await this._userDataStore.revoke(message.value);
-          break;
+          return this._userDataStore.revoke(message.value);
         }
         case UserPostfix.VerificationMessage: {
-          revokeResult = await this._verificationStore.revoke(message.value);
-          break;
+          return this._verificationStore.revoke(message.value);
         }
         default: {
-          revokeResult = err(new HubError('bad_request.invalid_param', 'invalid message type'));
+          return err(new HubError('bad_request.invalid_param', 'invalid message type'));
         }
       }
+    };
 
-      if (revokeResult.isErr()) {
-        return err(revokeResult.error);
-      }
+    let revokeResult = await revokeNextMessage();
+    while (revokeResult.isOk() && revokeResult.value !== undefined) {
       commits.push(revokeResult.value);
+      revokeResult = await revokeNextMessage();
+    }
+
+    await iterator.end();
+
+    if (revokeResult.isErr()) {
+      return err(revokeResult.error);
     }
 
     return ok(commits);
