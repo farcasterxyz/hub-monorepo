@@ -187,7 +187,7 @@ describe('MerkleTrie', () => {
         await Promise.all(syncIds.map(async (syncId) => expect(await trie2.exists(syncId)).toBeTruthy()));
 
         // Delete half the items from the first trie
-        await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.delete(syncId)));
+        await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)));
         await trie.commitToDb();
 
         // Initialize a new trie from the same DB
@@ -227,7 +227,7 @@ describe('MerkleTrie', () => {
 
       expect(await trie.exists(syncId)).toBeTruthy();
 
-      await trie.delete(syncId);
+      await trie.deleteBySyncId(syncId);
       expect(await trie.items()).toEqual(0);
       expect(await trie.rootHash()).toEqual(EMPTY_HASH);
 
@@ -240,7 +240,7 @@ describe('MerkleTrie', () => {
 
       const rootHashBeforeDelete = await trie.rootHash();
       const syncId2 = await NetworkFactories.SyncId.create();
-      expect(await trie.delete(syncId2)).toBeFalsy();
+      expect(await trie.deleteBySyncId(syncId2)).toBeFalsy();
 
       const rootHashAfterDelete = await trie.rootHash();
       expect(rootHashAfterDelete).toEqual(rootHashBeforeDelete);
@@ -255,7 +255,7 @@ describe('MerkleTrie', () => {
       const rootHashBeforeDelete = await trie.rootHash();
       trie.insert(syncId2);
 
-      trie.delete(syncId2);
+      trie.deleteBySyncId(syncId2);
       expect(await trie.rootHash()).toEqual(rootHashBeforeDelete);
     });
 
@@ -267,7 +267,7 @@ describe('MerkleTrie', () => {
       await firstTrie.insert(syncId1);
       await firstTrie.insert(syncId2);
 
-      await firstTrie.delete(syncId1);
+      await firstTrie.deleteBySyncId(syncId1);
 
       const secondTrie = new MerkleTrie(db2);
       await secondTrie.insert(syncId2);
@@ -290,7 +290,7 @@ describe('MerkleTrie', () => {
       expect(count).toEqual(1 + TIMESTAMP_LENGTH);
 
       // Delete
-      await trie.delete(id);
+      await trie.deleteBySyncId(id);
       await trie.commitToDb();
 
       count = await forEachDbItem(db);
@@ -309,7 +309,7 @@ describe('MerkleTrie', () => {
       expect(count).toBeGreaterThan(1 + TIMESTAMP_LENGTH);
 
       // Delete
-      await trie.delete(syncId1);
+      await trie.deleteBySyncId(syncId1);
       await trie.commitToDb();
 
       count = await forEachDbItem(db);
@@ -336,7 +336,7 @@ describe('MerkleTrie', () => {
       await Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
 
       // Delete half of the items
-      await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.delete(syncId)));
+      await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)));
 
       // Check that the items are still there
       await Promise.all(
@@ -364,7 +364,7 @@ describe('MerkleTrie', () => {
 
       expect(await trie2.rootHash()).toEqual(rootHash);
 
-      expect(await trie2.delete(syncId1)).toBeTruthy();
+      expect(await trie2.deleteBySyncId(syncId1)).toBeTruthy();
       await trie2.commitToDb();
 
       expect(await trie2.rootHash()).not.toEqual(rootHash);
@@ -386,7 +386,7 @@ describe('MerkleTrie', () => {
       (await trie.getNode(new Uint8Array()))?.unloadChildren();
 
       // Now try deleting syncId1
-      expect(await trie.delete(syncId1)).toBeTruthy();
+      expect(await trie.deleteBySyncId(syncId1)).toBeTruthy();
       await trie.commitToDb();
 
       expect(await trie.rootHash()).not.toEqual(rootHash);

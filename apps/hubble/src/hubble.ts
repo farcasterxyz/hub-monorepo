@@ -95,6 +95,9 @@ export interface HubOptions {
   /** Username and Password to use for RPC submit methods */
   rpcAuth?: string;
 
+  /** Enable IP Rate limiting */
+  rpcRateLimit?: number;
+
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
@@ -179,7 +182,14 @@ export class Hub implements HubInterface {
     this.engine = new Engine(this.rocksDB, options.network);
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
 
-    this.rpcServer = new Server(this, this.engine, this.syncEngine, this.gossipNode, options.rpcAuth);
+    this.rpcServer = new Server(
+      this,
+      this.engine,
+      this.syncEngine,
+      this.gossipNode,
+      options.rpcAuth,
+      options.rpcRateLimit
+    );
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
@@ -274,7 +284,6 @@ export class Hub implements HubInterface {
       log.info('rocksdb opened');
     }
 
-    let rebuildSyncTrie = false;
     if (this.options.resetDB === true) {
       log.info('clearing rocksdb');
       await this.rocksDB.clear();
@@ -282,8 +291,9 @@ export class Hub implements HubInterface {
       // Read if the Hub was cleanly shutdown last time
       const cleanShutdownR = await this.wasHubCleanShutdown();
       if (cleanShutdownR.isOk() && !cleanShutdownR.value) {
-        log.warn('Hub was NOT shutdown cleanly, will rebuild the sync trie to avoid inconsistencies');
-        rebuildSyncTrie = true;
+        log.warn(
+          'Hub was NOT shutdown cleanly. Sync might re-fetch messages. Please re-run with --rebuild-sync-trie to rebuild the trie if needed.'
+        );
       }
     }
 
@@ -295,7 +305,7 @@ export class Hub implements HubInterface {
     }
 
     // Start the sync engine
-    await this.syncEngine.initialize(rebuildSyncTrie || (this.options.rebuildSyncTrie ?? false));
+    await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
 
     if (this.updateNameRegistryEventExpiryJobWorker) {
       this.updateNameRegistryEventExpiryJobWorker.start();

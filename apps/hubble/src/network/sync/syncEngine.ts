@@ -112,10 +112,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.info({ rootHash }, 'Sync engine initialized');
   }
 
+  /** Rebuild the entire Sync Trie */
   public async rebuildSyncTrie() {
     log.info('Rebuilding sync trie...');
     await this._trie.rebuild(this.engine);
     log.info('Rebuilding sync trie complete');
+  }
+
+  /** Rebuild the individual syncIDs in the Sync Trie */
+  public async rebuildSyncIds(syncIds: Uint8Array[]) {
+    for (const syncId of syncIds) {
+      await this._trie.deleteByBytes(syncId);
+    }
   }
 
   public async stop() {
@@ -332,7 +340,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           await this.trie.insert(new SyncId(msg));
           mergeResults.push(result);
         } else {
-          log.warn({ error: result.error, errorMessage: result.error.message }, 'Failed to merge message during sync');
+          log.warn(
+            { error: result.error, errorMessage: result.error.message, msg },
+            'Failed to merge message during sync'
+          );
         }
       } else {
         mergeResults.push(result);
@@ -454,7 +465,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async removeMessage(message: protobufs.Message): Promise<void> {
-    await this._trie.delete(new SyncId(message));
+    await this._trie.deleteBySyncId(new SyncId(message));
   }
 
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {

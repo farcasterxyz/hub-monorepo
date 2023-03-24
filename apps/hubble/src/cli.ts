@@ -61,6 +61,10 @@ app
     '--rpc-auth <username:password>',
     'Enable Auth for RPC submit methods with the username and password. (default: disabled)'
   )
+  .option(
+    '--rpc-rate-limit <number>',
+    'Impose a Per IP rate limit per minute. Set to -1 for no rate limits (default: 20k/min)'
+  )
   .option('--admin-server-enabled', 'Enable the admin server. (default: disabled)')
   .option('--admin-server-host <host>', "The host the admin server should listen on. (default: '127.0.0.1')")
   .option('--db-name <name>', 'The name of the RocksDB instance')
