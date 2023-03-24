@@ -1,5 +1,12 @@
 # @farcaster/protobufs
 
+## 0.1.10
+
+### Patch Changes
+
+- 6a0bf29: Gossip dnsName when sharing contact info
+- 23de6e7: update RevokeMessagesBySignerJob payload
+
 ## 0.1.9
 
 ### Patch Changes

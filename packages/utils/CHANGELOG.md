@@ -1,5 +1,16 @@
 # @farcaster/utils
 
+## 0.3.1
+
+### Patch Changes
+
+- 12c9c40: chore: use minimally specified ethers signer type
+- dc69b66: feat: add EthersV5Eip712Signer
+- 5c78405: upgrade ethers to 6.2.1
+- Updated dependencies [6a0bf29]
+- Updated dependencies [23de6e7]
+  - @farcaster/protobufs@0.1.10
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,21 @@
 # @farcaster/hub-nodejs
 
+## 0.5.1
+
+### Patch Changes
+
+- c26fafa: Add test data to testnet hubs via TEST_USERS env variable
+- dc69b66: feat: add EthersV5Eip712Signer
+- 5c78405: upgrade ethers to 6.2.1
+- 1b5f6b2: fixed documentation links on npm
+- Updated dependencies [12c9c40]
+- Updated dependencies [dc69b66]
+- Updated dependencies [5c78405]
+- Updated dependencies [6a0bf29]
+- Updated dependencies [23de6e7]
+  - @farcaster/utils@0.3.1
+  - @farcaster/protobufs@0.1.10
+
 ## 0.5.0
 
 ### Minor Changes
