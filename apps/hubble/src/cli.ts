@@ -73,8 +73,8 @@ app
       await hub.stop();
     };
 
-    const handleShutdownSignal = (signal: NodeJS.Signals) => {
-      logger.warn(`${signal} received`);
+    const handleShutdownSignal = (signalName: string) => {
+      logger.warn(`${signalName} received`);
       if (!isExiting) {
         isExiting = true;
         teardown(hub)
@@ -297,13 +297,15 @@ app
     process.on('uncaughtException', (err) => {
       logger.error({ reason: 'Uncaught exception' }, 'shutting down hub');
       logger.fatal(err);
-      process.exit(1);
+
+      handleShutdownSignal('uncaughtException');
     });
 
     process.on('unhandledRejection', (err) => {
       logger.error({ reason: 'Unhandled Rejection' }, 'shutting down hub');
       logger.fatal(err);
-      process.exit(1);
+
+      handleShutdownSignal('unhandledRejection');
     });
   });
 
