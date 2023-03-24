@@ -27,14 +27,12 @@ Returns a hex string from a bytes array.
 #### Usage
 
 ```typescript
-import { getHubRpcClient, bytesToHexString } from '@farcaster/hub-nodejs';
+import { bytesToHexString } from '@farcaster/hub-nodejs';
 
-const client = await getHubRpcClient('127.0.0.1:8080');
-
-const wrappedData = await client.getIdRegistryEvent({ fid: 1 });
-const data = wrappedData._unsafeUnwrap();
-const blockHashHex = bytesToHexString(data.blockHash);
-console.log('Block hash (hexadecimal):', blockHashHex); // 0x318c1013788674...
+// Safety: hexString is known and can't error
+const byteArray = new Uint8Array([1, 2, 3]); // can be bytes signature, address, etc
+const hexString = bytesToHexString(byteArray)._unsafeUnwrap();
+console.log(hexString); // "0x010203"
 ```
 
 #### Returns
@@ -60,7 +58,8 @@ Returns a bytes array from a hex string.
 ```typescript
 import { hexStringToBytes } from '@farcaster/hub-nodejs';
 
-const hexString = '0x010203'; // could be signature, address, etc
+// Safety: hexString is known and can't error
+const hexString = '0x010203'; // can be signature, address, etc
 const byteArray = hexStringToBytes(hexString)._unsafeUnwrap();
 console.log(byteArray); // Uint8Array [1, 2, 3]
 ```
@@ -86,6 +85,7 @@ Returns a UTF-8 string from a bytes array.
 ```typescript
 import { bytesToUtf8String } from './utils';
 
+// Safety: hexString is known and can't error
 const byteArray = new Uint8Array([72, 101, 108, 108, 111]); // "Hello" in ASCII encoding.
 const utfEncodedStr = bytesToUtf8String(byteArray)._unsafeUnwrap();
 console.log(utfEncodedStr); //"Hello"
@@ -145,8 +145,8 @@ Returns the current time in milliseconds as a Farcaster timestamp.
 
 ```typescript
 import { getFarcasterTime } from '@farcaster/hub-nodejs';
-const timestamp = getFarcasterTime();
-console.log(timestamp._unsafeUnwrap()); // 70117755
+const timestamp = getFarcasterTime()._unsafeUnwrap();
+console.log(timestamp); // 70117755
 ```
 
 #### Returns
@@ -154,12 +154,6 @@ console.log(timestamp._unsafeUnwrap()); // 70117755
 | Value               | Description                                                |
 | :------------------ | :--------------------------------------------------------- |
 | `HubResult<number>` | The current time in milliseconds as a Farcaster timestamp. |
-
-#### Parameters
-
-| Name   | Type   | Description                               |
-| :----- | :----- | :---------------------------------------- |
-| `null` | `null` | This function does not accept parameters. |
 
 ---
 
@@ -196,13 +190,11 @@ Converts a Farcaster milliseconds timestamp to a Unix milliseconds timestamp.
 #### Usage
 
 ```typescript
-import { getHubRpcClient, fromFarcasterTime } from '@farcaster/hub-nodejs';
-const client = await getHubRpcClient('127.0.0.1:8080');
+import { fromFarcasterTime } from '@farcaster/hub-nodejs';
 
-const wrappedData = await client.getCastsByFid({ fid: 1 });
-const data = wrappedData._unsafeUnwrap();
-const timestamp = fromFarcasterTime(data.messages[0].data?.timestamp);
-console.log(timestamp._unsafeUnwrap()); // 1679014242000 (unix timestamp in millisecond)
+const timestamp = 70160902; // Farcaster timestamp in milliseconds
+const msTimestamp = fromFarcasterTime(timestamp)._unsafeUnwrap();
+console.log(msTimestamp); // 1679620102000
 ```
 
 #### Returns
