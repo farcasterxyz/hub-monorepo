@@ -29,7 +29,7 @@ Returns a hex string from a bytes array.
 ```typescript
 import { bytesToHexString } from '@farcaster/hub-nodejs';
 
-// Safety: hexString is known and can't error
+// Safety: byteArray is known and can't error
 const byteArray = new Uint8Array([1, 2, 3]); // can be bytes signature, address, etc
 const hexString = bytesToHexString(byteArray)._unsafeUnwrap();
 console.log(hexString); // "0x010203"
@@ -85,7 +85,7 @@ Returns a UTF-8 string from a bytes array.
 ```typescript
 import { bytesToUtf8String } from './utils';
 
-// Safety: hexString is known and can't error
+// Safety: byteArray is known and can't error
 const byteArray = new Uint8Array([72, 101, 108, 108, 111]); // "Hello" in ASCII encoding.
 const utfEncodedStr = bytesToUtf8String(byteArray)._unsafeUnwrap();
 console.log(utfEncodedStr); //"Hello"
