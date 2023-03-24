@@ -2,7 +2,6 @@ import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
   getMessage,
@@ -107,44 +106,17 @@ class UserDataStore {
       throw new HubError('bad_request.conflict', 'event conflicts with a more recent NameRegistryEvent');
     }
 
-    let txn = this._db.transaction();
-    txn = putNameRegistryEventTransaction(txn, event);
+    const txn = putNameRegistryEventTransaction(this._db.transaction(), event);
 
-    const events: Omit<protobufs.MergeNameRegistryEventHubEvent | protobufs.RevokeMessageHubEvent, 'id'>[] = [];
-    events.push({
+    const result = await this._eventHandler.commitTransaction(txn, {
       type: protobufs.HubEventType.MERGE_NAME_REGISTRY_EVENT,
       mergeNameRegistryEventBody: { nameRegistryEvent: event },
     });
 
-    // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
-    // previous owner of the name.
-    if (event.type === protobufs.NameRegistryEventType.TRANSFER && event.from) {
-      // Check to see if the from address has an fid
-      const idRegistryEvent = await ResultAsync.fromPromise(
-        getIdRegistryEventByCustodyAddress(this._db, event.from),
-        () => undefined
-      );
-      if (idRegistryEvent.isOk()) {
-        const fid = idRegistryEvent.value.fid;
-
-        // Check if this fid assigned the fname with a UserDataAdd message
-        const fnameAdd = await ResultAsync.fromPromise(
-          this.getUserDataAdd(fid, protobufs.UserDataType.FNAME),
-          () => undefined
-        );
-        if (fnameAdd.isOk()) {
-          const revokedMessage = fnameAdd.value;
-          txn = this.deleteUserDataAddTransaction(txn, revokedMessage);
-          events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message: revokedMessage } });
-        }
-      }
-    }
-
-    // TODO
-    const result = await this._eventHandler.commitTransaction(txn, events[0] as any);
     if (result.isErr()) {
       throw result.error;
     }
+
     return result.value;
   }
 

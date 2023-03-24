@@ -2,8 +2,6 @@ import * as protobufs from '@farcaster/protobufs';
 
 export const MERGE_TIMEOUT_DEFAULT = 10_000; // 10 seconds
 
-export const COMMIT_BATCH_DEFAULT = 100; // 100 messages per commit transaction
-
 export type StorePruneOptions = {
   pruneSizeLimit?: number; // Max number of messages per fid
   pruneTimeLimit?: number; // Max age (in seconds) of any message in the store

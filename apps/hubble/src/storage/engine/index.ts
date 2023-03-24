@@ -28,6 +28,7 @@ import {
   RevokeMessagesBySignerJobQueue,
   RevokeMessagesBySignerJobWorker,
 } from '~/storage/jobs/revokeMessagesBySignerJob';
+import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent';
 
 const log = logger.child({
   component: 'Engine',
@@ -71,6 +72,7 @@ class Engine {
 
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
+    this.handleMergeNameRegistryEvent = this.handleMergeNameRegistryEvent.bind(this);
     this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
     this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
   }
@@ -112,6 +114,7 @@ class Engine {
     }
 
     this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
+    this.eventHandler.on('mergeNameRegistryEvent', this.handleMergeNameRegistryEvent);
     this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent);
     this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent);
@@ -123,6 +126,7 @@ class Engine {
   async stop(): Promise<void> {
     log.info('stopping engine');
     this.eventHandler.off('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
+    this.eventHandler.off('mergeNameRegistryEvent', this.handleMergeNameRegistryEvent);
     this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent);
     this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.off('pruneMessage', this.handlePruneMessageEvent);
@@ -729,6 +733,47 @@ class Engine {
           { errCode: enqueueRevoke.error.errCode },
           `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`
         );
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  private async handleMergeNameRegistryEvent(event: protobufs.MergeNameRegistryEventHubEvent): HubAsyncResult<void> {
+    const { nameRegistryEvent } = event.mergeNameRegistryEventBody;
+
+    // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
+    // previous owner of the name.
+    if (nameRegistryEvent.type === protobufs.NameRegistryEventType.TRANSFER && nameRegistryEvent.from.length > 0) {
+      // Check to see if the from address has an fid
+      const idRegistryEvent = await ResultAsync.fromPromise(
+        getIdRegistryEventByCustodyAddress(this._db, nameRegistryEvent.from),
+        () => undefined
+      );
+
+      if (idRegistryEvent.isOk()) {
+        const { fid } = idRegistryEvent.value;
+
+        // Check if this fid assigned the fname with a UserDataAdd message
+        const fnameAdd = await ResultAsync.fromPromise(
+          this._userDataStore.getUserDataAdd(fid, protobufs.UserDataType.FNAME),
+          () => undefined
+        );
+        if (fnameAdd.isOk()) {
+          const revokeResult = await this._userDataStore.revoke(fnameAdd.value);
+          const fnameAddHex = bytesToHexString(fnameAdd.value.hash);
+          revokeResult.match(
+            () =>
+              log.info(
+                `revoked message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to NameRegistryEvent transfer`
+              ),
+            (e) =>
+              log.error(
+                { errCode: e.errCode },
+                `failed to revoke message ${fnameAddHex} for fid ${fid} due to NameRegistryEvent transfer: ${e.message}`
+              )
+          );
+        }
       }
     }
 
