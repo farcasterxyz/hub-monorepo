@@ -274,6 +274,7 @@ export class Hub implements HubInterface {
       log.info('rocksdb opened');
     }
 
+    let rebuildSyncTrie = false;
     if (this.options.resetDB === true) {
       log.info('clearing rocksdb');
       await this.rocksDB.clear();
@@ -281,9 +282,8 @@ export class Hub implements HubInterface {
       // Read if the Hub was cleanly shutdown last time
       const cleanShutdownR = await this.wasHubCleanShutdown();
       if (cleanShutdownR.isOk() && !cleanShutdownR.value) {
-        // TODO: Should we forcibly rebuild the sync trie if the Hub was cleanly shutdown?
-        log.warn('Hub was NOT shutdown cleanly.');
-        log.warn('You should rebuild the sync trie (with --rebuild-sync-trie) to avoid inconsistencies');
+        log.warn('Hub was NOT shutdown cleanly, will rebuild the sync trie to avoid inconsistencies');
+        rebuildSyncTrie = true;
       }
     }
 
@@ -295,7 +295,7 @@ export class Hub implements HubInterface {
     }
 
     // Start the sync engine
-    await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
+    await this.syncEngine.initialize(rebuildSyncTrie || (this.options.rebuildSyncTrie ?? false));
 
     if (this.updateNameRegistryEventExpiryJobWorker) {
       this.updateNameRegistryEventExpiryJobWorker.start();
