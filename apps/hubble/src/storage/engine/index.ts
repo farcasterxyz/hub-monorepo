@@ -770,7 +770,9 @@ class Engine {
             (e) =>
               log.error(
                 { errCode: e.errCode },
-                `failed to revoke message ${fnameAddHex} for fid ${fid} due to NameRegistryEvent transfer: ${e.message}`
+                `failed to revoke message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to NameRegistryEvent transfer: ${
+                  e.message
+                }`
               )
           );
         }
