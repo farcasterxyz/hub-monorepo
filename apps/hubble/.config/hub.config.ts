@@ -35,6 +35,8 @@ export const Config = {
   rpcPort: DEFAULT_RPC_PORT,
   /** RPC Auth, disabled by default */
   // rpcAuth: 'admin:password',
+  /** Per-IP rate limiting for the RPC server*/
+  rpcRateLimit: 20000,
   /** The name of the RocksDB instance */
   dbName: 'rocks.hub._default',
   /** Clear the RocksDB instance before starting */

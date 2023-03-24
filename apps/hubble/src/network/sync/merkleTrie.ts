@@ -124,11 +124,15 @@ class MerkleTrie {
     });
   }
 
-  public async delete(id: SyncId): Promise<boolean> {
+  public async deleteBySyncId(id: SyncId): Promise<boolean> {
+    return this.deleteByBytes(id.syncId());
+  }
+
+  public async deleteByBytes(id: Uint8Array): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
         try {
-          const { status, dbUpdatesMap } = await this._root.delete(id.syncId(), this._db, new Map());
+          const { status, dbUpdatesMap } = await this._root.delete(id, this._db, new Map());
           this._updatePendingDbUpdates(dbUpdatesMap);
           await this._unloadFromMemory();
 

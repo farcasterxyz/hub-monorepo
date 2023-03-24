@@ -43,12 +43,6 @@ import { RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
 
 const log = logger.child({ component: 'rpcServer' });
 
-// Submit message are rate limited to 20_000 messages per minute
-const submitMessageRateLimiter = new RateLimiterMemory({
-  points: 20_000,
-  duration: 60,
-});
-
 export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
   // Get the IP part of the address
   const ipPart = ip.split(':')[0] ?? '';
@@ -148,7 +142,16 @@ export default class Server {
   private rpcAuthUser: string | undefined;
   private rpcAuthPass: string | undefined;
 
-  constructor(hub?: HubInterface, engine?: Engine, syncEngine?: SyncEngine, gossipNode?: GossipNode, rpcAuth?: string) {
+  private submitMessageRateLimiter: RateLimiterMemory;
+
+  constructor(
+    hub?: HubInterface,
+    engine?: Engine,
+    syncEngine?: SyncEngine,
+    gossipNode?: GossipNode,
+    rpcAuth?: string,
+    rpcRateLimit?: number
+  ) {
     this.hub = hub;
     this.engine = engine;
     this.syncEngine = syncEngine;
@@ -166,6 +169,17 @@ export default class Server {
     }
 
     this.grpcServer.addService(HubServiceService, this.getImpl());
+
+    // Submit message are rate limited by default to 20k per minute
+    let rateLimitPerMinute = 20_000;
+    if (rpcRateLimit !== undefined && rpcRateLimit >= 0) {
+      rateLimitPerMinute = rpcRateLimit;
+    }
+
+    this.submitMessageRateLimiter = new RateLimiterMemory({
+      points: rateLimitPerMinute,
+      duration: 60,
+    });
   }
 
   async start(port = 0): Promise<number> {
@@ -238,6 +252,17 @@ export default class Server {
         const messagesResult = await this.engine?.getAllMessagesBySyncIds(request.syncIds);
         messagesResult?.match(
           (messages) => {
+            // Check the messages for corruption. If a message is blank, that means it was present
+            // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
+            const corruptedMessages =
+              messages.filter((message) => message.data === undefined || message.hash.length === 0).length > 0;
+
+            if (corruptedMessages) {
+              // Don't wait for this to finish, just return the messages we have.
+              this.syncEngine?.rebuildSyncIds(request.syncIds);
+              messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
+            }
+
             callback(null, MessagesResponse.create({ messages: messages ?? [] }));
           },
           (err: HubError) => {
@@ -319,7 +344,7 @@ export default class Server {
         }
 
         // Check for rate limits
-        const rateLimitResult = await rateLimitByIp(peer, submitMessageRateLimiter);
+        const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
         if (rateLimitResult.isErr()) {
           logger.warn({ peer }, 'submitMessage rate limited');
           callback(toServiceError(new HubError('unavailable', 'API rate limit exceeded')));
