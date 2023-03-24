@@ -145,6 +145,7 @@ Returns the current time in milliseconds as a Farcaster timestamp.
 
 ```typescript
 import { getFarcasterTime } from '@farcaster/hub-nodejs';
+
 const timestamp = getFarcasterTime()._unsafeUnwrap();
 console.log(timestamp); // 70117755
 ```
@@ -164,6 +165,8 @@ Converts a Unix milliseconds timestamp to a Farcaster milliseconds timestamp.
 #### Usage
 
 ```typescript
+import { toFarcasterTime } from '@farcaster/hub-nodejs';
+
 const msTimestamp = Date.now(); // can be anything, e.g., ethereum transaction timestamp
 const timestamp = toFarcasterTime(msTimestamp)._unsafeUnwrap();
 console.log(timestamp); // 70117500
