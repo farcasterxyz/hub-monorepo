@@ -1,6 +1,6 @@
 import { CastAddMessage, HubEvent, HubEventType } from '@farcaster/protobufs';
 import { Factories } from '@farcaster/utils';
-import { ok } from 'neverthrow';
+import { ok, Result } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash, putMessageTransaction } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
@@ -58,9 +58,9 @@ describe('commitTransaction', () => {
       mergeMessageBody: { message, deletedMessages: [] },
     };
 
-    const result = await eventHandler.commitTransaction(txn, [eventArgs]);
+    const result = await eventHandler.commitTransaction(txn, eventArgs);
     expect(result.isOk()).toBeTruthy();
-    const [eventId] = result._unsafeUnwrap();
+    const eventId = result._unsafeUnwrap();
     expect(eventId).toBeGreaterThan(0);
     await expect(
       getMessage(
@@ -73,39 +73,6 @@ describe('commitTransaction', () => {
     const event = await eventHandler.getEvent(eventId as number);
     expect(event).toMatchObject(ok(eventArgs));
     expect(events).toEqual([event._unsafeUnwrap()]);
-  });
-
-  test('saves and broadcasts events in order', async () => {
-    const events1: HubEventArgs[] = [];
-    const events2: HubEventArgs[] = [];
-
-    for (let i = 0; i < 10; i++) {
-      const message = await Factories.Message.create();
-      const eventBody = { type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message, deletedMessages: [] } };
-      if (Math.random() > 0.5) {
-        events1.push(eventBody);
-      } else {
-        events2.push(eventBody);
-      }
-    }
-
-    const [result1, result2] = await Promise.all([
-      eventHandler.commitTransaction(db.transaction(), events1),
-      eventHandler.commitTransaction(db.transaction(), events2),
-    ]);
-
-    expect(result1.isOk()).toBeTruthy();
-    expect(result2.isOk()).toBeTruthy();
-
-    expect(Math.max(...result1._unsafeUnwrap())).toBeLessThan(Math.min(...result2._unsafeUnwrap()));
-
-    expect(events.length).toEqual(10);
-
-    let lastId = 0;
-    for (const event of events) {
-      expect(event.id).toBeGreaterThan(lastId);
-      lastId = event.id;
-    }
   });
 });
 
@@ -127,12 +94,18 @@ describe('pruneEvents', () => {
       mergeMessageBody: { message: message3, deletedMessages: [] },
     };
 
-    const result1 = await eventHandler.commitTransaction(db.transaction(), [eventArgs1, eventArgs2]);
+    const result1 = Result.combine([
+      await eventHandler.commitTransaction(db.transaction(), eventArgs1),
+      await eventHandler.commitTransaction(db.transaction(), eventArgs2),
+    ]);
     expect(result1.isOk()).toBeTruthy();
 
     await sleep(2_000);
 
-    const result2 = await eventHandler.commitTransaction(db.transaction(), [eventArgs3, eventArgs4]);
+    const result2 = Result.combine([
+      await eventHandler.commitTransaction(db.transaction(), eventArgs3),
+      await eventHandler.commitTransaction(db.transaction(), eventArgs4),
+    ]);
     expect(result2.isOk()).toBeTruthy();
 
     const allEvents1 = await eventHandler.getEvents();

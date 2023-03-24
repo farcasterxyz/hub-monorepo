@@ -12,7 +12,7 @@ import fs from 'fs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { Worker } from 'worker_threads';
 import { SyncId } from '~/network/sync/syncId';
-import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
+import { getManyMessages, getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
@@ -28,6 +28,7 @@ import {
   RevokeMessagesBySignerJobQueue,
   RevokeMessagesBySignerJobWorker,
 } from '~/storage/jobs/revokeMessagesBySignerJob';
+import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent';
 
 const log = logger.child({
   component: 'Engine',
@@ -71,6 +72,7 @@ class Engine {
 
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
+    this.handleMergeNameRegistryEvent = this.handleMergeNameRegistryEvent.bind(this);
     this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
     this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
   }
@@ -112,6 +114,7 @@ class Engine {
     }
 
     this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
+    this.eventHandler.on('mergeNameRegistryEvent', this.handleMergeNameRegistryEvent);
     this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent);
     this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent);
@@ -123,6 +126,7 @@ class Engine {
   async stop(): Promise<void> {
     log.info('stopping engine');
     this.eventHandler.off('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
+    this.eventHandler.off('mergeNameRegistryEvent', this.handleMergeNameRegistryEvent);
     this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent);
     this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.off('pruneMessage', this.handlePruneMessageEvent);
@@ -186,47 +190,76 @@ class Engine {
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
+  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
     const signerHex = bytesToHexString(signer);
     if (signerHex.isErr()) {
       return err(signerHex.error);
     }
 
-    const eventIds: number[] = [];
+    let revokedCount = 0;
 
-    const logRevokeResult = (result: HubResult<number[]>, store: string): void => {
-      result.match(
-        (ids) => {
-          if (ids.length > 0) {
-            eventIds.push(...ids);
-            log.info(`Revoked ${ids.length} ${store} messages from signer ${signerHex.value} for fid ${fid}`);
-          }
-        },
-        (e) => {
-          log.error(
-            { errCode: e.errCode },
-            `Error revoking ${store} messages from signer ${signerHex.value} for fid ${fid}: ${e.message}`
-          );
-        }
+    const iterator = getMessagesBySignerIterator(this._db, fid, signer);
+
+    const revokeNextMessage = async (): HubAsyncResult<number | undefined> => {
+      const nextRecord = await ResultAsync.fromPromise(iterator.next(), () => undefined);
+      if (nextRecord.isErr()) {
+        return ok(undefined);
+      }
+
+      const [key] = nextRecord.value;
+      const length = (key as Buffer).length;
+      const type = (key as Buffer).readUint8(length - TSHASH_LENGTH - 1);
+      const setPostfix = typeToSetPostfix(type);
+      const tsHash = Uint8Array.from((key as Buffer).subarray(length - TSHASH_LENGTH));
+      const message = await ResultAsync.fromPromise(
+        getMessage(this._db, fid, setPostfix, tsHash),
+        (e) => e as HubError
       );
+      if (message.isErr()) {
+        return err(message.error);
+      }
+
+      switch (setPostfix) {
+        case UserPostfix.ReactionMessage: {
+          return this._reactionStore.revoke(message.value);
+        }
+        case UserPostfix.SignerMessage: {
+          return this._signerStore.revoke(message.value);
+        }
+        case UserPostfix.CastMessage: {
+          return this._castStore.revoke(message.value);
+        }
+        case UserPostfix.UserDataMessage: {
+          return this._userDataStore.revoke(message.value);
+        }
+        case UserPostfix.VerificationMessage: {
+          return this._verificationStore.revoke(message.value);
+        }
+        default: {
+          return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+        }
+      }
     };
 
-    const castResult = await this._castStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(castResult, 'cast');
+    let revokeResult = await revokeNextMessage();
+    while (revokeResult.isOk() && revokeResult.value !== undefined) {
+      revokedCount += 1;
+      revokeResult = await revokeNextMessage();
+    }
 
-    const reactionResult = await this._reactionStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(reactionResult, 'reaction');
+    await iterator.end();
 
-    const verificationResult = await this._verificationStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(verificationResult, 'verification');
+    if (revokeResult.isErr()) {
+      log.error(
+        { errCode: revokeResult.error.errCode },
+        `error revoking messages from ${signerHex.value} and fid ${fid}: ${revokeResult.error.message}`
+      );
+      return err(revokeResult.error);
+    }
 
-    const userDataResult = await this._userDataStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(userDataResult, 'user data');
+    log.info(`revoked ${revokedCount} messages from ${signerHex.value} and fid ${fid}`);
 
-    const signerResult = await this._signerStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(signerResult, 'signer');
-
-    return ok(eventIds);
+    return ok(undefined);
   }
 
   async pruneMessages(fid: number): HubAsyncResult<void> {
@@ -234,11 +267,11 @@ class Engine {
       result.match(
         (ids) => {
           if (ids.length > 0) {
-            log.info(`Pruned ${ids.length} ${store} messages for fid ${fid}`);
+            log.info(`pruned ${ids.length} ${store} messages for fid ${fid}`);
           }
         },
         (e) => {
-          log.error({ errCode: e.errCode }, `Error pruning ${store} messages for fid ${fid}: ${e.message}`);
+          log.error({ errCode: e.errCode }, `error pruning ${store} messages for fid ${fid}: ${e.message}`);
         }
       );
     };
@@ -700,6 +733,49 @@ class Engine {
           { errCode: enqueueRevoke.error.errCode },
           `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`
         );
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  private async handleMergeNameRegistryEvent(event: protobufs.MergeNameRegistryEventHubEvent): HubAsyncResult<void> {
+    const { nameRegistryEvent } = event.mergeNameRegistryEventBody;
+
+    // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
+    // previous owner of the name.
+    if (nameRegistryEvent.type === protobufs.NameRegistryEventType.TRANSFER && nameRegistryEvent.from.length > 0) {
+      // Check to see if the from address has an fid
+      const idRegistryEvent = await ResultAsync.fromPromise(
+        getIdRegistryEventByCustodyAddress(this._db, nameRegistryEvent.from),
+        () => undefined
+      );
+
+      if (idRegistryEvent.isOk()) {
+        const { fid } = idRegistryEvent.value;
+
+        // Check if this fid assigned the fname with a UserDataAdd message
+        const fnameAdd = await ResultAsync.fromPromise(
+          this._userDataStore.getUserDataAdd(fid, protobufs.UserDataType.FNAME),
+          () => undefined
+        );
+        if (fnameAdd.isOk()) {
+          const revokeResult = await this._userDataStore.revoke(fnameAdd.value);
+          const fnameAddHex = bytesToHexString(fnameAdd.value.hash);
+          revokeResult.match(
+            () =>
+              log.info(
+                `revoked message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to NameRegistryEvent transfer`
+              ),
+            (e) =>
+              log.error(
+                { errCode: e.errCode },
+                `failed to revoke message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to NameRegistryEvent transfer: ${
+                  e.message
+                }`
+              )
+          );
+        }
       }
     }
 

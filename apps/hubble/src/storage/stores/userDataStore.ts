@@ -2,10 +2,8 @@ import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
-  getAllMessagesBySigner,
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
@@ -108,44 +106,18 @@ class UserDataStore {
       throw new HubError('bad_request.conflict', 'event conflicts with a more recent NameRegistryEvent');
     }
 
-    let txn = this._db.transaction();
-    txn = putNameRegistryEventTransaction(txn, event);
+    const txn = putNameRegistryEventTransaction(this._db.transaction(), event);
 
-    const events: Omit<protobufs.MergeNameRegistryEventHubEvent | protobufs.RevokeMessageHubEvent, 'id'>[] = [];
-    events.push({
+    const result = await this._eventHandler.commitTransaction(txn, {
       type: protobufs.HubEventType.MERGE_NAME_REGISTRY_EVENT,
       mergeNameRegistryEventBody: { nameRegistryEvent: event },
     });
 
-    // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
-    // previous owner of the name.
-    if (event.type === protobufs.NameRegistryEventType.TRANSFER && event.from) {
-      // Check to see if the from address has an fid
-      const idRegistryEvent = await ResultAsync.fromPromise(
-        getIdRegistryEventByCustodyAddress(this._db, event.from),
-        () => undefined
-      );
-      if (idRegistryEvent.isOk()) {
-        const fid = idRegistryEvent.value.fid;
-
-        // Check if this fid assigned the fname with a UserDataAdd message
-        const fnameAdd = await ResultAsync.fromPromise(
-          this.getUserDataAdd(fid, protobufs.UserDataType.FNAME),
-          () => undefined
-        );
-        if (fnameAdd.isOk()) {
-          const revokedMessage = fnameAdd.value;
-          txn = this.deleteUserDataAddTransaction(txn, revokedMessage);
-          events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message: revokedMessage } });
-        }
-      }
-    }
-
-    const result = await this._eventHandler.commitTransaction(txn, events);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+
+    return result.value;
   }
 
   /** Merges a UserDataAdd message into the set */
@@ -167,88 +139,80 @@ class UserDataStore {
       });
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
-    // Get all UserDataAdd messages signed by signer
-    const userDataAdds = await ResultAsync.fromPromise(
-      getAllMessagesBySigner<protobufs.UserDataAddMessage>(this._db, fid, signer, protobufs.MessageType.USER_DATA_ADD),
-      (e) => e as HubError
-    );
-    if (userDataAdds.isErr()) {
-      return err(userDataAdds.error);
-    }
-
-    // Create a rocksdb transaction
+  async revoke(message: protobufs.Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-
-    // Create list of events to broadcast
-    const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
-
-    // Add a delete operation to the transaction for each UserDataAdd
-    for (const message of userDataAdds.value) {
+    if (protobufs.isUserDataAddMessage(message)) {
       txn = this.deleteUserDataAddTransaction(txn, message);
-      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
+    } else {
+      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(txn, events);
-    } else {
-      return ok([]);
-    }
+    return this._eventHandler.commitTransaction(txn, {
+      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      revokeMessageBody: { message },
+    });
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    let sizeToPrune: number;
+    const commits: number[] = [];
+
     const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
-    if (cachedCount.isOk()) {
-      sizeToPrune = cachedCount.value - this._pruneSizeLimit;
-    } else {
-      // Count number of UserDataAdd messages for this fid
-      const prefix = makeMessagePrimaryKey(fid, UserPostfix.UserDataMessage);
-      let calculatedCount = 0;
-      for await (const [,] of this._db.iteratorByPrefix(prefix, { values: false })) {
-        calculatedCount = calculatedCount + 1;
-      }
-      sizeToPrune = calculatedCount - this._pruneSizeLimit;
+
+    // Require storage cache to be synced to prune
+    if (cachedCount.isErr()) {
+      return err(cachedCount.error);
     }
 
-    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const events: Omit<protobufs.PruneMessageHubEvent, 'id'>[] = [];
-
-    // Create a rocksdb transaction to include all the mutations
-    let pruneTxn = this._db.transaction();
+    // Return immediately if there are no messages to prune
+    if (cachedCount.value === 0) {
+      return ok(commits);
+    }
 
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.UserDataMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-
-    // For each message in order, prune it if the store is over the size limit
-    let nextMessage = await getNextResult();
-    while (nextMessage.isOk() && sizeToPrune > 0) {
-      const message = nextMessage.value;
-
-      // Add a delete operation to the transaction depending on the message type
-      if (protobufs.isUserDataAddMessage(message)) {
-        pruneTxn = this.deleteUserDataAddTransaction(pruneTxn, message);
-      } else {
-        throw new HubError('unknown', 'invalid message type');
+    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
+      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
+      if (nextMessage.isErr()) {
+        return ok(undefined); // Nothing left to prune
       }
 
-      // Create prune event body and store for broadcasting later
-      events.push({ type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
+      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
+      if (count.isErr()) {
+        return err(count.error);
+      }
 
-      // Decrement the number of messages yet to prune, and try to get the next message from the iterator
-      sizeToPrune = Math.max(0, sizeToPrune - 1);
-      nextMessage = await getNextResult();
+      if (count.value <= this._pruneSizeLimit) {
+        return ok(undefined);
+      }
+
+      let txn = this._db.transaction();
+
+      if (protobufs.isUserDataAddMessage(nextMessage.value)) {
+        txn = this.deleteUserDataAddTransaction(txn, nextMessage.value);
+      } else {
+        return err(new HubError('unknown', 'invalid message type'));
+      }
+
+      return this._eventHandler.commitTransaction(txn, {
+        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        pruneMessageBody: { message: nextMessage.value },
+      });
+    };
+
+    let pruneResult = await pruneNextMessage();
+    while (pruneResult.isOk() && pruneResult.value !== undefined) {
+      commits.push(pruneResult.value);
+      pruneResult = await pruneNextMessage();
     }
 
     await pruneIterator.end();
 
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(pruneTxn, events);
-    } else {
-      return ok([]);
+    if (pruneResult.isErr()) {
+      return err(pruneResult.error);
     }
+
+    return ok(commits);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -273,11 +237,11 @@ class UserDataStore {
     };
 
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+    return result.value;
   }
 
   private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {

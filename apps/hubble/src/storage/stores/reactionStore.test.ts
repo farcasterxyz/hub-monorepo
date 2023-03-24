@@ -1,6 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { Factories, HubError, bytesDecrement, bytesIncrement, getFarcasterTime } from '@farcaster/utils';
-import { ok } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
@@ -676,6 +676,77 @@ describe('merge', () => {
         ]);
       });
     });
+  });
+});
+
+describe('revoke', () => {
+  let revokedMessages: protobufs.Message[] = [];
+
+  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('revokeMessage', revokeMessageHandler);
+  });
+
+  beforeEach(() => {
+    revokedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('revokeMessage', revokeMessageHandler);
+  });
+
+  test('fails with invalid message type', async () => {
+    const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
+    const result = await set.revoke(castAdd);
+    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(revokedMessages).toEqual([]);
+  });
+
+  test('succeeds with ReactionAdd', async () => {
+    await expect(set.merge(reactionAdd)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(reactionAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getReactionAdd(
+        fid,
+        reactionAdd.data.reactionBody.type,
+        reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
+      )
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([reactionAdd]);
+  });
+
+  test('succeeds with ReactionRemove', async () => {
+    await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(reactionRemove);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getReactionRemove(
+        fid,
+        reactionRemove.data.reactionBody.type,
+        reactionRemove.data.reactionBody.targetCastId as protobufs.CastId
+      )
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([reactionRemove]);
+  });
+
+  test('succeeds with unmerged message', async () => {
+    const result = await set.revoke(reactionAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getReactionAdd(
+        fid,
+        reactionAdd.data.reactionBody.type,
+        reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
+      )
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([reactionAdd]);
   });
 });
 

@@ -231,6 +231,16 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
   }
 };
 
+export const getMessagesBySignerIterator = (
+  db: RocksDB,
+  fid: number,
+  signer: Uint8Array,
+  type?: protobufs.MessageType
+): Iterator => {
+  const prefix = makeMessageBySignerKey(fid, signer, type);
+  return db.iteratorByPrefix(prefix, { values: false });
+};
+
 /** Get an array of messages for a given fid and signer */
 export const getAllMessagesBySigner = async <T extends protobufs.Message>(
   db: RocksDB,

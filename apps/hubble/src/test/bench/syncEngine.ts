@@ -34,9 +34,10 @@ class MockEngine {
   }
 
   async mergeMessage(message: protobufs.Message): Promise<HubResult<void>> {
-    await this.eventHandler.commitTransaction(this.db.transaction(), [
-      { type: protobufs.HubEventType.MERGE_MESSAGE, mergeMessageBody: { message, deletedMessages: [] } },
-    ]);
+    await this.eventHandler.commitTransaction(this.db.transaction(), {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: [] },
+    });
 
     return ok(undefined);
   }

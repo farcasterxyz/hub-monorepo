@@ -4,7 +4,6 @@ import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
-  getAllMessagesBySigner,
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
@@ -186,115 +185,84 @@ class VerificationStore {
       });
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
-    // Get all VerificationAddEthAddress messages signed by signer
-    const verificationAdds = await ResultAsync.fromPromise(
-      getAllMessagesBySigner<protobufs.VerificationAddEthAddressMessage>(
-        this._db,
-        fid,
-        signer,
-        protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS
-      ),
-      (e) => e as HubError
-    );
-    if (verificationAdds.isErr()) {
-      return err(verificationAdds.error);
-    }
-
-    // Get all VerificationRemove messages signed by signer
-    const verificationRemoves = await ResultAsync.fromPromise(
-      getAllMessagesBySigner<protobufs.VerificationRemoveMessage>(
-        this._db,
-        fid,
-        signer,
-        protobufs.MessageType.VERIFICATION_REMOVE
-      ),
-      (e) => e as HubError
-    );
-    if (verificationRemoves.isErr()) {
-      return err(verificationRemoves.error);
-    }
-
-    // Create a rocksdb transaction
+  async revoke(message: protobufs.Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-
-    // Create list of events to broadcast
-    const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
-
-    // Add a delete operation to the transaction for each VerificationAddEthAddress
-    for (const message of verificationAdds.value) {
+    if (protobufs.isVerificationAddEthAddressMessage(message)) {
       txn = this.deleteVerificationAddTransaction(txn, message);
-      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
-    }
-
-    // Add a delete operation to the transaction for each SignerRemove
-    for (const message of verificationRemoves.value) {
+    } else if (protobufs.isVerificationRemoveMessage(message)) {
       txn = this.deleteVerificationRemoveTransaction(txn, message);
-      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
+    } else {
+      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(txn, events);
-    } else {
-      return ok([]);
-    }
+    return this._eventHandler.commitTransaction(txn, {
+      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      revokeMessageBody: { message },
+    });
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    let sizeToPrune: number;
+    const commits: number[] = [];
+
     const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.VerificationMessage);
-    if (cachedCount.isOk()) {
-      sizeToPrune = cachedCount.value - this._pruneSizeLimit;
-    } else {
-      // Count number of verification messages for this fid
-      const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
-      let calculatedCount = 0;
-      for await (const [,] of this._db.iteratorByPrefix(prefix, { values: false })) {
-        calculatedCount = calculatedCount + 1;
-      }
-      sizeToPrune = calculatedCount - this._pruneSizeLimit;
+
+    // Require storage cache to be synced to prune
+    if (cachedCount.isErr()) {
+      return err(cachedCount.error);
     }
 
-    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const events: Omit<protobufs.PruneMessageHubEvent, 'id'>[] = [];
-
-    // Create a rocksdb transaction to include all the mutations
-    let pruneTxn = this._db.transaction();
+    // Return immediately if there are no messages to prune
+    if (cachedCount.value === 0) {
+      return ok(commits);
+    }
 
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.VerificationMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-
-    // For each message in order, prune it if the store is over the size limit
-    let nextMessage = await getNextResult();
-    while (nextMessage.isOk() && sizeToPrune > 0) {
-      const message = nextMessage.value;
-
-      // Add a delete operation to the transaction depending on the message type
-      if (protobufs.isVerificationAddEthAddressMessage(message)) {
-        pruneTxn = this.deleteVerificationAddTransaction(pruneTxn, message);
-      } else if (protobufs.isVerificationRemoveMessage(message)) {
-        pruneTxn = this.deleteVerificationRemoveTransaction(pruneTxn, message);
-      } else {
-        throw new HubError('unknown', 'invalid message type');
+    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
+      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
+      if (nextMessage.isErr()) {
+        return ok(undefined); // Nothing left to prune
       }
 
-      // Create prune event and store for broadcasting later
-      events.push({ type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
+      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.VerificationMessage);
+      if (count.isErr()) {
+        return err(count.error);
+      }
 
-      // Decrement the number of messages yet to prune, and try to get the next message from the iterator
-      sizeToPrune = Math.max(0, sizeToPrune - 1);
-      nextMessage = await getNextResult();
+      if (count.value <= this._pruneSizeLimit) {
+        return ok(undefined);
+      }
+
+      let txn = this._db.transaction();
+
+      if (protobufs.isVerificationAddEthAddressMessage(nextMessage.value)) {
+        txn = this.deleteVerificationAddTransaction(txn, nextMessage.value);
+      } else if (protobufs.isVerificationRemoveMessage(nextMessage.value)) {
+        txn = this.deleteVerificationRemoveTransaction(txn, nextMessage.value);
+      } else {
+        return err(new HubError('unknown', 'invalid message type'));
+      }
+
+      return this._eventHandler.commitTransaction(txn, {
+        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        pruneMessageBody: { message: nextMessage.value },
+      });
+    };
+
+    let pruneResult = await pruneNextMessage();
+    while (pruneResult.isOk() && pruneResult.value !== undefined) {
+      commits.push(pruneResult.value);
+      pruneResult = await pruneNextMessage();
     }
 
     await pruneIterator.end();
 
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(pruneTxn, events);
-    } else {
-      return ok([]);
+    if (pruneResult.isErr()) {
+      return err(pruneResult.error);
     }
+
+    return ok(commits);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -325,11 +293,11 @@ class VerificationStore {
     };
 
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+    return result.value;
   }
 
   private async mergeRemove(message: protobufs.VerificationRemoveMessage): Promise<number> {
@@ -356,11 +324,11 @@ class VerificationStore {
     };
 
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+    return result.value;
   }
 
   private verificationMessageCompare(
