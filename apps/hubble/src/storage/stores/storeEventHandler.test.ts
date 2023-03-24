@@ -74,39 +74,6 @@ describe('commitTransaction', () => {
     expect(event).toMatchObject(ok(eventArgs));
     expect(events).toEqual([event._unsafeUnwrap()]);
   });
-
-  // test('saves and broadcasts events in order', async () => {
-  //   const events1: HubEventArgs[] = [];
-  //   const events2: HubEventArgs[] = [];
-
-  //   for (let i = 0; i < 10; i++) {
-  //     const message = await Factories.Message.create();
-  //     const eventBody = { type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message, deletedMessages: [] } };
-  //     if (Math.random() > 0.5) {
-  //       events1.push(eventBody);
-  //     } else {
-  //       events2.push(eventBody);
-  //     }
-  //   }
-
-  //   const [result1, result2] = await Promise.all([
-  //     eventHandler.commitTransaction(db.transaction(), events1),
-  //     eventHandler.commitTransaction(db.transaction(), events2),
-  //   ]);
-
-  //   expect(result1.isOk()).toBeTruthy();
-  //   expect(result2.isOk()).toBeTruthy();
-
-  //   expect(Math.max(...result1._unsafeUnwrap())).toBeLessThan(Math.min(...result2._unsafeUnwrap()));
-
-  //   expect(events.length).toEqual(10);
-
-  //   let lastId = 0;
-  //   for (const event of events) {
-  //     expect(event.id).toBeGreaterThan(lastId);
-  //     lastId = event.id;
-  //   }
-  // });
 });
 
 describe('pruneEvents', () => {

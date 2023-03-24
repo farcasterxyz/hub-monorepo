@@ -200,13 +200,15 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iterator.error);
     }
 
-    const txn = this._db.transaction();
-
     for await (const [key] of iterator.value) {
-      txn.del(key as Buffer);
+      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
+      if (result.isErr()) {
+        await iterator.value.end();
+        return err(result.error);
+      }
     }
 
-    return await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
+    return ok(undefined);
   }
 
   private broadcastEvent(event: HubEvent): HubResult<void> {
