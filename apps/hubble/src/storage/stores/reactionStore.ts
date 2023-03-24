@@ -4,7 +4,6 @@ import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
-  getAllMessagesBySigner,
   getManyMessages,
   getMessage,
   getMessagesPageByPrefix,
@@ -296,68 +295,35 @@ class ReactionStore {
       });
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
-    // Get all ReactionAdd messages signed by signer
-    const reactionAdds = await ResultAsync.fromPromise(
-      getAllMessagesBySigner<protobufs.ReactionAddMessage>(this._db, fid, signer, protobufs.MessageType.REACTION_ADD),
-      (e) => e as HubError
-    );
-    if (reactionAdds.isErr()) {
-      return err(reactionAdds.error);
-    }
-
-    // Get all ReactionRemove messages signed by signer
-    const reactionRemoves = await ResultAsync.fromPromise(
-      getAllMessagesBySigner<protobufs.ReactionRemoveMessage>(
-        this._db,
-        fid,
-        signer,
-        protobufs.MessageType.REACTION_REMOVE
-      ),
-      (e) => e as HubError
-    );
-    if (reactionRemoves.isErr()) {
-      return err(reactionRemoves.error);
-    }
-
-    // Create a rocksdb transaction
+  async revoke(message: protobufs.Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-
-    // Create list of events to broadcast
-    const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
-
-    // Add a delete operation to the transaction for each ReactionAdd
-    for (const message of reactionAdds.value) {
+    if (protobufs.isReactionAddMessage(message)) {
       txn = this.deleteReactionAddTransaction(txn, message);
-      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
-    }
-
-    // Add a delete operation to the transaction for each SignerRemove
-    for (const message of reactionRemoves.value) {
+    } else if (protobufs.isReactionRemoveMessage(message)) {
       txn = this.deleteReactionRemoveTransaction(txn, message);
-      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
+    } else {
+      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(txn, events);
-    } else {
-      return ok([]);
-    }
+    return this._eventHandler.commitTransaction(txn, {
+      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      revokeMessageBody: { message },
+    });
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    let sizeToPrune: number;
+    const commits: number[] = [];
+
     const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.ReactionMessage);
-    if (cachedCount.isOk()) {
-      sizeToPrune = cachedCount.value - this._pruneSizeLimit;
-    } else {
-      // Count number of ReactionAdd and ReactionRemove messages for this fid
-      const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
-      let calculatedCount = 0;
-      for await (const [,] of this._db.iteratorByPrefix(prefix, { values: false })) {
-        calculatedCount = calculatedCount + 1;
-      }
-      sizeToPrune = calculatedCount - this._pruneSizeLimit;
+
+    // Require storage cache to be synced to prune
+    if (cachedCount.isErr()) {
+      return err(cachedCount.error);
+    }
+
+    // Return immediately if there are no messages to prune
+    if (cachedCount.value === 0) {
+      return ok(commits);
     }
 
     const farcasterTime = getFarcasterTime();
@@ -368,49 +334,57 @@ class ReactionStore {
     // Calculate the timestamp cut-off to prune
     const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
-    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const events: Omit<protobufs.PruneMessageHubEvent, 'id'>[] = [];
-
-    // Create a rocksdb transaction to include all the mutations
-    let pruneTxn = this._db.transaction();
-
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.ReactionMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-
-    // For each message in order, prune it if the store is over the size limit or the message was signed
-    // before the timestamp cut-off
-    let nextMessage = await getNextResult();
-    while (
-      nextMessage.isOk() &&
-      (sizeToPrune > 0 || (nextMessage.value.data && nextMessage.value.data.timestamp < timestampToPrune))
-    ) {
-      const message = nextMessage.value;
-
-      // Add a delete operation to the transaction depending on the message type
-      if (protobufs.isReactionAddMessage(message)) {
-        pruneTxn = this.deleteReactionAddTransaction(pruneTxn, message);
-      } else if (protobufs.isReactionRemoveMessage(message)) {
-        pruneTxn = this.deleteReactionRemoveTransaction(pruneTxn, message);
-      } else {
-        throw new HubError('unknown', 'invalid message type');
+    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
+      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
+      if (nextMessage.isErr()) {
+        return ok(undefined); // Nothing left to prune
       }
 
-      // Create prune event body and store for broadcasting later
-      events.push({ type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
+      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.ReactionMessage);
+      if (count.isErr()) {
+        return err(count.error);
+      }
 
-      // Decrement the number of messages yet to prune, and try to get the next message from the iterator
-      sizeToPrune = Math.max(0, sizeToPrune - 1);
-      nextMessage = await getNextResult();
+      if (
+        count.value <= this._pruneSizeLimit &&
+        nextMessage.value.data &&
+        nextMessage.value.data.timestamp >= timestampToPrune
+      ) {
+        return ok(undefined);
+      }
+
+      let txn = this._db.transaction();
+
+      if (protobufs.isReactionAddMessage(nextMessage.value)) {
+        txn = this.deleteReactionAddTransaction(txn, nextMessage.value);
+      } else if (protobufs.isReactionRemoveMessage(nextMessage.value)) {
+        txn = this.deleteReactionRemoveTransaction(txn, nextMessage.value);
+      } else {
+        return err(new HubError('unknown', 'invalid message type'));
+      }
+
+      return this._eventHandler.commitTransaction(txn, {
+        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        pruneMessageBody: { message: nextMessage.value },
+      });
+    };
+
+    let pruneResult = await pruneNextMessage();
+    while (pruneResult.isOk() && pruneResult.value !== undefined) {
+      commits.push(pruneResult.value);
+      pruneResult = await pruneNextMessage();
     }
 
     await pruneIterator.end();
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(pruneTxn, events);
-    } else {
-      return ok([]);
+
+    if (pruneResult.isErr()) {
+      return err(pruneResult.error);
     }
+
+    return ok(commits);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -435,11 +409,11 @@ class ReactionStore {
     };
 
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+    return result.value;
   }
 
   private async mergeRemove(message: protobufs.ReactionRemoveMessage): Promise<number> {
@@ -461,11 +435,11 @@ class ReactionStore {
     };
 
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+    return result.value;
   }
 
   private reactionMessageCompare(

@@ -12,7 +12,7 @@ import fs from 'fs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { Worker } from 'worker_threads';
 import { SyncId } from '~/network/sync/syncId';
-import { getManyMessages, typeToSetPostfix } from '~/storage/db/message';
+import { getManyMessages, getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
@@ -187,46 +187,57 @@ class Engine {
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
-    const signerHex = bytesToHexString(signer);
-    if (signerHex.isErr()) {
-      return err(signerHex.error);
+    const commits: number[] = [];
+
+    const iterator = getMessagesBySignerIterator(this._db, fid, signer);
+
+    for await (const [key] of iterator) {
+      const length = (key as Buffer).length;
+      const type = (key as Buffer).readUint8(length - TSHASH_LENGTH - 1);
+      const setPostfix = typeToSetPostfix(type);
+      const tsHash = Uint8Array.from((key as Buffer).subarray(length - TSHASH_LENGTH));
+      const message = await ResultAsync.fromPromise(
+        getMessage(this._db, fid, setPostfix, tsHash),
+        (e) => e as HubError
+      );
+      if (message.isErr()) {
+        return err(message.error);
+      }
+
+      let revokeResult: HubResult<number>;
+      switch (setPostfix) {
+        case UserPostfix.ReactionMessage: {
+          revokeResult = await this._reactionStore.revoke(message.value);
+          break;
+        }
+        case UserPostfix.SignerMessage: {
+          revokeResult = await this._signerStore.revoke(message.value);
+          break;
+        }
+        case UserPostfix.CastMessage: {
+          revokeResult = await this._castStore.revoke(message.value);
+          break;
+        }
+        case UserPostfix.UserDataMessage: {
+          revokeResult = await this._userDataStore.revoke(message.value);
+          break;
+        }
+        case UserPostfix.VerificationMessage: {
+          revokeResult = await this._verificationStore.revoke(message.value);
+          break;
+        }
+        default: {
+          revokeResult = err(new HubError('bad_request.invalid_param', 'invalid message type'));
+        }
+      }
+
+      if (revokeResult.isErr()) {
+        return err(revokeResult.error);
+      }
+      commits.push(revokeResult.value);
     }
 
-    const eventIds: number[] = [];
-
-    const logRevokeResult = (result: HubResult<number[]>, store: string): void => {
-      result.match(
-        (ids) => {
-          if (ids.length > 0) {
-            eventIds.push(...ids);
-            log.info(`Revoked ${ids.length} ${store} messages from signer ${signerHex.value} for fid ${fid}`);
-          }
-        },
-        (e) => {
-          log.error(
-            { errCode: e.errCode },
-            `Error revoking ${store} messages from signer ${signerHex.value} for fid ${fid}: ${e.message}`
-          );
-        }
-      );
-    };
-
-    const castResult = await this._castStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(castResult, 'cast');
-
-    const reactionResult = await this._reactionStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(reactionResult, 'reaction');
-
-    const verificationResult = await this._verificationStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(verificationResult, 'verification');
-
-    const userDataResult = await this._userDataStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(userDataResult, 'user data');
-
-    const signerResult = await this._signerStore.revokeMessagesBySigner(fid, signer);
-    logRevokeResult(signerResult, 'signer');
-
-    return ok(eventIds);
+    return ok(commits);
   }
 
   async pruneMessages(fid: number): HubAsyncResult<void> {

@@ -4,7 +4,6 @@ import AsyncLock from 'async-lock';
 import { ok, err, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
-  getAllMessagesBySigner,
   getManyMessages,
   getMessage,
   getMessagesPageByPrefix,
@@ -292,65 +291,35 @@ class CastStore {
       });
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
-    // Get all CastAdd messages signed by signer
-    const castAdds = await ResultAsync.fromPromise(
-      getAllMessagesBySigner<protobufs.CastAddMessage>(this._db, fid, signer, protobufs.MessageType.CAST_ADD),
-      (e) => e as HubError
-    );
-    if (castAdds.isErr()) {
-      return err(castAdds.error);
-    }
-
-    // Get all CastRemove messages signed by signer
-    const castRemoves = await ResultAsync.fromPromise(
-      getAllMessagesBySigner<protobufs.CastRemoveMessage>(this._db, fid, signer, protobufs.MessageType.CAST_REMOVE),
-      (e) => e as HubError
-    );
-    if (castRemoves.isErr()) {
-      return err(castRemoves.error);
-    }
-
-    // Create a rocksdb transaction
+  async revoke(message: protobufs.Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-
-    // Create list of events to broadcast
-    const events: Omit<protobufs.RevokeMessageHubEvent, 'id'>[] = [];
-
-    // Add a delete operation to the transaction for each CastAdd
-    for (const message of castAdds.value) {
+    if (protobufs.isCastAddMessage(message)) {
       txn = this.deleteCastAddTransaction(txn, message);
-
-      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
-    }
-
-    // Add a delete operation to the transaction for each CastRemove
-    for (const message of castRemoves.value) {
+    } else if (protobufs.isCastRemoveMessage(message)) {
       txn = this.deleteCastRemoveTransaction(txn, message);
-
-      events.push({ type: protobufs.HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
-    }
-
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(txn, events);
     } else {
-      return ok([]);
+      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
+
+    return this._eventHandler.commitTransaction(txn, {
+      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      revokeMessageBody: { message },
+    });
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    let sizeToPrune: number;
+    const commits: number[] = [];
+
     const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
-    if (cachedCount.isOk()) {
-      sizeToPrune = cachedCount.value - this._pruneSizeLimit;
-    } else {
-      // Count number of CastAdd and CastRemove messages for this fid
-      const prefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-      let calculatedCount = 0;
-      for await (const [,] of this._db.iteratorByPrefix(prefix, { values: false })) {
-        calculatedCount = calculatedCount + 1;
-      }
-      sizeToPrune = calculatedCount - this._pruneSizeLimit;
+
+    // Require storage cache to be synced to prune
+    if (cachedCount.isErr()) {
+      return err(cachedCount.error);
+    }
+
+    // Return immediately if there are no messages to prune
+    if (cachedCount.value === 0) {
+      return ok(commits);
     }
 
     const farcasterTime = getFarcasterTime();
@@ -361,50 +330,57 @@ class CastStore {
     // Calculate the timestamp cut-off to prune
     const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
-    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const events: Omit<protobufs.PruneMessageHubEvent, 'id'>[] = [];
-
-    // Create a rocksdb transaction to include all the mutations
-    let pruneTxn = this._db.transaction();
-
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.CastMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-
-    // For each message in order, prune it if the store is over the size limit or the message was signed
-    // before the timestamp cut-off
-    let nextMessage = await getNextResult();
-    while (
-      nextMessage.isOk() &&
-      (sizeToPrune > 0 || (nextMessage.value.data && nextMessage.value.data.timestamp < timestampToPrune))
-    ) {
-      const message = nextMessage.value;
-
-      // Add a delete operation to the transaction depending on the message type
-      if (protobufs.isCastAddMessage(message)) {
-        pruneTxn = this.deleteCastAddTransaction(pruneTxn, message);
-      } else if (protobufs.isCastRemoveMessage(message)) {
-        pruneTxn = this.deleteCastRemoveTransaction(pruneTxn, message);
-      } else {
-        throw new HubError('unknown', 'invalid message type');
+    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
+      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
+      if (nextMessage.isErr()) {
+        return ok(undefined); // Nothing left to prune
       }
 
-      // Create prune event body and store for broadcasting later
-      events.push({ type: protobufs.HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
+      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
+      if (count.isErr()) {
+        return err(count.error);
+      }
 
-      // Decrement the number of messages yet to prune, and try to get the next message from the iterator
-      sizeToPrune = Math.max(0, sizeToPrune - 1);
-      nextMessage = await getNextResult();
+      if (
+        count.value <= this._pruneSizeLimit &&
+        nextMessage.value.data &&
+        nextMessage.value.data.timestamp >= timestampToPrune
+      ) {
+        return ok(undefined);
+      }
+
+      let txn = this._db.transaction();
+
+      if (protobufs.isCastAddMessage(nextMessage.value)) {
+        txn = this.deleteCastAddTransaction(txn, nextMessage.value);
+      } else if (protobufs.isCastRemoveMessage(nextMessage.value)) {
+        txn = this.deleteCastRemoveTransaction(txn, nextMessage.value);
+      } else {
+        return err(new HubError('unknown', 'invalid message type'));
+      }
+
+      return this._eventHandler.commitTransaction(txn, {
+        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        pruneMessageBody: { message: nextMessage.value },
+      });
+    };
+
+    let pruneResult = await pruneNextMessage();
+    while (pruneResult.isOk() && pruneResult.value !== undefined) {
+      commits.push(pruneResult.value);
+      pruneResult = await pruneNextMessage();
     }
 
     await pruneIterator.end();
 
-    if (events.length > 0) {
-      return this._eventHandler.commitTransaction(pruneTxn, events);
-    } else {
-      return ok([]);
+    if (pruneResult.isErr()) {
+      return err(pruneResult.error);
     }
+
+    return ok(commits);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -446,11 +422,11 @@ class CastStore {
     };
 
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+    return result.value;
   }
 
   private async mergeRemove(message: protobufs.CastRemoveMessage): Promise<number> {
@@ -523,11 +499,11 @@ class CastStore {
     };
 
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, [hubEvent]);
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
     if (result.isErr()) {
       throw result.error;
     }
-    return result.value[0] as number;
+    return result.value;
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */

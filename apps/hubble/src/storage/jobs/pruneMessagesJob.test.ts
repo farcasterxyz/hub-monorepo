@@ -26,7 +26,8 @@ const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
   prunedMessages.push(event.pruneMessageBody.message);
 };
 
-beforeAll(() => {
+beforeAll(async () => {
+  await engine.start();
   engine.eventHandler.on('pruneMessage', pruneMessageListener);
 });
 

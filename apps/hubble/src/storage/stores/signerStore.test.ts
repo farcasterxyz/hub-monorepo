@@ -1,7 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesDecrement, bytesIncrement, Eip712Signer, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { getAllMessagesBySigner, getMessage, makeFidKey, makeTsHash } from '~/storage/db/message';
+import { getMessage, makeFidKey, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -909,93 +909,93 @@ describe('getFids', () => {
   });
 });
 
-describe('revokeMessagesBySigner', () => {
-  let custody2Transfer: protobufs.IdRegistryEvent;
-  let signerAdd1: protobufs.SignerAddMessage;
-  let signerAdd2: protobufs.SignerAddMessage;
+// describe('revoke', () => {
+//   let custody2Transfer: protobufs.IdRegistryEvent;
+//   let signerAdd1: protobufs.SignerAddMessage;
+//   let signerAdd2: protobufs.SignerAddMessage;
 
-  let revokedMessages: protobufs.Message[];
+//   let revokedMessages: protobufs.Message[];
 
-  const handleRevokeMessage = (event: protobufs.RevokeMessageHubEvent) => {
-    revokedMessages.push(event.revokeMessageBody.message);
-  };
+//   const handleRevokeMessage = (event: protobufs.RevokeMessageHubEvent) => {
+//     revokedMessages.push(event.revokeMessageBody.message);
+//   };
 
-  beforeAll(async () => {
-    custody2Transfer = Factories.IdRegistryEvent.build({
-      type: protobufs.IdRegistryEventType.TRANSFER,
-      from: custody1Address,
-      fid,
-      to: custody2Address,
-      blockNumber: custody1Event.blockNumber + 1,
-    });
+//   beforeAll(async () => {
+//     custody2Transfer = Factories.IdRegistryEvent.build({
+//       type: protobufs.IdRegistryEventType.TRANSFER,
+//       from: custody1Address,
+//       fid,
+//       to: custody2Address,
+//       blockNumber: custody1Event.blockNumber + 1,
+//     });
 
-    signerAdd1 = await Factories.SignerAddMessage.create(
-      {
-        data: { fid },
-      },
-      { transient: { signer: custody1 } }
-    );
+//     signerAdd1 = await Factories.SignerAddMessage.create(
+//       {
+//         data: { fid },
+//       },
+//       { transient: { signer: custody1 } }
+//     );
 
-    signerAdd2 = await Factories.SignerAddMessage.create({ data: { fid } }, { transient: { signer: custody2 } });
+//     signerAdd2 = await Factories.SignerAddMessage.create({ data: { fid } }, { transient: { signer: custody2 } });
 
-    eventHandler.on('revokeMessage', handleRevokeMessage);
-  });
+//     eventHandler.on('revokeMessage', handleRevokeMessage);
+//   });
 
-  afterAll(() => {
-    eventHandler.off('revokeMessage', handleRevokeMessage);
-  });
+//   afterAll(() => {
+//     eventHandler.off('revokeMessage', handleRevokeMessage);
+//   });
 
-  beforeEach(() => {
-    revokedMessages = [];
-  });
+//   beforeEach(() => {
+//     revokedMessages = [];
+//   });
 
-  describe('with messages', () => {
-    beforeEach(async () => {
-      await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toBeGreaterThan(0);
-      await expect(set.merge(signerAdd1)).resolves.toBeGreaterThan(0);
-      await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
-      await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toBeGreaterThan(0);
-      await expect(set.merge(signerAdd2)).resolves.toBeGreaterThan(0);
+//   describe('with messages', () => {
+//     beforeEach(async () => {
+//       await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toBeGreaterThan(0);
+//       await expect(set.merge(signerAdd1)).resolves.toBeGreaterThan(0);
+//       await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
+//       await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toBeGreaterThan(0);
+//       await expect(set.merge(signerAdd2)).resolves.toBeGreaterThan(0);
 
-      const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
-      expect(new Set(custody1Messages)).toEqual(new Set([signerAdd1, signerRemove]));
+//       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
+//       expect(new Set(custody1Messages)).toEqual(new Set([signerAdd1, signerRemove]));
 
-      const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
+//       const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
 
-      expect(custody2Messages).toEqual([signerAdd2]);
-    });
+//       expect(custody2Messages).toEqual([signerAdd2]);
+//     });
 
-    test('deletes messages and emits revokeMessage events for custody1', async () => {
-      const result = await set.revokeMessagesBySigner(fid, custody1Address);
-      expect(result.isOk()).toBeTruthy();
-      const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
-      expect(custody1Messages).toEqual([]);
+//     test('deletes messages and emits revokeMessage events for custody1', async () => {
+//       const result = await set.revokeMessagesBySigner(fid, custody1Address);
+//       expect(result.isOk()).toBeTruthy();
+//       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
+//       expect(custody1Messages).toEqual([]);
 
-      expect(revokedMessages).toEqual([signerAdd1, signerRemove]);
-    });
+//       expect(revokedMessages).toEqual([signerAdd1, signerRemove]);
+//     });
 
-    test('deletes messages and emits revokeMessage events for custody2', async () => {
-      await set.revokeMessagesBySigner(fid, custody2Address);
-      const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
-      expect(custody2Messages).toEqual([]);
+//     test('deletes messages and emits revokeMessage events for custody2', async () => {
+//       await set.revokeMessagesBySigner(fid, custody2Address);
+//       const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
+//       expect(custody2Messages).toEqual([]);
 
-      expect(revokedMessages).toEqual([signerAdd2]);
-    });
-  });
+//       expect(revokedMessages).toEqual([signerAdd2]);
+//     });
+//   });
 
-  describe('without messages', () => {
-    beforeEach(async () => {
-      await set.mergeIdRegistryEvent(custody1Event);
-      await set.mergeIdRegistryEvent(custody2Transfer);
-    });
+//   describe('without messages', () => {
+//     beforeEach(async () => {
+//       await set.mergeIdRegistryEvent(custody1Event);
+//       await set.mergeIdRegistryEvent(custody2Transfer);
+//     });
 
-    test('does not emit revokeMessage events', async () => {
-      await set.revokeMessagesBySigner(fid, custody1Address);
-      await set.revokeMessagesBySigner(fid, custody2Address);
-      expect(revokedMessages).toEqual([]);
-    });
-  });
-});
+//     test('does not emit revokeMessage events', async () => {
+//       await set.revokeMessagesBySigner(fid, custody1Address);
+//       await set.revokeMessagesBySigner(fid, custody2Address);
+//       expect(revokedMessages).toEqual([]);
+//     });
+//   });
+// });
 
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];

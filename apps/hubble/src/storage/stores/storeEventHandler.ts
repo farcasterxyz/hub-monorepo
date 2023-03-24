@@ -132,7 +132,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
-    this._lock = new AsyncLock({ maxPending: 1_000, timeout: 500, maxExecutionTime: 100 });
+    this._lock = new AsyncLock({ maxPending: 1_000, timeout: 500 });
     this._storageCache = storageCache;
   }
 
@@ -168,35 +168,58 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return ok(events);
   }
 
-  async commitTransaction(txn: Transaction, eventArgs: HubEventArgs[]): HubAsyncResult<number[]> {
+  async commitTransaction(txn: Transaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
     return this._lock
       .acquire('commit', async () => {
-        const events: HubEvent[] = [];
-
-        for (const args of eventArgs) {
-          const eventId = this._generator.generateId();
-          if (eventId.isErr()) {
-            throw eventId.error;
-          }
-          const event = HubEvent.create({ ...args, id: eventId.value });
-          // TODO: validate event
-          events.push(event);
-          txn = putEventTransaction(txn, event);
+        const eventId = this._generator.generateId();
+        if (eventId.isErr()) {
+          throw eventId.error;
         }
+        const event = HubEvent.create({ ...eventArgs, id: eventId.value });
+        // TODO: validate event
+        txn = putEventTransaction(txn, event);
 
         await this._db.commit(txn);
 
-        for (const event of events) {
-          void this._storageCache.processEvent(event);
-          void this.broadcastEvent(event);
-        }
+        void this._storageCache.processEvent(event);
+        void this.broadcastEvent(event);
 
-        return ok(events.map((event) => event.id));
+        return ok(event.id);
       })
       .catch((e: Error) => {
         return err(isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message));
       });
   }
+
+  // async commitTransaction(txn: Transaction, eventArgs: HubEventArgs[]): HubAsyncResult<number[]> {
+  //   return this._lock
+  //     .acquire('commit', async () => {
+  //       const events: HubEvent[] = [];
+
+  //       for (const args of eventArgs) {
+  //         const eventId = this._generator.generateId();
+  //         if (eventId.isErr()) {
+  //           throw eventId.error;
+  //         }
+  //         const event = HubEvent.create({ ...args, id: eventId.value });
+  //         // TODO: validate event
+  //         events.push(event);
+  //         txn = putEventTransaction(txn, event);
+  //       }
+
+  //       await this._db.commit(txn);
+
+  //       for (const event of events) {
+  //         void this._storageCache.processEvent(event);
+  //         void this.broadcastEvent(event);
+  //       }
+
+  //       return ok(events.map((event) => event.id));
+  //     })
+  //     .catch((e: Error) => {
+  //       return err(isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message));
+  //     });
+  // }
 
   async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
     const toId = makeEventId(Date.now() - FARCASTER_EPOCH - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
