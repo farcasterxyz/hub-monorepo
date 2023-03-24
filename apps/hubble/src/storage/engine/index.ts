@@ -186,8 +186,13 @@ class Engine {
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
-    const commits: number[] = [];
+  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
+    const signerHex = bytesToHexString(signer);
+    if (signerHex.isErr()) {
+      return err(signerHex.error);
+    }
+
+    let revokedCount = 0;
 
     const iterator = getMessagesBySignerIterator(this._db, fid, signer);
 
@@ -234,17 +239,23 @@ class Engine {
 
     let revokeResult = await revokeNextMessage();
     while (revokeResult.isOk() && revokeResult.value !== undefined) {
-      commits.push(revokeResult.value);
+      revokedCount += 1;
       revokeResult = await revokeNextMessage();
     }
 
     await iterator.end();
 
     if (revokeResult.isErr()) {
+      log.error(
+        { errCode: revokeResult.error.errCode },
+        `error revoking messages from ${signerHex.value} and fid ${fid}: ${revokeResult.error.message}`
+      );
       return err(revokeResult.error);
     }
 
-    return ok(commits);
+    log.info(`revoked ${revokedCount} messages from ${signerHex.value} and fid ${fid}`);
+
+    return ok(undefined);
   }
 
   async pruneMessages(fid: number): HubAsyncResult<void> {
@@ -252,11 +263,11 @@ class Engine {
       result.match(
         (ids) => {
           if (ids.length > 0) {
-            log.info(`Pruned ${ids.length} ${store} messages for fid ${fid}`);
+            log.info(`pruned ${ids.length} ${store} messages for fid ${fid}`);
           }
         },
         (e) => {
-          log.error({ errCode: e.errCode }, `Error pruning ${store} messages for fid ${fid}: ${e.message}`);
+          log.error({ errCode: e.errCode }, `error pruning ${store} messages for fid ${fid}: ${e.message}`);
         }
       );
     };
