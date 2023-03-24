@@ -6,6 +6,7 @@ import VerificationStore from '~/storage/stores/verificationStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 import { StorageCache } from '~/storage/engine/storageCache';
+import { err } from 'neverthrow';
 
 const db = jestRocksDB('protobufs.verificationStore.test');
 const cache = new StorageCache();
@@ -399,6 +400,65 @@ describe('merge', () => {
         ]);
       });
     });
+  });
+});
+
+describe('revoke', () => {
+  let revokedMessages: protobufs.Message[] = [];
+
+  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('revokeMessage', revokeMessageHandler);
+  });
+
+  beforeEach(() => {
+    revokedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('revokeMessage', revokeMessageHandler);
+  });
+
+  test('fails with invalid message type', async () => {
+    const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
+    const result = await set.revoke(castAdd);
+    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(revokedMessages).toEqual([]);
+  });
+
+  test('succeeds with VerificationAddEthAddress', async () => {
+    await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(verificationAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address)
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([verificationAdd]);
+  });
+
+  test('succeeds with VerificationRemove', async () => {
+    await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(verificationRemove);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getVerificationRemove(fid, verificationRemove.data.verificationRemoveBody.address)
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([verificationRemove]);
+  });
+
+  test('succeeds with unmerged message', async () => {
+    const result = await set.revoke(verificationAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address)
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([verificationAdd]);
   });
 });
 

@@ -6,6 +6,7 @@ import { UserPostfix } from '~/storage/db/types';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { StorageCache } from '~/storage/engine/storageCache';
+import { err } from 'neverthrow';
 
 const db = jestRocksDB('protobufs.signerStore.test');
 const cache = new StorageCache();
@@ -909,93 +910,58 @@ describe('getFids', () => {
   });
 });
 
-// describe('revoke', () => {
-//   let custody2Transfer: protobufs.IdRegistryEvent;
-//   let signerAdd1: protobufs.SignerAddMessage;
-//   let signerAdd2: protobufs.SignerAddMessage;
+describe('revoke', () => {
+  let revokedMessages: protobufs.Message[] = [];
 
-//   let revokedMessages: protobufs.Message[];
+  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
 
-//   const handleRevokeMessage = (event: protobufs.RevokeMessageHubEvent) => {
-//     revokedMessages.push(event.revokeMessageBody.message);
-//   };
+  beforeAll(() => {
+    eventHandler.on('revokeMessage', revokeMessageHandler);
+  });
 
-//   beforeAll(async () => {
-//     custody2Transfer = Factories.IdRegistryEvent.build({
-//       type: protobufs.IdRegistryEventType.TRANSFER,
-//       from: custody1Address,
-//       fid,
-//       to: custody2Address,
-//       blockNumber: custody1Event.blockNumber + 1,
-//     });
+  beforeEach(() => {
+    revokedMessages = [];
+  });
 
-//     signerAdd1 = await Factories.SignerAddMessage.create(
-//       {
-//         data: { fid },
-//       },
-//       { transient: { signer: custody1 } }
-//     );
+  afterAll(() => {
+    eventHandler.off('revokeMessage', revokeMessageHandler);
+  });
 
-//     signerAdd2 = await Factories.SignerAddMessage.create({ data: { fid } }, { transient: { signer: custody2 } });
+  test('fails with invalid message type', async () => {
+    const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
+    const result = await set.revoke(castAdd);
+    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(revokedMessages).toEqual([]);
+  });
 
-//     eventHandler.on('revokeMessage', handleRevokeMessage);
-//   });
+  test('succeeds with SignerAdd', async () => {
+    await expect(set.merge(signerAdd)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(signerAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(set.getSignerAdd(fid, signerAdd.data.signerAddBody.signer)).rejects.toThrow();
+    expect(revokedMessages).toEqual([signerAdd]);
+  });
 
-//   afterAll(() => {
-//     eventHandler.off('revokeMessage', handleRevokeMessage);
-//   });
+  test('succeeds with SignerRemove', async () => {
+    await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(signerRemove);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(set.getSignerRemove(fid, signerRemove.data.signerRemoveBody.signer)).rejects.toThrow();
+    expect(revokedMessages).toEqual([signerRemove]);
+  });
 
-//   beforeEach(() => {
-//     revokedMessages = [];
-//   });
-
-//   describe('with messages', () => {
-//     beforeEach(async () => {
-//       await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toBeGreaterThan(0);
-//       await expect(set.merge(signerAdd1)).resolves.toBeGreaterThan(0);
-//       await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
-//       await expect(set.mergeIdRegistryEvent(custody2Transfer)).resolves.toBeGreaterThan(0);
-//       await expect(set.merge(signerAdd2)).resolves.toBeGreaterThan(0);
-
-//       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
-//       expect(new Set(custody1Messages)).toEqual(new Set([signerAdd1, signerRemove]));
-
-//       const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
-
-//       expect(custody2Messages).toEqual([signerAdd2]);
-//     });
-
-//     test('deletes messages and emits revokeMessage events for custody1', async () => {
-//       const result = await set.revokeMessagesBySigner(fid, custody1Address);
-//       expect(result.isOk()).toBeTruthy();
-//       const custody1Messages = await getAllMessagesBySigner(db, fid, custody1Address);
-//       expect(custody1Messages).toEqual([]);
-
-//       expect(revokedMessages).toEqual([signerAdd1, signerRemove]);
-//     });
-
-//     test('deletes messages and emits revokeMessage events for custody2', async () => {
-//       await set.revokeMessagesBySigner(fid, custody2Address);
-//       const custody2Messages = await getAllMessagesBySigner(db, fid, custody2Address);
-//       expect(custody2Messages).toEqual([]);
-
-//       expect(revokedMessages).toEqual([signerAdd2]);
-//     });
-//   });
-
-//   describe('without messages', () => {
-//     beforeEach(async () => {
-//       await set.mergeIdRegistryEvent(custody1Event);
-//       await set.mergeIdRegistryEvent(custody2Transfer);
-//     });
-
-//     test('does not emit revokeMessage events', async () => {
-//       await set.revokeMessagesBySigner(fid, custody1Address);
-//       await set.revokeMessagesBySigner(fid, custody2Address);
-//       expect(revokedMessages).toEqual([]);
-//     });
-//   });
-// });
+  test('succeeds with unmerged message', async () => {
+    const result = await set.revoke(signerAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(set.getSignerAdd(fid, signerAdd.data.signerAddBody.signer)).rejects.toThrow();
+    expect(revokedMessages).toEqual([signerAdd]);
+  });
+});
 
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];

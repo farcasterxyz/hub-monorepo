@@ -7,6 +7,7 @@ import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
 import { StorageCache } from '~/storage/engine/storageCache';
+import { err } from 'neverthrow';
 
 const db = jestRocksDB('protobufs.castStore.test');
 const cache = new StorageCache();
@@ -517,6 +518,59 @@ describe('merge', () => {
         ]);
       });
     });
+  });
+});
+
+describe('revoke', () => {
+  let revokedMessages: protobufs.Message[] = [];
+
+  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('revokeMessage', revokeMessageHandler);
+  });
+
+  beforeEach(() => {
+    revokedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('revokeMessage', revokeMessageHandler);
+  });
+
+  test('fails with invalid message type', async () => {
+    const reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } });
+    const result = await store.revoke(reactionAdd);
+    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(revokedMessages).toEqual([]);
+  });
+
+  test('succeeds with CastAdd', async () => {
+    await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
+    const result = await store.revoke(castAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(store.getCastAdd(fid, castAdd.hash)).rejects.toThrow();
+    expect(revokedMessages).toEqual([castAdd]);
+  });
+
+  test('succeeds with CastRemove', async () => {
+    await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
+    const result = await store.revoke(castRemove);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(store.getCastRemove(fid, castRemove.data.castRemoveBody.targetHash)).rejects.toThrow();
+    expect(revokedMessages).toEqual([castRemove]);
+  });
+
+  test('succeeds with unmerged message', async () => {
+    const result = await store.revoke(castAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(store.getCastAdd(fid, castAdd.hash)).rejects.toThrow();
+    expect(revokedMessages).toEqual([castAdd]);
   });
 });
 

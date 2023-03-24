@@ -191,36 +191,6 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       });
   }
 
-  // async commitTransaction(txn: Transaction, eventArgs: HubEventArgs[]): HubAsyncResult<number[]> {
-  //   return this._lock
-  //     .acquire('commit', async () => {
-  //       const events: HubEvent[] = [];
-
-  //       for (const args of eventArgs) {
-  //         const eventId = this._generator.generateId();
-  //         if (eventId.isErr()) {
-  //           throw eventId.error;
-  //         }
-  //         const event = HubEvent.create({ ...args, id: eventId.value });
-  //         // TODO: validate event
-  //         events.push(event);
-  //         txn = putEventTransaction(txn, event);
-  //       }
-
-  //       await this._db.commit(txn);
-
-  //       for (const event of events) {
-  //         void this._storageCache.processEvent(event);
-  //         void this.broadcastEvent(event);
-  //       }
-
-  //       return ok(events.map((event) => event.id));
-  //     })
-  //     .catch((e: Error) => {
-  //       return err(isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message));
-  //     });
-  // }
-
   async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
     const toId = makeEventId(Date.now() - FARCASTER_EPOCH - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
 
