@@ -30,7 +30,7 @@ import {
   status,
 } from '@farcaster/protobufs';
 import { HubAsyncResult, HubError } from '@farcaster/utils';
-import { err, ok } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
@@ -306,10 +306,22 @@ export default class Server {
         })();
       },
       submitMessage: async (call, callback) => {
+        // Identify peer that is calling, if available. This is used for rate limiting.
+        let peer;
+        const peerResult = Result.fromThrowable(
+          () => call.getPeer(),
+          (e) => e
+        )();
+        if (peerResult.isErr()) {
+          peer = 'unavailable'; // Catchall. If peer is unavailable, we will group all of them into one bucket
+        } else {
+          peer = peerResult.value;
+        }
+
         // Check for rate limits
-        const rateLimitResult = await rateLimitByIp(call.getPeer(), submitMessageRateLimiter);
+        const rateLimitResult = await rateLimitByIp(peer, submitMessageRateLimiter);
         if (rateLimitResult.isErr()) {
-          logger.warn({ peer: call.getPeer() }, 'submitMessage rate limited');
+          logger.warn({ peer }, 'submitMessage rate limited');
           callback(toServiceError(new HubError('unavailable', 'API rate limit exceeded')));
           return;
         }
