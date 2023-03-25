@@ -1,5 +1,5 @@
 import { Empty, Metadata } from '@farcaster/protobufs';
-import { getAdminRpcClient, getAuthMetadata, getHubRpcClient } from '@farcaster/utils';
+import { getAdminRpcClient, getAuthMetadata, getInsecureHubRpcClient, getSSLHubRpcClient } from '@farcaster/utils';
 import path from 'path';
 import * as repl from 'repl';
 import { ADMIN_SERVER_PORT } from '~/rpc/adminServer';
@@ -19,7 +19,7 @@ export interface ConsoleCommandInterface {
   object(): any;
 }
 
-export const startConsole = async (addressString: string) => {
+export const startConsole = async (addressString: string, useInsecure: boolean) => {
   const replServer = repl
     .start({
       prompt: 'hub> ',
@@ -40,7 +40,13 @@ export const startConsole = async (addressString: string) => {
     }
   });
 
-  const rpcClient = await getHubRpcClient(addressString);
+  let rpcClient;
+  if (useInsecure) {
+    rpcClient = getInsecureHubRpcClient(addressString);
+  } else {
+    rpcClient = getSSLHubRpcClient(addressString);
+  }
+
   // Admin server is only available on localhost
   const adminClient = await getAdminRpcClient(`127.0.0.1:${ADMIN_SERVER_PORT}`);
 

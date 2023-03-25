@@ -3,7 +3,7 @@
 import {
   CastAddMessage,
   fromFarcasterTime,
-  getHubRpcClient,
+  getInsecureHubRpcClient,
   HubAsyncResult,
   HubRpcClient,
   isCastAddMessage,
@@ -73,7 +73,8 @@ const castToString = (cast: CastAddMessage, nameMapping: Map<number, string>) =>
 
 (async () => {
   // Set address as an environment variable or pass in directly here
-  const client = await getHubRpcClient(HUB_URL);
+  const client = getInsecureHubRpcClient(HUB_URL);
+  // const client = getSSLHubRpcClient(HUB_URL); // Use this if you're using SSL
 
   // 1. Create a mapping of fids to fnames, which we'll need later to display messages
   const fidToFname = new Map<number, string>();

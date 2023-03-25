@@ -384,8 +384,9 @@ app
     'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283)',
     DEFAULT_RPC_CONSOLE
   )
+  .option('--insecure', 'Allow insecure connections to the RPC server', false)
   .action(async (cliOptions) => {
-    startConsole(cliOptions.server);
+    startConsole(cliOptions.server, cliOptions.insecure);
   });
 
 const readPeerId = async (filePath: string) => {
