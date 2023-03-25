@@ -27,7 +27,7 @@ const log = logger.child({
   component: 'SyncMerkleTrie',
 });
 
-const TRIE_LOCK_TIMEOUT = { timeout: 1000 * 60, timeoutCallback: () => log.error('Sync trie lock timeout') };
+const TRIE_LOCK_TIMEOUT = { timeout: 1000 * 60 * 2, timeoutCallback: () => log.error('Sync trie lock timeout') };
 
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
