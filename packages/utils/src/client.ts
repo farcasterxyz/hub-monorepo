@@ -5,7 +5,6 @@ import {
   ClientReadableStream,
   ClientUnaryCall,
   getAdminClient,
-  getClient,
   getInsecureClient,
   getSSLClient,
   HubServiceClient,
@@ -101,10 +100,6 @@ const promisifyClient = <C extends Client>(client: C) => {
 };
 
 export type HubRpcClient = PromisifiedClient<HubServiceClient>;
-
-export const getHubRpcClient = async (address: string): Promise<HubRpcClient> => {
-  return promisifyClient(await getClient(address));
-};
 
 export const getSSLHubRpcClient = (address: string): HubRpcClient => {
   return promisifyClient(getSSLClient(address));

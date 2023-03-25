@@ -15,7 +15,8 @@ import {
   HubRpcClient,
   bytesToHexString,
   bytesToUtf8String,
-  getHubRpcClient,
+  getSSLHubRpcClient,
+  getInsecureHubRpcClient,
 } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
@@ -506,6 +507,28 @@ export class Hub implements HubInterface {
     }
   }
 
+  /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,
+   *  and fall back to the non-SSL version
+   */
+  private async getHubRpcClient(address: string): Promise<HubRpcClient> {
+    return new Promise((resolve) => {
+      try {
+        const sslClientResult = getSSLHubRpcClient(address);
+
+        sslClientResult.$.waitForReady(Date.now() + 2000, (err) => {
+          if (!err) {
+            resolve(sslClientResult);
+          } else {
+            resolve(getInsecureHubRpcClient(address));
+          }
+        });
+      } catch (e) {
+        // Fall back to insecure client
+        resolve(getInsecureHubRpcClient(address));
+      }
+    });
+  }
+
   public async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
@@ -524,7 +547,7 @@ export class Hub implements HubInterface {
 
     if (rpcAddressInfo.value.address) {
       try {
-        return await getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
+        return await this.getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
       } catch (e) {
         log.error({ error: e, peer, peerId }, 'unable to connect to peer');
         return undefined;
@@ -556,7 +579,7 @@ export class Hub implements HubInterface {
     };
 
     try {
-      return await getHubRpcClient(addressInfoToString(ai));
+      return await this.getHubRpcClient(addressInfoToString(ai));
     } catch (e) {
       log.error({ error: e, peer, peerId, addressInfo: ai }, 'unable to connect to peer');
       return undefined;
