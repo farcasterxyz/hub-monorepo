@@ -108,6 +108,24 @@ describe('MerkleTrie', () => {
       TEST_TIMEOUT_LONG
     );
 
+    test(
+      'inserting multiple doesnt cause unload conflict',
+      async () => {
+        const syncIds = await NetworkFactories.SyncId.createList(500);
+
+        const trie = new MerkleTrie(db);
+        const insertPromise = Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
+        // Multiple parallel commitToDb calls should not cause a conflict
+        const commitPromise = Promise.all([1, 2, 3, 4, 5].map(async () => trie.commitToDb()));
+
+        // Wait for both to finish
+        await Promise.all([insertPromise, commitPromise]);
+
+        expect(await trie.items()).toEqual(500);
+      },
+      TEST_TIMEOUT_LONG
+    );
+
     test('insert also inserts into the db', async () => {
       const dt = new Date();
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: dt } });

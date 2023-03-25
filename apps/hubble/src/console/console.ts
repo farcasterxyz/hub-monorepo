@@ -1,4 +1,4 @@
-import { Empty } from '@farcaster/protobufs';
+import { Empty, Metadata } from '@farcaster/protobufs';
 import { getAdminRpcClient, getAuthMetadata, getHubRpcClient } from '@farcaster/utils';
 import path from 'path';
 import * as repl from 'repl';
@@ -75,9 +75,17 @@ export const startConsole = async (addressString: string) => {
   replServer.context['getAuthMetadata'] = getAuthMetadata;
 
   // Run the info command to start
-  replServer.output.write(
-    'Connected Info: ' + JSON.stringify(await (commands[0] as RpcClientCommand).object().getInfo(Empty.create())) + '\n'
-  );
+
+  const info = await rpcClient.getInfo(Empty.create(), new Metadata(), { deadline: Date.now() + 2000 });
+
+  if (info.isErr()) {
+    replServer.output.write('Could not connect to hub at "' + addressString + '"\n');
+    // eslint-disable-next-line no-console
+    console.log(info.error);
+    process.exit(1);
+  }
+
+  replServer.output.write('Connected Info: ' + JSON.stringify(info.value) + '\n');
 
   replServer.displayPrompt();
 };
