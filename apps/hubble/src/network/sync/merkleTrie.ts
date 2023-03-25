@@ -109,14 +109,14 @@ class MerkleTrie {
           this._updatePendingDbUpdates(dbUpdatesMap);
 
           // Write the transaction to the DB
-          await this._unloadFromMemory();
+          await this._unloadFromMemory(true);
 
           release();
           resolve(status);
         } catch (e) {
           log.error('Insert Error', e);
 
-          await this._unloadFromMemory();
+          await this._unloadFromMemory(true);
           release();
           resolve(false);
         }
@@ -134,14 +134,14 @@ class MerkleTrie {
         try {
           const { status, dbUpdatesMap } = await this._root.delete(id, this._db, new Map());
           this._updatePendingDbUpdates(dbUpdatesMap);
-          await this._unloadFromMemory();
+          await this._unloadFromMemory(true);
 
           release();
           resolve(status);
         } catch (e) {
           log.error('Delete Error', e);
 
-          await this._unloadFromMemory();
+          await this._unloadFromMemory(true);
           release();
           resolve(false);
         }
@@ -160,7 +160,7 @@ class MerkleTrie {
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         const r = await this._root.exists(id.syncId(), this._db);
 
-        await this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
         release();
         resolve(r);
@@ -176,7 +176,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const r = await this._root.getSnapshot(prefix, this._db);
 
-        await this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
         release();
         resolve(r);
@@ -195,7 +195,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const ourExcludedHashes = (await this.getSnapshot(prefix)).excludedHashes;
 
-        await this._unloadFromMemory();
+        await this._unloadFromMemory(false);
         release();
 
         for (let i = 0; i < prefix.length; i++) {
@@ -218,7 +218,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
 
-        await this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
         if (node === undefined) {
           release();
@@ -226,7 +226,7 @@ class MerkleTrie {
         } else {
           const md = await node.getNodeMetadata(prefix, this._db);
 
-          await this._unloadFromMemory();
+          await this._unloadFromMemory(false);
           release();
           resolve(md);
         }
@@ -239,7 +239,7 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const r = await this._root.getNode(prefix, this._db);
 
-        await this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
         release();
         resolve(r);
@@ -256,7 +256,7 @@ class MerkleTrie {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
-        await this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
         if (node === undefined) {
           release();
@@ -264,7 +264,7 @@ class MerkleTrie {
         } else {
           const r = await node.getAllValues(prefix, this._db);
 
-          await this._unloadFromMemory();
+          await this._unloadFromMemory(false);
           release();
           resolve(r);
         }
@@ -294,7 +294,7 @@ class MerkleTrie {
   public async commitToDb(): Promise<void> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
-        await this._unloadFromMemory(true);
+        await this._unloadFromMemory(true, true);
 
         release();
         resolve(undefined);
@@ -316,13 +316,15 @@ class MerkleTrie {
    * Check if we need to unload the trie from memory. This is not protected by a lock, since it is only called
    * from within a lock.
    */
-  private async _unloadFromMemory(force = false) {
+  private async _unloadFromMemory(writeLocked: boolean, force = false) {
     // Every TRIE_UNLOAD_THRESHOLD calls, we unload the trie from memory to avoid memory leaks.
     // Every call in this class usually loads one root-to-leaf path of the trie, so
     // we unload the trie from memory every 1000 calls. This allows us to keep the
     // most recently used parts of the trie in memory, while still "garbage collecting"
     // the rest of the trie.
-    if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
+
+    // Fn that does the actual unloading
+    const doUnload = async () => {
       this._callsSinceLastUnload = 0;
       logger.info('Unloading trie from memory');
 
@@ -341,6 +343,22 @@ class MerkleTrie {
       this._pendingDbUpdates.clear();
 
       this._root.unloadChildren();
+    };
+
+    if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
+      // If we are only read locked, we need to upgrade to a write lock
+      if (!writeLocked) {
+        this._lock.writeLock(async (release) => {
+          try {
+            await doUnload();
+          } finally {
+            release();
+          }
+        });
+      } else {
+        // We're already write locked, so we can just do the unload
+        await doUnload();
+      }
     } else {
       this._callsSinceLastUnload++;
     }

@@ -42,7 +42,7 @@ export class PeriodicSyncJobScheduler {
 
   async doJobs() {
     this._jobCount += 1;
-    log.info({ jobCount: this._jobCount, memory: process.memoryUsage() }, 'starting periodic sync job');
+    log.info({ jobCount: this._jobCount }, 'starting periodic sync job');
 
     // Do a diff sync
     const syncResult = await ResultAsync.fromPromise(this._syncEngine.diffSyncIfRequired(this._hub), (e) => e);
