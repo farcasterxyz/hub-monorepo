@@ -22,7 +22,7 @@ export interface ConsoleCommandInterface {
 export const startConsole = async (addressString: string, useInsecure: boolean) => {
   const replServer = repl
     .start({
-      prompt: 'hub> ',
+      prompt: `${addressString} hub> `,
       useColors: true,
       useGlobal: true,
       breakEvalOnSigint: true,

@@ -340,9 +340,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           (result.error.message.startsWith('invalid signer') || result.error.message.startsWith('unknown fid'))
         ) {
           // Unknown user error. Fetch the custody event and retry the message.
-          log.warn({ fid: msg.data?.fid }, 'Unknown user, fetching custody event');
-          const result = await this.syncUserAndRetryMessage(msg, rpcClient);
-          mergeResults.push(result);
+          log.warn({ fid: msg.data?.fid, err: result.error.message }, 'Unknown user, fetching custody event');
+          const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
+          mergeResults.push(retryResult);
         } else if (result.error.errCode === 'bad_request.duplicate') {
           // This message has been merged into the DB, but for some reason is not in the Trie.
           // Just update the trie.
