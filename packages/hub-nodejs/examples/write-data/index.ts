@@ -1,12 +1,12 @@
 import {
   EthersEip712Signer,
   FarcasterNetwork,
-  getHubRpcClient,
   makeSignerAdd,
   makeUserDataAdd,
   NobleEd25519Signer,
   UserDataType,
 } from '@farcaster/hub-nodejs';
+import { getInsecureHubRpcClient } from '@farcaster/utils';
 import * as ed from '@noble/ed25519';
 import { Wallet } from 'ethers';
 
@@ -56,7 +56,9 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
    * generating it yourself if your application manages the user's mnemonic. Now you can submit it to the Hub.
    */
 
-  const client = await getHubRpcClient(HUB_URL);
+  const client = getInsecureHubRpcClient(HUB_URL);
+  // const client = await getSSLHubRpcClient(HUB_URL); if you want to use SSL
+
   const result = await client.submitMessage(signerAdd);
   result.isOk() ? console.log('SignerAdd was published successfully!') : console.log(result.error);
 
