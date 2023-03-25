@@ -211,7 +211,7 @@ describe('SyncEngine', () => {
     const mockRPCClient = mock<HubRpcClient>();
     const rpcClient = instance(mockRPCClient);
     let called = false;
-    when(mockRPCClient.getSyncMetadataByPrefix(anything())).thenCall(async () => {
+    when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything(), anything())).thenCall(async () => {
       const shouldSync = await syncEngine.shouldSync({
         prefix: new Uint8Array(),
         numMessages: 10,
