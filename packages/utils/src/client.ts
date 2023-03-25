@@ -15,7 +15,12 @@ import { err, ok } from 'neverthrow';
 import { HubError, HubErrorCode, HubResult } from './errors';
 
 const fromServiceError = (err: ServiceError): HubError => {
-  return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);
+  let context = err.details;
+  if (err.code === 14 && err.details === 'No connection established') {
+    context =
+      'Connection failed: please check that the hub’s address, ports and authentication config are correct. ' + context;
+  }
+  return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, context);
 };
 
 // grpc-js generates a Client stub that uses callbacks for async calls. Callbacks are
