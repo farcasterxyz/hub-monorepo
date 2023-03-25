@@ -57,7 +57,7 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
    */
 
   const client = getInsecureHubRpcClient(HUB_URL);
-  // const client = await getSSLHubRpcClient(HUB_URL); if you want to use SSL
+  // const client = getSSLHubRpcClient(HUB_URL); if you want to use SSL
 
   const result = await client.submitMessage(signerAdd);
   result.isOk() ? console.log('SignerAdd was published successfully!') : console.log(result.error);

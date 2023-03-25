@@ -21,8 +21,8 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const client = getInsecureHubRpcClient('127.0.0.1:2283');
 
   // To manually choose the authentication method, use these methods instead.
-  // const sslClient = await getSSLHubRpcClient('127.0.0.1:2283');
-  // const insecureClient = await getInsecureClient('127.0.0.1:2283');
+  // const sslClient = getSSLHubRpcClient('127.0.0.1:2283');
+  // const insecureClient = getInsecureClient('127.0.0.1:2283');
 })();
 ```
 
