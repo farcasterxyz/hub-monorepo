@@ -54,6 +54,8 @@ class Engine {
   private _revokeSignerQueue: RevokeMessagesBySignerJobQueue;
   private _revokeSignerWorker: RevokeMessagesBySignerJobWorker;
 
+  private _isPruning = false;
+
   constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
     this._db = db;
     this._network = network;
@@ -262,6 +264,10 @@ class Engine {
     return ok(undefined);
   }
 
+  public isPruning(): boolean {
+    return this._isPruning;
+  }
+
   async pruneMessages(fid: number): HubAsyncResult<void> {
     const logPruneResult = (result: HubResult<number[]>, store: string): void => {
       result.match(
@@ -275,6 +281,9 @@ class Engine {
         }
       );
     };
+
+    // Record that we are pruning so that we don't try to sync in the middle of pruning
+    this._isPruning = true;
 
     const signerResult = await this._signerStore.pruneMessages(fid);
     logPruneResult(signerResult, 'signer');
@@ -291,6 +300,8 @@ class Engine {
     const userDataResult = await this._userDataStore.pruneMessages(fid);
     logPruneResult(userDataResult, 'user data');
 
+    // Record that we are done pruning
+    this._isPruning = false;
     return ok(undefined);
   }
 

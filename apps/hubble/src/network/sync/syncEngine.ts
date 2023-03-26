@@ -169,10 +169,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async diffSyncIfRequired(hub: Hub, peerIdString?: string) {
     this.emit('syncStart');
-    log.info({ peerIdString }, 'Starting diff sync');
+    log.info({ peerIdString }, 'Diffsync: Starting diff sync');
 
     if (this.currentHubPeerContacts.size === 0) {
-      log.warn(`No peer contacts, skipping sync`);
+      log.warn(`Diffsync: No peer contacts, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
@@ -200,16 +200,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // If we still don't have a peer, skip the sync
     if (!peerContact || !peerId) {
-      log.warn({ peerContact, peerId }, `No contact info for peer, skipping sync`);
+      log.warn({ peerContact, peerId }, `Diffsync: No contact info for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     } else {
-      log.info({ peerId, peerContact }, `Starting diff sync with peer`);
+      log.info({ peerId, peerContact }, `Diffsync: Starting diff sync with peer`);
     }
 
     const rpcClient = await hub.getRPCClientForPeer(peerId, peerContact);
     if (!rpcClient) {
-      log.warn(`Failed to get RPC client for peer, skipping sync`);
+      log.warn(`Diffsync: Failed to get RPC client for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
@@ -223,7 +223,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     if (peerStateResult.isErr()) {
       log.warn(
         { error: peerStateResult.error, errMsg: peerStateResult.error.message, peerId, peerContact },
-        `Failed to get peer state, skipping sync`
+        `Diffsync: Failed to get peer state, skipping sync`
       );
       this.emit('syncComplete', false);
       return;
@@ -232,13 +232,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const peerState = peerStateResult.value;
     const shouldSync = await this.shouldSync(peerState);
     if (shouldSync.isErr()) {
-      log.warn(`Failed to get shouldSync`);
+      log.warn(`Diffsync: Failed to get shouldSync`);
       this.emit('syncComplete', false);
       return;
     }
 
     if (shouldSync.value === true) {
-      log.info({ peerId }, `Syncing with peer`);
+      log.info({ peerId }, `Diffsync: Syncing with peer`);
       await this.performSync(peerState, rpcClient);
     } else {
       log.info({ peerId }, `No need to sync`);
@@ -246,6 +246,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     }
 
+    log.info({ peerIdString }, 'Diffsync: complete');
     this.emit('syncComplete', false);
     return;
   }
@@ -269,6 +270,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async performSync(otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
+    // Don't sync if we're in the middle of pruning
+    if (this.engine.isPruning()) {
+      log.info(`Not doing sync because pruning in progress`);
+      return false;
+    }
+
     let success = false;
     try {
       this._isSyncing = true;
