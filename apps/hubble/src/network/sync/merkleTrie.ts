@@ -104,15 +104,6 @@ class MerkleTrie {
   public async insert(id: SyncId): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
-        // We time out inserts into the sync trie so as to not hold the lock for too long.
-        // Missing messages will be synced on the next sync cycle.
-        const insertTimeout = setTimeout(() => {
-          log.error({ id, cacheSize: this._callsSinceLastUnload }, 'Trie Insert Timeout');
-
-          resolve(false);
-          release();
-        }, 10_000);
-
         try {
           const { status, dbUpdatesMap } = await this._root.insert(id.syncId(), this._db, new Map());
           this._updatePendingDbUpdates(dbUpdatesMap);
@@ -125,8 +116,6 @@ class MerkleTrie {
           log.error({ e }, 'Insert Error');
 
           resolve(false);
-        } finally {
-          clearTimeout(insertTimeout);
         }
 
         release();
@@ -141,15 +130,6 @@ class MerkleTrie {
   public async deleteByBytes(id: Uint8Array): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
-        // We time out deletes into the sync trie so as to not hold the lock for too long.
-        // Missing messages will be synced on the next sync cycle.
-        const deleteTimeout = setTimeout(() => {
-          log.error({ id, cacheSize: this._callsSinceLastUnload }, 'Trie Delete Timeout');
-
-          resolve(false);
-          release();
-        }, 10_000);
-
         try {
           const { status, dbUpdatesMap } = await this._root.delete(id, this._db, new Map());
           this._updatePendingDbUpdates(dbUpdatesMap);
@@ -160,8 +140,6 @@ class MerkleTrie {
           log.error({ e }, 'Delete Error');
 
           resolve(false);
-        } finally {
-          clearTimeout(deleteTimeout);
         }
 
         release();
