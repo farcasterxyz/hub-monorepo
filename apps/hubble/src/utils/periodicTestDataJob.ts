@@ -20,7 +20,7 @@ const log = logger.child({
 
 type SchedulerStatus = 'started' | 'stopped';
 
-const DEFAULT_PERIODIC_JOB_CRON = '*/30 * * * *'; // Every 30 minutes
+const DEFAULT_PERIODIC_JOB_CRON = '*/10 * * * * *'; // Every 10 seconds
 
 export type TestUser = {
   fid: number;
