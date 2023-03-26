@@ -72,8 +72,8 @@ class MerkleTrie {
           // There is no Root node in the DB, just use an empty one
         }
 
-        release();
         resolve();
+        release();
       });
     });
   }
@@ -104,6 +104,15 @@ class MerkleTrie {
   public async insert(id: SyncId): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
+        // We time out inserts into the sync trie so as to not hold the lock for too long.
+        // Missing messages will be synced on the next sync cycle.
+        const insertTimeout = setTimeout(() => {
+          log.error({ id, cacheSize: this._callsSinceLastUnload }, 'Trie Insert Timeout');
+
+          resolve(false);
+          release();
+        }, 10_000);
+
         try {
           const { status, dbUpdatesMap } = await this._root.insert(id.syncId(), this._db, new Map());
           this._updatePendingDbUpdates(dbUpdatesMap);
@@ -111,15 +120,16 @@ class MerkleTrie {
           // Write the transaction to the DB
           await this._unloadFromMemory(true);
 
-          release();
           resolve(status);
         } catch (e) {
-          log.error('Insert Error', e);
+          log.error({ e }, 'Insert Error');
 
-          await this._unloadFromMemory(true);
-          release();
           resolve(false);
+        } finally {
+          clearTimeout(insertTimeout);
         }
+
+        release();
       });
     });
   }
@@ -131,20 +141,30 @@ class MerkleTrie {
   public async deleteByBytes(id: Uint8Array): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
+        // We time out deletes into the sync trie so as to not hold the lock for too long.
+        // Missing messages will be synced on the next sync cycle.
+        const deleteTimeout = setTimeout(() => {
+          log.error({ id, cacheSize: this._callsSinceLastUnload }, 'Trie Delete Timeout');
+
+          resolve(false);
+          release();
+        }, 10_000);
+
         try {
           const { status, dbUpdatesMap } = await this._root.delete(id, this._db, new Map());
           this._updatePendingDbUpdates(dbUpdatesMap);
           await this._unloadFromMemory(true);
 
-          release();
           resolve(status);
         } catch (e) {
-          log.error('Delete Error', e);
+          log.error({ e }, 'Delete Error');
 
-          await this._unloadFromMemory(true);
-          release();
           resolve(false);
+        } finally {
+          clearTimeout(deleteTimeout);
         }
+
+        release();
       });
     });
   }
@@ -162,8 +182,8 @@ class MerkleTrie {
 
         await this._unloadFromMemory(false);
 
-        release();
         resolve(r);
+        release();
       });
     });
   }
@@ -178,8 +198,8 @@ class MerkleTrie {
 
         await this._unloadFromMemory(false);
 
-        release();
         resolve(r);
+        release();
       });
     });
   }
@@ -196,16 +216,23 @@ class MerkleTrie {
         const ourExcludedHashes = (await this.getSnapshot(prefix)).excludedHashes;
 
         await this._unloadFromMemory(false);
-        release();
 
+        let subPrefixResolved = false;
         for (let i = 0; i < prefix.length; i++) {
           // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
           // eslint-disable-next-line security/detect-object-injection
           if (ourExcludedHashes[i] !== excludedHashes[i]) {
+            subPrefixResolved = true;
             resolve(prefix.slice(0, i));
+            break;
           }
         }
-        resolve(prefix);
+
+        if (!subPrefixResolved) {
+          resolve(prefix);
+        }
+
+        release();
       });
     });
   }
@@ -221,15 +248,15 @@ class MerkleTrie {
         await this._unloadFromMemory(false);
 
         if (node === undefined) {
-          release();
           resolve(undefined);
         } else {
           const md = await node.getNodeMetadata(prefix, this._db);
 
           await this._unloadFromMemory(false);
-          release();
           resolve(md);
         }
+
+        release();
       });
     });
   }
@@ -241,8 +268,8 @@ class MerkleTrie {
 
         await this._unloadFromMemory(false);
 
-        release();
         resolve(r);
+        release();
       });
     });
   }
@@ -259,15 +286,15 @@ class MerkleTrie {
         await this._unloadFromMemory(false);
 
         if (node === undefined) {
-          release();
           resolve([]);
         } else {
           const r = await node.getAllValues(prefix, this._db);
 
           await this._unloadFromMemory(false);
-          release();
           resolve(r);
         }
+
+        release();
       });
     });
   }
@@ -275,8 +302,8 @@ class MerkleTrie {
   public async items(): Promise<number> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        release();
         resolve(this._root.items);
+        release();
       });
     });
   }
@@ -284,8 +311,8 @@ class MerkleTrie {
   public async rootHash(): Promise<string> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        release();
         resolve(Buffer.from(this._root.hash).toString('hex'));
+        release();
       });
     });
   }
@@ -296,8 +323,8 @@ class MerkleTrie {
       this._lock.writeLock(async (release) => {
         await this._unloadFromMemory(true, true);
 
-        release();
         resolve(undefined);
+        release();
       });
     });
   }
@@ -340,8 +367,9 @@ class MerkleTrie {
       }
 
       await this._db.commit(txn);
-      this._pendingDbUpdates.clear();
+      logger.info({ numDbUpdates: this._pendingDbUpdates.size }, 'Trie committed pending DB updates');
 
+      this._pendingDbUpdates.clear();
       this._root.unloadChildren();
     };
 

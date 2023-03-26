@@ -374,11 +374,9 @@ export class Hub implements HubInterface {
 
     // First, stop the RPC/Gossip server so we don't get any more messages
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
-    await this.adminServer.stop();
-    await this.gossipNode.stop();
 
-    // Stop sync
-    await this.syncEngine.stop();
+    // Stop admin, gossip and sync engine
+    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(), this.syncEngine.stop()]);
 
     if (this.updateNameRegistryEventExpiryJobWorker) {
       this.updateNameRegistryEventExpiryJobWorker.stop();

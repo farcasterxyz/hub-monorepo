@@ -139,6 +139,14 @@ describe('SyncEngine', () => {
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
+  test('getAllMessages returns empty with invalid syncId', async () => {
+    expect(await syncEngine.trie.items()).toEqual(0);
+    const result = await engine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()[0]?.data).toBeUndefined();
+    expect(result._unsafeUnwrap()[0]?.hash.length).toEqual(0);
+  });
+
   test('trie is updated when message with higher order is merged', async () => {
     const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
     expect(rcustody.isOk()).toBeTruthy();

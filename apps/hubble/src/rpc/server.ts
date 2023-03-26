@@ -254,17 +254,18 @@ export default class Server {
           (messages) => {
             // Check the messages for corruption. If a message is blank, that means it was present
             // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
-            const corruptedMessages =
-              messages.filter((message) => message.data === undefined || message.hash.length === 0).length > 0;
+            const corruptedMessages = messages.filter(
+              (message) => message.data === undefined || message.hash.length === 0
+            );
 
-            if (corruptedMessages) {
-              log.warn({ component: 'gRPC Server' }, 'Found corrupted messages, rebuilding some syncIDs');
+            if (corruptedMessages.length > 0) {
+              log.warn({ num: corruptedMessages.length }, 'Found corrupted messages, rebuilding some syncIDs');
               // Don't wait for this to finish, just return the messages we have.
               this.syncEngine?.rebuildSyncIds(request.syncIds);
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }
 
-            callback(null, MessagesResponse.create({ messages: messages ?? [] }));
+            callback(null, MessagesResponse.create({ messages }));
           },
           (err: HubError) => {
             callback(toServiceError(err));
