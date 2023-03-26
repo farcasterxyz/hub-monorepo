@@ -503,6 +503,40 @@ class TrieNode {
   }
 
   // Commented out, but useful for debugging
+
+  // public async verifyCounts(prefix: Uint8Array, db: RocksDB): Promise<boolean> {
+  //   let count = this.isLeaf ? 1 : 0;
+
+  //   if (this.isLeaf && this._key === undefined) {
+  //     console.log(`Leaf node without key at ${Buffer.from(prefix).toString('hex')}`);
+  //     return false;
+  //   }
+
+  //   for (const [char] of this._children) {
+  //     const child = await this._getOrLoadChild(prefix, char, db);
+  //     count += child.items;
+  //   }
+
+  //   if (count !== this.items) {
+  //     console.log(
+  //       `Count mismatch: ${count} !== ${this.items} at ${Buffer.from(prefix).toString('hex')} with ${
+  //         this._children.size
+  //       } children`
+  //     );
+  //     return false;
+  //   }
+
+  //   for (const [char] of this._children) {
+  //     const child = await this._getOrLoadChild(prefix, char, db);
+  //     const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
+  //     if (!(await child.verifyCounts(newPrefix, db))) {
+  //       return false;
+  //     }
+  //   }
+
+  //   return true;
+  // }
+
   // public async printTrie(prefix: Uint8Array, db: RocksDB): Promise<string> {
   //   let r = `${Buffer.from(prefix).toString('hex')}, ${this.items}, ${Buffer.from(this._hash).toString(
   //     'hex'

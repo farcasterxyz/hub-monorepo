@@ -224,6 +224,14 @@ export default class Server {
     return addr;
   }
 
+  get auth() {
+    return { user: this.rpcAuthUser, password: this.rpcAuthPass };
+  }
+
+  get listenPort() {
+    return this.port;
+  }
+
   getImpl = (): HubServiceServer => {
     return {
       getInfo: (call, callback) => {

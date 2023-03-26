@@ -217,7 +217,7 @@ export class Hub implements HubInterface {
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
 
     if (options.testUsers) {
-      this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this, options.testUsers as TestUser[]);
+      this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
     }
 
     if (this.ethRegistryProvider) {
