@@ -27,8 +27,6 @@ const log = logger.child({
   component: 'SyncMerkleTrie',
 });
 
-const TRIE_LOCK_TIMEOUT = { timeout: 1000 * 60 * 2, timeoutCallback: () => log.error('Sync trie lock timeout') };
-
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
  * two hubs on the network.
@@ -76,7 +74,7 @@ class MerkleTrie {
 
         release();
         resolve();
-      }, TRIE_LOCK_TIMEOUT);
+      });
     });
   }
 
@@ -118,11 +116,10 @@ class MerkleTrie {
         } catch (e) {
           log.error('Insert Error', e);
 
-          await this._unloadFromMemory(true);
           release();
           resolve(false);
         }
-      }, TRIE_LOCK_TIMEOUT);
+      });
     });
   }
 
@@ -143,11 +140,10 @@ class MerkleTrie {
         } catch (e) {
           log.error('Delete Error', e);
 
-          await this._unloadFromMemory(true);
           release();
           resolve(false);
         }
-      }, TRIE_LOCK_TIMEOUT);
+      });
     });
   }
 
@@ -300,7 +296,7 @@ class MerkleTrie {
 
         release();
         resolve(undefined);
-      }, TRIE_LOCK_TIMEOUT);
+      });
     });
   }
 
@@ -356,7 +352,7 @@ class MerkleTrie {
           } finally {
             release();
           }
-        }, TRIE_LOCK_TIMEOUT);
+        });
       } else {
         // We're already write locked, so we can just do the unload
         await doUnload();

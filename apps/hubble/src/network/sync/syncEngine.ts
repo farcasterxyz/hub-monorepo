@@ -263,7 +263,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // eslint-disable-next-line security/detect-object-injection
         ourSnapshot.excludedHashes.every((value, index) => value === otherSnapshot.excludedHashes[index]);
 
-      log.info({ otherHashes: otherSnapshot.excludedHashes }, `shouldSync: excluded hashes`);
+      log.info({ excludedHashesMatch }, `shouldSync: excluded hashes`);
       return !excludedHashesMatch;
     });
   }

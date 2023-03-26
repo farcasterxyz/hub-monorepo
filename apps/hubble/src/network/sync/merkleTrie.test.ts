@@ -367,6 +367,46 @@ describe('MerkleTrie', () => {
       );
     });
 
+    test(
+      'test multiple insert + delete',
+      async () => {
+        const syncIds1 = await NetworkFactories.SyncId.createList(100);
+        const syncIds2 = await NetworkFactories.SyncId.createList(100);
+
+        await Promise.all(syncIds1.map(async (syncId) => trie.insert(syncId)));
+
+        // Delete half of the items
+        const deletePromise = Promise.all(
+          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId))
+        );
+        const insert2Promise = Promise.all(syncIds2.map(async (syncId) => trie.insert(syncId)));
+        const existPromise = await Promise.all(
+          syncIds1.slice(syncIds1.length / 2).map(async (syncId) => {
+            expect(await trie.exists(syncId)).toBeTruthy();
+          })
+        );
+        await Promise.all([deletePromise, insert2Promise, existPromise]);
+
+        // Check that the items are still there
+        const exist1 = Promise.all(
+          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => expect(await trie.exists(syncId)).toBeFalsy())
+        );
+        const exist2 = await Promise.all(
+          syncIds1.slice(syncIds1.length / 2).map(async (syncId) => {
+            expect(await trie.exists(syncId)).toBeTruthy();
+          })
+        );
+        const exist3 = await Promise.all(
+          syncIds2.map(async (syncId) => {
+            expect(await trie.exists(syncId)).toBeTruthy();
+          })
+        );
+
+        await Promise.all([exist1, exist2, exist3]);
+      },
+      TEST_TIMEOUT_LONG
+    );
+
     test('delete after loading from DB', async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();

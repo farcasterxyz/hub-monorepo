@@ -1,7 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubError } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
-import { assert } from 'console';
 import { ResultAsync } from 'neverthrow';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import RocksDB from '~/storage/db/rocksdb';
@@ -76,7 +75,6 @@ class TrieNode {
     dbUpdatesMap: Map<Buffer, Buffer>,
     current_index = 0
   ): Promise<TrieNodeOpResult> {
-    assert(current_index < key.length, 'Key length exceeded');
     if (current_index >= key.length) {
       throw 'Key length exceeded';
     }
@@ -158,7 +156,6 @@ class TrieNode {
       }
     }
 
-    assert(current_index < key.length, 'Key length exceeded2');
     if (current_index >= key.length) {
       throw 'Key length exceeded2';
     }
@@ -220,7 +217,6 @@ class TrieNode {
       return true;
     }
 
-    assert(current_index < key.length, 'Key length exceeded3');
     if (current_index >= key.length) {
       throw 'Key length exceeded3';
     }
@@ -467,8 +463,6 @@ class TrieNode {
       // This should never happen, check is here for type safety
       throw new HubError('bad_request', 'Cannot split a leaf node without a key and value');
     }
-
-    assert(current_index < this._key.length, 'Cannot split a leaf node at an index greater than its key length');
 
     const newChildChar = this._key.at(current_index) as number;
     this._addChild(newChildChar);
