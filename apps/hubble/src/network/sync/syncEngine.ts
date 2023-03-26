@@ -270,11 +270,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async performSync(otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
-    // Don't sync if we're in the middle of pruning
-    if (this.engine.isPruning()) {
-      log.info(`Not doing sync because pruning in progress`);
-      return false;
-    }
+    log.info(`Perform sync: Start`);
 
     let success = false;
     try {
@@ -284,7 +280,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         log.warn(snapshot.error, `Error performing sync`);
       } else {
         const ourSnapshot = snapshot.value;
-        const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, otherSnapshot.excludedHashes);
+        const divergencePrefix = await this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
         log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
 
         let missingCount = 0;
@@ -304,6 +300,26 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     return success;
+  }
+
+  /**
+   * Returns the subset of the prefix common to two different tries by comparing excluded hashes.
+   *
+   * @param prefix - the prefix of the external trie.
+   * @param otherExcludedHashes - the excluded hashes of the external trie.
+   */
+  async getDivergencePrefix(ourSnapshot: TrieSnapshot, otherExcludedHashes: string[]): Promise<Uint8Array> {
+    const { prefix, excludedHashes } = ourSnapshot;
+
+    for (let i = 0; i < prefix.length; i++) {
+      // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
+      // eslint-disable-next-line security/detect-object-injection
+      if (excludedHashes[i] !== otherExcludedHashes[i]) {
+        return prefix.slice(0, i);
+      }
+    }
+
+    return prefix;
   }
 
   public async fetchAndMergeMessages(syncIds: Uint8Array[], rpcClient: HubRpcClient): Promise<boolean> {

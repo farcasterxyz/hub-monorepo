@@ -199,38 +199,6 @@ class MerkleTrie {
         await this._unloadFromMemory(false);
 
         resolve(r);
-        release();
-      });
-    });
-  }
-
-  /**
-   * Returns the subset of the prefix common to two different tries by comparing excluded hashes.
-   *
-   * @param prefix - the prefix of the external trie.
-   * @param excludedHashes - the excluded hashes of the external trie.
-   */
-  public async getDivergencePrefix(prefix: Uint8Array, excludedHashes: string[]): Promise<Uint8Array> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const ourExcludedHashes = (await this.getSnapshot(prefix)).excludedHashes;
-
-        await this._unloadFromMemory(false);
-
-        let subPrefixResolved = false;
-        for (let i = 0; i < prefix.length; i++) {
-          // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
-          // eslint-disable-next-line security/detect-object-injection
-          if (ourExcludedHashes[i] !== excludedHashes[i]) {
-            subPrefixResolved = true;
-            resolve(prefix.slice(0, i));
-            break;
-          }
-        }
-
-        if (!subPrefixResolved) {
-          resolve(prefix);
-        }
 
         release();
       });

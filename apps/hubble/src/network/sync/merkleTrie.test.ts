@@ -607,31 +607,4 @@ describe('MerkleTrie', () => {
     values = await trie.getAllValues(Buffer.from('166518233'));
     expect(values?.length).toEqual(1);
   });
-
-  describe('getDivergencePrefix', () => {
-    test('returns the prefix with the most common excluded hashes', async () => {
-      const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
-      const prefixToTest = Buffer.from('1665182343');
-      const oldSnapshot = await trie.getSnapshot(prefixToTest);
-      trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
-
-      // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
-      let divergencePrefix = await trie.getDivergencePrefix(prefixToTest, oldSnapshot.excludedHashes);
-      expect(divergencePrefix).toEqual(Buffer.from('16651823'));
-
-      // divergence prefix should be the full prefix, if snapshots are the same
-      const currentSnapshot = await trie.getSnapshot(prefixToTest);
-      divergencePrefix = await trie.getDivergencePrefix(prefixToTest, currentSnapshot.excludedHashes);
-      expect(divergencePrefix).toEqual(prefixToTest);
-
-      // divergence prefix should empty if excluded hashes are empty
-      divergencePrefix = await trie.getDivergencePrefix(prefixToTest, []);
-      expect(divergencePrefix.length).toEqual(0);
-
-      // divergence prefix should be our prefix if provided hashes are longer
-      const with5 = Buffer.concat([prefixToTest, Buffer.from('5')]);
-      divergencePrefix = await trie.getDivergencePrefix(with5, [...currentSnapshot.excludedHashes, 'different']);
-      expect(divergencePrefix).toEqual(prefixToTest);
-    });
-  });
 });
