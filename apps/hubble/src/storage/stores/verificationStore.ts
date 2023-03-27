@@ -17,6 +17,7 @@ import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
+import { logger } from '~/utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
@@ -251,16 +252,22 @@ class VerificationStore {
     };
 
     let pruneResult = await pruneNextMessage();
-    while (pruneResult.isOk() && pruneResult.value !== undefined) {
-      commits.push(pruneResult.value);
+    while (!(pruneResult.isOk() && pruneResult.value === undefined)) {
+      pruneResult.match(
+        (commit) => {
+          if (commit) {
+            commits.push(commit);
+          }
+        },
+        (e) => {
+          logger.error({ errCode: e.errCode }, `error pruning verification message for fid ${fid}: ${e.message}`);
+        }
+      );
+
       pruneResult = await pruneNextMessage();
     }
 
     await pruneIterator.end();
-
-    if (pruneResult.isErr()) {
-      return err(pruneResult.error);
-    }
 
     return ok(commits);
   }

@@ -58,8 +58,7 @@ export class RevokeMessagesBySignerJobWorker {
   }
 
   private async processJob(payload: protobufs.RevokeMessagesBySignerJobPayload): HubAsyncResult<void> {
-    const result = await this._engine.revokeMessagesBySigner(payload.fid, payload.signer);
-    return result.map(() => undefined);
+    return this._engine.revokeMessagesBySigner(payload.fid, payload.signer);
   }
 }
 
