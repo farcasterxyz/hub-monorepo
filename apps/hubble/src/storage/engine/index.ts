@@ -200,17 +200,11 @@ class Engine {
 
     const iterator = getMessagesBySignerIterator(this._db, fid, signer);
 
-    const revokeNextMessage = async (): HubAsyncResult<number | undefined> => {
-      const nextRecord = await ResultAsync.fromPromise(iterator.next(), () => undefined);
-      if (nextRecord.isErr()) {
-        return ok(undefined);
-      }
-
-      const [key] = nextRecord.value;
-      const length = (key as Buffer).length;
-      const type = (key as Buffer).readUint8(length - TSHASH_LENGTH - 1);
+    const revokeMessageByKey = async (key: Buffer): HubAsyncResult<number | undefined> => {
+      const length = key.length;
+      const type = key.readUint8(length - TSHASH_LENGTH - 1);
       const setPostfix = typeToSetPostfix(type);
-      const tsHash = Uint8Array.from((key as Buffer).subarray(length - TSHASH_LENGTH));
+      const tsHash = Uint8Array.from(key.subarray(length - TSHASH_LENGTH));
       const message = await ResultAsync.fromPromise(
         getMessage(this._db, fid, setPostfix, tsHash),
         (e) => e as HubError
@@ -241,20 +235,19 @@ class Engine {
       }
     };
 
-    let revokeResult = await revokeNextMessage();
-    while (revokeResult.isOk() && revokeResult.value !== undefined) {
-      revokedCount += 1;
-      revokeResult = await revokeNextMessage();
-    }
-
-    await iterator.end();
-
-    if (revokeResult.isErr()) {
-      log.error(
-        { errCode: revokeResult.error.errCode },
-        `error revoking messages from ${signerHex.value} and fid ${fid}: ${revokeResult.error.message}`
+    for await (const [key] of iterator) {
+      const revokeResult = await revokeMessageByKey(key as Buffer);
+      revokeResult.match(
+        () => {
+          revokedCount += 1;
+        },
+        (e) => {
+          log.error(
+            { errCode: e.errCode },
+            `error revoking message from signer ${signerHex.value} and fid ${fid}: ${e.message}`
+          );
+        }
       );
-      return err(revokeResult.error);
     }
 
     log.info(`revoked ${revokedCount} messages from ${signerHex.value} and fid ${fid}`);
