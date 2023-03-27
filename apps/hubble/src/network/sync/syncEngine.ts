@@ -452,13 +452,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     }
 
-    // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
-    // iterate through the node's children and fetch them in batches.
+    // If the other hub's node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise, iterate through
+    // the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
       if (ourNode && ourNode.numMessages > theirNode.numMessages) {
-        // If we have more messages than the other node, we're done. This might happen if the remote node is
+        // If we have more messages than the other hub, we're done. This might happen if the remote hub is
         // still syncing, or if they have deleted messages (because of pruning), in which case we should
-        // just wait, and our node will also prune the messages.
+        // just wait, and our hub will also prune the messages.
         log.info(
           {
             ourNum: ourNode.numMessages,
@@ -467,7 +467,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               theirNode.prefix.slice(10)
             ).toString('hex')}`,
           },
-          `Our node has more messages, skipping this node.`
+          `Local hub has the same or newer state than the remote hub, skipping sync.`
         );
       } else {
         const result = await rpcClient.getAllSyncIdsByPrefix(
