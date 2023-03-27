@@ -29,7 +29,7 @@ pnpm install @farcaster/hub-nodejs
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castsResult = await client.getCastsByFid({ fid: 2 });
 
