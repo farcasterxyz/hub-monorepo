@@ -98,7 +98,7 @@ All changes that involve features or bugfixes should be accompanied by tests, an
 
 ### 3.2 Writing Docs
 
-All changes should have supporting documentation that makes reviewing and understand the code easy. You should:
+All changes should have supporting documentation that makes reviewing and understanding the code easy. You should:
 
 - Update high-level changes in the [contract docs](docs/docs.md).
 - Always use TSDoc style comments for functions, variables, constants, events and params.
