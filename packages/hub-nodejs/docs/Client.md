@@ -18,11 +18,10 @@ getInsecureHubRpcClient returns a Hub RPC Client. Use getSSLHubRpcClient if the 
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
-  // To manually choose the authentication method, use these methods instead.
-  // const sslClient = getSSLHubRpcClient('127.0.0.1:2283');
-  // const insecureClient = getInsecureClient('127.0.0.1:2283');
+  // If the Hub does not use SSL, call the getInsecureHubRpcClient method instead
+  // const insecureClient = getInsecureHubRpcClient('https://testnet1.farcaster.xyz:2283');
 })();
 ```
 
@@ -34,9 +33,9 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 #### Parameters
 
-| Name      | Type     | Description                                         |
-| :-------- | :------- | :-------------------------------------------------- |
-| `address` | `string` | Address and RPC port string (e.g. `127.0.0.1:2283`) |
+| Name      | Type     | Description                                                              |
+| :-------- | :------- | :----------------------------------------------------------------------- |
+| `address` | `string` | Address and RPC port string (e.g. `https://testnet1.farcaster.xyz:2283`) |
 
 ### Authentication
 
@@ -113,7 +112,7 @@ Methods that return multiple values support pagination in requests with a `pageS
 import { getInsecureHubRpcClient, HubResult, MessagesResponse } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   let nextPageToken: Uint8Array | undefined = undefined;
   let isNextPage = true;
@@ -150,7 +149,7 @@ Returns an active signer message given an fid and the public key of the signer.
 import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const signerPubKeyHex = '5feb9e21f3df044197e634e3602a594a3423c71c6f208876074dc5a3e0d7b9ce';
 
@@ -190,7 +189,7 @@ Returns all active signers created by an fid in reverse chronological order.
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
 
@@ -225,7 +224,7 @@ Returns all active and inactive signers created by an fid in reverse chronologic
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
 
@@ -260,7 +259,7 @@ Returns a specific piece of metadata about the user.
 import { getInsecureHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const userDataResult = await client.getUserData({ fid: 2, userDataType: UserDataType.DISPLAY });
 
@@ -293,7 +292,7 @@ Returns all metadata about the user.
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const userDataResult = await client.getAllUserDataMessagesByFid({ fid: 2 });
 
@@ -332,7 +331,7 @@ Returns an active cast for a user.
 import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castHashHex = '460a87ace7014adefe4a2944fb62833b1bf2a6be';
   const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
@@ -368,7 +367,7 @@ Returns active casts for a user in reverse chronological order.
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castsResult = await client.getCastsByFid({ fid: 2 });
 
@@ -403,7 +402,7 @@ Returns all active casts that mention an fid in reverse chronological order.
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castsResult = await client.getCastsByMention({ fid: 2 });
 
@@ -438,7 +437,7 @@ Returns all active casts that are replies to a specific cast in reverse chronolo
 import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253';
   const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known
@@ -476,7 +475,7 @@ Returns all active and inactive casts for a user in reverse chronological order.
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castsResult = await client.getAllCastMessagesByFid({ fid: 2 });
   castsResult.map((casts) => console.log(casts.messages));
@@ -510,7 +509,7 @@ Returns an active reaction of a particular type made by a user to a cast.
 import { getInsecureHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
   const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
@@ -554,7 +553,7 @@ Returns all active reactions made by users to a cast.
 import { getInsecureHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
   const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
@@ -599,7 +598,7 @@ Returns all active reactions made by a user in reverse chronological order.
 import { getInsecureHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const reactionsResult = await client.getReactionsByFid({ fid: 2, reactionType: ReactionType.LIKE });
 
@@ -635,7 +634,7 @@ Returns all active and inactive reactions made by a user in reverse chronologica
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const reactionsResult = await client.getAllReactionMessagesByFid({ fid: 2 });
 
@@ -670,7 +669,7 @@ Returns an active verification for a specific Ethereum address made by a user.
 import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const addressHex = '0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5';
   const addressBytes = hexStringToBytes(addressHex)._unsafeUnwrap(); // Safety: addressHex is known and can't error
@@ -706,7 +705,7 @@ Returns all active verifications for Ethereum addresses made by a user in revers
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const verificationsResult = await client.getVerificationsByFid({ fid: 2 });
 
@@ -745,7 +744,7 @@ Returns all active and inactive verifications for Ethereum addresses made by a u
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const verificationsResult = await client.getAllVerificationMessagesByFid({ fid: 2 });
 
@@ -788,7 +787,7 @@ which helps with recovery when clients get disconnected temporarily.
 import { getInsecureHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const subscribeResult = await client.subscribe({
     eventTypes: [HubEventType.MERGE_MESSAGE],
@@ -829,7 +828,7 @@ Submits a new message to the Hub. A Hub can choose to require basic authenticati
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const message; // Any valid message constructed with a Builder
 
@@ -866,7 +865,7 @@ Returns the on-chain event most recently associated with changing an fid's owner
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const idrResult = await client.getIdRegistryEvent({ fid: 2 });
 
@@ -898,7 +897,7 @@ Returns the on-chain event most recently associated with changing an fname's own
 import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
-  const client = getInsecureHubRpcClient('127.0.0.1:2283');
+  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const fnameBytes = new TextEncoder().encode('v');
   const nrResult = await client.getNameRegistryEvent({ name: fnameBytes });
