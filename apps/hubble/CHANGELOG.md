@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.0.18
+
+### Patch Changes
+
+- e5cb327: Remove getHubRpcClient, use getSSLRpcClient() or getInsecureRpcClient()
+- misc: Numerous perf and bug fixes for testnet release
+- Updated dependencies [e5cb327]
+  - @farcaster/protobufs@0.1.11
+  - @farcaster/utils@0.4.0
+
 ## 1.0.17
 
 ### Patch Changes

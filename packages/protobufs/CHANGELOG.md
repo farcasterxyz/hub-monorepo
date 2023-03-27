@@ -1,5 +1,11 @@
 # @farcaster/protobufs
 
+## 0.1.11
+
+### Patch Changes
+
+- e5cb327: Remove getHubRpcClient, use getSSLRpcClient() or getInsecureRpcClient()
+
 ## 0.1.10
 
 ### Patch Changes

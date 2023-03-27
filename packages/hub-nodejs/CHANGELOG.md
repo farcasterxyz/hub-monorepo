@@ -1,5 +1,17 @@
 # @farcaster/hub-nodejs
 
+## 0.6.0
+
+### Minor Changes
+
+- e5cb327: Remove getHubRpcClient, use getSSLRpcClient() or getInsecureRpcClient()
+
+### Patch Changes
+
+- Updated dependencies [e5cb327]
+  - @farcaster/protobufs@0.1.11
+  - @farcaster/utils@0.4.0
+
 ## 0.5.1
 
 ### Patch Changes
