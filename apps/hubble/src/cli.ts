@@ -251,6 +251,7 @@ app
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
+      rpcServerHost: hubAddressInfo.value.address,
       announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
       announceServerName: cliOptions.announceServerName ?? hubConfig.announceServerName,
       gossipPort: hubAddressInfo.value.port,
