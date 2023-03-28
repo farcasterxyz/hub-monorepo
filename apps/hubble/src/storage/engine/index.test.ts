@@ -509,6 +509,35 @@ describe('with listeners and workers', () => {
       await sleep(200); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([fnameAdd]);
     });
+
+    test('revokes UserDataAdd when fid is transferred', async () => {
+      const fname = Factories.Fname.build();
+      const nameEvent = Factories.NameRegistryEvent.build({
+        fname,
+        to: custodyEvent.to,
+        type: protobufs.NameRegistryEventType.TRANSFER,
+      });
+      await expect(liveEngine.mergeNameRegistryEvent(nameEvent)).resolves.toBeInstanceOf(Ok);
+      const fnameAdd = await Factories.UserDataAddMessage.create(
+        {
+          data: {
+            userDataBody: { type: protobufs.UserDataType.FNAME, value: bytesToUtf8String(fname)._unsafeUnwrap() },
+            fid,
+          },
+        },
+        { transient: { signer } }
+      );
+      await expect(liveEngine.mergeMessage(fnameAdd)).resolves.toBeInstanceOf(Ok);
+      const custodyTransfer = Factories.IdRegistryEvent.build({
+        fid,
+        from: custodyEvent.to,
+        blockNumber: custodyEvent.blockNumber + 1,
+      });
+      await expect(liveEngine.mergeIdRegistryEvent(custodyTransfer)).resolves.toBeInstanceOf(Ok);
+      expect(revokedMessages).toEqual([]);
+      await sleep(200); // Wait for engine to revoke messages
+      expect(revokedMessages).toContainEqual(fnameAdd);
+    });
   });
 });
 

@@ -716,6 +716,7 @@ class Engine {
     const { idRegistryEvent } = event.mergeIdRegistryEventBody;
     const fromAddress = idRegistryEvent.from;
     if (fromAddress && fromAddress.length > 0) {
+      // Revoke signer messages
       const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
         fid: idRegistryEvent.fid,
         signer: fromAddress,
@@ -725,6 +726,31 @@ class Engine {
         log.error(
           { errCode: enqueueRevoke.error.errCode },
           `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`
+        );
+      }
+
+      // Revoke UserDataAdd fname messages
+      const fnameAdd = await ResultAsync.fromPromise(
+        this._userDataStore.getUserDataAdd(idRegistryEvent.fid, protobufs.UserDataType.FNAME),
+        () => undefined
+      );
+      if (fnameAdd.isOk()) {
+        const revokeResult = await this._userDataStore.revoke(fnameAdd.value);
+        const fnameAddHex = bytesToHexString(fnameAdd.value.hash);
+        revokeResult.match(
+          () =>
+            log.info(
+              `revoked message ${fnameAddHex._unsafeUnwrap()} for fid ${
+                idRegistryEvent.fid
+              } due to IdRegistryEvent transfer`
+            ),
+          (e) =>
+            log.error(
+              { errCode: e.errCode },
+              `failed to revoke message ${fnameAddHex._unsafeUnwrap()} for fid ${
+                idRegistryEvent.fid
+              } due to IdRegistryEvent transfer: ${e.message}`
+            )
         );
       }
     }
