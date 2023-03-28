@@ -716,7 +716,7 @@ class Engine {
     const { idRegistryEvent } = event.mergeIdRegistryEventBody;
     const fromAddress = idRegistryEvent.from;
     if (fromAddress && fromAddress.length > 0) {
-      // Revoke SignerAdd messages
+      // Revoke signer messages
       const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
         fid: idRegistryEvent.fid,
         signer: fromAddress,
