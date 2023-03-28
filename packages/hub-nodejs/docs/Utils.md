@@ -109,27 +109,27 @@ Error handling in @farcaster/hub-nodejs is monadic and functions do not throw ex
 
 ### Hub Error
 
-TODO
+HubErrorCode defines all the types of errors that can be raised in the Hub.
 
 ### Hub Error Codes
 
-| Name                           | Description |
-| ------------------------------ | ----------- |
-| unauthenticated                | TODO        |
-| unauthorized                   | TODO        |
-| bad_request                    | TODO        |
-| bad_request.parse_failure      | TODO        |
-| bad_request.invalid_param      | TODO        |
-| bad_request.validation_failure | TODO        |
-| bad_request.duplicate          | TODO        |
-| bad_request.conflict           | TODO        |
-| not_found                      | TODO        |
-| not_implemented                | TODO        |
-| not_implemented.deprecated     | TODO        |
-| unavailable                    | TODO        |
-| unavailable.network_failure    | TODO        |
-| unavailable.storage_failure    | TODO        |
-| unknown                        | TODO        |
+| Name                           | Description                                                                 |
+| :----------------------------- | :-------------------------------------------------------------------------- |
+| unauthenticated                | The request lacks valid authentication credentials. Retry with credentials. |
+| unauthorized                   | The authenticated request lacks the authority to perform this action.       |
+| bad_request                    | The request cannot be completed as constructed. Do not retry.               |
+| bad_request.parse_failure      | The request failed to parse. Do not retry.                                  |
+| bad_request.invalid_param      | The request contains an invalid parameter. Do not retry.                    |
+| bad_request.validation_failure | The request failed validation. Do not retry.                                |
+| bad_request.duplicate          | The request contains a duplicate entry. Do not retry.                       |
+| bad_request.conflict           | The request conflicts with an existing resource. Do not retry.              |
+| not_found                      | The requested resource could not be found.                                  |
+| not_implemented                | The request cannot be completed because the operation is not executable.    |
+| not_implemented.deprecated     | The requested operation is deprecated.                                      |
+| unavailable                    | The request cannot be completed, and it may or may not be safe to retry.    |
+| unavailable.network_failure    | The request failed due to a network failure, and it may be safe to retry.   |
+| unavailable.storage_failure    | The request failed due to a storage failure, and it may be safe to retry.   |
+| unknown                        | An unknown error was encountered.                                           |
 
 ## Time
 
