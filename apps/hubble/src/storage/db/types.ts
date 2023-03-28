@@ -51,6 +51,8 @@ export enum RootPrefix {
   HubCleanShutdown = 14,
   /* Event log */
   HubEvents = 15,
+  /* The network ID that the rocksDB was created with */
+  Network = 16,
 }
 
 /**
