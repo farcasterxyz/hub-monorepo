@@ -1,20 +1,34 @@
 # Hubble
 
-**Hubble is a Typescript implementation of a Farcaster Hub**
-
-Users can upload Farcaster Messages to Hubble, which stores and replicates them to other Hubs on the network. Hubble follows the Farcaster [protocol specification](https://github.com/farcasterxyz/protocol).
+Hubble is a Typescript implementation of a Farcaster Hub. Hubs store messages uploaded by users and replicate them to other Hubs according to the [protocol specification](https://github.com/farcasterxyz/protocol).
 
 ## Getting Started
 
-### Starting Hubble locally
+### Starting Hubble
 
 You'll need to [install dependencies](../../CONTRIBUTING.md#2-setting-up-your-development-environment) and have the RPC URL of an Ethereum Goerli node, which you can get [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/). Then:
 
-1. Navigate to this folder from the root
-2. `yarn identity create` to create a network identity for your Hub
-3. `yarn start -e <eth-rpc-url>` to boot up the Hub, where `eth-rpc-url` points to the Goerli node's RPC
+1. Navigate to this folder (`/apps/hubble`) from the root
+2. Run `yarn identity create` to generate an identity key pair.
 
-You should see messages indicating that the Hub is syncing with the blockchain, but it won't sync user messages yet. For that you'll have to restart the Hub with the address of at least one known peer using: `yarn start -e <node url> -b <peer address>`. When Hubs are live, the Farcaster team will update this to include the IP address of a boostrap hub.
+#### Connecting to Devnet
+
+Hubble can be started in devnet mode which is used for local testing. Identity state will be read from on-chain contracts but
+it will not connect to peers. To connect to devnet:
+
+1. Run `yarn start -e <eth-rpc-url> -n 3` to boot up the Hub, where `eth-rpc-url` points to the Goerli node's RPC
+
+#### Connecting to Testnet
+
+Hubble can be started in testnet mode where it peers with other hubs. The Farcaster team runs a set of hub that publish
+messages every 10 seconds to make testing easy. To connect to testnet:
+
+1. Run `yarn start -e <eth-rpc-url> -b /dns/testnet1.farcaster.xyz/tcp/2282 -n 2`
+2. Pass `--reset-db` flag on first run, if you've previously connected to devnet or mainnet
+
+#### Connecting to Mainnet
+
+Hubble mainnet is not yet available.
 
 ### Deploying Hubble in the cloud
 
@@ -23,16 +37,14 @@ Hubble can be run on cloud servers with 2 vCPUs, 8 GiB RAM and 15 GiB of SSD sto
 - [AWS EC2](https://warpcast.notion.site/Set-up-Hubble-on-EC2-Public-23b4e81d8f604ca9bf8b68f4bb086042)
 - GCP (planned)
 - Azure (planned)
-- Digital Ocean (planned)
+- [Digital Ocean](https://warpcast.notion.site/Set-up-Hubble-on-DigitalOcean-Public-e38173c487874c91828665e73eac94c1)
 
 ### Interacting with Hubble
 
-Hubble exposes [gRPC](https://grpc.io/) API's and uses [Protobufs](https://github.com/protocolbuffers/protobuf) for data serialization. SDK's are available in multiple languages to interact with Hubble API's:
+Hubble exposes [gRPC](https://grpc.io/) API's and uses [Protobufs](https://github.com/protocolbuffers/protobuf) for data serialization. SDK's are available to interact with Hubble API's:
 
 - [Javascript / Typescript](../../packages/hub-nodejs/)
 - Golang (planned)
-
-If an SDK is not available in your language, you can use the definitions in the [protobufs package](../../packages/protobufs/) to auto-generate bindings.
 
 ## Architecture
 
