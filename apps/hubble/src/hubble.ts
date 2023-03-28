@@ -78,8 +78,11 @@ export interface HubOptions {
   /** A list of PeerId strings to allow connections with */
   allowedPeers?: string[];
 
-  /** IP address string in MultiAddr format to bind to */
+  /** IP address string in MultiAddr format to bind the gossip node to */
   ipMultiAddr?: string;
+
+  /** IP address string to bind the RPC server to */
+  rpcServerHost?: string;
 
   /** External IP address to announce to peers. If not provided, it'll fetch the IP from an external service */
   announceIp?: string;
@@ -321,7 +324,7 @@ export class Hub implements HubInterface {
     });
 
     // Start the RPC server
-    await this.rpcServer.start(this.options.rpcPort ? this.options.rpcPort : 0);
+    await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ? this.options.rpcPort : 0);
     if (this.options.adminServerEnabled) {
       await this.adminServer.start(this.options.adminServerHost ?? '127.0.0.1');
     }

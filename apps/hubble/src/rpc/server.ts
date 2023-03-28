@@ -137,6 +137,7 @@ export default class Server {
   private gossipNode: GossipNode | undefined;
 
   private grpcServer: GrpcServer;
+  private listenIp: string;
   private port: number;
 
   private rpcAuthUser: string | undefined;
@@ -158,6 +159,8 @@ export default class Server {
     this.gossipNode = gossipNode;
 
     this.grpcServer = getServer();
+
+    this.listenIp = '';
     this.port = 0;
 
     const [rpcAuthUser, rpcAuthPass] = rpcAuth?.split(':') ?? [undefined, undefined];
@@ -182,14 +185,16 @@ export default class Server {
     });
   }
 
-  async start(port = 0): Promise<number> {
+  async start(ip = '0.0.0.0', port = 0): Promise<number> {
     return new Promise((resolve, reject) => {
-      this.grpcServer.bindAsync(`0.0.0.0:${port}`, ServerCredentials.createInsecure(), (err, port) => {
+      this.grpcServer.bindAsync(`${ip}:${port}`, ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
           logger.error({ component: 'gRPC Server', err }, 'Failed to start gRPC Server');
           reject(err);
         } else {
           this.grpcServer.start();
+
+          this.listenIp = ip;
           this.port = port;
 
           logger.info({ component: 'gRPC Server', address: this.address }, 'Starting gRPC Server');
@@ -220,7 +225,7 @@ export default class Server {
   }
 
   get address() {
-    const addr = addressInfoFromParts('0.0.0.0', this.port);
+    const addr = addressInfoFromParts(this.listenIp, this.port);
     return addr;
   }
 

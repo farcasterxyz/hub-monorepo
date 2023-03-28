@@ -24,7 +24,7 @@ export const Config = {
   //   '12D3KooWMDdQaMWCkQ8Gf3C6zdJdMEfFs8R2pw8YQw2HgoY8qhzA', // @adityapk00
   // ],
   /** The IP address libp2p should listen on. */
-  ip: '127.0.0.1',
+  ip: '0.0.0.0',
   /** The IP address that libp2p should announce to peers */
   // announceIp: '',
   /** The server name to announce to peers */
