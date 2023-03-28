@@ -301,6 +301,20 @@ export class Hub implements HubInterface {
       }
     }
 
+    // Get the Network ID from the DB
+    const dbNetworkResult = await this.getDbNetwork();
+    if (dbNetworkResult.isOk() && dbNetworkResult.value && dbNetworkResult.value !== this.options.network) {
+      throw new HubError(
+        'unavailable',
+        `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. ` +
+          `Please reset the DB with --db-reset if this is intentional.`
+      );
+    }
+
+    // Set the network in the DB
+    await this.setDbNetwork(this.options.network);
+    log.info(`starting hub with network: ${this.options.network}`);
+
     await this.engine.start();
 
     // Start the ETH registry provider first
@@ -718,6 +732,37 @@ export class Hub implements HubInterface {
       this.rocksDB.get(Buffer.from([RootPrefix.HubCleanShutdown])),
       (e) => e as HubError
     ).map((value) => value?.[0] === 1);
+  }
+
+  async getDbNetwork(): HubAsyncResult<FarcasterNetwork | undefined> {
+    const dbResult = await ResultAsync.fromPromise(
+      this.rocksDB.get(Buffer.from([RootPrefix.Network])),
+      (e) => e as HubError
+    );
+    if (dbResult.isErr()) {
+      return err(dbResult.error);
+    }
+
+    // parse the buffer as an int
+    const networkNumber = Result.fromThrowable(
+      () => dbResult.value.readUInt32BE(0),
+      (e) => e as HubError
+    )();
+    if (networkNumber.isErr()) {
+      return err(networkNumber.error);
+    }
+
+    // get the enum value from the number
+    return networkNumber.map((n) => n as FarcasterNetwork);
+  }
+
+  async setDbNetwork(network: FarcasterNetwork): HubAsyncResult<void> {
+    const txn = this.rocksDB.transaction();
+    const value = Buffer.alloc(4);
+    value.writeUInt32BE(network, 0);
+    txn.put(Buffer.from([RootPrefix.Network]), value);
+
+    return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */
