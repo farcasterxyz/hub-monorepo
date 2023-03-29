@@ -10,7 +10,8 @@ const log = logger.child({
 
 type SchedulerStatus = 'started' | 'stopped';
 
-const DEFAULT_PERIODIC_JOB_CRON = '*/2 * * * *'; // Every 2 minutes
+// Every 2 minutes, at 00:45 seconds, to avoid clashing with the prune job
+const DEFAULT_PERIODIC_JOB_CRON = '45 */2 * * * *';
 
 export class PeriodicSyncJobScheduler {
   private _hub: Hub;
