@@ -58,7 +58,7 @@ app
   .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 2282)')
   .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 2283)')
   .option(
-    '--rpc-auth <username:password>',
+    '--rpc-auth <username:password,...>',
     'Enable Auth for RPC submit methods with the username and password. (default: disabled)'
   )
   .option(
