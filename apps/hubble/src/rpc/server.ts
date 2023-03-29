@@ -56,13 +56,9 @@ export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): H
 };
 
 // Check if the user is authenticated via the metadata
-export const authenticateUser = async (
-  metadata: Metadata,
-  rpcAuthUser?: string,
-  rpcAuthPass?: string
-): HubAsyncResult<boolean> => {
+export const authenticateUser = async (metadata: Metadata, rpcUsers: RPCUser[]): HubAsyncResult<boolean> => {
   // If there is no auth user/pass, we don't need to authenticate
-  if (!rpcAuthUser || !rpcAuthPass) {
+  if (rpcUsers.length === 0) {
     return ok(true);
   }
 
@@ -78,6 +74,15 @@ export const authenticateUser = async (
     if (!username || !password) {
       return err(new HubError('unauthenticated', `Invalid username: ${username}`));
     }
+
+    // See if username and password match one of rpcUsers
+    const rpcUser = rpcUsers.find((u) => u.username === username);
+    if (!rpcUser) {
+      return err(new HubError('unauthenticated', `Invalid username: ${username}`));
+    }
+
+    const rpcAuthUser = rpcUser.username;
+    const rpcAuthPass = rpcUser.password;
 
     if (username === rpcAuthUser && password === rpcAuthPass) {
       return ok(true);
@@ -130,6 +135,36 @@ const messagesPageToResponse = ({ messages, nextPageToken }: MessagesPage<Messag
   });
 };
 
+export class RPCUser {
+  username: string;
+  password: string;
+
+  constructor(username: string, password: string) {
+    this.username = username;
+    this.password = password;
+  }
+}
+
+export const getRPCUsersFromAuthString = (rpcAuth?: string): RPCUser[] => {
+  if (!rpcAuth) {
+    return [];
+  }
+
+  // Split up the auth string by commas
+  const rpcAuthUsers = rpcAuth?.split(',') ?? [];
+
+  // Create an array of RPCUser objects
+  const rpcUsers: RPCUser[] = [];
+  rpcAuthUsers.forEach((rpcAuthUser) => {
+    const [username, password] = rpcAuthUser.split(':');
+    if (username && password) {
+      rpcUsers.push(new RPCUser(username, password));
+    }
+  });
+
+  return rpcUsers;
+};
+
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
@@ -140,8 +175,7 @@ export default class Server {
   private listenIp: string;
   private port: number;
 
-  private rpcAuthUser: string | undefined;
-  private rpcAuthPass: string | undefined;
+  private rpcUsers: RPCUser[] = [];
 
   private submitMessageRateLimiter: RateLimiterMemory;
 
@@ -163,12 +197,10 @@ export default class Server {
     this.listenIp = '';
     this.port = 0;
 
-    const [rpcAuthUser, rpcAuthPass] = rpcAuth?.split(':') ?? [undefined, undefined];
-    if (rpcAuthUser && rpcAuthPass) {
-      this.rpcAuthUser = rpcAuthUser;
-      this.rpcAuthPass = rpcAuthPass;
+    this.rpcUsers = getRPCUsersFromAuthString(rpcAuth);
 
-      log.info({ username: this.rpcAuthUser }, 'RPC auth enabled');
+    if (this.rpcUsers.length > 0) {
+      log.info({ num_users: this.rpcUsers.length }, 'RPC auth enabled');
     }
 
     this.grpcServer.addService(HubServiceService, this.getImpl());
@@ -230,7 +262,7 @@ export default class Server {
   }
 
   get auth() {
-    return { user: this.rpcAuthUser, password: this.rpcAuthPass };
+    return this.rpcUsers;
   }
 
   get listenPort() {
@@ -367,7 +399,7 @@ export default class Server {
         }
 
         // Authentication
-        const authResult = await authenticateUser(call.metadata, this.rpcAuthUser, this.rpcAuthPass);
+        const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitMessage failed');
           callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));

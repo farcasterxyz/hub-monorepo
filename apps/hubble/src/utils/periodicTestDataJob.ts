@@ -86,8 +86,11 @@ export class PeriodicTestDataJobScheduler {
       );
       const signerAdd = signerAddResult._unsafeUnwrap();
 
-      const { user, password } = this._server.auth;
-      const result = await client.submitMessage(signerAdd, getAuthMetadata(user ?? '', password ?? ''));
+      const rpcUsers = this._server.auth;
+      const user = rpcUsers[0]?.username ?? '';
+      const password = rpcUsers[0]?.password ?? '';
+
+      const result = await client.submitMessage(signerAdd, getAuthMetadata(user, password));
       if (result.isErr()) {
         log.error({ error: result.error, dataOptions }, 'TestData: failed to submit SignerAdd message');
       }
@@ -108,6 +111,10 @@ export class PeriodicTestDataJobScheduler {
     const farcasterTimestamp = toFarcasterTime(Date.now())._unsafeUnwrap();
     const targetCastIds = [];
 
+    const rpcUsers = this._server.auth;
+    const rpcUsername = rpcUsers[0]?.username ?? '';
+    const rpcPassword = rpcUsers[0]?.password ?? '';
+
     // Insert some casts
     for (const testUser of this._testDataUsers) {
       const dataOptions = {
@@ -124,8 +131,7 @@ export class PeriodicTestDataJobScheduler {
           signer
         );
 
-        const { user, password } = this._server.auth;
-        const result = await client.submitMessage(castAdd._unsafeUnwrap(), getAuthMetadata(user ?? '', password ?? ''));
+        const result = await client.submitMessage(castAdd._unsafeUnwrap(), getAuthMetadata(rpcUsername, rpcPassword));
         if (result.isErr()) {
           log.error({ error: result.error, dataOptions }, 'TestData: failed to submit CastAdd message');
         }
@@ -148,10 +154,9 @@ export class PeriodicTestDataJobScheduler {
           if (targetCastId.fid !== testUser.fid) {
             const reactionAdd = await makeReactionAdd({ type: ReactionType.LIKE, targetCastId }, dataOptions, signer);
 
-            const { user, password } = this._server.auth;
             const result = await client.submitMessage(
               reactionAdd._unsafeUnwrap(),
-              getAuthMetadata(user ?? '', password ?? '')
+              getAuthMetadata(rpcUsername, rpcPassword)
             );
             if (result.isErr()) {
               log.error({ error: result.error, dataOptions }, 'TestData: failed to submit ReactionAdd message');

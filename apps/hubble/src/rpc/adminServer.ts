@@ -11,7 +11,7 @@ import * as net from 'net';
 import { err, ok } from 'neverthrow';
 import { HubInterface } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
-import { authenticateUser, toServiceError } from '~/rpc/server';
+import { authenticateUser, getRPCUsersFromAuthString, RPCUser, toServiceError } from '~/rpc/server';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
@@ -26,8 +26,7 @@ export default class AdminServer {
   private syncEngine: SyncEngine;
   private grpcServer: GrpcServer;
 
-  private rpcAuthUser: string | undefined;
-  private rpcAuthPass: string | undefined;
+  private rpcUsers: RPCUser[] = [];
 
   constructor(hub: HubInterface, db: RocksDB, engine: Engine, syncEngine: SyncEngine, rpcAuth?: string) {
     this.hub = hub;
@@ -38,12 +37,10 @@ export default class AdminServer {
     this.grpcServer = getServer();
     this.grpcServer.addService(AdminServiceService, this.getImpl());
 
-    const [rpcAuthUser, rpcAuthPass] = rpcAuth?.split(':') ?? [undefined, undefined];
-    if (rpcAuthUser && rpcAuthPass) {
-      this.rpcAuthUser = rpcAuthUser;
-      this.rpcAuthPass = rpcAuthPass;
+    this.rpcUsers = getRPCUsersFromAuthString(rpcAuth);
 
-      log.info({ username: this.rpcAuthUser }, 'Admin RPC auth enabled');
+    if (this.rpcUsers.length > 0) {
+      log.info({ num_users: this.rpcUsers.length }, 'RPC auth enabled');
     }
   }
 
@@ -90,7 +87,7 @@ export default class AdminServer {
     return {
       rebuildSyncTrie: (call, callback) => {
         (async () => {
-          const authResult = await authenticateUser(call.metadata, this.rpcAuthUser, this.rpcAuthPass);
+          const authResult = await authenticateUser(call.metadata, this.rpcUsers);
           if (authResult.isErr()) {
             logger.warn({ errMsg: authResult.error.message }, 'rebuildSyncTrie failed');
             callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
@@ -104,7 +101,7 @@ export default class AdminServer {
 
       deleteAllMessagesFromDb: (call, callback) => {
         (async () => {
-          const authResult = await authenticateUser(call.metadata, this.rpcAuthUser, this.rpcAuthPass);
+          const authResult = await authenticateUser(call.metadata, this.rpcUsers);
           if (authResult.isErr()) {
             logger.warn({ errMsg: authResult.error.message }, 'deleteAllMessagesFromDb failed');
             callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
@@ -147,7 +144,7 @@ export default class AdminServer {
       },
 
       submitIdRegistryEvent: async (call, callback) => {
-        const authResult = await authenticateUser(call.metadata, this.rpcAuthUser, this.rpcAuthPass);
+        const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitIdRegistryEvent failed');
           callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
@@ -167,7 +164,7 @@ export default class AdminServer {
       },
 
       submitNameRegistryEvent: async (call, callback) => {
-        const authResult = await authenticateUser(call.metadata, this.rpcAuthUser, this.rpcAuthPass);
+        const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitNameRegistryEvent failed');
           callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
