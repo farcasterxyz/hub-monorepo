@@ -5,7 +5,7 @@ import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp
 import { Command } from 'commander';
 import fs, { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
-import { ResultAsync } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
@@ -273,7 +273,18 @@ app
       testUsers,
     };
 
-    const hub = new Hub(options);
+    const hubResult = Result.fromThrowable(
+      () => new Hub(options),
+      (e) => new Error(`Failed to create hub: ${e}`)
+    )();
+    if (hubResult.isErr()) {
+      logger.fatal(hubResult.error);
+      logger.fatal({ reason: 'Hub Creation failed' }, 'shutting down hub');
+
+      process.exit(1);
+    }
+
+    const hub = hubResult.value;
     const startResult = await ResultAsync.fromPromise(hub.start(), (e) => new Error(`Failed to start hub: ${e}`));
     if (startResult.isErr()) {
       logger.fatal(startResult.error);

@@ -162,6 +162,13 @@ export const getRPCUsersFromAuthString = (rpcAuth?: string): RPCUser[] => {
     }
   });
 
+  // Check for duplicate usernames
+  const usernames = rpcUsers.map((u) => u.username);
+  const uniqueUsernames = [...new Set(usernames)];
+  if (usernames.length !== uniqueUsernames.length) {
+    throw new Error('Duplicate usernames in rpcAuth');
+  }
+
   return rpcUsers;
 };
 
