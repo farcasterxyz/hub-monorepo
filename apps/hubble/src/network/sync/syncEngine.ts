@@ -1,12 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import {
-  bytesToUtf8String,
-  getFarcasterTime,
-  HubAsyncResult,
-  HubError,
-  HubResult,
-  HubRpcClient,
-} from '@farcaster/utils';
+import { getFarcasterTime, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { err, ok } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -452,35 +445,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     }
 
-    // If the other hub's node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise, iterate through
-    // the node's children and fetch them in batches.
-    if (theirNode.numMessages <= HASHES_PER_FETCH) {
-      if (ourNode && ourNode.numMessages > theirNode.numMessages) {
-        // If we have more messages than the other hub, we're done. This might happen if the remote hub is
-        // still syncing, or if they have deleted messages (because of pruning), in which case we should
-        // just wait, and our hub will also prune the messages.
-        log.info(
-          {
-            ourNum: ourNode.numMessages,
-            theirNum: theirNode.numMessages,
-            prefix: `${bytesToUtf8String(theirNode.prefix.slice(0, 10))._unsafeUnwrap()}/${Buffer.from(
-              theirNode.prefix.slice(10)
-            ).toString('hex')}`,
-          },
-          `Local hub has the same or newer state than the remote hub, skipping sync.`
-        );
-      } else {
-        const result = await rpcClient.getAllSyncIdsByPrefix(
-          protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix }),
-          new protobufs.Metadata(),
-          rpcDeadline()
-        );
+    let fetchMessagesThreshold = HASHES_PER_FETCH;
+    // If we have more messages but the hashes still mismatch, we need to find the exact message that's missing.
+    if (ourNode && ourNode.numMessages >= theirNode.numMessages) {
+      fetchMessagesThreshold = 1;
+    }
 
-        if (result.isErr()) {
-          log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
-        } else {
-          await onMissingHashes(result.value.syncIds);
-        }
+    // If the other hub's node has fewer than the fetchMessagesThreshold, just fetch them all in go, otherwise, iterate through
+    // the node's children and fetch them in batches.
+    if (theirNode.numMessages <= fetchMessagesThreshold) {
+      const result = await rpcClient.getAllSyncIdsByPrefix(
+        protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix }),
+        new protobufs.Metadata(),
+        rpcDeadline()
+      );
+
+      if (result.isErr()) {
+        log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+      } else {
+        await onMissingHashes(result.value.syncIds);
       }
     } else if (theirNode.children) {
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
@@ -489,6 +472,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes);
         }
       }
+    } else {
+      log.error(
+        { theirNode, ourNode },
+        `Their node has no children, but has more than ${fetchMessagesThreshold} messages`
+      );
     }
   }
 
