@@ -46,19 +46,25 @@ describe('auth tests', () => {
 
     // No password
     const result = await authClient.submitMessage(signerAdd);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('unauthorized', 'User is not authenticated'));
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError('unauthorized', 'gRPC authentication failed: Authorization header is empty')
+    );
 
     // Wrong password
     const metadata = new protobufs.Metadata();
     metadata.set('authorization', `Basic ${Buffer.from(`admin:wrongpassword`).toString('base64')}`);
     const result2 = await authClient.submitMessage(signerAdd, metadata);
-    expect(result2._unsafeUnwrapErr()).toEqual(new HubError('unauthorized', 'User is not authenticated'));
+    expect(result2._unsafeUnwrapErr()).toEqual(
+      new HubError('unauthorized', 'gRPC authentication failed: Invalid password for user: admin')
+    );
 
     // Wrong username
     const metadata2 = new protobufs.Metadata();
     metadata2.set('authorization', `Basic ${Buffer.from(`wronguser:password`).toString('base64')}`);
     const result3 = await authClient.submitMessage(signerAdd, metadata2);
-    expect(result3._unsafeUnwrapErr()).toEqual(new HubError('unauthorized', 'User is not authenticated'));
+    expect(result3._unsafeUnwrapErr()).toEqual(
+      new HubError('unauthorized', 'gRPC authentication failed: Invalid username: wronguser')
+    );
 
     // Right password
     const metadata3 = new protobufs.Metadata();
@@ -83,7 +89,9 @@ describe('auth tests', () => {
 
     // Without auth fails
     const result1 = await authClient.submitMessage(signerAdd);
-    expect(result1._unsafeUnwrapErr()).toEqual(new HubError('unauthorized', 'User is not authenticated'));
+    expect(result1._unsafeUnwrapErr()).toEqual(
+      new HubError('unauthorized', 'gRPC authentication failed: Authorization header is empty')
+    );
 
     // Works with auth
     const metadata = new protobufs.Metadata();
