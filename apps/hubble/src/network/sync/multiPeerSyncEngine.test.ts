@@ -335,6 +335,100 @@ describe('Multi peer sync engine', () => {
     await engine2.stop();
   });
 
+  test('syncEngine syncs with same numMessages but different hashes', async () => {
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeMessage(signerAdd);
+
+    const engine2 = new Engine(testDb2, network);
+    const syncEngine2 = new SyncEngine(engine2, testDb2);
+
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine2.mergeMessage(signerAdd);
+
+    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+    expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+    // Add two different messages to engine1 and engine2
+    await addMessagesWithTimestamps(engine1, [30662167]);
+    await addMessagesWithTimestamps(engine2, [30662169]);
+
+    await sleepWhile(async () => (await syncEngine1.trie.items()) !== 2, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 2, 1000);
+
+    // Do a sync
+    await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 3, 1000);
+
+    expect(await syncEngine2.trie.items()).toEqual(3);
+
+    // Do a sync the other way
+    {
+      const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
+      const port2 = await server2.start();
+      const clientForServer2 = getInsecureHubRpcClient(`127.0.0.1:${port2}`);
+
+      await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
+      await sleepWhile(async () => (await syncEngine1.trie.items()) !== 3, 1000);
+
+      // Now both engines should have the same number of messages and the same root hash
+      expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+      clientForServer2.$.close();
+      await server2.stop();
+    }
+
+    await syncEngine2.stop();
+    await engine2.stop();
+  });
+
+  test('syncEngine syncs with more numMessages and different hashes', async () => {
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeMessage(signerAdd);
+
+    const engine2 = new Engine(testDb2, network);
+    const syncEngine2 = new SyncEngine(engine2, testDb2);
+
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine2.mergeMessage(signerAdd);
+
+    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+    expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+    // Add two different messages to engine1 and engine2
+    await addMessagesWithTimestamps(engine1, [30662167, 30662168]);
+    await addMessagesWithTimestamps(engine2, [30662169]);
+
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
+
+    // Do a sync
+    await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
+
+    expect(await syncEngine2.trie.items()).toEqual(4);
+
+    // Do a sync the other way
+    {
+      const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
+      const port2 = await server2.start();
+      const clientForServer2 = getInsecureHubRpcClient(`127.0.0.1:${port2}`);
+
+      await syncEngine1.performSync((await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+
+      // Now both engines should have the same number of messages and the same root hash
+      expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+      clientForServer2.$.close();
+      await server2.stop();
+    }
+
+    await syncEngine2.stop();
+    await engine2.stop();
+  });
+
   xtest(
     'loads of messages',
     async () => {
