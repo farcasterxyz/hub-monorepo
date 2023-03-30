@@ -77,7 +77,7 @@ describe('auth tests', () => {
     expect(result5.isOk()).toBeTruthy();
 
     await authServer.stop();
-    authClient.$.close();
+    authClient.close();
   });
 
   test('all submit methods require auth', async () => {
@@ -101,7 +101,7 @@ describe('auth tests', () => {
     expect(result2.isOk()).toBeTruthy();
 
     await authServer.stop();
-    authClient.$.close();
+    authClient.close();
   });
 
   test('test rate limiting', async () => {

@@ -251,7 +251,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     } finally {
       const closeResult = Result.fromThrowable(
-        () => rpcClient.$.close(),
+        () => rpcClient.close(),
         (e) => e as Error
       )();
       if (closeResult.isErr()) {
