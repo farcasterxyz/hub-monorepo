@@ -41,6 +41,8 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
 import { RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
 
+export type RpcUsers = Map<string, string[]>;
+
 const log = logger.child({ component: 'rpcServer' });
 
 export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
@@ -56,9 +58,9 @@ export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): H
 };
 
 // Check if the user is authenticated via the metadata
-export const authenticateUser = async (metadata: Metadata, rpcUsers: RPCUser[]): HubAsyncResult<boolean> => {
+export const authenticateUser = async (metadata: Metadata, rpcUsers: RpcUsers): HubAsyncResult<boolean> => {
   // If there is no auth user/pass, we don't need to authenticate
-  if (rpcUsers.length === 0) {
+  if (rpcUsers.size === 0) {
     return ok(true);
   }
 
@@ -76,19 +78,16 @@ export const authenticateUser = async (metadata: Metadata, rpcUsers: RPCUser[]):
     }
 
     // See if username and password match one of rpcUsers
-    const rpcUser = rpcUsers.find((u) => u.username === username);
-    if (!rpcUser) {
+    const allowedPasswords = rpcUsers.get(username);
+    if (!allowedPasswords) {
       return err(new HubError('unauthenticated', `Invalid username: ${username}`));
     }
 
-    const rpcAuthUser = rpcUser.username;
-    const rpcAuthPass = rpcUser.password;
-
-    if (username === rpcAuthUser && password === rpcAuthPass) {
-      return ok(true);
-    } else {
+    if (!allowedPasswords.includes(password)) {
       return err(new HubError('unauthenticated', `Invalid password for user: ${username}`));
     }
+
+    return ok(true);
   }
   return err(new HubError('unauthenticated', 'No authorization header'));
 };
@@ -135,39 +134,24 @@ const messagesPageToResponse = ({ messages, nextPageToken }: MessagesPage<Messag
   });
 };
 
-export class RPCUser {
-  username: string;
-  password: string;
-
-  constructor(username: string, password: string) {
-    this.username = username;
-    this.password = password;
-  }
-}
-
-export const getRPCUsersFromAuthString = (rpcAuth?: string): RPCUser[] => {
+export const getRPCUsersFromAuthString = (rpcAuth?: string): Map<string, string[]> => {
   if (!rpcAuth) {
-    return [];
+    return new Map();
   }
 
   // Split up the auth string by commas
   const rpcAuthUsers = rpcAuth?.split(',') ?? [];
 
-  // Create an array of RPCUser objects
-  const rpcUsers: RPCUser[] = [];
+  // Create a map of username to all the passwords for that user
+  const rpcUsers = new Map();
   rpcAuthUsers.forEach((rpcAuthUser) => {
     const [username, password] = rpcAuthUser.split(':');
     if (username && password) {
-      rpcUsers.push(new RPCUser(username, password));
+      const passwords = rpcUsers.get(username) ?? [];
+      passwords.push(password);
+      rpcUsers.set(username, passwords);
     }
   });
-
-  // Check for duplicate usernames
-  const usernames = rpcUsers.map((u) => u.username);
-  const uniqueUsernames = [...new Set(usernames)];
-  if (usernames.length !== uniqueUsernames.length) {
-    throw new Error('Duplicate usernames in rpcAuth');
-  }
 
   return rpcUsers;
 };
@@ -182,7 +166,7 @@ export default class Server {
   private listenIp: string;
   private port: number;
 
-  private rpcUsers: RPCUser[] = [];
+  private rpcUsers: RpcUsers;
 
   private submitMessageRateLimiter: RateLimiterMemory;
 
@@ -206,8 +190,8 @@ export default class Server {
 
     this.rpcUsers = getRPCUsersFromAuthString(rpcAuth);
 
-    if (this.rpcUsers.length > 0) {
-      log.info({ num_users: this.rpcUsers.length }, 'RPC auth enabled');
+    if (this.rpcUsers.size > 0) {
+      log.info({ num_users: this.rpcUsers.size }, 'RPC auth enabled');
     }
 
     this.grpcServer.addService(HubServiceService, this.getImpl());
