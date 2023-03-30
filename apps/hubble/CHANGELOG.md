@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.0.19
+
+### Patch Changes
+
+- fe74a1e: Close RPC connections to fix a memory leak
+- 1025d3b: Support multiple RPC users via comma-separted-list
+- de25020: Refuse to startup if DB network is mismatched
+- 58cfbb9: Gossip server listens on 0.0.0.0 by default
+- 9ee1076: Better grpc error messages when auth fails
+
 ## 1.0.18
 
 ### Patch Changes
