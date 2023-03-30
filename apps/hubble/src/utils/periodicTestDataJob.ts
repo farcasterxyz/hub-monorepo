@@ -16,6 +16,7 @@ import * as ed from '@noble/ed25519';
 import { FarcasterNetwork, ReactionType } from '@farcaster/protobufs';
 import { faker } from '@faker-js/faker';
 import Server from '~/rpc/server';
+import { Result } from 'neverthrow';
 
 const log = logger.child({
   component: 'PeriodicTestDataJob',
@@ -176,6 +177,14 @@ export class PeriodicTestDataJobScheduler {
           }
         }
       }
+    }
+
+    const closeResult = Result.fromThrowable(
+      () => client.$.close(),
+      (e) => e as Error
+    )();
+    if (closeResult.isErr()) {
+      log.warn({ error: closeResult.error }, 'TestData: failed to close client');
     }
   }
 }

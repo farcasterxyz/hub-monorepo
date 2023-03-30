@@ -8,7 +8,7 @@ import {
   HubRpcClient,
 } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { err, ok } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { Hub } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
@@ -213,42 +213,51 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this.emit('syncComplete', false);
       return;
     }
-
-    // First, get the latest state from the peer
-    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
-      protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() }),
-      new protobufs.Metadata(),
-      rpcDeadline()
-    );
-    if (peerStateResult.isErr()) {
-      log.warn(
-        { error: peerStateResult.error, errMsg: peerStateResult.error.message, peerId, peerContact },
-        `Diffsync: Failed to get peer state, skipping sync`
+    try {
+      // First, get the latest state from the peer
+      const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
+        protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() }),
+        new protobufs.Metadata(),
+        rpcDeadline()
       );
+      if (peerStateResult.isErr()) {
+        log.warn(
+          { error: peerStateResult.error, errMsg: peerStateResult.error.message, peerId, peerContact },
+          `Diffsync: Failed to get peer state, skipping sync`
+        );
+        this.emit('syncComplete', false);
+        return;
+      }
+
+      const peerState = peerStateResult.value;
+      const shouldSync = await this.shouldSync(peerState);
+      if (shouldSync.isErr()) {
+        log.warn(`Diffsync: Failed to get shouldSync`);
+        this.emit('syncComplete', false);
+        return;
+      }
+
+      if (shouldSync.value === true) {
+        log.info({ peerId }, `Diffsync: Syncing with peer`);
+        await this.performSync(peerState, rpcClient);
+      } else {
+        log.info({ peerId }, `No need to sync`);
+        this.emit('syncComplete', false);
+        return;
+      }
+
+      log.info({ peerIdString }, 'Diffsync: complete');
       this.emit('syncComplete', false);
       return;
+    } finally {
+      const closeResult = Result.fromThrowable(
+        () => rpcClient.$.close(),
+        (e) => e as Error
+      )();
+      if (closeResult.isErr()) {
+        log.warn({ err: closeResult.error }, 'Failed to close RPC client after sync');
+      }
     }
-
-    const peerState = peerStateResult.value;
-    const shouldSync = await this.shouldSync(peerState);
-    if (shouldSync.isErr()) {
-      log.warn(`Diffsync: Failed to get shouldSync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    if (shouldSync.value === true) {
-      log.info({ peerId }, `Diffsync: Syncing with peer`);
-      await this.performSync(peerState, rpcClient);
-    } else {
-      log.info({ peerId }, `No need to sync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    log.info({ peerIdString }, 'Diffsync: complete');
-    this.emit('syncComplete', false);
-    return;
   }
 
   public async shouldSync(otherSnapshot: TrieSnapshot): HubAsyncResult<boolean> {
