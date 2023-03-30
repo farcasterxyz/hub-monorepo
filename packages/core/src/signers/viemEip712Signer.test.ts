@@ -1,8 +1,9 @@
 import { FarcasterNetwork } from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
-import { createWalletClient, custom } from 'viem';
-// import { rpc } from 'viem/utils';
-import { randomBytes } from 'ethers';
+import { randomBytes } from 'crypto';
+import { Wallet } from 'ethers';
+import { createWalletClient, custom, LocalAccount } from 'viem';
+import { getAccount } from 'viem/ethers';
 import { bytesToHexString } from '../bytes';
 import { eip712 } from '../crypto';
 import { Factories } from '../factories';
@@ -23,34 +24,25 @@ describe('ViemEip712Signer', () => {
   let ethersSigner;
 
   beforeAll(async () => {
+    const localAccount = getAccount(new Wallet(accounts[0].privateKey)) as LocalAccount;
     ethersSigner = createWalletClient({
       transport: custom({
-        on: (message: string, listener: (...args: any[]) => null) => {
-          if (message === 'accountsChanged') {
-            listener([accounts[0].address] as any);
-          }
-        },
         removeListener: () => null,
-        request: async ({ method, _params }: any) => {
+        request: async ({ method, params }: any) => {
           switch (method) {
             case 'eth_accounts':
-              return [accounts[0].address];
+              return [localAccount.address];
             case 'eth_signTypedData_v4':
-            // TODO(michael): Stub this rpc request
-            // const { result } = await rpc.http('http://127.0.0.1:8545', {
-            //   body: {
-            //     method,
-            //     params,
-            //   },
-            // });
-            // return result;
+              return localAccount.signTypedData(params);
+            default:
+              throw Error(`No stubbed response for RPC method: ${method}`);
           }
         },
       }),
     });
 
     signer = new ViemEip712Signer(ethersSigner);
-    signerKey = (await signer.getSignerKey())._unsafeUnwrap({ withStackTrace: true });
+    signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   });
 
   describe('instanceMethods', () => {
@@ -58,10 +50,8 @@ describe('ViemEip712Signer', () => {
       test('generates valid signature', async () => {
         const bytes = randomBytes(32);
         const hash = blake3(bytes, { dkLen: 20 });
-        const signature = (await signer.signMessageHash(hash))._unsafeUnwrap({ withStackTrace: true });
-        const recoveredAddress = (await eip712.verifyMessageHashSignature(hash, signature))._unsafeUnwrap({
-          withStackTrace: true,
-        });
+        const signature = (await signer.signMessageHash(hash))._unsafeUnwrap();
+        const recoveredAddress = (await eip712.verifyMessageHashSignature(hash, signature))._unsafeUnwrap();
         expect(recoveredAddress).toEqual(signerKey);
       });
     });
