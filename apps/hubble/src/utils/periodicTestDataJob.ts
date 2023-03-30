@@ -93,7 +93,7 @@ export class PeriodicTestDataJobScheduler {
       let password = '';
 
       if (rpcUsers.size > 0) {
-        user = rpcUsers.values().next().value as string;
+        user = rpcUsers.keys().next().value as string;
         password = rpcUsers.get(user)?.[0] as string;
       }
 
@@ -124,7 +124,7 @@ export class PeriodicTestDataJobScheduler {
     let rpcPassword = '';
 
     if (rpcUsers.size > 0) {
-      rpcUsername = rpcUsers.values().next().value as string;
+      rpcUsername = rpcUsers.keys().next().value as string;
       rpcPassword = rpcUsers.get(rpcUsername)?.[0] as string;
     }
 
