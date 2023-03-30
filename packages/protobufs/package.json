@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/protobufs",
-  "version": "0.1.7",
+  "version": "0.1.11",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -25,8 +25,9 @@
   },
   "devDependencies": {
     "eslint-config-custom": "*",
-    "ts-proto": "^1.140.0",
-    "tsconfig": "*"
+    "tsconfig": "*",
+    "prettier-config-custom": "*",
+    "ts-proto": "^1.142.1"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.8.7"

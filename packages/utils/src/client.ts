@@ -1,9 +1,10 @@
 import {
+  AdminServiceClient,
   CallOptions,
   Client,
   ClientReadableStream,
   ClientUnaryCall,
-  getClient,
+  getAdminClient,
   getInsecureClient,
   getSSLClient,
   HubServiceClient,
@@ -14,7 +15,12 @@ import { err, ok } from 'neverthrow';
 import { HubError, HubErrorCode, HubResult } from './errors';
 
 const fromServiceError = (err: ServiceError): HubError => {
-  return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, err.details);
+  let context = err.details;
+  if (err.code === 14 && err.details === 'No connection established') {
+    context =
+      'Connection failed: please check that the hub’s address, ports and authentication config are correct. ' + context;
+  }
+  return new HubError(err.metadata.get('errCode')[0] as HubErrorCode, context);
 };
 
 // grpc-js generates a Client stub that uses callbacks for async calls. Callbacks are
@@ -100,14 +106,22 @@ const promisifyClient = <C extends Client>(client: C) => {
 
 export type HubRpcClient = PromisifiedClient<HubServiceClient>;
 
-export const getHubRpcClient = async (address: string): Promise<HubRpcClient> => {
-  return promisifyClient(await getClient(address));
-};
-
 export const getSSLHubRpcClient = (address: string): HubRpcClient => {
   return promisifyClient(getSSLClient(address));
 };
 
 export const getInsecureHubRpcClient = (address: string): HubRpcClient => {
   return promisifyClient(getInsecureClient(address));
+};
+
+export type AdminRpcClient = PromisifiedClient<AdminServiceClient>;
+
+export const getAdminRpcClient = async (address: string): Promise<AdminRpcClient> => {
+  return promisifyClient(await getAdminClient(address));
+};
+
+export const getAuthMetadata = (username: string, password: string): Metadata => {
+  const metadata = new Metadata();
+  metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+  return metadata;
 };

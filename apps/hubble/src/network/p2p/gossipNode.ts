@@ -18,8 +18,8 @@ import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } f
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
-/** The maximum number of pending merge messages before we drop new incoming gossip or sync messages  */
-export const MAX_MESSAGE_QUEUE_SIZE = 1000;
+/** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
+export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
 
 const log = logger.child({ component: 'Node' });
 

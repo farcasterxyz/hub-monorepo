@@ -1,7 +1,5 @@
 import {
   HubEvent,
-  HubEventType,
-  IdRegistryEvent,
   isMergeIdRegistryEventHubEvent,
   isMergeMessageHubEvent,
   isMergeNameRegistryEventHubEvent,
@@ -10,17 +8,18 @@ import {
   MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
   MergeNameRegistryEventHubEvent,
-  Message,
-  NameRegistryEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
 } from '@farcaster/protobufs';
-import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult, isHubError } from '@farcaster/utils';
+import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix } from '~/storage/db/types';
+import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
+import { RootPrefix, UserMessagePostfix } from '~/storage/db/types';
+import { StorageCache } from '~/storage/engine/storageCache';
+
+const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 
 export type StoreEvents = {
   /**
@@ -56,9 +55,23 @@ export type StoreEvents = {
   mergeNameRegistryEvent: (event: MergeNameRegistryEventHubEvent) => void;
 };
 
+export type HubEventArgs = Omit<HubEvent, 'id'>;
+
 // Chosen to keep number under Number.MAX_SAFE_INTEGER
 const TIMESTAMP_BITS = 41;
 const SEQUENCE_BITS = 12;
+
+const makeEventId = (timestamp: number, seq: number): number => {
+  const binaryTimestamp = timestamp.toString(2);
+  let binarySeq = seq.toString(2);
+  if (binarySeq.length) {
+    while (binarySeq.length < SEQUENCE_BITS) {
+      binarySeq = '0' + binarySeq;
+    }
+  }
+
+  return parseInt(binaryTimestamp + binarySeq, 2);
+};
 
 export class HubEventIdGenerator {
   private _lastTimestamp: number; // ms since epoch
@@ -89,14 +102,7 @@ export class HubEventIdGenerator {
       return err(new HubError('bad_request.invalid_param', `sequence > ${SEQUENCE_BITS} bits`));
     }
 
-    const binaryTimestamp = this._lastTimestamp.toString(2);
-    let binaryIndex = this._lastSeq.toString(2);
-    if (binaryIndex.length)
-      while (binaryIndex.length < SEQUENCE_BITS) {
-        binaryIndex = '0' + binaryIndex;
-      }
-
-    return ok(parseInt(binaryTimestamp + binaryIndex, 2));
+    return ok(makeEventId(this._lastTimestamp, this._lastSeq));
   }
 }
 
@@ -109,7 +115,7 @@ const makeEventKey = (id?: number): Buffer => {
   return buffer;
 };
 
-export const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => {
+const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => {
   const key = makeEventKey(event.id);
   const value = Buffer.from(HubEvent.encode(event).finish());
   return txn.put(key, value);
@@ -118,12 +124,20 @@ export const putEventTransaction = (txn: Transaction, event: HubEvent): Transact
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _db: RocksDB;
   private _generator: HubEventIdGenerator;
+  private _lock: AsyncLock;
+  private _storageCache: StorageCache;
 
-  constructor(db: RocksDB) {
+  constructor(db: RocksDB, storageCache: StorageCache) {
     super();
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
+    this._lock = new AsyncLock({ maxPending: 1_000, timeout: 500 });
+    this._storageCache = storageCache;
+  }
+
+  getCacheMessageCount(fid: number, set: UserMessagePostfix): HubResult<number> {
+    return this._storageCache.getMessageCount(fid, set);
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {
@@ -132,18 +146,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return result.map((buffer) => HubEvent.decode(new Uint8Array(buffer as Buffer)));
   }
 
-  getEventsIterator(fromId?: number): HubResult<AbstractRocksDB.Iterator> {
-    const minKey = makeEventKey(fromId);
-    const maxKey = bytesIncrement(Uint8Array.from(makeEventKey()));
+  getEventsIterator(options: { fromId?: number | undefined; toId?: number | undefined } = {}): HubResult<Iterator> {
+    const minKey = makeEventKey(options.fromId);
+    const maxKey = options.toId ? ok(makeEventKey(options.toId)) : bytesIncrement(Uint8Array.from(makeEventKey()));
     if (maxKey.isErr()) {
       return err(maxKey.error);
     }
-    return ok(this._db.iterator({ gte: minKey, lt: Buffer.from(maxKey.value), keys: false, valueAsBuffer: true }));
+    return ok(this._db.iterator({ gte: minKey, lt: Buffer.from(maxKey.value) }));
   }
 
   async getEvents(fromId?: number): HubAsyncResult<HubEvent[]> {
     const events: HubEvent[] = [];
-    const iterator = this.getEventsIterator(fromId);
+    const iterator = this.getEventsIterator({ fromId });
     if (iterator.isErr()) {
       return err(iterator.error);
     }
@@ -154,7 +168,50 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return ok(events);
   }
 
-  broadcastEvent(event: HubEvent): HubResult<void> {
+  async commitTransaction(txn: Transaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
+    return this._lock
+      .acquire('commit', async () => {
+        const eventId = this._generator.generateId();
+        if (eventId.isErr()) {
+          throw eventId.error;
+        }
+        const event = HubEvent.create({ ...eventArgs, id: eventId.value });
+        // TODO: validate event
+        txn = putEventTransaction(txn, event);
+
+        await this._db.commit(txn);
+
+        void this._storageCache.processEvent(event);
+        void this.broadcastEvent(event);
+
+        return ok(event.id);
+      })
+      .catch((e: Error) => {
+        return err(isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message));
+      });
+  }
+
+  async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
+    const toId = makeEventId(Date.now() - FARCASTER_EPOCH - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
+
+    const iterator = this.getEventsIterator({ toId });
+
+    if (iterator.isErr()) {
+      return err(iterator.error);
+    }
+
+    for await (const [key] of iterator.value) {
+      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
+      if (result.isErr()) {
+        await iterator.value.end();
+        return err(result.error);
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  private broadcastEvent(event: HubEvent): HubResult<void> {
     if (isMergeMessageHubEvent(event)) {
       this.emit('mergeMessage', event);
     } else if (isPruneMessageHubEvent(event)) {
@@ -170,81 +227,6 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     return ok(undefined);
-  }
-
-  broadcastEvents(events: HubEvent[]): Array<HubResult<void>> {
-    return events.map((event) => this.broadcastEvent(event));
-  }
-
-  makeMergeMessage(message: Message, deletedMessages?: Message[]): HubResult<MergeMessageHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.MERGE_MESSAGE,
-        id,
-        mergeMessageBody: {
-          message,
-          deletedMessages: deletedMessages ?? [],
-        },
-      }) as MergeMessageHubEvent;
-      return ok(event);
-    });
-  }
-
-  makePruneMessage(message: Message): HubResult<PruneMessageHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.PRUNE_MESSAGE,
-        id,
-        pruneMessageBody: {
-          message,
-        },
-      }) as PruneMessageHubEvent;
-      return ok(event);
-    });
-  }
-
-  makeRevokeMessage(message: Message): HubResult<RevokeMessageHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.REVOKE_MESSAGE,
-        id,
-        revokeMessageBody: {
-          message,
-        },
-      }) as RevokeMessageHubEvent;
-      return ok(event);
-    });
-  }
-
-  makeMergeIdRegistryEvent(idRegistryEvent: IdRegistryEvent): HubResult<MergeIdRegistryEventHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.MERGE_ID_REGISTRY_EVENT,
-        id,
-        mergeIdRegistryEventBody: {
-          idRegistryEvent,
-        },
-      }) as MergeIdRegistryEventHubEvent;
-      return ok(event);
-    });
-  }
-
-  makeMergeNameRegistryEvent(nameRegistryEvent: NameRegistryEvent): HubResult<MergeNameRegistryEventHubEvent> {
-    return this._generator.generateId().andThen((id) => {
-      const event = HubEvent.create({
-        type: HubEventType.MERGE_NAME_REGISTRY_EVENT,
-        id,
-        mergeNameRegistryEventBody: {
-          nameRegistryEvent,
-        },
-      }) as MergeNameRegistryEventHubEvent;
-      return ok(event);
-    });
-  }
-
-  async putEvent(event: HubEvent): HubAsyncResult<void> {
-    const txn = putEventTransaction(this._db.transaction(), event);
-    return ResultAsync.fromPromise(this._db.commit(txn), (e) => e as HubError);
   }
 }
 

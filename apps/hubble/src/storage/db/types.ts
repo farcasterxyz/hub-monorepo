@@ -40,7 +40,7 @@ export enum RootPrefix {
   /* Used to store the state of the hub */
   HubState = 9,
   /* Revoke signer jobs */
-  JobRevokeSigner = 10,
+  JobRevokeMessageBySigner = 10,
   /* Sync Merkle Trie Node */
   SyncMerkleTrieNode = 11,
   /* Update NameRegistryEvent expiry job */
@@ -51,6 +51,8 @@ export enum RootPrefix {
   HubCleanShutdown = 14,
   /* Event log */
   HubEvents = 15,
+  /* The network ID that the rocksDB was created with */
+  Network = 16,
 }
 
 /**

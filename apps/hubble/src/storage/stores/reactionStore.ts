@@ -4,12 +4,12 @@ import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
   deleteMessageTransaction,
-  getAllMessagesBySigner,
   getManyMessages,
-  getManyMessagesByFid,
   getMessage,
+  getMessagesPageByPrefix,
   getMessagesPruneIterator,
-  getNextMessageToPrune,
+  getNextMessageFromIterator,
+  getPageIteratorByPrefix,
   makeCastIdKey,
   makeFidKey,
   makeMessagePrimaryKey,
@@ -18,9 +18,16 @@ import {
   putMessageTransaction,
 } from '~/storage/db/message';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, TRUE_VALUE, UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { putEventTransaction } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, StorePruneOptions } from '~/storage/stores/types';
+import { RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
+import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
+import {
+  MERGE_TIMEOUT_DEFAULT,
+  MessagesPage,
+  PAGE_SIZE_MAX,
+  PageOptions,
+  StorePruneOptions,
+} from '~/storage/stores/types';
+import { logger } from '~/utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -73,32 +80,25 @@ const makeReactionRemovesKey = (fid: number, type?: protobufs.ReactionType, targ
  * Generates a unique key used to store a ReactionAdd Message in the ReactionsByTargetAndType index
  *
  * @param targetId the id of the object being reacted to (currently just cast id)
- * @param type the type of reaction
  * @param fid the fid of the user who created the reaction
  * @param tsHash the timestamp hash of the reaction message
  *
- * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<type?>:<fid?>:<tsHash?>
+ * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<fid?>:<tsHash?>
  */
-const makeReactionsByTargetKey = (
-  targetId: protobufs.CastId,
-  type?: protobufs.ReactionType,
-  fid?: number,
-  tsHash?: Uint8Array
-): Buffer => {
-  if (fid && !type) {
-    throw new HubError('bad_request.validation_failure', 'fid provided without type');
+const makeReactionsByTargetKey = (targetId: protobufs.CastId, fid?: number, tsHash?: Uint8Array): Buffer => {
+  if (fid && !tsHash) {
+    throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
   }
 
-  if (tsHash && (!type || !fid)) {
-    throw new HubError('bad_request.validation_failure', 'tsHash provided without type or fid');
+  if (tsHash && !fid) {
+    throw new HubError('bad_request.validation_failure', 'tsHash provided without fid');
   }
 
   return Buffer.concat([
     Buffer.from([RootPrefix.ReactionsByTarget]),
     makeCastIdKey(targetId),
-    Buffer.from(type ? [type] : ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
     Buffer.from(tsHash ?? ''),
+    fid ? makeFidKey(fid) : Buffer.from(''),
   ]);
 };
 
@@ -183,43 +183,92 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
-  async getReactionAddsByFid(fid: number, type?: protobufs.ReactionType): Promise<protobufs.ReactionAddMessage[]> {
-    const prefix = makeReactionAddsKey(fid, type);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.ReactionMessage, messageKeys);
+  async getReactionAddsByFid(
+    fid: number,
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionAddMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
+    const filter = (message: protobufs.Message): message is protobufs.ReactionAddMessage => {
+      return protobufs.isReactionAddMessage(message) && (type ? message.data.reactionBody.type === type : true);
+    };
+    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
   }
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
-  async getReactionRemovesByFid(fid: number): Promise<protobufs.ReactionRemoveMessage[]> {
-    const prefix = makeReactionRemovesKey(fid);
-    const messageKeys: Buffer[] = [];
-    for await (const [, value] of this._db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true })) {
-      messageKeys.push(value);
-    }
-    return getManyMessagesByFid(this._db, fid, UserPostfix.ReactionMessage, messageKeys);
+  async getReactionRemovesByFid(
+    fid: number,
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionRemoveMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
+    const filter = (message: protobufs.Message): message is protobufs.ReactionRemoveMessage => {
+      return protobufs.isReactionRemoveMessage(message) && (type ? message.data.reactionBody.type === type : true);
+    };
+    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
+  }
+
+  async getAllReactionMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage>> {
+    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
+    const filter = (
+      message: protobufs.Message
+    ): message is protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage => {
+      return protobufs.isReactionAddMessage(message) || protobufs.isReactionRemoveMessage(message);
+    };
+    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
   async getReactionsByTargetCast(
     castId: protobufs.CastId,
-    type?: protobufs.ReactionType
-  ): Promise<protobufs.ReactionAddMessage[]> {
-    const prefix = makeReactionsByTargetKey(castId, type);
+    type?: protobufs.ReactionType,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<protobufs.ReactionAddMessage>> {
+    const prefix = makeReactionsByTargetKey(castId);
 
-    // Calculates the positions in the key where the fid and tsHash begin
-    const fidOffset = prefix.length + (type ? 0 : 1); // compensate for fact that prefix is 1 byte longer if type was provided
-    const tsHashOffset = fidOffset + FID_BYTES;
+    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
+
+    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
     const messageKeys: Buffer[] = [];
-    for await (const [key] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      const fid = Number((key as Buffer).readUint32BE(fidOffset));
-      const tsHash = Uint8Array.from(key).subarray(tsHashOffset);
-      messageKeys.push(makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash));
+
+    let iteratorFinished = false;
+    let lastPageToken: Uint8Array | undefined;
+    do {
+      const result = await ResultAsync.fromPromise(iterator.next(), (e) => e as HubError);
+      if (result.isErr()) {
+        iteratorFinished = true;
+        break;
+      }
+
+      const [key, value] = result.value;
+
+      lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
+
+      if (type === undefined || (value !== undefined && value.equals(Buffer.from([type])))) {
+        // Calculates the positions in the key where the fid and tsHash begin
+        const tsHashOffset = prefix.length;
+        const fidOffset = tsHashOffset + TSHASH_LENGTH;
+
+        const fid = Number((key as Buffer).readUint32BE(fidOffset));
+        const tsHash = Uint8Array.from(key as Buffer).subarray(tsHashOffset, tsHashOffset + TSHASH_LENGTH);
+        const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash);
+
+        messageKeys.push(messagePrimaryKey);
+      }
+    } while (messageKeys.length < limit);
+
+    const messages = await getManyMessages<protobufs.ReactionAddMessage>(this._db, messageKeys);
+
+    if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
+      return { messages, nextPageToken: lastPageToken };
+    } else {
+      return { messages, nextPageToken: undefined };
     }
-    return getManyMessages(this._db, messageKeys);
   }
 
   /** Merges a ReactionAdd or ReactionRemove message into the ReactionStore */
@@ -247,74 +296,36 @@ class ReactionStore {
       });
   }
 
-  async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<number[]> {
-    // Get all ReactionAdd messages signed by signer
-    const reactionAdds = await getAllMessagesBySigner<protobufs.ReactionAddMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.REACTION_ADD
-    );
-
-    // Get all ReactionRemove messages signed by signer
-    const reactionRemoves = await getAllMessagesBySigner<protobufs.ReactionRemoveMessage>(
-      this._db,
-      fid,
-      signer,
-      protobufs.MessageType.REACTION_REMOVE
-    );
-
-    // Create a rocksdb transaction
+  async revoke(message: protobufs.Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-
-    // Create list of events to broadcast
-    const events: protobufs.RevokeMessageHubEvent[] = [];
-
-    // Add a delete operation to the transaction for each ReactionAdd
-    for (const message of reactionAdds) {
+    if (protobufs.isReactionAddMessage(message)) {
       txn = this.deleteReactionAddTransaction(txn, message);
-
-      const event = this._eventHandler.makeRevokeMessage(message);
-      if (event.isErr()) {
-        throw event.error;
-      }
-
-      events.push(event.value);
-      txn = putEventTransaction(txn, event.value);
-    }
-
-    // Add a delete operation to the transaction for each SignerRemove
-    for (const message of reactionRemoves) {
+    } else if (protobufs.isReactionRemoveMessage(message)) {
       txn = this.deleteReactionRemoveTransaction(txn, message);
-
-      const event = this._eventHandler.makeRevokeMessage(message);
-      if (event.isErr()) {
-        throw event.error;
-      }
-
-      events.push(event.value);
-      txn = putEventTransaction(txn, event.value);
+    } else {
+      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
-    await this._db.commit(txn);
-
-    // Emit a revokeMessage event for each message
-    this._eventHandler.broadcastEvents(events);
-
-    return ok(events.map((event) => event.id));
+    return this._eventHandler.commitTransaction(txn, {
+      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      revokeMessageBody: { message },
+    });
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    // Count number of ReactionAdd and ReactionRemove messages for this fid
-    // TODO: persist this count to avoid having to retrieve it with each call
-    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
-    let count = 0;
-    for await (const [,] of this._db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-      count = count + 1;
+    const commits: number[] = [];
+
+    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.ReactionMessage);
+
+    // Require storage cache to be synced to prune
+    if (cachedCount.isErr()) {
+      return err(cachedCount.error);
     }
 
-    // Calculate the number of messages that need to be pruned, based on the store's size limit
-    let sizeToPrune = count - this._pruneSizeLimit;
+    // Return immediately if there are no messages to prune
+    if (cachedCount.value === 0) {
+      return ok(commits);
+    }
 
     const farcasterTime = getFarcasterTime();
     if (farcasterTime.isErr()) {
@@ -324,57 +335,63 @@ class ReactionStore {
     // Calculate the timestamp cut-off to prune
     const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
 
-    // Keep track of the messages that get pruned so that we can emit pruneMessage events after the transaction settles
-    const events: protobufs.PruneMessageHubEvent[] = [];
-
-    // Create a rocksdb transaction to include all the mutations
-    let pruneTxn = this._db.transaction();
-
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.ReactionMessage);
 
-    const getNextResult = () => ResultAsync.fromPromise(getNextMessageToPrune(pruneIterator), () => undefined);
+    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
+      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
+      if (nextMessage.isErr()) {
+        return ok(undefined); // Nothing left to prune
+      }
 
-    // For each message in order, prune it if the store is over the size limit or the message was signed
-    // before the timestamp cut-off
-    let nextMessage = await getNextResult();
-    while (
-      nextMessage.isOk() &&
-      (sizeToPrune > 0 || (nextMessage.value.data && nextMessage.value.data.timestamp < timestampToPrune))
-    ) {
-      const message = nextMessage.value;
+      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.ReactionMessage);
+      if (count.isErr()) {
+        return err(count.error);
+      }
 
-      // Add a delete operation to the transaction depending on the message type
-      if (protobufs.isReactionAddMessage(message)) {
-        pruneTxn = this.deleteReactionAddTransaction(pruneTxn, message);
-      } else if (protobufs.isReactionRemoveMessage(message)) {
-        pruneTxn = this.deleteReactionRemoveTransaction(pruneTxn, message);
+      if (
+        count.value <= this._pruneSizeLimit &&
+        nextMessage.value.data &&
+        nextMessage.value.data.timestamp >= timestampToPrune
+      ) {
+        return ok(undefined);
+      }
+
+      let txn = this._db.transaction();
+
+      if (protobufs.isReactionAddMessage(nextMessage.value)) {
+        txn = this.deleteReactionAddTransaction(txn, nextMessage.value);
+      } else if (protobufs.isReactionRemoveMessage(nextMessage.value)) {
+        txn = this.deleteReactionRemoveTransaction(txn, nextMessage.value);
       } else {
-        throw new HubError('unknown', 'invalid message type');
+        return err(new HubError('unknown', 'invalid message type'));
       }
 
-      // Create prune event and store for broadcasting later
-      const pruneEvent = this._eventHandler.makePruneMessage(message);
-      if (pruneEvent.isErr()) {
-        return err(pruneEvent.error);
-      }
-      pruneTxn = putEventTransaction(pruneTxn, pruneEvent.value);
-      events.push(pruneEvent.value);
+      return this._eventHandler.commitTransaction(txn, {
+        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        pruneMessageBody: { message: nextMessage.value },
+      });
+    };
 
-      // Decrement the number of messages yet to prune, and try to get the next message from the iterator
-      sizeToPrune = Math.max(0, sizeToPrune - 1);
-      nextMessage = await getNextResult();
+    let pruneResult = await pruneNextMessage();
+    while (!(pruneResult.isOk() && pruneResult.value === undefined)) {
+      pruneResult.match(
+        (commit) => {
+          if (commit) {
+            commits.push(commit);
+          }
+        },
+        (e) => {
+          logger.error({ errCode: e.errCode }, `error pruning reaction message for fid ${fid}: ${e.message}`);
+        }
+      );
+
+      pruneResult = await pruneNextMessage();
     }
 
-    if (events.length > 0) {
-      // Commit the transaction to rocksdb
-      await this._db.commit(pruneTxn);
+    await pruneIterator.end();
 
-      // Emit prune events
-      this._eventHandler.broadcastEvents(events);
-    }
-
-    return ok(events.map((event) => event.id));
+    return ok(commits);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -393,19 +410,17 @@ class ReactionStore {
     // Add ops to store the message by messageKey and index the the messageKey by set and by target
     txn = this.putReactionAddTransaction(txn, message);
 
-    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts.value);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
-    }
-    txn = putEventTransaction(txn, hubEvent.value);
+    const hubEvent: HubEventArgs = {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
+    };
 
     // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
   }
 
   private async mergeRemove(message: protobufs.ReactionRemoveMessage): Promise<number> {
@@ -421,19 +436,17 @@ class ReactionStore {
     // Add ops to store the message by messageKey and index the the messageKey by set
     txn = this.putReactionRemoveTransaction(txn, message);
 
-    const hubEvent = this._eventHandler.makeMergeMessage(message, mergeConflicts.value);
-    if (hubEvent.isErr()) {
-      throw hubEvent.error;
-    }
-    txn = putEventTransaction(txn, hubEvent.value);
+    const hubEvent: HubEventArgs = {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
+    };
 
     // Commit the RocksDB transaction
-    await this._db.commit(txn);
-
-    // Emit store event
-    this._eventHandler.broadcastEvent(hubEvent.value);
-
-    return hubEvent.value.id;
+    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
   }
 
   private reactionMessageCompare(
@@ -577,13 +590,8 @@ class ReactionStore {
     txn = txn.put(addsKey, Buffer.from(tsHash.value));
 
     // Puts message key into the byTarget index
-    const byTargetKey = makeReactionsByTargetKey(
-      castId,
-      message.data.reactionBody.type,
-      message.data.fid,
-      tsHash.value
-    );
-    txn = txn.put(byTargetKey, TRUE_VALUE);
+    const byTargetKey = makeReactionsByTargetKey(castId, message.data.fid, tsHash.value);
+    txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
 
     return txn;
   }
@@ -601,12 +609,7 @@ class ReactionStore {
     }
 
     // Delete the message key from byTarget index
-    const byTargetKey = makeReactionsByTargetKey(
-      castId,
-      message.data.reactionBody.type,
-      message.data.fid,
-      tsHash.value
-    );
+    const byTargetKey = makeReactionsByTargetKey(castId, message.data.fid, tsHash.value);
     txn = txn.del(byTargetKey);
 
     // Delete the message key from ReactionAdds Set index

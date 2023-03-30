@@ -11,13 +11,12 @@ import {
 } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
-import AbstractRocksDB from 'rocksdb';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
-import RocksDB from '~/storage/db/rocksdb';
+import { getNameRegistryEvent, putNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
+import RocksDB, { Iterator } from '~/storage/db/rocksdb';
+import { RootPrefix } from '~/storage/db/types';
 import { logger, nameRegistryEventToLog } from '~/utils/logger';
-import { getNameRegistryEvent, putNameRegistryEvent } from '../db/nameRegistryEvent';
-import { RootPrefix } from '../db/types';
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;
@@ -35,7 +34,15 @@ export class UpdateNameRegistryEventExpiryJobWorker {
     this._ethEventsProvider = ethEventsProvider;
     this._status = 'waiting';
 
-    this._queue.on('enqueueJob', () => this.processJobs());
+    this.processJobs = this.processJobs.bind(this);
+  }
+
+  start() {
+    this._queue.on('enqueueJob', this.processJobs);
+  }
+
+  stop() {
+    this._queue.off('enqueueJob', this.processJobs);
   }
 
   async processJobs(): HubAsyncResult<void> {
@@ -151,7 +158,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
   }
 
   /** Return rocksdb iterator for revoke signer jobs. If doBefore timestamp is missing, iterate over all jobs  */
-  iterator(doBefore?: number): HubResult<AbstractRocksDB.Iterator> {
+  iterator(doBefore?: number): HubResult<Iterator> {
     const gte = UpdateNameRegistryEventExpiryJobQueue.jobKeyPrefix();
     let lt: Buffer;
     if (doBefore) {
@@ -208,27 +215,29 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     if (iterator.isErr()) {
       return err(iterator.error);
     }
-    return new Promise((resolve) => {
-      iterator.value.next(async (e: Error | undefined, key: AbstractRocksDB.Bytes, value: AbstractRocksDB.Bytes) => {
-        if (e) {
-          resolve(err(new HubError('unknown', e as Error)));
-        } else if (!key && !value) {
-          resolve(err(new HubError('not_found', 'record not found')));
-        } else {
-          const payload = Result.fromThrowable(
-            () => protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer)),
-            (err) =>
-              new HubError('bad_request.parse_failure', {
-                cause: err as Error,
-                message: `Failed to parse UpdateNameRegistryEventExpiryJobPayload`,
-              })
-          )();
-          // Delete job from rocksdb to prevent it from being done multiple times
-          await this._db.del(key as Buffer);
-          resolve(payload);
-        }
-      });
-    });
+
+    const result = await ResultAsync.fromPromise(iterator.value.next(), (e) => e as HubError);
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    const [key, value] = result.value;
+
+    const payload = Result.fromThrowable(
+      () => protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer)),
+      (err) =>
+        new HubError('bad_request.parse_failure', {
+          cause: err as Error,
+          message: `Failed to parse UpdateNameRegistryEventExpiryJobPayload`,
+        })
+    )();
+
+    // clear rocksdb iterator
+    await iterator.value.end();
+    // Delete job from rocksdb to prevent it from being done multiple times
+    await this._db.del(key as Buffer);
+
+    return payload;
   }
 
   async getAllJobs(doBefore?: number): HubAsyncResult<[number, protobufs.UpdateNameRegistryEventExpiryJobPayload][]> {
@@ -239,7 +248,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     }
     for await (const [key, value] of iterator.value) {
       const timestamp = UpdateNameRegistryEventExpiryJobQueue.jobKeyToTimestamp(key as Buffer);
-      const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value));
+      const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer));
       if (timestamp.isOk()) {
         jobs.push([timestamp.value, payload]);
       }

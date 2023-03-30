@@ -1,5 +1,5 @@
 import { IdRegistryEvent, NameRegistryEvent } from '@farcaster/protobufs';
-import { HubError, bytesCompare } from '@farcaster/utils';
+import { HubError, bytesCompare, bytesIncrement } from '@farcaster/utils';
 
 type Event = IdRegistryEvent | NameRegistryEvent;
 
@@ -31,4 +31,17 @@ export const eventCompare = (a: Event, b: Event): number => {
   }
 
   return 0;
+};
+
+export const makeEndPrefix = (prefix: Buffer): Buffer | undefined => {
+  const endPrefix = bytesIncrement(prefix);
+  if (endPrefix.isErr()) {
+    throw endPrefix.error;
+  }
+
+  if (endPrefix.value.length === prefix.length) {
+    return Buffer.from(endPrefix.value);
+  }
+
+  return undefined;
 };

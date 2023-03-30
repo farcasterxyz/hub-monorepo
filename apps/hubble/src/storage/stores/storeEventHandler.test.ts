@@ -1,96 +1,39 @@
-import {
-  IdRegistryEvent,
-  isMergeIdRegistryEventHubEvent,
-  isMergeMessageHubEvent,
-  isMergeNameRegistryEventHubEvent,
-  isPruneMessageHubEvent,
-  isRevokeMessageHubEvent,
-  Message,
-  NameRegistryEvent,
-} from '@farcaster/protobufs';
+import { CastAddMessage, HubEvent, HubEventType } from '@farcaster/protobufs';
 import { Factories } from '@farcaster/utils';
-import { ok } from 'neverthrow';
-import { jestRocksDB } from '../db/jestUtils';
-import StoreEventHandler, { HubEventIdGenerator } from './storeEventHandler';
+import { Result, ok } from 'neverthrow';
+import { jestRocksDB } from '~/storage/db/jestUtils';
+import { getMessage, makeTsHash, putMessageTransaction } from '~/storage/db/message';
+import { UserPostfix } from '~/storage/db/types';
+import { StorageCache } from '~/storage/engine/storageCache';
+import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from '~/storage/stores/storeEventHandler';
+import { sleep } from '~/utils/crypto';
 
 const db = jestRocksDB('stores.storeEventHandler.test');
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 
-let message: Message;
-let idRegistryEvent: IdRegistryEvent;
-let nameRegistryEvent: NameRegistryEvent;
+let events: HubEvent[] = [];
+
+const eventListener = (event: HubEvent) => {
+  events.push(event);
+};
+
+beforeAll(() => {
+  eventHandler.on('mergeMessage', eventListener);
+});
+
+beforeEach(() => {
+  events = [];
+});
+
+afterAll(() => {
+  eventHandler.off('mergeMessage', eventListener);
+});
+
+let message: CastAddMessage;
 
 beforeAll(async () => {
-  message = await Factories.Message.create();
-  idRegistryEvent = Factories.IdRegistryEvent.build();
-  nameRegistryEvent = Factories.NameRegistryEvent.build();
-});
-
-describe('putEvent', () => {
-  test('succeeds', async () => {
-    const event = eventHandler.makeMergeMessage(message)._unsafeUnwrap();
-    const result = await eventHandler.putEvent(event);
-    expect(result.isOk()).toBeTruthy();
-    const events = await eventHandler.getEvents();
-    expect(events).toEqual(ok([event]));
-  });
-
-  test('succeeds with multiple events at the same time', async () => {
-    const event1 = eventHandler.makeMergeMessage(message)._unsafeUnwrap();
-    const event2 = eventHandler.makeRevokeMessage(message)._unsafeUnwrap();
-    const event3 = eventHandler.makeMergeIdRegistryEvent(idRegistryEvent)._unsafeUnwrap();
-
-    await Promise.all([eventHandler.putEvent(event1), eventHandler.putEvent(event2), eventHandler.putEvent(event3)]);
-    const events = await eventHandler.getEvents();
-    expect(events).toEqual(ok([event1, event2, event3]));
-  });
-});
-
-describe('makeMergeMessage', () => {
-  test('succeeds', () => {
-    const event = eventHandler.makeMergeMessage(message);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-
-  test('succeeds with deleted messages', async () => {
-    const deletedMessage = await Factories.Message.create();
-    const event = await eventHandler.makeMergeMessage(message, [deletedMessage]);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makePruneMessage', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makePruneMessage(message);
-    expect(event.isOk()).toBeTruthy();
-    expect(isPruneMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makeRevokeMessage', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makeRevokeMessage(message);
-    expect(event.isOk()).toBeTruthy();
-    expect(isRevokeMessageHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makeMergeIdRegistryEvent', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makeMergeIdRegistryEvent(idRegistryEvent);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeIdRegistryEventHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
-});
-
-describe('makeMergeNameRegistryEvent', () => {
-  test('succeeds', async () => {
-    const event = await eventHandler.makeMergeNameRegistryEvent(nameRegistryEvent);
-    expect(event.isOk()).toBeTruthy();
-    expect(isMergeNameRegistryEventHubEvent(event._unsafeUnwrap())).toBeTruthy();
-  });
+  message = await Factories.CastAddMessage.create();
 });
 
 describe('HubEventIdGenerator', () => {
@@ -104,5 +47,80 @@ describe('HubEventIdGenerator', () => {
       expect(id).toBeGreaterThan(lastId);
       lastId = id;
     }
+  });
+});
+
+describe('commitTransaction', () => {
+  test('commits transaction and returns event id', async () => {
+    const txn = putMessageTransaction(db.transaction(), message);
+    const eventArgs: HubEventArgs = {
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: [] },
+    };
+
+    const result = await eventHandler.commitTransaction(txn, eventArgs);
+    expect(result.isOk()).toBeTruthy();
+    const eventId = result._unsafeUnwrap();
+    expect(eventId).toBeGreaterThan(0);
+    await expect(
+      getMessage(
+        db,
+        message.data.fid,
+        UserPostfix.CastMessage,
+        makeTsHash(message.data?.timestamp, message.hash)._unsafeUnwrap()
+      )
+    ).resolves.toEqual(message);
+    const event = await eventHandler.getEvent(eventId as number);
+    expect(event).toMatchObject(ok(eventArgs));
+    expect(events).toEqual([event._unsafeUnwrap()]);
+  });
+});
+
+describe('pruneEvents', () => {
+  test('deletes events based on time limit', async () => {
+    const message1 = await Factories.Message.create();
+    const idRegistryEvent = Factories.IdRegistryEvent.build();
+    const message2 = await Factories.Message.create();
+    const message3 = await Factories.Message.create();
+
+    const eventArgs1 = {
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message: message1, deletedMessages: [] },
+    };
+    const eventArgs2 = { type: HubEventType.MERGE_ID_REGISTRY_EVENT, mergeIdRegistryEventBody: { idRegistryEvent } };
+    const eventArgs3 = { type: HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message: message2 } };
+    const eventArgs4 = {
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message: message3, deletedMessages: [] },
+    };
+
+    const result1 = Result.combine([
+      await eventHandler.commitTransaction(db.transaction(), eventArgs1),
+      await eventHandler.commitTransaction(db.transaction(), eventArgs2),
+    ]);
+    expect(result1.isOk()).toBeTruthy();
+
+    await sleep(2_000);
+
+    const result2 = Result.combine([
+      await eventHandler.commitTransaction(db.transaction(), eventArgs3),
+      await eventHandler.commitTransaction(db.transaction(), eventArgs4),
+    ]);
+    expect(result2.isOk()).toBeTruthy();
+
+    const allEvents1 = await eventHandler.getEvents();
+    expect(allEvents1._unsafeUnwrap()).toMatchObject([eventArgs1, eventArgs2, eventArgs3, eventArgs4]);
+
+    const pruneResult1 = await eventHandler.pruneEvents(); // Should not prune any events since none are passed the default 3 days
+    expect(pruneResult1.isOk()).toBeTruthy();
+
+    const allEvents2 = await eventHandler.getEvents();
+    expect(allEvents2._unsafeUnwrap()).toMatchObject([eventArgs1, eventArgs2, eventArgs3, eventArgs4]);
+
+    const pruneResult2 = await eventHandler.pruneEvents(1_000); // Prune the events that happened more than a second ago
+    expect(pruneResult2.isOk()).toBeTruthy();
+
+    const allEvents3 = await eventHandler.getEvents();
+    expect(allEvents3._unsafeUnwrap()).toMatchObject([eventArgs3, eventArgs4]);
   });
 });

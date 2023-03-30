@@ -1,7 +1,7 @@
 /* eslint-disable */
-import _m0 from "protobufjs/minimal";
-import { IdRegistryEvent } from "./id_registry_event";
-import { Message } from "./message";
+import _m0 from 'protobufjs/minimal';
+import { IdRegistryEvent } from './id_registry_event';
+import { Message } from './message';
 
 export enum GossipVersion {
   V1 = 0,
@@ -10,19 +10,19 @@ export enum GossipVersion {
 export function gossipVersionFromJSON(object: any): GossipVersion {
   switch (object) {
     case 0:
-    case "GOSSIP_VERSION_V1":
+    case 'GOSSIP_VERSION_V1':
       return GossipVersion.V1;
     default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum GossipVersion");
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum GossipVersion');
   }
 }
 
 export function gossipVersionToJSON(object: GossipVersion): string {
   switch (object) {
     case GossipVersion.V1:
-      return "GOSSIP_VERSION_V1";
+      return 'GOSSIP_VERSION_V1';
     default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum GossipVersion");
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum GossipVersion');
   }
 }
 
@@ -30,6 +30,7 @@ export interface GossipAddressInfo {
   address: string;
   family: number;
   port: number;
+  dnsName: string;
 }
 
 export interface ContactInfoContent {
@@ -49,12 +50,12 @@ export interface GossipMessage {
 }
 
 function createBaseGossipAddressInfo(): GossipAddressInfo {
-  return { address: "", family: 0, port: 0 };
+  return { address: '', family: 0, port: 0, dnsName: '' };
 }
 
 export const GossipAddressInfo = {
   encode(message: GossipAddressInfo, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.address !== "") {
+    if (message.address !== '') {
       writer.uint32(10).string(message.address);
     }
     if (message.family !== 0) {
@@ -63,11 +64,14 @@ export const GossipAddressInfo = {
     if (message.port !== 0) {
       writer.uint32(24).uint32(message.port);
     }
+    if (message.dnsName !== '') {
+      writer.uint32(34).string(message.dnsName);
+    }
     return writer;
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): GossipAddressInfo {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGossipAddressInfo();
     while (reader.pos < end) {
@@ -82,6 +86,9 @@ export const GossipAddressInfo = {
         case 3:
           message.port = reader.uint32();
           break;
+        case 4:
+          message.dnsName = reader.string();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -92,9 +99,10 @@ export const GossipAddressInfo = {
 
   fromJSON(object: any): GossipAddressInfo {
     return {
-      address: isSet(object.address) ? String(object.address) : "",
+      address: isSet(object.address) ? String(object.address) : '',
       family: isSet(object.family) ? Number(object.family) : 0,
       port: isSet(object.port) ? Number(object.port) : 0,
+      dnsName: isSet(object.dnsName) ? String(object.dnsName) : '',
     };
   },
 
@@ -103,6 +111,7 @@ export const GossipAddressInfo = {
     message.address !== undefined && (obj.address = message.address);
     message.family !== undefined && (obj.family = Math.round(message.family));
     message.port !== undefined && (obj.port = Math.round(message.port));
+    message.dnsName !== undefined && (obj.dnsName = message.dnsName);
     return obj;
   },
 
@@ -112,9 +121,10 @@ export const GossipAddressInfo = {
 
   fromPartial<I extends Exact<DeepPartial<GossipAddressInfo>, I>>(object: I): GossipAddressInfo {
     const message = createBaseGossipAddressInfo();
-    message.address = object.address ?? "";
+    message.address = object.address ?? '';
     message.family = object.family ?? 0;
     message.port = object.port ?? 0;
+    message.dnsName = object.dnsName ?? '';
     return message;
   },
 };
@@ -141,7 +151,7 @@ export const ContactInfoContent = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): ContactInfoContent {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseContactInfoContent();
     while (reader.pos < end) {
@@ -197,12 +207,14 @@ export const ContactInfoContent = {
 
   fromPartial<I extends Exact<DeepPartial<ContactInfoContent>, I>>(object: I): ContactInfoContent {
     const message = createBaseContactInfoContent();
-    message.gossipAddress = (object.gossipAddress !== undefined && object.gossipAddress !== null)
-      ? GossipAddressInfo.fromPartial(object.gossipAddress)
-      : undefined;
-    message.rpcAddress = (object.rpcAddress !== undefined && object.rpcAddress !== null)
-      ? GossipAddressInfo.fromPartial(object.rpcAddress)
-      : undefined;
+    message.gossipAddress =
+      object.gossipAddress !== undefined && object.gossipAddress !== null
+        ? GossipAddressInfo.fromPartial(object.gossipAddress)
+        : undefined;
+    message.rpcAddress =
+      object.rpcAddress !== undefined && object.rpcAddress !== null
+        ? GossipAddressInfo.fromPartial(object.rpcAddress)
+        : undefined;
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.count = object.count ?? 0;
     return message;
@@ -244,7 +256,7 @@ export const GossipMessage = {
   },
 
   decode(input: _m0.Reader | Uint8Array, length?: number): GossipMessage {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGossipMessage();
     while (reader.pos < end) {
@@ -294,9 +306,10 @@ export const GossipMessage = {
     message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
     message.idRegistryEvent !== undefined &&
       (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
-    message.contactInfoContent !== undefined && (obj.contactInfoContent = message.contactInfoContent
-      ? ContactInfoContent.toJSON(message.contactInfoContent)
-      : undefined);
+    message.contactInfoContent !== undefined &&
+      (obj.contactInfoContent = message.contactInfoContent
+        ? ContactInfoContent.toJSON(message.contactInfoContent)
+        : undefined);
     if (message.topics) {
       obj.topics = message.topics.map((e) => e);
     } else {
@@ -314,15 +327,16 @@ export const GossipMessage = {
 
   fromPartial<I extends Exact<DeepPartial<GossipMessage>, I>>(object: I): GossipMessage {
     const message = createBaseGossipMessage();
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
-    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
-      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
-      : undefined;
-    message.contactInfoContent = (object.contactInfoContent !== undefined && object.contactInfoContent !== null)
-      ? ContactInfoContent.fromPartial(object.contactInfoContent)
-      : undefined;
+    message.message =
+      object.message !== undefined && object.message !== null ? Message.fromPartial(object.message) : undefined;
+    message.idRegistryEvent =
+      object.idRegistryEvent !== undefined && object.idRegistryEvent !== null
+        ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
+        : undefined;
+    message.contactInfoContent =
+      object.contactInfoContent !== undefined && object.contactInfoContent !== null
+        ? ContactInfoContent.fromPartial(object.contactInfoContent)
+        : undefined;
     message.topics = object.topics?.map((e) => e) || [];
     message.peerId = object.peerId ?? new Uint8Array();
     message.version = object.version ?? 0;
@@ -334,24 +348,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== "undefined") {
+  if (typeof globalThis !== 'undefined') {
     return globalThis;
   }
-  if (typeof self !== "undefined") {
+  if (typeof self !== 'undefined') {
     return self;
   }
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     return window;
   }
-  if (typeof global !== "undefined") {
+  if (typeof global !== 'undefined') {
     return global;
   }
-  throw "Unable to locate global object";
+  throw 'Unable to locate global object';
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -364,25 +378,31 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
+    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(""));
+    return tsProtoGlobalThis.btoa(bin.join(''));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin ? T
-  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends Array<infer U>
+  ? Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin ? P
+type Exact<P, I extends P> = P extends Builtin
+  ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function isSet(value: any): boolean {

@@ -11,7 +11,7 @@ export class MockHub implements HubInterface {
 
   constructor(db: RocksDB, engine: Engine) {
     this.db = db;
-    this.engine = engine ?? new Engine(db, protobufs.FarcasterNetwork.TESTNET);
+    this.engine = engine;
   }
 
   async submitMessage(message: protobufs.Message): HubAsyncResult<number> {

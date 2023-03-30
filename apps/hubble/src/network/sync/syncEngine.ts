@@ -8,7 +8,7 @@ import {
   HubRpcClient,
 } from '@farcaster/utils';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { err, ok } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { Hub } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
@@ -112,19 +112,37 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.info({ rootHash }, 'Sync engine initialized');
   }
 
+  /** Rebuild the entire Sync Trie */
   public async rebuildSyncTrie() {
     log.info('Rebuilding sync trie...');
     await this._trie.rebuild(this.engine);
     log.info('Rebuilding sync trie complete');
   }
 
+  /** Rebuild the individual syncIDs in the Sync Trie */
+  public async rebuildSyncIds(syncIds: Uint8Array[]) {
+    for (const syncId of syncIds) {
+      await this._trie.deleteByBytes(syncId);
+    }
+  }
+
   public async stop() {
     // Interrupt any ongoing sync
     this._interruptSync = true;
 
+    // First, save the trie to disk
+    await this._trie.commitToDb();
+
     // Wait for syncing to stop.
-    await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
-    await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
+    try {
+      await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
+      await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
+
+      // Write the trie to disk one last time, in case there were any changes
+      await this._trie.commitToDb();
+    } catch (e) {
+      log.error({ err: e }, 'Interrupting sync timed out');
+    }
 
     this._interruptSync = false;
   }
@@ -151,9 +169,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async diffSyncIfRequired(hub: Hub, peerIdString?: string) {
     this.emit('syncStart');
+    log.info({ peerIdString }, 'Diffsync: Starting diff sync');
 
     if (this.currentHubPeerContacts.size === 0) {
-      log.warn(`No peer contacts, skipping sync`);
+      log.warn(`Diffsync: No peer contacts, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
@@ -181,52 +200,69 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // If we still don't have a peer, skip the sync
     if (!peerContact || !peerId) {
-      log.warn({ peerContact, peerId }, `No contact info for peer, skipping sync`);
+      log.warn({ peerContact, peerId }, `Diffsync: No contact info for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
+    } else {
+      log.info({ peerId, peerContact }, `Diffsync: Starting diff sync with peer`);
     }
 
     const rpcClient = await hub.getRPCClientForPeer(peerId, peerContact);
     if (!rpcClient) {
-      log.warn(`Failed to get RPC client for peer, skipping sync`);
+      log.warn(`Diffsync: Failed to get RPC client for peer, skipping sync`);
       this.emit('syncComplete', false);
       return;
     }
+    try {
+      // First, get the latest state from the peer
+      const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
+        protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() }),
+        new protobufs.Metadata(),
+        rpcDeadline()
+      );
+      if (peerStateResult.isErr()) {
+        log.warn(
+          { error: peerStateResult.error, errMsg: peerStateResult.error.message, peerId, peerContact },
+          `Diffsync: Failed to get peer state, skipping sync`
+        );
+        this.emit('syncComplete', false);
+        return;
+      }
 
-    // First, get the latest state from the peer
-    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
-      protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() })
-    );
-    if (peerStateResult.isErr()) {
-      log.warn(`Failed to get peer state, skipping sync`);
+      const peerState = peerStateResult.value;
+      const shouldSync = await this.shouldSync(peerState);
+      if (shouldSync.isErr()) {
+        log.warn(`Diffsync: Failed to get shouldSync`);
+        this.emit('syncComplete', false);
+        return;
+      }
+
+      if (shouldSync.value === true) {
+        log.info({ peerId }, `Diffsync: Syncing with peer`);
+        await this.performSync(peerState, rpcClient);
+      } else {
+        log.info({ peerId }, `No need to sync`);
+        this.emit('syncComplete', false);
+        return;
+      }
+
+      log.info({ peerIdString }, 'Diffsync: complete');
       this.emit('syncComplete', false);
       return;
+    } finally {
+      const closeResult = Result.fromThrowable(
+        () => rpcClient.$.close(),
+        (e) => e as Error
+      )();
+      if (closeResult.isErr()) {
+        log.warn({ err: closeResult.error }, 'Failed to close RPC client after sync');
+      }
     }
-
-    const peerState = peerStateResult.value;
-    const shouldSync = await this.shouldSync(peerState);
-    if (shouldSync.isErr()) {
-      log.warn(`Failed to get shouldSync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    if (shouldSync.value === true) {
-      log.info(`Syncing with peer`);
-      await this.performSync(peerState, rpcClient);
-    } else {
-      log.info(`No need to sync`);
-      this.emit('syncComplete', false);
-      return;
-    }
-
-    this.emit('syncComplete', false);
-    return;
   }
 
   public async shouldSync(otherSnapshot: TrieSnapshot): HubAsyncResult<boolean> {
     if (this._isSyncing) {
-      log.debug('shouldSync: already syncing');
+      log.info('shouldSync: already syncing');
       return ok(false);
     }
 
@@ -237,12 +273,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // eslint-disable-next-line security/detect-object-injection
         ourSnapshot.excludedHashes.every((value, index) => value === otherSnapshot.excludedHashes[index]);
 
-      log.debug(`shouldSync: excluded hashes check: ${otherSnapshot.excludedHashes}`);
+      log.info({ excludedHashesMatch }, `shouldSync: excluded hashes`);
       return !excludedHashesMatch;
     });
   }
 
   async performSync(otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
+    log.info(`Perform sync: Start`);
+
     let success = false;
     try {
       this._isSyncing = true;
@@ -251,7 +289,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         log.warn(snapshot.error, `Error performing sync`);
       } else {
         const ourSnapshot = snapshot.value;
-        const divergencePrefix = await this._trie.getDivergencePrefix(ourSnapshot.prefix, otherSnapshot.excludedHashes);
+        const divergencePrefix = await this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
         log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
 
         let missingCount = 0;
@@ -273,13 +311,37 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return success;
   }
 
+  /**
+   * Returns the subset of the prefix common to two different tries by comparing excluded hashes.
+   *
+   * @param prefix - the prefix of the external trie.
+   * @param otherExcludedHashes - the excluded hashes of the external trie.
+   */
+  async getDivergencePrefix(ourSnapshot: TrieSnapshot, otherExcludedHashes: string[]): Promise<Uint8Array> {
+    const { prefix, excludedHashes } = ourSnapshot;
+
+    for (let i = 0; i < prefix.length; i++) {
+      // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
+      // eslint-disable-next-line security/detect-object-injection
+      if (excludedHashes[i] !== otherExcludedHashes[i]) {
+        return prefix.slice(0, i);
+      }
+    }
+
+    return prefix;
+  }
+
   public async fetchAndMergeMessages(syncIds: Uint8Array[], rpcClient: HubRpcClient): Promise<boolean> {
     if (syncIds.length === 0) {
       return false;
     }
 
     let result = true;
-    const messagesResult = await rpcClient.getAllMessagesBySyncIds(protobufs.SyncIds.create({ syncIds }));
+    const messagesResult = await rpcClient.getAllMessagesBySyncIds(
+      protobufs.SyncIds.create({ syncIds }),
+      new protobufs.Metadata(),
+      rpcDeadline()
+    );
     await messagesResult.match(
       async (msgs) => {
         await this.mergeMessages(msgs.messages, rpcClient);
@@ -307,17 +369,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (result.isErr()) {
         if (
           result.error.errCode === 'bad_request.validation_failure' &&
-          (result.error.message === 'invalid signer' || result.error.message.startsWith('unknown fid'))
+          (result.error.message.startsWith('invalid signer') || result.error.message.startsWith('unknown fid'))
         ) {
           // Unknown user error. Fetch the custody event and retry the message.
-          log.warn({ fid: msg.data?.fid }, 'Unknown user, fetching custody event');
-          const result = await this.syncUserAndRetryMessage(msg, rpcClient);
-          mergeResults.push(result);
+          log.warn({ fid: msg.data?.fid, err: result.error.message }, 'Unknown user, fetching custody event');
+          const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
+          mergeResults.push(retryResult);
         } else if (result.error.errCode === 'bad_request.duplicate') {
           // This message has been merged into the DB, but for some reason is not in the Trie.
           // Just update the trie.
           await this.trie.insert(new SyncId(msg));
           mergeResults.push(result);
+        } else {
+          log.warn({ error: result.error, errorMessage: result.error.message }, 'Failed to merge message during sync');
         }
       } else {
         mergeResults.push(result);
@@ -325,13 +389,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
     this._syncMergeQ -= messages.length;
 
-    log.info(
-      {
-        total: mergeResults.length,
-        success: mergeResults.filter((r) => r.isOk()).length,
-      },
-      'Merged messages'
-    );
+    if (mergeResults.length > 0) {
+      log.info(
+        {
+          total: mergeResults.length,
+          success: mergeResults.filter((r) => r.isOk()).length,
+        },
+        'Merged messages'
+      );
+    }
 
     // If there was a failed merge, log the error and move on. We'll only log one error, since they're likely all the same.
     const failedMerge = mergeResults.find((r) => r.isErr());
@@ -357,7 +423,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
-    const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(protobufs.TrieNodePrefix.create({ prefix }));
+    const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(
+      protobufs.TrieNodePrefix.create({ prefix }),
+      new protobufs.Metadata(),
+      rpcDeadline()
+    );
 
     if (theirNodeResult.isErr()) {
       log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
@@ -391,13 +461,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     }
 
-    // If the node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise,
-    // iterate through the node's children and fetch them in batches.
+    // If the other hub's node has fewer than HASHES_PER_FETCH, just fetch them all in go, otherwise, iterate through
+    // the node's children and fetch them in batches.
     if (theirNode.numMessages <= HASHES_PER_FETCH) {
       if (ourNode && ourNode.numMessages > theirNode.numMessages) {
-        // If we have more messages than the other node, we're done. This might happen if the remote node is
+        // If we have more messages than the other hub, we're done. This might happen if the remote hub is
         // still syncing, or if they have deleted messages (because of pruning), in which case we should
-        // just wait, and our node will also prune the messages.
+        // just wait, and our hub will also prune the messages.
         log.info(
           {
             ourNum: ourNode.numMessages,
@@ -406,11 +476,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               theirNode.prefix.slice(10)
             ).toString('hex')}`,
           },
-          `Our node has more messages, skipping this node.`
+          `Local hub has the same or newer state than the remote hub, skipping sync.`
         );
       } else {
         const result = await rpcClient.getAllSyncIdsByPrefix(
-          protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix })
+          protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix }),
+          new protobufs.Metadata(),
+          rpcDeadline()
         );
 
         if (result.isErr()) {
@@ -437,7 +509,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async removeMessage(message: protobufs.Message): Promise<void> {
-    await this._trie.delete(new SyncId(message));
+    await this._trie.deleteBySyncId(new SyncId(message));
   }
 
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {
@@ -486,27 +558,35 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid'));
     }
 
-    const custodyEventResult = await rpcClient.getIdRegistryEvent(protobufs.FidRequest.create({ fid }));
+    const custodyEventResult = await rpcClient.getIdRegistryEvent(
+      protobufs.FidRequest.create({ fid }),
+      new protobufs.Metadata(),
+      rpcDeadline()
+    );
     if (custodyEventResult.isErr()) {
       return err(new HubError('unavailable.network_failure', 'Failed to fetch custody event'));
     }
 
     const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
     if (custodyResult.isErr()) {
-      return err(
-        new HubError('unavailable.storage_failure', `Failed to merge custody event: ${custodyResult.error.message}`)
-      );
+      // It is possible we already have this (i.e., we have the fid but don't have the signer), so we
+      // won't fail if we can't merge it.
+      log.warn(custodyResult.error, `Failed to merge custody event for fid ${fid} during sync-retry`);
     }
 
     // Probably not required to fetch the signer messages, but doing it here means
     // sync will complete in one round (prevents messages failing to merge due to missed or out of
     // order signer message)
-    const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }));
+    const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(
+      protobufs.FidRequest.create({ fid }),
+      new protobufs.Metadata(),
+      rpcDeadline()
+    );
     if (signerMessagesResult.isErr()) {
       return err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages'));
     }
 
-    const results = await this.engine.mergeMessages(signerMessagesResult._unsafeUnwrap().messages);
+    const results = await this.engine.mergeMessages(signerMessagesResult.value.messages);
     if (results.every((r) => r.isErr())) {
       return err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages'));
     } else {
@@ -518,6 +598,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
   }
 }
+
+// RPC Deadline is 5 seconds by default
+const rpcDeadline = () => {
+  return { deadline: Date.now() + 1000 * 5 };
+};
 
 const fromNodeMetadataResponse = (response: protobufs.TrieNodeMetadataResponse): NodeMetadata => {
   const children = new Map<number, NodeMetadata>();

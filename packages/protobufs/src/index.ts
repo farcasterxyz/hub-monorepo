@@ -21,25 +21,6 @@ export const getServer = (): grpc.Server => {
   return server;
 };
 
-export const getClient = async (address: string): Promise<HubServiceClient> => {
-  return new Promise((resolve) => {
-    try {
-      const sslClientResult = getSSLClient(address);
-      if (sslClientResult) {
-        sslClientResult.waitForReady(Date.now() + 1000, (err) => {
-          if (!err) {
-            resolve(sslClientResult);
-          }
-        });
-      }
-    } catch (e) {
-      // Fall back to insecure client
-    }
-
-    resolve(getInsecureClient(address));
-  });
-};
-
 export const getSSLClient = (address: string): HubServiceClient => {
   return new HubServiceClient(address, grpc.credentials.createSsl());
 };

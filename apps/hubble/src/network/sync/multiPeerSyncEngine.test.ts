@@ -19,16 +19,19 @@ const testDb2 = jestRocksDB(`engine2.peersyncEngine.test`);
 const network = protobufs.FarcasterNetwork.TESTNET;
 
 const fid = Factories.Fid.build();
-const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
+
 beforeAll(async () => {
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 });
@@ -96,6 +99,7 @@ describe('Multi peer sync engine', () => {
     clientForServer1.$.close();
     await server1.stop();
     await syncEngine1.stop();
+    await engine1.stop();
   });
 
   test('toBytes test', async () => {
@@ -111,16 +115,17 @@ describe('Multi peer sync engine', () => {
     expect(infoResult.nickname).toEqual(APP_NICKNAME);
 
     // Fetch the signerAdd message from engine 1
-    const rpcResult = await clientForServer1.getAllSignerMessagesByFid(protobufs.FidRequest.create({ fid }));
+    const rpcResult = await clientForServer1.getAllSignerMessagesByFid({ fid });
     expect(rpcResult.isOk()).toBeTruthy();
     expect(rpcResult._unsafeUnwrap().messages.length).toEqual(1);
-    const rpcSignerAdd = rpcResult._unsafeUnwrap().messages[0] as protobufs.Message;
+    const rpcSignerAdd = rpcResult._unsafeUnwrap().messages[0] as protobufs.SignerAddMessage;
 
     expect(protobufs.Message.toJSON(signerAdd)).toEqual(protobufs.Message.toJSON(rpcSignerAdd));
     expect(signerAdd.data?.fid).toEqual(rpcSignerAdd.data?.fid);
 
     // Create a new sync engine from the existing engine, and see if all the messages from the engine
     // are loaded into the sync engine Merkle Trie properly.
+    await syncEngine1.trie.commitToDb();
     const reinitSyncEngine = new SyncEngine(engine1, testDb1);
     await reinitSyncEngine.initialize();
 
@@ -184,6 +189,7 @@ describe('Multi peer sync engine', () => {
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
       await syncEngine2.stop();
+      await engine2.stop();
     },
     TEST_TIMEOUT_LONG
   );
@@ -268,6 +274,9 @@ describe('Multi peer sync engine', () => {
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
+
+    await syncEngine2.stop();
+    await engine2.stop();
   });
 
   test('Merge with multiple signers', async () => {
@@ -277,8 +286,9 @@ describe('Multi peer sync engine', () => {
     const signers: Ed25519Signer[] = await Promise.all(
       Array.from({ length: 5 }, async (_) => {
         const signer = Factories.Ed25519Signer.build();
+        const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
         const signerAdd = await Factories.SignerAddMessage.create(
-          { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+          { data: { fid, network, signerAddBody: { signer: signerKey } } },
           { transient: { signer: custodySigner } }
         );
         await engine1.mergeMessage(signerAdd);
@@ -322,6 +332,7 @@ describe('Multi peer sync engine', () => {
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
 
     await syncEngine2.stop();
+    await engine2.stop();
   });
 
   xtest(
@@ -421,6 +432,9 @@ describe('Multi peer sync engine', () => {
       // console.log('MerkleTrie total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
       expect(await reinitSyncEngine.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
+
+      await syncEngine2.stop();
+      await engine2.stop();
     },
     TEST_TIMEOUT_LONG
   );

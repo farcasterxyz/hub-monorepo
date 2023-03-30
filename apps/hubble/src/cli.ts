@@ -1,16 +1,18 @@
 #!/usr/bin/env node
+import { FarcasterNetwork } from '@farcaster/protobufs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';
-import { existsSync } from 'fs';
+import fs, { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
-import { ResultAsync } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
 import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
+import { DB_DIRECTORY } from './storage/db/rocksdb';
 import { parseNetwork } from './utils/command';
 
 /** A CLI to accept options from the user and start the Hub */
@@ -21,6 +23,11 @@ const DEFAULT_PEER_ID_DIR = './.hub';
 const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
 const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
 const DEFAULT_CHUNK_SIZE = 10000;
+
+// Grace period before exiting the process after receiving a SIGINT or SIGTERM
+const PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS = 10_000;
+const SHUTDOWN_GRACE_PERIOD_MS = 30_000;
+let isExiting = false;
 
 const app = new Command();
 app.name('hub').description('Farcaster Hub').version(APP_VERSION);
@@ -44,12 +51,22 @@ app
     '--announce-ip <ip-address>',
     'The IP address libp2p should announce to other peers. If not provided, the IP address will be fetched from an external service'
   )
-  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 13111)')
-  .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 13112)')
   .option(
-    '--rpc-auth <username:password>',
+    '--announce-server-name <name>',
+    'The name of the server to announce to peers. This is useful if you have SSL/TLS enabled. (default: "none")'
+  )
+  .option('-g, --gossip-port <port>', 'The tcp port libp2p should gossip over. (default: 2282)')
+  .option('-r, --rpc-port <port>', 'The tcp port that the rpc server should listen on.  (default: 2283)')
+  .option(
+    '--rpc-auth <username:password,...>',
     'Enable Auth for RPC submit methods with the username and password. (default: disabled)'
   )
+  .option(
+    '--rpc-rate-limit <number>',
+    'Impose a Per IP rate limit per minute. Set to -1 for no rate limits (default: 20k/min)'
+  )
+  .option('--admin-server-enabled', 'Enable the admin server. (default: disabled)')
+  .option('--admin-server-host <host>', "The host the admin server should listen on. (default: '127.0.0.1')")
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--db-reset', 'Clears the database before starting')
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
@@ -58,12 +75,75 @@ app
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
-      process.exit();
     };
+
+    const handleShutdownSignal = (signalName: string) => {
+      logger.warn(`${signalName} received`);
+      if (!isExiting) {
+        isExiting = true;
+        teardown(hub)
+          .then(() => {
+            logger.info('Hub stopped gracefully');
+            process.exit(0);
+          })
+          .catch((err) => {
+            logger.error({ reason: `Error stopping hub: ${err}` });
+            process.exit(1);
+          });
+
+        setTimeout(() => {
+          logger.fatal('Forcing exit after grace period');
+          process.exit(1);
+        }, SHUTDOWN_GRACE_PERIOD_MS);
+      }
+    };
+
+    // We'll write our process number to a file so that we can detect if another hub process has taken over.
+    const processFileDir = `${DB_DIRECTORY}/process/`;
+    const processFileName = `process_number.txt`;
+
+    // Generate a random number to identify this hub instance
+    // Note that we can't use the PID as the identifier, since the hub running in a docker container will
+    // always have PID 1.
+    const processNum = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+
+    // Write our processNum to the file
+    fs.mkdirSync(processFileDir, { recursive: true });
+    fs.writeFile(`${processFileDir}${processFileName}`, processNum.toString(), (err) => {
+      if (err) {
+        logger.error(`Error writing process file: ${err}`);
+      }
+    });
+
+    // Watch for the processNum file. If it changes, and we are not the process number written in the file,
+    // it means that another hub process has taken over and we should exit.
+    const checkForProcessNumChange = () => {
+      if (isExiting) return;
+
+      fs.readFile(`${processFileDir}${processFileName}`, 'utf8', async (err, data) => {
+        if (err) {
+          logger.error(`Error reading processnum file: ${err}`);
+          return;
+        }
+
+        const readProcessNum = parseInt(data.trim());
+        if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
+          logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
+          handleShutdownSignal('SIGTERM');
+        }
+      });
+    };
+
+    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions
+    setTimeout(function checkLoop() {
+      checkForProcessNumChange();
+      setTimeout(checkLoop, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
+    }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
     const hubConfig = (await import(resolve(cliOptions.config))).Config;
 
+    // Read PeerID from 1. CLI option, 2. Environment variable, 3. Config file
     let peerId;
     if (cliOptions.id) {
       peerId = await readPeerId(resolve(cliOptions.id));
@@ -82,6 +162,60 @@ app
       logger.info({ identity: peerId.toString() }, 'Read identity from environment');
     } else {
       peerId = await readPeerId(resolve(hubConfig.id));
+    }
+
+    // Read RPC Auth from 1. CLI option, 2. Environment variable, 3. Config file
+    let rpcAuth;
+    if (cliOptions.rpcAuth) {
+      rpcAuth = cliOptions.rpcAuth;
+    } else if (process.env['RPC_AUTH']) {
+      rpcAuth = process.env['RPC_AUTH'];
+    } else {
+      rpcAuth = hubConfig.rpcAuth;
+    }
+
+    // Check if the DB_RESET_TOKEN env variable is set. If it is, we might need to reset the DB.
+    const dbResetToken = process.env['DB_RESET_TOKEN'];
+    if (dbResetToken) {
+      // Read the contents of the "db_reset_token.txt" file, and if the number is
+      // different from the DB_RESET_TOKEN env variable, then we should reset the DB
+      const dbResetTokenFile = `${processFileDir}/db_reset_token.txt`;
+      let dbResetTokenFileContents = '';
+      try {
+        dbResetTokenFileContents = fs.readFileSync(dbResetTokenFile, 'utf8').trim();
+      } catch (err) {
+        // Ignore error
+      }
+
+      if (dbResetTokenFileContents !== dbResetToken) {
+        // Write the new token to the file
+        fs.mkdirSync(processFileDir, { recursive: true });
+        fs.writeFileSync(dbResetTokenFile, dbResetToken);
+
+        // Reset the DB
+        logger.warn({ dbResetTokenFileContents, dbResetToken }, 'Resetting DB since DB_RESET_TOKEN was set');
+        cliOptions.dbReset = true;
+      }
+    }
+
+    const network = cliOptions.network ?? hubConfig.network;
+
+    let testUsers;
+    if (process.env['TEST_USERS']) {
+      if (network === FarcasterNetwork.DEVNET || network === FarcasterNetwork.TESTNET) {
+        try {
+          const testUsersResult = JSON.parse(process.env['TEST_USERS'].replaceAll("'", '"') ?? '');
+
+          if (testUsersResult && testUsersResult.length > 0) {
+            logger.info('TEST_USERS is set, will periodically add data to test users');
+            testUsers = testUsersResult;
+          }
+        } catch (err) {
+          logger.warn({ err }, 'Failed to parse TEST_USERS');
+        }
+      } else {
+        logger.warn({ network }, 'TEST_USERS is set, but network is not DEVNET or TESTNET, ignoring');
+      }
     }
 
     const hubAddressInfo = addressInfoFromParts(
@@ -117,9 +251,11 @@ app
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
+      rpcServerHost: hubAddressInfo.value.address,
       announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
+      announceServerName: cliOptions.announceServerName ?? hubConfig.announceServerName,
       gossipPort: hubAddressInfo.value.port,
-      network: cliOptions.network ?? hubConfig.network,
+      network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
@@ -128,13 +264,27 @@ app
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
-      rpcAuth: cliOptions.rpcAuth ?? hubConfig.rpcAuth,
+      rpcAuth,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
       rebuildSyncTrie,
+      adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
+      adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
+      testUsers,
     };
 
-    const hub = new Hub(options);
+    const hubResult = Result.fromThrowable(
+      () => new Hub(options),
+      (e) => new Error(`Failed to create hub: ${e}`)
+    )();
+    if (hubResult.isErr()) {
+      logger.fatal(hubResult.error);
+      logger.fatal({ reason: 'Hub Creation failed' }, 'shutting down hub');
+
+      process.exit(1);
+    }
+
+    const hub = hubResult.value;
     const startResult = await ResultAsync.fromPromise(hub.start(), (e) => new Error(`Failed to start hub: ${e}`));
     if (startResult.isErr()) {
       logger.fatal(startResult.error);
@@ -148,31 +298,30 @@ app
 
     process.stdin.resume();
 
-    process.on('SIGINT', async () => {
-      logger.fatal('SIGINT received');
-      await teardown(hub);
+    process.on('SIGINT', () => {
+      handleShutdownSignal('SIGINT');
     });
 
-    process.on('SIGTERM', async () => {
-      logger.fatal('SIGTERM received');
-      await teardown(hub);
+    process.on('SIGTERM', () => {
+      handleShutdownSignal('SIGTERM');
     });
 
-    process.on('SIGQUIT', async () => {
-      logger.fatal('SIGQUIT received');
-      await teardown(hub);
+    process.on('SIGQUIT', () => {
+      handleShutdownSignal('SIGQUIT');
     });
 
     process.on('uncaughtException', (err) => {
       logger.error({ reason: 'Uncaught exception' }, 'shutting down hub');
       logger.fatal(err);
-      process.exit(1);
+
+      handleShutdownSignal('uncaughtException');
     });
 
     process.on('unhandledRejection', (err) => {
       logger.error({ reason: 'Unhandled Rejection' }, 'shutting down hub');
       logger.fatal(err);
-      process.exit(1);
+
+      handleShutdownSignal('unhandledRejection');
     });
   });
 
@@ -244,11 +393,12 @@ app
   .description('Start a REPL console')
   .option(
     '-s, --server <url>',
-    'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:13112)',
+    'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283)',
     DEFAULT_RPC_CONSOLE
   )
+  .option('--insecure', 'Allow insecure connections to the RPC server', false)
   .action(async (cliOptions) => {
-    startConsole(cliOptions.server);
+    startConsole(cliOptions.server, cliOptions.insecure);
   });
 
 const readPeerId = async (filePath: string) => {

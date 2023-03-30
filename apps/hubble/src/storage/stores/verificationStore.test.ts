@@ -1,78 +1,94 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesDecrement, bytesIncrement, Eip712Signer, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import { err } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
+import { StorageCache } from '~/storage/engine/storageCache';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 
 const db = jestRocksDB('protobufs.verificationStore.test');
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
 let ethSigner: Eip712Signer;
+let ethSignerKey: Uint8Array;
 let verificationAdd: protobufs.VerificationAddEthAddressMessage;
 let verificationRemove: protobufs.VerificationRemoveMessage;
 
 beforeAll(async () => {
   ethSigner = Factories.Eip712Signer.build();
+  ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
+  verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+    {
+      data: { fid, verificationAddEthAddressBody: { address: ethSignerKey } },
+    },
+    { transient: { ethSigner } }
+  );
 
-  verificationAdd = await Factories.VerificationAddEthAddressMessage.create({
-    data: { fid, verificationAddEthAddressBody: { address: ethSigner.signerKey } },
-  });
   verificationRemove = await Factories.VerificationRemoveMessage.create({
     data: {
       fid,
       timestamp: verificationAdd.data.timestamp + 1,
-      verificationRemoveBody: { address: ethSigner.signerKey },
+      verificationRemoveBody: { address: ethSignerKey },
     },
   });
 });
 
 describe('getVerificationAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationAdd(fid, ethSignerKey)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(verificationAdd);
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).resolves.toEqual(verificationAdd);
+    await expect(set.getVerificationAdd(fid, ethSignerKey)).resolves.toEqual(verificationAdd);
   });
 });
 
 describe('getVerificationRemove', () => {
   test('fails if missing', async () => {
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationRemove(fid, ethSignerKey)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(verificationRemove);
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).resolves.toEqual(verificationRemove);
+    await expect(set.getVerificationRemove(fid, ethSignerKey)).resolves.toEqual(verificationRemove);
   });
 });
 
 describe('getVerificationAddsByFid', () => {
   test('returns verification adds for an fid', async () => {
     await set.merge(verificationAdd);
-    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual([verificationAdd]);
+    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual({
+      messages: [verificationAdd],
+      nextPageToken: undefined,
+    });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual([]);
+    await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
 describe('getVerificationRemovesByFid', () => {
   test('returns verification removes for an fid', async () => {
     await set.merge(verificationRemove);
-    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual([verificationRemove]);
+    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual({
+      messages: [verificationRemove],
+      nextPageToken: undefined,
+    });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
+
+// TODO: getAllVerificationMessagesByFid
 
 describe('merge', () => {
   let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
@@ -110,14 +126,14 @@ describe('merge', () => {
 
   const assertVerificationAddWins = async (message: protobufs.VerificationAddEthAddressMessage) => {
     await assertVerificationExists(message);
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).resolves.toEqual(message);
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationAdd(fid, ethSignerKey)).resolves.toEqual(message);
+    await expect(set.getVerificationRemove(fid, ethSignerKey)).rejects.toThrow(HubError);
   };
 
   const assertVerificationRemoveWins = async (message: protobufs.VerificationRemoveMessage) => {
     await assertVerificationExists(message);
-    await expect(set.getVerificationRemove(fid, ethSigner.signerKey)).resolves.toEqual(message);
-    await expect(set.getVerificationAdd(fid, ethSigner.signerKey)).rejects.toThrow(HubError);
+    await expect(set.getVerificationRemove(fid, ethSignerKey)).resolves.toEqual(message);
+    await expect(set.getVerificationAdd(fid, ethSignerKey)).rejects.toThrow(HubError);
   };
 
   test('fails with invalid message type', async () => {
@@ -387,6 +403,65 @@ describe('merge', () => {
   });
 });
 
+describe('revoke', () => {
+  let revokedMessages: protobufs.Message[] = [];
+
+  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('revokeMessage', revokeMessageHandler);
+  });
+
+  beforeEach(() => {
+    revokedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('revokeMessage', revokeMessageHandler);
+  });
+
+  test('fails with invalid message type', async () => {
+    const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
+    const result = await set.revoke(castAdd);
+    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(revokedMessages).toEqual([]);
+  });
+
+  test('succeeds with VerificationAddEthAddress', async () => {
+    await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(verificationAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address)
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([verificationAdd]);
+  });
+
+  test('succeeds with VerificationRemove', async () => {
+    await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(verificationRemove);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getVerificationRemove(fid, verificationRemove.data.verificationRemoveBody.address)
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([verificationRemove]);
+  });
+
+  test('succeeds with unmerged message', async () => {
+    const result = await set.revoke(verificationAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address)
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([verificationAdd]);
+  });
+});
+
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];
   const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
@@ -447,6 +522,10 @@ describe('pruneMessages', () => {
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.verificationAddEthAddressBody.address);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.verificationAddEthAddressBody.address);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.verificationAddEthAddressBody.address);
+  });
+
+  beforeEach(async () => {
+    await cache.syncFromDb(db);
   });
 
   describe('with size limit', () => {

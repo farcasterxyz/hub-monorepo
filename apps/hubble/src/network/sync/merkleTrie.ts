@@ -6,7 +6,7 @@ import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
-const TRIE_UNLOAD_THRESHOLD = 10_000;
+const TRIE_UNLOAD_THRESHOLD = 25_000;
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -45,6 +45,8 @@ class MerkleTrie {
   private _db: RocksDB;
   private _lock: ReadWriteLock;
 
+  private _pendingDbUpdates = new Map<Buffer, Buffer>();
+
   private _callsSinceLastUnload = 0;
 
   constructor(rocksDb: RocksDB) {
@@ -70,8 +72,8 @@ class MerkleTrie {
           // There is no Root node in the DB, just use an empty one
         }
 
-        release();
         resolve();
+        release();
       });
     });
   }
@@ -103,55 +105,44 @@ class MerkleTrie {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
         try {
-          // Create a new DB transaction
-          const { status, txn } = await this._root.insert(id.syncId(), this._db, this._db.transaction());
+          const { status, dbUpdatesMap } = await this._root.insert(id.syncId(), this._db, new Map());
+          this._updatePendingDbUpdates(dbUpdatesMap);
 
           // Write the transaction to the DB
-          const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
-          if (dbStatus.isErr()) {
-            log.error('Insert Error', dbStatus.error);
-          } else {
-            this._unloadFromMemory();
-          }
+          await this._unloadFromMemory(true);
 
-          release();
           resolve(status);
         } catch (e) {
-          log.error('Insert Error', e);
+          log.error({ e }, 'Insert Error');
 
-          this._unloadFromMemory();
-          release();
           resolve(false);
         }
+
+        release();
       });
     });
   }
 
-  public async delete(id: SyncId): Promise<boolean> {
+  public async deleteBySyncId(id: SyncId): Promise<boolean> {
+    return this.deleteByBytes(id.syncId());
+  }
+
+  public async deleteByBytes(id: Uint8Array): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
         try {
-          // Create a new DB transaction
-          const { status, txn } = await this._root.delete(id.syncId(), this._db, this._db.transaction());
+          const { status, dbUpdatesMap } = await this._root.delete(id, this._db, new Map());
+          this._updatePendingDbUpdates(dbUpdatesMap);
+          await this._unloadFromMemory(true);
 
-          // Write the transaction to the DB
-          // Write the transaction to the DB
-          const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
-          if (dbStatus.isErr()) {
-            log.error('Delete Error', dbStatus.error);
-          } else {
-            this._unloadFromMemory();
-          }
-
-          release();
           resolve(status);
         } catch (e) {
-          log.error('Delete Error', e);
+          log.error({ e }, 'Delete Error');
 
-          this._unloadFromMemory();
-          release();
           resolve(false);
         }
+
+        release();
       });
     });
   }
@@ -167,10 +158,10 @@ class MerkleTrie {
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         const r = await this._root.exists(id.syncId(), this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
-        release();
         resolve(r);
+        release();
       });
     });
   }
@@ -183,36 +174,11 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const r = await this._root.getSnapshot(prefix, this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
-        release();
         resolve(r);
-      });
-    });
-  }
 
-  /**
-   * Returns the subset of the prefix common to two different tries by comparing excluded hashes.
-   *
-   * @param prefix - the prefix of the external trie.
-   * @param excludedHashes - the excluded hashes of the external trie.
-   */
-  public async getDivergencePrefix(prefix: Uint8Array, excludedHashes: string[]): Promise<Uint8Array> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const ourExcludedHashes = (await this.getSnapshot(prefix)).excludedHashes;
-
-        this._unloadFromMemory();
         release();
-
-        for (let i = 0; i < prefix.length; i++) {
-          // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
-          // eslint-disable-next-line security/detect-object-injection
-          if (ourExcludedHashes[i] !== excludedHashes[i]) {
-            resolve(prefix.slice(0, i));
-          }
-        }
-        resolve(prefix);
       });
     });
   }
@@ -225,18 +191,18 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
         if (node === undefined) {
-          release();
           resolve(undefined);
         } else {
           const md = await node.getNodeMetadata(prefix, this._db);
 
-          this._unloadFromMemory();
-          release();
+          await this._unloadFromMemory(false);
           resolve(md);
         }
+
+        release();
       });
     });
   }
@@ -246,10 +212,10 @@ class MerkleTrie {
       this._lock.readLock(async (release) => {
         const r = await this._root.getNode(prefix, this._db);
 
-        this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
-        release();
         resolve(r);
+        release();
       });
     });
   }
@@ -263,18 +229,18 @@ class MerkleTrie {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._db);
-        this._unloadFromMemory();
+        await this._unloadFromMemory(false);
 
         if (node === undefined) {
-          release();
           resolve([]);
         } else {
           const r = await node.getAllValues(prefix, this._db);
 
-          this._unloadFromMemory();
-          release();
+          await this._unloadFromMemory(false);
           resolve(r);
         }
+
+        release();
       });
     });
   }
@@ -282,8 +248,8 @@ class MerkleTrie {
   public async items(): Promise<number> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        release();
         resolve(this._root.items);
+        release();
       });
     });
   }
@@ -291,26 +257,82 @@ class MerkleTrie {
   public async rootHash(): Promise<string> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        release();
         resolve(Buffer.from(this._root.hash).toString('hex'));
+        release();
       });
     });
+  }
+
+  // Save the cached DB updates to the DB
+  public async commitToDb(): Promise<void> {
+    return new Promise((resolve) => {
+      this._lock.writeLock(async (release) => {
+        await this._unloadFromMemory(true, true);
+
+        resolve(undefined);
+        release();
+      });
+    });
+  }
+
+  /** Incoporate the DB updates from the trie operation into the cached DB updates
+   * Note that this method only updates the cache, and does not write to the DB.
+   * call commitToDb() to write the cached DB updates to the DB.
+   */
+  private _updatePendingDbUpdates(dbUpdatesMap: Map<Buffer, Buffer>): void {
+    for (const [key, value] of dbUpdatesMap) {
+      this._pendingDbUpdates.set(key, value);
+    }
   }
 
   /**
    * Check if we need to unload the trie from memory. This is not protected by a lock, since it is only called
    * from within a lock.
    */
-  private _unloadFromMemory(): void {
+  private async _unloadFromMemory(writeLocked: boolean, force = false) {
     // Every TRIE_UNLOAD_THRESHOLD calls, we unload the trie from memory to avoid memory leaks.
     // Every call in this class usually loads one root-to-leaf path of the trie, so
     // we unload the trie from memory every 1000 calls. This allows us to keep the
     // most recently used parts of the trie in memory, while still "garbage collecting"
     // the rest of the trie.
-    if (this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
+
+    // Fn that does the actual unloading
+    const doUnload = async () => {
       this._callsSinceLastUnload = 0;
       logger.info('Unloading trie from memory');
+
+      // First, we need to commit any pending db updates.
+      const txn = this._db.transaction();
+
+      for (const [key, value] of this._pendingDbUpdates) {
+        if (value && value.length > 0) {
+          txn.put(key, value);
+        } else {
+          txn.del(key);
+        }
+      }
+
+      await this._db.commit(txn);
+      logger.info({ numDbUpdates: this._pendingDbUpdates.size }, 'Trie committed pending DB updates');
+
+      this._pendingDbUpdates.clear();
       this._root.unloadChildren();
+    };
+
+    if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
+      // If we are only read locked, we need to upgrade to a write lock
+      if (!writeLocked) {
+        this._lock.writeLock(async (release) => {
+          try {
+            await doUnload();
+          } finally {
+            release();
+          }
+        });
+      } else {
+        // We're already write locked, so we can just do the unload
+        await doUnload();
+      }
     } else {
       this._callsSinceLastUnload++;
     }

@@ -1,6 +1,5 @@
 /* eslint-disable security/detect-object-injection */
 import { utils } from '@noble/ed25519';
-import { BigNumber } from 'ethers';
 import { err, ok, Result } from 'neverthrow';
 import { HubError, HubResult } from './errors';
 
@@ -84,15 +83,20 @@ export const bytesToUtf8String = (bytes: Uint8Array): HubResult<string> => {
   return ok(decoder.decode(bytes));
 };
 
+const encoder = new TextEncoder();
 export const utf8StringToBytes = (utf8: string): HubResult<Uint8Array> => {
-  const encoder = new TextEncoder();
   return ok(encoder.encode(utf8));
 };
 
-export const bigNumberToBytes = (value: BigNumber): HubResult<Uint8Array> => {
-  return hexStringToBytes(value._hex);
+export const bigIntToBytes = (value: bigint): HubResult<Uint8Array> => {
+  let hexValue = value.toString(16);
+
+  // Prefix odd-length hex values with a 0 since hexStringToBytes requires even-length hex values
+  hexValue = hexValue.length % 2 == 0 ? hexValue : '0' + hexValue;
+
+  return hexStringToBytes(hexValue);
 };
 
-export const bytesToBigNumber = (bytes: Uint8Array): HubResult<BigNumber> => {
-  return bytesToHexString(bytes).map((hexString) => BigNumber.from(hexString));
+export const bytesToBigInt = (bytes: Uint8Array): HubResult<bigint> => {
+  return bytesToHexString(bytes).map((hexString) => BigInt(hexString));
 };

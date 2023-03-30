@@ -10,25 +10,27 @@ import { SyncId } from '~/network/sync/syncId';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { sleepWhile } from '~/utils/crypto';
+import { NetworkFactories } from '../utils/factories';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
 
 const network = protobufs.FarcasterNetwork.TESTNET;
-
 const fid = Factories.Fid.build();
-const custodySigner = Factories.Eip712Signer.build();
 const signer = Factories.Ed25519Signer.build();
+const custodySigner = Factories.Eip712Signer.build();
 
 let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.Message;
+let signerAdd: protobufs.SignerAddMessage;
 let castAdd: protobufs.Message;
 
 beforeAll(async () => {
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+  const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+  const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+    { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
   );
 
@@ -47,6 +49,7 @@ describe('SyncEngine', () => {
 
   afterEach(async () => {
     await syncEngine.stop();
+    await engine.stop();
   });
 
   const addMessagesWithTimestamps = async (timestamps: number[]) => {
@@ -64,6 +67,7 @@ describe('SyncEngine', () => {
     );
 
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await syncEngine.trie.commitToDb();
     return results;
   };
 
@@ -136,6 +140,14 @@ describe('SyncEngine', () => {
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
+  test('getAllMessages returns empty with invalid syncId', async () => {
+    expect(await syncEngine.trie.items()).toEqual(0);
+    const result = await engine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()[0]?.data).toBeUndefined();
+    expect(result._unsafeUnwrap()[0]?.hash.length).toEqual(0);
+  });
+
   test('trie is updated when message with higher order is merged', async () => {
     const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
     expect(rcustody.isOk()).toBeTruthy();
@@ -194,6 +206,7 @@ describe('SyncEngine', () => {
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
 
     await syncEngine2.stop();
+    await engine2.stop();
   });
 
   test('snapshotTimestampPrefix trims the seconds', async () => {
@@ -207,7 +220,7 @@ describe('SyncEngine', () => {
     const mockRPCClient = mock<HubRpcClient>();
     const rpcClient = instance(mockRPCClient);
     let called = false;
-    when(mockRPCClient.getSyncMetadataByPrefix(anything())).thenCall(async () => {
+    when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything(), anything())).thenCall(async () => {
       const shouldSync = await syncEngine.shouldSync({
         prefix: new Uint8Array(),
         numMessages: 10,
@@ -312,5 +325,55 @@ describe('SyncEngine', () => {
     } finally {
       Date.now = nowOrig;
     }
+  });
+
+  describe('getDivergencePrefix', () => {
+    const trieWithIds = async (timestamps: number[]) => {
+      const syncIds = await Promise.all(
+        timestamps.map(async (t) => {
+          return await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(t * 1000) } });
+        })
+      );
+
+      await Promise.all(syncIds.map((id) => syncEngine.trie.insert(id)));
+      await syncEngine.trie.commitToDb();
+    };
+
+    test('returns the prefix with the most common excluded hashes', async () => {
+      await trieWithIds([1665182332, 1665182343, 1665182345]);
+
+      const trie = syncEngine.trie;
+
+      const prefixToTest = Buffer.from('1665182343');
+      const oldSnapshot = await trie.getSnapshot(prefixToTest);
+      trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
+
+      // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
+      let divergencePrefix = await syncEngine.getDivergencePrefix(
+        await trie.getSnapshot(prefixToTest),
+        oldSnapshot.excludedHashes
+      );
+      expect(divergencePrefix).toEqual(Buffer.from('16651823'));
+
+      // divergence prefix should be the full prefix, if snapshots are the same
+      const currentSnapshot = await trie.getSnapshot(prefixToTest);
+      divergencePrefix = await syncEngine.getDivergencePrefix(
+        await trie.getSnapshot(prefixToTest),
+        currentSnapshot.excludedHashes
+      );
+      expect(divergencePrefix).toEqual(prefixToTest);
+
+      // divergence prefix should empty if excluded hashes are empty
+      divergencePrefix = await syncEngine.getDivergencePrefix(await trie.getSnapshot(prefixToTest), []);
+      expect(divergencePrefix.length).toEqual(0);
+
+      // divergence prefix should be our prefix if provided hashes are longer
+      const with5 = Buffer.concat([prefixToTest, Buffer.from('5')]);
+      divergencePrefix = await syncEngine.getDivergencePrefix(await trie.getSnapshot(with5), [
+        ...currentSnapshot.excludedHashes,
+        'different',
+      ]);
+      expect(divergencePrefix).toEqual(prefixToTest);
+    });
   });
 });

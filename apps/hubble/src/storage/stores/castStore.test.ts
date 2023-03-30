@@ -1,14 +1,17 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import { err } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
+import { StorageCache } from '~/storage/engine/storageCache';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
 
 const db = jestRocksDB('protobufs.castStore.test');
-const eventHandler = new StoreEventHandler(db);
+const cache = new StorageCache();
+const eventHandler = new StoreEventHandler(db, cache);
 const store = new CastStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -71,77 +74,138 @@ describe('getCastRemove', () => {
 describe('getCastAddsByFid', () => {
   test('returns cast adds for an fid', async () => {
     await store.merge(castAdd);
-    await expect(store.getCastAddsByFid(fid)).resolves.toEqual([castAdd]);
+    await expect(store.getCastAddsByFid(fid)).resolves.toEqual({ messages: [castAdd], nextPageToken: undefined });
   });
 
   test('fails if incorrect values are passed in', async () => {
     await store.merge(castAdd);
 
     const invalidFid = Factories.Fid.build();
-    await expect(store.getCastAddsByFid(invalidFid)).resolves.toEqual([]);
+    await expect(store.getCastAddsByFid(invalidFid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(store.getCastAddsByFid(fid)).resolves.toEqual([]);
+    await expect(store.getCastAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
+  });
+
+  test('returns cast adds in chronological order according to pageOptions', async () => {
+    const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, timestamp: castAdd.data.timestamp + 1 } });
+    const castRemove2 = await Factories.CastRemoveMessage.create({ data: { fid } });
+    await store.merge(castRemove2);
+    await store.merge(castAdd);
+    await store.merge(castAdd2);
+
+    const results = await store.getCastAddsByFid(fid);
+    expect(results).toEqual({ messages: [castAdd, castAdd2], nextPageToken: undefined });
+
+    const results1 = await store.getCastAddsByFid(fid, { pageSize: 1 });
+    expect(results1.messages).toEqual([castAdd]);
+
+    const results2 = await store.getCastAddsByFid(fid, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [castAdd2], nextPageToken: undefined });
   });
 });
 
 describe('getCastRemovesByFid', () => {
-  test('returns cast removes for an fid', async () => {
-    await store.merge(castRemove);
-    await expect(store.getCastRemovesByFid(fid)).resolves.toEqual([castRemove]);
-  });
-
   test('fails if incorrect values are passed in', async () => {
     await store.merge(castRemove);
 
     const invalidFid = Factories.Fid.build();
-    await expect(store.getCastRemovesByFid(invalidFid)).resolves.toEqual([]);
+    await expect(store.getCastRemovesByFid(invalidFid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array without messages', async () => {
-    await expect(store.getCastRemovesByFid(fid)).resolves.toEqual([]);
+    await expect(store.getCastRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
+  });
+
+  test('returns cast removes in chronological order according to pageOptions', async () => {
+    const castAdd2 = await Factories.CastAddMessage.create({ data: { fid } });
+    const castRemove2 = await Factories.CastRemoveMessage.create({
+      data: { fid, timestamp: castRemove.data.timestamp + 1 },
+    });
+    await store.merge(castRemove);
+    await store.merge(castRemove2);
+    await store.merge(castAdd2);
+
+    const results = await store.getCastRemovesByFid(fid);
+    expect(results).toEqual({ messages: [castRemove, castRemove2], nextPageToken: undefined });
+
+    const results1 = await store.getCastRemovesByFid(fid, { pageSize: 1 });
+    expect(results1.messages).toEqual([castRemove]);
+
+    const results2 = await store.getCastRemovesByFid(fid, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [castRemove2], nextPageToken: undefined });
   });
 });
 
 describe('getCastsByParent', () => {
   test('returns empty array if no casts exist', async () => {
     const byTargetUser = await store.getCastsByParent(parentCastId);
-    expect(byTargetUser).toEqual([]);
+    expect(byTargetUser).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array if casts exist, but for a different cast id', async () => {
     await store.merge(castAdd);
-    expect(await store.getCastsByParent(Factories.CastId.build())).toEqual([]);
+    expect(await store.getCastsByParent(Factories.CastId.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that reply to a parent cast', async () => {
-    const castAddSameParent = await Factories.CastAddMessage.create({ data: { castAddBody: { parentCastId } } });
+  test('returns casts that reply to a parent cast according to pageOptions', async () => {
+    const castAddSameParent = await Factories.CastAddMessage.create({
+      data: { castAddBody: { parentCastId }, timestamp: castAdd.data.timestamp + 1 },
+    });
 
     await store.merge(castAdd);
     await store.merge(castAddSameParent);
 
     const byParent = await store.getCastsByParent(parentCastId);
-    expect(new Set(byParent)).toEqual(new Set([castAdd, castAddSameParent]));
+    expect(byParent).toEqual({ messages: [castAdd, castAddSameParent], nextPageToken: undefined });
+
+    const results1 = await store.getCastsByParent(parentCastId, { pageSize: 1 });
+    expect(results1.messages).toEqual([castAdd]);
+
+    const results2 = await store.getCastsByParent(parentCastId, { pageToken: results1.nextPageToken });
+    expect(results2).toEqual({ messages: [castAddSameParent], nextPageToken: undefined });
+
+    const results3 = await store.getCastsByParent(parentCastId, { reverse: true });
+    expect(results3).toEqual({ messages: [castAddSameParent, castAdd], nextPageToken: undefined });
   });
 });
 
 describe('getCastsByMention', () => {
   test('returns empty array if no casts exist', async () => {
     const byTargetUser = await store.getCastsByMention(Factories.Fid.build());
-    expect(byTargetUser).toEqual([]);
+    expect(byTargetUser).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   test('returns empty array if casts exist, but for a different fid or hash', async () => {
     await store.merge(castAdd);
-    expect(await store.getCastsByMention(Factories.Fid.build())).toEqual([]);
+    expect(await store.getCastsByMention(Factories.Fid.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that mention an fid', async () => {
+  test('returns casts that mention an fid according to pageOptions', async () => {
+    const castAdd2 = await Factories.CastAddMessage.create({
+      data: {
+        timestamp: castAdd.data.timestamp + 1,
+        castAddBody: { mentions: castAdd.data.castAddBody.mentions },
+      },
+    });
     await store.merge(castAdd);
+    await store.merge(castAdd2);
     expect(castAdd.data.castAddBody.mentions.length).toBeGreaterThan(0);
     for (const mentionFid of castAdd.data.castAddBody.mentions) {
-      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual([castAdd]);
+      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual({
+        messages: [castAdd, castAdd2],
+        nextPageToken: undefined,
+      });
+
+      const results1 = await store.getCastsByMention(mentionFid, { pageSize: 1 });
+      expect(results1.messages).toEqual([castAdd]);
+
+      const results2 = await store.getCastsByMention(mentionFid, { pageToken: results1.nextPageToken });
+      expect(results2).toEqual({ messages: [castAdd2], nextPageToken: undefined });
+
+      const results3 = await store.getCastsByMention(mentionFid, { reverse: true });
+      expect(results3).toEqual({ messages: [castAdd2, castAdd], nextPageToken: undefined });
     }
   });
 });
@@ -180,10 +244,16 @@ describe('merge', () => {
     await assetMessageExists(message);
     await expect(store.getCastAdd(fid, message.hash)).resolves.toEqual(message);
     for (const mentionFid of message.data.castAddBody.mentions) {
-      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual([message]);
+      await expect(store.getCastsByMention(mentionFid)).resolves.toEqual({
+        messages: [message],
+        nextPageToken: undefined,
+      });
     }
     if (message.data.castAddBody.parentCastId) {
-      await expect(store.getCastsByParent(message.data.castAddBody.parentCastId)).resolves.toEqual([message]);
+      await expect(store.getCastsByParent(message.data.castAddBody.parentCastId)).resolves.toEqual({
+        messages: [message],
+        nextPageToken: undefined,
+      });
     }
 
     if (removeMessage) {
@@ -451,6 +521,59 @@ describe('merge', () => {
   });
 });
 
+describe('revoke', () => {
+  let revokedMessages: protobufs.Message[] = [];
+
+  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
+
+  beforeAll(() => {
+    eventHandler.on('revokeMessage', revokeMessageHandler);
+  });
+
+  beforeEach(() => {
+    revokedMessages = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off('revokeMessage', revokeMessageHandler);
+  });
+
+  test('fails with invalid message type', async () => {
+    const reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } });
+    const result = await store.revoke(reactionAdd);
+    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(revokedMessages).toEqual([]);
+  });
+
+  test('succeeds with CastAdd', async () => {
+    await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
+    const result = await store.revoke(castAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(store.getCastAdd(fid, castAdd.hash)).rejects.toThrow();
+    expect(revokedMessages).toEqual([castAdd]);
+  });
+
+  test('succeeds with CastRemove', async () => {
+    await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
+    const result = await store.revoke(castRemove);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(store.getCastRemove(fid, castRemove.data.castRemoveBody.targetHash)).rejects.toThrow();
+    expect(revokedMessages).toEqual([castRemove]);
+  });
+
+  test('succeeds with unmerged message', async () => {
+    const result = await store.revoke(castAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(store.getCastAdd(fid, castAdd.hash)).rejects.toThrow();
+    expect(revokedMessages).toEqual([castAdd]);
+  });
+});
+
 describe('pruneMessages', () => {
   let prunedMessages: protobufs.Message[];
   const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
@@ -516,6 +639,10 @@ describe('pruneMessages', () => {
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5);
     removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
+  });
+
+  beforeEach(async () => {
+    await cache.syncFromDb(db);
   });
 
   describe('with size limit', () => {

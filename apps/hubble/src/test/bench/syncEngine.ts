@@ -12,6 +12,7 @@ import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
+import { StorageCache } from '~/storage/engine/storageCache';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { blake3Truncate160, sleepWhile } from '~/utils/crypto';
 import { avgRecords } from './helpers';
@@ -25,15 +26,17 @@ const peers: SyncEngine[] = [];
 
 class MockEngine {
   eventHandler: StoreEventHandler;
+  db: RocksDB;
 
   constructor(db: RocksDB) {
-    this.eventHandler = new StoreEventHandler(db);
+    this.db = db;
+    this.eventHandler = new StoreEventHandler(db, new StorageCache());
   }
 
   async mergeMessage(message: protobufs.Message): Promise<HubResult<void>> {
-    this.eventHandler.makeMergeMessage(message).map(async (event) => {
-      await this.eventHandler.putEvent(event);
-      this.eventHandler.broadcastEvent(event);
+    await this.eventHandler.commitTransaction(this.db.transaction(), {
+      type: protobufs.HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message, deletedMessages: [] },
     });
 
     return ok(undefined);

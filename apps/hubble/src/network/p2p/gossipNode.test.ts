@@ -90,27 +90,31 @@ describe('GossipNode', () => {
     const network = protobufs.FarcasterNetwork.TESTNET;
     const engine = new Engine(db, network);
     const hub = new MockHub(db, engine);
-
     const fid = Factories.Fid.build();
-    const custodySigner = Factories.Eip712Signer.build();
     const signer = Factories.Ed25519Signer.build();
+    const custodySigner = Factories.Eip712Signer.build();
 
     let server: Server;
     let client: HubRpcClient;
-
     let custodyEvent: protobufs.IdRegistryEvent;
-    let signerAdd: protobufs.Message;
+    let signerAdd: protobufs.SignerAddMessage;
     let castAdd: protobufs.Message;
 
     beforeAll(async () => {
-      custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySigner.signerKey });
+      const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+      const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+      custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
       signerAdd = await Factories.SignerAddMessage.create(
-        { data: { fid, network, signerAddBody: { signer: signer.signerKey } } },
+        { data: { fid, network, signerAddBody: { signer: signerKey } } },
         { transient: { signer: custodySigner } }
       );
 
       castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+    });
+
+    afterAll(async () => {
+      await engine.stop();
     });
 
     test('gossip messages only from rpc', async () => {
@@ -126,7 +130,7 @@ describe('GossipNode', () => {
       const port = await server.start();
       client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
-      await client.submitIdRegistryEvent(custodyEvent);
+      await hub.submitIdRegistryEvent(custodyEvent);
 
       // Messages from rpc are gossiped
       await client.submitMessage(signerAdd);

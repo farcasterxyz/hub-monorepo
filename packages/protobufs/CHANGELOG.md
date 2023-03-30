@@ -1,5 +1,33 @@
 # @farcaster/protobufs
 
+## 0.1.11
+
+### Patch Changes
+
+- e5cb327: Remove getHubRpcClient, use getSSLRpcClient() or getInsecureRpcClient()
+
+## 0.1.10
+
+### Patch Changes
+
+- 6a0bf29: Gossip dnsName when sharing contact info
+- 23de6e7: update RevokeMessagesBySignerJob payload
+
+## 0.1.9
+
+### Patch Changes
+
+- 469825e: feat: add reverse param to list grpc methods
+- 1e4482e: updated dependencies
+
+## 0.1.8
+
+### Patch Changes
+
+- 0a3b77c: make SignerAddBody.name and SubscribeRequest.fromId optional
+- e7602bd: add pagination to list rpc methods
+- 68230b7: chore: move submitIdRegistryEvent and submitNameRegistryEvent to admin grpc service
+
 ## 0.1.7
 
 ### Patch Changes

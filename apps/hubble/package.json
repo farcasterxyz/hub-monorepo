@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hubble",
-  "version": "1.0.11",
+  "version": "1.0.19",
   "description": "Farcaster Hub",
   "author": "",
   "license": "",
@@ -24,7 +24,7 @@
     "start": "tsx src/cli.ts start",
     "identity": "tsx src/cli.ts identity",
     "console": "tsx src/cli.ts console",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "yarn build && NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },
   "devDependencies": {
@@ -35,11 +35,12 @@
     "@types/node-cron": "^3.0.7",
     "@types/progress": "^2.0.5",
     "@types/rwlock": "^5.0.3",
-    "chance": "~1.1.9",
-    "csv-stringify": "~6.2.3",
+    "chance": "~1.1.11",
+    "csv-stringify": "~6.3.0",
     "eslint-config-custom": "*",
     "fishery": "~2.2.2",
-    "pino-pretty": "~9.1.1",
+    "pino-pretty": "~10.0.0",
+    "prettier-config-custom": "*",
     "progress": "~2.0.3",
     "tsconfig": "*",
     "ts-mockito": "~2.6.1"
@@ -47,8 +48,8 @@
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
-    "@farcaster/protobufs": "0.1.7",
-    "@farcaster/utils": "0.2.8",
+    "@farcaster/protobufs": "0.1.11",
+    "@farcaster/utils": "0.4.0",
     "@grpc/grpc-js": "~1.8.7",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^2.0.0",
@@ -60,14 +61,15 @@
     "@multiformats/multiaddr": "^11.0.0",
     "async-lock": "^1.4.0",
     "commander": "~10.0.0",
-    "ethers": "~5.7.2",
+    "ethers": "~6.2.1",
     "libp2p": "0.42.2",
     "neverthrow": "~6.0.0",
     "node-cron": "~3.0.2",
-    "pino": "~8.8.0",
+    "pino": "~8.11.0",
+    "rate-limiter-flexible": "^2.4.1",
     "rocksdb": "~5.2.1",
     "rwlock": "~5.0.0",
     "tiny-typed-emitter": "~2.1.0",
-    "tsx": "~3.12.2"
+    "tsx": "~3.12.5"
   }
 }

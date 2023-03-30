@@ -1,10 +1,9 @@
 import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubError } from '@farcaster/utils';
 import { blake3 } from '@noble/hashes/blake3';
-import { assert } from 'console';
 import { ResultAsync } from 'neverthrow';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
+import RocksDB from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from '~/utils/crypto';
 import { NodeMetadata } from './merkleTrie';
@@ -28,7 +27,7 @@ export type TrieSnapshot = {
 
 type TrieNodeOpResult = {
   status: boolean;
-  txn: Transaction;
+  dbUpdatesMap: Map<Buffer, Buffer>;
 };
 
 // An empty type that represents a serialized trie node, which will need to be loaded from the db
@@ -70,8 +69,12 @@ class TrieNode {
    * Recursively traverses the trie by prefix and inserts the value at the end. Updates the hashes for
    * every node that was traversed.
    */
-  public async insert(key: Uint8Array, db: RocksDB, txn: Transaction, current_index = 0): Promise<TrieNodeOpResult> {
-    assert(current_index < key.length, 'Key length exceeded');
+  public async insert(
+    key: Uint8Array,
+    db: RocksDB,
+    dbUpdatesMap: Map<Buffer, Buffer>,
+    current_index = 0
+  ): Promise<TrieNodeOpResult> {
     if (current_index >= key.length) {
       throw 'Key length exceeded';
     }
@@ -90,18 +93,19 @@ class TrieNode {
       this._items += 1;
 
       // Also save to db
-      txn = this.saveToDBTx(txn, key.slice(0, current_index));
+      this.saveToDBTx(dbUpdatesMap, key.slice(0, current_index));
 
-      return { status: true, txn };
+      return { status: true, dbUpdatesMap };
     }
 
     if (current_index >= TIMESTAMP_LENGTH && this.isLeaf) {
       if (bytesCompare(this._key ?? new Uint8Array(), key) === 0) {
         // If the same key exists, do nothing
-        return { status: false, txn };
+        return { status: false, dbUpdatesMap };
       }
+
       // If the key is different, and a value exists, then split the node
-      txn = await this._splitLeafNode(current_index, db, txn);
+      await this._splitLeafNode(current_index, db, dbUpdatesMap);
     }
 
     if (!this._children.has(char)) {
@@ -110,20 +114,19 @@ class TrieNode {
 
     // Recurse into a non-leaf node and instruct it to insert the value
     const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
-    const result = await child.insert(key, db, txn, current_index + 1);
+    const result = await child.insert(key, db, dbUpdatesMap, current_index + 1);
 
     const status = result.status;
-    txn = result.txn;
 
     if (status) {
       this._items += 1;
       await this._updateHash(key.slice(0, current_index), db);
 
       // Save the current node to DB
-      txn = this.saveToDBTx(txn, key.slice(0, current_index));
+      this.saveToDBTx(dbUpdatesMap, key.slice(0, current_index));
     }
 
-    return { status, txn };
+    return { status, dbUpdatesMap };
   }
 
   /**
@@ -135,33 +138,36 @@ class TrieNode {
    * Ensures that there are no empty nodes after deletion. This is important to make sure the hashes
    * will match exactly with another trie that never had the value (e.g. in another hub).
    */
-  public async delete(key: Uint8Array, db: RocksDB, txn: Transaction, current_index = 0): Promise<TrieNodeOpResult> {
+  public async delete(
+    key: Uint8Array,
+    db: RocksDB,
+    dbUpdatesMap: Map<Buffer, Buffer>,
+    current_index = 0
+  ): Promise<TrieNodeOpResult> {
     if (this.isLeaf) {
       if (bytesCompare(this._key ?? new Uint8Array(), key) === 0) {
         this._items -= 1;
         this._key = undefined;
 
-        txn = this.deleteFromDbTx(txn, key.slice(0, current_index));
-        return { status: true, txn };
+        this.deleteFromDbTx(dbUpdatesMap, key.slice(0, current_index));
+        return { status: true, dbUpdatesMap };
       } else {
-        return { status: false, txn };
+        return { status: false, dbUpdatesMap };
       }
     }
 
-    assert(current_index < key.length, 'Key length exceeded2');
     if (current_index >= key.length) {
       throw 'Key length exceeded2';
     }
     const char = key.at(current_index) as number;
     if (!this._children.has(char)) {
-      return { status: false, txn };
+      return { status: false, dbUpdatesMap };
     }
 
     const childTrieNode = await this._getOrLoadChild(key.slice(0, current_index), char, db);
-    const result = await childTrieNode.delete(key, db, txn, current_index + 1);
+    const result = await childTrieNode.delete(key, db, dbUpdatesMap, current_index + 1);
 
     const status = result.status;
-    txn = result.txn;
 
     if (status) {
       this._items -= 1;
@@ -172,10 +178,10 @@ class TrieNode {
 
         if (this._items === 0) {
           // Delete this node
-          txn = this.deleteFromDbTx(txn, key.slice(0, current_index));
+          this.deleteFromDbTx(dbUpdatesMap, key.slice(0, current_index));
 
           await this._updateHash(key.slice(0, current_index), db);
-          return { status: true, txn };
+          return { status: true, dbUpdatesMap };
         }
       }
 
@@ -190,15 +196,15 @@ class TrieNode {
 
           // Delete child
           const childPrefix = Buffer.concat([key.slice(0, current_index), new Uint8Array([char])]);
-          txn = child.deleteFromDbTx(txn, childPrefix);
+          child.deleteFromDbTx(dbUpdatesMap, childPrefix);
         }
       }
 
       await this._updateHash(key.slice(0, current_index), db);
-      txn = this.saveToDBTx(txn, key.slice(0, current_index));
+      this.saveToDBTx(dbUpdatesMap, key.slice(0, current_index));
     }
 
-    return { status, txn };
+    return { status, dbUpdatesMap };
   }
 
   /**
@@ -211,7 +217,6 @@ class TrieNode {
       return true;
     }
 
-    assert(current_index < key.length, 'Key length exceeded3');
     if (current_index >= key.length) {
       throw 'Key length exceeded3';
     }
@@ -382,12 +387,14 @@ class TrieNode {
     return Buffer.from(protobufs.DbTrieNode.encode(dbtrieNode).finish());
   }
 
-  private saveToDBTx(tx: Transaction, prefix: Uint8Array): Transaction {
-    return tx.put(TrieNode.makePrimaryKey(prefix), this.serialize());
+  private saveToDBTx(dbUpdatesMap: Map<Buffer, Buffer>, prefix: Uint8Array): Map<Buffer, Buffer> {
+    dbUpdatesMap.set(TrieNode.makePrimaryKey(prefix), this.serialize());
+    return dbUpdatesMap;
   }
 
-  private deleteFromDbTx(tx: Transaction, prefix: Uint8Array): Transaction {
-    return tx.del(TrieNode.makePrimaryKey(prefix));
+  private deleteFromDbTx(dbUpdatesMap: Map<Buffer, Buffer>, prefix: Uint8Array): Map<Buffer, Buffer> {
+    dbUpdatesMap.set(TrieNode.makePrimaryKey(prefix), Buffer.from([]));
+    return dbUpdatesMap;
   }
 
   private async _getOrLoadChild(prefix: Uint8Array, char: number, db: RocksDB): Promise<TrieNode> {
@@ -447,29 +454,30 @@ class TrieNode {
 
   // Splits a leaf node into a non-leaf node by clearing its key/value and adding a child for
   // the next char in its key
-  private async _splitLeafNode(current_index: number, db: RocksDB, txn: Transaction): Promise<Transaction> {
+  private async _splitLeafNode(
+    current_index: number,
+    db: RocksDB,
+    dbUpdatesMap: Map<Buffer, Buffer>
+  ): Promise<Map<Buffer, Buffer>> {
     if (!this._key) {
       // This should never happen, check is here for type safety
       throw new HubError('bad_request', 'Cannot split a leaf node without a key and value');
     }
 
-    assert(current_index < this._key.length, 'Cannot split a leaf node at an index greater than its key length');
-
     const newChildChar = this._key.at(current_index) as number;
     this._addChild(newChildChar);
     const newChild = this._children.get(newChildChar) as TrieNode;
-    const result = await newChild.insert(this._key, db, txn, current_index + 1);
+    await newChild.insert(this._key, db, dbUpdatesMap, current_index + 1);
 
-    txn = result.txn;
     const prefix = this._key.slice(0, current_index);
 
     this._key = undefined;
     await this._updateHash(prefix, db);
 
     // Save the current node to the DB
-    txn = this.saveToDBTx(txn, prefix);
+    this.saveToDBTx(dbUpdatesMap, prefix);
 
-    return txn;
+    return dbUpdatesMap;
   }
 
   private async _updateHash(prefix: Uint8Array, db: RocksDB) {
@@ -495,6 +503,40 @@ class TrieNode {
   }
 
   // Commented out, but useful for debugging
+
+  // public async verifyCounts(prefix: Uint8Array, db: RocksDB): Promise<boolean> {
+  //   let count = this.isLeaf ? 1 : 0;
+
+  //   if (this.isLeaf && this._key === undefined) {
+  //     console.log(`Leaf node without key at ${Buffer.from(prefix).toString('hex')}`);
+  //     return false;
+  //   }
+
+  //   for (const [char] of this._children) {
+  //     const child = await this._getOrLoadChild(prefix, char, db);
+  //     count += child.items;
+  //   }
+
+  //   if (count !== this.items) {
+  //     console.log(
+  //       `Count mismatch: ${count} !== ${this.items} at ${Buffer.from(prefix).toString('hex')} with ${
+  //         this._children.size
+  //       } children`
+  //     );
+  //     return false;
+  //   }
+
+  //   for (const [char] of this._children) {
+  //     const child = await this._getOrLoadChild(prefix, char, db);
+  //     const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
+  //     if (!(await child.verifyCounts(newPrefix, db))) {
+  //       return false;
+  //     }
+  //   }
+
+  //   return true;
+  // }
+
   // public async printTrie(prefix: Uint8Array, db: RocksDB): Promise<string> {
   //   let r = `${Buffer.from(prefix).toString('hex')}, ${this.items}, ${Buffer.from(this._hash).toString(
   //     'hex'

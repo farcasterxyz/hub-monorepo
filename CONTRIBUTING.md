@@ -10,6 +10,8 @@
    2. [Writing Docs](#32-writing-docs)
    3. [Handling Errors](#33-handling-errors)
    4. [Creating the PR](#34-creating-the-pr)
+   5. [Adding Changesets](#35-adding-changesets)
+   6. [Releasing Versions](#36-releasing-versions)
 4. [Troubleshooting](#4-troubleshooting)
 
 ## 1. How to Contribute
@@ -96,7 +98,7 @@ All changes that involve features or bugfixes should be accompanied by tests, an
 
 ### 3.2 Writing Docs
 
-All changes should have supporting documentation that makes reviewing and understand the code easy. You should:
+All changes should have supporting documentation that makes reviewing and understanding the code easy. You should:
 
 - Update high-level changes in the [contract docs](docs/docs.md).
 - Always use TSDoc style comments for functions, variables, constants, events and params.
@@ -106,7 +108,6 @@ All changes should have supporting documentation that makes reviewing and unders
 - Do not comment obvious changes (e.g. `starts the db` before the line `db.start()`)
 - Add a `Safety: ..` comment explaining every use of `as`.
 - Prefer active, present-tense doing form (`Gets the connection`) over other forms (`Connection is obtained`, `Get the connection`, `We get the connection`, `will get a connection`)
-- To generate docs for `packages/js`, run `yarn docs` in the root of the monorepo. To see how the TSDoc comment is formatted, see [signMessageHash() in ed25519Signer.ts](packages/utils/src/signers/ed25519Signer.ts).
 
 ### 3.4. Handling Errors
 
@@ -254,6 +255,30 @@ Called Signer.verify with the correct parameter to ensure that older signature
 types would not pass verification in our Signer Sets
 ```
 
+### 3.5. Adding Changesets
+
+All PRs with meaningful changes should have a [changeset](https://github.com/changesets/changesets) which is a short
+description of the modifications being made to each package. Changesets are automatically converted into a changelog
+when the repo manager runs a release process.
+
+1. Run `yarn changeset` to start the process
+2. Select the packages being modified with the space key
+3. Select minor version if breaking change or patch otherwise, since we haven't release 1.0 yet
+4. Commit the generates files into your branch.
+
+### 3.6 Releasing Versions
+
+Permissions to publish to the @farcaster organization in NPM is necessary. This is a non-reversible process so if you
+are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Warpcast](https://warpcast.com/v))
+
+1. Checkout a new branch and run `yarn changeset version`
+2. Check that the version bumps are consistent with our versioning system
+3. Check that all CHANGELOG.mds represent the important changes made
+4. Check in all the files and merge the branch to main
+5. Checkout main, pull down to the merged commit (should be latest) and run `yarn changeset publish`
+6. Hubble is private and must be manually tagged with `git tag -a @farcaster/hubble@<version>` if bumped.
+7. Run `git push origin <tag>` on each tag to push up the tags.
+
 ## 4. TroubleShooting
 
 ### Upgrading Libp2p
@@ -264,3 +289,9 @@ types would not pass verification in our Signer Sets
 4. Follow the [migration guide](https://github.com/libp2p/js-libp2p/tree/master/doc/migrations) for the versions you are upgrading to
 
 If you run into any unexpected issues open a discussion in the [libp2p forum](https://discuss.libp2p.io/). @achingbrain on the Filecoin slack maintains this project and can be helpful with major issues.
+
+### Releasing to NPM
+
+1. Use `npm adduser` to log into the account that can publish to @farcaster on npm
+2. Make a branch, run `yarn changeset version` and merge the changes into main
+3. Pull latest main, run `yarn changeset publish`

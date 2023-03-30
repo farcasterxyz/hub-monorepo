@@ -25,6 +25,7 @@ describe('MerkleTrie', () => {
     );
     const trie = new MerkleTrie(db);
     await Promise.all(syncIds.map((id) => trie.insert(id)));
+    await trie.commitToDb();
     return trie;
   };
 
@@ -35,7 +36,7 @@ describe('MerkleTrie', () => {
     let count = 0;
     for await (const [key, value] of db.iteratorByPrefix(Buffer.from([RootPrefix.SyncMerkleTrieNode]))) {
       if (callback) {
-        await callback(count, key, value);
+        await callback(count, key as Buffer, value as Buffer);
       }
       count++;
     }
@@ -107,12 +108,31 @@ describe('MerkleTrie', () => {
       TEST_TIMEOUT_LONG
     );
 
+    test(
+      'inserting multiple doesnt cause unload conflict',
+      async () => {
+        const syncIds = await NetworkFactories.SyncId.createList(500);
+
+        const trie = new MerkleTrie(db);
+        const insertPromise = Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
+        // Multiple parallel commitToDb calls should not cause a conflict
+        const commitPromise = Promise.all([1, 2, 3, 4, 5].map(async () => trie.commitToDb()));
+
+        // Wait for both to finish
+        await Promise.all([insertPromise, commitPromise]);
+
+        expect(await trie.items()).toEqual(500);
+      },
+      TEST_TIMEOUT_LONG
+    );
+
     test('insert also inserts into the db', async () => {
       const dt = new Date();
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: dt } });
       const syncIdStr = Buffer.from(syncId.syncId()).toString('hex');
 
       await trie.insert(syncId);
+      await trie.commitToDb();
 
       expect(await trie.exists(syncId)).toBeTruthy();
 
@@ -142,6 +162,8 @@ describe('MerkleTrie', () => {
       expect(await trie.insert(syncId2)).toBeTruthy();
       expect(await trie.exists(syncId2)).toBeTruthy();
 
+      await trie.commitToDb();
+
       leafs = 0;
       //eslint-disable-next-line @typescript-eslint/no-unused-vars
       count = await forEachDbItem(db, async (i, key, value) => {
@@ -169,6 +191,7 @@ describe('MerkleTrie', () => {
       async () => {
         const syncIds = await NetworkFactories.SyncId.createList(20);
         await Promise.all(syncIds.map(async (syncId) => await trie.insert(syncId)));
+        await trie.commitToDb();
 
         // Now initialize a new merkle trie from the same DB
         const trie2 = new MerkleTrie(db);
@@ -182,7 +205,8 @@ describe('MerkleTrie', () => {
         await Promise.all(syncIds.map(async (syncId) => expect(await trie2.exists(syncId)).toBeTruthy()));
 
         // Delete half the items from the first trie
-        await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.delete(syncId)));
+        await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)));
+        await trie.commitToDb();
 
         // Initialize a new trie from the same DB
         const trie3 = new MerkleTrie(db);
@@ -221,7 +245,7 @@ describe('MerkleTrie', () => {
 
       expect(await trie.exists(syncId)).toBeTruthy();
 
-      await trie.delete(syncId);
+      await trie.deleteBySyncId(syncId);
       expect(await trie.items()).toEqual(0);
       expect(await trie.rootHash()).toEqual(EMPTY_HASH);
 
@@ -234,7 +258,7 @@ describe('MerkleTrie', () => {
 
       const rootHashBeforeDelete = await trie.rootHash();
       const syncId2 = await NetworkFactories.SyncId.create();
-      expect(await trie.delete(syncId2)).toBeFalsy();
+      expect(await trie.deleteBySyncId(syncId2)).toBeFalsy();
 
       const rootHashAfterDelete = await trie.rootHash();
       expect(rootHashAfterDelete).toEqual(rootHashBeforeDelete);
@@ -249,7 +273,7 @@ describe('MerkleTrie', () => {
       const rootHashBeforeDelete = await trie.rootHash();
       trie.insert(syncId2);
 
-      trie.delete(syncId2);
+      trie.deleteBySyncId(syncId2);
       expect(await trie.rootHash()).toEqual(rootHashBeforeDelete);
     });
 
@@ -261,7 +285,7 @@ describe('MerkleTrie', () => {
       await firstTrie.insert(syncId1);
       await firstTrie.insert(syncId2);
 
-      await firstTrie.delete(syncId1);
+      await firstTrie.deleteBySyncId(syncId1);
 
       const secondTrie = new MerkleTrie(db2);
       await secondTrie.insert(syncId2);
@@ -276,13 +300,17 @@ describe('MerkleTrie', () => {
       const id = await NetworkFactories.SyncId.create();
 
       await trie.insert(id);
+      await trie.commitToDb();
+
       expect(await trie.items()).toEqual(1);
 
       let count = await forEachDbItem(db);
       expect(count).toEqual(1 + TIMESTAMP_LENGTH);
 
       // Delete
-      await trie.delete(id);
+      await trie.deleteBySyncId(id);
+      await trie.commitToDb();
+
       count = await forEachDbItem(db);
       expect(count).toEqual(0);
     });
@@ -293,12 +321,15 @@ describe('MerkleTrie', () => {
 
       await trie.insert(syncId1);
       await trie.insert(syncId2);
+      await trie.commitToDb();
 
       let count = await forEachDbItem(db);
       expect(count).toBeGreaterThan(1 + TIMESTAMP_LENGTH);
 
       // Delete
-      await trie.delete(syncId1);
+      await trie.deleteBySyncId(syncId1);
+      await trie.commitToDb();
+
       count = await forEachDbItem(db);
       expect(count).toEqual(1 + TIMESTAMP_LENGTH);
     });
@@ -323,7 +354,7 @@ describe('MerkleTrie', () => {
       await Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
 
       // Delete half of the items
-      await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.delete(syncId)));
+      await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)));
 
       // Check that the items are still there
       await Promise.all(
@@ -336,12 +367,53 @@ describe('MerkleTrie', () => {
       );
     });
 
+    test(
+      'test multiple insert + delete',
+      async () => {
+        const syncIds1 = await NetworkFactories.SyncId.createList(100);
+        const syncIds2 = await NetworkFactories.SyncId.createList(100);
+
+        await Promise.all(syncIds1.map(async (syncId) => trie.insert(syncId)));
+
+        // Delete half of the items
+        const deletePromise = Promise.all(
+          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId))
+        );
+        const insert2Promise = Promise.all(syncIds2.map(async (syncId) => trie.insert(syncId)));
+        const existPromise = await Promise.all(
+          syncIds1.slice(syncIds1.length / 2).map(async (syncId) => {
+            expect(await trie.exists(syncId)).toBeTruthy();
+          })
+        );
+        await Promise.all([deletePromise, insert2Promise, existPromise]);
+
+        // Check that the items are still there
+        const exist1 = Promise.all(
+          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => expect(await trie.exists(syncId)).toBeFalsy())
+        );
+        const exist2 = await Promise.all(
+          syncIds1.slice(syncIds1.length / 2).map(async (syncId) => {
+            expect(await trie.exists(syncId)).toBeTruthy();
+          })
+        );
+        const exist3 = await Promise.all(
+          syncIds2.map(async (syncId) => {
+            expect(await trie.exists(syncId)).toBeTruthy();
+          })
+        );
+
+        await Promise.all([exist1, exist2, exist3]);
+      },
+      TEST_TIMEOUT_LONG
+    );
+
     test('delete after loading from DB', async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
       await trie.insert(syncId1);
       await trie.insert(syncId2);
+      await trie.commitToDb();
 
       const rootHash = await trie.rootHash();
 
@@ -350,7 +422,8 @@ describe('MerkleTrie', () => {
 
       expect(await trie2.rootHash()).toEqual(rootHash);
 
-      expect(await trie2.delete(syncId1)).toBeTruthy();
+      expect(await trie2.deleteBySyncId(syncId1)).toBeTruthy();
+      await trie2.commitToDb();
 
       expect(await trie2.rootHash()).not.toEqual(rootHash);
       expect(await trie2.exists(syncId1)).toBeFalsy();
@@ -363,6 +436,7 @@ describe('MerkleTrie', () => {
 
       await trie.insert(syncId1);
       await trie.insert(syncId2);
+      await trie.commitToDb();
 
       const rootHash = await trie.rootHash();
 
@@ -370,7 +444,8 @@ describe('MerkleTrie', () => {
       (await trie.getNode(new Uint8Array()))?.unloadChildren();
 
       // Now try deleting syncId1
-      expect(await trie.delete(syncId1)).toBeTruthy();
+      expect(await trie.deleteBySyncId(syncId1)).toBeTruthy();
+      await trie.commitToDb();
 
       expect(await trie.rootHash()).not.toEqual(rootHash);
       expect(await trie.exists(syncId1)).toBeFalsy();
@@ -531,32 +606,5 @@ describe('MerkleTrie', () => {
     expect(values?.length).toEqual(3);
     values = await trie.getAllValues(Buffer.from('166518233'));
     expect(values?.length).toEqual(1);
-  });
-
-  describe('getDivergencePrefix', () => {
-    test('returns the prefix with the most common excluded hashes', async () => {
-      const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
-      const prefixToTest = Buffer.from('1665182343');
-      const oldSnapshot = await trie.getSnapshot(prefixToTest);
-      trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
-
-      // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
-      let divergencePrefix = await trie.getDivergencePrefix(prefixToTest, oldSnapshot.excludedHashes);
-      expect(divergencePrefix).toEqual(Buffer.from('16651823'));
-
-      // divergence prefix should be the full prefix, if snapshots are the same
-      const currentSnapshot = await trie.getSnapshot(prefixToTest);
-      divergencePrefix = await trie.getDivergencePrefix(prefixToTest, currentSnapshot.excludedHashes);
-      expect(divergencePrefix).toEqual(prefixToTest);
-
-      // divergence prefix should empty if excluded hashes are empty
-      divergencePrefix = await trie.getDivergencePrefix(prefixToTest, []);
-      expect(divergencePrefix.length).toEqual(0);
-
-      // divergence prefix should be our prefix if provided hashes are longer
-      const with5 = Buffer.concat([prefixToTest, Buffer.from('5')]);
-      divergencePrefix = await trie.getDivergencePrefix(with5, [...currentSnapshot.excludedHashes, 'different']);
-      expect(divergencePrefix).toEqual(prefixToTest);
-    });
   });
 });
