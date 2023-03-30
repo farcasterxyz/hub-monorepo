@@ -32,21 +32,19 @@ describe('ViemEip712Signer', () => {
         },
         removeListener: () => null,
         request: async ({ method, _params }: any) => {
-          if (method === 'eth_accounts') {
-            return [accounts[0].address];
-          }
-          if (method === 'eth_signTypedData_v4') {
-            method = 'eth_signTypedData_v4';
+          switch (method) {
+            case 'eth_accounts':
+              return [accounts[0].address];
+            case 'eth_signTypedData_v4':
             // TODO(michael): Stub this rpc request
-            // params = [params[1], params[0]];
+            // const { result } = await rpc.http('http://127.0.0.1:8545', {
+            //   body: {
+            //     method,
+            //     params,
+            //   },
+            // });
+            // return result;
           }
-          // const { result } = await rpc.http('http://127.0.0.1:8545', {
-          //   body: {
-          //     method,
-          //     params,
-          //   },
-          // });
-          // return result;
         },
       }),
     });
