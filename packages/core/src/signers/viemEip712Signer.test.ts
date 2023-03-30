@@ -10,14 +10,6 @@ import { Factories } from '../factories';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from '../verifications';
 import { ViemEip712Signer } from './viemEip712Signer';
 
-const accounts = [
-  {
-    address: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266',
-    balance: 10000000000000000000000n,
-    privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
-  },
-];
-
 const parseTypedDataParams = (params: any) => {
   const [, params_] = params;
   return JSON.parse(params_);
@@ -29,9 +21,10 @@ describe('ViemEip712Signer', () => {
   let ethersSigner;
 
   beforeAll(async () => {
-    const localAccount = getAccount(new Wallet(accounts[0].privateKey)) as LocalAccount;
+    const localAccount = getAccount(Wallet.createRandom()) as LocalAccount;
     ethersSigner = createWalletClient({
       transport: custom({
+        // Mock RPC server behavior
         request: async ({ method, params }: any) => {
           switch (method) {
             case 'eth_accounts':
