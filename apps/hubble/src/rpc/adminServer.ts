@@ -90,7 +90,9 @@ export default class AdminServer {
           const authResult = await authenticateUser(call.metadata, this.rpcUsers);
           if (authResult.isErr()) {
             logger.warn({ errMsg: authResult.error.message }, 'rebuildSyncTrie failed');
-            callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+            callback(
+              toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+            );
             return;
           }
 
@@ -104,7 +106,9 @@ export default class AdminServer {
           const authResult = await authenticateUser(call.metadata, this.rpcUsers);
           if (authResult.isErr()) {
             logger.warn({ errMsg: authResult.error.message }, 'deleteAllMessagesFromDb failed');
-            callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+            callback(
+              toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+            );
             return;
           }
 
@@ -147,7 +151,9 @@ export default class AdminServer {
         const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitIdRegistryEvent failed');
-          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+          callback(
+            toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+          );
           return;
         }
 
@@ -167,7 +173,9 @@ export default class AdminServer {
         const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitNameRegistryEvent failed');
-          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+          callback(
+            toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+          );
           return;
         }
 

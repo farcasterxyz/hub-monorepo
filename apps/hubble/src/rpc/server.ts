@@ -393,7 +393,9 @@ export default class Server {
         const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
           logger.warn({ errMsg: authResult.error.message }, 'submitMessage failed');
-          callback(toServiceError(new HubError('unauthenticated', 'User is not authenticated')));
+          callback(
+            toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+          );
           return;
         }
 
