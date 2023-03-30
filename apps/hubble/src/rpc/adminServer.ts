@@ -11,7 +11,7 @@ import * as net from 'net';
 import { err, ok } from 'neverthrow';
 import { HubInterface } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
-import { authenticateUser, getRPCUsersFromAuthString, RPCUser, toServiceError } from '~/rpc/server';
+import { authenticateUser, getRPCUsersFromAuthString, RpcUsers, toServiceError } from '~/rpc/server';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
@@ -26,7 +26,7 @@ export default class AdminServer {
   private syncEngine: SyncEngine;
   private grpcServer: GrpcServer;
 
-  private rpcUsers: RPCUser[] = [];
+  private rpcUsers: RpcUsers;
 
   constructor(hub: HubInterface, db: RocksDB, engine: Engine, syncEngine: SyncEngine, rpcAuth?: string) {
     this.hub = hub;
@@ -39,8 +39,8 @@ export default class AdminServer {
 
     this.rpcUsers = getRPCUsersFromAuthString(rpcAuth);
 
-    if (this.rpcUsers.length > 0) {
-      log.info({ num_users: this.rpcUsers.length }, 'RPC auth enabled');
+    if (this.rpcUsers.size > 0) {
+      log.info({ num_users: this.rpcUsers.size }, 'RPC auth enabled');
     }
   }
 

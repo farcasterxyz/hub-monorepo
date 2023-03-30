@@ -87,8 +87,14 @@ export class PeriodicTestDataJobScheduler {
       const signerAdd = signerAddResult._unsafeUnwrap();
 
       const rpcUsers = this._server.auth;
-      const user = rpcUsers[0]?.username ?? '';
-      const password = rpcUsers[0]?.password ?? '';
+
+      let user = '';
+      let password = '';
+
+      if (rpcUsers.size > 0) {
+        user = rpcUsers.values().next().value as string;
+        password = rpcUsers.get(user)?.[0] as string;
+      }
 
       const result = await client.submitMessage(signerAdd, getAuthMetadata(user, password));
       if (result.isErr()) {
@@ -112,8 +118,14 @@ export class PeriodicTestDataJobScheduler {
     const targetCastIds = [];
 
     const rpcUsers = this._server.auth;
-    const rpcUsername = rpcUsers[0]?.username ?? '';
-    const rpcPassword = rpcUsers[0]?.password ?? '';
+
+    let rpcUsername = '';
+    let rpcPassword = '';
+
+    if (rpcUsers.size > 0) {
+      rpcUsername = rpcUsers.values().next().value as string;
+      rpcPassword = rpcUsers.get(rpcUsername)?.[0] as string;
+    }
 
     // Insert some casts
     for (const testUser of this._testDataUsers) {
