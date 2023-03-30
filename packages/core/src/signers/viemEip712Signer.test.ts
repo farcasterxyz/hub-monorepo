@@ -18,6 +18,11 @@ const accounts = [
   },
 ];
 
+const parseTypedDataParams = (params: any) => {
+  const [, params_] = params;
+  return JSON.parse(params_);
+};
+
 describe('ViemEip712Signer', () => {
   let signer: ViemEip712Signer;
   let signerKey: Uint8Array;
@@ -27,13 +32,12 @@ describe('ViemEip712Signer', () => {
     const localAccount = getAccount(new Wallet(accounts[0].privateKey)) as LocalAccount;
     ethersSigner = createWalletClient({
       transport: custom({
-        removeListener: () => null,
         request: async ({ method, params }: any) => {
           switch (method) {
             case 'eth_accounts':
               return [localAccount.address];
             case 'eth_signTypedData_v4':
-              return localAccount.signTypedData(params);
+              return localAccount.signTypedData(parseTypedDataParams(params));
             default:
               throw Error(`No stubbed response for RPC method: ${method}`);
           }

@@ -74,7 +74,7 @@ export class ViemEip712Signer extends Eip712Signer {
         types: typeDefs,
         primaryType: 'VerificationClaims',
         message: {
-          claim,
+          ...claim,
         },
       }),
       (e) => new HubError('bad_request.invalid_param', e as Error)
