@@ -14,8 +14,8 @@ const parseTypedDataJSON = (params: any) => {
   const [, jsonData] = params;
   const typedData = JSON.parse(jsonData);
   if (typedData['primaryType'] === 'MessageData') {
-    const hashStringObj = typedData['message']['hash'];
-    typedData['message']['hash'] = new Uint8Array(Object.values(hashStringObj));
+    const hashObj = typedData['message']['hash'];
+    typedData['message']['hash'] = new Uint8Array(Object.values(hashObj));
   }
   return typedData;
 };
