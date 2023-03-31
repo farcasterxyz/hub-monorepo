@@ -1,5 +1,5 @@
 import { ResultAsync } from 'neverthrow';
-import { getAccount, Hex, WalletClient } from 'viem';
+import { Address, getAccount, WalletClient } from 'viem';
 import { hexStringToBytes } from '../bytes';
 import {
   EIP_712_FARCASTER_MESSAGE_DATA,
@@ -18,25 +18,21 @@ export class ViemEip712Signer extends Eip712Signer {
     this._viemWallet = viemWallet;
   }
 
-  private _hexStringToHex(hexString: string): Hex {
-    return hexString as Hex;
-  }
-
   private _toViemCompat712Domain() {
     const { salt, ...rest } = EIP_712_FARCASTER_DOMAIN;
     return {
-      salt: this._hexStringToHex(salt),
+      salt: salt as `0x${string}`,
       ...rest,
     };
   }
 
-  private async _getSignerKey(): Promise<string> {
+  private async _getSignerKey() {
     const [address] = await this._viemWallet.getAddresses();
     return address;
   }
 
   private async _getSignerAccount() {
-    return getAccount(this._hexStringToHex(await this._getSignerKey()));
+    return getAccount((await this._getSignerKey()) as Address);
   }
 
   public async getSignerKey(): HubAsyncResult<Uint8Array> {

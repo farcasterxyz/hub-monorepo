@@ -29,7 +29,7 @@ describe('ViemEip712Signer', () => {
   beforeAll(async () => {
     walletClient = createWalletClient({
       transport: custom({
-        // Mock RPC server behavior
+        // Mock RPC server responses
         request: async ({ method, params }: any) => {
           switch (method) {
             case 'eth_accounts':
