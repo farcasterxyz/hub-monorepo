@@ -16,12 +16,12 @@ const parseTypedDataParams = (params: any) => {
 };
 
 describe('ViemEip712Signer', () => {
+  const localAccount = getAccount(Wallet.createRandom()) as LocalAccount;
   let signer: ViemEip712Signer;
   let signerKey: Uint8Array;
   let ethersSigner;
 
   beforeAll(async () => {
-    const localAccount = getAccount(Wallet.createRandom()) as LocalAccount;
     ethersSigner = createWalletClient({
       transport: custom({
         // Mock RPC server behavior

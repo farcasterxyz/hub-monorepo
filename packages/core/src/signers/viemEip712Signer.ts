@@ -1,5 +1,5 @@
 import { ResultAsync } from 'neverthrow';
-import { getAccount, Hex, WalletClient } from 'viem';
+import { bytesToHex, getAccount, Hex, WalletClient } from 'viem';
 import { hexStringToBytes } from '../bytes';
 import {
   EIP_712_FARCASTER_MESSAGE_DATA,
@@ -9,11 +9,6 @@ import {
 import { HubAsyncResult, HubError } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Eip712Signer } from './eip712Signer';
-
-const typeDefs = {
-  MessageData: EIP_712_FARCASTER_MESSAGE_DATA,
-  VerificationClaims: EIP_712_FARCASTER_VERIFICATION_CLAIM,
-};
 
 export class ViemEip712Signer extends Eip712Signer {
   private readonly _viemWallet: WalletClient;
@@ -55,10 +50,10 @@ export class ViemEip712Signer extends Eip712Signer {
       this._viemWallet.signTypedData({
         account: await this._getSignerAccount(),
         domain: this._toViemCompat712Domain(),
-        types: typeDefs,
+        types: { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
         primaryType: 'MessageData',
         message: {
-          hash,
+          hash: bytesToHex(hash),
         },
       }),
       (e) => new HubError('bad_request.invalid_param', e as Error)
@@ -71,8 +66,8 @@ export class ViemEip712Signer extends Eip712Signer {
       this._viemWallet.signTypedData({
         account: await this._getSignerAccount(),
         domain: this._toViemCompat712Domain(),
-        types: typeDefs,
-        primaryType: 'VerificationClaims',
+        types: { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
+        primaryType: 'VerificationClaim',
         message: {
           ...claim,
         },
