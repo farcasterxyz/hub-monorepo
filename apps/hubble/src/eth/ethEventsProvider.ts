@@ -235,6 +235,34 @@ export class EthEventsProvider {
   }
 
   /**
+   * Retry events from a specific block number
+   *
+   * @param blockNumber
+   */
+  public async retryEventsFromBlock(blockNumber: number) {
+    await this.syncHistoricalIdEvents(
+      protobufs.IdRegistryEventType.REGISTER,
+      blockNumber,
+      blockNumber,
+      this._chunkSize
+    );
+    await this.syncHistoricalIdEvents(
+      protobufs.IdRegistryEventType.TRANSFER,
+      blockNumber,
+      blockNumber,
+      this._chunkSize
+    );
+
+    // Sync old Name Transfer events
+    await this.syncHistoricalNameEvents(
+      protobufs.NameRegistryEventType.TRANSFER,
+      blockNumber,
+      blockNumber,
+      this._chunkSize
+    );
+  }
+
+  /**
    * Sync old Id events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
