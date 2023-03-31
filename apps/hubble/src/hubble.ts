@@ -183,19 +183,6 @@ export class Hub implements HubInterface {
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode();
 
-    this.engine = new Engine(this.rocksDB, options.network);
-    this.syncEngine = new SyncEngine(this.engine, this.rocksDB);
-
-    this.rpcServer = new Server(
-      this,
-      this.engine,
-      this.syncEngine,
-      this.gossipNode,
-      options.rpcAuth,
-      options.rpcRateLimit
-    );
-    this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
-
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
     if (options.ethRpcUrl) {
@@ -210,6 +197,19 @@ export class Hub implements HubInterface {
     } else {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
     }
+
+    this.engine = new Engine(this.rocksDB, options.network);
+    this.syncEngine = new SyncEngine(this.engine, this.rocksDB, this.ethRegistryProvider);
+
+    this.rpcServer = new Server(
+      this,
+      this.engine,
+      this.syncEngine,
+      this.gossipNode,
+      options.rpcAuth,
+      options.rpcRateLimit
+    );
+    this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job queues
     this.updateNameRegistryEventExpiryJobQueue = new UpdateNameRegistryEventExpiryJobQueue(this.rocksDB);
@@ -471,7 +471,7 @@ export class Hub implements HubInterface {
     }
   }
 
-  private async handleContactInfo(peerId: PeerId, message: ContactInfoContent) {
+  private async handleContactInfo(peerId: PeerId, message: ContactInfoContent): Promise<void> {
     // Updates the address book for this peer
     const gossipAddress = message.gossipAddress;
     if (gossipAddress) {
@@ -482,22 +482,39 @@ export class Hub implements HubInterface {
       }
 
       const p2pMultiAddrResult = p2pMultiAddrStr(addressInfo.value, peerId.toString()).map((addr: string) =>
-        multiaddr(addr)
+        Result.fromThrowable(
+          () => multiaddr(addr),
+          (error) => new HubError('bad_request.parse_failure', error as Error)
+        )()
       );
 
-      const res = Result.combine([p2pMultiAddrResult]).map(async ([multiaddr]) => {
-        if (!this.gossipNode.addressBook) {
-          return err(new HubError('unavailable', 'address book missing for gossipNode'));
-        }
+      if (p2pMultiAddrResult.isErr()) {
+        log.error(
+          { error: p2pMultiAddrResult.error, message, address: addressInfo.value },
+          'failed to create multiaddr'
+        );
+        return;
+      }
 
-        return await ResultAsync.fromPromise(
-          this.gossipNode.addressBook.add(peerId, [multiaddr]),
+      if (p2pMultiAddrResult.value.isErr()) {
+        log.error(
+          { error: p2pMultiAddrResult.value.error, message, address: addressInfo.value },
+          'failed to parse multiaddr'
+        );
+        return;
+      }
+
+      const multiaddrValue = p2pMultiAddrResult.value.value;
+      if (!this.gossipNode.addressBook) {
+        log.error({}, 'address book missing for gossipNode');
+      } else {
+        const addResult = await ResultAsync.fromPromise(
+          this.gossipNode.addressBook.add(peerId, [multiaddrValue]),
           (error) => new HubError('unavailable', error as Error)
-        ).map(() => ok(undefined));
-      });
-
-      if (res.isErr()) {
-        log.error({ error: res.error, message }, 'failed to add contact info to address book');
+        );
+        if (addResult.isErr()) {
+          log.error({ error: addResult.error, message, peerId }, 'failed to add contact info to address book');
+        }
       }
     }
 

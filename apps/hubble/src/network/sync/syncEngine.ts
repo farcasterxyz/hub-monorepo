@@ -3,6 +3,7 @@ import { getFarcasterTime, HubAsyncResult, HubError, HubResult, HubRpcClient } f
 import { PeerId } from '@libp2p/interface-peer-id';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
+import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import { Hub } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
@@ -37,7 +38,9 @@ type PeerContact = {
 
 class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
+
   private readonly engine: Engine;
+  private readonly _ethEventsProvider: EthEventsProvider | undefined;
 
   private _isSyncing = false;
   private _interruptSync = false;
@@ -49,10 +52,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Number of messages waiting to get into the merge stores.
   private _syncMergeQ = 0;
 
-  constructor(engine: Engine, rocksDb: RocksDB) {
+  constructor(engine: Engine, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider) {
     super();
 
     this._trie = new MerkleTrie(rocksDb);
+    this._ethEventsProvider = ethEventsProvider;
+
     this.engine = engine;
 
     this.engine.eventHandler.on('mergeMessage', async (event: protobufs.MergeMessageHubEvent) => {
@@ -354,20 +359,28 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     messages.sort((a, b) => (a.data?.timestamp || 0) - (b.data?.timestamp || 0));
 
     // Merge messages sequentially, so we can handle missing users.
-    // TODO: Optimize by collecting all failures and retrying them in a batch
     this._syncMergeQ += messages.length;
     for (const msg of messages) {
       const result = await this.engine.mergeMessage(msg);
 
       if (result.isErr()) {
-        if (
-          result.error.errCode === 'bad_request.validation_failure' &&
-          (result.error.message.startsWith('invalid signer') || result.error.message.startsWith('unknown fid'))
-        ) {
-          // Unknown user error. Fetch the custody event and retry the message.
-          log.warn({ fid: msg.data?.fid, err: result.error.message }, 'Unknown user, fetching custody event');
-          const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
-          mergeResults.push(retryResult);
+        if (result.error.errCode === 'bad_request.validation_failure') {
+          if (result.error.message.startsWith('invalid signer')) {
+            // The user's signer was not found. So fetch all signers from the peer and retry.
+            log.warn({ fid: msg.data?.fid, err: result.error.message }, 'Invalid signer, fetching signers from peer');
+            const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
+            mergeResults.push(retryResult);
+          } else if (result.error.message.startsWith('unknown fid')) {
+            // We've missed this user's ID registry event? This is somewhat unlikely, but possible
+            // if we don't get all the events from the Ethereum RPC provider.
+            // We'll do it in the background, since this will not block the sync.
+            setTimeout(async () => {
+              this.retryIdRegistryEvent(msg, rpcClient);
+            }, 0);
+
+            // We'll push this message as a failure, and we'll retry it on the next sync.
+            mergeResults.push(result);
+          }
         } else if (result.error.errCode === 'bad_request.duplicate') {
           // This message has been merged into the DB, but for some reason is not in the Trie.
           // Just update the trie.
@@ -537,13 +550,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     });
   }
 
-  private async syncUserAndRetryMessage(
-    message: protobufs.Message,
-    rpcClient: HubRpcClient
-  ): Promise<HubResult<number>> {
+  private async retryIdRegistryEvent(message: protobufs.Message, rpcClient: HubRpcClient) {
     const fid = message.data?.fid;
     if (!fid) {
-      return err(new HubError('bad_request.invalid_param', 'Invalid fid'));
+      log.error({ fid }, 'Invalid fid while fetching custody event');
+      return;
     }
 
     const custodyEventResult = await rpcClient.getIdRegistryEvent(
@@ -552,14 +563,24 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       rpcDeadline()
     );
     if (custodyEventResult.isErr()) {
-      return err(new HubError('unavailable.network_failure', 'Failed to fetch custody event'));
+      log.warn({ fid }, 'Failed to fetch custody event from peer');
+      return;
     }
 
-    const custodyResult = await this.engine.mergeIdRegistryEvent(custodyEventResult._unsafeUnwrap());
-    if (custodyResult.isErr()) {
-      // It is possible we already have this (i.e., we have the fid but don't have the signer), so we
-      // won't fail if we can't merge it.
-      log.warn(custodyResult.error, `Failed to merge custody event for fid ${fid} during sync-retry`);
+    // Get the ethereum block number from the custody event
+    const custodyEventBlockNumber = custodyEventResult.value.blockNumber;
+
+    // We'll retry all events from this block number
+    await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
+  }
+
+  private async syncUserAndRetryMessage(
+    message: protobufs.Message,
+    rpcClient: HubRpcClient
+  ): Promise<HubResult<number>> {
+    const fid = message.data?.fid;
+    if (!fid) {
+      return err(new HubError('bad_request.invalid_param', 'Invalid fid while retrying message'));
     }
 
     // Probably not required to fetch the signer messages, but doing it here means

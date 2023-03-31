@@ -148,6 +148,9 @@ describe('Multi peer sync engine', () => {
       const engine2 = new Engine(testDb2, network);
       const syncEngine2 = new SyncEngine(engine2, testDb2);
 
+      // Add the signer custody event to engine 2
+      await engine2.mergeIdRegistryEvent(custodyEvent);
+
       // Engine 2 should sync with engine1
       expect(
         (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
@@ -205,6 +208,9 @@ describe('Multi peer sync engine', () => {
 
     const engine2 = new Engine(testDb2, network);
     const syncEngine2 = new SyncEngine(engine2, testDb2);
+
+    // Add the signer custody event to engine 2
+    await engine2.mergeIdRegistryEvent(custodyEvent);
 
     // Sync engine 2 with engine 1
     await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
@@ -313,6 +319,8 @@ describe('Multi peer sync engine', () => {
 
     // Create a new sync engine with a new test db
     const engine2 = new Engine(testDb2, network);
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+
     const syncEngine2 = new SyncEngine(engine2, testDb2);
     await syncEngine2.initialize();
 
