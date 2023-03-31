@@ -10,7 +10,7 @@ import { Factories } from '../factories';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from '../verifications';
 import { ViemEip712Signer } from './viemEip712Signer';
 
-const parseJsonTypedDataParams = (params: any) => {
+const parseTypedDataJSON = (params: any) => {
   const [, jsonData] = params;
   const typedData = JSON.parse(jsonData);
   if (typedData['primaryType'] === 'MessageData') {
@@ -35,7 +35,7 @@ describe('ViemEip712Signer', () => {
             case 'eth_accounts':
               return [localAccount.address];
             case 'eth_signTypedData_v4':
-              return localAccount.signTypedData(parseJsonTypedDataParams(params));
+              return localAccount.signTypedData(parseTypedDataJSON(params));
             default:
               throw Error(`No stubbed response for RPC method: ${method}`);
           }
