@@ -117,6 +117,14 @@ message SignerRequest {
   bytes signer = 2;
 }
 
+message IdRegistryEventRequest {
+  uint64 fid = 1;
+}
+
+message IdRegistryEventByAddressRequest {
+  bytes address = 1;
+}
+
 service HubService {
   // Submit Methods
   rpc SubmitMessage(Message) returns (Message);
@@ -148,7 +156,8 @@ service HubService {
   // Signer
   rpc GetSigner(SignerRequest) returns (Message);
   rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
-  rpc GetIdRegistryEvent(FidRequest) returns (IdRegistryEvent);
+  rpc GetIdRegistryEvent(IdRegistryEventRequest) returns (IdRegistryEvent);
+  rpc GetIdRegistryEventByAddress(IdRegistryEventByAddressRequest) returns (IdRegistryEvent);
   rpc GetFids(FidsRequest) returns (FidsResponse);
 
   // Bulk Methods

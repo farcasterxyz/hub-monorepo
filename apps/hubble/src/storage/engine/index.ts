@@ -554,6 +554,10 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEvent(fid), (e) => e as HubError);
   }
 
+  async getIdRegistryEventByAddress(address: Uint8Array): HubAsyncResult<protobufs.IdRegistryEvent> {
+    return ResultAsync.fromPromise(this._signerStore.getIdRegistryEventByAddress(address), (e) => e as HubError);
+  }
+
   async getFids(pageOptions: PageOptions = {}): HubAsyncResult<{
     fids: number[];
     nextPageToken: Uint8Array | undefined;

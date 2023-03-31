@@ -64,6 +64,17 @@ describe('getIdRegistryEvent', () => {
   });
 });
 
+describe('getIdRegistryEventByAddress', () => {
+  test('returns contract event if it exists', async () => {
+    await set.mergeIdRegistryEvent(custody1Event);
+    await expect(set.getIdRegistryEventByAddress(custody1Event.to)).resolves.toEqual(custody1Event);
+  });
+
+  test('fails if event is missing', async () => {
+    await expect(set.getIdRegistryEventByAddress(custody1Event.to)).rejects.toThrow(HubError);
+  });
+});
+
 describe('getSignerAdd', () => {
   test('fails if missing', async () => {
     await expect(set.getSignerAdd(fid, signerKey)).rejects.toThrow(HubError);

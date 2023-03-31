@@ -2,7 +2,11 @@ import * as protobufs from '@farcaster/protobufs';
 import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
-import { getIdRegistryEvent, putIdRegistryEventTransaction } from '~/storage/db/idRegistryEvent';
+import {
+  getIdRegistryEvent,
+  getIdRegistryEventByCustodyAddress,
+  putIdRegistryEventTransaction,
+} from '~/storage/db/idRegistryEvent';
 import {
   deleteMessageTransaction,
   getMessage,
@@ -104,6 +108,10 @@ class SignerStore {
   /** Returns the most recent event from the IdRegistry contract that affected the fid  */
   async getIdRegistryEvent(fid: number): Promise<protobufs.IdRegistryEvent> {
     return getIdRegistryEvent(this._db, fid);
+  }
+
+  async getIdRegistryEventByAddress(address: Uint8Array): Promise<protobufs.IdRegistryEvent> {
+    return getIdRegistryEventByCustodyAddress(this._db, address);
   }
 
   /**
