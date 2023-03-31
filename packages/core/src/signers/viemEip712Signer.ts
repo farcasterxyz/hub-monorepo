@@ -1,5 +1,5 @@
 import { ResultAsync } from 'neverthrow';
-import { bytesToHex, getAccount, Hex, WalletClient } from 'viem';
+import { getAccount, Hex, WalletClient } from 'viem';
 import { hexStringToBytes } from '../bytes';
 import {
   EIP_712_FARCASTER_MESSAGE_DATA,
@@ -53,7 +53,7 @@ export class ViemEip712Signer extends Eip712Signer {
         types: { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
         primaryType: 'MessageData',
         message: {
-          hash: bytesToHex(hash),
+          hash,
         },
       }),
       (e) => new HubError('bad_request.invalid_param', e as Error)
