@@ -15,6 +15,7 @@ import { ConnectionFilter } from '~/network/p2p/connectionFilter';
 import { GOSSIP_TOPICS, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
+import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -56,6 +57,7 @@ interface NodeOptions {
  */
 export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
+  private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
 
   /** Returns the PeerId (public key) of this node */
   get peerId() {
@@ -114,6 +116,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     // Wait for a few seconds for everything to initialize before connecting to bootstrap nodes
     setTimeout(() => this.bootstrap(bootstrapAddrs), 1 * 1000);
 
+    // Also start the periodic job to make sure we have peers
+    this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
+
     return ok(undefined);
   }
 
@@ -124,6 +129,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /** Removes the node from the libp2p network and tears down pubsub */
   async stop() {
     await this._node?.stop();
+    this._periodicPeerCheckJob?.stop();
+
     log.info({ identity: this.identity }, 'Stopped libp2p...');
   }
 
@@ -257,7 +264,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /* -------------------------------------------------------------------------- */
 
   /* Attempts to dial all the addresses in the bootstrap list */
-  private async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
+  public async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
     if (bootstrapAddrs.length == 0) return ok(undefined);
     const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
 

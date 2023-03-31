@@ -403,6 +403,8 @@ export class Hub implements HubInterface {
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
     this.pruneEventsJobScheduler.stop();
+    this.testDataJobScheduler?.stop();
+    this.updateNameRegistryEventExpiryJobWorker?.stop();
 
     // Stop the ETH registry provider
     if (this.ethRegistryProvider) {
