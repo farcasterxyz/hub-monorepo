@@ -49,12 +49,19 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from '~/utils/p2p';
-import { PeriodicTestDataJobScheduler, TestUser } from './utils/periodicTestDataJob';
+import { PeriodicTestDataJobScheduler, TestUser } from '~/utils/periodicTestDataJob';
+import { VersionSchedule } from '~/utils/versions';
+import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcasterVersionJob';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = process.env['HUBBLE_NAME'] ?? 'Farcaster Hub';
+
+export const FARCASTER_VERSION = '2023.3.1';
+export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
+  { version: '2023.3.1', expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
+];
 
 export interface HubInterface {
   engine: Engine;
@@ -171,6 +178,7 @@ export class Hub implements HubInterface {
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
   private testDataJobScheduler?: PeriodicTestDataJobScheduler;
+  private checkFarcasterVersionJobScheduler: CheckFarcasterVersionJobScheduler;
 
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
@@ -218,6 +226,7 @@ export class Hub implements HubInterface {
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
+    this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -313,7 +322,7 @@ export class Hub implements HubInterface {
 
     // Set the network in the DB
     await this.setDbNetwork(this.options.network);
-    log.info(`starting hub with network: ${this.options.network}`);
+    log.info(`starting hub with Farcaster version ${FARCASTER_VERSION} and network ${this.options.network}`);
 
     await this.engine.start();
 
@@ -348,6 +357,7 @@ export class Hub implements HubInterface {
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
     this.periodSyncJobScheduler.start();
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
+    this.checkFarcasterVersionJobScheduler.start();
 
     // Start the test data generator
     this.testDataJobScheduler?.start();
@@ -403,6 +413,7 @@ export class Hub implements HubInterface {
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
     this.pruneEventsJobScheduler.stop();
+    this.checkFarcasterVersionJobScheduler.stop();
 
     // Stop the ETH registry provider
     if (this.ethRegistryProvider) {
