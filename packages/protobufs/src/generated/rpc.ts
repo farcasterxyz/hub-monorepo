@@ -141,6 +141,14 @@ export interface SignerRequest {
   signer: Uint8Array;
 }
 
+export interface IdRegistryEventRequest {
+  fid: number;
+}
+
+export interface IdRegistryEventByAddressRequest {
+  address: Uint8Array;
+}
+
 function createBaseEmpty(): Empty {
   return {};
 }
@@ -1542,6 +1550,111 @@ export const SignerRequest = {
   },
 };
 
+function createBaseIdRegistryEventRequest(): IdRegistryEventRequest {
+  return { fid: 0 };
+}
+
+export const IdRegistryEventRequest = {
+  encode(message: IdRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): IdRegistryEventRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIdRegistryEventRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.fid = longToNumber(reader.uint64() as Long);
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): IdRegistryEventRequest {
+    return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
+  },
+
+  toJSON(message: IdRegistryEventRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IdRegistryEventRequest>, I>>(base?: I): IdRegistryEventRequest {
+    return IdRegistryEventRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<IdRegistryEventRequest>, I>>(object: I): IdRegistryEventRequest {
+    const message = createBaseIdRegistryEventRequest();
+    message.fid = object.fid ?? 0;
+    return message;
+  },
+};
+
+function createBaseIdRegistryEventByAddressRequest(): IdRegistryEventByAddressRequest {
+  return { address: new Uint8Array() };
+}
+
+export const IdRegistryEventByAddressRequest = {
+  encode(message: IdRegistryEventByAddressRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.address.length !== 0) {
+      writer.uint32(10).bytes(message.address);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): IdRegistryEventByAddressRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIdRegistryEventByAddressRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.address = reader.bytes();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): IdRegistryEventByAddressRequest {
+    return { address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array() };
+  },
+
+  toJSON(message: IdRegistryEventByAddressRequest): unknown {
+    const obj: any = {};
+    message.address !== undefined &&
+      (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IdRegistryEventByAddressRequest>, I>>(base?: I): IdRegistryEventByAddressRequest {
+    return IdRegistryEventByAddressRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<IdRegistryEventByAddressRequest>, I>>(
+    object: I
+  ): IdRegistryEventByAddressRequest {
+    const message = createBaseIdRegistryEventByAddressRequest();
+    message.address = object.address ?? new Uint8Array();
+    return message;
+  },
+};
+
 export type HubServiceService = typeof HubServiceService;
 export const HubServiceService = {
   /** Submit Methods */
@@ -1708,8 +1821,18 @@ export const HubServiceService = {
     path: '/HubService/GetIdRegistryEvent',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    requestSerialize: (value: IdRegistryEventRequest) => Buffer.from(IdRegistryEventRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => IdRegistryEventRequest.decode(value),
+    responseSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
+  },
+  getIdRegistryEventByAddress: {
+    path: '/HubService/GetIdRegistryEventByAddress',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: IdRegistryEventByAddressRequest) =>
+      Buffer.from(IdRegistryEventByAddressRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => IdRegistryEventByAddressRequest.decode(value),
     responseSerialize: (value: IdRegistryEvent) => Buffer.from(IdRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => IdRegistryEvent.decode(value),
   },
@@ -1843,7 +1966,8 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Signer */
   getSigner: handleUnaryCall<SignerRequest, Message>;
   getSignersByFid: handleUnaryCall<FidRequest, MessagesResponse>;
-  getIdRegistryEvent: handleUnaryCall<FidRequest, IdRegistryEvent>;
+  getIdRegistryEvent: handleUnaryCall<IdRegistryEventRequest, IdRegistryEvent>;
+  getIdRegistryEventByAddress: handleUnaryCall<IdRegistryEventByAddressRequest, IdRegistryEvent>;
   getFids: handleUnaryCall<FidsRequest, FidsResponse>;
   /** Bulk Methods */
   getAllCastMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -2102,16 +2226,31 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getIdRegistryEvent(
-    request: FidRequest,
+    request: IdRegistryEventRequest,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   getIdRegistryEvent(
-    request: FidRequest,
+    request: IdRegistryEventRequest,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void
   ): ClientUnaryCall;
   getIdRegistryEvent(
-    request: FidRequest,
+    request: IdRegistryEventRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
+  ): ClientUnaryCall;
+  getIdRegistryEventByAddress(
+    request: IdRegistryEventByAddressRequest,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
+  ): ClientUnaryCall;
+  getIdRegistryEventByAddress(
+    request: IdRegistryEventByAddressRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: IdRegistryEvent) => void
+  ): ClientUnaryCall;
+  getIdRegistryEventByAddress(
+    request: IdRegistryEventByAddressRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: IdRegistryEvent) => void

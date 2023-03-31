@@ -624,11 +624,22 @@ export default class Server {
       },
       getIdRegistryEvent: async (call, callback) => {
         const request = call.request;
-
-        const custodyEventResult = await this.engine?.getIdRegistryEvent(request.fid);
-        custodyEventResult?.match(
-          (custodyEvent: IdRegistryEvent) => {
-            callback(null, custodyEvent);
+        const idRegistryEventResult = await this.engine?.getIdRegistryEvent(request.fid);
+        idRegistryEventResult?.match(
+          (idRegistryEvent: IdRegistryEvent) => {
+            callback(null, idRegistryEvent);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          }
+        );
+      },
+      getIdRegistryEventByAddress: async (call, callback) => {
+        const request = call.request;
+        const idRegistryEventResult = await this.engine?.getIdRegistryEventByAddress(request.address);
+        idRegistryEventResult?.match(
+          (idRegistryEvent: IdRegistryEvent) => {
+            callback(null, idRegistryEvent);
           },
           (err: HubError) => {
             callback(toServiceError(err));
