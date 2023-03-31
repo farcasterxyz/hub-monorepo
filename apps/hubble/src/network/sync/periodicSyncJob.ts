@@ -11,7 +11,7 @@ const log = logger.child({
 type SchedulerStatus = 'started' | 'stopped';
 
 // Every 2 minutes, at 00:45 seconds, to avoid clashing with the prune job
-const DEFAULT_PERIODIC_JOB_CRON = '45 */2 * * * *';
+const DEFAULT_PERIODIC_SYNC_JOB_CRON = '45 */2 * * * *';
 
 export class PeriodicSyncJobScheduler {
   private _hub: Hub;
@@ -26,7 +26,7 @@ export class PeriodicSyncJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PERIODIC_JOB_CRON, () => {
+    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PERIODIC_SYNC_JOB_CRON, () => {
       return this.doJobs();
     });
   }
