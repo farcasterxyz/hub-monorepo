@@ -301,9 +301,11 @@ class Engine {
 
   async forEachMessage(callback: (message: protobufs.Message, key: Buffer) => Promise<boolean | void>): Promise<void> {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
+    const iterator = this._db.iteratorByPrefix(allUserPrefix, { keys: true });
 
-    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix, { keys: true })) {
+    for await (const [key, value] of iterator) {
       if (!key || !value) {
+        await iterator.end();
         break;
       }
 
@@ -334,6 +336,7 @@ class Engine {
       if (message.isOk()) {
         const done = await callback(message.value, key);
         if (done) {
+          await iterator.end();
           break;
         }
       }
