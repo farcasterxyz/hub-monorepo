@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { bytesToUtf8String, Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
+import { bytesToUtf8String, Factories, HubError } from '@farcaster/utils';
+import { getInsecureHubRpcClient, HubRpcClient } from '@farcaster/hub-nodejs';
 import { Ok } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';

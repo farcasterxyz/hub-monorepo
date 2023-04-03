@@ -5,7 +5,7 @@ import {
   Server as GrpcServer,
   ServerCredentials,
   getServer,
-} from '@farcaster/protobufs';
+} from '@farcaster/hub-nodejs';
 import { HubAsyncResult, HubError } from '@farcaster/utils';
 import * as net from 'net';
 import { err, ok } from 'neverthrow';

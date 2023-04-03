@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { AdminRpcClient } from '@farcaster/utils';
+import { AdminRpcClient } from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
 export class AdminCommand implements ConsoleCommandInterface {

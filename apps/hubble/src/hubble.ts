@@ -9,15 +9,9 @@ import {
   Message,
   NameRegistryEvent,
 } from '@farcaster/protobufs';
-import {
-  HubAsyncResult,
-  HubError,
-  HubRpcClient,
-  bytesToHexString,
-  bytesToUtf8String,
-  getSSLHubRpcClient,
-  getInsecureHubRpcClient,
-} from '@farcaster/utils';
+import { HubAsyncResult, HubError, bytesToHexString, bytesToUtf8String } from '@farcaster/utils';
+import { HubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';

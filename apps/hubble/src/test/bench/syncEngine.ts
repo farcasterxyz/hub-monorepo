@@ -6,7 +6,8 @@ import Chance from 'chance';
 import { ok } from 'neverthrow';
 
 import * as protobufs from '@farcaster/protobufs';
-import { FARCASTER_EPOCH, HubResult, HubRpcClient } from '@farcaster/utils';
+import { FARCASTER_EPOCH, HubResult } from '@farcaster/utils';
+import { HubRpcClient } from '@farcaster/hub-nodejs';
 import { MockRpcClient } from '~/network/sync/mock';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';

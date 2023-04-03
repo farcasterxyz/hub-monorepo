@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { getFarcasterTime, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import { getFarcasterTime, HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+import { HubRpcClient, Metadata } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -215,7 +216,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // First, get the latest state from the peer
       const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
         protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() }),
-        new protobufs.Metadata(),
+        new Metadata(),
         rpcDeadline()
       );
       if (peerStateResult.isErr()) {
@@ -337,7 +338,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let result = true;
     const messagesResult = await rpcClient.getAllMessagesBySyncIds(
       protobufs.SyncIds.create({ syncIds }),
-      new protobufs.Metadata(),
+      new Metadata(),
       rpcDeadline()
     );
     await messagesResult.match(
@@ -431,7 +432,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(
       protobufs.TrieNodePrefix.create({ prefix }),
-      new protobufs.Metadata(),
+      new Metadata(),
       rpcDeadline()
     );
 
@@ -478,7 +479,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     if (theirNode.numMessages <= fetchMessagesThreshold) {
       const result = await rpcClient.getAllSyncIdsByPrefix(
         protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix }),
-        new protobufs.Metadata(),
+        new Metadata(),
         rpcDeadline()
       );
 
@@ -559,7 +560,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     const custodyEventResult = await rpcClient.getIdRegistryEvent(
       protobufs.FidRequest.create({ fid }),
-      new protobufs.Metadata(),
+      new Metadata(),
       rpcDeadline()
     );
     if (custodyEventResult.isErr()) {
@@ -588,7 +589,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // order signer message)
     const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(
       protobufs.FidRequest.create({ fid }),
-      new protobufs.Metadata(),
+      new Metadata(),
       rpcDeadline()
     );
     if (signerMessagesResult.isErr()) {

@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Factories } from '@farcaster/utils';
+import { getInsecureHubRpcClient, HubRpcClient } from '@farcaster/hub-nodejs';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import Server from '~/rpc/server';

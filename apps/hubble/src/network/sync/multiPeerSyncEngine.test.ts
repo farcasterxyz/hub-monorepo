@@ -1,5 +1,6 @@
 import * as protobufs from '@farcaster/protobufs';
-import { Ed25519Signer, Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Ed25519Signer, Factories } from '@farcaster/utils';
+import { getInsecureHubRpcClient, HubRpcClient } from '@farcaster/hub-nodejs';
 import { APP_NICKNAME, APP_VERSION } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';

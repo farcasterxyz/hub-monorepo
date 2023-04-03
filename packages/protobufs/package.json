@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
-    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=./src/schemas ./src/schemas/*",
+    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=false,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=./src/schemas ./src/schemas/*",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
     "prepublishOnly": "yarn run build"
@@ -28,7 +28,5 @@
     "prettier-config-custom": "*",
     "ts-proto": "^1.142.1"
   },
-  "dependencies": {
-    "@grpc/grpc-js": "^1.8.7"
-  }
+  "dependencies": {}
 }

@@ -1,6 +1,7 @@
 import * as protobufs from '@farcaster/protobufs';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
-import { Factories, getInsecureHubRpcClient, HubError } from '@farcaster/utils';
+import { Factories, HubError } from '@farcaster/utils';
+import { getInsecureHubRpcClient, Metadata } from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 
 import Server, { rateLimitByIp } from '~/rpc/server';
@@ -51,7 +52,7 @@ describe('auth tests', () => {
     );
 
     // Wrong password
-    const metadata = new protobufs.Metadata();
+    const metadata = new Metadata();
     metadata.set('authorization', `Basic ${Buffer.from(`admin:wrongpassword`).toString('base64')}`);
     const result2 = await authClient.submitMessage(signerAdd, metadata);
     expect(result2._unsafeUnwrapErr()).toEqual(
@@ -59,7 +60,7 @@ describe('auth tests', () => {
     );
 
     // Wrong username
-    const metadata2 = new protobufs.Metadata();
+    const metadata2 = new Metadata();
     metadata2.set('authorization', `Basic ${Buffer.from(`wronguser:password`).toString('base64')}`);
     const result3 = await authClient.submitMessage(signerAdd, metadata2);
     expect(result3._unsafeUnwrapErr()).toEqual(
@@ -67,7 +68,7 @@ describe('auth tests', () => {
     );
 
     // Right password
-    const metadata3 = new protobufs.Metadata();
+    const metadata3 = new Metadata();
     metadata3.set('authorization', `Basic ${Buffer.from(`admin:password`).toString('base64')}`);
     const result4 = await authClient.submitMessage(signerAdd, metadata3);
     expect(result4.isOk()).toBeTruthy();
@@ -94,7 +95,7 @@ describe('auth tests', () => {
     );
 
     // Works with auth
-    const metadata = new protobufs.Metadata();
+    const metadata = new Metadata();
     metadata.set('authorization', `Basic ${Buffer.from(`admin:password`).toString('base64')}`);
 
     const result2 = await authClient.submitMessage(signerAdd, metadata);

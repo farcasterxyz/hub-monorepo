@@ -1,5 +1,5 @@
 import * as protobufs from '@farcaster/protobufs';
-import { AdminRpcClient, Factories, getAuthMetadata, HubRpcClient } from '@farcaster/utils';
+import { AdminRpcClient, Factories, getAuthMetadata, HubRpcClient, Metadata } from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
 // We use console.log() in this file, so we disable the eslint rule. This is the REPL console, after all!
@@ -38,11 +38,11 @@ export class GenCommand implements ConsoleCommandInterface {
       submitMessages: async (
         numMessages = 100,
         network = protobufs.FarcasterNetwork.DEVNET,
-        username?: string | protobufs.Metadata,
+        username?: string | Metadata,
         password?: string
       ): Promise<string | SubmitStats> => {
         // Submit messages might need a username/password
-        let metadata = new protobufs.Metadata();
+        let metadata = new Metadata();
         if (username && typeof username !== 'string') {
           metadata = username;
         } else if (username && password) {

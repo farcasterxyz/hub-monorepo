@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import { Factories } from '@farcaster/utils';
+import { getInsecureHubRpcClient, HubRpcClient, ClientReadableStream } from '@farcaster/hub-nodejs';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -35,7 +36,7 @@ let signerAdd: protobufs.SignerAddMessage;
 let castAdd: protobufs.CastAddMessage;
 let reactionAdd: protobufs.ReactionAddMessage;
 let events: [protobufs.HubEventType, any][];
-let stream: protobufs.ClientReadableStream<protobufs.HubEvent>;
+let stream: ClientReadableStream<protobufs.HubEvent>;
 
 beforeEach(async () => {
   events = [];
@@ -63,7 +64,7 @@ beforeAll(async () => {
 const setupSubscription = async (
   events: [protobufs.HubEventType, any][],
   options: { eventTypes?: protobufs.HubEventType[]; fromId?: number } = {}
-): Promise<protobufs.ClientReadableStream<protobufs.HubEvent>> => {
+): Promise<ClientReadableStream<protobufs.HubEvent>> => {
   const request = protobufs.SubscribeRequest.create(options);
 
   const streamResult = await client.subscribe(request);

@@ -2,7 +2,8 @@
 
 import * as protobufs from '@farcaster/protobufs';
 import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Factories, HubRpcClient } from '@farcaster/utils';
+import { Factories } from '@farcaster/utils';
+import { HubRpcClient } from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
