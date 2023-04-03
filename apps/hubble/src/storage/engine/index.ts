@@ -651,7 +651,7 @@ class Engine {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  async validateMessage(message: protobufs.Message): HubAsyncResult<protobufs.Message> {
+  private async validateMessage(message: protobufs.Message): HubAsyncResult<protobufs.Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError('bad_request.validation_failure', 'message data is missing'));
