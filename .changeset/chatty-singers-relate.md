@@ -1,8 +1,6 @@
-# @farcaster/hub-web
-
-## 0.1.0
-
-### Patch Changes
+---
+'@farcaster/hub-web': major
+---
 
 - add support for envoy
 - expose RpcWebClient
