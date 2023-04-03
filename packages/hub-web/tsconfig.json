@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "baseUrl": "./src",
+    "outDir": "build",
+    "rootDir": "src",
+    "isolatedModules": true,
+    // override this setting to be compatible with grpc-web output
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src/index.ts"],
+  "exclude": ["build", "node_modules", "jest.config.ts"]
+}
