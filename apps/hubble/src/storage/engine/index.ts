@@ -153,18 +153,25 @@ class Engine {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const setPostfix = typeToSetPostfix(message.data!.type);
 
-    if (setPostfix === UserPostfix.ReactionMessage) {
-      return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
-    } else if (setPostfix === UserPostfix.SignerMessage) {
-      return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
-    } else if (setPostfix === UserPostfix.CastMessage) {
-      return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
-    } else if (setPostfix === UserPostfix.UserDataMessage) {
-      return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
-    } else if (setPostfix === UserPostfix.VerificationMessage) {
-      return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
-    } else {
-      return err(new HubError('bad_request.validation_failure', 'invalid message type'));
+    switch (setPostfix) {
+      case UserPostfix.ReactionMessage: {
+        return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
+      }
+      case UserPostfix.SignerMessage: {
+        return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
+      }
+      case UserPostfix.CastMessage: {
+        return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
+      }
+      case UserPostfix.UserDataMessage: {
+        return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
+      }
+      case UserPostfix.VerificationMessage: {
+        return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
+      }
+      default: {
+        return err(new HubError('bad_request.validation_failure', 'invalid message type'));
+      }
     }
   }
 
@@ -250,7 +257,9 @@ class Engine {
       );
     }
 
-    log.info(`revoked ${revokedCount} messages from ${signerHex.value} and fid ${fid}`);
+    if (revokedCount > 0) {
+      log.info(`revoked ${revokedCount} messages from ${signerHex.value} and fid ${fid}`);
+    }
 
     return ok(undefined);
   }
@@ -283,6 +292,38 @@ class Engine {
 
     const userDataResult = await this._userDataStore.pruneMessages(fid);
     logPruneResult(userDataResult, 'user data');
+
+    return ok(undefined);
+  }
+
+  /** revoke message if it is not valid */
+  async validateOrRevokeMessage(message: protobufs.Message): HubAsyncResult<number | undefined> {
+    const isValid = await this.validateMessage(message);
+
+    if (isValid.isErr() && message.data) {
+      const setPostfix = typeToSetPostfix(message.data.type);
+
+      switch (setPostfix) {
+        case UserPostfix.ReactionMessage: {
+          return this._reactionStore.revoke(message);
+        }
+        case UserPostfix.SignerMessage: {
+          return this._signerStore.revoke(message);
+        }
+        case UserPostfix.CastMessage: {
+          return this._castStore.revoke(message);
+        }
+        case UserPostfix.UserDataMessage: {
+          return this._userDataStore.revoke(message);
+        }
+        case UserPostfix.VerificationMessage: {
+          return this._verificationStore.revoke(message);
+        }
+        default: {
+          return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+        }
+      }
+    }
 
     return ok(undefined);
   }
@@ -610,7 +651,7 @@ class Engine {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async validateMessage(message: protobufs.Message): HubAsyncResult<protobufs.Message> {
+  async validateMessage(message: protobufs.Message): HubAsyncResult<protobufs.Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError('bad_request.validation_failure', 'message data is missing'));

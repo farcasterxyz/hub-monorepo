@@ -52,6 +52,7 @@ import {
 import { PeriodicTestDataJobScheduler, TestUser } from '~/utils/periodicTestDataJob';
 import { VersionSchedule } from '~/utils/versions';
 import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcasterVersionJob';
+import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrRevokeMessagesJob';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -179,6 +180,7 @@ export class Hub implements HubInterface {
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
   private testDataJobScheduler?: PeriodicTestDataJobScheduler;
   private checkFarcasterVersionJobScheduler: CheckFarcasterVersionJobScheduler;
+  private validateOrRevokeMessagesJobScheduler: ValidateOrRevokeMessagesJobScheduler;
 
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
@@ -227,6 +229,7 @@ export class Hub implements HubInterface {
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
+    this.validateOrRevokeMessagesJobScheduler = new ValidateOrRevokeMessagesJobScheduler(this.rocksDB, this.engine);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -358,6 +361,7 @@ export class Hub implements HubInterface {
     this.periodSyncJobScheduler.start();
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
     this.checkFarcasterVersionJobScheduler.start();
+    this.validateOrRevokeMessagesJobScheduler.start();
 
     // Start the test data generator
     this.testDataJobScheduler?.start();
@@ -416,6 +420,7 @@ export class Hub implements HubInterface {
     this.checkFarcasterVersionJobScheduler.stop();
     this.testDataJobScheduler?.stop();
     this.updateNameRegistryEventExpiryJobWorker?.stop();
+    this.validateOrRevokeMessagesJobScheduler.stop();
 
     // Stop the ETH registry provider
     if (this.ethRegistryProvider) {
