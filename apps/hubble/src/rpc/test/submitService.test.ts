@@ -1,5 +1,14 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
+import {
+  Factories,
+  HubError,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+  FarcasterNetwork,
+  IdRegistryEvent,
+  SignerAddMessage,
+  Message,
+  CastId,
+} from '@farcaster/hub-nodejs';
 import { err } from 'neverthrow';
 import SyncEngine from '~/network/sync/syncEngine';
 
@@ -9,7 +18,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.submitService.test');
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -32,10 +41,10 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
-let castAdd: protobufs.Message;
-let castRemove: protobufs.Message;
+let custodyEvent: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
+let castAdd: Message;
+let castRemove: Message;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -64,11 +73,9 @@ describe('submitMessage', () => {
 
     test('succeeds', async () => {
       const result = await client.submitMessage(castAdd);
-      expect(protobufs.Message.toJSON(result._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(castAdd));
-      const getCast = await client.getCast(
-        protobufs.CastId.create({ fid: castAdd.data?.fid ?? 0, hash: castAdd.hash })
-      );
-      expect(protobufs.Message.toJSON(getCast._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(castAdd));
+      expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(castAdd));
+      const getCast = await client.getCast(CastId.create({ fid: castAdd.data?.fid ?? 0, hash: castAdd.hash }));
+      expect(Message.toJSON(getCast._unsafeUnwrap())).toEqual(Message.toJSON(castAdd));
     });
 
     test('fails with conflict', async () => {

@@ -5,8 +5,17 @@ import { Writable } from 'node:stream';
 import Chance from 'chance';
 import { ok } from 'neverthrow';
 
-import * as protobufs from '@farcaster/protobufs';
-import { FARCASTER_EPOCH, HubResult, HubRpcClient } from '@farcaster/utils';
+import {
+  CastAddBody,
+  FarcasterNetwork,
+  FARCASTER_EPOCH,
+  HubEventType,
+  HubResult,
+  HubRpcClient,
+  Message,
+  MessageData,
+  MessageType,
+} from '@farcaster/hub-nodejs';
 import { MockRpcClient } from '~/network/sync/mock';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
@@ -21,7 +30,7 @@ import { StorageCache } from '~/storage/engine/storageCache';
 const INITIAL_MESSAGES_COUNT = 10_000;
 const FID_COUNT = 10_000;
 
-const messages: protobufs.Message[] = [];
+const messages: Message[] = [];
 const peers: SyncEngine[] = [];
 
 class MockEngine {
@@ -33,16 +42,16 @@ class MockEngine {
     this.eventHandler = new StoreEventHandler(db, new StorageCache());
   }
 
-  async mergeMessage(message: protobufs.Message): Promise<HubResult<void>> {
+  async mergeMessage(message: Message): Promise<HubResult<void>> {
     await this.eventHandler.commitTransaction(this.db.transaction(), {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: [] },
     });
 
     return ok(undefined);
   }
 
-  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): Promise<HubResult<protobufs.Message[]>> {
+  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): Promise<HubResult<Message[]>> {
     return ok(
       syncIds.map((syncId) => {
         // The index is embeded in the last 10 bytes of the hash
@@ -74,13 +83,13 @@ const makeMessage = (fid: number, messageId: number, timestamp: number) => {
   const hash = Buffer.from(blake3Truncate160(Buffer.from(messageId.toString())));
   hash.fill(' ', 10);
   hash.write(messageId.toString(), 10);
-  return protobufs.Message.create({
-    data: protobufs.MessageData.create({
-      type: protobufs.MessageType.CAST_ADD,
+  return Message.create({
+    data: MessageData.create({
+      type: MessageType.CAST_ADD,
       fid,
       timestamp,
-      network: protobufs.FarcasterNetwork.DEVNET,
-      castAddBody: protobufs.CastAddBody.create({
+      network: FarcasterNetwork.DEVNET,
+      castAddBody: CastAddBody.create({
         text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam pharetra dolor leo, vitae tincidunt justo scelerisque vel. Praesent ac leo at nibh rutrum aliquet. Fusce rhoncus ligula a ipsum porta, nec.',
       }),
     }),
@@ -88,7 +97,7 @@ const makeMessage = (fid: number, messageId: number, timestamp: number) => {
   });
 };
 
-const messageGenerator = function* (chance: Chance.Chance): Generator<protobufs.Message> {
+const messageGenerator = function* (chance: Chance.Chance): Generator<Message> {
   const fids: number[] = [];
   for (let i = 1; i <= FID_COUNT; i++) {
     fids.push(i);

@@ -1,4 +1,4 @@
-import { validations } from '@farcaster/utils';
+import { validations } from '@farcaster/hub-nodejs';
 import { parentPort } from 'worker_threads';
 
 // Wait for messages from the main thread and validate them, posting the result back

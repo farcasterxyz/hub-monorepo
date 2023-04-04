@@ -1,13 +1,12 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories } from '@farcaster/utils';
+import { Factories, GossipMessage, Message, GossipAddressInfo } from '@farcaster/hub-nodejs';
 import { isPeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { GOSSIP_PROTOCOL_VERSION } from '~/network/p2p/protocol';
 import { NetworkFactories } from '~/network/utils/factories';
 
 describe('GossipMessageFactory', () => {
-  let message: protobufs.Message;
-  let gossipMessage: protobufs.GossipMessage;
+  let message: Message;
+  let gossipMessage: GossipMessage;
 
   beforeAll(async () => {
     message = await Factories.Message.create();
@@ -44,8 +43,8 @@ describe('AddressInfoFactory', () => {
 });
 
 describe('ContactInfoFactory', () => {
-  let gossipAddress: protobufs.GossipAddressInfo;
-  let rpcAddress: protobufs.GossipAddressInfo;
+  let gossipAddress: GossipAddressInfo;
+  let rpcAddress: GossipAddressInfo;
 
   beforeAll(() => {
     gossipAddress = NetworkFactories.GossipAddressInfo.build();

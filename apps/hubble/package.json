@@ -47,8 +47,7 @@
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
-    "@farcaster/protobufs": "0.1.11",
-    "@farcaster/utils": "0.4.0",
+    "@farcaster/hub-nodejs": "^0.6.0",
     "@grpc/grpc-js": "~1.8.7",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^2.0.0",

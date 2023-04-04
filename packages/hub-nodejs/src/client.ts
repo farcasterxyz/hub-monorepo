@@ -1,18 +1,9 @@
-import {
-  AdminServiceClient,
-  CallOptions,
-  Client,
-  ClientReadableStream,
-  ClientUnaryCall,
-  getAdminClient,
-  getInsecureClient,
-  getSSLClient,
-  HubServiceClient,
-  Metadata,
-  ServiceError,
-} from '@farcaster/protobufs';
+import { AdminServiceClient, HubServiceClient } from './generated/rpc';
+import * as grpc from '@grpc/grpc-js';
+import { Metadata } from '@grpc/grpc-js';
+import type { CallOptions, Client, ClientReadableStream, ClientUnaryCall, ServiceError } from '@grpc/grpc-js';
 import { err, ok } from 'neverthrow';
-import { HubError, HubErrorCode, HubResult } from './errors';
+import { HubError, HubErrorCode, HubResult } from '@farcaster/utils';
 
 const fromServiceError = (err: ServiceError): HubError => {
   let context = err.details;
@@ -126,4 +117,22 @@ export const getAuthMetadata = (username: string, password: string): Metadata =>
   const metadata = new Metadata();
   metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
   return metadata;
+};
+
+export const getServer = (): grpc.Server => {
+  const server = new grpc.Server();
+
+  return server;
+};
+
+export const getSSLClient = (address: string): HubServiceClient => {
+  return new HubServiceClient(address, grpc.credentials.createSsl());
+};
+
+export const getInsecureClient = (address: string): HubServiceClient => {
+  return new HubServiceClient(address, grpc.credentials.createInsecure());
+};
+
+export const getAdminClient = (address: string): AdminServiceClient => {
+  return new AdminServiceClient(address, grpc.credentials.createInsecure());
 };

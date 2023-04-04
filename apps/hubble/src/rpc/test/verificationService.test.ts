@@ -1,5 +1,16 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
+import {
+  Factories,
+  HubError,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+  Message,
+  FarcasterNetwork,
+  IdRegistryEvent,
+  SignerAddMessage,
+  VerificationAddEthAddressMessage,
+  VerificationRequest,
+  FidRequest,
+} from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -7,7 +18,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.verificationService.test');
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -30,10 +41,10 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
+let custodyEvent: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
 
-let verificationAdd: protobufs.VerificationAddEthAddressMessage;
+let verificationAdd: VerificationAddEthAddressMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -62,17 +73,17 @@ describe('getVerification', () => {
     expect(r.isOk()).toBeTruthy();
 
     const result = await client.getVerification(
-      protobufs.VerificationRequest.create({
+      VerificationRequest.create({
         fid,
         address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
       })
     );
-    expect(protobufs.Message.toJSON(result._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(verificationAdd));
+    expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(verificationAdd));
   });
 
   test('fails if verification is missing', async () => {
     const result = await client.getVerification(
-      protobufs.VerificationRequest.create({
+      VerificationRequest.create({
         fid,
         address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
       })
@@ -82,7 +93,7 @@ describe('getVerification', () => {
 
   test('fails without address', async () => {
     const result = await client.getVerification(
-      protobufs.VerificationRequest.create({
+      VerificationRequest.create({
         fid,
         address: new Uint8Array(),
       })
@@ -92,7 +103,7 @@ describe('getVerification', () => {
 
   test('fails without fid', async () => {
     const result = await client.getVerification(
-      protobufs.VerificationRequest.create({
+      VerificationRequest.create({
         address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
       })
     );
@@ -110,14 +121,14 @@ describe('getVerificationsByFid', () => {
     const result = await engine.mergeMessage(verificationAdd);
     expect(result.isOk()).toBeTruthy();
 
-    const verifications = await client.getVerificationsByFid(protobufs.FidRequest.create({ fid }));
-    expect(verifications._unsafeUnwrap().messages.map((m) => protobufs.Message.toJSON(m))).toEqual(
-      [verificationAdd].map((m) => protobufs.Message.toJSON(m))
+    const verifications = await client.getVerificationsByFid(FidRequest.create({ fid }));
+    expect(verifications._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
+      [verificationAdd].map((m) => Message.toJSON(m))
     );
   });
 
   test('returns empty array without messages', async () => {
-    const verifications = await client.getVerificationsByFid(protobufs.FidRequest.create({ fid }));
+    const verifications = await client.getVerificationsByFid(FidRequest.create({ fid }));
     expect(verifications._unsafeUnwrap().messages).toEqual([]);
   });
 });

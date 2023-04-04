@@ -4,7 +4,7 @@ A lightweight, fast Typescript interface for Farcaster Hubs. Designed to work wi
 
 ## Features
 
-- Call any Hub endpoint from browser environment.
+- Call any Hub endpoint from browser environment (or node environemnt using grpc-web).
 - Serializes and deserializes Farcaster protobufs into Javascript objects.
 - Has helpers to create and sign Farcaster messages.
 - Written entirely in TypeScript, with strict types for safety.

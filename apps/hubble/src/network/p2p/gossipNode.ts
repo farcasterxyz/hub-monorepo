@@ -1,7 +1,6 @@
 import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { noise } from '@chainsafe/libp2p-noise';
-import * as protobufs from '@farcaster/protobufs';
-import { HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+import { ContactInfoContent, GossipMessage, HubAsyncResult, HubError, HubResult, Message } from '@farcaster/hub-nodejs';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { mplex } from '@libp2p/mplex';
@@ -27,7 +26,7 @@ const log = logger.child({ component: 'Node' });
 /** Events emitted by a Farcaster Gossip Node */
 interface NodeEvents {
   /** Triggers on receipt of a new message and includes the topic and message contents */
-  message: (topic: string, message: HubResult<protobufs.GossipMessage>) => void;
+  message: (topic: string, message: HubResult<GossipMessage>) => void;
   /** Triggers when a peer connects and includes the libp2p Connection object*/
   peerConnect: (connection: Connection) => void;
   /** Triggers when a peer disconnects and includes the libp2p Connection object */
@@ -139,8 +138,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Serializes and publishes a Farcaster Message to the network */
-  async gossipMessage(message: protobufs.Message) {
-    const gossipMessage = protobufs.GossipMessage.create({
+  async gossipMessage(message: Message) {
+    const gossipMessage = GossipMessage.create({
       message,
       topics: [NETWORK_TOPIC_PRIMARY],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
@@ -149,8 +148,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Serializes and publishes this node's ContactInfo to the network */
-  async gossipContactInfo(contactInfo: protobufs.ContactInfoContent) {
-    const gossipMessage = protobufs.GossipMessage.create({
+  async gossipContactInfo(contactInfo: ContactInfoContent) {
+    const gossipMessage = GossipMessage.create({
       contactInfoContent: contactInfo,
       topics: [NETWORK_TOPIC_PRIMARY],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
@@ -159,7 +158,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Publishes a Gossip Message to the network */
-  async publish(message: protobufs.GossipMessage) {
+  async publish(message: GossipMessage) {
     const topics = message.topics;
     const encodedMessage = GossipNode.encodeMessage(message);
 
@@ -249,14 +248,14 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   //TODO: Needs better typesafety
-  static encodeMessage(message: protobufs.GossipMessage): HubResult<Uint8Array> {
-    return ok(protobufs.GossipMessage.encode(message).finish());
+  static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
+    return ok(GossipMessage.encode(message).finish());
   }
 
   //TODO: Needs better typesafety
-  static decodeMessage(message: Uint8Array): HubResult<protobufs.GossipMessage> {
+  static decodeMessage(message: Uint8Array): HubResult<GossipMessage> {
     // Convert GossipMessage to Uint8Array or decode will return nested Uint8Arrays as Buffers
-    return ok(protobufs.GossipMessage.decode(Uint8Array.from(message)));
+    return ok(GossipMessage.decode(Uint8Array.from(message)));
   }
 
   /* -------------------------------------------------------------------------- */

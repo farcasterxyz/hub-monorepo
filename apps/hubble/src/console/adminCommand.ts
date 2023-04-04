@@ -1,5 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
-import { AdminRpcClient } from '@farcaster/utils';
+import { AdminRpcClient, Empty } from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
 export class AdminCommand implements ConsoleCommandInterface {
@@ -21,7 +20,7 @@ export class AdminCommand implements ConsoleCommandInterface {
   object() {
     return {
       rebuildSyncTrie: async () => {
-        const result = await this.adminClient.rebuildSyncTrie(protobufs.Empty.create());
+        const result = await this.adminClient.rebuildSyncTrie(Empty.create());
         return result.match(
           () => '',
           (e) => `Error: ${e}`
@@ -29,7 +28,7 @@ export class AdminCommand implements ConsoleCommandInterface {
       },
 
       deleteAllMessagesFromDb: async () => {
-        const result = await this.adminClient.deleteAllMessagesFromDb(protobufs.Empty.create());
+        const result = await this.adminClient.deleteAllMessagesFromDb(Empty.create());
         return result.match(
           () => '',
           (e) => `Error: ${e}`

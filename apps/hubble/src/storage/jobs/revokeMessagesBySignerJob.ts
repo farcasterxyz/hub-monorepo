@@ -1,5 +1,10 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesIncrement, HubAsyncResult, HubError, HubResult } from '@farcaster/utils';
+import {
+  bytesIncrement,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  RevokeMessagesBySignerJobPayload,
+} from '@farcaster/hub-nodejs';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -57,7 +62,7 @@ export class RevokeMessagesBySignerJobWorker {
     return ok(undefined);
   }
 
-  private async processJob(payload: protobufs.RevokeMessagesBySignerJobPayload): HubAsyncResult<void> {
+  private async processJob(payload: RevokeMessagesBySignerJobPayload): HubAsyncResult<void> {
     return this._engine.revokeMessagesBySigner(payload.fid, payload.signer);
   }
 }
@@ -112,13 +117,13 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     return ok(this._db.iterator({ gte, lt }));
   }
 
-  async enqueueJob(payload: protobufs.RevokeMessagesBySignerJobPayload, doAt?: number): HubAsyncResult<Buffer> {
+  async enqueueJob(payload: RevokeMessagesBySignerJobPayload, doAt?: number): HubAsyncResult<Buffer> {
     // If doAt timestamp is missing, use current timestamp
     if (!doAt) {
       doAt = Date.now();
     }
 
-    const payloadBytes = protobufs.RevokeMessagesBySignerJobPayload.encode(payload).finish();
+    const payloadBytes = RevokeMessagesBySignerJobPayload.encode(payload).finish();
 
     // Create payload hash
     const hash = blake3(Uint8Array.from(payloadBytes), { dkLen: 4 });
@@ -144,7 +149,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     return ok(key.value);
   }
 
-  async popNextJob(doBefore?: number): HubAsyncResult<protobufs.RevokeMessagesBySignerJobPayload> {
+  async popNextJob(doBefore?: number): HubAsyncResult<RevokeMessagesBySignerJobPayload> {
     const iterator = this.iterator(doBefore);
     if (iterator.isErr()) {
       return err(iterator.error);
@@ -158,7 +163,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     const [key, value] = result.value;
 
     const payload = Result.fromThrowable(
-      () => protobufs.RevokeMessagesBySignerJobPayload.decode(Uint8Array.from(value as Buffer)),
+      () => RevokeMessagesBySignerJobPayload.decode(Uint8Array.from(value as Buffer)),
       (err) =>
         new HubError('bad_request.parse_failure', {
           cause: err as Error,

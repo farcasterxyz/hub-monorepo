@@ -1,4 +1,4 @@
-import { Factories, hexStringToBytes, utf8StringToBytes } from '@farcaster/utils';
+import { Factories, hexStringToBytes, utf8StringToBytes } from '@farcaster/hub-nodejs';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
 import { EMPTY_HASH, TrieNode } from '~/network/sync/trieNode';
 import { NetworkFactories } from '~/network/utils/factories';

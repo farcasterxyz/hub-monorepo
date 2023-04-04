@@ -1,6 +1,7 @@
 // eslint-disable-file security/detect-non-literal-fs-filename
-import * as protobufs from '@farcaster/protobufs';
+
 import { blake3 } from '@noble/hashes/blake3';
+import { DbTrieNode } from '@farcaster/hub-nodejs';
 import { MerkleTrie } from '~/network/sync/merkleTrie';
 import { NetworkFactories } from '~/network/utils/factories';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -141,7 +142,7 @@ describe('MerkleTrie', () => {
         expect(key.slice(1).toString('hex')).toEqual(syncIdStr.slice(0, i * 2));
 
         // Parse the value as a DbTriNode
-        const node = protobufs.DbTrieNode.decode(value);
+        const node = DbTrieNode.decode(value);
 
         // The last key should be the leaf node, so it's value should match the entire syncID
         if (i === TIMESTAMP_LENGTH) {
@@ -168,7 +169,7 @@ describe('MerkleTrie', () => {
       //eslint-disable-next-line @typescript-eslint/no-unused-vars
       count = await forEachDbItem(db, async (i, key, value) => {
         // Parse the value as a DbTriNode
-        const node = protobufs.DbTrieNode.decode(value);
+        const node = DbTrieNode.decode(value);
         if (node.key.length > 0) {
           leafs += 1;
         }

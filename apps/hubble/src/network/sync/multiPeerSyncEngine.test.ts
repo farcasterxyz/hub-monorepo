@@ -1,5 +1,16 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Ed25519Signer, Factories, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/utils';
+import {
+  Ed25519Signer,
+  Factories,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+  FarcasterNetwork,
+  IdRegistryEvent,
+  SignerAddMessage,
+  CastAddMessage,
+  Message,
+  TrieNodePrefix,
+  Empty,
+} from '@farcaster/hub-nodejs';
 import { APP_NICKNAME, APP_VERSION } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
@@ -16,14 +27,14 @@ const TEST_TIMEOUT_LONG = 60 * 1000;
 const testDb1 = jestRocksDB(`engine1.peersyncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.peersyncEngine.test`);
 
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
+let custodyEvent: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
 
 beforeAll(async () => {
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
@@ -53,7 +64,7 @@ describe('Multi peer sync engine', () => {
     );
   };
 
-  const removeMessagesWithTsHashes = async (engine: Engine, addMessages: protobufs.Message[]) => {
+  const removeMessagesWithTsHashes = async (engine: Engine, addMessages: Message[]) => {
     return await Promise.all(
       addMessages.map(async (addMessage) => {
         const castRemove = await Factories.CastRemoveMessage.create(
@@ -108,7 +119,7 @@ describe('Multi peer sync engine', () => {
     await engine1.mergeMessage(signerAdd);
 
     // Get info first
-    const info = await clientForServer1.getInfo(protobufs.Empty.create());
+    const info = await clientForServer1.getInfo(Empty.create());
     expect(info.isOk()).toBeTruthy();
     const infoResult = info._unsafeUnwrap();
     expect(infoResult.version).toEqual(APP_VERSION);
@@ -118,9 +129,9 @@ describe('Multi peer sync engine', () => {
     const rpcResult = await clientForServer1.getAllSignerMessagesByFid({ fid });
     expect(rpcResult.isOk()).toBeTruthy();
     expect(rpcResult._unsafeUnwrap().messages.length).toEqual(1);
-    const rpcSignerAdd = rpcResult._unsafeUnwrap().messages[0] as protobufs.SignerAddMessage;
+    const rpcSignerAdd = rpcResult._unsafeUnwrap().messages[0] as SignerAddMessage;
 
-    expect(protobufs.Message.toJSON(signerAdd)).toEqual(protobufs.Message.toJSON(rpcSignerAdd));
+    expect(Message.toJSON(signerAdd)).toEqual(Message.toJSON(rpcSignerAdd));
     expect(signerAdd.data?.fid).toEqual(rpcSignerAdd.data?.fid);
 
     // Create a new sync engine from the existing engine, and see if all the messages from the engine
@@ -172,7 +183,7 @@ describe('Multi peer sync engine', () => {
       await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
       // grab a new snapshot from the RPC for engine1
-      const newSnapshotResult = await clientForServer1.getSyncSnapshotByPrefix(protobufs.TrieNodePrefix.create());
+      const newSnapshotResult = await clientForServer1.getSyncSnapshotByPrefix(TrieNodePrefix.create());
       expect(newSnapshotResult.isOk()).toBeTruthy();
       const newSnapshot = newSnapshotResult._unsafeUnwrap();
 
@@ -203,7 +214,7 @@ describe('Multi peer sync engine', () => {
     await engine1.mergeMessage(signerAdd);
 
     // Add a cast to engine1
-    const castAdd = (await addMessagesWithTimestamps(engine1, [30662167]))[0] as protobufs.Message;
+    const castAdd = (await addMessagesWithTimestamps(engine1, [30662167]))[0] as Message;
     await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
     const engine2 = new Engine(testDb2, network);
@@ -303,7 +314,7 @@ describe('Multi peer sync engine', () => {
     );
 
     // Create 2 messages for each signer
-    const castAdds: protobufs.CastAddMessage[] = [];
+    const castAdds: CastAddMessage[] = [];
     for (const signer of signers) {
       for (let i = 0; i < 2; i++) {
         const castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
@@ -459,7 +470,7 @@ describe('Multi peer sync engine', () => {
       const numBatches = 20;
 
       // Remove a few messages from the previous batch
-      let castMessagesToRemove: protobufs.Message[] = [];
+      let castMessagesToRemove: Message[] = [];
 
       let totalMessages = 0;
 

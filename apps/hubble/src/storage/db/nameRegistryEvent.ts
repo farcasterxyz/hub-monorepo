@@ -1,4 +1,4 @@
-import { NameRegistryEvent } from '@farcaster/protobufs';
+import { NameRegistryEvent } from '@farcaster/hub-nodejs';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 

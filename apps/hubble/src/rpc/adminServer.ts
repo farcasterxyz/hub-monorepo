@@ -1,12 +1,13 @@
-import * as protobufs from '@farcaster/protobufs';
 import {
   AdminServiceServer,
   AdminServiceService,
   Server as GrpcServer,
   ServerCredentials,
   getServer,
-} from '@farcaster/protobufs';
-import { HubAsyncResult, HubError } from '@farcaster/utils';
+  HubAsyncResult,
+  HubError,
+  Empty,
+} from '@farcaster/hub-nodejs';
 import * as net from 'net';
 import { err, ok } from 'neverthrow';
 import { HubInterface } from '~/hubble';
@@ -97,7 +98,7 @@ export default class AdminServer {
           }
 
           await this.syncEngine?.rebuildSyncTrie();
-          callback(null, protobufs.Empty.create());
+          callback(null, Empty.create());
         })();
       },
 
@@ -143,7 +144,7 @@ export default class AdminServer {
           await this.syncEngine?.rebuildSyncTrie();
 
           log.warn('Finished deleting all messages from DB');
-          callback(null, protobufs.Empty.create());
+          callback(null, Empty.create());
         })();
       },
 

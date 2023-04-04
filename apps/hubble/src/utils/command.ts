@@ -1,5 +1,4 @@
-import { FarcasterNetwork } from '@farcaster/protobufs';
-import { HubError, validations } from '@farcaster/utils';
+import { HubError, validations, FarcasterNetwork } from '@farcaster/hub-nodejs';
 
 export const parseNetwork = (network: string): FarcasterNetwork => {
   const networkId = Number(network);

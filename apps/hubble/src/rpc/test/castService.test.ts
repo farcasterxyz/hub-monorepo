@@ -1,5 +1,17 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubError, HubRpcClient } from '@farcaster/utils';
+import {
+  Message,
+  FarcasterNetwork,
+  IdRegistryEvent,
+  SignerAddMessage,
+  CastAddMessage,
+  CastId,
+  FidRequest,
+  CastsByParentRequest,
+  Factories,
+  HubError,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+} from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -7,7 +19,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.castService.test');
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -30,9 +42,9 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
-let castAdd: protobufs.CastAddMessage;
+let custodyEvent: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
+let castAdd: CastAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -53,30 +65,30 @@ describe('getCast', () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
 
-    const result = await client.getCast(protobufs.CastId.create({ fid, hash: castAdd.hash }));
+    const result = await client.getCast(CastId.create({ fid, hash: castAdd.hash }));
     expect(result.isOk()).toBeTruthy();
-    expect(protobufs.Message.toJSON(result._unsafeUnwrap())).toEqual(protobufs.Message.toJSON(castAdd));
+    expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(castAdd));
   });
 
   test('fails if cast is missing', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
-    const result = await client.getCast(protobufs.CastId.create({ fid, hash: castAdd.hash }));
+    const result = await client.getCast(CastId.create({ fid, hash: castAdd.hash }));
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
 
   test('fails without fid or tsHash', async () => {
-    const result = await client.getCast(protobufs.CastId.create({ fid: 0, hash: new Uint8Array() }));
+    const result = await client.getCast(CastId.create({ fid: 0, hash: new Uint8Array() }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 
   test('fails without tsHash', async () => {
-    const result = await client.getCast(protobufs.CastId.create({ fid, hash: new Uint8Array() }));
+    const result = await client.getCast(CastId.create({ fid, hash: new Uint8Array() }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'NotFound: '));
   });
 
   test('fails without fid', async () => {
-    const result = await client.getCast(protobufs.CastId.create({ fid: 0, hash: castAdd.hash }));
+    const result = await client.getCast(CastId.create({ fid: 0, hash: castAdd.hash }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 
@@ -88,10 +100,8 @@ describe('getCast', () => {
 
     test('succeeds', async () => {
       await engine.mergeMessage(castAdd);
-      const casts = await client.getCastsByFid(protobufs.FidRequest.create({ fid }));
-      expect(protobufs.Message.toJSON(casts._unsafeUnwrap().messages.at(0) as protobufs.Message)).toEqual(
-        protobufs.Message.toJSON(castAdd)
-      );
+      const casts = await client.getCastsByFid(FidRequest.create({ fid }));
+      expect(Message.toJSON(casts._unsafeUnwrap().messages.at(0) as Message)).toEqual(Message.toJSON(castAdd));
     });
 
     test('returns casts in chronological order', async () => {
@@ -105,11 +115,11 @@ describe('getCast', () => {
           { transient: { signer } }
         );
         await engine.mergeMessage(latestCast);
-        castsAsJson.push(protobufs.Message.toJSON(latestCast));
+        castsAsJson.push(Message.toJSON(latestCast));
       }
 
-      const clientRetrievedCasts = await client.getCastsByFid(protobufs.FidRequest.create({ fid }));
-      const clientRetrievedCastsAsJson = clientRetrievedCasts._unsafeUnwrap().messages.map(protobufs.Message.toJSON);
+      const clientRetrievedCasts = await client.getCastsByFid(FidRequest.create({ fid }));
+      const clientRetrievedCastsAsJson = clientRetrievedCasts._unsafeUnwrap().messages.map(Message.toJSON);
 
       expect(castsAsJson.length).toEqual(4);
       expect(clientRetrievedCastsAsJson.length).toEqual(4);
@@ -118,7 +128,7 @@ describe('getCast', () => {
     });
 
     test('returns empty array without casts', async () => {
-      const casts = await client.getCastsByFid(protobufs.FidRequest.create({ fid }));
+      const casts = await client.getCastsByFid(FidRequest.create({ fid }));
       expect(casts._unsafeUnwrap().messages).toEqual([]);
     });
   });
@@ -131,15 +141,13 @@ describe('getCast', () => {
 
     test('succeeds', async () => {
       await engine.mergeMessage(castAdd);
-      const request = protobufs.CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const request = CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
       const casts = await client.getCastsByParent(request);
-      expect(protobufs.Message.toJSON(casts._unsafeUnwrap().messages.at(0) as protobufs.Message)).toEqual(
-        protobufs.Message.toJSON(castAdd)
-      );
+      expect(Message.toJSON(casts._unsafeUnwrap().messages.at(0) as Message)).toEqual(Message.toJSON(castAdd));
     });
 
     test('returns empty array without casts', async () => {
-      const request = protobufs.CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const request = CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
       const casts = await client.getCastsByParent(request);
       expect(casts._unsafeUnwrap().messages).toEqual([]);
     });
@@ -157,11 +165,9 @@ describe('getCast', () => {
         const casts = await client.getCastsByMention(
           // Safety: i is controlled by the loop and cannot be used to inject
           // eslint-disable-next-line security/detect-object-injection
-          protobufs.FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
+          FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
         );
-        expect(protobufs.Message.toJSON(casts._unsafeUnwrap().messages.at(0) as protobufs.Message)).toEqual(
-          protobufs.Message.toJSON(castAdd)
-        );
+        expect(Message.toJSON(casts._unsafeUnwrap().messages.at(0) as Message)).toEqual(Message.toJSON(castAdd));
       }
     });
 
@@ -170,7 +176,7 @@ describe('getCast', () => {
         const casts = await client.getCastsByMention(
           // Safety: i is controlled by the loop and cannot be used to inject
           // eslint-disable-next-line security/detect-object-injection
-          protobufs.FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
+          FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
         );
         expect(casts._unsafeUnwrap().messages).toEqual([]);
       }

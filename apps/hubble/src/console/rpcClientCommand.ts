@@ -1,4 +1,4 @@
-import { HubRpcClient } from '@farcaster/utils';
+import { HubRpcClient } from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
 export class RpcClientCommand implements ConsoleCommandInterface {

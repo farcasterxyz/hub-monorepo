@@ -1,5 +1,17 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesDecrement, bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import {
+  bytesDecrement,
+  bytesIncrement,
+  CastAddMessage,
+  CastId,
+  CastRemoveMessage,
+  Factories,
+  getFarcasterTime,
+  HubError,
+  MergeMessageHubEvent,
+  Message,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+} from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
@@ -15,9 +27,9 @@ const eventHandler = new StoreEventHandler(db, cache);
 const store = new CastStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
-let castAdd: protobufs.CastAddMessage;
-let castRemove: protobufs.CastRemoveMessage;
-let parentCastId: protobufs.CastId;
+let castAdd: CastAddMessage;
+let castRemove: CastRemoveMessage;
+let parentCastId: CastId;
 
 beforeAll(async () => {
   parentCastId = Factories.CastId.build();
@@ -211,9 +223,9 @@ describe('getCastsByMention', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
+  let mergeEvents: [Message | undefined, Message[]][] = [];
 
-  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+  const mergeMessageHandler = (event: MergeMessageHubEvent) => {
     const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
@@ -230,17 +242,17 @@ describe('merge', () => {
     eventHandler.off('mergeMessage', mergeMessageHandler);
   });
 
-  const assetMessageExists = async (message: protobufs.CastAddMessage | protobufs.CastRemoveMessage) => {
+  const assetMessageExists = async (message: CastAddMessage | CastRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.CastMessage, tsHash)).resolves.toEqual(message);
   };
 
-  const assertMessageDoesNotExist = async (message: protobufs.CastAddMessage | protobufs.CastRemoveMessage) => {
+  const assertMessageDoesNotExist = async (message: CastAddMessage | CastRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.CastMessage, tsHash)).rejects.toThrow(HubError);
   };
 
-  const assertCastAddWins = async (message: protobufs.CastAddMessage, removeMessage?: protobufs.CastRemoveMessage) => {
+  const assertCastAddWins = async (message: CastAddMessage, removeMessage?: CastRemoveMessage) => {
     await assetMessageExists(message);
     await expect(store.getCastAdd(fid, message.hash)).resolves.toEqual(message);
     for (const mentionFid of message.data.castAddBody.mentions) {
@@ -262,7 +274,7 @@ describe('merge', () => {
     }
   };
 
-  const assertCastRemoveWins = async (message: protobufs.CastRemoveMessage) => {
+  const assertCastRemoveWins = async (message: CastRemoveMessage) => {
     const castHash = message.data.castRemoveBody.targetHash;
 
     await assetMessageExists(message);
@@ -379,7 +391,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting CastRemove with different timestamps', () => {
-      let castRemoveLater: protobufs.CastRemoveMessage;
+      let castRemoveLater: CastRemoveMessage;
 
       beforeAll(async () => {
         castRemoveLater = await Factories.CastRemoveMessage.create({
@@ -412,7 +424,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting CastRemove with identical timestamps', () => {
-      let castRemoveLater: protobufs.CastRemoveMessage;
+      let castRemoveLater: CastRemoveMessage;
 
       beforeAll(async () => {
         castRemoveLater = await Factories.CastRemoveMessage.create({
@@ -522,9 +534,9 @@ describe('merge', () => {
 });
 
 describe('revoke', () => {
-  let revokedMessages: protobufs.Message[] = [];
+  let revokedMessages: Message[] = [];
 
-  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+  const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
     revokedMessages.push(event.revokeMessageBody.message);
   };
 
@@ -575,8 +587,8 @@ describe('revoke', () => {
 });
 
 describe('pruneMessages', () => {
-  let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+  let prunedMessages: Message[];
+  const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
@@ -592,22 +604,22 @@ describe('pruneMessages', () => {
     eventHandler.off('pruneMessage', pruneMessageListener);
   });
 
-  let add1: protobufs.CastAddMessage;
-  let add2: protobufs.CastAddMessage;
-  let add3: protobufs.CastAddMessage;
-  let add4: protobufs.CastAddMessage;
-  let add5: protobufs.CastAddMessage;
-  let addOld1: protobufs.CastAddMessage;
-  let addOld2: protobufs.CastAddMessage;
+  let add1: CastAddMessage;
+  let add2: CastAddMessage;
+  let add3: CastAddMessage;
+  let add4: CastAddMessage;
+  let add5: CastAddMessage;
+  let addOld1: CastAddMessage;
+  let addOld2: CastAddMessage;
 
-  let remove1: protobufs.CastRemoveMessage;
-  let remove2: protobufs.CastRemoveMessage;
-  let remove3: protobufs.CastRemoveMessage;
-  let remove4: protobufs.CastRemoveMessage;
-  let remove5: protobufs.CastRemoveMessage;
-  let removeOld3: protobufs.CastRemoveMessage;
+  let remove1: CastRemoveMessage;
+  let remove2: CastRemoveMessage;
+  let remove3: CastRemoveMessage;
+  let remove4: CastRemoveMessage;
+  let remove5: CastRemoveMessage;
+  let removeOld3: CastRemoveMessage;
 
-  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<protobufs.CastAddMessage> => {
+  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<CastAddMessage> => {
     return Factories.CastAddMessage.create({
       data: { fid, timestamp },
     });
@@ -616,8 +628,8 @@ describe('pruneMessages', () => {
   const generateRemoveWithTimestamp = async (
     fid: number,
     timestamp: number,
-    target?: protobufs.CastAddMessage
-  ): Promise<protobufs.CastRemoveMessage> => {
+    target?: CastAddMessage
+  ): Promise<CastRemoveMessage> => {
     return Factories.CastRemoveMessage.create({
       data: { fid, timestamp, castRemoveBody: { targetHash: target ? target.hash : Factories.MessageHash.build() } },
     });
@@ -665,7 +677,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([add1, add2]);
 
-      for (const message of prunedMessages as protobufs.CastAddMessage[]) {
+      for (const message of prunedMessages as CastAddMessage[]) {
         const getAdd = () => sizePrunedStore.getCastAdd(fid, message.hash);
         await expect(getAdd()).rejects.toThrow(HubError);
       }
@@ -682,7 +694,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
-      for (const message of prunedMessages as protobufs.CastRemoveMessage[]) {
+      for (const message of prunedMessages as CastRemoveMessage[]) {
         const getRemove = () => sizePrunedStore.getCastRemove(fid, message.data.castRemoveBody.targetHash);
         await expect(getRemove()).rejects.toThrow(HubError);
       }

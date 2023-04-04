@@ -12,4 +12,4 @@ coverage:
         base: auto
         if_ci_failed: success
 ignore:
-  - "packages/**/src/generated/**.ts"
+  - "**/generated"

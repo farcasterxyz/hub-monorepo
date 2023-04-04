@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { FarcasterNetwork } from '@farcaster/protobufs';
+import { FarcasterNetwork } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';

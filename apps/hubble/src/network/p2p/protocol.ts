@@ -1,4 +1,4 @@
-import { GossipVersion } from '@farcaster/protobufs';
+import { GossipVersion } from '@farcaster/hub-nodejs';
 
 // Network topic for Farcaster Messages
 export const NETWORK_TOPIC_PRIMARY = 'f_network_topic_primary';

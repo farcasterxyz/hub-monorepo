@@ -1,5 +1,16 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import {
+  bytesCompare,
+  HubAsyncResult,
+  HubError,
+  HubEventType,
+  isHubError,
+  isVerificationAddEthAddressMessage,
+  isVerificationRemoveMessage,
+  Message,
+  MessageType,
+  VerificationAddEthAddressMessage,
+  VerificationRemoveMessage,
+} from '@farcaster/hub-nodejs';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
@@ -91,15 +102,10 @@ class VerificationStore {
    *
    * @returns the VerificationAddEthAddressModel if it exists, throws HubError otherwise
    */
-  async getVerificationAdd(fid: number, address: Uint8Array): Promise<protobufs.VerificationAddEthAddressMessage> {
+  async getVerificationAdd(fid: number, address: Uint8Array): Promise<VerificationAddEthAddressMessage> {
     const addsKey = makeVerificationAddsKey(fid, address);
     const messageTsHash = await this._db.get(addsKey);
-    return getMessage<protobufs.VerificationAddEthAddressMessage>(
-      this._db,
-      fid,
-      UserPostfix.VerificationMessage,
-      messageTsHash
-    );
+    return getMessage<VerificationAddEthAddressMessage>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
   }
 
   /**
@@ -109,15 +115,10 @@ class VerificationStore {
    * @param address the address being verified
    * @returns the VerificationRemoveEthAddress if it exists, throws HubError otherwise
    */
-  async getVerificationRemove(fid: number, address: Uint8Array): Promise<protobufs.VerificationRemoveMessage> {
+  async getVerificationRemove(fid: number, address: Uint8Array): Promise<VerificationRemoveMessage> {
     const removesKey = makeVerificationRemovesKey(fid, address);
     const messageTsHash = await this._db.get(removesKey);
-    return getMessage<protobufs.VerificationRemoveMessage>(
-      this._db,
-      fid,
-      UserPostfix.VerificationMessage,
-      messageTsHash
-    );
+    return getMessage<VerificationRemoveMessage>(this._db, fid, UserPostfix.VerificationMessage, messageTsHash);
   }
 
   /**
@@ -129,9 +130,9 @@ class VerificationStore {
   async getVerificationAddsByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.VerificationAddEthAddressMessage>> {
+  ): Promise<MessagesPage<VerificationAddEthAddressMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
-    return getMessagesPageByPrefix(this._db, prefix, protobufs.isVerificationAddEthAddressMessage, pageOptions);
+    return getMessagesPageByPrefix(this._db, prefix, isVerificationAddEthAddressMessage, pageOptions);
   }
 
   /**
@@ -143,27 +144,25 @@ class VerificationStore {
   async getVerificationRemovesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.VerificationRemoveMessage>> {
+  ): Promise<MessagesPage<VerificationRemoveMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
-    return getMessagesPageByPrefix(this._db, prefix, protobufs.isVerificationRemoveMessage, pageOptions);
+    return getMessagesPageByPrefix(this._db, prefix, isVerificationRemoveMessage, pageOptions);
   }
 
   async getAllVerificationMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage>> {
+  ): Promise<MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
-    const filter = (
-      message: protobufs.Message
-    ): message is protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage => {
-      return protobufs.isVerificationAddEthAddressMessage(message) || protobufs.isVerificationRemoveMessage(message);
+    const filter = (message: Message): message is VerificationAddEthAddressMessage | VerificationRemoveMessage => {
+      return isVerificationAddEthAddressMessage(message) || isVerificationRemoveMessage(message);
     };
     return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
   }
 
   /** Merge a VerificationAdd or VerificationRemove message into the VerificationStore */
-  async merge(message: protobufs.Message): Promise<number> {
-    if (!protobufs.isVerificationRemoveMessage(message) && !protobufs.isVerificationAddEthAddressMessage(message)) {
+  async merge(message: Message): Promise<number> {
+    if (!isVerificationRemoveMessage(message) && !isVerificationAddEthAddressMessage(message)) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
@@ -171,9 +170,9 @@ class VerificationStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
-          if (protobufs.isVerificationAddEthAddressMessage(message)) {
+          if (isVerificationAddEthAddressMessage(message)) {
             return this.mergeAdd(message);
-          } else if (protobufs.isVerificationRemoveMessage(message)) {
+          } else if (isVerificationRemoveMessage(message)) {
             return this.mergeRemove(message);
           } else {
             throw new HubError('bad_request.validation_failure', 'invalid message type');
@@ -186,18 +185,18 @@ class VerificationStore {
       });
   }
 
-  async revoke(message: protobufs.Message): HubAsyncResult<number> {
+  async revoke(message: Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-    if (protobufs.isVerificationAddEthAddressMessage(message)) {
+    if (isVerificationAddEthAddressMessage(message)) {
       txn = this.deleteVerificationAddTransaction(txn, message);
-    } else if (protobufs.isVerificationRemoveMessage(message)) {
+    } else if (isVerificationRemoveMessage(message)) {
       txn = this.deleteVerificationRemoveTransaction(txn, message);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
     return this._eventHandler.commitTransaction(txn, {
-      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      type: HubEventType.REVOKE_MESSAGE,
       revokeMessageBody: { message },
     });
   }
@@ -237,16 +236,16 @@ class VerificationStore {
 
       let txn = this._db.transaction();
 
-      if (protobufs.isVerificationAddEthAddressMessage(nextMessage.value)) {
+      if (isVerificationAddEthAddressMessage(nextMessage.value)) {
         txn = this.deleteVerificationAddTransaction(txn, nextMessage.value);
-      } else if (protobufs.isVerificationRemoveMessage(nextMessage.value)) {
+      } else if (isVerificationRemoveMessage(nextMessage.value)) {
         txn = this.deleteVerificationRemoveTransaction(txn, nextMessage.value);
       } else {
         return err(new HubError('unknown', 'invalid message type'));
       }
 
       return this._eventHandler.commitTransaction(txn, {
-        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        type: HubEventType.PRUNE_MESSAGE,
         pruneMessageBody: { message: nextMessage.value },
       });
     };
@@ -276,7 +275,7 @@ class VerificationStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: protobufs.VerificationAddEthAddressMessage): Promise<number> {
+  private async mergeAdd(message: VerificationAddEthAddressMessage): Promise<number> {
     // Define address for lookups
     const address = message.data.verificationAddEthAddressBody.address;
     if (!address) {
@@ -295,7 +294,7 @@ class VerificationStore {
     txn = this.putVerificationAddTransaction(txn, message);
 
     const hubEvent: HubEventArgs = {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
 
@@ -307,7 +306,7 @@ class VerificationStore {
     return result.value;
   }
 
-  private async mergeRemove(message: protobufs.VerificationRemoveMessage): Promise<number> {
+  private async mergeRemove(message: VerificationRemoveMessage): Promise<number> {
     // Define address for lookups
     const address = message.data.verificationRemoveBody.address;
     if (!address) {
@@ -326,7 +325,7 @@ class VerificationStore {
     txn = this.putVerificationRemoveTransaction(txn, message);
 
     const hubEvent: HubEventArgs = {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
 
@@ -339,9 +338,9 @@ class VerificationStore {
   }
 
   private verificationMessageCompare(
-    aType: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS | protobufs.MessageType.VERIFICATION_REMOVE,
+    aType: MessageType.VERIFICATION_ADD_ETH_ADDRESS | MessageType.VERIFICATION_REMOVE,
     aTsHash: Uint8Array,
-    bType: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS | protobufs.MessageType.VERIFICATION_REMOVE,
+    bType: MessageType.VERIFICATION_ADD_ETH_ADDRESS | MessageType.VERIFICATION_REMOVE,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -350,15 +349,9 @@ class VerificationStore {
       return timestampOrder;
     }
 
-    if (
-      aType === protobufs.MessageType.VERIFICATION_REMOVE &&
-      bType === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS
-    ) {
+    if (aType === MessageType.VERIFICATION_REMOVE && bType === MessageType.VERIFICATION_ADD_ETH_ADDRESS) {
       return 1;
-    } else if (
-      aType === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
-      bType === protobufs.MessageType.VERIFICATION_REMOVE
-    ) {
+    } else if (aType === MessageType.VERIFICATION_ADD_ETH_ADDRESS && bType === MessageType.VERIFICATION_REMOVE) {
       return -1;
     }
 
@@ -368,9 +361,9 @@ class VerificationStore {
 
   private async getMergeConflicts(
     address: Uint8Array,
-    message: protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage
-  ): HubAsyncResult<(protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage)[]> {
-    const conflicts: (protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage)[] = [];
+    message: VerificationAddEthAddressMessage | VerificationRemoveMessage
+  ): HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]> {
+    const conflicts: (VerificationAddEthAddressMessage | VerificationRemoveMessage)[] = [];
 
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
@@ -385,7 +378,7 @@ class VerificationStore {
 
     if (removeTsHash.isOk()) {
       const removeCompare = this.verificationMessageCompare(
-        protobufs.MessageType.VERIFICATION_REMOVE,
+        MessageType.VERIFICATION_REMOVE,
         removeTsHash.value,
         message.data.type,
         tsHash.value
@@ -397,7 +390,7 @@ class VerificationStore {
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // VerificationRemove message and delete it as part of the RocksDB transaction
-        const existingRemove = await getMessage<protobufs.VerificationRemoveMessage>(
+        const existingRemove = await getMessage<VerificationRemoveMessage>(
           this._db,
           message.data.fid,
           UserPostfix.VerificationMessage,
@@ -415,7 +408,7 @@ class VerificationStore {
 
     if (addTsHash.isOk()) {
       const addCompare = this.verificationMessageCompare(
-        protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
+        MessageType.VERIFICATION_ADD_ETH_ADDRESS,
         addTsHash.value,
         message.data.type,
         tsHash.value
@@ -429,7 +422,7 @@ class VerificationStore {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // VerificationAdd* message and delete it as part of the RocksDB transaction
-        const existingAdd = await getMessage<protobufs.VerificationAddEthAddressMessage>(
+        const existingAdd = await getMessage<VerificationAddEthAddressMessage>(
           this._db,
           message.data.fid,
           UserPostfix.VerificationMessage,
@@ -444,22 +437,19 @@ class VerificationStore {
 
   private deleteManyTransaction(
     txn: Transaction,
-    messages: (protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage)[]
+    messages: (VerificationAddEthAddressMessage | VerificationRemoveMessage)[]
   ): Transaction {
     for (const message of messages) {
-      if (protobufs.isVerificationAddEthAddressMessage(message)) {
+      if (isVerificationAddEthAddressMessage(message)) {
         txn = this.deleteVerificationAddTransaction(txn, message);
-      } else if (protobufs.isVerificationRemoveMessage(message)) {
+      } else if (isVerificationRemoveMessage(message)) {
         txn = this.deleteVerificationRemoveTransaction(txn, message);
       }
     }
     return txn;
   }
 
-  private putVerificationAddTransaction(
-    txn: Transaction,
-    message: protobufs.VerificationAddEthAddressMessage
-  ): Transaction {
+  private putVerificationAddTransaction(txn: Transaction, message: VerificationAddEthAddressMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -477,10 +467,7 @@ class VerificationStore {
     return txn;
   }
 
-  private deleteVerificationAddTransaction(
-    txn: Transaction,
-    message: protobufs.VerificationAddEthAddressMessage
-  ): Transaction {
+  private deleteVerificationAddTransaction(txn: Transaction, message: VerificationAddEthAddressMessage): Transaction {
     // Delete from verificationAdds
     txn = txn.del(makeVerificationAddsKey(message.data.fid, message.data.verificationAddEthAddressBody.address));
 
@@ -488,10 +475,7 @@ class VerificationStore {
     return deleteMessageTransaction(txn, message);
   }
 
-  private putVerificationRemoveTransaction(
-    txn: Transaction,
-    message: protobufs.VerificationRemoveMessage
-  ): Transaction {
+  private putVerificationRemoveTransaction(txn: Transaction, message: VerificationRemoveMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -509,10 +493,7 @@ class VerificationStore {
     return txn;
   }
 
-  private deleteVerificationRemoveTransaction(
-    txn: Transaction,
-    message: protobufs.VerificationRemoveMessage
-  ): Transaction {
+  private deleteVerificationRemoveTransaction(txn: Transaction, message: VerificationRemoveMessage): Transaction {
     // Delete from verificationRemoves
     txn = txn.del(makeVerificationRemovesKey(message.data.fid, message.data.verificationRemoveBody.address));
 

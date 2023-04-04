@@ -1,5 +1,11 @@
-import { Empty, Metadata } from '@farcaster/protobufs';
-import { getAdminRpcClient, getAuthMetadata, getInsecureHubRpcClient, getSSLHubRpcClient } from '@farcaster/utils';
+import {
+  Empty,
+  Metadata,
+  getAdminRpcClient,
+  getAuthMetadata,
+  getInsecureHubRpcClient,
+  getSSLHubRpcClient,
+} from '@farcaster/hub-nodejs';
 import path from 'path';
 import * as repl from 'repl';
 import { ADMIN_SERVER_PORT } from '~/rpc/adminServer';

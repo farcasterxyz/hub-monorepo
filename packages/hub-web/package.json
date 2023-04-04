@@ -29,6 +29,8 @@
     "ts-proto": "^1.146.0"
   },
   "dependencies": {
+    "@farcaster/protobufs": "^0.1.11",
+    "@farcaster/utils": "^0.4.0",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0"
   }

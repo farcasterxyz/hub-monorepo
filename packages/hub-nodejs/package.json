@@ -18,6 +18,7 @@
   "dependencies": {
     "@farcaster/protobufs": "0.1.11",
     "@farcaster/utils": "0.4.0",
+    "@grpc/grpc-js": "^1.8.13",
     "@noble/hashes": "^1.3.0",
     "ethers": "~6.2.1",
     "neverthrow": "^6.0.0"
@@ -25,6 +26,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "clean": "rimraf ./dist",
+    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto  --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=../protobufs/src/schemas ../protobufs/src/schemas/rpc.proto",
     "lint": "eslint  src/ --color --ext .ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
@@ -33,7 +35,8 @@
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
     "eslint-config-custom": "*",
-    "prettier-config-custom": "*"
+    "prettier-config-custom": "*",
+    "ts-proto": "^1.146.0"
   },
   "publishConfig": {
     "access": "public"
