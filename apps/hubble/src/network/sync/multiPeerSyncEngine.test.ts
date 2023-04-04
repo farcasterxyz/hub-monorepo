@@ -96,7 +96,7 @@ describe('Multi peer sync engine', () => {
 
   afterEach(async () => {
     // Cleanup
-    clientForServer1.$.close();
+    clientForServer1.close();
     await server1.stop();
     await syncEngine1.stop();
     await engine1.stop();
@@ -258,7 +258,7 @@ describe('Multi peer sync engine', () => {
 
       expect(await syncEngine1.trie.rootHash()).toEqual(engine1RootHashBefore);
 
-      clientForServer2.$.close();
+      clientForServer2.close();
       await server2.stop();
     }
 

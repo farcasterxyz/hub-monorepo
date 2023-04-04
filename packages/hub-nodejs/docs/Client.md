@@ -15,13 +15,16 @@ getInsecureHubRpcClient returns a Hub RPC Client. Use getSSLHubRpcClient if the 
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   // If the Hub does not use SSL, call the getInsecureHubRpcClient method instead
   // const insecureClient = getInsecureHubRpcClient('https://testnet1.farcaster.xyz:2283');
+
+  // After everything, close the RPC connection
+  client.close();
 })();
 ```
 
@@ -109,7 +112,7 @@ if (castResult.isOk()) {
 Methods that return multiple values support pagination in requests with a `pageSize` and `pageToken` property.
 
 ```typescript
-import { getInsecureHubRpcClient, HubResult, MessagesResponse } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, HubResult, MessagesResponse } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -134,6 +137,8 @@ import { getInsecureHubRpcClient, HubResult, MessagesResponse } from '@farcaster
     nextPageToken = castsResponse.nextPageToken;
     isNextPage = !!nextPageToken && nextPageToken.length > 0;
   }
+
+  client.close();
 })();
 ```
 
@@ -146,7 +151,7 @@ Returns an active signer message given an fid and the public key of the signer.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -161,6 +166,7 @@ import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs
   });
 
   signerResult.map((signerAdd) => console.log(signerAdd));
+  client.close();
 })();
 ```
 
@@ -186,7 +192,7 @@ Returns all active signers created by an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -194,6 +200,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
 
   signersResult.map((signers) => console.log(signers.messages));
+  client.close();
 })();
 ```
 
@@ -221,7 +228,7 @@ Returns all active and inactive signers created by an fid in reverse chronologic
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -229,6 +236,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
 
   signersResult.map((signers) => console.log(signers.messages));
+  client.close();
 })();
 ```
 
@@ -256,7 +264,7 @@ Returns a specific piece of metadata about the user.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -264,6 +272,7 @@ import { getInsecureHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
   const userDataResult = await client.getUserData({ fid: 2, userDataType: UserDataType.DISPLAY });
 
   userDataResult.map((userData) => console.log(userData));
+  client.close();
 })();
 ```
 
@@ -289,7 +298,7 @@ Returns all metadata about the user.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -297,6 +306,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const userDataResult = await client.getAllUserDataMessagesByFid({ fid: 2 });
 
   userDataResult.map((userData) => userData.messages.map((message) => console.log(message)));
+  client.close();
 })();
 ```
 
@@ -328,7 +338,7 @@ Returns an active cast for a user.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -339,6 +349,7 @@ import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs
   const castResult = await client.getCast({ fid: 2, hash: castHashBytes });
 
   castResult.map((cast) => console.log(cast));
+  client.close();
 })();
 ```
 
@@ -364,7 +375,7 @@ Returns active casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -372,6 +383,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const castsResult = await client.getCastsByFid({ fid: 2 });
 
   castsResult.map((casts) => console.log(casts.messages));
+  client.close();
 })();
 ```
 
@@ -399,7 +411,7 @@ Returns all active casts that mention an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -407,6 +419,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const castsResult = await client.getCastsByMention({ fid: 2 });
 
   castsResult.map((casts) => console.log(casts.messages));
+  client.close();
 })();
 ```
 
@@ -434,7 +447,7 @@ Returns all active casts that are replies to a specific cast in reverse chronolo
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -445,6 +458,7 @@ import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs
   const castsResult = await client.getCastsByParent({ castId: { fid: 2, hash: castHashBytes } });
 
   castsResult.map((casts) => console.log(casts.messages));
+  client.close();
 })();
 ```
 
@@ -472,13 +486,14 @@ Returns all active and inactive casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
   const castsResult = await client.getAllCastMessagesByFid({ fid: 2 });
   castsResult.map((casts) => console.log(casts.messages));
+  client.close();
 })();
 ```
 
@@ -506,7 +521,7 @@ Returns an active reaction of a particular type made by a user to a cast.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -524,6 +539,7 @@ import { getInsecureHubRpcClient, hexStringToBytes, ReactionType } from '@farcas
   });
 
   reactionsResult.map((reaction) => console.log(reaction));
+  client.close();
 })();
 ```
 
@@ -550,7 +566,7 @@ Returns all active reactions made by users to a cast.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -567,6 +583,7 @@ import { getInsecureHubRpcClient, hexStringToBytes, ReactionType } from '@farcas
   });
 
   reactionsResult.map((reaction) => console.log(reaction.messages));
+  client.close();
 })();
 ```
 
@@ -595,7 +612,7 @@ Returns all active reactions made by a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -603,6 +620,7 @@ import { getInsecureHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
   const reactionsResult = await client.getReactionsByFid({ fid: 2, reactionType: ReactionType.LIKE });
 
   reactionsResult.map((reaction) => console.log(reaction.messages));
+  client.close();
 })();
 ```
 
@@ -631,7 +649,7 @@ Returns all active and inactive reactions made by a user in reverse chronologica
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -639,6 +657,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const reactionsResult = await client.getAllReactionMessagesByFid({ fid: 2 });
 
   reactionsResult.map((reaction) => console.log(reaction.messages));
+  client.close();
 })();
 ```
 
@@ -666,7 +685,7 @@ Returns an active verification for a specific Ethereum address made by a user.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -677,6 +696,7 @@ import { getInsecureHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs
   const verificationResult = await client.getVerification({ fid: 2, address: addressBytes });
 
   verificationResult.map((verification) => console.log(verification));
+  client.close();
 })();
 ```
 
@@ -702,7 +722,7 @@ Returns all active verifications for Ethereum addresses made by a user in revers
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -714,6 +734,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
       console.log(v);
     })
   );
+  client.close();
 })();
 ```
 
@@ -741,7 +762,7 @@ Returns all active and inactive verifications for Ethereum addresses made by a u
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -753,6 +774,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
       console.log(v);
     })
   );
+  client.close();
 })();
 ```
 
@@ -784,7 +806,7 @@ which helps with recovery when clients get disconnected temporarily.
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -800,6 +822,7 @@ import { getInsecureHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
       console.log(event);
     }
   }
+  client.close();
 })();
 ```
 
@@ -825,7 +848,7 @@ Submits a new message to the Hub. A Hub can choose to require basic authenticati
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -837,6 +860,8 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
 
   const submitResult = await client.submitMessage(message);
   console.log(submitResult);
+
+  client.close();
 })();
 ```
 
@@ -862,7 +887,7 @@ Returns the on-chain event most recently associated with changing an fid's owner
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -870,6 +895,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const idrResult = await client.getIdRegistryEvent({ fid: 2 });
 
   idrResult.map((event) => console.log(event));
+  client.close();
 })();
 ```
 
@@ -894,7 +920,7 @@ Returns the on-chain event most recently associated with changing an fname's own
 #### Usage
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
@@ -903,6 +929,7 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const nrResult = await client.getNameRegistryEvent({ name: fnameBytes });
 
   nrResult.map((event) => console.log(event));
+  client.close();
 })();
 ```
 

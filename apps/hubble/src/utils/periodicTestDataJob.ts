@@ -180,7 +180,7 @@ export class PeriodicTestDataJobScheduler {
     }
 
     const closeResult = Result.fromThrowable(
-      () => client.$.close(),
+      () => client.close(),
       (e) => e as Error
     )();
     if (closeResult.isErr()) {

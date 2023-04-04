@@ -1,4 +1,4 @@
-import { FarcasterNetwork, NobleEd25519Signer, getHubRpcClient, makeCastAdd } from '@farcaster/hub-nodejs';
+import { FarcasterNetwork, NobleEd25519Signer, getInsecureHubRpcClient, makeCastAdd } from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
 
 /**
@@ -146,6 +146,10 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
   castResults.push(castWithEmojiLinkAttachmnent);
 
   // Submit Casts to the Hub
-  const client = await getHubRpcClient(HUB_URL);
+  const client = getInsecureHubRpcClient(HUB_URL);
+  // If your Hub is using SSL, use getSSLHubRpcClient instead
+
   castResults.map((castAddResult) => castAddResult.map((castAdd) => client.submitMessage(castAdd)));
+
+  client.close();
 })();

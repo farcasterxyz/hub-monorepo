@@ -91,4 +91,6 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
   }
 
   console.log('UserDataAdd was published successfully!');
+
+  client.close();
 })();
