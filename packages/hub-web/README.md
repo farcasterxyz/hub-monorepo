@@ -22,18 +22,18 @@ pnpm install @farcaster/hub-web
 ### Fetching Data from Hubs
 
 ```typescript
-import { getRpcWebClient } from '@farcaster/hub-web';
+import { getInsecureHubRpcClient } from '@farcaster/hub-web';
 
 (async () => {
   // if you are testing from a node environment
-  // const client = getRpcWebClient('http://testnet1.farcaster.xyz:2284', false);
+  // const client = getInsecureHubRpcClient('testnet1.farcaster.xyz:2284', false);
 
   // if you are testing from a braowser environment
-  const client = getRpcWebClient('http://testnet1.farcaster.xyz:2284');
+  const client = getInsecureHubRpcClient('testnet1.farcaster.xyz:2284');
 
-  const castsResult = await client.GetCastsByFid({ fid: 7884 });
+  const castsResult = await client.getCastsByFid({ fid: 7884 });
 
-  castsResult.messages.map((cast) => console.log(cast.data?.castAddBody?.text));
+  castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
 })();
 ```
 
