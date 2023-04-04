@@ -1,5 +1,25 @@
 # @farcaster/hubble
 
+## 1.0.20
+
+### Patch Changes
+
+- 71d6494: Helpful error when identitiy proto is not found
+- 142f3f5: add getIdRegistryEventByAddress rpc and engine method
+- 8e46cac: Start rpcServer before ethEventsProvider
+- 1f47906: remove grpc-js dependency from protobufs, refactor hubble to use hub-nodejs
+  hub-web to use @farcaster/protobufs and utils
+- b9643b2: Fix issue where sync was off by 1
+- 564f61e: Retry missing IdRegistry events from Eth node instead of peer
+- 54dbf42: End iterator in while rebulding trie
+- 13415ea: Write events to subscribe() with a timeout to prevent slow clients from clogging up memory
+- d0239f8: Retry bootstrap nodes if all fail to connect
+- 759e1cf: Ignore outdated hubs for sync
+- 9e39bb8: Update docs to close grpc connections after use
+- Updated dependencies [1f47906]
+- Updated dependencies [9e39bb8]
+  - @farcaster/hub-nodejs@0.6.1
+
 ## 1.0.19
 
 ### Patch Changes

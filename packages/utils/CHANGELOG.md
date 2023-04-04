@@ -1,5 +1,20 @@
 # @farcaster/utils
 
+## 0.5.0
+
+### Minor Changes
+
+- 1f47906: remove grpc-js dependency from protobufs, refactor hubble to use hub-nodejs
+  hub-web to use @farcaster/protobufs and utils
+
+### Patch Changes
+
+- 9e39bb8: Update docs to close grpc connections after use
+- Updated dependencies [142f3f5]
+- Updated dependencies [1f47906]
+- Updated dependencies [759e1cf]
+  - @farcaster/protobufs@0.2.0
+
 ## 0.4.0
 
 ### Minor Changes

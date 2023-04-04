@@ -1,5 +1,17 @@
 # @farcaster/protobufs
 
+## 0.2.0
+
+### Minor Changes
+
+- 1f47906: remove grpc-js dependency from protobufs, refactor hubble to use hub-nodejs
+  hub-web to use @farcaster/protobufs and utils
+
+### Patch Changes
+
+- 142f3f5: add getIdRegistryEventByAddress rpc and engine method
+- 759e1cf: Ignore outdated hubs for sync
+
 ## 0.1.11
 
 ### Patch Changes
