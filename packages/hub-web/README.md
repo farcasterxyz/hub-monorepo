@@ -31,9 +31,9 @@ import { getRpcWebClient } from '@farcaster/hub-web';
   // if you are testing from a braowser environment
   const client = getRpcWebClient('http://testnet1.farcaster.xyz:2284');
 
-  const castsResult = await client.GetCastsByFid({ fid: 7884 });
+  const castsResult = await client.getCastsByFid({ fid: 7884 });
 
-  castsResult.messages.map((cast) => console.log(cast.data?.castAddBody?.text));
+  castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
 })();
 ```
 
