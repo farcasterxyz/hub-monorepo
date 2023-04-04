@@ -19,6 +19,7 @@ message ContactInfoContent {
   GossipAddressInfo rpc_address = 2;
   repeated string excluded_hashes = 3;
   uint32 count = 4;
+  string hub_version = 5;
 }
 
 message GossipMessage {

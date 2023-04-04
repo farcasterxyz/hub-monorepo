@@ -1,4 +1,5 @@
 import { ok, err } from 'neverthrow';
+import semver from 'semver';
 import { HubError, HubResult } from '@farcaster/utils';
 import { FARCASTER_VERSIONS_SCHEDULE } from '~/hubble';
 
@@ -14,4 +15,13 @@ export const getMinFarcasterVersion = (): HubResult<string> => {
   }
 
   return err(new HubError('unavailable', 'no minimum Farcaster version available'));
+};
+
+export const isBelowMinFarcasterVersion = (version: string): HubResult<boolean> => {
+  const minVersion = getMinFarcasterVersion();
+  if (minVersion.isErr()) {
+    return err(minVersion.error);
+  }
+
+  return ok(semver.lt(version, minVersion.value));
 };
