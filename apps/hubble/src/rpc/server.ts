@@ -40,9 +40,9 @@ import { MessagesPage } from '~/storage/stores/types';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
 import { RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
+import { BufferedStreamWriter } from './bufferedStreamWriter';
 
 export type RpcUsers = Map<string, string[]>;
-export const SUBSCRIBE_TIMEOUT_MS = 10_000; // 10 seconds
 
 const log = logger.child({ component: 'rpcServer' });
 
@@ -754,27 +754,7 @@ export default class Server {
       subscribe: async (stream) => {
         const { request } = stream;
 
-        // Write the events to the stream with a timeout of 10s. If the client doesn't consume the events fast enough,
-        // the stream will be destroyed and the client will be disconnected, to protect the server from running out of memory.
-        const writeWithTimeout = async (data: any, timeoutMs: number): Promise<boolean> => {
-          if (stream.write(data)) {
-            return true;
-          } else {
-            return new Promise((resolve) => {
-              const timeout = setTimeout(() => {
-                log.error({}, 'Subscribe timeout exceeded. Closing the stream.');
-                stream.destroy();
-                resolve(false);
-              }, timeoutMs);
-
-              // Wait for the stream to drain before resolving the promise.
-              stream.once('drain', () => {
-                clearTimeout(timeout);
-                resolve(true);
-              });
-            });
-          }
-        };
+        const bufferedStreamWriter = new BufferedStreamWriter(stream);
 
         if (this.engine && request.fromId) {
           const eventsIterator = this.engine.eventHandler.getEventsIterator({ fromId: request.fromId });
@@ -785,7 +765,7 @@ export default class Server {
           for await (const [, value] of eventsIterator.value) {
             const event = HubEvent.decode(Uint8Array.from(value as Buffer));
             if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
-              const success = await writeWithTimeout(event, SUBSCRIBE_TIMEOUT_MS);
+              const success = bufferedStreamWriter.writeToStream(event);
               if (!success) {
                 await eventsIterator.value.end();
                 return;
@@ -795,7 +775,7 @@ export default class Server {
         }
 
         const eventListener = (event: HubEvent) => {
-          writeWithTimeout(event, SUBSCRIBE_TIMEOUT_MS);
+          bufferedStreamWriter.writeToStream(event);
         };
 
         // if no type filters are provided, subscribe to all event types
