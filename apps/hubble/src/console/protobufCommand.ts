@@ -1,4 +1,4 @@
-import * as hub_nodejs from '@farcaster/hub-nodejs';
+import * as hubNodejs from '@farcaster/hub-nodejs';
 import { Factories } from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
@@ -18,7 +18,7 @@ export class ProtobufCommand implements ConsoleCommandInterface {
         `;
   }
   object() {
-    return hub_nodejs;
+    return hubNodejs;
   }
 }
 
