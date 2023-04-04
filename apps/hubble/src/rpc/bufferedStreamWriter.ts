@@ -1,6 +1,4 @@
-import { ServerWritableStream } from '@grpc/grpc-js';
-import { HubEvent, SubscribeRequest } from '@farcaster/protobufs';
-import { HubError, HubResult } from '@farcaster/utils';
+import { ServerWritableStream, HubEvent, SubscribeRequest, HubError, HubResult } from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
 
 export const STREAM_DRAIN_TIMEOUT_MS = 10_000;
@@ -22,10 +20,12 @@ export class BufferedStreamWriter {
   }
 
   /**
-   * Write to the stream. Returns true if the message was written or buffered, false if if the stream can't be written to
-   * any more and will be closed.
+   * Write to the stream. Returns
+   * ok(true) if the message was written
+   * ok(false) if the message was buffered because the stream is full
+   * err if the stream can't be written to any more and will be closed.
    */
-  public writeToStream(message: any): HubResult<void> {
+  public writeToStream(message: any): HubResult<boolean> {
     if (this.streamIsBackedUp) {
       this.dataWaitingForDrain.push(message);
 
@@ -35,12 +35,12 @@ export class BufferedStreamWriter {
         return err(new HubError('unavailable.network_failure', 'Stream is backed up and cache is full'));
       }
 
-      return ok(undefined);
+      return ok(false);
     }
 
     // If the write() method returns false, it means that the stream is backed up and we should wait for the 'drain' event
     if (this.stream.write(message)) {
-      return ok(undefined);
+      return ok(true);
     } else {
       this.streamIsBackedUp = true;
 
@@ -53,7 +53,7 @@ export class BufferedStreamWriter {
 
         this.sendWaitingData();
       });
-      return ok(undefined);
+      return ok(true);
     }
   }
 

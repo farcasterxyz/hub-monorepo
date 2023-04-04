@@ -24,12 +24,13 @@ import {
   ServiceError,
   Metadata,
   HubServiceServer,
+  HubAsyncResult,
+  HubError,
   HubServiceService,
   Server as GrpcServer,
   getServer,
   status,
-} from '@farcaster/protobufs';
-import { HubAsyncResult, HubError } from '@farcaster/utils';
+} from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
@@ -795,6 +796,7 @@ export default class Server {
 
                 // If the iterator throws, it is already closed, so it doesn't matter.
                 await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
+
                 return;
               }
             }

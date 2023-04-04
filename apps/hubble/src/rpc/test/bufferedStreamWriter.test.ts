@@ -1,6 +1,5 @@
-import { ServerWritableStream } from '@grpc/grpc-js';
 import { BufferedStreamWriter, STREAM_MESSAGE_BUFFER_SIZE } from '../bufferedStreamWriter';
-import { HubEvent, SubscribeRequest } from '@farcaster/protobufs';
+import { HubEvent, SubscribeRequest, ServerWritableStream } from '@farcaster/hub-nodejs';
 
 class MockStream {
   isFull = false;
