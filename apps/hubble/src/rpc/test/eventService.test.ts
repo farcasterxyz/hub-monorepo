@@ -194,6 +194,18 @@ describe('subscribe', () => {
         [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
       ]);
     });
+
+    test('emits events with fromId of 0', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeMessage(signerAdd);
+
+      stream = await setupSubscription(events, { fromId: 0 });
+
+      expect(events).toEqual([
+        [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
+        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
+      ]);
+    });
   });
 
   describe('with fromId and type filters', () => {
