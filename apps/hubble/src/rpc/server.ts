@@ -777,7 +777,7 @@ export default class Server {
         });
 
         // If the user wants to start from a specific event, we'll start from there first
-        if (this.engine && request.fromId) {
+        if (this.engine && request.fromId !== undefined && request.fromId >= 0) {
           const eventsIterator = this.engine.eventHandler.getEventsIterator({ fromId: request.fromId });
           if (eventsIterator.isErr()) {
             stream.destroy(eventsIterator.error);
