@@ -3,9 +3,9 @@ import {
   Factories,
   getAuthMetadata,
   HubRpcClient,
-  Metadata,
   FarcasterNetwork,
   Message,
+  Metadata,
 } from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
@@ -111,9 +111,11 @@ export class GenCommand implements ConsoleCommandInterface {
           return { numSuccess, numFail, errorMessage };
         };
 
-        for (let i = 0; i < numMessages; i += 100) {
+        const batchSize = 5000;
+
+        for (let i = 0; i < numMessages; i += batchSize) {
           const batch = [];
-          for (let j = i; j < i + 100 && j < numMessages; j++) {
+          for (let j = i; j < i + batchSize && j < numMessages; j++) {
             batch.push(await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } }));
           }
           const result = await submitBatch(batch);
