@@ -51,6 +51,7 @@ import { PeriodicTestDataJobScheduler, TestUser } from '~/utils/periodicTestData
 import { isBelowMinFarcasterVersion, VersionSchedule } from '~/utils/versions';
 import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcasterVersionJob';
 import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrRevokeMessagesJob';
+import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJob';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -69,6 +70,7 @@ export interface HubInterface {
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
+  gossipContactInfo(): HubAsyncResult<void>;
 }
 
 export interface HubOptions {
@@ -179,6 +181,7 @@ export class Hub implements HubInterface {
   private testDataJobScheduler?: PeriodicTestDataJobScheduler;
   private checkFarcasterVersionJobScheduler: CheckFarcasterVersionJobScheduler;
   private validateOrRevokeMessagesJobScheduler: ValidateOrRevokeMessagesJobScheduler;
+  private gossipContactInfoJobScheduler: GossipContactInfoJobScheduler;
 
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
@@ -228,6 +231,7 @@ export class Hub implements HubInterface {
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
     this.validateOrRevokeMessagesJobScheduler = new ValidateOrRevokeMessagesJobScheduler(this.rocksDB, this.engine);
+    this.gossipContactInfoJobScheduler = new GossipContactInfoJobScheduler(this);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -450,6 +454,23 @@ export class Hub implements HubInterface {
     return this.gossipNode.connectAddress(address);
   }
 
+  async gossipContactInfo(): HubAsyncResult<void> {
+    const contactInfoResult = await this.getContactInfoContent();
+    if (contactInfoResult.isErr()) {
+      log.warn(contactInfoResult.error, 'failed get contact info content');
+      return Promise.resolve(err(contactInfoResult.error));
+    } else {
+      const contactInfo = contactInfoResult.value;
+      log.info(
+        { rpcAddress: contactInfo.rpcAddress?.address, rpcPort: contactInfo.rpcAddress?.port },
+        'gossiping contact info'
+      );
+
+      await this.gossipNode.gossipContactInfo(contactInfo);
+      return Promise.resolve(ok(undefined));
+    }
+  }
+
   /** ------------------------------------------------------------------------- */
   /*                                  Private Methods                           */
   /* -------------------------------------------------------------------------- */
@@ -526,21 +547,13 @@ export class Hub implements HubInterface {
       const theirVersion = message.hubVersion;
       if (isBelowMinFarcasterVersion(theirVersion)) {
         log.warn({ peerId, theirVersion }, 'Peer is running an outdated version, ignoring');
+        await this.gossipNode.removePeerFromAddressBook(peerId);
+        this.syncEngine.removeContactInfoForPeerId(peerId.toString());
         return;
       }
 
       const multiaddrValue = p2pMultiAddrResult.value.value;
-      if (!this.gossipNode.addressBook) {
-        log.error({}, 'address book missing for gossipNode');
-      } else {
-        const addResult = await ResultAsync.fromPromise(
-          this.gossipNode.addressBook.add(peerId, [multiaddrValue]),
-          (error) => new HubError('unavailable', error as Error)
-        );
-        if (addResult.isErr()) {
-          log.error({ error: addResult.error, message, peerId }, 'failed to add contact info to address book');
-        }
-      }
+      await this.gossipNode.addPeerToAddressBook(peerId, multiaddrValue);
     }
 
     log.info({ identity: this.identity, peer: peerId, message }, 'received a Contact Info for sync');
@@ -639,6 +652,8 @@ export class Hub implements HubInterface {
       return await this.getHubRpcClient(addressInfoToString(ai));
     } catch (e) {
       log.error({ error: e, peer, peerId, addressInfo: ai }, 'unable to connect to peer');
+      // If the peer is unreachable (e.g. behind a firewall), remove it from our address book
+      await this.gossipNode.removePeerFromAddressBook(peerId);
       return undefined;
     }
   }
@@ -663,17 +678,7 @@ export class Hub implements HubInterface {
       // When we connect to a new node, gossip out our contact info 1 second later.
       // The setTimeout is to ensure that we have a chance to receive the peer's info properly.
       setTimeout(async () => {
-        (await this.getContactInfoContent())
-          .map(async (contactInfo) => {
-            log.info(
-              { rpcAddress: contactInfo.rpcAddress?.address, rpcPort: contactInfo.rpcAddress?.port },
-              'gossiping contact info'
-            );
-            await this.gossipNode.gossipContactInfo(contactInfo);
-          })
-          .mapErr((error) => {
-            log.warn(error, 'failed get contact info content');
-          });
+        await this.gossipContactInfo();
       }, 1 * 1000);
     });
 

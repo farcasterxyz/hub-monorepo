@@ -223,6 +223,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const rpcClient = await hub.getRPCClientForPeer(peerId, peerContact);
     if (!rpcClient) {
       log.warn(`Diffsync: Failed to get RPC client for peer, skipping sync`);
+      // If we're unable to reach the peer, remove it from our contact list. We'll retry when it's added back by
+      // the periodic ContactInfo gossip job.
+      this.removeContactInfoForPeerId(peerId.toString());
       this.emit('syncComplete', false);
       return;
     }
