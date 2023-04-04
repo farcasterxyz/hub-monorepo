@@ -1,5 +1,17 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesDecrement, bytesIncrement, Eip712Signer, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import {
+  bytesDecrement,
+  bytesIncrement,
+  Eip712Signer,
+  Factories,
+  getFarcasterTime,
+  HubError,
+  MergeMessageHubEvent,
+  Message,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+  VerificationAddEthAddressMessage,
+  VerificationRemoveMessage,
+} from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';
@@ -8,7 +20,7 @@ import { UserPostfix } from '../db/types';
 import { StorageCache } from '~/storage/engine/storageCache';
 import { err } from 'neverthrow';
 
-const db = jestRocksDB('protobufs.verificationStore.test');
+const db = jestRocksDB('verificationStore.test');
 const cache = new StorageCache();
 const eventHandler = new StoreEventHandler(db, cache);
 const set = new VerificationStore(db, eventHandler);
@@ -16,8 +28,8 @@ const fid = Factories.Fid.build();
 
 let ethSigner: Eip712Signer;
 let ethSignerKey: Uint8Array;
-let verificationAdd: protobufs.VerificationAddEthAddressMessage;
-let verificationRemove: protobufs.VerificationRemoveMessage;
+let verificationAdd: VerificationAddEthAddressMessage;
+let verificationRemove: VerificationRemoveMessage;
 
 beforeAll(async () => {
   ethSigner = Factories.Eip712Signer.build();
@@ -91,9 +103,9 @@ describe('getVerificationRemovesByFid', () => {
 // TODO: getAllVerificationMessagesByFid
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
+  let mergeEvents: [Message | undefined, Message[]][] = [];
 
-  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+  const mergeMessageHandler = (event: MergeMessageHubEvent) => {
     const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
@@ -110,27 +122,25 @@ describe('merge', () => {
     eventHandler.off('mergeMessage', mergeMessageHandler);
   });
 
-  const assertVerificationExists = async (
-    message: protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage
-  ) => {
+  const assertVerificationExists = async (message: VerificationAddEthAddressMessage | VerificationRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.VerificationMessage, tsHash)).resolves.toEqual(message);
   };
 
   const assertVerificationDoesNotExist = async (
-    message: protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage
+    message: VerificationAddEthAddressMessage | VerificationRemoveMessage
   ) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.VerificationMessage, tsHash)).rejects.toThrow(HubError);
   };
 
-  const assertVerificationAddWins = async (message: protobufs.VerificationAddEthAddressMessage) => {
+  const assertVerificationAddWins = async (message: VerificationAddEthAddressMessage) => {
     await assertVerificationExists(message);
     await expect(set.getVerificationAdd(fid, ethSignerKey)).resolves.toEqual(message);
     await expect(set.getVerificationRemove(fid, ethSignerKey)).rejects.toThrow(HubError);
   };
 
-  const assertVerificationRemoveWins = async (message: protobufs.VerificationRemoveMessage) => {
+  const assertVerificationRemoveWins = async (message: VerificationRemoveMessage) => {
     await assertVerificationExists(message);
     await expect(set.getVerificationRemove(fid, ethSignerKey)).resolves.toEqual(message);
     await expect(set.getVerificationAdd(fid, ethSignerKey)).rejects.toThrow(HubError);
@@ -158,7 +168,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting VerificationAddEthAddress with different timestamps', () => {
-      let verificationAddLater: protobufs.VerificationAddEthAddressMessage;
+      let verificationAddLater: VerificationAddEthAddressMessage;
 
       beforeAll(async () => {
         verificationAddLater = await Factories.VerificationAddEthAddressMessage.create({
@@ -189,7 +199,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting VerificationAddEthAddress with identical timestamps', () => {
-      let verificationAddLater: protobufs.VerificationAddEthAddressMessage;
+      let verificationAddLater: VerificationAddEthAddressMessage;
 
       beforeAll(async () => {
         verificationAddLater = await Factories.VerificationAddEthAddressMessage.create({
@@ -295,7 +305,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting VerificationRemove with different timestamps', () => {
-      let verificationRemoveLater: protobufs.VerificationRemoveMessage;
+      let verificationRemoveLater: VerificationRemoveMessage;
 
       beforeAll(async () => {
         verificationRemoveLater = await Factories.VerificationRemoveMessage.create({
@@ -326,7 +336,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting VerificationRemove with identical timestamps', () => {
-      let verificationRemoveLater: protobufs.VerificationRemoveMessage;
+      let verificationRemoveLater: VerificationRemoveMessage;
 
       beforeAll(async () => {
         verificationRemoveLater = await Factories.VerificationRemoveMessage.create({
@@ -404,9 +414,9 @@ describe('merge', () => {
 });
 
 describe('revoke', () => {
-  let revokedMessages: protobufs.Message[] = [];
+  let revokedMessages: Message[] = [];
 
-  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+  const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
     revokedMessages.push(event.revokeMessageBody.message);
   };
 
@@ -463,8 +473,8 @@ describe('revoke', () => {
 });
 
 describe('pruneMessages', () => {
-  let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+  let prunedMessages: Message[];
+  const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
@@ -480,22 +490,22 @@ describe('pruneMessages', () => {
     eventHandler.off('pruneMessage', pruneMessageListener);
   });
 
-  let add1: protobufs.VerificationAddEthAddressMessage;
-  let add2: protobufs.VerificationAddEthAddressMessage;
-  let add3: protobufs.VerificationAddEthAddressMessage;
-  let add4: protobufs.VerificationAddEthAddressMessage;
-  let add5: protobufs.VerificationAddEthAddressMessage;
+  let add1: VerificationAddEthAddressMessage;
+  let add2: VerificationAddEthAddressMessage;
+  let add3: VerificationAddEthAddressMessage;
+  let add4: VerificationAddEthAddressMessage;
+  let add5: VerificationAddEthAddressMessage;
 
-  let remove1: protobufs.VerificationRemoveMessage;
-  let remove2: protobufs.VerificationRemoveMessage;
-  let remove3: protobufs.VerificationRemoveMessage;
-  let remove4: protobufs.VerificationRemoveMessage;
-  let remove5: protobufs.VerificationRemoveMessage;
+  let remove1: VerificationRemoveMessage;
+  let remove2: VerificationRemoveMessage;
+  let remove3: VerificationRemoveMessage;
+  let remove4: VerificationRemoveMessage;
+  let remove5: VerificationRemoveMessage;
 
   const generateAddWithTimestamp = async (
     fid: number,
     timestamp: number
-  ): Promise<protobufs.VerificationAddEthAddressMessage> => {
+  ): Promise<VerificationAddEthAddressMessage> => {
     return Factories.VerificationAddEthAddressMessage.create({ data: { fid, timestamp } });
   };
 
@@ -503,7 +513,7 @@ describe('pruneMessages', () => {
     fid: number,
     timestamp: number,
     address?: Uint8Array | null
-  ): Promise<protobufs.VerificationRemoveMessage> => {
+  ): Promise<VerificationRemoveMessage> => {
     return Factories.VerificationRemoveMessage.create({
       data: { fid, timestamp, verificationRemoveBody: { address: address ?? Factories.EthAddress.build() } },
     });
@@ -548,7 +558,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([add1, add2]);
 
-      for (const message of prunedMessages as protobufs.VerificationAddEthAddressMessage[]) {
+      for (const message of prunedMessages as VerificationAddEthAddressMessage[]) {
         const getAdd = () =>
           sizePrunedStore.getVerificationAdd(fid, message.data.verificationAddEthAddressBody.address);
         await expect(getAdd()).rejects.toThrow(HubError);
@@ -566,7 +576,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
-      for (const message of prunedMessages as protobufs.VerificationRemoveMessage[]) {
+      for (const message of prunedMessages as VerificationRemoveMessage[]) {
         const getRemove = () => sizePrunedStore.getVerificationRemove(fid, message.data.verificationRemoveBody.address);
         await expect(getRemove()).rejects.toThrow(HubError);
       }

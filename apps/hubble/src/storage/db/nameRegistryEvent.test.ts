@@ -1,4 +1,4 @@
-import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from '@farcaster/utils';
+import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import {
   deleteNameRegistryEvent,

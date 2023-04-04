@@ -1,4 +1,4 @@
-import { bytesToBigInt, hexStringToBytes, HubResult } from '@farcaster/utils';
+import { bytesToBigInt, hexStringToBytes, HubResult } from '@farcaster/hub-nodejs';
 
 export const bytes32ToBytes = (value: bigint): HubResult<Uint8Array> => {
   // Remove right padding

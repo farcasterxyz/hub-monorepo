@@ -1,5 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
-
+import { Message } from '@farcaster/hub-nodejs';
 export const MERGE_TIMEOUT_DEFAULT = 10_000; // 10 seconds
 
 export type StorePruneOptions = {
@@ -15,7 +14,7 @@ export type PageOptions = {
   reverse?: boolean | undefined;
 };
 
-export type MessagesPage<T extends protobufs.Message> = {
+export type MessagesPage<T extends Message> = {
   messages: T[];
   nextPageToken?: Uint8Array | undefined;
 };

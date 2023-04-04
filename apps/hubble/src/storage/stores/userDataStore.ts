@@ -1,5 +1,15 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import {
+  bytesCompare,
+  HubAsyncResult,
+  HubError,
+  HubEventType,
+  isHubError,
+  isUserDataAddMessage,
+  Message,
+  NameRegistryEvent,
+  UserDataAddMessage,
+  UserDataType,
+} from '@farcaster/hub-nodejs';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
@@ -30,7 +40,7 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 100;
  * @param dataType type of data being added
  * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<dataType?>
  */
-const makeUserDataAddsKey = (fid: number, dataType?: protobufs.UserDataType): Buffer => {
+const makeUserDataAddsKey = (fid: number, dataType?: UserDataType): Buffer => {
   return Buffer.concat([
     makeUserKey(fid),
     Buffer.from([UserPostfix.UserDataAdds]),
@@ -77,23 +87,20 @@ class UserDataStore {
    * @param dataType type of UserData that was added
    * @returns the UserDataAdd Model if it exists, undefined otherwise
    */
-  async getUserDataAdd(fid: number, dataType: protobufs.UserDataType): Promise<protobufs.UserDataAddMessage> {
+  async getUserDataAdd(fid: number, dataType: UserDataType): Promise<UserDataAddMessage> {
     const addsKey = makeUserDataAddsKey(fid, dataType);
     const messageTsHash = await this._db.get(addsKey);
     return getMessage(this._db, fid, UserPostfix.UserDataMessage, messageTsHash);
   }
 
   /** Finds all UserDataAdd messages for an fid */
-  async getUserDataAddsByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.UserDataAddMessage>> {
+  async getUserDataAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<UserDataAddMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.UserDataMessage);
-    return getMessagesPageByPrefix(this._db, prefix, protobufs.isUserDataAddMessage, pageOptions);
+    return getMessagesPageByPrefix(this._db, prefix, isUserDataAddMessage, pageOptions);
   }
 
   /** Returns the most recent event from the NameEventRegistry contract for an fname */
-  async getNameRegistryEvent(fname: Uint8Array): Promise<protobufs.NameRegistryEvent> {
+  async getNameRegistryEvent(fname: Uint8Array): Promise<NameRegistryEvent> {
     return getNameRegistryEvent(this._db, fname);
   }
 
@@ -101,7 +108,7 @@ class UserDataStore {
    * Merges a NameRegistryEvent storing the causally latest event at the key:
    * <name registry root prefix byte, fname>
    */
-  async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): Promise<number> {
+  async mergeNameRegistryEvent(event: NameRegistryEvent): Promise<number> {
     const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fname), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
       throw new HubError('bad_request.conflict', 'event conflicts with a more recent NameRegistryEvent');
@@ -110,7 +117,7 @@ class UserDataStore {
     const txn = putNameRegistryEventTransaction(this._db.transaction(), event);
 
     const result = await this._eventHandler.commitTransaction(txn, {
-      type: protobufs.HubEventType.MERGE_NAME_REGISTRY_EVENT,
+      type: HubEventType.MERGE_NAME_REGISTRY_EVENT,
       mergeNameRegistryEventBody: { nameRegistryEvent: event },
     });
 
@@ -122,8 +129,8 @@ class UserDataStore {
   }
 
   /** Merges a UserDataAdd message into the set */
-  async merge(message: protobufs.Message): Promise<number> {
-    if (!protobufs.isUserDataAddMessage(message)) {
+  async merge(message: Message): Promise<number> {
+    if (!isUserDataAddMessage(message)) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
@@ -140,16 +147,16 @@ class UserDataStore {
       });
   }
 
-  async revoke(message: protobufs.Message): HubAsyncResult<number> {
+  async revoke(message: Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-    if (protobufs.isUserDataAddMessage(message)) {
+    if (isUserDataAddMessage(message)) {
       txn = this.deleteUserDataAddTransaction(txn, message);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
     return this._eventHandler.commitTransaction(txn, {
-      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      type: HubEventType.REVOKE_MESSAGE,
       revokeMessageBody: { message },
     });
   }
@@ -189,14 +196,14 @@ class UserDataStore {
 
       let txn = this._db.transaction();
 
-      if (protobufs.isUserDataAddMessage(nextMessage.value)) {
+      if (isUserDataAddMessage(nextMessage.value)) {
         txn = this.deleteUserDataAddTransaction(txn, nextMessage.value);
       } else {
         return err(new HubError('unknown', 'invalid message type'));
       }
 
       return this._eventHandler.commitTransaction(txn, {
-        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        type: HubEventType.PRUNE_MESSAGE,
         pruneMessageBody: { message: nextMessage.value },
       });
     };
@@ -226,7 +233,7 @@ class UserDataStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeDataAdd(message: protobufs.UserDataAddMessage): Promise<number> {
+  private async mergeDataAdd(message: UserDataAddMessage): Promise<number> {
     const mergeConflicts = await this.getMergeConflicts(message);
     if (mergeConflicts.isErr()) {
       throw mergeConflicts.error;
@@ -239,7 +246,7 @@ class UserDataStore {
     txn = this.putUserDataAddTransaction(txn, message);
 
     const hubEvent: HubEventArgs = {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
 
@@ -255,10 +262,8 @@ class UserDataStore {
     return bytesCompare(aTimestampHash, bTimestampHash);
   }
 
-  private async getMergeConflicts(
-    message: protobufs.UserDataAddMessage
-  ): HubAsyncResult<protobufs.UserDataAddMessage[]> {
-    const conflicts: protobufs.UserDataAddMessage[] = [];
+  private async getMergeConflicts(message: UserDataAddMessage): HubAsyncResult<UserDataAddMessage[]> {
+    const conflicts: UserDataAddMessage[] = [];
 
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
@@ -280,7 +285,7 @@ class UserDataStore {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // UserDataAdd message and delete it as part of the RocksDB transaction
-        const existingAdd = await getMessage<protobufs.UserDataAddMessage>(
+        const existingAdd = await getMessage<UserDataAddMessage>(
           this._db,
           message.data.fid,
           UserPostfix.UserDataMessage,
@@ -293,9 +298,9 @@ class UserDataStore {
     return ok(conflicts);
   }
 
-  private deleteManyTransaction(txn: Transaction, messages: protobufs.UserDataAddMessage[]): Transaction {
+  private deleteManyTransaction(txn: Transaction, messages: UserDataAddMessage[]): Transaction {
     for (const message of messages) {
-      if (protobufs.isUserDataAddMessage(message)) {
+      if (isUserDataAddMessage(message)) {
         txn = this.deleteUserDataAddTransaction(txn, message);
       }
     }
@@ -303,7 +308,7 @@ class UserDataStore {
   }
 
   /* Builds a RocksDB transaction to insert a UserDataAdd message and construct its indices */
-  private putUserDataAddTransaction(txn: Transaction, message: protobufs.UserDataAddMessage): Transaction {
+  private putUserDataAddTransaction(txn: Transaction, message: UserDataAddMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -319,7 +324,7 @@ class UserDataStore {
   }
 
   /* Builds a RocksDB transaction to remove a UserDataAdd message and delete its indices */
-  private deleteUserDataAddTransaction(txn: Transaction, message: protobufs.UserDataAddMessage): Transaction {
+  private deleteUserDataAddTransaction(txn: Transaction, message: UserDataAddMessage): Transaction {
     // Delete message key from userData adds set index
     txn = txn.del(makeUserDataAddsKey(message.data.fid, message.data.userDataBody.type));
 

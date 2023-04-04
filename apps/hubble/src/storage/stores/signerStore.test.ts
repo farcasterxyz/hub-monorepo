@@ -1,5 +1,19 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesDecrement, bytesIncrement, Eip712Signer, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import {
+  bytesDecrement,
+  bytesIncrement,
+  Eip712Signer,
+  Factories,
+  getFarcasterTime,
+  HubError,
+  IdRegistryEvent,
+  MergeIdRegistryEventHubEvent,
+  MergeMessageHubEvent,
+  Message,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+  SignerAddMessage,
+  SignerRemoveMessage,
+} from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeFidKey, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
@@ -22,10 +36,10 @@ let custody1Address: Uint8Array;
 let custody2: Eip712Signer;
 let custody2Address: Uint8Array;
 
-let custody1Event: protobufs.IdRegistryEvent;
-let custody2Event: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
-let signerRemove: protobufs.SignerRemoveMessage;
+let custody1Event: IdRegistryEvent;
+let custody2Event: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
+let signerRemove: SignerRemoveMessage;
 
 beforeAll(async () => {
   signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -104,9 +118,9 @@ describe('getSignerAddsByFid', () => {
   });
 
   describe('with messages', () => {
-    let signerAdd2: protobufs.SignerAddMessage;
-    let signerAdd3: protobufs.SignerAddMessage;
-    let signerRemove4: protobufs.SignerRemoveMessage;
+    let signerAdd2: SignerAddMessage;
+    let signerAdd3: SignerAddMessage;
+    let signerRemove4: SignerRemoveMessage;
 
     beforeAll(async () => {
       signerAdd2 = await Factories.SignerAddMessage.create(
@@ -217,8 +231,8 @@ describe('getSignerRemovesByFid', () => {
   });
 
   describe('with messages', () => {
-    let signerRemove2: protobufs.SignerRemoveMessage;
-    let signerAdd3: protobufs.SignerAddMessage;
+    let signerRemove2: SignerRemoveMessage;
+    let signerAdd3: SignerAddMessage;
 
     beforeAll(async () => {
       signerRemove2 = await Factories.SignerRemoveMessage.create(
@@ -279,8 +293,8 @@ describe('getAllSignerMessagesByFid', () => {
   });
 
   describe('with messages', () => {
-    let signerRemove2: protobufs.SignerRemoveMessage;
-    let signerAdd3: protobufs.SignerAddMessage;
+    let signerRemove2: SignerRemoveMessage;
+    let signerAdd3: SignerAddMessage;
 
     beforeAll(async () => {
       signerRemove2 = await Factories.SignerRemoveMessage.create(
@@ -337,9 +351,9 @@ describe('getAllSignerMessagesByFid', () => {
 // TODO: write test cases for cyclical custody event transfers
 
 describe('mergeIdRegistryEvent', () => {
-  let mergedContractEvents: protobufs.IdRegistryEvent[];
+  let mergedContractEvents: IdRegistryEvent[];
 
-  const handleMergeEvent = (event: protobufs.MergeIdRegistryEventHubEvent) => {
+  const handleMergeEvent = (event: MergeIdRegistryEventHubEvent) => {
     mergedContractEvents.push(event.mergeIdRegistryEventBody.idRegistryEvent);
   };
 
@@ -389,7 +403,7 @@ describe('mergeIdRegistryEvent', () => {
   });
 
   describe('overwrites existing event', () => {
-    let newEvent: protobufs.IdRegistryEvent;
+    let newEvent: IdRegistryEvent;
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -425,7 +439,7 @@ describe('mergeIdRegistryEvent', () => {
   });
 
   describe('does not overwrite existing event', () => {
-    let newEvent: protobufs.IdRegistryEvent;
+    let newEvent: IdRegistryEvent;
 
     beforeEach(async () => {
       await set.mergeIdRegistryEvent(custody1Event);
@@ -467,9 +481,9 @@ describe('mergeIdRegistryEvent', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
+  let mergeEvents: [Message | undefined, Message[]][] = [];
 
-  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+  const mergeMessageHandler = (event: MergeMessageHubEvent) => {
     const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
@@ -486,23 +500,23 @@ describe('merge', () => {
     eventHandler.off('mergeMessage', mergeMessageHandler);
   });
 
-  const assertSignerExists = async (message: protobufs.SignerAddMessage | protobufs.SignerRemoveMessage) => {
+  const assertSignerExists = async (message: SignerAddMessage | SignerRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.SignerMessage, tsHash)).resolves.toEqual(message);
   };
 
-  const assertSignerDoesNotExist = async (message: protobufs.SignerAddMessage | protobufs.SignerRemoveMessage) => {
+  const assertSignerDoesNotExist = async (message: SignerAddMessage | SignerRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.SignerMessage, tsHash)).rejects.toThrow(HubError);
   };
 
-  const assertSignerAddWins = async (message: protobufs.SignerAddMessage) => {
+  const assertSignerAddWins = async (message: SignerAddMessage) => {
     await assertSignerExists(message);
     await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(message);
     await expect(set.getSignerRemove(fid, signerKey)).rejects.toThrow(HubError);
   };
 
-  const assertSignerRemoveWins = async (message: protobufs.SignerRemoveMessage) => {
+  const assertSignerRemoveWins = async (message: SignerRemoveMessage) => {
     await assertSignerExists(message);
     await expect(set.getSignerRemove(fid, signerKey)).resolves.toEqual(message);
     await expect(set.getSignerAdd(fid, signerKey)).rejects.toThrow(HubError);
@@ -535,7 +549,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerAdd with different timestamps', () => {
-      let signerAddLater: protobufs.SignerAddMessage;
+      let signerAddLater: SignerAddMessage;
 
       beforeAll(async () => {
         signerAddLater = await Factories.SignerAddMessage.create(
@@ -576,7 +590,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerAdd with identical timestamps', () => {
-      let signerAddLater: protobufs.SignerAddMessage;
+      let signerAddLater: SignerAddMessage;
 
       beforeAll(async () => {
         signerAddLater = await Factories.SignerAddMessage.create(
@@ -700,7 +714,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerRemove with different timestamps', () => {
-      let signerRemoveLater: protobufs.SignerRemoveMessage;
+      let signerRemoveLater: SignerRemoveMessage;
 
       beforeAll(async () => {
         signerRemoveLater = await Factories.SignerRemoveMessage.create(
@@ -736,7 +750,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting SignerRemove with identical timestamps', () => {
-      let signerRemoveLater: protobufs.SignerRemoveMessage;
+      let signerRemoveLater: SignerRemoveMessage;
 
       beforeAll(async () => {
         signerRemoveLater = await Factories.SignerRemoveMessage.create(
@@ -922,9 +936,9 @@ describe('getFids', () => {
 });
 
 describe('revoke', () => {
-  let revokedMessages: protobufs.Message[] = [];
+  let revokedMessages: Message[] = [];
 
-  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+  const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
     revokedMessages.push(event.revokeMessageBody.message);
   };
 
@@ -975,8 +989,8 @@ describe('revoke', () => {
 });
 
 describe('pruneMessages', () => {
-  let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+  let prunedMessages: Message[];
+  const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
@@ -992,19 +1006,19 @@ describe('pruneMessages', () => {
     eventHandler.off('pruneMessage', pruneMessageListener);
   });
 
-  let add1: protobufs.SignerAddMessage;
-  let add2: protobufs.SignerAddMessage;
-  let add3: protobufs.SignerAddMessage;
-  let add4: protobufs.SignerAddMessage;
-  let add5: protobufs.SignerAddMessage;
+  let add1: SignerAddMessage;
+  let add2: SignerAddMessage;
+  let add3: SignerAddMessage;
+  let add4: SignerAddMessage;
+  let add5: SignerAddMessage;
 
-  let remove1: protobufs.SignerRemoveMessage;
-  let remove2: protobufs.SignerRemoveMessage;
-  let remove3: protobufs.SignerRemoveMessage;
-  let remove4: protobufs.SignerRemoveMessage;
-  let remove5: protobufs.SignerRemoveMessage;
+  let remove1: SignerRemoveMessage;
+  let remove2: SignerRemoveMessage;
+  let remove3: SignerRemoveMessage;
+  let remove4: SignerRemoveMessage;
+  let remove5: SignerRemoveMessage;
 
-  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<protobufs.SignerAddMessage> => {
+  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<SignerAddMessage> => {
     return Factories.SignerAddMessage.create({
       data: { fid, timestamp },
     });
@@ -1014,7 +1028,7 @@ describe('pruneMessages', () => {
     fid: number,
     timestamp: number,
     signer?: Uint8Array | null
-  ): Promise<protobufs.SignerRemoveMessage> => {
+  ): Promise<SignerRemoveMessage> => {
     return Factories.SignerRemoveMessage.create({
       data: { fid, timestamp, signerRemoveBody: { signer: signer ?? Factories.Ed25519PPublicKey.build() } },
     });
@@ -1060,7 +1074,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([add1, add2]);
 
-      for (const message of prunedMessages as protobufs.SignerAddMessage[]) {
+      for (const message of prunedMessages as SignerAddMessage[]) {
         const getAdd = () => sizePrunedStore.getSignerAdd(fid, message.data.signerAddBody.signer);
         await expect(getAdd()).rejects.toThrow(HubError);
       }
@@ -1077,7 +1091,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
-      for (const message of prunedMessages as protobufs.SignerRemoveMessage[]) {
+      for (const message of prunedMessages as SignerRemoveMessage[]) {
         const getRemove = () => sizePrunedStore.getSignerRemove(fid, message.data.signerRemoveBody.signer);
         await expect(getRemove()).rejects.toThrow(HubError);
       }

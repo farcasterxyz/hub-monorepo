@@ -1,6 +1,6 @@
-import * as protobufs from '@farcaster/protobufs';
 import { makeMessagePrimaryKey, typeToSetPostfix } from '~/storage/db/message';
 import { FID_BYTES, HASH_LENGTH } from '~/storage/db/types';
+import { Message } from '@farcaster/hub-nodejs';
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp
 
@@ -18,7 +18,7 @@ class SyncId {
   private readonly _timestamp: number;
   private readonly _type: number;
 
-  constructor(message: protobufs.Message) {
+  constructor(message: Message) {
     this._fid = message.data?.fid || 0;
     this._hash = message.hash;
     this._timestamp = message.data?.timestamp || 0;

@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, toFarcasterTime } from '@farcaster/utils';
-import { AdminRpcClient, HubRpcClient, Metadata } from '@farcaster/hub-nodejs';
+import {
+  Factories,
+  toFarcasterTime,
+  AdminRpcClient,
+  HubRpcClient,
+  Metadata,
+  FarcasterNetwork,
+  UserDataType,
+} from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
 export class WarpcastTestCommand implements ConsoleCommandInterface {
@@ -55,7 +61,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
   private async revokeSignerWithData() {
     const nextFid = 300_000;
-    const network = protobufs.FarcasterNetwork.MAINNET;
+    const network = FarcasterNetwork.MAINNET;
     const { fid, signer, custodySigner } = await this.getSigners(nextFid, network);
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
@@ -110,7 +116,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
   private async highVolumeActions() {
     const nextFid = 200_000;
-    const network = protobufs.FarcasterNetwork.MAINNET;
+    const network = FarcasterNetwork.MAINNET;
     const { fid, signer, custodySigner } = await this.getSigners(nextFid, network);
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
@@ -172,7 +178,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
    */
   private async messageOrderingActions() {
     let nextFid = 100_000;
-    const network = protobufs.FarcasterNetwork.MAINNET;
+    const network = FarcasterNetwork.MAINNET;
 
     // Message Ordering
     // 1. A CastAdd arrives followed by a CastRemove
@@ -349,7 +355,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       const timestamp = toFarcasterTime(Date.now())._unsafeUnwrap();
 
       const userDataT = await Factories.UserDataAddMessage.create(
-        { data: { timestamp, fid, network, userDataBody: { type: protobufs.UserDataType.BIO } } },
+        { data: { timestamp, fid, network, userDataBody: { type: UserDataType.BIO } } },
         { transient: { signer: signer } }
       );
       const userDataT1 = await Factories.UserDataAddMessage.create(
@@ -358,7 +364,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
             timestamp: timestamp + 1,
             fid,
             network,
-            userDataBody: { type: protobufs.UserDataType.BIO },
+            userDataBody: { type: UserDataType.BIO },
           },
         },
         { transient: { signer: signer } }

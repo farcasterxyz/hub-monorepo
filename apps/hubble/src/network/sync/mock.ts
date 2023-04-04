@@ -1,7 +1,6 @@
 import { ok } from 'neverthrow';
 
-import * as protobufs from '@farcaster/protobufs';
-import { HubResult } from '@farcaster/utils';
+import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from '@farcaster/hub-nodejs';
 
 import Engine from '~/storage/engine';
 import { NodeMetadata } from './merkleTrie';
@@ -21,21 +20,19 @@ export class MockRpcClient {
     this.syncEngine = syncEngine;
   }
 
-  async getSyncMetadataByPrefix(
-    request: protobufs.TrieNodePrefix
-  ): Promise<HubResult<protobufs.TrieNodeMetadataResponse>> {
+  async getSyncMetadataByPrefix(request: TrieNodePrefix): Promise<HubResult<TrieNodeMetadataResponse>> {
     this.getSyncMetadataByPrefixCalls.push(request);
-    const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): protobufs.TrieNodeMetadataResponse => {
+    const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
       const childrenTrie = [];
 
       if (!metadata) {
-        return protobufs.TrieNodeMetadataResponse.create({});
+        return TrieNodeMetadataResponse.create({});
       }
 
       if (metadata.children) {
         for (const [, child] of metadata.children) {
           childrenTrie.push(
-            protobufs.TrieNodeMetadataResponse.create({
+            TrieNodeMetadataResponse.create({
               prefix: child.prefix,
               numMessages: child.numMessages,
               hash: child.hash,
@@ -45,7 +42,7 @@ export class MockRpcClient {
         }
       }
 
-      const metadataResponse = protobufs.TrieNodeMetadataResponse.create({
+      const metadataResponse = TrieNodeMetadataResponse.create({
         prefix: metadata.prefix,
         numMessages: metadata.numMessages,
         hash: metadata.hash,
@@ -59,22 +56,22 @@ export class MockRpcClient {
     return ok(toTrieNodeMetadataResponse(metadata));
   }
 
-  async getAllSyncIdsByPrefix(request: protobufs.TrieNodePrefix): Promise<HubResult<protobufs.SyncIds>> {
+  async getAllSyncIdsByPrefix(request: TrieNodePrefix): Promise<HubResult<SyncIds>> {
     this.getAllSyncIdsByPrefixCalls.push(request);
     const syncIds = await this.syncEngine.getAllSyncIdsByPrefix(request.prefix);
     return ok(
-      protobufs.SyncIds.create({
+      SyncIds.create({
         syncIds,
       })
     );
   }
 
-  async getAllMessagesBySyncIds(request: protobufs.SyncIds): Promise<HubResult<protobufs.MessagesResponse>> {
+  async getAllMessagesBySyncIds(request: SyncIds): Promise<HubResult<MessagesResponse>> {
     this.getAllMessagesBySyncIdsCalls.push(request);
     const messagesResult = await this.engine.getAllMessagesBySyncIds(request.syncIds);
     return messagesResult.map((messages) => {
       this.getAllMessagesBySyncIdsReturns += messages.length;
-      return protobufs.MessagesResponse.create({ messages: messages ?? [] });
+      return MessagesResponse.create({ messages: messages ?? [] });
     });
   }
 

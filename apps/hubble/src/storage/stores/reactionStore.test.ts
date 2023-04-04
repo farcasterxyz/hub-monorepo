@@ -1,5 +1,20 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, HubError, bytesDecrement, bytesIncrement, getFarcasterTime } from '@farcaster/utils';
+import {
+  Factories,
+  HubError,
+  bytesDecrement,
+  bytesIncrement,
+  getFarcasterTime,
+  ReactionAddMessage,
+  CastId,
+  MergeMessageHubEvent,
+  Message,
+  MessageType,
+  PruneMessageHubEvent,
+  ReactionBody,
+  ReactionRemoveMessage,
+  ReactionType,
+  RevokeMessageHubEvent,
+} from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash } from '~/storage/db/message';
@@ -15,14 +30,14 @@ const set = new ReactionStore(db, eventHandler);
 const fid = Factories.Fid.build();
 const castId = Factories.CastId.build();
 
-let reactionAdd: protobufs.ReactionAddMessage;
-let reactionRemove: protobufs.ReactionRemoveMessage;
-let reactionAddRecast: protobufs.ReactionAddMessage;
-let reactionRemoveRecast: protobufs.ReactionRemoveMessage;
+let reactionAdd: ReactionAddMessage;
+let reactionRemove: ReactionRemoveMessage;
+let reactionAddRecast: ReactionAddMessage;
+let reactionRemoveRecast: ReactionRemoveMessage;
 
 beforeAll(async () => {
   const likeBody = Factories.ReactionBody.build({
-    type: protobufs.ReactionType.LIKE,
+    type: ReactionType.LIKE,
     targetCastId: castId,
   });
 
@@ -35,7 +50,7 @@ beforeAll(async () => {
   });
 
   const recastBody = Factories.ReactionBody.build({
-    type: protobufs.ReactionType.RECAST,
+    type: ReactionType.RECAST,
     targetCastId: castId,
   });
 
@@ -66,7 +81,7 @@ describe('getReactionAdd', () => {
 
   test('fails if the wrong reaction type is provided', async () => {
     await set.merge(reactionAdd);
-    await expect(set.getReactionAdd(fid, protobufs.ReactionType.RECAST, castId)).rejects.toThrow(HubError);
+    await expect(set.getReactionAdd(fid, ReactionType.RECAST, castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong target is provided', async () => {
@@ -101,7 +116,7 @@ describe('getReactionRemove', () => {
 
   test('fails if the wrong reaction type is provided', async () => {
     await set.merge(reactionRemove);
-    await expect(set.getReactionRemove(fid, protobufs.ReactionType.RECAST, castId)).rejects.toThrow(HubError);
+    await expect(set.getReactionRemove(fid, ReactionType.RECAST, castId)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong target is provided', async () => {
@@ -143,11 +158,11 @@ describe('getReactionAddsByFid', () => {
   test('returns ReactionAdd messages by type', async () => {
     await set.merge(reactionAdd);
     await set.merge(reactionAddRecast);
-    await expect(set.getReactionAddsByFid(fid, protobufs.ReactionType.LIKE)).resolves.toEqual({
+    await expect(set.getReactionAddsByFid(fid, ReactionType.LIKE)).resolves.toEqual({
       messages: [reactionAdd],
       nextPageToken: undefined,
     });
-    await expect(set.getReactionAddsByFid(fid, protobufs.ReactionType.RECAST)).resolves.toEqual({
+    await expect(set.getReactionAddsByFid(fid, ReactionType.RECAST)).resolves.toEqual({
       messages: [reactionAddRecast],
       nextPageToken: undefined,
     });
@@ -241,20 +256,20 @@ describe('getReactionsByTargetCast', () => {
 
   describe('with type', () => {
     test('returns empty array if no reactions exist', async () => {
-      const byCast = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
+      const byCast = await set.getReactionsByTargetCast(castId, ReactionType.LIKE);
       expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
     test('returns empty array if reactions exist for the target with different type', async () => {
       await set.merge(reactionAddRecast);
-      const byCast = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
+      const byCast = await set.getReactionsByTargetCast(castId, ReactionType.LIKE);
       expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
     test('returns empty array if reactions exist for the type with different target', async () => {
       await set.merge(reactionAdd);
       const unknownCastId = Factories.CastId.build();
-      const byCast = await set.getReactionsByTargetCast(unknownCastId, protobufs.ReactionType.LIKE);
+      const byCast = await set.getReactionsByTargetCast(unknownCastId, ReactionType.LIKE);
       expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
@@ -262,37 +277,37 @@ describe('getReactionsByTargetCast', () => {
       const reactionLike2 = await Factories.ReactionAddMessage.create({
         data: {
           timestamp: reactionAddRecast.data.timestamp + 1,
-          reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId },
+          reactionBody: { type: ReactionType.LIKE, targetCastId: castId },
         },
       });
       await set.merge(reactionLike2);
       await set.merge(reactionAdd);
       await set.merge(reactionAddRecast);
-      const results1 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE);
+      const results1 = await set.getReactionsByTargetCast(castId, ReactionType.LIKE);
       expect(results1).toEqual({ messages: [reactionAdd, reactionLike2], nextPageToken: undefined });
 
-      const results2 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE, {
+      const results2 = await set.getReactionsByTargetCast(castId, ReactionType.LIKE, {
         reverse: true,
         pageSize: 1,
       });
       expect(results2.messages).toEqual([reactionLike2]);
 
-      const results3 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.LIKE, {
+      const results3 = await set.getReactionsByTargetCast(castId, ReactionType.LIKE, {
         reverse: true,
         pageToken: results2.nextPageToken,
       });
       expect(results3).toEqual({ messages: [reactionAdd], nextPageToken: undefined });
 
-      const results4 = await set.getReactionsByTargetCast(castId, protobufs.ReactionType.RECAST);
+      const results4 = await set.getReactionsByTargetCast(castId, ReactionType.RECAST);
       expect(results4).toEqual({ messages: [reactionAddRecast], nextPageToken: undefined });
     });
   });
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
+  let mergeEvents: [Message | undefined, Message[]][] = [];
 
-  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+  const mergeMessageHandler = (event: MergeMessageHubEvent) => {
     const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
@@ -309,57 +324,41 @@ describe('merge', () => {
     eventHandler.off('mergeMessage', mergeMessageHandler);
   });
 
-  const assertReactionExists = async (message: protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage) => {
+  const assertReactionExists = async (message: ReactionAddMessage | ReactionRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.ReactionMessage, tsHash)).resolves.toEqual(message);
   };
 
-  const assertReactionDoesNotExist = async (
-    message: protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage
-  ) => {
+  const assertReactionDoesNotExist = async (message: ReactionAddMessage | ReactionRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.ReactionMessage, tsHash)).rejects.toThrow(HubError);
   };
 
-  const assertReactionAddWins = async (message: protobufs.ReactionAddMessage) => {
+  const assertReactionAddWins = async (message: ReactionAddMessage) => {
     await assertReactionExists(message);
     await expect(
-      set.getReactionAdd(
-        fid,
-        message.data.reactionBody.type,
-        message.data.reactionBody.targetCastId as protobufs.CastId
-      )
+      set.getReactionAdd(fid, message.data.reactionBody.type, message.data.reactionBody.targetCastId as CastId)
     ).resolves.toEqual(message);
+    await expect(set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as CastId)).resolves.toEqual({
+      messages: [message],
+      nextPageToken: undefined,
+    });
     await expect(
-      set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as protobufs.CastId)
-    ).resolves.toEqual({ messages: [message], nextPageToken: undefined });
-    await expect(
-      set.getReactionRemove(
-        fid,
-        message.data.reactionBody.type,
-        message.data.reactionBody.targetCastId as protobufs.CastId
-      )
+      set.getReactionRemove(fid, message.data.reactionBody.type, message.data.reactionBody.targetCastId as CastId)
     ).rejects.toThrow(HubError);
   };
 
-  const assertReactionRemoveWins = async (message: protobufs.ReactionRemoveMessage) => {
+  const assertReactionRemoveWins = async (message: ReactionRemoveMessage) => {
     await assertReactionExists(message);
     await expect(
-      set.getReactionRemove(
-        fid,
-        message.data.reactionBody.type,
-        message.data.reactionBody.targetCastId as protobufs.CastId
-      )
+      set.getReactionRemove(fid, message.data.reactionBody.type, message.data.reactionBody.targetCastId as CastId)
     ).resolves.toEqual(message);
+    await expect(set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as CastId)).resolves.toEqual({
+      messages: [],
+      nextPageToken: undefined,
+    });
     await expect(
-      set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as protobufs.CastId)
-    ).resolves.toEqual({ messages: [], nextPageToken: undefined });
-    await expect(
-      set.getReactionAdd(
-        fid,
-        reactionAdd.data.reactionBody.type,
-        message.data.reactionBody.targetCastId as protobufs.CastId
-      )
+      set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, message.data.reactionBody.targetCastId as CastId)
     ).rejects.toThrow(HubError);
   };
 
@@ -389,7 +388,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting ReactionAdd with different timestamps', () => {
-      let reactionAddLater: protobufs.ReactionAddMessage;
+      let reactionAddLater: ReactionAddMessage;
 
       beforeAll(async () => {
         reactionAddLater = await Factories.ReactionAddMessage.create({
@@ -422,7 +421,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting ReactionAdd with identical timestamps', () => {
-      let reactionAddLater: protobufs.ReactionAddMessage;
+      let reactionAddLater: ReactionAddMessage;
 
       beforeAll(async () => {
         reactionAddLater = await Factories.ReactionAddMessage.create({
@@ -542,7 +541,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting ReactionRemove with different timestamps', () => {
-      let reactionRemoveLater: protobufs.ReactionRemoveMessage;
+      let reactionRemoveLater: ReactionRemoveMessage;
 
       beforeAll(async () => {
         reactionRemoveLater = await Factories.ReactionRemoveMessage.create({
@@ -575,7 +574,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting ReactionRemove with identical timestamps', () => {
-      let reactionRemoveLater: protobufs.ReactionRemoveMessage;
+      let reactionRemoveLater: ReactionRemoveMessage;
 
       beforeAll(async () => {
         reactionRemoveLater = await Factories.ReactionRemoveMessage.create({
@@ -626,7 +625,7 @@ describe('merge', () => {
           data: {
             ...reactionRemove.data,
             timestamp: reactionRemove.data.timestamp + 1,
-            type: protobufs.MessageType.REACTION_ADD,
+            type: MessageType.REACTION_ADD,
           },
         });
 
@@ -642,7 +641,7 @@ describe('merge', () => {
     describe('with conflicting ReactionAdd with identical timestamps', () => {
       test('succeeds with a lower hash', async () => {
         const reactionAddLater = await Factories.ReactionAddMessage.create({
-          data: { ...reactionRemove.data, type: protobufs.MessageType.REACTION_ADD },
+          data: { ...reactionRemove.data, type: MessageType.REACTION_ADD },
           hash: bytesIncrement(reactionRemove.hash)._unsafeUnwrap(),
         });
 
@@ -660,7 +659,7 @@ describe('merge', () => {
 
       test('succeeds with a higher hash', async () => {
         const reactionAddEarlier = await Factories.ReactionAddMessage.create({
-          data: { ...reactionRemove.data, type: protobufs.MessageType.REACTION_ADD },
+          data: { ...reactionRemove.data, type: MessageType.REACTION_ADD },
           hash: bytesDecrement(reactionRemove.hash)._unsafeUnwrap(),
         });
 
@@ -680,9 +679,9 @@ describe('merge', () => {
 });
 
 describe('revoke', () => {
-  let revokedMessages: protobufs.Message[] = [];
+  let revokedMessages: Message[] = [];
 
-  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+  const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
     revokedMessages.push(event.revokeMessageBody.message);
   };
 
@@ -711,11 +710,7 @@ describe('revoke', () => {
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getReactionAdd(
-        fid,
-        reactionAdd.data.reactionBody.type,
-        reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
-      )
+      set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, reactionAdd.data.reactionBody.targetCastId as CastId)
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([reactionAdd]);
   });
@@ -729,7 +724,7 @@ describe('revoke', () => {
       set.getReactionRemove(
         fid,
         reactionRemove.data.reactionBody.type,
-        reactionRemove.data.reactionBody.targetCastId as protobufs.CastId
+        reactionRemove.data.reactionBody.targetCastId as CastId
       )
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([reactionRemove]);
@@ -740,20 +735,16 @@ describe('revoke', () => {
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getReactionAdd(
-        fid,
-        reactionAdd.data.reactionBody.type,
-        reactionAdd.data.reactionBody.targetCastId as protobufs.CastId
-      )
+      set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, reactionAdd.data.reactionBody.targetCastId as CastId)
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([reactionAdd]);
   });
 });
 
 describe('pruneMessages', () => {
-  let prunedMessages: protobufs.Message[];
+  let prunedMessages: Message[];
 
-  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+  const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
@@ -769,30 +760,30 @@ describe('pruneMessages', () => {
     eventHandler.off('pruneMessage', pruneMessageListener);
   });
 
-  let add1: protobufs.ReactionAddMessage;
-  let add2: protobufs.ReactionAddMessage;
-  let add3: protobufs.ReactionAddMessage;
-  let add4: protobufs.ReactionAddMessage;
-  let add5: protobufs.ReactionAddMessage;
-  let addOld1: protobufs.ReactionAddMessage;
-  let addOld2: protobufs.ReactionAddMessage;
+  let add1: ReactionAddMessage;
+  let add2: ReactionAddMessage;
+  let add3: ReactionAddMessage;
+  let add4: ReactionAddMessage;
+  let add5: ReactionAddMessage;
+  let addOld1: ReactionAddMessage;
+  let addOld2: ReactionAddMessage;
 
-  let remove1: protobufs.ReactionRemoveMessage;
-  let remove2: protobufs.ReactionRemoveMessage;
-  let remove3: protobufs.ReactionRemoveMessage;
-  let remove4: protobufs.ReactionRemoveMessage;
-  let remove5: protobufs.ReactionRemoveMessage;
-  let removeOld3: protobufs.ReactionRemoveMessage;
+  let remove1: ReactionRemoveMessage;
+  let remove2: ReactionRemoveMessage;
+  let remove3: ReactionRemoveMessage;
+  let remove4: ReactionRemoveMessage;
+  let remove5: ReactionRemoveMessage;
+  let removeOld3: ReactionRemoveMessage;
 
-  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<protobufs.ReactionAddMessage> => {
+  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<ReactionAddMessage> => {
     return Factories.ReactionAddMessage.create({ data: { fid, timestamp } });
   };
 
   const generateRemoveWithTimestamp = async (
     fid: number,
     timestamp: number,
-    addBody?: protobufs.ReactionBody
-  ): Promise<protobufs.ReactionRemoveMessage> => {
+    addBody?: ReactionBody
+  ): Promise<ReactionRemoveMessage> => {
     return Factories.ReactionRemoveMessage.create({
       data: {
         fid,
@@ -845,7 +836,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([add1, add2]);
 
-      for (const message of prunedMessages as protobufs.ReactionAddMessage[]) {
+      for (const message of prunedMessages as ReactionAddMessage[]) {
         const getAdd = () =>
           sizePrunedStore.getReactionAdd(
             fid,
@@ -868,7 +859,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([remove1, remove2]);
 
-      for (const message of prunedMessages as protobufs.ReactionRemoveMessage[]) {
+      for (const message of prunedMessages as ReactionRemoveMessage[]) {
         const getRemove = () =>
           sizePrunedStore.getReactionRemove(
             fid,

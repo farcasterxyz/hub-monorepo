@@ -7,11 +7,14 @@ import {
   makeSignerAdd,
   NobleEd25519Signer,
   toFarcasterTime,
-} from '@farcaster/utils';
-import { getAuthMetadata, getInsecureHubRpcClient, HubRpcClient } from '@farcaster/hub-nodejs';
+  getAuthMetadata,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+  FarcasterNetwork,
+  ReactionType,
+} from '@farcaster/hub-nodejs';
 import { logger } from '~/utils/logger';
 import * as ed from '@noble/ed25519';
-import { FarcasterNetwork, ReactionType } from '@farcaster/protobufs';
 import { faker } from '@faker-js/faker';
 import Server from '~/rpc/server';
 import { Result } from 'neverthrow';

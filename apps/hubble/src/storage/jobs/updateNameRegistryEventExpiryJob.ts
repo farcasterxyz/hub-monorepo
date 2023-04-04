@@ -1,4 +1,3 @@
-import * as protobufs from '@farcaster/protobufs';
 import {
   bytesIncrement,
   bytesToUtf8String,
@@ -6,9 +5,11 @@ import {
   HubAsyncResult,
   HubError,
   HubResult,
+  NameRegistryEvent,
   toFarcasterTime,
+  UpdateNameRegistryEventExpiryJobPayload,
   validations,
-} from '@farcaster/utils';
+} from '@farcaster/hub-nodejs';
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -75,9 +76,7 @@ export class UpdateNameRegistryEventExpiryJobWorker {
     return ok(undefined);
   }
 
-  private async processJob(
-    payload: protobufs.UpdateNameRegistryEventExpiryJobPayload
-  ): HubAsyncResult<protobufs.NameRegistryEvent> {
+  private async processJob(payload: UpdateNameRegistryEventExpiryJobPayload): HubAsyncResult<NameRegistryEvent> {
     const eventResult = await ResultAsync.fromPromise(
       getNameRegistryEvent(this._db, payload.fname),
       (e) => e as HubError
@@ -96,7 +95,7 @@ export class UpdateNameRegistryEventExpiryJobWorker {
       return err(farcasterTimeExpiry.error);
     }
 
-    const updatedEvent: protobufs.NameRegistryEvent = { ...eventResult.value, expiry: farcasterTimeExpiry.value };
+    const updatedEvent: NameRegistryEvent = { ...eventResult.value, expiry: farcasterTimeExpiry.value };
     const result = await ResultAsync.fromPromise(putNameRegistryEvent(this._db, updatedEvent), (e) => e as HubError);
     if (result.isErr()) {
       return err(result.error);
@@ -123,8 +122,8 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
   }
 
   static validatePayload(
-    payload: protobufs.UpdateNameRegistryEventExpiryJobPayload
-  ): HubResult<protobufs.UpdateNameRegistryEventExpiryJobPayload> {
+    payload: UpdateNameRegistryEventExpiryJobPayload
+  ): HubResult<UpdateNameRegistryEventExpiryJobPayload> {
     const fnameResult = validations.validateFname(payload.fname);
     if (fnameResult.isErr()) {
       return err(fnameResult.error);
@@ -133,8 +132,8 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     return ok(payload);
   }
 
-  static makePayload(fname: Uint8Array): HubResult<protobufs.UpdateNameRegistryEventExpiryJobPayload> {
-    const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.create({ fname });
+  static makePayload(fname: Uint8Array): HubResult<UpdateNameRegistryEventExpiryJobPayload> {
+    const payload = UpdateNameRegistryEventExpiryJobPayload.create({ fname });
     return UpdateNameRegistryEventExpiryJobQueue.validatePayload(payload);
   }
 
@@ -178,13 +177,13 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     return ok(this._db.iterator({ gte, lt }));
   }
 
-  async enqueueJob(payload: protobufs.UpdateNameRegistryEventExpiryJobPayload, doAt?: number): HubAsyncResult<Buffer> {
+  async enqueueJob(payload: UpdateNameRegistryEventExpiryJobPayload, doAt?: number): HubAsyncResult<Buffer> {
     // If doAt timestamp is missing, use current timestamp
     if (!doAt) {
       doAt = Date.now();
     }
 
-    const payloadBytes = protobufs.UpdateNameRegistryEventExpiryJobPayload.encode(payload).finish();
+    const payloadBytes = UpdateNameRegistryEventExpiryJobPayload.encode(payload).finish();
 
     // Create payload hash
     const hash = blake3(Uint8Array.from(payloadBytes), { dkLen: 4 });
@@ -210,7 +209,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     return ok(key.value);
   }
 
-  async popNextJob(doBefore?: number): HubAsyncResult<protobufs.UpdateNameRegistryEventExpiryJobPayload> {
+  async popNextJob(doBefore?: number): HubAsyncResult<UpdateNameRegistryEventExpiryJobPayload> {
     const iterator = this.iterator(doBefore);
     if (iterator.isErr()) {
       return err(iterator.error);
@@ -224,7 +223,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     const [key, value] = result.value;
 
     const payload = Result.fromThrowable(
-      () => protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer)),
+      () => UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer)),
       (err) =>
         new HubError('bad_request.parse_failure', {
           cause: err as Error,
@@ -240,15 +239,15 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     return payload;
   }
 
-  async getAllJobs(doBefore?: number): HubAsyncResult<[number, protobufs.UpdateNameRegistryEventExpiryJobPayload][]> {
-    const jobs: [number, protobufs.UpdateNameRegistryEventExpiryJobPayload][] = [];
+  async getAllJobs(doBefore?: number): HubAsyncResult<[number, UpdateNameRegistryEventExpiryJobPayload][]> {
+    const jobs: [number, UpdateNameRegistryEventExpiryJobPayload][] = [];
     const iterator = this.iterator(doBefore);
     if (iterator.isErr()) {
       return err(iterator.error);
     }
     for await (const [key, value] of iterator.value) {
       const timestamp = UpdateNameRegistryEventExpiryJobQueue.jobKeyToTimestamp(key as Buffer);
-      const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer));
+      const payload = UpdateNameRegistryEventExpiryJobPayload.decode(Uint8Array.from(value as Buffer));
       if (timestamp.isOk()) {
         jobs.push([timestamp.value, payload]);
       }

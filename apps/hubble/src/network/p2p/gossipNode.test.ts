@@ -1,6 +1,12 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories } from '@farcaster/utils';
-import { getInsecureHubRpcClient, HubRpcClient } from '@farcaster/hub-nodejs';
+import {
+  Factories,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+  FarcasterNetwork,
+  IdRegistryEvent,
+  SignerAddMessage,
+  Message,
+} from '@farcaster/hub-nodejs';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import Server from '~/rpc/server';
@@ -88,7 +94,7 @@ describe('GossipNode', () => {
 
   describe('gossip messages', () => {
     const db = jestRocksDB('protobufs.rpc.gossipMessageTest.test');
-    const network = protobufs.FarcasterNetwork.TESTNET;
+    const network = FarcasterNetwork.TESTNET;
     const engine = new Engine(db, network);
     const hub = new MockHub(db, engine);
     const fid = Factories.Fid.build();
@@ -97,9 +103,9 @@ describe('GossipNode', () => {
 
     let server: Server;
     let client: HubRpcClient;
-    let custodyEvent: protobufs.IdRegistryEvent;
-    let signerAdd: protobufs.SignerAddMessage;
-    let castAdd: protobufs.Message;
+    let custodyEvent: IdRegistryEvent;
+    let signerAdd: SignerAddMessage;
+    let castAdd: Message;
 
     beforeAll(async () => {
       const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -121,7 +127,7 @@ describe('GossipNode', () => {
     test('gossip messages only from rpc', async () => {
       let numMessagesGossiped = 0;
       const mockGossipNode = {
-        gossipMessage: (_msg: protobufs.Message) => {
+        gossipMessage: (_msg: Message) => {
           numMessagesGossiped += 1;
         },
       } as unknown as GossipNode;

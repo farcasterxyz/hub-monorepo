@@ -1,5 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
-import { HubAsyncResult, HubError } from '@farcaster/utils';
+import { HubAsyncResult, HubError, HubState, IdRegistryEvent, Message, NameRegistryEvent } from '@farcaster/hub-nodejs';
 import { err } from 'neverthrow';
 import { HubInterface } from '~/hubble';
 import RocksDB from '~/storage/db/rocksdb';
@@ -14,24 +13,24 @@ export class MockHub implements HubInterface {
     this.engine = engine;
   }
 
-  async submitMessage(message: protobufs.Message): HubAsyncResult<number> {
+  async submitMessage(message: Message): HubAsyncResult<number> {
     return this.engine.mergeMessage(message);
   }
 
-  async submitIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<number> {
+  async submitIdRegistryEvent(event: IdRegistryEvent): HubAsyncResult<number> {
     return this.engine.mergeIdRegistryEvent(event);
   }
 
-  async submitNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
+  async submitNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
     return this.engine.mergeNameRegistryEvent(event);
   }
 
-  async getHubState(): HubAsyncResult<protobufs.HubState> {
+  async getHubState(): HubAsyncResult<HubState> {
     // return ResultAsync.fromPromise(HubState.get(this.db), (e) => e as HubError);
     return err(new HubError('unavailable', 'Not implemented'));
   }
 
-  async putHubState(_hubState: protobufs.HubState): HubAsyncResult<void> {
+  async putHubState(_hubState: HubState): HubAsyncResult<void> {
     // const txn = this.db.transaction();
     // HubStateModel.putTransaction(txn, hubState);
     // return await ResultAsync.fromPromise(this.db.commit(txn), (e) => e as HubError);

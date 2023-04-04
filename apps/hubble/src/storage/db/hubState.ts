@@ -1,4 +1,4 @@
-import { HubState } from '@farcaster/protobufs';
+import { HubState } from '@farcaster/hub-nodejs';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix } from '~/storage/db/types';
 
