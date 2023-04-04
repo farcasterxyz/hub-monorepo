@@ -72,7 +72,7 @@ const wrapClient = <C extends object>(client: C) => {
   }) as unknown as WrappedClient<C>;
 };
 
-export type RpcWebClient = HubServiceClientImpl;
+export type RpcWebClient = WrappedClient<HubService>;
 
 export const getRpcWebClient = (url: string, isBrowser = true): WrappedClient<HubService> => {
   return wrapClient(
