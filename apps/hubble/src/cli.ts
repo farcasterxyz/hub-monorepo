@@ -24,6 +24,9 @@ const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
 const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILENAME}`;
 const DEFAULT_CHUNK_SIZE = 10000;
 
+const DEFAULT_GOSSIP_PORT = 2282;
+const DEFAULT_RPC_PORT = 2283;
+
 // Grace period before exiting the process after receiving a SIGINT or SIGTERM
 const PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS = 10_000;
 const SHUTDOWN_GRACE_PERIOD_MS = 30_000;
@@ -146,7 +149,14 @@ app
     // Read PeerID from 1. CLI option, 2. Environment variable, 3. Config file
     let peerId;
     if (cliOptions.id) {
-      peerId = await readPeerId(resolve(cliOptions.id));
+      const peerIdR = await ResultAsync.fromPromise(readPeerId(resolve(cliOptions.id)), (e) => e);
+      if (peerIdR.isErr()) {
+        throw new Error(
+          `Failed to read identity from ${cliOptions.id}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`
+        );
+      } else {
+        peerId = peerIdR.value;
+      }
     } else if (process.env['IDENTITY_B64']) {
       // Read from the environment variable
       const identityProtoBytes = Buffer.from(process.env['IDENTITY_B64'], 'base64');
@@ -161,7 +171,14 @@ app
       peerId = peerIdResult.value;
       logger.info({ identity: peerId.toString() }, 'Read identity from environment');
     } else {
-      peerId = await readPeerId(resolve(hubConfig.id));
+      const peerIdR = await ResultAsync.fromPromise(readPeerId(resolve(hubConfig.id)), (e) => e);
+      if (peerIdR.isErr()) {
+        throw new Error(
+          `Failed to read identity from ${cliOptions.id}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`
+        );
+      } else {
+        peerId = peerIdR.value;
+      }
     }
 
     // Read RPC Auth from 1. CLI option, 2. Environment variable, 3. Config file
@@ -220,7 +237,7 @@ app
 
     const hubAddressInfo = addressInfoFromParts(
       cliOptions.ip ?? hubConfig.ip,
-      cliOptions.gossipPort ?? hubConfig.gossipPort
+      cliOptions.gossipPort ?? hubConfig.gossipPort ?? DEFAULT_GOSSIP_PORT
     );
 
     if (hubAddressInfo.isErr()) {
@@ -263,7 +280,7 @@ app
       chunkSize: cliOptions.chunkSize ?? hubConfig.chunkSize ?? DEFAULT_CHUNK_SIZE,
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
-      rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort,
+      rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       rpcAuth,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: cliOptions.dbReset ?? hubConfig.dbReset,

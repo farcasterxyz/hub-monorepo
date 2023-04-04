@@ -26,9 +26,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  client1.$.close();
-  client2.$.close();
-  client3.$.close();
+  client1.close();
+  client2.close();
+  client3.close();
   await server.stop();
   await engine.stop();
 });

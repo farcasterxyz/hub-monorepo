@@ -144,7 +144,7 @@ describe('GossipNode', () => {
       await hub.submitMessage(castAdd2);
       expect(numMessagesGossiped).toEqual(0);
 
-      client.$.close();
+      client.close();
       await server.stop();
       await syncEngine.stop();
     });
