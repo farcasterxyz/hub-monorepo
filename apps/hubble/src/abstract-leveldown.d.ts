@@ -103,6 +103,7 @@ export interface AbstractChainedBatchConstructor {
 }
 
 export interface AbstractIterator<K, V> extends AbstractOptions {
+  _ended: boolean;
   db: AbstractLevelDOWN<K, V>;
   next(cb: ErrorKeyValueCallback<K, V>): this;
   end(cb: ErrorCallback): void;

@@ -52,6 +52,8 @@ export class Iterator {
   }
 
   async end(): Promise<void> {
+    if (this._iterator._ended) return Promise.resolve(undefined);
+
     return new Promise((resolve, reject) => {
       this._iterator.end((err: Error | undefined) => {
         err ? reject(err) : resolve(undefined);
