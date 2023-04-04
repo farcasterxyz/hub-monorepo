@@ -11,3 +11,5 @@ coverage:
         threshold: 0%
         base: auto
         if_ci_failed: success
+ignore:
+  - '**/generated/*'
