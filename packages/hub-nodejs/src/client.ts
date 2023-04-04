@@ -45,7 +45,7 @@ type PromisifiedStream<T, U> = (
   options?: Partial<CallOptions>
 ) => Promise<HubResult<ClientReadableStream<U>>>;
 
-type PromisifiedClient<C> = { $: C } & {
+type PromisifiedClient<C> = { $: C; close: () => void } & {
   [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalStream<infer T, infer U>
     ? PromisifiedStream<T, U>
     : C[prop] extends OriginalUnaryCall<infer T, infer U>
@@ -59,6 +59,8 @@ const promisifyClient = <C extends Client>(client: C) => {
       const key = descriptor as keyof PromisifiedClient<C>;
 
       if (key === '$') return target;
+
+      if (key === 'close') return () => target.close;
 
       // eslint-disable-next-line security/detect-object-injection
       const func = target[key];

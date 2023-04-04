@@ -33,7 +33,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  client.$.close();
+  client.close();
   await server.stop();
   await engine.stop();
 });

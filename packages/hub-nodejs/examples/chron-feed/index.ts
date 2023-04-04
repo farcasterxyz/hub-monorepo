@@ -112,4 +112,7 @@ const castToString = (cast: CastAddMessage, nameMapping: Map<number, string>) =>
   for (const outputCast of stringifiedCasts) {
     console.log(outputCast);
   }
+
+  // 3. Close the connection
+  client.close();
 })();

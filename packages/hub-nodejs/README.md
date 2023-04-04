@@ -34,6 +34,8 @@ import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
   const castsResult = await client.getCastsByFid({ fid: 2 });
 
   castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
+
+  client.close();
 })();
 ```
 
