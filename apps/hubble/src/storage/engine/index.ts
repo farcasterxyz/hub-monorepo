@@ -35,8 +35,8 @@ import {
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from '@farcaster/hub-nodejs';
-import fs from 'fs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
+import fs from 'fs';
 import { Worker } from 'worker_threads';
 import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '~/storage/db/message';
