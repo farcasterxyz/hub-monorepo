@@ -30,7 +30,7 @@ import {
   status,
 } from '@farcaster/protobufs';
 import { HubAsyncResult, HubError } from '@farcaster/utils';
-import { err, ok, Result } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import { NodeMetadata } from '~/network/sync/merkleTrie';
@@ -754,31 +754,54 @@ export default class Server {
       subscribe: async (stream) => {
         const { request } = stream;
 
+        // We'll write using a Buffered Stream Writer
         const bufferedStreamWriter = new BufferedStreamWriter(stream);
 
+        // We'll listen to all events and write them to the stream as they happen
+        const eventListener = (event: HubEvent) => {
+          bufferedStreamWriter.writeToStream(event);
+        };
+
+        stream.on('cancelled', () => {
+          stream.destroy();
+        });
+
+        // Register a close listener to remove all listeners before we start sending events
+        stream.on('close', () => {
+          this.engine?.eventHandler.off('mergeMessage', eventListener);
+          this.engine?.eventHandler.off('pruneMessage', eventListener);
+          this.engine?.eventHandler.off('revokeMessage', eventListener);
+          this.engine?.eventHandler.off('mergeIdRegistryEvent', eventListener);
+          this.engine?.eventHandler.off('mergeNameRegistryEvent', eventListener);
+        });
+
+        // If the user wants to start from a specific event, we'll start from there first
         if (this.engine && request.fromId) {
           const eventsIterator = this.engine.eventHandler.getEventsIterator({ fromId: request.fromId });
           if (eventsIterator.isErr()) {
             stream.destroy(eventsIterator.error);
             return;
           }
+
           for await (const [, value] of eventsIterator.value) {
             const event = HubEvent.decode(Uint8Array.from(value as Buffer));
             if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
-              const success = bufferedStreamWriter.writeToStream(event);
-              if (!success) {
-                await eventsIterator.value.end();
+              const writeResult = bufferedStreamWriter.writeToStream(event);
+              if (writeResult.isErr()) {
+                logger.warn(
+                  { err: writeResult.error },
+                  `subscribe: failed to write to stream while returning events ${request.fromId}`
+                );
+
+                // If the iterator throws, it is already closed, so it doesn't matter.
+                await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
                 return;
               }
             }
           }
         }
 
-        const eventListener = (event: HubEvent) => {
-          bufferedStreamWriter.writeToStream(event);
-        };
-
-        // if no type filters are provided, subscribe to all event types
+        // if no type filters are provided, subscribe to all event types and start streaming events
         if (request.eventTypes.length === 0) {
           this.engine?.eventHandler.on('mergeMessage', eventListener);
           this.engine?.eventHandler.on('pruneMessage', eventListener);
@@ -800,18 +823,6 @@ export default class Server {
             }
           }
         }
-
-        stream.on('cancelled', () => {
-          stream.destroy();
-        });
-
-        stream.on('close', () => {
-          this.engine?.eventHandler.off('mergeMessage', eventListener);
-          this.engine?.eventHandler.off('pruneMessage', eventListener);
-          this.engine?.eventHandler.off('revokeMessage', eventListener);
-          this.engine?.eventHandler.off('mergeIdRegistryEvent', eventListener);
-          this.engine?.eventHandler.off('mergeNameRegistryEvent', eventListener);
-        });
       },
     };
   };
