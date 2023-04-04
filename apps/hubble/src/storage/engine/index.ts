@@ -318,7 +318,7 @@ class Engine {
   }
 
   /** revoke message if it is not valid */
-  async validateOrRevokeMessage(message: protobufs.Message): HubAsyncResult<number | undefined> {
+  async validateOrRevokeMessage(message: Message): HubAsyncResult<number | undefined> {
     const isValid = await this.validateMessage(message);
 
     if (isValid.isErr() && message.data) {
