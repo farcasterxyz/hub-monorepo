@@ -1,5 +1,5 @@
 ---
-'@farcaster/hub-web': major
+'@farcaster/hub-web': minor
 ---
 
 - add support for envoy
