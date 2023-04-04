@@ -1,4 +1,10 @@
 import {
+  bytesIncrement,
+  FARCASTER_EPOCH,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  isHubError,
   HubEvent,
   isMergeIdRegistryEventHubEvent,
   isMergeMessageHubEvent,
@@ -10,8 +16,7 @@ import {
   MergeNameRegistryEventHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-} from '@farcaster/protobufs';
-import { bytesIncrement, FARCASTER_EPOCH, HubAsyncResult, HubError, HubResult, isHubError } from '@farcaster/utils';
+} from '@farcaster/hub-nodejs';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';

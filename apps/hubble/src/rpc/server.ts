@@ -20,9 +20,8 @@ import {
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-} from '@farcaster/protobufs';
-import { HubAsyncResult, HubError } from '@farcaster/utils';
-import {
+  HubAsyncResult,
+  HubError,
   ServerCredentials,
   ServiceError,
   Metadata,

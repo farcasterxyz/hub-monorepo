@@ -1,22 +1,28 @@
 import { faker } from '@faker-js/faker';
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, hexStringToBytes } from '@farcaster/utils';
+import {
+  ContactInfoContent,
+  Factories,
+  GossipAddressInfo,
+  GossipMessage,
+  GossipVersion,
+  hexStringToBytes,
+} from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Factory } from 'fishery';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
 
-const GossipAddressInfoFactory = Factory.define<protobufs.GossipAddressInfo>(() => {
-  return protobufs.GossipAddressInfo.create({
+const GossipAddressInfoFactory = Factory.define<GossipAddressInfo>(() => {
+  return GossipAddressInfo.create({
     address: '0.0.0.0',
     port: faker.datatype.number({ min: 1, max: 65535 }),
     family: 4,
   });
 });
 
-const ContactInfoContentFactory = Factory.define<protobufs.ContactInfoContent>(() => {
-  return protobufs.ContactInfoContent.create({
+const ContactInfoContentFactory = Factory.define<ContactInfoContent>(() => {
+  return ContactInfoContent.create({
     gossipAddress: GossipAddressInfoFactory.build(),
     rpcAddress: GossipAddressInfoFactory.build(),
     excludedHashes: [],
@@ -24,7 +30,7 @@ const ContactInfoContentFactory = Factory.define<protobufs.ContactInfoContent>((
   });
 });
 
-const GossipMessageFactory = Factory.define<protobufs.GossipMessage, { peerId?: PeerId }, protobufs.GossipMessage>(
+const GossipMessageFactory = Factory.define<GossipMessage, { peerId?: PeerId }, GossipMessage>(
   ({ onCreate, transientParams }) => {
     onCreate(async (gossipMessage) => {
       if (gossipMessage.peerId.length === 0) {
@@ -33,11 +39,11 @@ const GossipMessageFactory = Factory.define<protobufs.GossipMessage, { peerId?: 
       return gossipMessage;
     });
 
-    return protobufs.GossipMessage.create({
+    return GossipMessage.create({
       peerId: transientParams.peerId ? transientParams.peerId.toBytes() : new Uint8Array(),
       message: Factories.Message.build(),
       topics: [NETWORK_TOPIC_PRIMARY],
-      version: protobufs.GossipVersion.V1,
+      version: GossipVersion.V1,
     });
   }
 );

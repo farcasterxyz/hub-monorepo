@@ -4,9 +4,10 @@ import {
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
   Message,
-} from '@farcaster/protobufs';
+  HubError,
+  HubResult,
+} from '@farcaster/hub-nodejs';
 import { ok, err } from 'neverthrow';
-import { HubError, HubResult } from '@farcaster/utils';
 import RocksDB from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from '~/storage/db/types';
 import { logger } from '~/utils/logger';

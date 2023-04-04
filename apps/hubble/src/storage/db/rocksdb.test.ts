@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { HubError } from '@farcaster/utils';
+import { HubError } from '@farcaster/hub-nodejs';
 import { existsSync, mkdirSync, rmdirSync } from 'fs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import RocksDB from '~/storage/db/rocksdb';

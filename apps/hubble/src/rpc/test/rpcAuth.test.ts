@@ -1,7 +1,14 @@
-import * as protobufs from '@farcaster/protobufs';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
-import { Factories, HubError } from '@farcaster/utils';
-import { getInsecureHubRpcClient, Metadata } from '@farcaster/hub-nodejs';
+import {
+  Factories,
+  HubError,
+  getInsecureHubRpcClient,
+  Metadata,
+  FarcasterNetwork,
+  IdRegistryEvent,
+  SignerAddMessage,
+  Empty,
+} from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 
 import Server, { rateLimitByIp } from '~/rpc/server';
@@ -11,7 +18,7 @@ import { MockHub } from '~/test/mocks';
 import { sleep } from '~/utils/crypto';
 
 const db = jestRocksDB('protobufs.rpcAuth.test');
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -19,8 +26,8 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
+let custodyEvent: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -74,7 +81,7 @@ describe('auth tests', () => {
     expect(result4.isOk()).toBeTruthy();
 
     // Non submit methods work without auth
-    const result5 = await authClient.getInfo(protobufs.Empty.create());
+    const result5 = await authClient.getInfo(Empty.create());
     expect(result5.isOk()).toBeTruthy();
 
     await authServer.stop();

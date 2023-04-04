@@ -1,5 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesIncrement, HubError, HubResult } from '@farcaster/utils';
+import { bytesIncrement, CastId, HubError, HubResult, Message, MessageType } from '@farcaster/hub-nodejs';
 import { err, ok, ResultAsync } from 'neverthrow';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import {
@@ -28,7 +27,7 @@ export const makeUserKey = (fid: number): Buffer => {
 /**
  * Generates a key for referencing a CastId. Packed as <fid, hash>.
  */
-export const makeCastIdKey = (castId: protobufs.CastId): Buffer => {
+export const makeCastIdKey = (castId: CastId): Buffer => {
   return Buffer.concat([makeFidKey(castId.fid), Buffer.from(castId.hash)]);
 };
 
@@ -37,7 +36,7 @@ export const makeMessagePrimaryKey = (fid: number, set: UserMessagePostfix, tsHa
   return Buffer.concat([makeUserKey(fid), Buffer.from([set]), Buffer.from(tsHash ?? '')]);
 };
 
-export const makeMessagePrimaryKeyFromMessage = (message: protobufs.Message): Buffer => {
+export const makeMessagePrimaryKeyFromMessage = (message: Message): Buffer => {
   if (!message.data) {
     throw new HubError('bad_request.invalid_param', 'message data is missing');
   }
@@ -52,7 +51,7 @@ export const makeMessagePrimaryKeyFromMessage = (message: protobufs.Message): Bu
 export const makeMessageBySignerKey = (
   fid: number,
   signer: Uint8Array,
-  type?: protobufs.MessageType,
+  type?: MessageType,
   tsHash?: Uint8Array
 ): Buffer => {
   return Buffer.concat([
@@ -78,62 +77,56 @@ export const makeTsHash = (timestamp: number, hash: Uint8Array): HubResult<Uint8
   return ok(new Uint8Array(buffer));
 };
 
-export const typeToSetPostfix = (type: protobufs.MessageType): UserMessagePostfix => {
-  if (type === protobufs.MessageType.CAST_ADD || type === protobufs.MessageType.CAST_REMOVE) {
+export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
+  if (type === MessageType.CAST_ADD || type === MessageType.CAST_REMOVE) {
     return UserPostfix.CastMessage;
   }
 
-  if (type === protobufs.MessageType.REACTION_ADD || type === protobufs.MessageType.REACTION_REMOVE) {
+  if (type === MessageType.REACTION_ADD || type === MessageType.REACTION_REMOVE) {
     return UserPostfix.ReactionMessage;
   }
 
-  if (
-    type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS ||
-    type === protobufs.MessageType.VERIFICATION_REMOVE
-  ) {
+  if (type === MessageType.VERIFICATION_ADD_ETH_ADDRESS || type === MessageType.VERIFICATION_REMOVE) {
     return UserPostfix.VerificationMessage;
   }
 
-  if (type === protobufs.MessageType.SIGNER_ADD || type === protobufs.MessageType.SIGNER_REMOVE) {
+  if (type === MessageType.SIGNER_ADD || type === MessageType.SIGNER_REMOVE) {
     return UserPostfix.SignerMessage;
   }
 
-  if (type === protobufs.MessageType.USER_DATA_ADD) {
+  if (type === MessageType.USER_DATA_ADD) {
     return UserPostfix.UserDataMessage;
   }
 
   throw new Error('invalid type');
 };
 
-export const putMessage = (db: RocksDB, message: protobufs.Message): Promise<void> => {
+export const putMessage = (db: RocksDB, message: Message): Promise<void> => {
   const txn = putMessageTransaction(db.transaction(), message);
   return db.commit(txn);
 };
 
-export const getMessage = async <T extends protobufs.Message>(
+export const getMessage = async <T extends Message>(
   db: RocksDB,
   fid: number,
   set: UserMessagePostfix,
   tsHash: Uint8Array
 ): Promise<T> => {
   const buffer = await db.get(makeMessagePrimaryKey(fid, set, tsHash));
-  return protobufs.Message.decode(new Uint8Array(buffer)) as T;
+  return Message.decode(new Uint8Array(buffer)) as T;
 };
 
-export const deleteMessage = (db: RocksDB, message: protobufs.Message): Promise<void> => {
+export const deleteMessage = (db: RocksDB, message: Message): Promise<void> => {
   const txn = deleteMessageTransaction(db.transaction(), message);
   return db.commit(txn);
 };
 
-export const getManyMessages = async <T extends protobufs.Message>(
-  db: RocksDB,
-  primaryKeys: Buffer[]
-): Promise<T[]> => {
+export const getManyMessages = async <T extends Message>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> => {
   const buffers = await db.getMany(primaryKeys);
-  return buffers.map((buffer) => protobufs.Message.decode(new Uint8Array(buffer)) as T);
+  return buffers.map((buffer) => Message.decode(new Uint8Array(buffer)) as T);
 };
 
-export const getManyMessagesByFid = async <T extends protobufs.Message>(
+export const getManyMessagesByFid = async <T extends Message>(
   db: RocksDB,
   fid: number,
   set: UserMessagePostfix,
@@ -145,7 +138,7 @@ export const getManyMessagesByFid = async <T extends protobufs.Message>(
   );
 };
 
-export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<protobufs.Message[]> => {
+export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<Message[]> => {
   const userPrefix = makeUserKey(fid);
   const maxPrefix = Buffer.concat([userPrefix, Buffer.from([UserMessagePostfixMax + 1])]);
   const iteratorOptions = {
@@ -156,7 +149,7 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<pro
   };
   const messages = [];
   for await (const [, buffer] of db.iterator(iteratorOptions)) {
-    messages.push(protobufs.Message.decode(new Uint8Array(buffer as Buffer)));
+    messages.push(Message.decode(new Uint8Array(buffer as Buffer)));
   }
   return messages;
 };
@@ -190,10 +183,10 @@ export const getPageIteratorByPrefix = (db: RocksDB, prefix: Buffer, pageOptions
   );
 };
 
-export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
+export const getMessagesPageByPrefix = async <T extends Message>(
   db: RocksDB,
   prefix: Buffer,
-  filter: (message: protobufs.Message) => message is T,
+  filter: (message: Message) => message is T,
   pageOptions: PageOptions = {}
 ): Promise<MessagesPage<T>> => {
   const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
@@ -202,9 +195,9 @@ export const getMessagesPageByPrefix = async <T extends protobufs.Message>(
 
   const messages: T[] = [];
 
-  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, protobufs.Message]> => {
+  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Message]> => {
     const [key, value] = await iterator.next();
-    return [key as Buffer, protobufs.Message.decode(new Uint8Array(value as Buffer))];
+    return [key as Buffer, Message.decode(new Uint8Array(value as Buffer))];
   };
 
   let iteratorFinished = false;
@@ -235,18 +228,18 @@ export const getMessagesBySignerIterator = (
   db: RocksDB,
   fid: number,
   signer: Uint8Array,
-  type?: protobufs.MessageType
+  type?: MessageType
 ): Iterator => {
   const prefix = makeMessageBySignerKey(fid, signer, type);
   return db.iteratorByPrefix(prefix, { values: false });
 };
 
 /** Get an array of messages for a given fid and signer */
-export const getAllMessagesBySigner = async <T extends protobufs.Message>(
+export const getAllMessagesBySigner = async <T extends Message>(
   db: RocksDB,
   fid: number,
   signer: Uint8Array,
-  type?: protobufs.MessageType
+  type?: MessageType
 ): Promise<T[]> => {
   // Generate prefix by excluding tsHash from the bySignerKey
   // Format of bySignerKey: <user prefix byte, fid, by signer index byte, signer, type, tsHash>
@@ -264,8 +257,7 @@ export const getAllMessagesBySigner = async <T extends protobufs.Message>(
 
     // Get the type for the message, either from the predefined type variable or by looking at the byte
     // prior to the tsHash in the key
-    const messageType =
-      type ?? (new Uint8Array(key as Buffer).slice(tsHashOffset - 1, tsHashOffset)[0] as protobufs.MessageType);
+    const messageType = type ?? (new Uint8Array(key as Buffer).slice(tsHashOffset - 1, tsHashOffset)[0] as MessageType);
 
     // Convert the message type to a set postfix
     const setPostfix = typeToSetPostfix(messageType);
@@ -283,12 +275,12 @@ export const getMessagesPruneIterator = (db: RocksDB, fid: number, setPostfix: U
   return db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
 };
 
-export const getNextMessageFromIterator = async (iterator: Iterator): Promise<protobufs.Message> => {
+export const getNextMessageFromIterator = async (iterator: Iterator): Promise<Message> => {
   const [, value] = await iterator.next();
-  return protobufs.Message.decode(new Uint8Array(value as Buffer));
+  return Message.decode(new Uint8Array(value as Buffer));
 };
 
-export const putMessageTransaction = (txn: Transaction, message: protobufs.Message): Transaction => {
+export const putMessageTransaction = (txn: Transaction, message: Message): Transaction => {
   if (!message.data) {
     throw new HubError('bad_request.invalid_param', 'message data is missing');
   }
@@ -297,12 +289,12 @@ export const putMessageTransaction = (txn: Transaction, message: protobufs.Messa
     throw tsHash.error; // TODO: use result pattern
   }
   const primaryKey = makeMessagePrimaryKey(message.data.fid, typeToSetPostfix(message.data.type), tsHash.value);
-  const messageBuffer = Buffer.from(protobufs.Message.encode(message).finish());
+  const messageBuffer = Buffer.from(Message.encode(message).finish());
   const bySignerKey = makeMessageBySignerKey(message.data.fid, message.signer, message.data.type, tsHash.value);
   return txn.put(primaryKey, messageBuffer).put(bySignerKey, TRUE_VALUE);
 };
 
-export const deleteMessageTransaction = (txn: Transaction, message: protobufs.Message): Transaction => {
+export const deleteMessageTransaction = (txn: Transaction, message: Message): Transaction => {
   if (!message.data) {
     throw new HubError('bad_request.invalid_param', 'message data is missing');
   }

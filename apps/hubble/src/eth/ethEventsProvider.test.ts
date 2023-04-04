@@ -1,5 +1,11 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, bytesToHexString, hexStringToBytes } from '@farcaster/utils';
+import {
+  Factories,
+  bytesToHexString,
+  hexStringToBytes,
+  FarcasterNetwork,
+  IdRegistryEventType,
+  NameRegistryEventType,
+} from '@farcaster/hub-nodejs';
 import { AbstractProvider, Block, Contract, Log, Provider, TransactionReceipt, TransactionResponse } from 'ethers';
 import { OrphanFilter } from 'ethers/types/providers';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
@@ -12,7 +18,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('flatbuffers.ethEventsProvider.test');
-const engine = new Engine(db, protobufs.FarcasterNetwork.TESTNET);
+const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const hub = new MockHub(db, engine);
 
 const fid = Factories.Fid.build();
@@ -164,7 +170,7 @@ describe('process events', () => {
     });
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Register event
     const existingIdRegistryEvent = await getIdRegistryEvent(db, fid);
-    expect(existingIdRegistryEvent.type).toEqual(protobufs.IdRegistryEventType.REGISTER);
+    expect(existingIdRegistryEvent.type).toEqual(IdRegistryEventType.REGISTER);
     expect(existingIdRegistryEvent.to).toEqual(hexStringToBytes(address1)._unsafeUnwrap());
 
     // Add 6 confirmations
@@ -173,7 +179,7 @@ describe('process events', () => {
     // The transfer event is now available
     const newIdRegistryEvent = await getIdRegistryEvent(db, fid);
     expect(newIdRegistryEvent.fid).toEqual(fid);
-    expect(newIdRegistryEvent.type).toEqual(protobufs.IdRegistryEventType.TRANSFER);
+    expect(newIdRegistryEvent.type).toEqual(IdRegistryEventType.TRANSFER);
     expect(newIdRegistryEvent.to).toEqual(hexStringToBytes(address2)._unsafeUnwrap());
   });
 
@@ -201,7 +207,7 @@ describe('process events', () => {
     });
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
     expect(await getNameRegistryEvent(db, fname)).toMatchObject({
-      type: protobufs.NameRegistryEventType.TRANSFER,
+      type: NameRegistryEventType.TRANSFER,
     });
 
     // Add 6 confirmations
@@ -210,7 +216,7 @@ describe('process events', () => {
     // The renew event is now available
     expect(await getNameRegistryEvent(db, fname)).toMatchObject({
       fname,
-      type: protobufs.NameRegistryEventType.RENEW,
+      type: NameRegistryEventType.RENEW,
     });
   });
 });

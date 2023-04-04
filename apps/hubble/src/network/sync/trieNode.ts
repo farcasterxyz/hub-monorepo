@@ -1,5 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubError } from '@farcaster/utils';
+import { bytesCompare, DbTrieNode, HubError } from '@farcaster/hub-nodejs';
 import { blake3 } from '@noble/hashes/blake3';
 import { ResultAsync } from 'neverthrow';
 import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
@@ -359,7 +358,7 @@ class TrieNode {
   }
 
   static deserialize(serialized: Uint8Array): TrieNode {
-    const dbtrieNode = protobufs.DbTrieNode.decode(serialized);
+    const dbtrieNode = DbTrieNode.decode(serialized);
 
     const trieNode = new TrieNode();
     trieNode._key = dbtrieNode.key.length === 0 ? undefined : dbtrieNode.key;
@@ -377,14 +376,14 @@ class TrieNode {
 
   /* Private methods */
   private serialize(): Buffer {
-    const dbtrieNode = protobufs.DbTrieNode.create({
+    const dbtrieNode = DbTrieNode.create({
       key: this._key ?? new Uint8Array(),
       childChars: Array.from(this._children.keys()),
       items: this._items,
       hash: this._hash,
     });
 
-    return Buffer.from(protobufs.DbTrieNode.encode(dbtrieNode).finish());
+    return Buffer.from(DbTrieNode.encode(dbtrieNode).finish());
   }
 
   private saveToDBTx(dbUpdatesMap: Map<Buffer, Buffer>, prefix: Uint8Array): Map<Buffer, Buffer> {

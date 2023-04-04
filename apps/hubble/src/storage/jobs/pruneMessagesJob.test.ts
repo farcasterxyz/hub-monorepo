@@ -1,5 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Ed25519Signer, Factories } from '@farcaster/utils';
+import { Ed25519Signer, Factories, FarcasterNetwork, Message, PruneMessageHubEvent } from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';
@@ -7,7 +6,7 @@ import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 
 const db = jestRocksDB('jobs.pruneMessagesJob.test');
 
-const engine = new Engine(db, protobufs.FarcasterNetwork.TESTNET);
+const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const scheduler = new PruneMessagesJobScheduler(engine);
 
 // Use farcaster timestamp
@@ -20,9 +19,9 @@ const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed
   return engine.mergeMessages([castAdd, reactionAdd]);
 };
 
-let prunedMessages: protobufs.Message[] = [];
+let prunedMessages: Message[] = [];
 
-const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+const pruneMessageListener = (event: PruneMessageHubEvent) => {
   prunedMessages.push(event.pruneMessageBody.message);
 };
 

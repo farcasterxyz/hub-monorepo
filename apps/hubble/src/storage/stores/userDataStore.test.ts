@@ -1,5 +1,15 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesIncrement, Factories, getFarcasterTime, HubError } from '@farcaster/utils';
+import {
+  bytesIncrement,
+  Factories,
+  getFarcasterTime,
+  HubError,
+  MergeMessageHubEvent,
+  Message,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+  UserDataAddMessage,
+  UserDataType,
+} from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
@@ -14,35 +24,35 @@ const eventHandler = new StoreEventHandler(db, cache);
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
-let addPfp: protobufs.UserDataAddMessage;
-let addBio: protobufs.UserDataAddMessage;
+let addPfp: UserDataAddMessage;
+let addBio: UserDataAddMessage;
 
 beforeAll(async () => {
   addPfp = await Factories.UserDataAddMessage.create({
-    data: { fid, userDataBody: { type: protobufs.UserDataType.PFP } },
+    data: { fid, userDataBody: { type: UserDataType.PFP } },
   });
   addBio = await Factories.UserDataAddMessage.create({
-    data: { fid, userDataBody: { type: protobufs.UserDataType.BIO }, timestamp: addPfp.data.timestamp + 1 },
+    data: { fid, userDataBody: { type: UserDataType.BIO }, timestamp: addPfp.data.timestamp + 1 },
   });
 });
 
 describe('getUserDataAdd', () => {
   test('fails if missing', async () => {
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.PFP)).rejects.toThrow(HubError);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.FNAME)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, UserDataType.PFP)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, UserDataType.FNAME)).rejects.toThrow(HubError);
   });
 
   test('fails if the wrong fid or datatype is provided', async () => {
     const unknownFid = Factories.Fid.build();
     await set.merge(addPfp);
 
-    await expect(set.getUserDataAdd(unknownFid, protobufs.UserDataType.PFP)).rejects.toThrow(HubError);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.BIO)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(unknownFid, UserDataType.PFP)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, UserDataType.BIO)).rejects.toThrow(HubError);
   });
 
   test('returns message', async () => {
     await set.merge(addPfp);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.PFP)).resolves.toEqual(addPfp);
+    await expect(set.getUserDataAdd(fid, UserDataType.PFP)).resolves.toEqual(addPfp);
   });
 });
 
@@ -66,9 +76,9 @@ describe('getUserDataAddsByFid', () => {
 });
 
 describe('merge', () => {
-  let mergeEvents: [protobufs.Message | undefined, protobufs.Message[]][] = [];
+  let mergeEvents: [Message | undefined, Message[]][] = [];
 
-  const mergeMessageHandler = (event: protobufs.MergeMessageHubEvent) => {
+  const mergeMessageHandler = (event: MergeMessageHubEvent) => {
     const { message, deletedMessages } = event.mergeMessageBody;
     mergeEvents.push([message, deletedMessages ?? []]);
   };
@@ -84,17 +94,17 @@ describe('merge', () => {
     eventHandler.off('mergeMessage', mergeMessageHandler);
   });
 
-  const assertUserDataExists = async (message: protobufs.UserDataAddMessage) => {
+  const assertUserDataExists = async (message: UserDataAddMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.UserDataMessage, tsHash)).resolves.toEqual(message);
   };
 
-  const assertUserDataDoesNotExist = async (message: protobufs.UserDataAddMessage) => {
+  const assertUserDataDoesNotExist = async (message: UserDataAddMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.UserDataMessage, tsHash)).rejects.toThrow(HubError);
   };
 
-  const assertUserDataAddWins = async (message: protobufs.UserDataAddMessage) => {
+  const assertUserDataAddWins = async (message: UserDataAddMessage) => {
     await assertUserDataExists(message);
     await expect(set.getUserDataAdd(fid, message.data.userDataBody.type)).resolves.toEqual(message);
   };
@@ -133,7 +143,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting UserDataAdd with different timestamps', () => {
-      let addPfpLater: protobufs.UserDataAddMessage;
+      let addPfpLater: UserDataAddMessage;
 
       beforeAll(async () => {
         addPfpLater = await Factories.UserDataAddMessage.create({
@@ -166,7 +176,7 @@ describe('merge', () => {
     });
 
     describe('with a conflicting UserDataAdd with identical timestamps', () => {
-      let addPfpLater: protobufs.UserDataAddMessage;
+      let addPfpLater: UserDataAddMessage;
 
       beforeAll(async () => {
         addPfpLater = await Factories.UserDataAddMessage.create({
@@ -202,9 +212,9 @@ describe('merge', () => {
 });
 
 describe('revoke', () => {
-  let revokedMessages: protobufs.Message[] = [];
+  let revokedMessages: Message[] = [];
 
-  const revokeMessageHandler = (event: protobufs.RevokeMessageHubEvent) => {
+  const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
     revokedMessages.push(event.revokeMessageBody.message);
   };
 
@@ -232,7 +242,7 @@ describe('revoke', () => {
     const result = await set.revoke(addBio);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.BIO)).rejects.toThrow();
+    await expect(set.getUserDataAdd(fid, UserDataType.BIO)).rejects.toThrow();
     expect(revokedMessages).toEqual([addBio]);
   });
 
@@ -240,14 +250,14 @@ describe('revoke', () => {
     const result = await set.revoke(addPfp);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
-    await expect(set.getUserDataAdd(fid, protobufs.UserDataType.PFP)).rejects.toThrow();
+    await expect(set.getUserDataAdd(fid, UserDataType.PFP)).rejects.toThrow();
     expect(revokedMessages).toEqual([addPfp]);
   });
 });
 
 describe('pruneMessages', () => {
-  let prunedMessages: protobufs.Message[];
-  const pruneMessageListener = (event: protobufs.PruneMessageHubEvent) => {
+  let prunedMessages: Message[];
+  const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
@@ -263,25 +273,25 @@ describe('pruneMessages', () => {
     eventHandler.off('pruneMessage', pruneMessageListener);
   });
 
-  let add1: protobufs.UserDataAddMessage;
-  let add2: protobufs.UserDataAddMessage;
-  let add3: protobufs.UserDataAddMessage;
-  let add4: protobufs.UserDataAddMessage;
+  let add1: UserDataAddMessage;
+  let add2: UserDataAddMessage;
+  let add3: UserDataAddMessage;
+  let add4: UserDataAddMessage;
 
   const generateAddWithTimestamp = async (
     fid: number,
     timestamp: number,
-    type: protobufs.UserDataType
-  ): Promise<protobufs.UserDataAddMessage> => {
+    type: UserDataType
+  ): Promise<UserDataAddMessage> => {
     return Factories.UserDataAddMessage.create({ data: { fid, timestamp, userDataBody: { type } } });
   };
 
   beforeAll(async () => {
     const time = getFarcasterTime()._unsafeUnwrap() - 10;
-    add1 = await generateAddWithTimestamp(fid, time + 1, protobufs.UserDataType.PFP);
-    add2 = await generateAddWithTimestamp(fid, time + 2, protobufs.UserDataType.DISPLAY);
-    add3 = await generateAddWithTimestamp(fid, time + 3, protobufs.UserDataType.BIO);
-    add4 = await generateAddWithTimestamp(fid, time + 5, protobufs.UserDataType.URL);
+    add1 = await generateAddWithTimestamp(fid, time + 1, UserDataType.PFP);
+    add2 = await generateAddWithTimestamp(fid, time + 2, UserDataType.DISPLAY);
+    add3 = await generateAddWithTimestamp(fid, time + 3, UserDataType.BIO);
+    add4 = await generateAddWithTimestamp(fid, time + 5, UserDataType.URL);
   });
 
   beforeEach(async () => {
@@ -308,7 +318,7 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([add1, add2]);
 
-      for (const message of prunedMessages as protobufs.UserDataAddMessage[]) {
+      for (const message of prunedMessages as UserDataAddMessage[]) {
         const getAdd = () => sizePrunedStore.getUserDataAdd(fid, message.data.userDataBody.type);
         await expect(getAdd()).rejects.toThrow(HubError);
       }

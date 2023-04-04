@@ -1,4 +1,4 @@
-import { IdRegistryEvent } from '@farcaster/protobufs';
+import { IdRegistryEvent } from '@farcaster/hub-nodejs';
 import RocksDB, { Transaction } from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix } from '~/storage/db/types';
 
