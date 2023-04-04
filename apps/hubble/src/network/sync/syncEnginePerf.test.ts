@@ -1,8 +1,6 @@
 // eslint-disable-file security/detect-non-literal-fs-filename
 
-import * as protobufs from '@farcaster/protobufs';
-import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Factories, HubRpcClient } from '@farcaster/utils';
+import { FarcasterNetwork, Factories, HubRpcClient, IdRegistryEvent, SignerAddMessage } from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
@@ -12,13 +10,13 @@ import { EMPTY_HASH } from './trieNode';
 const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
 const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
 
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
+let custodyEvent: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();

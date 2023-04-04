@@ -1,7 +1,7 @@
 /* eslint-disable security/detect-object-injection */
 import Chance from 'chance';
 
-import { Message } from '@farcaster/protobufs';
+import { Message } from '@farcaster/hub-nodejs';
 import { SyncId } from '~/network/sync/syncId';
 
 /**

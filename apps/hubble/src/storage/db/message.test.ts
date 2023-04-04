@@ -1,5 +1,4 @@
-import { MessageType } from '@farcaster/protobufs';
-import { bytesCompare, Factories, HubError } from '@farcaster/utils';
+import { MessageType, bytesCompare, Factories, HubError } from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import {

@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import * as protobufs from '@farcaster/protobufs';
-import { AdminRpcClient, Factories, HubRpcClient, toFarcasterTime } from '@farcaster/utils';
+import {
+  Factories,
+  toFarcasterTime,
+  AdminRpcClient,
+  HubRpcClient,
+  Metadata,
+  FarcasterNetwork,
+  UserDataType,
+} from '@farcaster/hub-nodejs';
 import { ConsoleCommandInterface } from './console';
 
 export class WarpcastTestCommand implements ConsoleCommandInterface {
@@ -39,7 +46,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
     const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
 
     const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-    const _idResult = await this.adminClient.submitIdRegistryEvent(custodyEvent, new protobufs.Metadata());
+    const _idResult = await this.adminClient.submitIdRegistryEvent(custodyEvent, new Metadata());
 
     const signerAdd = await Factories.SignerAddMessage.create(
       {
@@ -47,14 +54,14 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       },
       { transient: { signer: custodySigner } }
     );
-    const _msgResult = await this.rpcClient.submitMessage(signerAdd, new protobufs.Metadata());
+    const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
 
     return { fid, signer, custodySigner };
   }
 
   private async revokeSignerWithData() {
     const nextFid = 300_000;
-    const network = protobufs.FarcasterNetwork.MAINNET;
+    const network = FarcasterNetwork.MAINNET;
     const { fid, signer, custodySigner } = await this.getSigners(nextFid, network);
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
@@ -64,19 +71,19 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { data: { fid, network } },
         { transient: { signer: signer } }
       );
-      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new protobufs.Metadata());
+      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
 
       const castAddReaction = await Factories.ReactionAddMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
         { transient: { signer: signer } }
       );
-      const _castAddReactionResult = await this.rpcClient.submitMessage(castAddReaction, new protobufs.Metadata());
+      const _castAddReactionResult = await this.rpcClient.submitMessage(castAddReaction, new Metadata());
 
       const userDataAdd = await Factories.UserDataAddMessage.create(
         { data: { fid, network } },
         { transient: { signer: signer } }
       );
-      const _userDataAddResult = await this.rpcClient.submitMessage(userDataAdd, new protobufs.Metadata());
+      const _userDataAddResult = await this.rpcClient.submitMessage(userDataAdd, new Metadata());
     }
 
     // Add 100 verifications
@@ -90,13 +97,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         },
         { transient: { signer: custodySigner } }
       );
-      const _msgResult = await this.rpcClient.submitMessage(signerAdd, new protobufs.Metadata());
+      const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
 
       const verification = await Factories.VerificationAddEthAddressMessage.create(
         { data: { fid, network } },
         { transient: { signer: signer } }
       );
-      const _verificationResult = await this.rpcClient.submitMessage(verification, new protobufs.Metadata());
+      const _verificationResult = await this.rpcClient.submitMessage(verification, new Metadata());
     }
 
     // And then revoke the signer
@@ -104,12 +111,12 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       { data: { fid, network, signerAddBody: { signer: signerKey } } },
       { transient: { signer: custodySigner } }
     );
-    const _msgResult = await this.rpcClient.submitMessage(signerRevoke, new protobufs.Metadata());
+    const _msgResult = await this.rpcClient.submitMessage(signerRevoke, new Metadata());
   }
 
   private async highVolumeActions() {
     const nextFid = 200_000;
-    const network = protobufs.FarcasterNetwork.MAINNET;
+    const network = FarcasterNetwork.MAINNET;
     const { fid, signer, custodySigner } = await this.getSigners(nextFid, network);
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
@@ -120,13 +127,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
           { data: { fid, network } },
           { transient: { signer: signer } }
         );
-        const _castAddResult = await this.rpcClient.submitMessage(castAdd, new protobufs.Metadata());
+        const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
 
         const castAddReaction = await Factories.ReactionAddMessage.create(
           { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
           { transient: { signer: signer } }
         );
-        const _castAddReactionResult = await this.rpcClient.submitMessage(castAddReaction, new protobufs.Metadata());
+        const _castAddReactionResult = await this.rpcClient.submitMessage(castAddReaction, new Metadata());
       }
     }
 
@@ -141,13 +148,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
           },
           { transient: { signer: custodySigner } }
         );
-        const _msgResult = await this.rpcClient.submitMessage(signerAdd, new protobufs.Metadata());
+        const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
 
         const verification = await Factories.VerificationAddEthAddressMessage.create(
           { data: { fid, network } },
           { transient: { signer: signer } }
         );
-        const _verificationResult = await this.rpcClient.submitMessage(verification, new protobufs.Metadata());
+        const _verificationResult = await this.rpcClient.submitMessage(verification, new Metadata());
       }
     }
 
@@ -158,7 +165,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
           { data: { fid, network } },
           { transient: { signer: signer } }
         );
-        const _userDataResult = await this.rpcClient.submitMessage(userData, new protobufs.Metadata());
+        const _userDataResult = await this.rpcClient.submitMessage(userData, new Metadata());
       }
     }
   }
@@ -171,7 +178,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
    */
   private async messageOrderingActions() {
     let nextFid = 100_000;
-    const network = protobufs.FarcasterNetwork.MAINNET;
+    const network = FarcasterNetwork.MAINNET;
 
     // Message Ordering
     // 1. A CastAdd arrives followed by a CastRemove
@@ -182,13 +189,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { data: { fid, network } },
         { transient: { signer: signer } }
       );
-      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new protobufs.Metadata());
+      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
 
       const castRemove = await Factories.CastRemoveMessage.create(
         { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
         { transient: { signer: signer } }
       );
-      const _castRemoveResult = await this.rpcClient.submitMessage(castRemove, new protobufs.Metadata());
+      const _castRemoveResult = await this.rpcClient.submitMessage(castRemove, new Metadata());
     }
 
     // 2. A CastRemove arrives before the CastAdd. The castAdd will never be added
@@ -206,8 +213,8 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       );
 
       // remove first
-      const _castRemoveResult = await this.rpcClient.submitMessage(castRemove, new protobufs.Metadata());
-      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new protobufs.Metadata());
+      const _castRemoveResult = await this.rpcClient.submitMessage(castRemove, new Metadata());
+      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
     }
 
     // 3. A CastAdd for a child is seen without the parent CastAdd
@@ -223,7 +230,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer: signer } }
       );
 
-      const _castChildResult = await this.rpcClient.submitMessage(castChild, new protobufs.Metadata());
+      const _castChildResult = await this.rpcClient.submitMessage(castChild, new Metadata());
     }
 
     // 4. A CastAdd for a child is seen before the parent CastAdd
@@ -240,8 +247,8 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer: signer } }
       );
 
-      const _castChildResult = await this.rpcClient.submitMessage(castChild, new protobufs.Metadata());
-      const _castParentResult = await this.rpcClient.submitMessage(castParent, new protobufs.Metadata());
+      const _castChildResult = await this.rpcClient.submitMessage(castChild, new Metadata());
+      const _castParentResult = await this.rpcClient.submitMessage(castParent, new Metadata());
     }
 
     // 5. A CastAdd for a child is seen after the parent CastAdd recieved a CastRemove
@@ -263,9 +270,9 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer: signer } }
       );
 
-      const _castAddResult = await this.rpcClient.submitMessage(castParent, new protobufs.Metadata());
-      const _castRemoveResult = await this.rpcClient.submitMessage(castRemove, new protobufs.Metadata());
-      const _castChildResult = await this.rpcClient.submitMessage(castChild, new protobufs.Metadata());
+      const _castAddResult = await this.rpcClient.submitMessage(castParent, new Metadata());
+      const _castRemoveResult = await this.rpcClient.submitMessage(castRemove, new Metadata());
+      const _castChildResult = await this.rpcClient.submitMessage(castChild, new Metadata());
     }
 
     // 6. A reactionAdd arrives followed by a reactionRemove
@@ -287,9 +294,9 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer: signer } }
       );
 
-      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new protobufs.Metadata());
-      const _reactionAddResult = await this.rpcClient.submitMessage(reactionAdd, new protobufs.Metadata());
-      const _reactionRemoveResult = await this.rpcClient.submitMessage(reactionRemove, new protobufs.Metadata());
+      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
+      const _reactionAddResult = await this.rpcClient.submitMessage(reactionAdd, new Metadata());
+      const _reactionRemoveResult = await this.rpcClient.submitMessage(reactionRemove, new Metadata());
     }
 
     // 7. A reactionRemove arrives before the reactionAdd
@@ -311,9 +318,9 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer: signer } }
       );
 
-      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new protobufs.Metadata());
-      const _reactionRemoveResult = await this.rpcClient.submitMessage(reactionRemove, new protobufs.Metadata());
-      const _reactionAddResult = await this.rpcClient.submitMessage(reactionAdd, new protobufs.Metadata());
+      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
+      const _reactionRemoveResult = await this.rpcClient.submitMessage(reactionRemove, new Metadata());
+      const _reactionAddResult = await this.rpcClient.submitMessage(reactionAdd, new Metadata());
     }
 
     // 8. A reactionAdd arrives after the reactionRemove. The reactionAdd will error because it has already been removed
@@ -335,10 +342,10 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer: signer } }
       );
 
-      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new protobufs.Metadata());
+      const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
 
-      const _reactionRemoveResult = await this.rpcClient.submitMessage(reactionRemove, new protobufs.Metadata());
-      const _reactionAddResult = await this.rpcClient.submitMessage(reactionAdd, new protobufs.Metadata());
+      const _reactionRemoveResult = await this.rpcClient.submitMessage(reactionRemove, new Metadata());
+      const _reactionAddResult = await this.rpcClient.submitMessage(reactionAdd, new Metadata());
     }
 
     // 9. A UserDataAdd for time t+1 arrives before a UserDataAdd for time t. Note: The UserDataAdd for time t will error because it conflicts with T+1
@@ -348,7 +355,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       const timestamp = toFarcasterTime(Date.now())._unsafeUnwrap();
 
       const userDataT = await Factories.UserDataAddMessage.create(
-        { data: { timestamp, fid, network, userDataBody: { type: protobufs.UserDataType.BIO } } },
+        { data: { timestamp, fid, network, userDataBody: { type: UserDataType.BIO } } },
         { transient: { signer: signer } }
       );
       const userDataT1 = await Factories.UserDataAddMessage.create(
@@ -357,14 +364,14 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
             timestamp: timestamp + 1,
             fid,
             network,
-            userDataBody: { type: protobufs.UserDataType.BIO },
+            userDataBody: { type: UserDataType.BIO },
           },
         },
         { transient: { signer: signer } }
       );
 
-      const _userDataT1Result = await this.rpcClient.submitMessage(userDataT1, new protobufs.Metadata());
-      const _userDataTResult = await this.rpcClient.submitMessage(userDataT, new protobufs.Metadata());
+      const _userDataT1Result = await this.rpcClient.submitMessage(userDataT1, new Metadata());
+      const _userDataTResult = await this.rpcClient.submitMessage(userDataT, new Metadata());
     }
 
     // 10. A VerificationRemove arrives without a VerificationAdd.
@@ -377,10 +384,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer } }
       );
 
-      const _verificationRemoveResult = await this.rpcClient.submitMessage(
-        verificationRemove,
-        new protobufs.Metadata()
-      );
+      const _verificationRemoveResult = await this.rpcClient.submitMessage(verificationRemove, new Metadata());
     }
 
     // 11. A VerificationAdd arrives after a VerificationRemove. This will fail because the VerificationAdd is not valid
@@ -402,11 +406,8 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         { transient: { signer } }
       );
 
-      const _verificationRemoveResult = await this.rpcClient.submitMessage(
-        verificationRemove,
-        new protobufs.Metadata()
-      );
-      const _verificationAddResult = await this.rpcClient.submitMessage(verificationAdd, new protobufs.Metadata());
+      const _verificationRemoveResult = await this.rpcClient.submitMessage(verificationRemove, new Metadata());
+      const _verificationAddResult = await this.rpcClient.submitMessage(verificationAdd, new Metadata());
     }
   }
 }

@@ -2,18 +2,19 @@ import { Wallet } from 'ethers';
 import cron from 'node-cron';
 import {
   EthersEip712Signer,
-  getAuthMetadata,
-  getInsecureHubRpcClient,
-  HubRpcClient,
   makeCastAdd,
   makeReactionAdd,
   makeSignerAdd,
   NobleEd25519Signer,
   toFarcasterTime,
-} from '@farcaster/utils';
+  getAuthMetadata,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+  FarcasterNetwork,
+  ReactionType,
+} from '@farcaster/hub-nodejs';
 import { logger } from '~/utils/logger';
 import * as ed from '@noble/ed25519';
-import { FarcasterNetwork, ReactionType } from '@farcaster/protobufs';
 import { faker } from '@faker-js/faker';
 import Server from '~/rpc/server';
 import { Result } from 'neverthrow';

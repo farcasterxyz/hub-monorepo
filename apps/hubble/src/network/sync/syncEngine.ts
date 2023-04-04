@@ -1,5 +1,20 @@
-import * as protobufs from '@farcaster/protobufs';
-import { getFarcasterTime, HubAsyncResult, HubError, HubResult, HubRpcClient } from '@farcaster/utils';
+import {
+  getFarcasterTime,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  HubRpcClient,
+  Metadata,
+  ContactInfoContent,
+  MergeMessageHubEvent,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+  TrieNodePrefix,
+  SyncIds,
+  Message,
+  FidRequest,
+  TrieNodeMetadataResponse,
+} from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { err, ok, Result } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
@@ -32,7 +47,7 @@ interface SyncEvents {
 }
 
 type PeerContact = {
-  contactInfo: protobufs.ContactInfoContent;
+  contactInfo: ContactInfoContent;
   peerId: PeerId;
 };
 
@@ -60,7 +75,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     this.engine = engine;
 
-    this.engine.eventHandler.on('mergeMessage', async (event: protobufs.MergeMessageHubEvent) => {
+    this.engine.eventHandler.on('mergeMessage', async (event: MergeMessageHubEvent) => {
       const { message, deletedMessages } = event.mergeMessageBody;
       const totalMessages = 1 + (deletedMessages?.length ?? 0);
       this._syncTrieQ += totalMessages;
@@ -77,12 +92,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
     // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
     // Order of events does not matter. The trie will always converge to the same state.
-    this.engine.eventHandler.on('pruneMessage', async (event: protobufs.PruneMessageHubEvent) => {
+    this.engine.eventHandler.on('pruneMessage', async (event: PruneMessageHubEvent) => {
       this._syncTrieQ += 1;
       await this.removeMessage(event.pruneMessageBody.message);
       this._syncTrieQ -= 1;
     });
-    this.engine.eventHandler.on('revokeMessage', async (event: protobufs.RevokeMessageHubEvent) => {
+    this.engine.eventHandler.on('revokeMessage', async (event: RevokeMessageHubEvent) => {
       this._syncTrieQ += 1;
       await this.removeMessage(event.revokeMessageBody.message);
       this._syncTrieQ -= 1;
@@ -153,7 +168,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this.currentHubPeerContacts.get(peerId);
   }
 
-  public addContactInfoForPeerId(peerId: PeerId, contactInfo: protobufs.ContactInfoContent) {
+  public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContent) {
     this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
   }
 
@@ -214,8 +229,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     try {
       // First, get the latest state from the peer
       const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
-        protobufs.TrieNodePrefix.create({ prefix: new Uint8Array() }),
-        new protobufs.Metadata(),
+        TrieNodePrefix.create({ prefix: new Uint8Array() }),
+        new Metadata(),
         rpcDeadline()
       );
       if (peerStateResult.isErr()) {
@@ -336,8 +351,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     let result = true;
     const messagesResult = await rpcClient.getAllMessagesBySyncIds(
-      protobufs.SyncIds.create({ syncIds }),
-      new protobufs.Metadata(),
+      SyncIds.create({ syncIds }),
+      new Metadata(),
       rpcDeadline()
     );
     await messagesResult.match(
@@ -353,7 +368,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return result;
   }
 
-  public async mergeMessages(messages: protobufs.Message[], rpcClient: HubRpcClient): Promise<HubResult<number>[]> {
+  public async mergeMessages(messages: Message[], rpcClient: HubRpcClient): Promise<HubResult<number>[]> {
     const mergeResults: HubResult<number>[] = [];
     // First, sort the messages by timestamp to reduce thrashing and refetching
     messages.sort((a, b) => (a.data?.timestamp || 0) - (b.data?.timestamp || 0));
@@ -430,8 +445,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(
-      protobufs.TrieNodePrefix.create({ prefix }),
-      new protobufs.Metadata(),
+      TrieNodePrefix.create({ prefix }),
+      new Metadata(),
       rpcDeadline()
     );
 
@@ -477,8 +492,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // the node's children and fetch them in batches.
     if (theirNode.numMessages <= fetchMessagesThreshold) {
       const result = await rpcClient.getAllSyncIdsByPrefix(
-        protobufs.TrieNodePrefix.create({ prefix: theirNode.prefix }),
-        new protobufs.Metadata(),
+        TrieNodePrefix.create({ prefix: theirNode.prefix }),
+        new Metadata(),
         rpcDeadline()
       );
 
@@ -505,11 +520,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   /** ---------------------------------------------------------------------------------- */
   /**                                      Trie Methods                                  */
   /** ---------------------------------------------------------------------------------- */
-  public async addMessage(message: protobufs.Message): Promise<void> {
+  public async addMessage(message: Message): Promise<void> {
     await this._trie.insert(new SyncId(message));
   }
 
-  public async removeMessage(message: protobufs.Message): Promise<void> {
+  public async removeMessage(message: Message): Promise<void> {
     await this._trie.deleteBySyncId(new SyncId(message));
   }
 
@@ -550,7 +565,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     });
   }
 
-  private async retryIdRegistryEvent(message: protobufs.Message, rpcClient: HubRpcClient) {
+  private async retryIdRegistryEvent(message: Message, rpcClient: HubRpcClient) {
     const fid = message.data?.fid;
     if (!fid) {
       log.error({ fid }, 'Invalid fid while fetching custody event');
@@ -558,8 +573,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const custodyEventResult = await rpcClient.getIdRegistryEvent(
-      protobufs.FidRequest.create({ fid }),
-      new protobufs.Metadata(),
+      FidRequest.create({ fid }),
+      new Metadata(),
       rpcDeadline()
     );
     if (custodyEventResult.isErr()) {
@@ -574,10 +589,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
   }
 
-  private async syncUserAndRetryMessage(
-    message: protobufs.Message,
-    rpcClient: HubRpcClient
-  ): Promise<HubResult<number>> {
+  private async syncUserAndRetryMessage(message: Message, rpcClient: HubRpcClient): Promise<HubResult<number>> {
     const fid = message.data?.fid;
     if (!fid) {
       return err(new HubError('bad_request.invalid_param', 'Invalid fid while retrying message'));
@@ -587,8 +599,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // sync will complete in one round (prevents messages failing to merge due to missed or out of
     // order signer message)
     const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(
-      protobufs.FidRequest.create({ fid }),
-      new protobufs.Metadata(),
+      FidRequest.create({ fid }),
+      new Metadata(),
       rpcDeadline()
     );
     if (signerMessagesResult.isErr()) {
@@ -613,7 +625,7 @@ const rpcDeadline = () => {
   return { deadline: Date.now() + 1000 * 5 };
 };
 
-const fromNodeMetadataResponse = (response: protobufs.TrieNodeMetadataResponse): NodeMetadata => {
+const fromNodeMetadataResponse = (response: TrieNodeMetadataResponse): NodeMetadata => {
   const children = new Map<number, NodeMetadata>();
   for (let i = 0; i < response.children.length; i++) {
     // Safety: i is controlled by the loop

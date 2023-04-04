@@ -1,8 +1,7 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories } from '@farcaster/utils';
+import { Factories, Message } from '@farcaster/hub-nodejs';
 import { SyncId } from './syncId';
 
-let message: protobufs.Message;
+let message: Message;
 
 beforeAll(async () => {
   message = await Factories.CastAddMessage.create();

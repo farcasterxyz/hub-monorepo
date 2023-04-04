@@ -1,5 +1,4 @@
-import { CastAddMessage, HubEvent, HubEventType } from '@farcaster/protobufs';
-import { Factories } from '@farcaster/utils';
+import { CastAddMessage, HubEvent, HubEventType, Factories } from '@farcaster/hub-nodejs';
 import { ok, Result } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getMessage, makeTsHash, putMessageTransaction } from '~/storage/db/message';

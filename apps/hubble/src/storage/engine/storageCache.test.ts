@@ -1,6 +1,5 @@
 import { ok, err } from 'neverthrow';
-import { HubEvent, HubEventType } from '@farcaster/protobufs';
-import { Factories, HubError } from '@farcaster/utils';
+import { HubEvent, HubEventType, Factories, HubError } from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { putMessage } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';

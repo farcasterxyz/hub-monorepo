@@ -1,5 +1,17 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, getFarcasterTime, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import {
+  bytesCompare,
+  CastAddMessage,
+  CastId,
+  CastRemoveMessage,
+  getFarcasterTime,
+  HubAsyncResult,
+  HubError,
+  HubEventType,
+  isCastAddMessage,
+  isCastRemoveMessage,
+  isHubError,
+  Message,
+} from '@farcaster/hub-nodejs';
 import AsyncLock from 'async-lock';
 import { ok, err, ResultAsync } from 'neverthrow';
 import {
@@ -64,7 +76,7 @@ const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
  * @param tsHash the timestamp hash of the cast message
  * @returns RocksDB index key of the form <root_prefix>:<parentFid>:<parentTsHash>:<tsHash?>:<fid?>
  */
-const makeCastsByParentKey = (parentId: protobufs.CastId, fid?: number, tsHash?: Uint8Array): Buffer => {
+const makeCastsByParentKey = (parentId: CastId, fid?: number, tsHash?: Uint8Array): Buffer => {
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByParent]),
     makeCastIdKey(parentId),
@@ -134,52 +146,44 @@ class CastStore {
   }
 
   /** Looks up CastAdd message by cast tsHash */
-  async getCastAdd(fid: number, hash: Uint8Array): Promise<protobufs.CastAddMessage> {
+  async getCastAdd(fid: number, hash: Uint8Array): Promise<CastAddMessage> {
     const addsKey = makeCastAddsKey(fid, hash);
     const messageTsHash = await this._db.get(addsKey);
     return getMessage(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
   /** Looks up CastRemove message by cast tsHash */
-  async getCastRemove(fid: number, hash: Uint8Array): Promise<protobufs.CastRemoveMessage> {
+  async getCastRemove(fid: number, hash: Uint8Array): Promise<CastRemoveMessage> {
     const removesKey = makeCastRemovesKey(fid, hash);
     const messageTsHash = await this._db.get(removesKey);
     return getMessage(this._db, fid, UserPostfix.CastMessage, messageTsHash);
   }
 
   /** Gets all CastAdd messages for an fid */
-  async getCastAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<protobufs.CastAddMessage>> {
+  async getCastAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
     const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    return getMessagesPageByPrefix(this._db, castMessagesPrefix, protobufs.isCastAddMessage, pageOptions);
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastAddMessage, pageOptions);
   }
 
   /** Gets all CastRemove messages for an fid */
-  async getCastRemovesByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.CastRemoveMessage>> {
+  async getCastRemovesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastRemoveMessage>> {
     const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    return getMessagesPageByPrefix(this._db, castMessagesPrefix, protobufs.isCastRemoveMessage, pageOptions);
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastRemoveMessage, pageOptions);
   }
 
   async getAllCastMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.CastAddMessage | protobufs.CastRemoveMessage>> {
+  ): Promise<MessagesPage<CastAddMessage | CastRemoveMessage>> {
     const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    const isCastMessage = (
-      message: protobufs.Message
-    ): message is protobufs.CastAddMessage | protobufs.CastRemoveMessage => {
-      return protobufs.isCastAddMessage(message) || protobufs.isCastRemoveMessage(message);
+    const isCastMessage = (message: Message): message is CastAddMessage | CastRemoveMessage => {
+      return isCastAddMessage(message) || isCastRemoveMessage(message);
     };
     return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastMessage, pageOptions);
   }
 
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
-  async getCastsByParent(
-    parentId: protobufs.CastId,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.CastAddMessage>> {
+  async getCastsByParent(parentId: CastId, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
     const prefix = makeCastsByParentKey(parentId);
 
     const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
@@ -211,7 +215,7 @@ class CastStore {
       messageKeys.push(messageKey);
     } while (messageKeys.length < limit);
 
-    const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
+    const messages = await getManyMessages<CastAddMessage>(this._db, messageKeys);
 
     if (!iteratorFinished) {
       await iterator.end(); // clear iterator if it has not finished
@@ -222,10 +226,7 @@ class CastStore {
   }
 
   /** Gets all CastAdd messages for a mention (fid) */
-  async getCastsByMention(
-    mentionFid: number,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.CastAddMessage>> {
+  async getCastsByMention(mentionFid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
     const prefix = makeCastsByMentionKey(mentionFid);
 
     const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
@@ -257,7 +258,7 @@ class CastStore {
       messageKeys.push(messageKey);
     } while (messageKeys.length < limit);
 
-    const messages = await getManyMessages<protobufs.CastAddMessage>(this._db, messageKeys);
+    const messages = await getManyMessages<CastAddMessage>(this._db, messageKeys);
 
     if (!iteratorFinished) {
       await iterator.end(); // clear iterator if it has not finished
@@ -268,8 +269,8 @@ class CastStore {
   }
 
   /** Merges a CastAdd or CastRemove message into the set */
-  async merge(message: protobufs.Message): Promise<number> {
-    if (!protobufs.isCastAddMessage(message) && !protobufs.isCastRemoveMessage(message)) {
+  async merge(message: Message): Promise<number> {
+    if (!isCastAddMessage(message) && !isCastRemoveMessage(message)) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
@@ -277,9 +278,9 @@ class CastStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
-          if (protobufs.isCastAddMessage(message)) {
+          if (isCastAddMessage(message)) {
             return this.mergeAdd(message);
-          } else if (protobufs.isCastRemoveMessage(message)) {
+          } else if (isCastRemoveMessage(message)) {
             return this.mergeRemove(message);
           } else {
             throw new HubError('bad_request.validation_failure', 'invalid message type');
@@ -292,18 +293,18 @@ class CastStore {
       });
   }
 
-  async revoke(message: protobufs.Message): HubAsyncResult<number> {
+  async revoke(message: Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-    if (protobufs.isCastAddMessage(message)) {
+    if (isCastAddMessage(message)) {
       txn = this.deleteCastAddTransaction(txn, message);
-    } else if (protobufs.isCastRemoveMessage(message)) {
+    } else if (isCastRemoveMessage(message)) {
       txn = this.deleteCastRemoveTransaction(txn, message);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
     return this._eventHandler.commitTransaction(txn, {
-      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      type: HubEventType.REVOKE_MESSAGE,
       revokeMessageBody: { message },
     });
   }
@@ -355,16 +356,16 @@ class CastStore {
 
       let txn = this._db.transaction();
 
-      if (protobufs.isCastAddMessage(nextMessage.value)) {
+      if (isCastAddMessage(nextMessage.value)) {
         txn = this.deleteCastAddTransaction(txn, nextMessage.value);
-      } else if (protobufs.isCastRemoveMessage(nextMessage.value)) {
+      } else if (isCastRemoveMessage(nextMessage.value)) {
         txn = this.deleteCastRemoveTransaction(txn, nextMessage.value);
       } else {
         return err(new HubError('unknown', 'invalid message type'));
       }
 
       return this._eventHandler.commitTransaction(txn, {
-        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        type: HubEventType.PRUNE_MESSAGE,
         pruneMessageBody: { message: nextMessage.value },
       });
     };
@@ -394,7 +395,7 @@ class CastStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: protobufs.CastAddMessage): Promise<number> {
+  private async mergeAdd(message: CastAddMessage): Promise<number> {
     // Start RocksDB transaction
     let txn = this._db.transaction();
 
@@ -424,7 +425,7 @@ class CastStore {
     txn = this.putCastAddTransaction(txn, message);
 
     const hubEvent: HubEventArgs = {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: [] },
     };
 
@@ -436,7 +437,7 @@ class CastStore {
     return result.value;
   }
 
-  private async mergeRemove(message: protobufs.CastRemoveMessage): Promise<number> {
+  private async mergeRemove(message: CastRemoveMessage): Promise<number> {
     // Define cast hash for lookups
     const removeTargetHash = message.data.castRemoveBody.targetHash;
 
@@ -445,7 +446,7 @@ class CastStore {
       throw tsHash.error;
     }
 
-    const mergeConflicts: (protobufs.CastAddMessage | protobufs.CastRemoveMessage)[] = [];
+    const mergeConflicts: (CastAddMessage | CastRemoveMessage)[] = [];
 
     // Start RocksDB transaction
     let txn = this._db.transaction();
@@ -467,7 +468,7 @@ class CastStore {
         // If the remove tsHash exists but with a lower order than the new CastRemove
         // tsHash, retrieve the full CastRemove message and delete it as part of the
         // RocksDB transaction
-        const existingRemove = await getMessage<protobufs.CastRemoveMessage>(
+        const existingRemove = await getMessage<CastRemoveMessage>(
           this._db,
           message.data.fid,
           UserPostfix.CastMessage,
@@ -487,7 +488,7 @@ class CastStore {
     // If the add tsHash exists, retrieve the full CastAdd message and delete it as
     // part of the RocksDB transaction
     if (castAddTsHash.isOk()) {
-      const existingAdd = await getMessage<protobufs.CastAddMessage>(
+      const existingAdd = await getMessage<CastAddMessage>(
         this._db,
         message.data.fid,
         UserPostfix.CastMessage,
@@ -501,7 +502,7 @@ class CastStore {
     txn = this.putCastRemoveTransaction(txn, message);
 
     const hubEvent: HubEventArgs = {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts },
     };
 
@@ -514,7 +515,7 @@ class CastStore {
   }
 
   /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */
-  private putCastAddTransaction(txn: Transaction, message: protobufs.CastAddMessage): Transaction {
+  private putCastAddTransaction(txn: Transaction, message: CastAddMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -543,7 +544,7 @@ class CastStore {
   }
 
   /* Builds a RocksDB transaction to remove a CastAdd message and delete its indices */
-  private deleteCastAddTransaction(txn: Transaction, message: protobufs.CastAddMessage): Transaction {
+  private deleteCastAddTransaction(txn: Transaction, message: CastAddMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -567,7 +568,7 @@ class CastStore {
   }
 
   /* Builds a RocksDB transaction to insert a CastRemove message and construct its indices */
-  private putCastRemoveTransaction(txn: Transaction, message: protobufs.CastRemoveMessage): Transaction {
+  private putCastRemoveTransaction(txn: Transaction, message: CastRemoveMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -584,7 +585,7 @@ class CastStore {
   }
 
   /* Builds a RocksDB transaction to remove a CastRemove message and delete its indices */
-  private deleteCastRemoveTransaction(txn: Transaction, message: protobufs.CastRemoveMessage): Transaction {
+  private deleteCastRemoveTransaction(txn: Transaction, message: CastRemoveMessage): Transaction {
     // Deletes the message key from the CastRemoves set index
     const removesKey = makeCastRemovesKey(message.data.fid, message.data.castRemoveBody.targetHash);
     txn = txn.del(removesKey);

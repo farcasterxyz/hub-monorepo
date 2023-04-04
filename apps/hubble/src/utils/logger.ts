@@ -1,5 +1,11 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesToHexString, fromFarcasterTime } from '@farcaster/utils';
+import {
+  bytesToHexString,
+  fromFarcasterTime,
+  IdRegistryEvent,
+  Message,
+  MessageType,
+  NameRegistryEvent,
+} from '@farcaster/hub-nodejs';
 import { default as Pino } from 'pino';
 
 /**
@@ -41,13 +47,13 @@ if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
 
 export const logger = Pino(defaultOptions);
 
-export const messageTypeToName = (type?: protobufs.MessageType) => {
+export const messageTypeToName = (type?: MessageType) => {
   if (!type) return '';
   // eslint-disable-next-line security/detect-object-injection
-  return (protobufs.MessageType[type] as string).replace('MESSAGE_TYPE_', '');
+  return (MessageType[type] as string).replace('MESSAGE_TYPE_', '');
 };
 
-export const messageToLog = (message: protobufs.Message) => {
+export const messageToLog = (message: Message) => {
   return {
     timestamp: fromFarcasterTime(message.data?.timestamp || 0)._unsafeUnwrap(),
     hash: bytesToHexString(message.hash)._unsafeUnwrap(),
@@ -56,7 +62,7 @@ export const messageToLog = (message: protobufs.Message) => {
   };
 };
 
-export const idRegistryEventToLog = (event: protobufs.IdRegistryEvent) => {
+export const idRegistryEventToLog = (event: IdRegistryEvent) => {
   return {
     blockNumber: event.blockNumber,
     fid: event.fid,
@@ -64,7 +70,7 @@ export const idRegistryEventToLog = (event: protobufs.IdRegistryEvent) => {
   };
 };
 
-export const nameRegistryEventToLog = (event: protobufs.NameRegistryEvent) => {
+export const nameRegistryEventToLog = (event: NameRegistryEvent) => {
   return {
     blockNumber: event.blockNumber,
     fname: Buffer.from(event.fname).toString('utf-8').replace(/\0/g, ''),

@@ -3,21 +3,15 @@ import {
   CastId,
   CastRemoveMessage,
   FidsResponse,
-  Server as GrpcServer,
   HubEvent,
   HubEventType,
   HubInfoResponse,
-  HubServiceServer,
-  HubServiceService,
   IdRegistryEvent,
   Message,
   MessagesResponse,
-  Metadata,
   NameRegistryEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
-  ServerCredentials,
-  ServiceError,
   SignerAddMessage,
   SignerRemoveMessage,
   SyncIds,
@@ -26,10 +20,17 @@ import {
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
+  HubAsyncResult,
+  HubError,
+  ServerCredentials,
+  ServiceError,
+  Metadata,
+  HubServiceServer,
+  HubServiceService,
+  Server as GrpcServer,
   getServer,
   status,
-} from '@farcaster/protobufs';
-import { HubAsyncResult, HubError } from '@farcaster/utils';
+} from '@farcaster/hub-nodejs';
 import { err, ok, Result } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';

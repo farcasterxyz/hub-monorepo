@@ -1,5 +1,17 @@
-import * as protobufs from '@farcaster/protobufs';
-import { bytesCompare, HubAsyncResult, HubError, isHubError } from '@farcaster/utils';
+import {
+  bytesCompare,
+  HubAsyncResult,
+  HubError,
+  HubEventType,
+  IdRegistryEvent,
+  isHubError,
+  isSignerAddMessage,
+  isSignerRemoveMessage,
+  Message,
+  MessageType,
+  SignerAddMessage,
+  SignerRemoveMessage,
+} from '@farcaster/hub-nodejs';
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
@@ -106,11 +118,11 @@ class SignerStore {
   }
 
   /** Returns the most recent event from the IdRegistry contract that affected the fid  */
-  async getIdRegistryEvent(fid: number): Promise<protobufs.IdRegistryEvent> {
+  async getIdRegistryEvent(fid: number): Promise<IdRegistryEvent> {
     return getIdRegistryEvent(this._db, fid);
   }
 
-  async getIdRegistryEventByAddress(address: Uint8Array): Promise<protobufs.IdRegistryEvent> {
+  async getIdRegistryEventByAddress(address: Uint8Array): Promise<IdRegistryEvent> {
     return getIdRegistryEventByCustodyAddress(this._db, address);
   }
 
@@ -121,7 +133,7 @@ class SignerStore {
    * @param signerPubKey the EdDSA public key of the signer
    * @returns the SignerAdd Model if it exists, throws Error otherwise
    */
-  async getSignerAdd(fid: number, signer: Uint8Array): Promise<protobufs.SignerAddMessage> {
+  async getSignerAdd(fid: number, signer: Uint8Array): Promise<SignerAddMessage> {
     const addKey = makeSignerAddsKey(fid, signer);
     const messageTsHash = await this._db.get(addKey);
     return getMessage(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
@@ -134,7 +146,7 @@ class SignerStore {
    * @param signer the EdDSA public key of the signer
    * @returns the SignerRemove message if it exists, throws HubError otherwise
    */
-  async getSignerRemove(fid: number, signer: Uint8Array): Promise<protobufs.SignerRemoveMessage> {
+  async getSignerRemove(fid: number, signer: Uint8Array): Promise<SignerRemoveMessage> {
     const removeKey = makeSignerRemovesKey(fid, signer);
     const messageTsHash = await this._db.get(removeKey);
     return getMessage(this._db, fid, UserPostfix.SignerMessage, messageTsHash);
@@ -146,12 +158,9 @@ class SignerStore {
    * @param fid fid of the user who created the signers
    * @returns the SignerAdd messages if it exists, throws HubError otherwise
    */
-  async getSignerAddsByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.SignerAddMessage>> {
+  async getSignerAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<SignerAddMessage>> {
     const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
-    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, protobufs.isSignerAddMessage, pageOptions);
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, isSignerAddMessage, pageOptions);
   }
 
   /**
@@ -160,23 +169,18 @@ class SignerStore {
    * @param fid fid of the user who created the signers
    * @returns the SignerRemove messages if it exists, throws HubError otherwise
    */
-  async getSignerRemovesByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.SignerRemoveMessage>> {
+  async getSignerRemovesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<SignerRemoveMessage>> {
     const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
-    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, protobufs.isSignerRemoveMessage, pageOptions);
+    return getMessagesPageByPrefix(this._db, signerMessagesPrefix, isSignerRemoveMessage, pageOptions);
   }
 
   async getAllSignerMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<protobufs.SignerAddMessage | protobufs.SignerRemoveMessage>> {
+  ): Promise<MessagesPage<SignerAddMessage | SignerRemoveMessage>> {
     const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
-    const filter = (
-      message: protobufs.Message
-    ): message is protobufs.SignerAddMessage | protobufs.SignerRemoveMessage => {
-      return protobufs.isSignerAddMessage(message) || protobufs.isSignerRemoveMessage(message);
+    const filter = (message: Message): message is SignerAddMessage | SignerRemoveMessage => {
+      return isSignerAddMessage(message) || isSignerRemoveMessage(message);
     };
     return getMessagesPageByPrefix(this._db, signerMessagesPrefix, filter, pageOptions);
   }
@@ -225,7 +229,7 @@ class SignerStore {
    * Merges a ContractEvent into the SignerStore, storing the causally latest event at the key:
    * <RootPrefix:User><fid><UserPostfix:IdRegistryEvent>
    */
-  async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): Promise<number> {
+  async mergeIdRegistryEvent(event: IdRegistryEvent): Promise<number> {
     const existingEvent = await ResultAsync.fromPromise(this.getIdRegistryEvent(event.fid), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
       throw new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent');
@@ -234,7 +238,7 @@ class SignerStore {
     const txn = putIdRegistryEventTransaction(this._db.transaction(), event);
 
     const result = await this._eventHandler.commitTransaction(txn, {
-      type: protobufs.HubEventType.MERGE_ID_REGISTRY_EVENT,
+      type: HubEventType.MERGE_ID_REGISTRY_EVENT,
       mergeIdRegistryEventBody: { idRegistryEvent: event },
     });
     if (result.isErr()) {
@@ -244,8 +248,8 @@ class SignerStore {
   }
 
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
-  async merge(message: protobufs.Message): Promise<number> {
-    if (!protobufs.isSignerAddMessage(message) && !protobufs.isSignerRemoveMessage(message)) {
+  async merge(message: Message): Promise<number> {
+    if (!isSignerAddMessage(message) && !isSignerRemoveMessage(message)) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
@@ -253,9 +257,9 @@ class SignerStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
-          if (protobufs.isSignerAddMessage(message)) {
+          if (isSignerAddMessage(message)) {
             return this.mergeAdd(message);
-          } else if (protobufs.isSignerRemoveMessage(message)) {
+          } else if (isSignerRemoveMessage(message)) {
             return this.mergeRemove(message);
           } else {
             throw new HubError('bad_request.validation_failure', 'invalid message type');
@@ -268,18 +272,18 @@ class SignerStore {
       });
   }
 
-  async revoke(message: protobufs.Message): HubAsyncResult<number> {
+  async revoke(message: Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-    if (protobufs.isSignerAddMessage(message)) {
+    if (isSignerAddMessage(message)) {
       txn = this.deleteSignerAddTransaction(txn, message);
-    } else if (protobufs.isSignerRemoveMessage(message)) {
+    } else if (isSignerRemoveMessage(message)) {
       txn = this.deleteSignerRemoveTransaction(txn, message);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid message type'));
     }
 
     return this._eventHandler.commitTransaction(txn, {
-      type: protobufs.HubEventType.REVOKE_MESSAGE,
+      type: HubEventType.REVOKE_MESSAGE,
       revokeMessageBody: { message },
     });
   }
@@ -319,16 +323,16 @@ class SignerStore {
 
       let txn = this._db.transaction();
 
-      if (protobufs.isSignerAddMessage(nextMessage.value)) {
+      if (isSignerAddMessage(nextMessage.value)) {
         txn = this.deleteSignerAddTransaction(txn, nextMessage.value);
-      } else if (protobufs.isSignerRemoveMessage(nextMessage.value)) {
+      } else if (isSignerRemoveMessage(nextMessage.value)) {
         txn = this.deleteSignerRemoveTransaction(txn, nextMessage.value);
       } else {
         return err(new HubError('unknown', 'invalid message type'));
       }
 
       return this._eventHandler.commitTransaction(txn, {
-        type: protobufs.HubEventType.PRUNE_MESSAGE,
+        type: HubEventType.PRUNE_MESSAGE,
         pruneMessageBody: { message: nextMessage.value },
       });
     };
@@ -358,7 +362,7 @@ class SignerStore {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async mergeAdd(message: protobufs.SignerAddMessage): Promise<number> {
+  private async mergeAdd(message: SignerAddMessage): Promise<number> {
     const mergeConflicts = await this.getMergeConflicts(message);
 
     if (mergeConflicts.isErr()) {
@@ -372,7 +376,7 @@ class SignerStore {
     txn = this.putSignerAddTransaction(txn, message);
 
     const hubEvent: HubEventArgs = {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
 
@@ -384,7 +388,7 @@ class SignerStore {
     return result.value;
   }
 
-  private async mergeRemove(message: protobufs.SignerRemoveMessage): Promise<number> {
+  private async mergeRemove(message: SignerRemoveMessage): Promise<number> {
     const mergeConflicts = await this.getMergeConflicts(message);
 
     if (mergeConflicts.isErr()) {
@@ -398,7 +402,7 @@ class SignerStore {
     txn = this.putSignerRemoveTransaction(txn, message);
 
     const hubEvent: HubEventArgs = {
-      type: protobufs.HubEventType.MERGE_MESSAGE,
+      type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
     };
 
@@ -411,9 +415,9 @@ class SignerStore {
   }
 
   private signerMessageCompare(
-    aType: protobufs.MessageType.SIGNER_ADD | protobufs.MessageType.SIGNER_REMOVE,
+    aType: MessageType.SIGNER_ADD | MessageType.SIGNER_REMOVE,
     aTsHash: Uint8Array,
-    bType: protobufs.MessageType.SIGNER_ADD | protobufs.MessageType.SIGNER_REMOVE,
+    bType: MessageType.SIGNER_ADD | MessageType.SIGNER_REMOVE,
     bTsHash: Uint8Array
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
@@ -422,9 +426,9 @@ class SignerStore {
       return timestampOrder;
     }
 
-    if (aType === protobufs.MessageType.SIGNER_REMOVE && bType === protobufs.MessageType.SIGNER_ADD) {
+    if (aType === MessageType.SIGNER_REMOVE && bType === MessageType.SIGNER_ADD) {
       return 1;
-    } else if (aType === protobufs.MessageType.SIGNER_ADD && bType === protobufs.MessageType.SIGNER_REMOVE) {
+    } else if (aType === MessageType.SIGNER_ADD && bType === MessageType.SIGNER_REMOVE) {
       return -1;
     }
 
@@ -438,9 +442,9 @@ class SignerStore {
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
   private async getMergeConflicts(
-    message: protobufs.SignerAddMessage | protobufs.SignerRemoveMessage
-  ): HubAsyncResult<(protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[]> {
-    const conflicts: (protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[] = [];
+    message: SignerAddMessage | SignerRemoveMessage
+  ): HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]> {
+    const conflicts: (SignerAddMessage | SignerRemoveMessage)[] = [];
 
     const signer = (message.data.signerAddBody ?? message.data.signerRemoveBody)?.signer;
     if (!signer) {
@@ -460,7 +464,7 @@ class SignerStore {
 
     if (removeTsHash.isOk()) {
       const removeCompare = this.signerMessageCompare(
-        protobufs.MessageType.SIGNER_REMOVE,
+        MessageType.SIGNER_REMOVE,
         removeTsHash.value,
         message.data.type,
         tsHash.value
@@ -472,7 +476,7 @@ class SignerStore {
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // SignerRemove message and delete it as part of the RocksDB transaction
-        const existingRemove = await getMessage<protobufs.SignerRemoveMessage>(
+        const existingRemove = await getMessage<SignerRemoveMessage>(
           this._db,
           message.data.fid,
           UserPostfix.SignerMessage,
@@ -490,7 +494,7 @@ class SignerStore {
 
     if (addTsHash.isOk()) {
       const addCompare = this.signerMessageCompare(
-        protobufs.MessageType.SIGNER_ADD,
+        MessageType.SIGNER_ADD,
         addTsHash.value,
         message.data.type,
         tsHash.value
@@ -502,7 +506,7 @@ class SignerStore {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // SignerAdd message and delete it as part of the RocksDB transaction
-        const existingAdd = await getMessage<protobufs.SignerAddMessage>(
+        const existingAdd = await getMessage<SignerAddMessage>(
           this._db,
           message.data.fid,
           UserPostfix.SignerMessage,
@@ -515,14 +519,11 @@ class SignerStore {
     return ok(conflicts);
   }
 
-  private deleteManyTransaction(
-    txn: Transaction,
-    messages: (protobufs.SignerAddMessage | protobufs.SignerRemoveMessage)[]
-  ): Transaction {
+  private deleteManyTransaction(txn: Transaction, messages: (SignerAddMessage | SignerRemoveMessage)[]): Transaction {
     for (const message of messages) {
-      if (protobufs.isSignerAddMessage(message)) {
+      if (isSignerAddMessage(message)) {
         txn = this.deleteSignerAddTransaction(txn, message);
-      } else if (protobufs.isSignerRemoveMessage(message)) {
+      } else if (isSignerRemoveMessage(message)) {
         txn = this.deleteSignerRemoveTransaction(txn, message);
       }
     }
@@ -530,7 +531,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to insert a SignerAdd message and construct its indices */
-  private putSignerAddTransaction(txn: Transaction, message: protobufs.SignerAddMessage): Transaction {
+  private putSignerAddTransaction(txn: Transaction, message: SignerAddMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -546,7 +547,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to remove a SignerAdd message and delete its indices */
-  private deleteSignerAddTransaction(txn: Transaction, message: protobufs.SignerAddMessage): Transaction {
+  private deleteSignerAddTransaction(txn: Transaction, message: SignerAddMessage): Transaction {
     // Delete from signerAdds
     txn = txn.del(makeSignerAddsKey(message.data.fid, message.data.signerAddBody.signer));
 
@@ -555,7 +556,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to insert a SignerRemove message and construct its indices */
-  private putSignerRemoveTransaction(txn: Transaction, message: protobufs.SignerRemoveMessage): Transaction {
+  private putSignerRemoveTransaction(txn: Transaction, message: SignerRemoveMessage): Transaction {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -574,7 +575,7 @@ class SignerStore {
   }
 
   /* Builds a RocksDB transaction to remove a SignerRemove message and delete its indices */
-  private deleteSignerRemoveTransaction(txn: Transaction, message: protobufs.SignerRemoveMessage): Transaction {
+  private deleteSignerRemoveTransaction(txn: Transaction, message: SignerRemoveMessage): Transaction {
     // Delete from signerRemoves
     txn = txn.del(makeSignerRemovesKey(message.data.fid, message.data.signerRemoveBody.signer));
 

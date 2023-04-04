@@ -1,8 +1,17 @@
 /* eslint-disable security/detect-non-literal-fs-filename */
 
-import * as protobufs from '@farcaster/protobufs';
-import { FarcasterNetwork } from '@farcaster/protobufs';
-import { Factories, getFarcasterTime, HubRpcClient } from '@farcaster/utils';
+import {
+  FarcasterNetwork,
+  Factories,
+  getFarcasterTime,
+  HubRpcClient,
+  IdRegistryEvent,
+  MessageType,
+  SignerAddMessage,
+  Message,
+  ReactionType,
+  TrieNodeMetadataResponse,
+} from '@farcaster/hub-nodejs';
 import { ok } from 'neverthrow';
 import { anything, instance, mock, when } from 'ts-mockito';
 import SyncEngine from '~/network/sync/syncEngine';
@@ -15,14 +24,14 @@ import { NetworkFactories } from '../utils/factories';
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
 
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: protobufs.IdRegistryEvent;
-let signerAdd: protobufs.SignerAddMessage;
-let castAdd: protobufs.Message;
+let custodyEvent: IdRegistryEvent;
+let signerAdd: SignerAddMessage;
+let castAdd: Message;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -131,7 +140,7 @@ describe('SyncEngine', () => {
 
     const allMessages = await engine.getAllMessagesBySyncIds([id.syncId()]);
     expect(allMessages.isOk()).toBeTruthy();
-    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(protobufs.MessageType.CAST_REMOVE);
+    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(MessageType.CAST_REMOVE);
 
     // The trie should contain the message remove
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
@@ -158,7 +167,7 @@ describe('SyncEngine', () => {
     // Reaction
     const reactionBody = {
       targetCastId: { fid, hash: castAdd.hash },
-      type: protobufs.ReactionType.LIKE,
+      type: ReactionType.LIKE,
     };
     const reaction1 = await Factories.ReactionAddMessage.create(
       { data: { fid, network, timestamp: 30662167, reactionBody } },
@@ -231,7 +240,7 @@ describe('SyncEngine', () => {
       called = true;
 
       // Return an empty child map so sync will finish with a noop
-      const emptyMetadata = protobufs.TrieNodeMetadataResponse.create({
+      const emptyMetadata = TrieNodeMetadataResponse.create({
         prefix: new Uint8Array(),
         numMessages: 1000,
         hash: '',
@@ -283,9 +292,9 @@ describe('SyncEngine', () => {
     // Make sure all messages exist
     expect(await syncEngine2.trie.items()).toEqual(4);
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
-    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
 
     await syncEngine2.stop();
   });
@@ -304,9 +313,9 @@ describe('SyncEngine', () => {
     // Make sure all messages exist
     expect(await syncEngine2.trie.items()).toEqual(4);
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
-    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as protobufs.Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as protobufs.Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as protobufs.Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
 
     await syncEngine2.stop();
   });

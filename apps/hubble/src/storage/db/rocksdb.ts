@@ -1,4 +1,4 @@
-import { bytesIncrement, HubError, isHubError } from '@farcaster/utils';
+import { bytesIncrement, HubError, isHubError } from '@farcaster/hub-nodejs';
 import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from 'rocksdb';

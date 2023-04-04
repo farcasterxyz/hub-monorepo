@@ -1,5 +1,4 @@
-import { IdRegistryEvent, NameRegistryEvent } from '@farcaster/protobufs';
-import { HubError, bytesCompare, bytesIncrement } from '@farcaster/utils';
+import { IdRegistryEvent, NameRegistryEvent, HubError, bytesCompare, bytesIncrement } from '@farcaster/hub-nodejs';
 
 type Event = IdRegistryEvent | NameRegistryEvent;
 

@@ -1,5 +1,12 @@
-import * as protobufs from '@farcaster/protobufs';
-import { Factories, getInsecureHubRpcClient, HubResult, HubRpcClient } from '@farcaster/utils';
+import {
+  Factories,
+  HubResult,
+  getInsecureHubRpcClient,
+  HubRpcClient,
+  FarcasterNetwork,
+  Message,
+  ReactionType,
+} from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
@@ -8,7 +15,7 @@ import { seedSigner } from '~/storage/engine/seed';
 import { MockHub } from '~/test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.concurrency.test');
-const network = protobufs.FarcasterNetwork.TESTNET;
+const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
@@ -37,7 +44,7 @@ const fid = Factories.Fid.build();
 const signer1 = Factories.Ed25519Signer.build();
 const signer2 = Factories.Ed25519Signer.build();
 
-const assertNoTimeouts = (results: HubResult<protobufs.Message>[]) => {
+const assertNoTimeouts = (results: HubResult<Message>[]) => {
   expect(
     results.every(
       (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
@@ -56,17 +63,17 @@ describe('submitMessage', () => {
   test('succeeds with concurrent, conflicting reaction messages', async () => {
     const castId = Factories.CastId.build();
     const like1 = await Factories.ReactionAddMessage.create(
-      { data: { fid, reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId } } },
+      { data: { fid, reactionBody: { type: ReactionType.LIKE, targetCastId: castId } } },
       { transient: { signer: signer1 } }
     );
 
     const like2 = await Factories.ReactionAddMessage.create(
-      { data: { fid, reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId } } },
+      { data: { fid, reactionBody: { type: ReactionType.LIKE, targetCastId: castId } } },
       { transient: { signer: signer2 } }
     );
 
     const removeLike2 = await Factories.ReactionRemoveMessage.create(
-      { data: { fid, reactionBody: { type: protobufs.ReactionType.LIKE, targetCastId: castId } } },
+      { data: { fid, reactionBody: { type: ReactionType.LIKE, targetCastId: castId } } },
       { transient: { signer: signer2 } }
     );
 
@@ -136,13 +143,11 @@ describe('submitMessage', () => {
 
     // We are expecting 2 messages. cast1add and cast2remove
     expect(response._unsafeUnwrap().messages.length).toEqual(2);
-    expect(
-      protobufs.Message.toJSON(response._unsafeUnwrap().messages.find((m) => m.data.castAddBody) as protobufs.Message)
-    ).toEqual(protobufs.Message.toJSON(cast2));
-    expect(
-      protobufs.Message.toJSON(
-        response._unsafeUnwrap().messages.find((m) => m.data.castRemoveBody) as protobufs.Message
-      )
-    ).toEqual(protobufs.Message.toJSON(removeCast1));
+    expect(Message.toJSON(response._unsafeUnwrap().messages.find((m) => m.data.castAddBody) as Message)).toEqual(
+      Message.toJSON(cast2)
+    );
+    expect(Message.toJSON(response._unsafeUnwrap().messages.find((m) => m.data.castRemoveBody) as Message)).toEqual(
+      Message.toJSON(removeCast1)
+    );
   });
 });

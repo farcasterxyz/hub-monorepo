@@ -1,6 +1,5 @@
 export * from './builders';
 export * from './bytes';
-export * from './client';
 export * from './crypto';
 export * from './errors';
 export * from './factories';

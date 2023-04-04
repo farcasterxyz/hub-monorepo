@@ -1,4 +1,3 @@
-import * as protobufs from '@farcaster/protobufs';
 import {
   ContactInfoContent,
   FarcasterNetwork,
@@ -8,16 +7,15 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
-} from '@farcaster/protobufs';
-import {
+  UpdateNameRegistryEventExpiryJobPayload,
   HubAsyncResult,
   HubError,
-  HubRpcClient,
   bytesToHexString,
   bytesToUtf8String,
+  HubRpcClient,
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
-} from '@farcaster/utils';
+} from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
@@ -66,11 +64,11 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
 
 export interface HubInterface {
   engine: Engine;
-  submitMessage(message: protobufs.Message, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitIdRegistryEvent(event: protobufs.IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitNameRegistryEvent(event: protobufs.NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
-  getHubState(): HubAsyncResult<protobufs.HubState>;
-  putHubState(hubState: protobufs.HubState): HubAsyncResult<void>;
+  submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  getHubState(): HubAsyncResult<HubState>;
+  putHubState(hubState: HubState): HubAsyncResult<void>;
 }
 
 export interface HubOptions {
@@ -747,7 +745,7 @@ export class Hub implements HubInterface {
     );
 
     if (!event.expiry) {
-      const payload = protobufs.UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
+      const payload = UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
       await this.updateNameRegistryEventExpiryJobQueue.enqueueJob(payload);
     }
 

@@ -1,9 +1,8 @@
-import * as protobufs from '@farcaster/protobufs';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 import { NetworkFactories } from '../../network/utils/factories';
-
+import { GossipMessage } from '@farcaster/hub-nodejs';
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 
@@ -15,7 +14,7 @@ describe('gossip network tests', () => {
    * MessageStore keeps track of every message in every topic received by a peer. It maps the
    * peerId -> topic -> GossipMessage[]
    */
-  let messageStore: Map<string, Map<string, protobufs.GossipMessage[] | undefined>>;
+  let messageStore: Map<string, Map<string, GossipMessage[] | undefined>>;
   let nodes: GossipNode[];
 
   beforeAll(async () => {

@@ -1,15 +1,42 @@
-import * as protobufs from '@farcaster/protobufs';
 import {
   bytesCompare,
   bytesToHexString,
+  CastAddMessage,
+  CastId,
+  CastRemoveMessage,
+  FarcasterNetwork,
   HubAsyncResult,
   HubError,
+  HubEvent,
   HubResult,
+  IdRegistryEvent,
+  IdRegistryEventType,
+  isSignerAddMessage,
+  isSignerRemoveMessage,
+  isUserDataAddMessage,
+  MergeIdRegistryEventHubEvent,
+  MergeMessageHubEvent,
+  MergeNameRegistryEventHubEvent,
+  Message,
+  NameRegistryEvent,
+  NameRegistryEventType,
+  PruneMessageHubEvent,
+  ReactionAddMessage,
+  ReactionRemoveMessage,
+  ReactionType,
+  RevokeMessageHubEvent,
+  RevokeMessagesBySignerJobPayload,
+  SignerAddMessage,
+  SignerRemoveMessage,
+  UserDataAddMessage,
+  UserDataType,
   utf8StringToBytes,
   validations,
-} from '@farcaster/utils';
-import fs from 'fs';
+  VerificationAddEthAddressMessage,
+  VerificationRemoveMessage,
+} from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
+import fs from 'fs';
 import { Worker } from 'worker_threads';
 import { SyncId } from '~/network/sync/syncId';
 import { getManyMessages, getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '~/storage/db/message';
@@ -38,7 +65,7 @@ class Engine {
   public eventHandler: StoreEventHandler;
 
   private _db: RocksDB;
-  private _network: protobufs.FarcasterNetwork;
+  private _network: FarcasterNetwork;
 
   private _reactionStore: ReactionStore;
   private _signerStore: SignerStore;
@@ -48,13 +75,13 @@ class Engine {
 
   private _validationWorker: Worker | undefined;
   private _validationWorkerJobId = 0;
-  private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<protobufs.Message>) => void>();
+  private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<Message>) => void>();
 
   private _storageCache: StorageCache;
   private _revokeSignerQueue: RevokeMessagesBySignerJobQueue;
   private _revokeSignerWorker: RevokeMessagesBySignerJobWorker;
 
-  constructor(db: RocksDB, network: protobufs.FarcasterNetwork) {
+  constructor(db: RocksDB, network: FarcasterNetwork) {
     this._db = db;
     this._network = network;
 
@@ -140,11 +167,11 @@ class Engine {
     log.info('engine stopped');
   }
 
-  async mergeMessages(messages: protobufs.Message[]): Promise<Array<HubResult<number>>> {
+  async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
 
-  async mergeMessage(message: protobufs.Message): HubAsyncResult<number> {
+  async mergeMessage(message: Message): HubAsyncResult<number> {
     const validatedMessage = await this.validateMessage(message);
     if (validatedMessage.isErr()) {
       return err(validatedMessage.error);
@@ -175,22 +202,16 @@ class Engine {
     }
   }
 
-  async mergeIdRegistryEvent(event: protobufs.IdRegistryEvent): HubAsyncResult<number> {
-    if (
-      event.type === protobufs.IdRegistryEventType.REGISTER ||
-      event.type === protobufs.IdRegistryEventType.TRANSFER
-    ) {
+  async mergeIdRegistryEvent(event: IdRegistryEvent): HubAsyncResult<number> {
+    if (event.type === IdRegistryEventType.REGISTER || event.type === IdRegistryEventType.TRANSFER) {
       return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
     }
 
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
   }
 
-  async mergeNameRegistryEvent(event: protobufs.NameRegistryEvent): HubAsyncResult<number> {
-    if (
-      event.type === protobufs.NameRegistryEventType.TRANSFER ||
-      event.type === protobufs.NameRegistryEventType.RENEW
-    ) {
+  async mergeNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
+    if (event.type === NameRegistryEventType.TRANSFER || event.type === NameRegistryEventType.RENEW) {
       return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
     }
 
@@ -297,7 +318,7 @@ class Engine {
   }
 
   /** revoke message if it is not valid */
-  async validateOrRevokeMessage(message: protobufs.Message): HubAsyncResult<number | undefined> {
+  async validateOrRevokeMessage(message: Message): HubAsyncResult<number | undefined> {
     const isValid = await this.validateMessage(message);
 
     if (isValid.isErr() && message.data) {
@@ -332,7 +353,7 @@ class Engine {
   /*                             Event Methods                                  */
   /* -------------------------------------------------------------------------- */
 
-  async getEvent(id: number): HubAsyncResult<protobufs.HubEvent> {
+  async getEvent(id: number): HubAsyncResult<HubEvent> {
     return this.eventHandler.getEvent(id);
   }
 
@@ -340,7 +361,7 @@ class Engine {
   /*                             Sync Methods                                   */
   /* -------------------------------------------------------------------------- */
 
-  async forEachMessage(callback: (message: protobufs.Message, key: Buffer) => Promise<boolean | void>): Promise<void> {
+  async forEachMessage(callback: (message: Message, key: Buffer) => Promise<boolean | void>): Promise<void> {
     const allUserPrefix = Buffer.from([RootPrefix.User]);
     const iterator = this._db.iteratorByPrefix(allUserPrefix, { keys: true });
 
@@ -370,7 +391,7 @@ class Engine {
       }
 
       const message = Result.fromThrowable(
-        () => protobufs.Message.decode(new Uint8Array(value)),
+        () => Message.decode(new Uint8Array(value)),
         (e) => e as HubError
       )();
 
@@ -384,7 +405,7 @@ class Engine {
     }
   }
 
-  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<protobufs.Message[]> {
+  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
     const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
     const messages = await ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
 
@@ -395,7 +416,7 @@ class Engine {
   /*                             Cast Store Methods                             */
   /* -------------------------------------------------------------------------- */
 
-  async getCast(fid: number, hash: Uint8Array): HubAsyncResult<protobufs.CastAddMessage> {
+  async getCast(fid: number, hash: Uint8Array): HubAsyncResult<CastAddMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -404,10 +425,7 @@ class Engine {
     return ResultAsync.fromPromise(this._castStore.getCastAdd(fid, hash), (e) => e as HubError);
   }
 
-  async getCastsByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
+  async getCastsByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<MessagesPage<CastAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -417,9 +435,9 @@ class Engine {
   }
 
   async getCastsByParent(
-    parentId: protobufs.CastId,
+    parentId: CastId,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
+  ): HubAsyncResult<MessagesPage<CastAddMessage>> {
     const validatedCastId = validations.validateCastId(parentId);
     if (validatedCastId.isErr()) {
       return err(validatedCastId.error);
@@ -431,7 +449,7 @@ class Engine {
   async getCastsByMention(
     mentionFid: number,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage>> {
+  ): HubAsyncResult<MessagesPage<CastAddMessage>> {
     const validatedFid = validations.validateFid(mentionFid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -443,7 +461,7 @@ class Engine {
   async getAllCastMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.CastAddMessage | protobufs.CastRemoveMessage>> {
+  ): HubAsyncResult<MessagesPage<CastAddMessage | CastRemoveMessage>> {
     return ResultAsync.fromPromise(this._castStore.getAllCastMessagesByFid(fid, pageOptions), (e) => e as HubError);
   }
 
@@ -451,11 +469,7 @@ class Engine {
   /*                            Reaction Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getReaction(
-    fid: number,
-    type: protobufs.ReactionType,
-    cast: protobufs.CastId
-  ): HubAsyncResult<protobufs.ReactionAddMessage> {
+  async getReaction(fid: number, type: ReactionType, cast: CastId): HubAsyncResult<ReactionAddMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -471,9 +485,9 @@ class Engine {
 
   async getReactionsByFid(
     fid: number,
-    type?: protobufs.ReactionType,
+    type?: ReactionType,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.ReactionAddMessage>> {
+  ): HubAsyncResult<MessagesPage<ReactionAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -486,10 +500,10 @@ class Engine {
   }
 
   async getReactionsByCast(
-    castId: protobufs.CastId,
-    type?: protobufs.ReactionType,
+    castId: CastId,
+    type?: ReactionType,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.ReactionAddMessage>> {
+  ): HubAsyncResult<MessagesPage<ReactionAddMessage>> {
     const validatedCastId = validations.validateCastId(castId);
     if (validatedCastId.isErr()) {
       return err(validatedCastId.error);
@@ -504,7 +518,7 @@ class Engine {
   async getAllReactionMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.ReactionAddMessage | protobufs.ReactionRemoveMessage>> {
+  ): HubAsyncResult<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -520,7 +534,7 @@ class Engine {
   /*                          Verification Store Methods                        */
   /* -------------------------------------------------------------------------- */
 
-  async getVerification(fid: number, address: Uint8Array): HubAsyncResult<protobufs.VerificationAddEthAddressMessage> {
+  async getVerification(fid: number, address: Uint8Array): HubAsyncResult<VerificationAddEthAddressMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -537,7 +551,7 @@ class Engine {
   async getVerificationsByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.VerificationAddEthAddressMessage>> {
+  ): HubAsyncResult<MessagesPage<VerificationAddEthAddressMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -552,7 +566,7 @@ class Engine {
   async getAllVerificationMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.VerificationAddEthAddressMessage | protobufs.VerificationRemoveMessage>> {
+  ): HubAsyncResult<MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -568,7 +582,7 @@ class Engine {
   /*                              Signer Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getSigner(fid: number, signerPubKey: Uint8Array): HubAsyncResult<protobufs.SignerAddMessage> {
+  async getSigner(fid: number, signerPubKey: Uint8Array): HubAsyncResult<SignerAddMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -582,10 +596,7 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
   }
 
-  async getSignersByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.SignerAddMessage>> {
+  async getSignersByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<MessagesPage<SignerAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -594,11 +605,11 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid, pageOptions), (e) => e as HubError);
   }
 
-  async getIdRegistryEvent(fid: number): HubAsyncResult<protobufs.IdRegistryEvent> {
+  async getIdRegistryEvent(fid: number): HubAsyncResult<IdRegistryEvent> {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEvent(fid), (e) => e as HubError);
   }
 
-  async getIdRegistryEventByAddress(address: Uint8Array): HubAsyncResult<protobufs.IdRegistryEvent> {
+  async getIdRegistryEventByAddress(address: Uint8Array): HubAsyncResult<IdRegistryEvent> {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEventByAddress(address), (e) => e as HubError);
   }
 
@@ -612,7 +623,7 @@ class Engine {
   async getAllSignerMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.SignerAddMessage | protobufs.SignerRemoveMessage>> {
+  ): HubAsyncResult<MessagesPage<SignerAddMessage | SignerRemoveMessage>> {
     return ResultAsync.fromPromise(this._signerStore.getAllSignerMessagesByFid(fid, pageOptions), (e) => e as HubError);
   }
 
@@ -620,7 +631,7 @@ class Engine {
   /*                           User Data Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getUserData(fid: number, type: protobufs.UserDataType): HubAsyncResult<protobufs.UserDataAddMessage> {
+  async getUserData(fid: number, type: UserDataType): HubAsyncResult<UserDataAddMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -629,10 +640,7 @@ class Engine {
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAdd(fid, type), (e) => e as HubError);
   }
 
-  async getUserDataByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): HubAsyncResult<MessagesPage<protobufs.UserDataAddMessage>> {
+  async getUserDataByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<MessagesPage<UserDataAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -641,7 +649,7 @@ class Engine {
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByFid(fid, pageOptions), (e) => e as HubError);
   }
 
-  async getNameRegistryEvent(fname: Uint8Array): HubAsyncResult<protobufs.NameRegistryEvent> {
+  async getNameRegistryEvent(fname: Uint8Array): HubAsyncResult<NameRegistryEvent> {
     const validatedFname = validations.validateFname(fname);
     if (validatedFname.isErr()) {
       return err(validatedFname.error);
@@ -654,7 +662,7 @@ class Engine {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async validateMessage(message: protobufs.Message): HubAsyncResult<protobufs.Message> {
+  private async validateMessage(message: Message): HubAsyncResult<Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError('bad_request.validation_failure', 'message data is missing'));
@@ -678,7 +686,7 @@ class Engine {
     }
 
     // 4. Check that the signer is valid
-    if (protobufs.isSignerAddMessage(message) || protobufs.isSignerRemoveMessage(message)) {
+    if (isSignerAddMessage(message) || isSignerRemoveMessage(message)) {
       if (bytesCompare(message.signer, custodyEvent.value.to) !== 0) {
         const hex = Result.combine([bytesToHexString(message.signer), bytesToHexString(custodyEvent.value.to)]);
         return hex.andThen(([signerHex, custodyHex]) => {
@@ -709,7 +717,7 @@ class Engine {
     }
 
     // 5. For fname add UserDataAdd messages, check that the user actually owns the fname
-    if (protobufs.isUserDataAddMessage(message) && message.data.userDataBody.type === protobufs.UserDataType.FNAME) {
+    if (isUserDataAddMessage(message) && message.data.userDataBody.type === UserDataType.FNAME) {
       // For fname messages, check if the user actually owns the fname.
       const fnameBytes = utf8StringToBytes(message.data.userDataBody.value);
       if (fnameBytes.isErr()) {
@@ -749,7 +757,7 @@ class Engine {
 
     // 6. Check message body and envelope
     if (this._validationWorker) {
-      return new Promise<HubResult<protobufs.Message>>((resolve) => {
+      return new Promise<HubResult<Message>>((resolve) => {
         const id = this._validationWorkerJobId++;
         this._validationWorkerPromiseMap.set(id, resolve);
 
@@ -760,12 +768,12 @@ class Engine {
     }
   }
 
-  private async handleMergeIdRegistryEvent(event: protobufs.MergeIdRegistryEventHubEvent): HubAsyncResult<void> {
+  private async handleMergeIdRegistryEvent(event: MergeIdRegistryEventHubEvent): HubAsyncResult<void> {
     const { idRegistryEvent } = event.mergeIdRegistryEventBody;
     const fromAddress = idRegistryEvent.from;
     if (fromAddress && fromAddress.length > 0) {
       // Revoke signer messages
-      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+      const payload = RevokeMessagesBySignerJobPayload.create({
         fid: idRegistryEvent.fid,
         signer: fromAddress,
       });
@@ -779,7 +787,7 @@ class Engine {
 
       // Revoke UserDataAdd fname messages
       const fnameAdd = await ResultAsync.fromPromise(
-        this._userDataStore.getUserDataAdd(idRegistryEvent.fid, protobufs.UserDataType.FNAME),
+        this._userDataStore.getUserDataAdd(idRegistryEvent.fid, UserDataType.FNAME),
         () => undefined
       );
       if (fnameAdd.isOk()) {
@@ -806,12 +814,12 @@ class Engine {
     return ok(undefined);
   }
 
-  private async handleMergeNameRegistryEvent(event: protobufs.MergeNameRegistryEventHubEvent): HubAsyncResult<void> {
+  private async handleMergeNameRegistryEvent(event: MergeNameRegistryEventHubEvent): HubAsyncResult<void> {
     const { nameRegistryEvent } = event.mergeNameRegistryEventBody;
 
     // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
     // previous owner of the name.
-    if (nameRegistryEvent.type === protobufs.NameRegistryEventType.TRANSFER && nameRegistryEvent.from.length > 0) {
+    if (nameRegistryEvent.type === NameRegistryEventType.TRANSFER && nameRegistryEvent.from.length > 0) {
       // Check to see if the from address has an fid
       const idRegistryEvent = await ResultAsync.fromPromise(
         getIdRegistryEventByCustodyAddress(this._db, nameRegistryEvent.from),
@@ -823,7 +831,7 @@ class Engine {
 
         // Check if this fid assigned the fname with a UserDataAdd message
         const fnameAdd = await ResultAsync.fromPromise(
-          this._userDataStore.getUserDataAdd(fid, protobufs.UserDataType.FNAME),
+          this._userDataStore.getUserDataAdd(fid, UserDataType.FNAME),
           () => undefined
         );
         if (fnameAdd.isOk()) {
@@ -849,11 +857,11 @@ class Engine {
     return ok(undefined);
   }
 
-  private async handleMergeMessageEvent(event: protobufs.MergeMessageHubEvent): HubAsyncResult<void> {
+  private async handleMergeMessageEvent(event: MergeMessageHubEvent): HubAsyncResult<void> {
     const { message } = event.mergeMessageBody;
 
-    if (protobufs.isSignerRemoveMessage(message)) {
-      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+    if (isSignerRemoveMessage(message)) {
+      const payload = RevokeMessagesBySignerJobPayload.create({
         fid: message.data.fid,
         signer: message.data.signerRemoveBody.signer,
       });
@@ -869,11 +877,11 @@ class Engine {
     return ok(undefined);
   }
 
-  private async handlePruneMessageEvent(event: protobufs.PruneMessageHubEvent): HubAsyncResult<void> {
+  private async handlePruneMessageEvent(event: PruneMessageHubEvent): HubAsyncResult<void> {
     const { message } = event.pruneMessageBody;
 
-    if (protobufs.isSignerAddMessage(message)) {
-      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+    if (isSignerAddMessage(message)) {
+      const payload = RevokeMessagesBySignerJobPayload.create({
         fid: message.data.fid,
         signer: message.data.signerAddBody.signer,
       });
@@ -889,11 +897,11 @@ class Engine {
     return ok(undefined);
   }
 
-  private async handleRevokeMessageEvent(event: protobufs.RevokeMessageHubEvent): HubAsyncResult<void> {
+  private async handleRevokeMessageEvent(event: RevokeMessageHubEvent): HubAsyncResult<void> {
     const { message } = event.revokeMessageBody;
 
-    if (protobufs.isSignerAddMessage(message)) {
-      const payload = protobufs.RevokeMessagesBySignerJobPayload.create({
+    if (isSignerAddMessage(message)) {
+      const payload = RevokeMessagesBySignerJobPayload.create({
         fid: message.data.fid,
         signer: message.data.signerAddBody.signer,
       });
