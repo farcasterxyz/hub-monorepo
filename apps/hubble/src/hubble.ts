@@ -327,6 +327,12 @@ export class Hub implements HubInterface {
 
     await this.engine.start();
 
+    // Start the RPC server
+    await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ? this.options.rpcPort : 0);
+    if (this.options.adminServerEnabled) {
+      await this.adminServer.start(this.options.adminServerHost ?? '127.0.0.1');
+    }
+
     // Start the ETH registry provider first
     if (this.ethRegistryProvider) {
       await this.ethRegistryProvider.start();
@@ -347,11 +353,6 @@ export class Hub implements HubInterface {
       allowedPeerIdStrs: this.options.allowedPeers,
     });
 
-    // Start the RPC server
-    await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ? this.options.rpcPort : 0);
-    if (this.options.adminServerEnabled) {
-      await this.adminServer.start(this.options.adminServerHost ?? '127.0.0.1');
-    }
     this.registerEventHandlers();
 
     // Start cron tasks
