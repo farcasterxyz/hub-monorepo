@@ -1,4 +1,11 @@
-import { HubService, HubServiceClientImpl, GrpcWebError, GrpcWebImpl } from './generated/rpc';
+import {
+  HubService,
+  HubServiceClientImpl,
+  GrpcWebError,
+  GrpcWebImpl,
+  AdminService,
+  AdminServiceClientImpl,
+} from './generated/rpc';
 import { NodeHttpTransport } from '@improbable-eng/grpc-web-node-http-transport';
 
 import { grpc } from '@improbable-eng/grpc-web';
@@ -72,10 +79,25 @@ const wrapClient = <C extends object>(client: C) => {
   }) as unknown as WrappedClient<C>;
 };
 
-export type RpcWebClient = WrappedClient<HubService>;
+export type HubRpcClient = WrappedClient<HubService>;
 
-export const getRpcWebClient = (url: string, isBrowser = true): WrappedClient<HubService> => {
-  return wrapClient(
-    new HubServiceClientImpl(new GrpcWebImpl(url, isBrowser ? {} : { transport: NodeHttpTransport() }))
-  );
+/* eslint-disable @typescript-eslint/no-unused-vars */
+export const getSSLHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
+  throw new Error('getSSLHubRpcClient not implemented');
+  // return wrapClient(new HubServiceClientImpl(getRpcWebClient('https://' + address, isBrowser)));
+};
+/* eslint-enable @typescript-eslint/no-unused-vars */
+
+export const getInsecureHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
+  return wrapClient(new HubServiceClientImpl(getRpcWebClient('http://' + address, isBrowser)));
+};
+
+export type AdminRpcClient = WrappedClient<AdminService>;
+
+export const getAdminRpcClient = (address: string, isBrowser = true): AdminRpcClient => {
+  return wrapClient(new AdminServiceClientImpl(getRpcWebClient('http://' + address, isBrowser)));
+};
+
+const getRpcWebClient = (address: string, isBrowser = true): GrpcWebImpl => {
+  return new GrpcWebImpl(address, isBrowser ? {} : { transport: NodeHttpTransport() });
 };
