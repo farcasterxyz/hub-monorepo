@@ -38,6 +38,7 @@ export interface ContactInfoContent {
   rpcAddress: GossipAddressInfo | undefined;
   excludedHashes: string[];
   count: number;
+  hubVersion: string;
 }
 
 export interface GossipMessage {
@@ -130,7 +131,7 @@ export const GossipAddressInfo = {
 };
 
 function createBaseContactInfoContent(): ContactInfoContent {
-  return { gossipAddress: undefined, rpcAddress: undefined, excludedHashes: [], count: 0 };
+  return { gossipAddress: undefined, rpcAddress: undefined, excludedHashes: [], count: 0, hubVersion: '' };
 }
 
 export const ContactInfoContent = {
@@ -146,6 +147,9 @@ export const ContactInfoContent = {
     }
     if (message.count !== 0) {
       writer.uint32(32).uint32(message.count);
+    }
+    if (message.hubVersion !== '') {
+      writer.uint32(42).string(message.hubVersion);
     }
     return writer;
   },
@@ -169,6 +173,9 @@ export const ContactInfoContent = {
         case 4:
           message.count = reader.uint32();
           break;
+        case 5:
+          message.hubVersion = reader.string();
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -183,6 +190,7 @@ export const ContactInfoContent = {
       rpcAddress: isSet(object.rpcAddress) ? GossipAddressInfo.fromJSON(object.rpcAddress) : undefined,
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       count: isSet(object.count) ? Number(object.count) : 0,
+      hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : '',
     };
   },
 
@@ -198,6 +206,7 @@ export const ContactInfoContent = {
       obj.excludedHashes = [];
     }
     message.count !== undefined && (obj.count = Math.round(message.count));
+    message.hubVersion !== undefined && (obj.hubVersion = message.hubVersion);
     return obj;
   },
 
@@ -217,6 +226,7 @@ export const ContactInfoContent = {
         : undefined;
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.count = object.count ?? 0;
+    message.hubVersion = object.hubVersion ?? '';
     return message;
   },
 };

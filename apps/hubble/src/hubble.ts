@@ -48,7 +48,7 @@ import {
   p2pMultiAddrStr,
 } from '~/utils/p2p';
 import { PeriodicTestDataJobScheduler, TestUser } from '~/utils/periodicTestDataJob';
-import { VersionSchedule } from '~/utils/versions';
+import { isBelowMinFarcasterVersion, VersionSchedule } from '~/utils/versions';
 import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcasterVersionJob';
 import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrRevokeMessagesJob';
 
@@ -393,6 +393,7 @@ export class Hub implements HubInterface {
         rpcAddress: rpcAddressContactInfo,
         excludedHashes: snapshot.excludedHashes,
         count: snapshot.numMessages,
+        hubVersion: FARCASTER_VERSION,
       });
     });
   }
@@ -518,6 +519,13 @@ export class Hub implements HubInterface {
           { error: p2pMultiAddrResult.value.error, message, address: addressInfo.value },
           'failed to parse multiaddr'
         );
+        return;
+      }
+
+      // Ignore peers that are below the minimum supported version.
+      const theirVersion = message.hubVersion;
+      if (isBelowMinFarcasterVersion(theirVersion)) {
+        log.warn({ peerId, theirVersion }, 'Peer is running an outdated version, ignoring');
         return;
       }
 
