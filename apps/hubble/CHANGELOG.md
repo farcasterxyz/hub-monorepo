@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.0.21
+
+### Patch Changes
+
+- c4529a7: merge protobufs and utils packages into core
+- Updated dependencies [1e4e5ba]
+- Updated dependencies [c4529a7]
+  - @farcaster/hub-nodejs@0.6.2
+
 ## 1.0.20
 
 ### Patch Changes
