@@ -29,7 +29,7 @@
     "ts-proto": "^1.146.0"
   },
   "dependencies": {
-    "@farcaster/utils": "^0.5.0",
+    "@farcaster/core": "^0.5.0",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0"
   }

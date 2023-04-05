@@ -3,7 +3,7 @@ import * as grpc from '@grpc/grpc-js';
 import { Metadata } from '@grpc/grpc-js';
 import type { CallOptions, Client, ClientReadableStream, ClientUnaryCall, ServiceError } from '@grpc/grpc-js';
 import { err, ok } from 'neverthrow';
-import { HubError, HubErrorCode, HubResult } from '@farcaster/utils';
+import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
 
 const fromServiceError = (err: ServiceError): HubError => {
   let context = err.details;
