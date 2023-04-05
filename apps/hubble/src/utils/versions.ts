@@ -1,6 +1,6 @@
 import { ok, err } from 'neverthrow';
 import semver from 'semver';
-import { HubError, HubResult } from '@farcaster/utils';
+import { HubError, HubResult } from '@farcaster/hub-nodejs';
 import { FARCASTER_VERSIONS_SCHEDULE } from '~/hubble';
 
 export type VersionSchedule = { version: string; expiresAt: number };

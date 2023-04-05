@@ -47,7 +47,7 @@ jobs:
           retry_wait_seconds: 5
           max_attempts: 10
           shell: bash
-          command: ./grpcurl -plaintext -import-path packages/protobufs/src/schemas -proto packages/protobufs/src/schemas/rpc.proto 127.0.0.1:2283 HubService.GetInfo
+          command: ./grpcurl -plaintext -import-path protobufs/schemas -proto protobufs/schemas/rpc.proto 127.0.0.1:2283 HubService.GetInfo
           on_retry_command: docker logs hub
 
   analyze:

@@ -8,8 +8,7 @@ export type {
   ServerWritableStream,
 } from '@grpc/grpc-js';
 
-export * from '@farcaster/protobufs';
-export * from '@farcaster/utils';
+export * from '@farcaster/core';
 
 export * from './generated/rpc';
 export * from './client';

@@ -1,7 +1,6 @@
-import { bytesToHexString, HubAsyncResult, HubError } from '@farcaster/utils';
+import { bytesToHexString, HubAsyncResult, HubError, Message } from '@farcaster/hub-nodejs';
 import { ok, Result } from 'neverthrow';
 import cron from 'node-cron';
-import { Message } from '@farcaster/protobufs';
 import { logger } from '~/utils/logger';
 import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserMessagePostfixMax } from '~/storage/db/types';
 import RocksDB from '~/storage/db/rocksdb';

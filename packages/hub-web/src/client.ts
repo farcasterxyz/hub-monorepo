@@ -10,7 +10,7 @@ import { NodeHttpTransport } from '@improbable-eng/grpc-web-node-http-transport'
 
 import { grpc } from '@improbable-eng/grpc-web';
 import { err, ok } from 'neverthrow';
-import { HubError, HubErrorCode, HubResult } from '@farcaster/utils';
+import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
