@@ -1,5 +1,15 @@
 # @farcaster/utils
 
+## 0.6.0
+
+### Minor Changes
+
+- c4529a7: merge protobufs and utils packages into core
+
+### Patch Changes
+
+- 1e4e5ba: update tsup build command to check target environments and use tsup shims
+
 ## 0.5.0
 
 ### Minor Changes

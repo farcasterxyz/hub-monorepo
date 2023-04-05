@@ -1,5 +1,15 @@
 # @farcaster/hub-nodejs
 
+## 0.6.2
+
+### Patch Changes
+
+- 1e4e5ba: update tsup build command to check target environments and use tsup shims
+- c4529a7: merge protobufs and utils packages into core
+- Updated dependencies [1e4e5ba]
+- Updated dependencies [c4529a7]
+  - @farcaster/core@0.6.0
+
 ## 0.6.1
 
 ### Patch Changes
