@@ -1,4 +1,4 @@
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from './protobufs';
 import { ok } from 'neverthrow';
 import { Factories } from './factories';
 import * as validations from './validations';

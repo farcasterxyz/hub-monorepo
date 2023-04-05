@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from './protobufs';
 import { Wallet } from 'ethers';
 import { err, ok } from 'neverthrow';
 import * as builders from './builders';

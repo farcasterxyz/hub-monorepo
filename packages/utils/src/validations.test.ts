@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from './protobufs';
 import { err, ok } from 'neverthrow';
 import { bytesToUtf8String } from './bytes';
 import { HubError } from './errors';

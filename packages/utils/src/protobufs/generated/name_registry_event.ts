@@ -1,68 +1,69 @@
 /* eslint-disable */
-import Long from 'long';
 import _m0 from 'protobufjs/minimal';
 
-export enum IdRegistryEventType {
+export enum NameRegistryEventType {
   NONE = 0,
-  REGISTER = 1,
-  TRANSFER = 2,
+  TRANSFER = 1,
+  RENEW = 2,
 }
 
-export function idRegistryEventTypeFromJSON(object: any): IdRegistryEventType {
+export function nameRegistryEventTypeFromJSON(object: any): NameRegistryEventType {
   switch (object) {
     case 0:
-    case 'ID_REGISTRY_EVENT_TYPE_NONE':
-      return IdRegistryEventType.NONE;
+    case 'NAME_REGISTRY_EVENT_TYPE_NONE':
+      return NameRegistryEventType.NONE;
     case 1:
-    case 'ID_REGISTRY_EVENT_TYPE_REGISTER':
-      return IdRegistryEventType.REGISTER;
+    case 'NAME_REGISTRY_EVENT_TYPE_TRANSFER':
+      return NameRegistryEventType.TRANSFER;
     case 2:
-    case 'ID_REGISTRY_EVENT_TYPE_TRANSFER':
-      return IdRegistryEventType.TRANSFER;
+    case 'NAME_REGISTRY_EVENT_TYPE_RENEW':
+      return NameRegistryEventType.RENEW;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum IdRegistryEventType');
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NameRegistryEventType');
   }
 }
 
-export function idRegistryEventTypeToJSON(object: IdRegistryEventType): string {
+export function nameRegistryEventTypeToJSON(object: NameRegistryEventType): string {
   switch (object) {
-    case IdRegistryEventType.NONE:
-      return 'ID_REGISTRY_EVENT_TYPE_NONE';
-    case IdRegistryEventType.REGISTER:
-      return 'ID_REGISTRY_EVENT_TYPE_REGISTER';
-    case IdRegistryEventType.TRANSFER:
-      return 'ID_REGISTRY_EVENT_TYPE_TRANSFER';
+    case NameRegistryEventType.NONE:
+      return 'NAME_REGISTRY_EVENT_TYPE_NONE';
+    case NameRegistryEventType.TRANSFER:
+      return 'NAME_REGISTRY_EVENT_TYPE_TRANSFER';
+    case NameRegistryEventType.RENEW:
+      return 'NAME_REGISTRY_EVENT_TYPE_RENEW';
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum IdRegistryEventType');
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NameRegistryEventType');
   }
 }
 
-export interface IdRegistryEvent {
+export interface NameRegistryEvent {
   blockNumber: number;
   blockHash: Uint8Array;
   transactionHash: Uint8Array;
   logIndex: number;
-  fid: number;
-  to: Uint8Array;
-  type: IdRegistryEventType;
+  fname: Uint8Array;
   from: Uint8Array;
+  to: Uint8Array;
+  type: NameRegistryEventType;
+  expiry: number;
 }
 
-function createBaseIdRegistryEvent(): IdRegistryEvent {
+function createBaseNameRegistryEvent(): NameRegistryEvent {
   return {
     blockNumber: 0,
     blockHash: new Uint8Array(),
     transactionHash: new Uint8Array(),
     logIndex: 0,
-    fid: 0,
+    fname: new Uint8Array(),
+    from: new Uint8Array(),
     to: new Uint8Array(),
     type: 0,
-    from: new Uint8Array(),
+    expiry: 0,
   };
 }
 
-export const IdRegistryEvent = {
-  encode(message: IdRegistryEvent, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const NameRegistryEvent = {
+  encode(message: NameRegistryEvent, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.blockNumber !== 0) {
       writer.uint32(8).uint32(message.blockNumber);
     }
@@ -75,74 +76,118 @@ export const IdRegistryEvent = {
     if (message.logIndex !== 0) {
       writer.uint32(32).uint32(message.logIndex);
     }
-    if (message.fid !== 0) {
-      writer.uint32(40).uint64(message.fid);
-    }
-    if (message.to.length !== 0) {
-      writer.uint32(50).bytes(message.to);
-    }
-    if (message.type !== 0) {
-      writer.uint32(56).int32(message.type);
+    if (message.fname.length !== 0) {
+      writer.uint32(42).bytes(message.fname);
     }
     if (message.from.length !== 0) {
-      writer.uint32(66).bytes(message.from);
+      writer.uint32(50).bytes(message.from);
+    }
+    if (message.to.length !== 0) {
+      writer.uint32(58).bytes(message.to);
+    }
+    if (message.type !== 0) {
+      writer.uint32(64).int32(message.type);
+    }
+    if (message.expiry !== 0) {
+      writer.uint32(72).uint32(message.expiry);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): IdRegistryEvent {
+  decode(input: _m0.Reader | Uint8Array, length?: number): NameRegistryEvent {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseIdRegistryEvent();
+    const message = createBaseNameRegistryEvent();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 8) {
+            break;
+          }
+
           message.blockNumber = reader.uint32();
-          break;
+          continue;
         case 2:
+          if (tag != 18) {
+            break;
+          }
+
           message.blockHash = reader.bytes();
-          break;
+          continue;
         case 3:
+          if (tag != 26) {
+            break;
+          }
+
           message.transactionHash = reader.bytes();
-          break;
+          continue;
         case 4:
+          if (tag != 32) {
+            break;
+          }
+
           message.logIndex = reader.uint32();
-          break;
+          continue;
         case 5:
-          message.fid = longToNumber(reader.uint64() as Long);
-          break;
+          if (tag != 42) {
+            break;
+          }
+
+          message.fname = reader.bytes();
+          continue;
         case 6:
-          message.to = reader.bytes();
-          break;
-        case 7:
-          message.type = reader.int32() as any;
-          break;
-        case 8:
+          if (tag != 50) {
+            break;
+          }
+
           message.from = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.to = reader.bytes();
+          continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.type = reader.int32() as any;
+          continue;
+        case 9:
+          if (tag != 72) {
+            break;
+          }
+
+          message.expiry = reader.uint32();
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
 
-  fromJSON(object: any): IdRegistryEvent {
+  fromJSON(object: any): NameRegistryEvent {
     return {
       blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
       transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
       logIndex: isSet(object.logIndex) ? Number(object.logIndex) : 0,
-      fid: isSet(object.fid) ? Number(object.fid) : 0,
-      to: isSet(object.to) ? bytesFromBase64(object.to) : new Uint8Array(),
-      type: isSet(object.type) ? idRegistryEventTypeFromJSON(object.type) : 0,
+      fname: isSet(object.fname) ? bytesFromBase64(object.fname) : new Uint8Array(),
       from: isSet(object.from) ? bytesFromBase64(object.from) : new Uint8Array(),
+      to: isSet(object.to) ? bytesFromBase64(object.to) : new Uint8Array(),
+      type: isSet(object.type) ? nameRegistryEventTypeFromJSON(object.type) : 0,
+      expiry: isSet(object.expiry) ? Number(object.expiry) : 0,
     };
   },
 
-  toJSON(message: IdRegistryEvent): unknown {
+  toJSON(message: NameRegistryEvent): unknown {
     const obj: any = {};
     message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
     message.blockHash !== undefined &&
@@ -152,28 +197,31 @@ export const IdRegistryEvent = {
         message.transactionHash !== undefined ? message.transactionHash : new Uint8Array()
       ));
     message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.to !== undefined && (obj.to = base64FromBytes(message.to !== undefined ? message.to : new Uint8Array()));
-    message.type !== undefined && (obj.type = idRegistryEventTypeToJSON(message.type));
+    message.fname !== undefined &&
+      (obj.fname = base64FromBytes(message.fname !== undefined ? message.fname : new Uint8Array()));
     message.from !== undefined &&
       (obj.from = base64FromBytes(message.from !== undefined ? message.from : new Uint8Array()));
+    message.to !== undefined && (obj.to = base64FromBytes(message.to !== undefined ? message.to : new Uint8Array()));
+    message.type !== undefined && (obj.type = nameRegistryEventTypeToJSON(message.type));
+    message.expiry !== undefined && (obj.expiry = Math.round(message.expiry));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<IdRegistryEvent>, I>>(base?: I): IdRegistryEvent {
-    return IdRegistryEvent.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<NameRegistryEvent>, I>>(base?: I): NameRegistryEvent {
+    return NameRegistryEvent.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<IdRegistryEvent>, I>>(object: I): IdRegistryEvent {
-    const message = createBaseIdRegistryEvent();
+  fromPartial<I extends Exact<DeepPartial<NameRegistryEvent>, I>>(object: I): NameRegistryEvent {
+    const message = createBaseNameRegistryEvent();
     message.blockNumber = object.blockNumber ?? 0;
     message.blockHash = object.blockHash ?? new Uint8Array();
     message.transactionHash = object.transactionHash ?? new Uint8Array();
     message.logIndex = object.logIndex ?? 0;
-    message.fid = object.fid ?? 0;
+    message.fname = object.fname ?? new Uint8Array();
+    message.from = object.from ?? new Uint8Array();
     message.to = object.to ?? new Uint8Array();
     message.type = object.type ?? 0;
-    message.from = object.from ?? new Uint8Array();
+    message.expiry = object.expiry ?? 0;
     return message;
   },
 };
@@ -238,18 +286,6 @@ type KeysOfUnion<T> = T extends T ? keyof T : never;
 type Exact<P, I extends P> = P extends Builtin
   ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
-
-function longToNumber(long: Long): number {
-  if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
-  }
-  return long.toNumber();
-}
-
-if (_m0.util.Long !== Long) {
-  _m0.util.Long = Long as any;
-  _m0.configure();
-}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

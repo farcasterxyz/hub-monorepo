@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from '@farcaster/protobufs';
+import { FarcasterNetwork } from '../protobufs';
 import { blake3 } from '@noble/hashes/blake3';
 import { randomBytes } from 'ethers';
 import { Wallet } from 'ethers5';

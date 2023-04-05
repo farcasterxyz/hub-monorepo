@@ -458,27 +458,52 @@ export const Message = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.data = MessageData.decode(reader, reader.uint32());
-          break;
+          continue;
         case 2:
+          if (tag != 18) {
+            break;
+          }
+
           message.hash = reader.bytes();
-          break;
+          continue;
         case 3:
+          if (tag != 24) {
+            break;
+          }
+
           message.hashScheme = reader.int32() as any;
-          break;
+          continue;
         case 4:
+          if (tag != 34) {
+            break;
+          }
+
           message.signature = reader.bytes();
-          break;
+          continue;
         case 5:
+          if (tag != 40) {
+            break;
+          }
+
           message.signatureScheme = reader.int32() as any;
-          break;
+          continue;
         case 6:
+          if (tag != 50) {
+            break;
+          }
+
           message.signer = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -590,45 +615,94 @@ export const MessageData = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 8) {
+            break;
+          }
+
           message.type = reader.int32() as any;
-          break;
+          continue;
         case 2:
+          if (tag != 16) {
+            break;
+          }
+
           message.fid = longToNumber(reader.uint64() as Long);
-          break;
+          continue;
         case 3:
+          if (tag != 24) {
+            break;
+          }
+
           message.timestamp = reader.uint32();
-          break;
+          continue;
         case 4:
+          if (tag != 32) {
+            break;
+          }
+
           message.network = reader.int32() as any;
-          break;
+          continue;
         case 5:
+          if (tag != 42) {
+            break;
+          }
+
           message.castAddBody = CastAddBody.decode(reader, reader.uint32());
-          break;
+          continue;
         case 6:
+          if (tag != 50) {
+            break;
+          }
+
           message.castRemoveBody = CastRemoveBody.decode(reader, reader.uint32());
-          break;
+          continue;
         case 7:
+          if (tag != 58) {
+            break;
+          }
+
           message.reactionBody = ReactionBody.decode(reader, reader.uint32());
-          break;
+          continue;
         case 9:
+          if (tag != 74) {
+            break;
+          }
+
           message.verificationAddEthAddressBody = VerificationAddEthAddressBody.decode(reader, reader.uint32());
-          break;
+          continue;
         case 10:
+          if (tag != 82) {
+            break;
+          }
+
           message.verificationRemoveBody = VerificationRemoveBody.decode(reader, reader.uint32());
-          break;
+          continue;
         case 11:
+          if (tag != 90) {
+            break;
+          }
+
           message.signerAddBody = SignerAddBody.decode(reader, reader.uint32());
-          break;
+          continue;
         case 12:
+          if (tag != 98) {
+            break;
+          }
+
           message.userDataBody = UserDataBody.decode(reader, reader.uint32());
-          break;
+          continue;
         case 13:
+          if (tag != 106) {
+            break;
+          }
+
           message.signerRemoveBody = SignerRemoveBody.decode(reader, reader.uint32());
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -752,15 +826,24 @@ export const SignerAddBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.signer = reader.bytes();
-          break;
+          continue;
         case 2:
+          if (tag != 18) {
+            break;
+          }
+
           message.name = reader.string();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -812,12 +895,17 @@ export const SignerRemoveBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.signer = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -867,15 +955,24 @@ export const UserDataBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 8) {
+            break;
+          }
+
           message.type = reader.int32() as any;
-          break;
+          continue;
         case 2:
+          if (tag != 18) {
+            break;
+          }
+
           message.value = reader.string();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -942,38 +1039,63 @@ export const CastAddBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.embeds.push(reader.string());
-          break;
+          continue;
         case 2:
-          if ((tag & 7) === 2) {
+          if (tag == 16) {
+            message.mentions.push(longToNumber(reader.uint64() as Long));
+            continue;
+          }
+
+          if (tag == 18) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.mentions.push(longToNumber(reader.uint64() as Long));
             }
-          } else {
-            message.mentions.push(longToNumber(reader.uint64() as Long));
+
+            continue;
           }
+
           break;
         case 3:
+          if (tag != 26) {
+            break;
+          }
+
           message.parentCastId = CastId.decode(reader, reader.uint32());
-          break;
+          continue;
         case 4:
+          if (tag != 34) {
+            break;
+          }
+
           message.text = reader.string();
-          break;
+          continue;
         case 5:
-          if ((tag & 7) === 2) {
+          if (tag == 40) {
+            message.mentionsPositions.push(reader.uint32());
+            continue;
+          }
+
+          if (tag == 42) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.mentionsPositions.push(reader.uint32());
             }
-          } else {
-            message.mentionsPositions.push(reader.uint32());
+
+            continue;
           }
-          break;
-        default:
-          reader.skipType(tag & 7);
+
           break;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -1051,12 +1173,17 @@ export const CastRemoveBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.targetHash = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -1106,15 +1233,24 @@ export const CastId = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 8) {
+            break;
+          }
+
           message.fid = longToNumber(reader.uint64() as Long);
-          break;
+          continue;
         case 2:
+          if (tag != 18) {
+            break;
+          }
+
           message.hash = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -1169,15 +1305,24 @@ export const ReactionBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 8) {
+            break;
+          }
+
           message.type = reader.int32() as any;
-          break;
+          continue;
         case 2:
+          if (tag != 18) {
+            break;
+          }
+
           message.targetCastId = CastId.decode(reader, reader.uint32());
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -1238,18 +1383,31 @@ export const VerificationAddEthAddressBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.address = reader.bytes();
-          break;
+          continue;
         case 2:
+          if (tag != 18) {
+            break;
+          }
+
           message.ethSignature = reader.bytes();
-          break;
+          continue;
         case 3:
+          if (tag != 26) {
+            break;
+          }
+
           message.blockHash = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },
@@ -1310,12 +1468,17 @@ export const VerificationRemoveBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.address = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },

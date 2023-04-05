@@ -39,28 +39,47 @@ export const DbTrieNode = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
+          if (tag != 10) {
+            break;
+          }
+
           message.key = reader.bytes();
-          break;
+          continue;
         case 2:
-          if ((tag & 7) === 2) {
+          if (tag == 16) {
+            message.childChars.push(reader.uint32());
+            continue;
+          }
+
+          if (tag == 18) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.childChars.push(reader.uint32());
             }
-          } else {
-            message.childChars.push(reader.uint32());
+
+            continue;
           }
+
           break;
         case 3:
+          if (tag != 24) {
+            break;
+          }
+
           message.items = reader.uint32();
-          break;
+          continue;
         case 4:
+          if (tag != 34) {
+            break;
+          }
+
           message.hash = reader.bytes();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
+          continue;
       }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
     }
     return message;
   },

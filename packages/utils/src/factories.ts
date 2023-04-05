@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { Factory } from '@farcaster/fishery';
-import * as protobufs from '@farcaster/protobufs';
+import * as protobufs from './protobufs';
 import { utils } from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { Wallet } from 'ethers';

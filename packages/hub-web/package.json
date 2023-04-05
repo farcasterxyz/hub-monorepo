@@ -16,9 +16,9 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "clean": "rimraf ./dist",
-    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto  --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputClientImpl=grpc-web,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true,lowerCaseServiceMethods=true --proto_path=../protobufs/src/schemas ../protobufs/src/schemas/rpc.proto",
+    "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto  --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputClientImpl=grpc-web,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true,lowerCaseServiceMethods=true --proto_path=../../protobufs//schemas ../../protobufs/schemas/rpc.proto",
     "lint": "eslint  src/ --color --ext .ts",
     "lint:fix": "yarn run lint -- --fix",
     "prepublishOnly": "yarn run build"
@@ -29,7 +29,6 @@
     "ts-proto": "^1.146.0"
   },
   "dependencies": {
-    "@farcaster/protobufs": "^0.2.0",
     "@farcaster/utils": "^0.5.0",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0"

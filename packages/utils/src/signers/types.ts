@@ -1,4 +1,4 @@
-import { MessageType } from '@farcaster/protobufs';
+import { MessageType } from '../protobufs';
 import { Ed25519Signer } from './ed25519Signer';
 import { Eip712Signer } from './eip712Signer';
 

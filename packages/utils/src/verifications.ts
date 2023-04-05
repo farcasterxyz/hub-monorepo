@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from '@farcaster/protobufs';
+import { FarcasterNetwork } from './protobufs';
 import { err, ok } from 'neverthrow';
 import { bytesToHexString } from './bytes';
 import { HubResult } from './errors';

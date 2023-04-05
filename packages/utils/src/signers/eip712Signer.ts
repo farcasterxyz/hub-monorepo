@@ -1,4 +1,4 @@
-import { SignatureScheme } from '@farcaster/protobufs';
+import { SignatureScheme } from '../protobufs';
 import { HubAsyncResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
