@@ -21,7 +21,8 @@ export type { Observable } from 'rxjs';
 const fromServiceError = (err: GrpcWebError): HubError => {
   let context = err['message'];
 
-  if (err.code === 14 && context === 'No connection established') {
+  // due to envoy, the error for no connection is Response closed without headers
+  if (err.code === 2 && context === 'Response closed without headers') {
     context =
       'Connection failed: please check that the hub’s address, ports and authentication config are correct. ' + context;
     return new HubError('unavailable' as HubErrorCode, context);
