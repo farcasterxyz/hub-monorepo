@@ -1,7 +1,7 @@
-import { HubAsyncResult } from '@farcaster/utils';
 import cron from 'node-cron';
 import { HubInterface } from '~/hubble';
 import { logger } from '~/utils/logger';
+import { HubAsyncResult } from '@farcaster/core';
 
 const log = logger.child({
   component: 'GossipContactInfo',

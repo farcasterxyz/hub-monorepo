@@ -2,7 +2,7 @@ import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJ
 import { MockHub } from '~/test/mocks';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
-import { FarcasterNetwork } from '@farcaster/protobufs';
+import { FarcasterNetwork } from '@farcaster/core';
 
 const db = jestRocksDB('jobs.GossipContactInfoJobScheduler.test');
 
