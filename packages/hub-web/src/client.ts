@@ -20,6 +20,7 @@ export type { Observable } from 'rxjs';
 
 const fromServiceError = (err: GrpcWebError): HubError => {
   let context = err['message'];
+
   if (err.code === 14 && context === 'No connection established') {
     context =
       'Connection failed: please check that the hub’s address, ports and authentication config are correct. ' + context;
@@ -85,18 +86,14 @@ const wrapClient = <C extends object>(client: C) => {
 
 export type HubRpcClient = WrappedClient<HubService>;
 
-export const getSSLHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
-  return wrapClient(new HubServiceClientImpl(getRpcWebClient('https://' + address, isBrowser)));
-};
-
-export const getInsecureHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
-  return wrapClient(new HubServiceClientImpl(getRpcWebClient('http://' + address, isBrowser)));
+export const getHubRpcWebClient = (url: string, isBrowser = true): HubRpcClient => {
+  return wrapClient(new HubServiceClientImpl(getRpcWebClient(url, isBrowser)));
 };
 
 export type AdminRpcClient = WrappedClient<AdminService>;
 
-export const getAdminRpcClient = (address: string, isBrowser = true): AdminRpcClient => {
-  return wrapClient(new AdminServiceClientImpl(getRpcWebClient('http://' + address, isBrowser)));
+export const getAdminRpcClient = (url: string, isBrowser = true): AdminRpcClient => {
+  return wrapClient(new AdminServiceClientImpl(getRpcWebClient(url, isBrowser)));
 };
 
 const getRpcWebClient = (address: string, isBrowser = true): GrpcWebImpl => {
