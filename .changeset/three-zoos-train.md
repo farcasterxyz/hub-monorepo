@@ -3,3 +3,4 @@
 ---
 
 export getAuthMetadata for hub-web
+export getHubRpcClient
