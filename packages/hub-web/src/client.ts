@@ -27,8 +27,9 @@ const fromServiceError = (err: GrpcWebError): HubError => {
     return new HubError('unavailable' as HubErrorCode, context);
   }
 
-  // TODO: grpc error code to HubErrorCode
-  return new HubError('unknown' as HubErrorCode, context);
+  // TODO: investigate why error details are not exposed in the response, also no grpc-web-details-bin
+  // this library can be helpful https://github.com/shumbo/grpc-web-error-details
+  return new HubError(Code[err.code].toLowerCase() as HubErrorCode, context);
 };
 
 // wrap grpc-web client with HubResult to make sure APIs are consistent with hub-nodejs
@@ -86,7 +87,7 @@ const wrapClient = <C extends object>(client: C) => {
 
 export type HubRpcClient = WrappedClient<HubService>;
 
-export const getHubRpcWebClient = (url: string, isBrowser = true): HubRpcClient => {
+export const getHubRpcClient = (url: string, isBrowser = true): HubRpcClient => {
   return wrapClient(new HubServiceClientImpl(getRpcWebClient(url, isBrowser)));
 };
 
@@ -102,6 +103,12 @@ const getRpcWebClient = (address: string, isBrowser = true): GrpcWebImpl => {
 
 export const getAuthMetadata = (username: string, password: string): grpc.Metadata => {
   const metadata = new grpc.Metadata();
-  metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+  if (typeof btoa === 'undefined') {
+    // nodejs
+    metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+  } else {
+    // browswer
+    metadata.set('authorization', `Basic ${btoa(`${username}:${password}`)}`);
+  }
   return metadata;
 };
