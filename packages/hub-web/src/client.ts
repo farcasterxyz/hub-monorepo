@@ -27,9 +27,7 @@ const fromServiceError = (err: GrpcWebError): HubError => {
     return new HubError('unavailable' as HubErrorCode, context);
   }
 
-  // TODO: investigate why error details are not exposed in the response, also no grpc-web-details-bin
-  // this library can be helpful https://github.com/shumbo/grpc-web-error-details
-  return new HubError(Code[err.code].toLowerCase() as HubErrorCode, context);
+  return new HubError(err.metadata.get('errcode')[0] as HubErrorCode, context);
 };
 
 // wrap grpc-web client with HubResult to make sure APIs are consistent with hub-nodejs
