@@ -16,7 +16,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto  --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputClientImpl=grpc-web,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true,lowerCaseServiceMethods=true --proto_path=../../protobufs//schemas ../../protobufs/schemas/rpc.proto",
     "lint": "eslint  src/ --color --ext .ts",
