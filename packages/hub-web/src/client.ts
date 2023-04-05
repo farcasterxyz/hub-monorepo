@@ -14,16 +14,20 @@ import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
+export const Code = grpc.Code;
+export const Metadata = grpc.Metadata;
+export type { Observable } from 'rxjs';
+
 const fromServiceError = (err: GrpcWebError): HubError => {
   let context = err['message'];
+
   if (err.code === 14 && context === 'No connection established') {
     context =
       'Connection failed: please check that the hub’s address, ports and authentication config are correct. ' + context;
     return new HubError('unavailable' as HubErrorCode, context);
   }
 
-  // TODO: grpc error code to HubErrorCode
-  return new HubError('unknown' as HubErrorCode, context);
+  return new HubError(err.metadata.get('errcode')[0] as HubErrorCode, context);
 };
 
 // wrap grpc-web client with HubResult to make sure APIs are consistent with hub-nodejs
@@ -81,20 +85,28 @@ const wrapClient = <C extends object>(client: C) => {
 
 export type HubRpcClient = WrappedClient<HubService>;
 
-export const getSSLHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
-  return wrapClient(new HubServiceClientImpl(getRpcWebClient('https://' + address, isBrowser)));
-};
-
-export const getInsecureHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
-  return wrapClient(new HubServiceClientImpl(getRpcWebClient('http://' + address, isBrowser)));
+export const getHubRpcClient = (url: string, isBrowser = true): HubRpcClient => {
+  return wrapClient(new HubServiceClientImpl(getRpcWebClient(url, isBrowser)));
 };
 
 export type AdminRpcClient = WrappedClient<AdminService>;
 
-export const getAdminRpcClient = (address: string, isBrowser = true): AdminRpcClient => {
-  return wrapClient(new AdminServiceClientImpl(getRpcWebClient('http://' + address, isBrowser)));
+export const getAdminRpcClient = (url: string, isBrowser = true): AdminRpcClient => {
+  return wrapClient(new AdminServiceClientImpl(getRpcWebClient(url, isBrowser)));
 };
 
 const getRpcWebClient = (address: string, isBrowser = true): GrpcWebImpl => {
   return new GrpcWebImpl(address, isBrowser ? {} : { transport: NodeHttpTransport() });
+};
+
+export const getAuthMetadata = (username: string, password: string): grpc.Metadata => {
+  const metadata = new grpc.Metadata();
+  if (typeof btoa === 'undefined') {
+    // nodejs
+    metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+  } else {
+    // browswer
+    metadata.set('authorization', `Basic ${btoa(`${username}:${password}`)}`);
+  }
+  return metadata;
 };
