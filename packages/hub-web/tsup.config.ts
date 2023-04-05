@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  target: ['chrome58', 'edge16', 'firefox57', 'safari11'],
+  target: ['chrome79', 'edge109', 'firefox102', 'safari12'],
   entryPoints: ['src/index.ts'],
   format: ['esm', 'cjs'],
   dts: true,
