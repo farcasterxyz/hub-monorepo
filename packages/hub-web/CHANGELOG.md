@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.2.2
+
+### Patch Changes
+
+- 9f0dc6a: enable getSSLHubRpcClient
+- 7194054: export getAuthMetadata for hub-web
+  export getHubRpcClient
+
 ## 0.2.1
 
 ### Patch Changes
