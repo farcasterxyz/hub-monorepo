@@ -28,7 +28,7 @@ import { getHubRpcClient } from '@farcaster/hub-web';
   // if you are testing from a node environment
   // const client = getHubRpcClient('https://testnet1.farcaster.xyz:2284', false);
 
-  // if you are testing from a braowser environment
+  // if you are testing from a browser environment
   const client = getHubRpcClient('https://testnet1.farcaster.xyz:2284');
 
   const castsResult = await client.getCastsByFid({ fid: 7884 });
