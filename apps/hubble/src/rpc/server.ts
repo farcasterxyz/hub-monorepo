@@ -42,6 +42,7 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
 import { RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
 import { BufferedStreamWriter } from './bufferedStreamWriter';
+import { sleep } from '~/utils/crypto';
 
 export type RpcUsers = Map<string, string[]>;
 
@@ -784,10 +785,18 @@ export default class Server {
             return;
           }
 
+          // Track our RSS usage, to detect a situation where we're writing a lot of data to the stream,
+          // but the client is not reading it. If we detect this, we'll stop writing to the stream.
+          // Right now, we don't act on it, but we'll log it for now. We could potentially
+          // destroy() the stream.
+          const rssUsage = process.memoryUsage().rss;
+          const RSS_USAGE_THRESHOLD = 1_000_000_000; // 1G
+
           for await (const [, value] of eventsIterator.value) {
             const event = HubEvent.decode(Uint8Array.from(value as Buffer));
             if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
               const writeResult = bufferedStreamWriter.writeToStream(event);
+
               if (writeResult.isErr()) {
                 logger.warn(
                   { err: writeResult.error },
@@ -798,6 +807,21 @@ export default class Server {
                 await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
 
                 return;
+              } else {
+                if (writeResult._unsafeUnwrap() === false) {
+                  // If the stream was buffered, we can wait for a bit before continuing
+                  // to allow the client to read the data. If this happens too much, the bufferedStreamWriter
+                  // will timeout and destroy the stream.
+                  await sleep(10);
+                }
+
+                // Write was successful, check the RSS usage
+                if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
+                  // more than 1G
+                  logger.warn(
+                    `subscribe: RSS usage increased by more than 1GB while returning events to ${stream.getPeer()}`
+                  );
+                }
               }
             }
           }
