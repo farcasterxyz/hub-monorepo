@@ -74,9 +74,8 @@ COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
 COPY --chown=node:node --from=build /home/node/app/tsconfig.json ./tsconfig.json
 COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
-COPY --chown=node:node --from=build /home/node/app/packages/protobufs/dist ./packages/protobufs/dist/
-COPY --chown=node:node --from=build /home/node/app/packages/protobufs/node_modules ./packages/protobufs/node_modules/
-COPY --chown=node:node --from=build /home/node/app/packages/utils/dist ./packages/utils/dist/
+COPY --chown=node:node --from=build /home/node/app/packages/core/dist ./packages/core/dist/
+COPY --chown=node:node --from=build /home/node/app/packages/core/node_modules ./packages/core/node_modules/
 COPY --chown=node:node --from=build /home/node/app/packages/hub-nodejs/dist ./packages/hub-nodejs/dist/
 
 # TODO: determine if this can be removed while using tsx (or find alternative)
