@@ -14,6 +14,10 @@ import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
+export const Code = grpc.Code;
+export const Metadata = grpc.Metadata;
+export type { Observable } from 'rxjs';
+
 const fromServiceError = (err: GrpcWebError): HubError => {
   let context = err['message'];
   if (err.code === 14 && context === 'No connection established') {
@@ -97,4 +101,10 @@ export const getAdminRpcClient = (address: string, isBrowser = true): AdminRpcCl
 
 const getRpcWebClient = (address: string, isBrowser = true): GrpcWebImpl => {
   return new GrpcWebImpl(address, isBrowser ? {} : { transport: NodeHttpTransport() });
+};
+
+export const getAuthMetadata = (username: string, password: string): grpc.Metadata => {
+  const metadata = new grpc.Metadata();
+  metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+  return metadata;
 };
