@@ -81,12 +81,9 @@ const wrapClient = <C extends object>(client: C) => {
 
 export type HubRpcClient = WrappedClient<HubService>;
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 export const getSSLHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
-  throw new Error('getSSLHubRpcClient not implemented');
-  // return wrapClient(new HubServiceClientImpl(getRpcWebClient('https://' + address, isBrowser)));
+  return wrapClient(new HubServiceClientImpl(getRpcWebClient('https://' + address, isBrowser)));
 };
-/* eslint-enable @typescript-eslint/no-unused-vars */
 
 export const getInsecureHubRpcClient = (address: string, isBrowser = true): HubRpcClient => {
   return wrapClient(new HubServiceClientImpl(getRpcWebClient('http://' + address, isBrowser)));
