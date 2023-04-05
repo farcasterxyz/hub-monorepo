@@ -73,6 +73,28 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.peerStore.addressBook;
   }
 
+  async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {
+    if (!this.addressBook) {
+      log.error({}, 'address book missing for gossipNode');
+    } else {
+      const addResult = await ResultAsync.fromPromise(
+        this.addressBook.add(peerId, [multiaddr]),
+        (error) => new HubError('unavailable', error as Error)
+      );
+      if (addResult.isErr()) {
+        log.error({ error: addResult.error, peerId }, 'failed to add contact info to address book');
+      }
+    }
+  }
+
+  async removePeerFromAddressBook(peerId: PeerId) {
+    if (!this.addressBook) {
+      log.error({}, 'address book missing for gossipNode');
+    } else {
+      return this.addressBook.delete(peerId);
+    }
+  }
+
   /** Returns the libp2p Peer instance after updating the connections in the AddressBook */
   async getPeerInfo(peerId: PeerId) {
     const existingConnections = this._node?.getConnections(peerId);
@@ -82,7 +104,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
       }
     }
-    return await this._node?.peerStore.get(peerId);
+    return this._node?.peerStore.get(peerId);
   }
 
   /** Returns the GossipSub instance used by the Node */

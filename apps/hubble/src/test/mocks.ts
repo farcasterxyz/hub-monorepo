@@ -1,5 +1,5 @@
 import { HubAsyncResult, HubError, HubState, IdRegistryEvent, Message, NameRegistryEvent } from '@farcaster/hub-nodejs';
-import { err } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import { HubInterface } from '~/hubble';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
@@ -7,6 +7,7 @@ import Engine from '~/storage/engine';
 export class MockHub implements HubInterface {
   public db: RocksDB;
   public engine: Engine;
+  public gossipCount = 0;
 
   constructor(db: RocksDB, engine: Engine) {
     this.db = db;
@@ -35,5 +36,10 @@ export class MockHub implements HubInterface {
     // HubStateModel.putTransaction(txn, hubState);
     // return await ResultAsync.fromPromise(this.db.commit(txn), (e) => e as HubError);
     return err(new HubError('unavailable', 'Not implemented'));
+  }
+
+  async gossipContactInfo(): HubAsyncResult<void> {
+    this.gossipCount += 1;
+    return ok(undefined);
   }
 }
