@@ -28,7 +28,8 @@ const fromServiceError = (err: GrpcWebError): HubError => {
     return new HubError('unavailable' as HubErrorCode, context);
   }
 
-  return new HubError(err.metadata.get('errcode')[0] as HubErrorCode, context);
+  // derive from grpc error code as fallback
+  return new HubError((err.metadata?.get('errcode')[0] || Code[err.code].toLowerCase()) as HubErrorCode, context);
 };
 
 // wrap grpc-web client with HubResult to make sure APIs are consistent with hub-nodejs
