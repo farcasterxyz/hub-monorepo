@@ -62,3 +62,8 @@ static_resources:
                       address: 0.0.0.0
                       # update the value to the port of rpc server
                       port_value: 2283
+      tls_context:
+        common_tls_context:
+          # https://stackoverflow.com/questions/69444526/python-grpc-failed-to-pick-subchannel
+          tls_certificates:
+            alpn_protocols: ["h2"]
