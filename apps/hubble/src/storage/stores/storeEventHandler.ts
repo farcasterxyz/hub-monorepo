@@ -25,6 +25,8 @@ import { RootPrefix, UserMessagePostfix } from '~/storage/db/types';
 import { StorageCache } from '~/storage/engine/storageCache';
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
+const DEFAULT_LOCK_QUEUE_SIZE = 1_000;
+const DEFAULT_LOCK_TIMEOUT = 500; // in ms
 
 export type StoreEvents = {
   /**
@@ -132,17 +134,26 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
 
-  constructor(db: RocksDB, storageCache: StorageCache) {
+  constructor(
+    db: RocksDB,
+    storageCache: StorageCache,
+    lockQueueSize = DEFAULT_LOCK_QUEUE_SIZE,
+    lockTimeout = DEFAULT_LOCK_TIMEOUT
+  ) {
     super();
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
-    this._lock = new AsyncLock({ maxPending: 1_000, timeout: 500 });
+    this._lock = new AsyncLock({ maxPending: lockQueueSize, timeout: lockTimeout });
     this._storageCache = storageCache;
   }
 
   getCacheMessageCount(fid: number, set: UserMessagePostfix): HubResult<number> {
     return this._storageCache.getMessageCount(fid, set);
+  }
+
+  async init() {
+    return this._storageCache.syncFromDb(this._db);
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {

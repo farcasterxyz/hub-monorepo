@@ -72,6 +72,8 @@ app
   .option('--admin-server-host <host>', "The host the admin server should listen on. (default: '127.0.0.1')")
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
+  .option('--commit-lock-timeout <number>', 'Commit lock timeout in milliseconds (default: 500)')
+  .option('--commit-lock-queue-size <number>', 'Commit lock queue size (default: 1000)')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
   .action(async (cliOptions) => {
@@ -285,6 +287,8 @@ app
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB,
       rebuildSyncTrie,
+      commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
+      commitLockQueueSize: cliOptions.commitLockQueueSize ?? hubConfig.commitLockQueueSize,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
       testUsers,
