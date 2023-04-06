@@ -9,6 +9,8 @@ A lightweight, fast Typescript interface for Farcaster Hubs. Designed to work wi
 - Has helpers to create and sign Farcaster messages.
 - Written entirely in TypeScript, with strict types for safety.
 
+APIs are the same as hub-nodejs (except client initialization). Read the [documentation](https://github.com/farcasterxyz/hubble/tree/main/packages/hub-nodejs/docs), see more [examples](https://github.com/farcasterxyz/hubble/tree/main/packages/hub-nodejs/examples) or get started with the guide below.
+
 ## Installation
 
 Install @farcaster/hub-web with the package manager of your choice
