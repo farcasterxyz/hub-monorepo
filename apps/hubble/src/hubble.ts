@@ -545,7 +545,8 @@ export class Hub implements HubInterface {
 
       // Ignore peers that are below the minimum supported version.
       const theirVersion = message.hubVersion;
-      if (isBelowMinFarcasterVersion(theirVersion)) {
+      const versionCheckResult = isBelowMinFarcasterVersion(theirVersion);
+      if (versionCheckResult.isErr() || (versionCheckResult.isOk() && !versionCheckResult.value)) {
         log.warn({ peerId, theirVersion }, 'Peer is running an outdated version, ignoring');
         await this.gossipNode.removePeerFromAddressBook(peerId);
         this.syncEngine.removeContactInfoForPeerId(peerId.toString());

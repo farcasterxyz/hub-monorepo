@@ -22,5 +22,11 @@ describe('versions tests', () => {
       const result = isBelowMinFarcasterVersion(theirVersion);
       expect(result).toEqual(ok(true));
     });
+
+    test('returns err if version is empty', () => {
+      const result = isBelowMinFarcasterVersion('');
+      expect(result.isErr()).toBeTruthy();
+      expect(result._unsafeUnwrapErr().message).toEqual('invalid version');
+    });
   });
 });

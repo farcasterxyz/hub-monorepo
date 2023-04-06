@@ -23,5 +23,9 @@ export const isBelowMinFarcasterVersion = (version: string): HubResult<boolean> 
     return err(minVersion.error);
   }
 
+  if (!semver.valid(version)) {
+    return err(new HubError('bad_request.invalid_param', 'invalid version'));
+  }
+
   return ok(semver.lt(version, minVersion.value));
 };
