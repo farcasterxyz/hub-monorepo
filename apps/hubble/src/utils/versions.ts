@@ -17,7 +17,7 @@ export const getMinFarcasterVersion = (): HubResult<string> => {
   return err(new HubError('unavailable', 'no minimum Farcaster version available'));
 };
 
-export const isBelowMinFarcasterVersion = (version: string): HubResult<boolean> => {
+export const ensureAboveMinFarcasterVersion = (version: string): HubResult<void> => {
   const minVersion = getMinFarcasterVersion();
   if (minVersion.isErr()) {
     return err(minVersion.error);
@@ -27,5 +27,8 @@ export const isBelowMinFarcasterVersion = (version: string): HubResult<boolean> 
     return err(new HubError('bad_request.invalid_param', 'invalid version'));
   }
 
-  return ok(semver.lt(version, minVersion.value));
+  if (semver.lt(version, minVersion.value)) {
+    return err(new HubError('bad_request.validation_failure', 'version too low'));
+  }
+  return ok(undefined);
 };

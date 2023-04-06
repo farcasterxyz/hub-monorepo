@@ -48,7 +48,7 @@ import {
   p2pMultiAddrStr,
 } from '~/utils/p2p';
 import { PeriodicTestDataJobScheduler, TestUser } from '~/utils/periodicTestDataJob';
-import { isBelowMinFarcasterVersion, VersionSchedule } from '~/utils/versions';
+import { ensureAboveMinFarcasterVersion, VersionSchedule } from '~/utils/versions';
 import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcasterVersionJob';
 import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrRevokeMessagesJob';
 import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJob';
@@ -545,9 +545,9 @@ export class Hub implements HubInterface {
 
       // Ignore peers that are below the minimum supported version.
       const theirVersion = message.hubVersion;
-      const versionCheckResult = isBelowMinFarcasterVersion(theirVersion);
-      if (versionCheckResult.isErr() || (versionCheckResult.isOk() && !versionCheckResult.value)) {
-        log.warn({ peerId, theirVersion }, 'Peer is running an outdated version, ignoring');
+      const versionCheckResult = ensureAboveMinFarcasterVersion(theirVersion);
+      if (versionCheckResult.isErr()) {
+        log.warn({ peerId, theirVersion }, 'Peer is running an invalid or outdated version, ignoring');
         await this.gossipNode.removePeerFromAddressBook(peerId);
         this.syncEngine.removeContactInfoForPeerId(peerId.toString());
         return;
