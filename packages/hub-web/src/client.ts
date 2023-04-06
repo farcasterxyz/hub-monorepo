@@ -14,9 +14,25 @@ import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-export const Code = grpc.Code;
-export const Metadata = grpc.Metadata;
-export type { Observable } from 'rxjs';
+export { grpc } from '@improbable-eng/grpc-web';
+export { Observable } from 'rxjs';
+
+const grpcCodeToHubErrorCode = (code: grpc.Code): HubErrorCode => {
+  switch (code) {
+    case grpc.Code.Unauthenticated:
+      return 'unauthenticated';
+    case grpc.Code.PermissionDenied:
+      return 'unauthorized';
+    case grpc.Code.InvalidArgument:
+      return 'bad_request';
+    case grpc.Code.NotFound:
+      return 'not_found';
+    case grpc.Code.Unavailable:
+      return 'unavailable';
+    default:
+      return 'unknown';
+  }
+};
 
 const fromServiceError = (err: GrpcWebError): HubError => {
   let context = err['message'];
@@ -29,7 +45,7 @@ const fromServiceError = (err: GrpcWebError): HubError => {
   }
 
   // derive from grpc error code as fallback
-  return new HubError((err.metadata?.get('errcode')[0] || Code[err.code].toLowerCase()) as HubErrorCode, context);
+  return new HubError((err.metadata?.get('errcode')[0] as HubErrorCode) || grpcCodeToHubErrorCode(err.code), context);
 };
 
 // wrap grpc-web client with HubResult to make sure APIs are consistent with hub-nodejs
