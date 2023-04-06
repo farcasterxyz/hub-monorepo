@@ -16,7 +16,11 @@ import { Wallet } from 'ethers';
  * Populate the following constants with your own values
  */
 
-const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
+const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub - make sure to include port 2283
+
+// If the Hub requests authentication, set the following constants
+// const HUB_USERNAME = process.env['HUB_USERNAME'] || '';
+// const HUB_PASSWORD = process.env['HUB_PASSWORD'] || '';
 
 (async () => {
   /**
@@ -58,6 +62,10 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
 
   const client = getInsecureHubRpcClient(HUB_URL);
   // const client = getSSLHubRpcClient(HUB_URL); if you want to use SSL
+
+  // If your Hub requires authentication, use the following instead:
+  // const authMetadata = getAuthMetadata(HUB_USERNAME, HUB_PASSWORD);
+  // const result = await client.submitMessage(signerAdd);
 
   const result = await client.submitMessage(signerAdd);
   result.isOk() ? console.log('SignerAdd was published successfully!') : console.log(result.error);
