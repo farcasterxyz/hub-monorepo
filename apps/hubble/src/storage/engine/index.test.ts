@@ -1,4 +1,5 @@
 import {
+  bytesToHexString,
   bytesToUtf8String,
   CastAddMessage,
   CastId,
@@ -164,6 +165,36 @@ describe('mergeMessage', () => {
           engine.getVerification(fid, verificationAdd.data.verificationAddEthAddressBody.address)
         ).resolves.toEqual(ok(verificationAdd));
         expect(mergedMessages).toEqual([signerAdd, verificationAdd]);
+      });
+
+      test('fails when network does not match claim network', async () => {
+        const address = (await custodySigner.getSignerKey())._unsafeUnwrap();
+        const blockHash = Factories.BlockHash.build();
+        const mainnetClaim = Factories.VerificationEthAddressClaim.build(
+          {
+            fid: BigInt(fid),
+            network: FarcasterNetwork.MAINNET,
+            blockHash: bytesToHexString(blockHash)._unsafeUnwrap(),
+            address: bytesToHexString(address)._unsafeUnwrap(),
+          },
+          { transient: { signer: signer } }
+        );
+        const claimSignature = (await custodySigner.signVerificationEthAddressClaim(mainnetClaim))._unsafeUnwrap();
+        const testnetVerificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+          {
+            data: {
+              fid,
+              network: FarcasterNetwork.TESTNET,
+              verificationAddEthAddressBody: { address: address, blockHash: blockHash, ethSignature: claimSignature },
+            },
+          },
+          { transient: { signer: signer, ethSigner: custodySigner } }
+        );
+        const result = await engine.mergeMessage(testnetVerificationAdd);
+        // Signature will not match because we're attempting to recover the address based on the wrong network
+        expect(result._unsafeUnwrapErr()).toEqual(
+          new HubError('bad_request.validation_failure', 'ethSignature does not match address')
+        );
       });
     });
 
