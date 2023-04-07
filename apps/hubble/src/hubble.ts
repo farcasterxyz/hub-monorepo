@@ -52,6 +52,7 @@ import { ensureAboveMinFarcasterVersion, VersionSchedule } from '~/utils/version
 import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcasterVersionJob';
 import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrRevokeMessagesJob';
 import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJob';
+import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -349,12 +350,19 @@ export class Hub implements HubInterface {
       this.updateNameRegistryEventExpiryJobWorker.start();
     }
 
+    let allowedPeerIdStrs = this.options.allowedPeers;
+    if (this.options.network === FarcasterNetwork.MAINNET) {
+      // Mainnet is right now resitrcited to a few peers
+      // Append and de-dup the allowed peers
+      allowedPeerIdStrs = [...new Set([...(allowedPeerIdStrs ?? []), ...MAINNET_ALLOWED_PEERS])];
+    }
+
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
-      allowedPeerIdStrs: this.options.allowedPeers,
+      allowedPeerIdStrs,
     });
 
     this.registerEventHandlers();
