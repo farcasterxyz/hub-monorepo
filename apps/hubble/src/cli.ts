@@ -12,7 +12,7 @@ import { APP_VERSION, Hub, HubOptions } from '~/hubble';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
-import { DB_DIRECTORY } from './storage/db/rocksdb';
+import RocksDB, { DB_DIRECTORY } from './storage/db/rocksdb';
 import { parseNetwork } from './utils/command';
 
 /** A CLI to accept options from the user and start the Hub */
@@ -71,7 +71,6 @@ app
   .option('--admin-server-enabled', 'Enable the admin server. (default: disabled)')
   .option('--admin-server-host <host>', "The host the admin server should listen on. (default: '127.0.0.1')")
   .option('--db-name <name>', 'The name of the RocksDB instance')
-  .option('--db-reset', 'Clears the database before starting')
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
@@ -192,6 +191,7 @@ app
     }
 
     // Check if the DB_RESET_TOKEN env variable is set. If it is, we might need to reset the DB.
+    let resetDB = false;
     const dbResetToken = process.env['DB_RESET_TOKEN'];
     if (dbResetToken) {
       // Read the contents of the "db_reset_token.txt" file, and if the number is
@@ -211,7 +211,7 @@ app
 
         // Reset the DB
         logger.warn({ dbResetTokenFileContents, dbResetToken }, 'Resetting DB since DB_RESET_TOKEN was set');
-        cliOptions.dbReset = true;
+        resetDB = true;
       }
     }
 
@@ -283,7 +283,7 @@ app
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       rpcAuth,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
-      resetDB: cliOptions.dbReset ?? hubConfig.dbReset,
+      resetDB,
       rebuildSyncTrie,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
@@ -386,6 +386,31 @@ const createIdCommand = new Command('create')
       const path = `${options.output}/${peerId.toString()}_${PEER_ID_FILENAME}`;
       await writePeerId(peerId, resolve(path));
     }
+
+    exit(0);
+  });
+
+app
+  .command('dbreset')
+  .description('Completely remove the database')
+  .option('--db-name <name>', 'The name of the RocksDB instance')
+  .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
+  .action(async (cliOptions) => {
+    const hubConfig = (await import(resolve(cliOptions.config))).Config;
+    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? '';
+
+    if (!rocksDBName) throw new Error('No RocksDB name provided.');
+
+    const rocksDB = new RocksDB(rocksDBName);
+    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
+    if (dbResult.isErr()) {
+      logger.error({ rocksDBName }, 'Failed to open RocksDB');
+      exit(1);
+    }
+    await rocksDB.clear();
+
+    await rocksDB.close();
+    logger.info({ rocksDBName }, 'Database cleared.');
 
     exit(0);
   });

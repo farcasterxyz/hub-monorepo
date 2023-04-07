@@ -39,8 +39,6 @@ export const Config = {
   rpcRateLimit: 20000,
   /** The name of the RocksDB instance */
   dbName: 'rocks.hub._default',
-  /** Clear the RocksDB instance before starting */
-  dbReset: false,
   /** Rebuild the sync trie before starting */
   rebuildSyncTrie: false,
   /** Farcaster network */
