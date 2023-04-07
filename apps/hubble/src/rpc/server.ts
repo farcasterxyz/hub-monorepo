@@ -820,6 +820,11 @@ export default class Server {
                   // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
                   // We'll destroy the stream.
                   stream.destroy();
+
+                  // If the iterator throws, it is already closed, so it doesn't matter.
+                  await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
+
+                  return;
                 }
               }
             }
