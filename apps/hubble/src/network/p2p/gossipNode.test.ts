@@ -14,6 +14,8 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import SyncEngine from '../sync/syncEngine';
+import { PeerId } from '@libp2p/interface-peer-id';
+import { sleep } from '~/utils/crypto';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
@@ -91,6 +93,37 @@ describe('GossipNode', () => {
     },
     TEST_TIMEOUT_SHORT
   );
+
+  test('removing from addressbook hangs up connection', async () => {
+    const node1 = new GossipNode();
+    await node1.start([]);
+
+    const node2 = new GossipNode();
+    await node2.start([]);
+
+    try {
+      const dialResult = await node1.connect(node2);
+      expect(dialResult.isOk()).toBeTruthy();
+
+      let other = await node1.addressBook?.get(node2.peerId as PeerId);
+      expect(other?.length).toEqual(1);
+
+      await node1.removePeerFromAddressBook(node2.peerId as PeerId);
+
+      // Sleep to allow the connection to be closed
+      await sleep(1000);
+
+      // Make sure the connection is closed
+      other = await node1.addressBook?.get(node2.peerId as PeerId);
+      expect(other).toEqual([]);
+
+      other = await node2.addressBook?.get(node1.peerId as PeerId);
+      expect(other).toEqual([]);
+    } finally {
+      await node1.stop();
+      await node2.stop();
+    }
+  });
 
   describe('gossip messages', () => {
     const db = jestRocksDB('protobufs.rpc.gossipMessageTest.test');

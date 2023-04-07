@@ -321,7 +321,7 @@ export class Hub implements HubInterface {
       throw new HubError(
         'unavailable',
         `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. ` +
-          `Please reset the DB with --db-reset if this is intentional.`
+          `Please reset the DB with the "dbreset" command if this is intentional.`
       );
     }
 
