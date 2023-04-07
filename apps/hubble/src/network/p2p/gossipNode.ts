@@ -87,7 +87,18 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     }
   }
 
+  /** Removes the peer from the address book and hangs up on them */
   async removePeerFromAddressBook(peerId: PeerId) {
+    if (this._node) {
+      const hangupResult = await ResultAsync.fromPromise(
+        this._node.hangUp(peerId),
+        (error) => new HubError('unavailable', error as Error)
+      );
+      if (hangupResult.isErr()) {
+        log.error({ error: hangupResult.error, peerId }, 'failed to hang up peer');
+      }
+    }
+
     if (!this.addressBook) {
       log.error({}, 'address book missing for gossipNode');
     } else {
@@ -218,6 +229,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
     try {
       const conn = await this._node?.dial(address);
+
       if (conn) {
         log.info({ identity: this.identity, address }, `Connected to peer at address: ${address}`);
         return ok(undefined);
