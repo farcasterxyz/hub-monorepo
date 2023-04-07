@@ -817,10 +817,9 @@ export default class Server {
 
                 // Write was successful, check the RSS usage
                 if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
-                  // more than 1G
-                  logger.warn(
-                    `subscribe: RSS usage increased by more than 1GB while returning events to ${stream.getPeer()}`
-                  );
+                  // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
+                  // We'll destroy the stream.
+                  stream.destroy();
                 }
               }
             }
