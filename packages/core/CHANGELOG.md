@@ -1,4 +1,10 @@
-# @farcaster/utils
+# @farcaster/core
+
+## 0.6.1
+
+### Patch Changes
+
+- edea195: Ensure hub networks match when syncing with peers
 
 ## 0.6.0
 

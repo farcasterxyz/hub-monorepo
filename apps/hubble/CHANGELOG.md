@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.0.22
+
+### Patch Changes
+
+- edea195: Ensure hub networks match when syncing with peers
+  - @farcaster/hub-nodejs@0.6.3
+
 ## 1.0.21
 
 ### Patch Changes
@@ -13,14 +20,14 @@
 
 ### Patch Changes
 
-- 71d6494: Helpful error when identitiy proto is not found
+- 71d6494: Helpful error when identity proto is not found
 - 142f3f5: add getIdRegistryEventByAddress rpc and engine method
 - 8e46cac: Start rpcServer before ethEventsProvider
 - 1f47906: remove grpc-js dependency from protobufs, refactor hubble to use hub-nodejs
   hub-web to use @farcaster/protobufs and utils
 - b9643b2: Fix issue where sync was off by 1
 - 564f61e: Retry missing IdRegistry events from Eth node instead of peer
-- 54dbf42: End iterator in while rebulding trie
+- 54dbf42: End iterator in while rebuilding trie
 - 13415ea: Write events to subscribe() with a timeout to prevent slow clients from clogging up memory
 - d0239f8: Retry bootstrap nodes if all fail to connect
 - 759e1cf: Ignore outdated hubs for sync
@@ -34,7 +41,7 @@
 ### Patch Changes
 
 - fe74a1e: Close RPC connections to fix a memory leak
-- 1025d3b: Support multiple RPC users via comma-separted-list
+- 1025d3b: Support multiple RPC users via comma-separated-list
 - de25020: Refuse to startup if DB network is mismatched
 - 58cfbb9: Gossip server listens on 0.0.0.0 by default
 - 9ee1076: Better grpc error messages when auth fails
