@@ -398,6 +398,7 @@ export class Hub implements HubInterface {
         excludedHashes: snapshot.excludedHashes,
         count: snapshot.numMessages,
         hubVersion: FARCASTER_VERSION,
+        network: this.options.network,
       });
     });
   }
