@@ -15,6 +15,7 @@ import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import SyncEngine from '../sync/syncEngine';
 import { PeerId } from '@libp2p/interface-peer-id';
+import { sleep } from '~/utils/crypto';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
@@ -109,9 +110,10 @@ describe('GossipNode', () => {
 
       await node1.removePeerFromAddressBook(node2.peerId as PeerId);
 
-      // Make sure the connection is closed
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Sleep to allow the connection to be closed
+      await sleep(1000);
 
+      // Make sure the connection is closed
       other = await node1.addressBook?.get(node2.peerId as PeerId);
       expect(other).toEqual([]);
 
