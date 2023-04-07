@@ -114,6 +114,9 @@ describe('GossipNode', () => {
 
       other = await node1.addressBook?.get(node2.peerId as PeerId);
       expect(other).toEqual([]);
+
+      other = await node2.addressBook?.get(node1.peerId as PeerId);
+      expect(other).toEqual([]);
     } finally {
       await node1.stop();
       await node2.stop();
