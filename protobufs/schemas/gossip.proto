@@ -20,6 +20,7 @@ message ContactInfoContent {
   repeated string excluded_hashes = 3;
   uint32 count = 4;
   string hub_version = 5;
+  FarcasterNetwork network = 6;
 }
 
 message GossipMessage {

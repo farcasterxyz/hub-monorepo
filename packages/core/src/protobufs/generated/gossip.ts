@@ -1,7 +1,7 @@
 /* eslint-disable */
 import _m0 from 'protobufjs/minimal';
 import { IdRegistryEvent } from './id_registry_event';
-import { Message } from './message';
+import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON, Message } from './message';
 
 export enum GossipVersion {
   V1 = 0,
@@ -39,6 +39,7 @@ export interface ContactInfoContent {
   excludedHashes: string[];
   count: number;
   hubVersion: string;
+  network: FarcasterNetwork;
 }
 
 export interface GossipMessage {
@@ -148,7 +149,7 @@ export const GossipAddressInfo = {
 };
 
 function createBaseContactInfoContent(): ContactInfoContent {
-  return { gossipAddress: undefined, rpcAddress: undefined, excludedHashes: [], count: 0, hubVersion: '' };
+  return { gossipAddress: undefined, rpcAddress: undefined, excludedHashes: [], count: 0, hubVersion: '', network: 0 };
 }
 
 export const ContactInfoContent = {
@@ -167,6 +168,9 @@ export const ContactInfoContent = {
     }
     if (message.hubVersion !== '') {
       writer.uint32(42).string(message.hubVersion);
+    }
+    if (message.network !== 0) {
+      writer.uint32(48).int32(message.network);
     }
     return writer;
   },
@@ -213,6 +217,13 @@ export const ContactInfoContent = {
 
           message.hubVersion = reader.string();
           continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.network = reader.int32() as any;
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -229,6 +240,7 @@ export const ContactInfoContent = {
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       count: isSet(object.count) ? Number(object.count) : 0,
       hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : '',
+      network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
     };
   },
 
@@ -245,6 +257,7 @@ export const ContactInfoContent = {
     }
     message.count !== undefined && (obj.count = Math.round(message.count));
     message.hubVersion !== undefined && (obj.hubVersion = message.hubVersion);
+    message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     return obj;
   },
 
@@ -265,6 +278,7 @@ export const ContactInfoContent = {
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.count = object.count ?? 0;
     message.hubVersion = object.hubVersion ?? '';
+    message.network = object.network ?? 0;
     return message;
   },
 };
