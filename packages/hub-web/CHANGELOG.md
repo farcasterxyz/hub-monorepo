@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.2.3
+
+### Patch Changes
+
+- 833c4cc: map grpc codes to hub error codes in client
+- 7d58347: fix error code for no connection
+- 74ec252: add grpc error code as fallback
+- Updated dependencies [edea195]
+  - @farcaster/core@0.6.1
+
 ## 0.2.2
 
 ### Patch Changes
