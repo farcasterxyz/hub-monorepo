@@ -248,21 +248,21 @@ describe('validateCastAddBody', () => {
       body = Factories.CastAddBody.build({
         embeds: [{ url: '' }],
       });
-      hubErrorMessage = 'embed url < 1 byte';
+      hubErrorMessage = 'url < 1 byte';
     });
 
     test('with an embed url string over 256 ASCII characters', () => {
       body = Factories.CastAddBody.build({
         embeds: [{ url: faker.random.alphaNumeric(257) }],
       });
-      hubErrorMessage = 'embed url > 256 bytes';
+      hubErrorMessage = 'url > 256 bytes';
     });
 
     test('with an embed url string over 256 bytes', () => {
       body = Factories.CastAddBody.build({
         embeds: [{ url: faker.random.alphaNumeric(254) + '🤓' }],
       });
-      hubErrorMessage = 'embed url > 256 bytes';
+      hubErrorMessage = 'url > 256 bytes';
     });
 
     test('with an invalid embed CastId', () => {
