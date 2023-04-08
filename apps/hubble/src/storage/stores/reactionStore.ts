@@ -46,6 +46,10 @@ import { logger } from '~/utils/logger';
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
+const makeTargetKey = (target: CastId | string): Buffer => {
+  return typeof target === 'string' ? Buffer.from(target) : makeCastIdKey(target);
+};
+
 /**
  * Generates a unique key used to store a ReactionAdd message key in the ReactionsAdd Set index
  *
@@ -55,8 +59,8 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
-const makeReactionAddsKey = (fid: number, type?: ReactionType, targetId?: CastId): Buffer => {
-  if (targetId && !type) {
+const makeReactionAddsKey = (fid: number, type?: ReactionType, target?: CastId | string): Buffer => {
+  if (target && !type) {
     throw new HubError('bad_request.validation_failure', 'targetId provided without type');
   }
 
@@ -64,7 +68,7 @@ const makeReactionAddsKey = (fid: number, type?: ReactionType, targetId?: CastId
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
     Buffer.from(type ? [type] : ''), //-------- type, 1 byte
-    targetId ? makeCastIdKey(targetId) : Buffer.from(''), //-- target id, 28 bytes
+    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 28 bytes
   ]);
 };
 
@@ -77,8 +81,8 @@ const makeReactionAddsKey = (fid: number, type?: ReactionType, targetId?: CastId
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
-const makeReactionRemovesKey = (fid: number, type?: ReactionType, targetId?: CastId): Buffer => {
-  if (targetId && !type) {
+const makeReactionRemovesKey = (fid: number, type?: ReactionType, target?: CastId | string): Buffer => {
+  if (target && !type) {
     throw new HubError('bad_request.validation_failure', 'targetId provided without type');
   }
 
@@ -86,7 +90,7 @@ const makeReactionRemovesKey = (fid: number, type?: ReactionType, targetId?: Cas
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
     Buffer.from(type ? [type] : ''), //-------- type, 1 byte
-    targetId ? makeCastIdKey(targetId) : Buffer.from(''), //-- target id, 28 bytes
+    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 28 bytes
   ]);
 };
 
@@ -99,7 +103,7 @@ const makeReactionRemovesKey = (fid: number, type?: ReactionType, targetId?: Cas
  *
  * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<fid?>:<tsHash?>
  */
-const makeReactionsByTargetKey = (targetId: CastId, fid?: number, tsHash?: Uint8Array): Buffer => {
+const makeReactionsByTargetKey = (target: CastId | string, fid?: number, tsHash?: Uint8Array): Buffer => {
   if (fid && !tsHash) {
     throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
   }
@@ -110,7 +114,7 @@ const makeReactionsByTargetKey = (targetId: CastId, fid?: number, tsHash?: Uint8
 
   return Buffer.concat([
     Buffer.from([RootPrefix.ReactionsByTarget]),
-    makeCastIdKey(targetId),
+    makeTargetKey(target),
     Buffer.from(tsHash ?? ''),
     fid ? makeFidKey(fid) : Buffer.from(''),
   ]);
@@ -166,8 +170,8 @@ class ReactionStore {
    *
    * @returns the ReactionAdd Model if it exists, undefined otherwise
    */
-  async getReactionAdd(fid: number, type: ReactionType, castId: CastId): Promise<ReactionAddMessage> {
-    const reactionAddsSetKey = makeReactionAddsKey(fid, type, castId);
+  async getReactionAdd(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionAddMessage> {
+    const reactionAddsSetKey = makeReactionAddsKey(fid, type, target);
     const reactionMessageKey = await this._db.get(reactionAddsSetKey);
 
     return getMessage(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
@@ -181,8 +185,8 @@ class ReactionStore {
    * @param castId id of the cast being reacted to
    * @returns the ReactionRemove message if it exists, undefined otherwise
    */
-  async getReactionRemove(fid: number, type: ReactionType, castId: CastId): Promise<ReactionRemoveMessage> {
-    const reactionRemovesKey = makeReactionRemovesKey(fid, type, castId);
+  async getReactionRemove(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionRemoveMessage> {
+    const reactionRemovesKey = makeReactionRemovesKey(fid, type, target);
     const reactionMessageKey = await this._db.get(reactionRemovesKey);
 
     return getMessage(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
@@ -226,12 +230,12 @@ class ReactionStore {
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
-  async getReactionsByTargetCast(
-    castId: CastId,
+  async getReactionsByTarget(
+    target: CastId | string,
     type?: ReactionType,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<ReactionAddMessage>> {
-    const prefix = makeReactionsByTargetKey(castId);
+    const prefix = makeReactionsByTargetKey(target);
 
     const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
 
@@ -485,9 +489,9 @@ class ReactionStore {
   private async getMergeConflicts(
     message: ReactionAddMessage | ReactionRemoveMessage
   ): HubAsyncResult<(ReactionAddMessage | ReactionRemoveMessage)[]> {
-    const castId = message.data.reactionBody.targetCastId;
-    if (!castId) {
-      throw new HubError('bad_request.validation_failure', 'targetCastId is missing');
+    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
+    if (!target) {
+      throw new HubError('bad_request.validation_failure', 'target is missing');
     }
 
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
@@ -498,7 +502,7 @@ class ReactionStore {
     const conflicts: (ReactionAddMessage | ReactionRemoveMessage)[] = [];
 
     // Checks if there is a remove timestamp hash for this reaction
-    const reactionRemoveKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, castId);
+    const reactionRemoveKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, target);
     const reactionRemoveTsHash = await ResultAsync.fromPromise(this._db.get(reactionRemoveKey), () => undefined);
 
     if (reactionRemoveTsHash.isOk()) {
@@ -526,7 +530,7 @@ class ReactionStore {
     }
 
     // Checks if there is an add timestamp hash for this reaction
-    const reactionAddKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, castId);
+    const reactionAddKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, target);
     const reactionAddTsHash = await ResultAsync.fromPromise(this._db.get(reactionAddKey), () => undefined);
 
     if (reactionAddTsHash.isOk()) {
@@ -577,24 +581,20 @@ class ReactionStore {
       throw tsHash.error;
     }
 
-    const castId = message.data.reactionBody.targetCastId;
-    if (!castId) {
-      throw new HubError('bad_request.validation_failure', 'targetCastId is missing');
+    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
+    if (!target) {
+      throw new HubError('bad_request.validation_failure', 'target is missing');
     }
 
     // Puts the message into the database
     txn = putMessageTransaction(txn, message);
 
     // Puts the message into the ReactionAdds Set index
-    const addsKey = makeReactionAddsKey(
-      message.data.fid,
-      message.data.reactionBody.type,
-      message.data.reactionBody.targetCastId
-    );
+    const addsKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, target);
     txn = txn.put(addsKey, Buffer.from(tsHash.value));
 
     // Puts message key into the byTarget index
-    const byTargetKey = makeReactionsByTargetKey(castId, message.data.fid, tsHash.value);
+    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
     txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
 
     return txn;
@@ -607,17 +607,17 @@ class ReactionStore {
       throw tsHash.error;
     }
 
-    const castId = message.data.reactionBody.targetCastId;
-    if (!castId) {
-      throw new HubError('bad_request.validation_failure', 'targetCastId is missing');
+    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
+    if (!target) {
+      throw new HubError('bad_request.validation_failure', 'target is missing');
     }
 
     // Delete the message key from byTarget index
-    const byTargetKey = makeReactionsByTargetKey(castId, message.data.fid, tsHash.value);
+    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
     txn = txn.del(byTargetKey);
 
     // Delete the message key from ReactionAdds Set index
-    const addsKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, castId);
+    const addsKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, target);
     txn = txn.del(addsKey);
 
     // Delete the message
@@ -631,16 +631,16 @@ class ReactionStore {
       throw tsHash.error;
     }
 
-    const castId = message.data.reactionBody.targetCastId;
-    if (!castId) {
-      throw new HubError('bad_request.validation_failure', 'targetCastId is missing');
+    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
+    if (!target) {
+      throw new HubError('bad_request.validation_failure', 'target is missing');
     }
 
     // Puts the message
     txn = putMessageTransaction(txn, message);
 
     // Puts message key into the ReactionRemoves Set index
-    const removesKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, castId);
+    const removesKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, target);
     txn = txn.put(removesKey, Buffer.from(tsHash.value));
 
     return txn;
@@ -653,13 +653,13 @@ class ReactionStore {
       throw tsHash.error;
     }
 
-    const castId = message.data.reactionBody.targetCastId;
-    if (!castId) {
-      throw new HubError('bad_request.validation_failure', 'targetCastId is missing');
+    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
+    if (!target) {
+      throw new HubError('bad_request.validation_failure', 'target is missing');
     }
 
     // Delete message key from ReactionRemoves Set index
-    const removesKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, castId);
+    const removesKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, target);
     txn = txn.del(removesKey);
 
     // Delete the message

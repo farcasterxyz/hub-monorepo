@@ -12,6 +12,7 @@ import {
   HubRpcClient,
   FarcasterNetwork,
   ReactionType,
+  CastAddBody,
 } from '@farcaster/hub-nodejs';
 import { logger } from '~/utils/logger';
 import * as ed from '@noble/ed25519';
@@ -140,7 +141,12 @@ export class PeriodicTestDataJobScheduler {
       const signer = this._userEd25519KeyPairs.get(testUser.fid);
       if (signer) {
         const castAdd = await makeCastAdd(
-          { text: faker.lorem.sentence(12), embeds: ['http://www.farcaster.xyz'], mentions: [], mentionsPositions: [] },
+          CastAddBody.create({
+            text: faker.lorem.sentence(12),
+            embeds: [{ url: 'http://www.farcaster.xyz' }],
+            mentions: [],
+            mentionsPositions: [],
+          }),
           dataOptions,
           signer
         );

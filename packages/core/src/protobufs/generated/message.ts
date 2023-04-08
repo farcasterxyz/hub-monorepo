@@ -364,18 +364,27 @@ export interface UserDataBody {
   value: string;
 }
 
+export interface Embed {
+  url?: string | undefined;
+  castId?: CastId | undefined;
+}
+
 /** Adds a new Cast */
 export interface CastAddBody {
   /** URLs to be embedded in the cast */
-  embeds: string[];
+  embedsDeprecated: string[];
   /** Fids mentioned in the cast */
   mentions: number[];
   /** Parent cast of the cast */
   parentCastId?: CastId | undefined;
+  /** Parent URL */
+  parentUrl?: string | undefined;
   /** Text of the cast */
   text: string;
   /** Positions of the mentions in the text */
   mentionsPositions: number[];
+  /** URLs or cast ids to be embedded in the cast */
+  embeds: Embed[];
 }
 
 /** Removes an existing Cast */
@@ -398,6 +407,8 @@ export interface ReactionBody {
   type: ReactionType;
   /** CastId of the Cast to react to */
   targetCastId?: CastId | undefined;
+  /** URL to react to */
+  targetUrl?: string | undefined;
 }
 
 /** Adds a Verification of ownership of an Ethereum Address */
@@ -1003,13 +1014,93 @@ export const UserDataBody = {
   },
 };
 
+function createBaseEmbed(): Embed {
+  return { url: undefined, castId: undefined };
+}
+
+export const Embed = {
+  encode(message: Embed, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.url !== undefined) {
+      writer.uint32(10).string(message.url);
+    }
+    if (message.castId !== undefined) {
+      CastId.encode(message.castId, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): Embed {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEmbed();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.url = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.castId = CastId.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): Embed {
+    return {
+      url: isSet(object.url) ? String(object.url) : undefined,
+      castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
+    };
+  },
+
+  toJSON(message: Embed): unknown {
+    const obj: any = {};
+    message.url !== undefined && (obj.url = message.url);
+    message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Embed>, I>>(base?: I): Embed {
+    return Embed.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<Embed>, I>>(object: I): Embed {
+    const message = createBaseEmbed();
+    message.url = object.url ?? undefined;
+    message.castId =
+      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
+    return message;
+  },
+};
+
 function createBaseCastAddBody(): CastAddBody {
-  return { embeds: [], mentions: [], parentCastId: undefined, text: '', mentionsPositions: [] };
+  return {
+    embedsDeprecated: [],
+    mentions: [],
+    parentCastId: undefined,
+    parentUrl: undefined,
+    text: '',
+    mentionsPositions: [],
+    embeds: [],
+  };
 }
 
 export const CastAddBody = {
   encode(message: CastAddBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.embeds) {
+    for (const v of message.embedsDeprecated) {
       writer.uint32(10).string(v!);
     }
     writer.uint32(18).fork();
@@ -1020,6 +1111,9 @@ export const CastAddBody = {
     if (message.parentCastId !== undefined) {
       CastId.encode(message.parentCastId, writer.uint32(26).fork()).ldelim();
     }
+    if (message.parentUrl !== undefined) {
+      writer.uint32(58).string(message.parentUrl);
+    }
     if (message.text !== '') {
       writer.uint32(34).string(message.text);
     }
@@ -1028,6 +1122,9 @@ export const CastAddBody = {
       writer.uint32(v);
     }
     writer.ldelim();
+    for (const v of message.embeds) {
+      Embed.encode(v!, writer.uint32(50).fork()).ldelim();
+    }
     return writer;
   },
 
@@ -1043,7 +1140,7 @@ export const CastAddBody = {
             break;
           }
 
-          message.embeds.push(reader.string());
+          message.embedsDeprecated.push(reader.string());
           continue;
         case 2:
           if (tag == 16) {
@@ -1068,6 +1165,13 @@ export const CastAddBody = {
 
           message.parentCastId = CastId.decode(reader, reader.uint32());
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.parentUrl = reader.string();
+          continue;
         case 4:
           if (tag != 34) {
             break;
@@ -1091,6 +1195,13 @@ export const CastAddBody = {
           }
 
           break;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.embeds.push(Embed.decode(reader, reader.uint32()));
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1102,22 +1213,26 @@ export const CastAddBody = {
 
   fromJSON(object: any): CastAddBody {
     return {
-      embeds: Array.isArray(object?.embeds) ? object.embeds.map((e: any) => String(e)) : [],
+      embedsDeprecated: Array.isArray(object?.embedsDeprecated)
+        ? object.embedsDeprecated.map((e: any) => String(e))
+        : [],
       mentions: Array.isArray(object?.mentions) ? object.mentions.map((e: any) => Number(e)) : [],
       parentCastId: isSet(object.parentCastId) ? CastId.fromJSON(object.parentCastId) : undefined,
+      parentUrl: isSet(object.parentUrl) ? String(object.parentUrl) : undefined,
       text: isSet(object.text) ? String(object.text) : '',
       mentionsPositions: Array.isArray(object?.mentionsPositions)
         ? object.mentionsPositions.map((e: any) => Number(e))
         : [],
+      embeds: Array.isArray(object?.embeds) ? object.embeds.map((e: any) => Embed.fromJSON(e)) : [],
     };
   },
 
   toJSON(message: CastAddBody): unknown {
     const obj: any = {};
-    if (message.embeds) {
-      obj.embeds = message.embeds.map((e) => e);
+    if (message.embedsDeprecated) {
+      obj.embedsDeprecated = message.embedsDeprecated.map((e) => e);
     } else {
-      obj.embeds = [];
+      obj.embedsDeprecated = [];
     }
     if (message.mentions) {
       obj.mentions = message.mentions.map((e) => Math.round(e));
@@ -1126,11 +1241,17 @@ export const CastAddBody = {
     }
     message.parentCastId !== undefined &&
       (obj.parentCastId = message.parentCastId ? CastId.toJSON(message.parentCastId) : undefined);
+    message.parentUrl !== undefined && (obj.parentUrl = message.parentUrl);
     message.text !== undefined && (obj.text = message.text);
     if (message.mentionsPositions) {
       obj.mentionsPositions = message.mentionsPositions.map((e) => Math.round(e));
     } else {
       obj.mentionsPositions = [];
+    }
+    if (message.embeds) {
+      obj.embeds = message.embeds.map((e) => (e ? Embed.toJSON(e) : undefined));
+    } else {
+      obj.embeds = [];
     }
     return obj;
   },
@@ -1141,14 +1262,16 @@ export const CastAddBody = {
 
   fromPartial<I extends Exact<DeepPartial<CastAddBody>, I>>(object: I): CastAddBody {
     const message = createBaseCastAddBody();
-    message.embeds = object.embeds?.map((e) => e) || [];
+    message.embedsDeprecated = object.embedsDeprecated?.map((e) => e) || [];
     message.mentions = object.mentions?.map((e) => e) || [];
     message.parentCastId =
       object.parentCastId !== undefined && object.parentCastId !== null
         ? CastId.fromPartial(object.parentCastId)
         : undefined;
+    message.parentUrl = object.parentUrl ?? undefined;
     message.text = object.text ?? '';
     message.mentionsPositions = object.mentionsPositions?.map((e) => e) || [];
+    message.embeds = object.embeds?.map((e) => Embed.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1283,7 +1406,7 @@ export const CastId = {
 };
 
 function createBaseReactionBody(): ReactionBody {
-  return { type: 0, targetCastId: undefined };
+  return { type: 0, targetCastId: undefined, targetUrl: undefined };
 }
 
 export const ReactionBody = {
@@ -1293,6 +1416,9 @@ export const ReactionBody = {
     }
     if (message.targetCastId !== undefined) {
       CastId.encode(message.targetCastId, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.targetUrl !== undefined) {
+      writer.uint32(26).string(message.targetUrl);
     }
     return writer;
   },
@@ -1318,6 +1444,13 @@ export const ReactionBody = {
 
           message.targetCastId = CastId.decode(reader, reader.uint32());
           continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.targetUrl = reader.string();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1331,6 +1464,7 @@ export const ReactionBody = {
     return {
       type: isSet(object.type) ? reactionTypeFromJSON(object.type) : 0,
       targetCastId: isSet(object.targetCastId) ? CastId.fromJSON(object.targetCastId) : undefined,
+      targetUrl: isSet(object.targetUrl) ? String(object.targetUrl) : undefined,
     };
   },
 
@@ -1339,6 +1473,7 @@ export const ReactionBody = {
     message.type !== undefined && (obj.type = reactionTypeToJSON(message.type));
     message.targetCastId !== undefined &&
       (obj.targetCastId = message.targetCastId ? CastId.toJSON(message.targetCastId) : undefined);
+    message.targetUrl !== undefined && (obj.targetUrl = message.targetUrl);
     return obj;
   },
 
@@ -1353,6 +1488,7 @@ export const ReactionBody = {
       object.targetCastId !== undefined && object.targetCastId !== null
         ? CastId.fromPartial(object.targetCastId)
         : undefined;
+    message.targetUrl = object.targetUrl ?? undefined;
     return message;
   },
 };

@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import {
   Message,
   FarcasterNetwork,
@@ -139,15 +140,32 @@ describe('getCast', () => {
       await engine.mergeMessage(signerAdd);
     });
 
-    test('succeeds', async () => {
+    test('succeeds with parent CastId', async () => {
       await engine.mergeMessage(castAdd);
-      const request = CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const request = CastsByParentRequest.create({ parentCastId: castAdd.data.castAddBody.parentCastId });
       const casts = await client.getCastsByParent(request);
-      expect(Message.toJSON(casts._unsafeUnwrap().messages.at(0) as Message)).toEqual(Message.toJSON(castAdd));
+      expect(casts.isOk()).toBeTruthy();
+      expect(casts._unsafeUnwrap().messages.map((message) => Message.toJSON(message))).toEqual([
+        Message.toJSON(castAdd),
+      ]);
+    });
+
+    test('succeeds with parent url', async () => {
+      const castAdd2 = await Factories.CastAddMessage.create(
+        { data: { fid, network, castAddBody: { parentCastId: undefined, parentUrl: faker.internet.url() } } },
+        { transient: { signer } }
+      );
+      await engine.mergeMessage(castAdd2);
+      const request = CastsByParentRequest.create({ parentUrl: castAdd2.data.castAddBody.parentUrl });
+      const casts = await client.getCastsByParent(request);
+      expect(casts.isOk()).toBeTruthy();
+      expect(casts._unsafeUnwrap().messages.map((message) => Message.toJSON(message))).toEqual([
+        Message.toJSON(castAdd2),
+      ]);
     });
 
     test('returns empty array without casts', async () => {
-      const request = CastsByParentRequest.create({ castId: castAdd.data.castAddBody.parentCastId });
+      const request = CastsByParentRequest.create({ parentCastId: castAdd.data.castAddBody.parentCastId });
       const casts = await client.getCastsByParent(request);
       expect(casts._unsafeUnwrap().messages).toEqual([]);
     });

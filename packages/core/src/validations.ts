@@ -244,6 +244,46 @@ export const validateVerificationAddEthAddressSignature = (
   return ok(body.ethSignature);
 };
 
+export const validateUrl = (url: string): HubResult<string> => {
+  if (typeof url !== 'string') {
+    return err(new HubError('bad_request.validation_failure', 'url must be a string'));
+  }
+
+  const urlBytesResult = utf8StringToBytes(url);
+  if (urlBytesResult.isErr()) {
+    return err(new HubError('bad_request.invalid_param', 'url must be encodable as utf8'));
+  }
+  const urlBytes = urlBytesResult.value;
+
+  if (urlBytes.length < 1) {
+    return err(new HubError('bad_request.invalid_param', 'url < 1 byte'));
+  }
+
+  if (urlBytes.length > 256) {
+    return err(new HubError('bad_request.invalid_param', 'url > 256 bytes'));
+  }
+
+  return ok(url);
+};
+
+export const validateParent = (parent: protobufs.CastId | string): HubResult<protobufs.CastId | string> => {
+  if (typeof parent === 'string') {
+    return validateUrl(parent);
+  } else {
+    return validateCastId(parent);
+  }
+};
+
+export const validateEmbed = (embed: protobufs.Embed): HubResult<protobufs.Embed> => {
+  if (embed.url !== undefined) {
+    return validateUrl(embed.url).map(() => embed);
+  } else if (embed.castId !== undefined) {
+    return validateCastId(embed.castId).map(() => embed);
+  } else {
+    return err(new HubError('bad_request.validation_failure', 'embed must have either url or castId'));
+  }
+};
+
 export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<protobufs.CastAddBody> => {
   const text = body.text;
   if (text === undefined || text === null) {
@@ -275,22 +315,14 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
   for (let i = 0; i < body.embeds.length; i++) {
     // eslint-disable-next-line security/detect-object-injection
     const embed = body.embeds[i];
-    if (typeof embed !== 'string') {
-      return err(new HubError('bad_request.validation_failure', 'embeds must be strings'));
+
+    if (embed === undefined) {
+      return err(new HubError('bad_request.validation_failure', 'embed is missing'));
     }
 
-    const embedUtf8BytesResult = utf8StringToBytes(embed);
-    if (embedUtf8BytesResult.isErr()) {
-      return err(new HubError('bad_request.invalid_param', 'embed must be encodable as utf8'));
-    }
-    const embedBytes = embedUtf8BytesResult.value;
-
-    if (embedBytes.length < 1) {
-      return err(new HubError('bad_request.invalid_param', 'embed < 1 byte'));
-    }
-
-    if (embedBytes.length > 256) {
-      return err(new HubError('bad_request.invalid_param', 'embed > 256 bytes'));
+    const embedIsValid = validateEmbed(embed);
+    if (embedIsValid.isErr()) {
+      return err(embedIsValid.error);
     }
   }
 
@@ -341,6 +373,14 @@ export const validateReactionType = (type: number): HubResult<protobufs.Reaction
   return ok(type);
 };
 
+export const validateTarget = (target: protobufs.CastId | string): HubResult<protobufs.CastId | string> => {
+  if (typeof target === 'string') {
+    return validateUrl(target);
+  } else {
+    return validateCastId(target);
+  }
+};
+
 export const validateMessageType = (type: number): HubResult<protobufs.MessageType> => {
   if (!Object.values(protobufs.MessageType).includes(type)) {
     return err(new HubError('bad_request.validation_failure', 'invalid message type'));
@@ -363,7 +403,12 @@ export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<pr
     return err(validatedType.error);
   }
 
-  return validateCastId(body.targetCastId).map(() => body);
+  const target = body.targetCastId ?? body.targetUrl;
+  if (target === undefined) {
+    return err(new HubError('bad_request.validation_failure', 'target is missing'));
+  }
+
+  return validateTarget(target).map(() => body);
 };
 
 export const validateVerificationAddEthAddressBody = (

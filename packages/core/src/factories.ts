@@ -195,10 +195,22 @@ const MessageDataFactory = Factory.define<protobufs.MessageData>(() => {
   });
 });
 
+const CastIdEmbedFactory = Factory.define<protobufs.Embed>(() => {
+  return protobufs.Embed.create({ castId: CastIdFactory.build() });
+});
+
+const UrlEmbedFactory = Factory.define<protobufs.Embed>(() => {
+  return protobufs.Embed.create({ url: faker.internet.url() });
+});
+
+const EmbedFactory = Factory.define<protobufs.Embed>(() => {
+  return faker.helpers.arrayElement([CastIdEmbedFactory.build(), UrlEmbedFactory.build()]);
+});
+
 const CastAddBodyFactory = Factory.define<protobufs.CastAddBody>(() => {
   const text = faker.lorem.sentence(12);
   return protobufs.CastAddBody.create({
-    embeds: [faker.internet.url(), faker.internet.url()],
+    embeds: [EmbedFactory.build(), EmbedFactory.build()],
     mentions: [FidFactory.build(), FidFactory.build(), FidFactory.build()],
     mentionsPositions: [0, Math.floor(text.length / 2), text.length], // Hack to avoid duplicates
     parentCastId: CastIdFactory.build(),
@@ -378,15 +390,12 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
       const fid = transientParams.fid ?? FidFactory.build();
       const network = transientParams.network ?? FarcasterNetworkFactory.build();
       const blockHash = bytesToHexString(body.blockHash);
-      const claim = VerificationEthAddressClaimFactory.build(
-        {
-          fid: BigInt(fid),
-          network,
-          blockHash: blockHash.isOk() ? blockHash.value : '0x',
-          address: bytesToHexString(body.address)._unsafeUnwrap(),
-        },
-        { transient: { signer: ethSigner } }
-      );
+      const claim = VerificationEthAddressClaimFactory.build({
+        fid: BigInt(fid),
+        network,
+        blockHash: blockHash.isOk() ? blockHash.value : '0x',
+        address: bytesToHexString(body.address)._unsafeUnwrap(),
+      });
       body.ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     }
 
@@ -546,6 +555,9 @@ export const Factories = {
   MessageType: MessageTypeFactory,
   MessageData: MessageDataFactory,
   Message: MessageFactory,
+  CastIdEmbed: CastIdEmbedFactory,
+  UrlEmbed: UrlEmbedFactory,
+  Embed: EmbedFactory,
   CastAddBody: CastAddBodyFactory,
   CastAddData: CastAddDataFactory,
   CastAddMessage: CastAddMessageFactory,

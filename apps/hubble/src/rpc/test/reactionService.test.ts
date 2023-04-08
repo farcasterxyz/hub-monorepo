@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import {
   Message,
   FarcasterNetwork,
@@ -8,7 +9,7 @@ import {
   ReactionType,
   ReactionRequest,
   ReactionsByFidRequest,
-  ReactionsByCastRequest,
+  ReactionsByTargetRequest,
   Factories,
   HubError,
   getInsecureHubRpcClient,
@@ -90,7 +91,7 @@ describe('getReaction', () => {
     await engine.mergeMessage(reactionAddLike);
 
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, reactionType: reactionAddLike.data.reactionBody.type, castId })
+      ReactionRequest.create({ fid, reactionType: reactionAddLike.data.reactionBody.type, targetCastId: castId })
     );
 
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(reactionAddLike));
@@ -100,7 +101,7 @@ describe('getReaction', () => {
     await engine.mergeMessage(reactionAddRecast);
 
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, castId })
+      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, targetCastId: castId })
     );
 
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(reactionAddRecast));
@@ -108,7 +109,7 @@ describe('getReaction', () => {
 
   test('fails if reaction is missing', async () => {
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, castId })
+      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, targetCastId: castId })
     );
     expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
   });
@@ -117,7 +118,7 @@ describe('getReaction', () => {
     const result = await client.getReaction(
       ReactionRequest.create({
         fid,
-        castId,
+        targetCastId: castId,
       })
     );
 
@@ -129,7 +130,7 @@ describe('getReaction', () => {
   test('fails without cast', async () => {
     const castId = Factories.CastId.build({ fid: 0, hash: new Uint8Array() });
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, castId: castId, reactionType: ReactionType.LIKE })
+      ReactionRequest.create({ fid, targetCastId: castId, reactionType: ReactionType.LIKE })
     );
     expect(result._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'fid is missing, hash is missing')
@@ -138,7 +139,9 @@ describe('getReaction', () => {
 
   test('fails without fid', async () => {
     const castId = Factories.CastId.build();
-    const result = await client.getReaction(ReactionRequest.create({ castId, reactionType: ReactionType.LIKE }));
+    const result = await client.getReaction(
+      ReactionRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE })
+    );
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
   });
 
@@ -187,7 +190,7 @@ describe('getReaction', () => {
     });
   });
 
-  describe('getReactionsByCast', () => {
+  describe('getReactionsByTarget', () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
@@ -200,15 +203,15 @@ describe('getReaction', () => {
       });
 
       test('succeeds without type', async () => {
-        const reactions = await client.getReactionsByCast(ReactionsByCastRequest.create({ castId }));
+        const reactions = await client.getReactionsByTarget(ReactionsByTargetRequest.create({ targetCastId: castId }));
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
           [reactionAddLike, reactionAddRecast].map((m) => Message.toJSON(m))
         );
       });
 
       test('succeeds with type Like', async () => {
-        const reactions = await client.getReactionsByCast(
-          ReactionsByCastRequest.create({ castId, reactionType: ReactionType.LIKE })
+        const reactions = await client.getReactionsByTarget(
+          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE })
         );
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
           [reactionAddLike].map((m) => Message.toJSON(m))
@@ -216,17 +219,31 @@ describe('getReaction', () => {
       });
 
       test('succeeds with type Recast', async () => {
-        const reactions = await client.getReactionsByCast(
-          ReactionsByCastRequest.create({ castId, reactionType: ReactionType.RECAST })
+        const reactions = await client.getReactionsByTarget(
+          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.RECAST })
         );
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
           [reactionAddRecast].map((m) => Message.toJSON(m))
         );
       });
+
+      test('succeeds with target url', async () => {
+        const targetUrl = faker.internet.url();
+        const reactionAddTargetUrl = await Factories.ReactionAddMessage.create(
+          { data: { fid, reactionBody: { targetUrl, targetCastId: undefined } } },
+          { transient: { signer } }
+        );
+        await engine.mergeMessage(reactionAddTargetUrl);
+        const reactions = await client.getReactionsByTarget(ReactionsByTargetRequest.create({ targetUrl }));
+        expect(reactions.isOk()).toBeTruthy();
+        expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
+          [reactionAddTargetUrl].map((m) => Message.toJSON(m))
+        );
+      });
     });
 
     test('returns empty array without messages', async () => {
-      const reactions = await client.getReactionsByCast(ReactionsByCastRequest.create({ castId }));
+      const reactions = await client.getReactionsByTarget(ReactionsByTargetRequest.create({ targetCastId: castId }));
       expect(reactions._unsafeUnwrap().messages).toEqual([]);
     });
   });

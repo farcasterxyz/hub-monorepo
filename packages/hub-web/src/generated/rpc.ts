@@ -20,8 +20,8 @@ import {
   MessagesResponse,
   NameRegistryEventRequest,
   ReactionRequest,
-  ReactionsByCastRequest,
   ReactionsByFidRequest,
+  ReactionsByTargetRequest,
   SignerRequest,
   SubscribeRequest,
   SyncIds,
@@ -46,7 +46,15 @@ export interface HubService {
   /** Reactions */
   getReaction(request: DeepPartial<ReactionRequest>, metadata?: grpc.Metadata): Promise<Message>;
   getReactionsByFid(request: DeepPartial<ReactionsByFidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
-  getReactionsByCast(request: DeepPartial<ReactionsByCastRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  /** To be deprecated */
+  getReactionsByCast(
+    request: DeepPartial<ReactionsByTargetRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<MessagesResponse>;
+  getReactionsByTarget(
+    request: DeepPartial<ReactionsByTargetRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<MessagesResponse>;
   /** User Data */
   getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpc.Metadata): Promise<Message>;
   getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
@@ -104,6 +112,7 @@ export class HubServiceClientImpl implements HubService {
     this.getReaction = this.getReaction.bind(this);
     this.getReactionsByFid = this.getReactionsByFid.bind(this);
     this.getReactionsByCast = this.getReactionsByCast.bind(this);
+    this.getReactionsByTarget = this.getReactionsByTarget.bind(this);
     this.getUserData = this.getUserData.bind(this);
     this.getUserDataByFid = this.getUserDataByFid.bind(this);
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
@@ -163,10 +172,17 @@ export class HubServiceClientImpl implements HubService {
   }
 
   getReactionsByCast(
-    request: DeepPartial<ReactionsByCastRequest>,
+    request: DeepPartial<ReactionsByTargetRequest>,
     metadata?: grpc.Metadata
   ): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetReactionsByCastDesc, ReactionsByCastRequest.fromPartial(request), metadata);
+    return this.rpc.unary(HubServiceGetReactionsByCastDesc, ReactionsByTargetRequest.fromPartial(request), metadata);
+  }
+
+  getReactionsByTarget(
+    request: DeepPartial<ReactionsByTargetRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetReactionsByTargetDesc, ReactionsByTargetRequest.fromPartial(request), metadata);
   }
 
   getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpc.Metadata): Promise<Message> {
@@ -485,7 +501,30 @@ export const HubServiceGetReactionsByCastDesc: UnaryMethodDefinitionish = {
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return ReactionsByCastRequest.encode(this).finish();
+      return ReactionsByTargetRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetReactionsByTargetDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetReactionsByTarget',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ReactionsByTargetRequest.encode(this).finish();
     },
   } as any,
   responseType: {

@@ -30,8 +30,8 @@ import {
   MessagesResponse,
   NameRegistryEventRequest,
   ReactionRequest,
-  ReactionsByCastRequest,
   ReactionsByFidRequest,
+  ReactionsByTargetRequest,
   SignerRequest,
   SubscribeRequest,
   SyncIds,
@@ -129,12 +129,22 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
+  /** To be deprecated */
   getReactionsByCast: {
     path: '/HubService/GetReactionsByCast',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: ReactionsByCastRequest) => Buffer.from(ReactionsByCastRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => ReactionsByCastRequest.decode(value),
+    requestSerialize: (value: ReactionsByTargetRequest) => Buffer.from(ReactionsByTargetRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ReactionsByTargetRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
+  getReactionsByTarget: {
+    path: '/HubService/GetReactionsByTarget',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ReactionsByTargetRequest) => Buffer.from(ReactionsByTargetRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ReactionsByTargetRequest.decode(value),
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
@@ -342,7 +352,9 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Reactions */
   getReaction: handleUnaryCall<ReactionRequest, Message>;
   getReactionsByFid: handleUnaryCall<ReactionsByFidRequest, MessagesResponse>;
-  getReactionsByCast: handleUnaryCall<ReactionsByCastRequest, MessagesResponse>;
+  /** To be deprecated */
+  getReactionsByCast: handleUnaryCall<ReactionsByTargetRequest, MessagesResponse>;
+  getReactionsByTarget: handleUnaryCall<ReactionsByTargetRequest, MessagesResponse>;
   /** User Data */
   getUserData: handleUnaryCall<UserDataRequest, Message>;
   getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -492,17 +504,33 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
+  /** To be deprecated */
   getReactionsByCast(
-    request: ReactionsByCastRequest,
+    request: ReactionsByTargetRequest,
     callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getReactionsByCast(
-    request: ReactionsByCastRequest,
+    request: ReactionsByTargetRequest,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getReactionsByCast(
-    request: ReactionsByCastRequest,
+    request: ReactionsByTargetRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getReactionsByTarget(
+    request: ReactionsByTargetRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getReactionsByTarget(
+    request: ReactionsByTargetRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getReactionsByTarget(
+    request: ReactionsByTargetRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void

@@ -8,6 +8,7 @@ import { HubError } from './errors';
 import { Factories } from './factories';
 import * as validations from './validations';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from './verifications';
+import { CastAddBody } from './protobufs';
 
 const fid = Factories.Fid.build();
 const network = protobufs.FarcasterNetwork.TESTNET;
@@ -27,13 +28,13 @@ beforeAll(async () => {
 describe('makeCastAddData', () => {
   test('succeeds', async () => {
     const data = await builders.makeCastAddData(
-      {
+      CastAddBody.create({
         text: faker.random.alphaNumeric(200),
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [10, 20],
         parentCastId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
-        embeds: [faker.internet.url()],
-      },
+        embeds: [{ url: faker.internet.url() }],
+      }),
       { fid, network }
     );
     expect(data.isOk()).toBeTruthy();
@@ -54,13 +55,13 @@ describe('makeCastRemoveData', () => {
 describe('makeCastAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeCastAdd(
-      {
+      CastAddBody.create({
         text: faker.random.alphaNumeric(200),
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [10, 20],
         parentCastId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
-        embeds: [faker.internet.url()],
-      },
+        embeds: [{ url: faker.internet.url() }],
+      }),
       { fid, network },
       ed25519Signer
     );

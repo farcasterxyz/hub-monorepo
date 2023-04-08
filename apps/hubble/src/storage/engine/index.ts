@@ -435,15 +435,15 @@ class Engine {
   }
 
   async getCastsByParent(
-    parentId: CastId,
+    parent: CastId | string,
     pageOptions: PageOptions = {}
   ): HubAsyncResult<MessagesPage<CastAddMessage>> {
-    const validatedCastId = validations.validateCastId(parentId);
-    if (validatedCastId.isErr()) {
-      return err(validatedCastId.error);
+    const validatedParent = validations.validateParent(parent);
+    if (validatedParent.isErr()) {
+      return err(validatedParent.error);
     }
 
-    return ResultAsync.fromPromise(this._castStore.getCastsByParent(parentId, pageOptions), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._castStore.getCastsByParent(parent, pageOptions), (e) => e as HubError);
   }
 
   async getCastsByMention(
@@ -469,18 +469,18 @@ class Engine {
   /*                            Reaction Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getReaction(fid: number, type: ReactionType, cast: CastId): HubAsyncResult<ReactionAddMessage> {
+  async getReaction(fid: number, type: ReactionType, target: CastId | string): HubAsyncResult<ReactionAddMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const validatedCastId = validations.validateCastId(cast);
-    if (validatedCastId.isErr()) {
-      return err(validatedCastId.error);
+    const validatedTarget = validations.validateTarget(target);
+    if (validatedTarget.isErr()) {
+      return err(validatedTarget.error);
     }
 
-    return ResultAsync.fromPromise(this._reactionStore.getReactionAdd(fid, type, cast), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._reactionStore.getReactionAdd(fid, type, target), (e) => e as HubError);
   }
 
   async getReactionsByFid(
@@ -499,18 +499,20 @@ class Engine {
     );
   }
 
-  async getReactionsByCast(
-    castId: CastId,
+  async getReactionsByTarget(
+    target: CastId | string,
     type?: ReactionType,
     pageOptions: PageOptions = {}
   ): HubAsyncResult<MessagesPage<ReactionAddMessage>> {
-    const validatedCastId = validations.validateCastId(castId);
-    if (validatedCastId.isErr()) {
-      return err(validatedCastId.error);
+    if (typeof target !== 'string') {
+      const validatedCastId = validations.validateCastId(target);
+      if (validatedCastId.isErr()) {
+        return err(validatedCastId.error);
+      }
     }
 
     return ResultAsync.fromPromise(
-      this._reactionStore.getReactionsByTargetCast(castId, type, pageOptions),
+      this._reactionStore.getReactionsByTarget(target, type, pageOptions),
       (e) => e as HubError
     );
   }

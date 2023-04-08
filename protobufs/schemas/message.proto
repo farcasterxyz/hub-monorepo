@@ -96,15 +96,24 @@ enum UserDataType {
   USER_DATA_TYPE_FNAME = 6; // Preferred Farcaster Name for the user
 }
 
+message Embed {
+  oneof embed {
+    string url = 1;
+    CastId cast_id = 2;
+  }
+}
+
 /** Adds a new Cast */
 message CastAddBody {
-  repeated string embeds = 1; // URLs to be embedded in the cast
+  repeated string embeds_deprecated = 1; // URLs to be embedded in the cast
   repeated uint64 mentions = 2; // Fids mentioned in the cast
   oneof parent {
     CastId parent_cast_id = 3; // Parent cast of the cast
+    string parent_url = 7; // Parent URL
   };
   string text = 4; // Text of the cast
   repeated uint32 mentions_positions = 5; // Positions of the mentions in the text
+  repeated Embed embeds = 6; // URLs or cast ids to be embedded in the cast
 }
 
 /** Removes an existing Cast */
@@ -123,6 +132,7 @@ message ReactionBody {
   ReactionType type = 1; // Type of reaction
   oneof target {
     CastId target_cast_id = 2; // CastId of the Cast to react to
+    string target_url = 3; // URL to react to
   }
 }
 

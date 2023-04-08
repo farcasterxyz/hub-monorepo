@@ -449,9 +449,13 @@ export default class Server {
         );
       },
       getCastsByParent: async (call, callback) => {
-        const { castId, pageSize, pageToken, reverse } = call.request;
+        const { parentCastId, parentUrl, pageSize, pageToken, reverse } = call.request;
 
-        const castsResult = await this.engine?.getCastsByParent(castId as CastId, { pageSize, pageToken, reverse });
+        const castsResult = await this.engine?.getCastsByParent(parentCastId ?? parentUrl ?? '', {
+          pageSize,
+          pageToken,
+          reverse,
+        });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -480,7 +484,7 @@ export default class Server {
         const reactionResult = await this.engine?.getReaction(
           request.fid,
           request.reactionType,
-          request.castId ?? CastId.create()
+          request.targetCastId ?? request.targetUrl ?? ''
         );
         reactionResult?.match(
           (reaction: ReactionAddMessage) => {
@@ -508,8 +512,24 @@ export default class Server {
         );
       },
       getReactionsByCast: async (call, callback) => {
-        const { castId, reactionType, pageSize, pageToken, reverse } = call.request;
-        const reactionsResult = await this.engine?.getReactionsByCast(castId ?? CastId.create(), reactionType, {
+        const { targetCastId, reactionType, pageSize, pageToken, reverse } = call.request;
+        const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? CastId.create(), reactionType, {
+          pageSize,
+          pageToken,
+          reverse,
+        });
+        reactionsResult?.match(
+          (page: MessagesPage<ReactionAddMessage>) => {
+            callback(null, messagesPageToResponse(page));
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          }
+        );
+      },
+      getReactionsByTarget: async (call, callback) => {
+        const { targetCastId, targetUrl, reactionType, pageSize, pageToken, reverse } = call.request;
+        const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? targetUrl ?? '', reactionType, {
           pageSize,
           pageToken,
           reverse,

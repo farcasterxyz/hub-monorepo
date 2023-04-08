@@ -213,9 +213,9 @@ describe('getAllReactionMessagesByFid', () => {
   });
 });
 
-describe('getReactionsByTargetCast', () => {
+describe('getReactionsByTarget', () => {
   test('returns empty array if no reactions exist', async () => {
-    const byCast = await set.getReactionsByTargetCast(castId);
+    const byCast = await set.getReactionsByTarget(castId);
     expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
   });
 
@@ -227,19 +227,19 @@ describe('getReactionsByTargetCast', () => {
     await set.merge(reactionAddRecast);
     await set.merge(reactionSameTarget);
 
-    const byCast = await set.getReactionsByTargetCast(castId);
+    const byCast = await set.getReactionsByTarget(castId);
     expect(byCast).toEqual({
       messages: [reactionAdd, reactionAddRecast, reactionSameTarget],
       nextPageToken: undefined,
     });
 
-    const results1 = await set.getReactionsByTargetCast(castId, undefined, { pageSize: 1 });
+    const results1 = await set.getReactionsByTarget(castId, undefined, { pageSize: 1 });
     expect(results1.messages).toEqual([reactionAdd]);
 
-    const results2 = await set.getReactionsByTargetCast(castId, undefined, { pageToken: results1.nextPageToken });
+    const results2 = await set.getReactionsByTarget(castId, undefined, { pageToken: results1.nextPageToken });
     expect(results2).toEqual({ messages: [reactionAddRecast, reactionSameTarget], nextPageToken: undefined });
 
-    const results3 = await set.getReactionsByTargetCast(castId, undefined, { reverse: true });
+    const results3 = await set.getReactionsByTarget(castId, undefined, { reverse: true });
     expect(results3).toEqual({
       messages: [reactionSameTarget, reactionAddRecast, reactionAdd],
       nextPageToken: undefined,
@@ -250,26 +250,26 @@ describe('getReactionsByTargetCast', () => {
     await set.merge(reactionAdd);
 
     const unknownCastId = Factories.CastId.build();
-    const byCast = await set.getReactionsByTargetCast(unknownCastId);
+    const byCast = await set.getReactionsByTarget(unknownCastId);
     expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
   });
 
   describe('with type', () => {
     test('returns empty array if no reactions exist', async () => {
-      const byCast = await set.getReactionsByTargetCast(castId, ReactionType.LIKE);
+      const byCast = await set.getReactionsByTarget(castId, ReactionType.LIKE);
       expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
     test('returns empty array if reactions exist for the target with different type', async () => {
       await set.merge(reactionAddRecast);
-      const byCast = await set.getReactionsByTargetCast(castId, ReactionType.LIKE);
+      const byCast = await set.getReactionsByTarget(castId, ReactionType.LIKE);
       expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
     test('returns empty array if reactions exist for the type with different target', async () => {
       await set.merge(reactionAdd);
       const unknownCastId = Factories.CastId.build();
-      const byCast = await set.getReactionsByTargetCast(unknownCastId, ReactionType.LIKE);
+      const byCast = await set.getReactionsByTarget(unknownCastId, ReactionType.LIKE);
       expect(byCast).toEqual({ messages: [], nextPageToken: undefined });
     });
 
@@ -283,22 +283,22 @@ describe('getReactionsByTargetCast', () => {
       await set.merge(reactionLike2);
       await set.merge(reactionAdd);
       await set.merge(reactionAddRecast);
-      const results1 = await set.getReactionsByTargetCast(castId, ReactionType.LIKE);
+      const results1 = await set.getReactionsByTarget(castId, ReactionType.LIKE);
       expect(results1).toEqual({ messages: [reactionAdd, reactionLike2], nextPageToken: undefined });
 
-      const results2 = await set.getReactionsByTargetCast(castId, ReactionType.LIKE, {
+      const results2 = await set.getReactionsByTarget(castId, ReactionType.LIKE, {
         reverse: true,
         pageSize: 1,
       });
       expect(results2.messages).toEqual([reactionLike2]);
 
-      const results3 = await set.getReactionsByTargetCast(castId, ReactionType.LIKE, {
+      const results3 = await set.getReactionsByTarget(castId, ReactionType.LIKE, {
         reverse: true,
         pageToken: results2.nextPageToken,
       });
       expect(results3).toEqual({ messages: [reactionAdd], nextPageToken: undefined });
 
-      const results4 = await set.getReactionsByTargetCast(castId, ReactionType.RECAST);
+      const results4 = await set.getReactionsByTarget(castId, ReactionType.RECAST);
       expect(results4).toEqual({ messages: [reactionAddRecast], nextPageToken: undefined });
     });
   });
@@ -339,7 +339,7 @@ describe('merge', () => {
     await expect(
       set.getReactionAdd(fid, message.data.reactionBody.type, message.data.reactionBody.targetCastId as CastId)
     ).resolves.toEqual(message);
-    await expect(set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as CastId)).resolves.toEqual({
+    await expect(set.getReactionsByTarget(message.data.reactionBody.targetCastId as CastId)).resolves.toEqual({
       messages: [message],
       nextPageToken: undefined,
     });
@@ -353,7 +353,7 @@ describe('merge', () => {
     await expect(
       set.getReactionRemove(fid, message.data.reactionBody.type, message.data.reactionBody.targetCastId as CastId)
     ).resolves.toEqual(message);
-    await expect(set.getReactionsByTargetCast(message.data.reactionBody.targetCastId as CastId)).resolves.toEqual({
+    await expect(set.getReactionsByTarget(message.data.reactionBody.targetCastId as CastId)).resolves.toEqual({
       messages: [],
       nextPageToken: undefined,
     });
