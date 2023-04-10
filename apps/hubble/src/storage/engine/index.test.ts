@@ -1,5 +1,4 @@
 import {
-  bytesToHexString,
   bytesToUtf8String,
   CastAddMessage,
   CastId,
@@ -33,6 +32,7 @@ import SignerStore from '~/storage/stores/signerStore';
 import { sleep } from '~/utils/crypto';
 import { getMessage, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
 import { StoreEvents } from '~/storage/stores/storeEventHandler';
+import { makeVerificationEthAddressClaim } from '@farcaster/core';
 
 const db = jestRocksDB('protobufs.engine.test');
 const network = FarcasterNetwork.TESTNET;
@@ -168,17 +168,14 @@ describe('mergeMessage', () => {
       });
 
       test('fails when network does not match claim network', async () => {
-        const address = (await custodySigner.getSignerKey())._unsafeUnwrap();
+        const address = custodySignerKey;
         const blockHash = Factories.BlockHash.build();
-        const mainnetClaim = Factories.VerificationEthAddressClaim.build(
-          {
-            fid: BigInt(fid),
-            network: FarcasterNetwork.MAINNET,
-            blockHash: bytesToHexString(blockHash)._unsafeUnwrap(),
-            address: bytesToHexString(address)._unsafeUnwrap(),
-          },
-          { transient: { signer: signer } }
-        );
+        const mainnetClaim = await makeVerificationEthAddressClaim(
+          fid,
+          address,
+          FarcasterNetwork.MAINNET,
+          blockHash
+        )._unsafeUnwrap();
         const claimSignature = (await custodySigner.signVerificationEthAddressClaim(mainnetClaim))._unsafeUnwrap();
         const testnetVerificationAdd = await Factories.VerificationAddEthAddressMessage.create(
           {
@@ -192,8 +189,8 @@ describe('mergeMessage', () => {
         );
         const result = await engine.mergeMessage(testnetVerificationAdd);
         // Signature will not match because we're attempting to recover the address based on the wrong network
-        expect(result._unsafeUnwrapErr()).toEqual(
-          new HubError('bad_request.validation_failure', 'ethSignature does not match address')
+        expect(result).toEqual(
+          err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'))
         );
       });
     });

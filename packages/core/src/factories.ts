@@ -378,15 +378,12 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
       const fid = transientParams.fid ?? FidFactory.build();
       const network = transientParams.network ?? FarcasterNetworkFactory.build();
       const blockHash = bytesToHexString(body.blockHash);
-      const claim = VerificationEthAddressClaimFactory.build(
-        {
-          fid: BigInt(fid),
-          network,
-          blockHash: blockHash.isOk() ? blockHash.value : '0x',
-          address: bytesToHexString(body.address)._unsafeUnwrap(),
-        },
-        { transient: { signer: ethSigner } }
-      );
+      const claim = VerificationEthAddressClaimFactory.build({
+        fid: BigInt(fid),
+        network,
+        blockHash: blockHash.isOk() ? blockHash.value : '0x',
+        address: bytesToHexString(body.address)._unsafeUnwrap(),
+      });
       body.ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     }
 
