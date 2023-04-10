@@ -12,6 +12,7 @@
     "build": "./node_modules/.bin/turbo run build",
     "clean": "./node_modules/.bin/turbo run clean",
     "dev": "./node_modules/.bin/turbo run dev --parallel",
+    "protoc": "./node_modules/.bin/turbo run protoc --parallel",
     "test": "./node_modules/.bin/turbo run test",
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
@@ -35,7 +36,7 @@
     "rimraf": "^4.1.2",
     "ts-node": "^10.9.1",
     "tsup": "^6.5.0",
-    "turbo": "1.8.3",
+    "turbo": "1.8.8",
     "typescript": "^5.0.2"
   },
   "lint-staged": {
