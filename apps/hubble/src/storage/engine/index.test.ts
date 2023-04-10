@@ -32,6 +32,7 @@ import SignerStore from '~/storage/stores/signerStore';
 import { sleep } from '~/utils/crypto';
 import { getMessage, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
 import { StoreEvents } from '~/storage/stores/storeEventHandler';
+import { makeVerificationEthAddressClaim } from '@farcaster/core';
 
 const db = jestRocksDB('protobufs.engine.test');
 const network = FarcasterNetwork.TESTNET;
@@ -164,6 +165,33 @@ describe('mergeMessage', () => {
           engine.getVerification(fid, verificationAdd.data.verificationAddEthAddressBody.address)
         ).resolves.toEqual(ok(verificationAdd));
         expect(mergedMessages).toEqual([signerAdd, verificationAdd]);
+      });
+
+      test('fails when network does not match claim network', async () => {
+        const address = custodySignerKey;
+        const blockHash = Factories.BlockHash.build();
+        const mainnetClaim = await makeVerificationEthAddressClaim(
+          fid,
+          address,
+          FarcasterNetwork.MAINNET,
+          blockHash
+        )._unsafeUnwrap();
+        const claimSignature = (await custodySigner.signVerificationEthAddressClaim(mainnetClaim))._unsafeUnwrap();
+        const testnetVerificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+          {
+            data: {
+              fid,
+              network: FarcasterNetwork.TESTNET,
+              verificationAddEthAddressBody: { address: address, blockHash: blockHash, ethSignature: claimSignature },
+            },
+          },
+          { transient: { signer: signer, ethSigner: custodySigner } }
+        );
+        const result = await engine.mergeMessage(testnetVerificationAdd);
+        // Signature will not match because we're attempting to recover the address based on the wrong network
+        expect(result).toEqual(
+          err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'))
+        );
       });
     });
 
