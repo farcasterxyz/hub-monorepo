@@ -817,10 +817,19 @@ export default class Server {
 
                 // Write was successful, check the RSS usage
                 if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
-                  // more than 1G
-                  logger.warn(
-                    `subscribe: RSS usage increased by more than 1GB while returning events to ${stream.getPeer()}`
+                  // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
+                  // We'll destroy the stream.
+                  const error = new HubError(
+                    'unavailable.network_failure',
+                    `stream memory usage too for peer: ${stream.getPeer()}`
                   );
+                  logger.error({ errCode: error.errCode }, error.message);
+                  stream.destroy(error);
+
+                  // If the iterator throws, it is already closed, so it doesn't matter.
+                  await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
+
+                  return;
                 }
               }
             }
