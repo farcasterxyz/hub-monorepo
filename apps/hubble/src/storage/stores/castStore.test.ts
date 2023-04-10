@@ -18,12 +18,10 @@ import { UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
-import { StorageCache } from '~/storage/engine/storageCache';
 import { err } from 'neverthrow';
 
 const db = jestRocksDB('protobufs.castStore.test');
-const cache = new StorageCache();
-const eventHandler = new StoreEventHandler(db, cache);
+const eventHandler = new StoreEventHandler(db);
 const store = new CastStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -654,7 +652,7 @@ describe('pruneMessages', () => {
   });
 
   beforeEach(async () => {
-    await cache.syncFromDb(db);
+    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {

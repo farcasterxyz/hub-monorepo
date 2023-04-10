@@ -53,6 +53,7 @@ import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcaster
 import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrRevokeMessagesJob';
 import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJob';
 import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet';
+import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -135,6 +136,12 @@ export interface HubOptions {
   /** Rebuild the sync trie from messages in the DB on startup */
   rebuildSyncTrie?: boolean;
 
+  /** Commit lock timeout in ms */
+  commitLockTimeout: number;
+
+  /** Commit lock queue size */
+  commitLockMaxPending: number;
+
   /** Enables the Admin Server */
   adminServerEnabled?: boolean;
 
@@ -210,7 +217,11 @@ export class Hub implements HubInterface {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
     }
 
-    this.engine = new Engine(this.rocksDB, options.network);
+    const eventHandler = new StoreEventHandler(this.rocksDB, {
+      lockMaxPending: options.commitLockMaxPending,
+      lockTimeout: options.commitLockTimeout,
+    });
+    this.engine = new Engine(this.rocksDB, options.network, eventHandler);
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB, this.ethRegistryProvider);
 
     this.rpcServer = new Server(

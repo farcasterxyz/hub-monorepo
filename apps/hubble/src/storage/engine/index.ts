@@ -50,12 +50,11 @@ import { MessagesPage, PageOptions } from '~/storage/stores/types';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { logger } from '~/utils/logger';
-import { StorageCache } from '~/storage/engine/storageCache';
 import {
   RevokeMessagesBySignerJobQueue,
   RevokeMessagesBySignerJobWorker,
 } from '~/storage/jobs/revokeMessagesBySignerJob';
-import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent';
+import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';
 
 const log = logger.child({
   component: 'Engine',
@@ -77,16 +76,14 @@ class Engine {
   private _validationWorkerJobId = 0;
   private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<Message>) => void>();
 
-  private _storageCache: StorageCache;
   private _revokeSignerQueue: RevokeMessagesBySignerJobQueue;
   private _revokeSignerWorker: RevokeMessagesBySignerJobWorker;
 
-  constructor(db: RocksDB, network: FarcasterNetwork) {
+  constructor(db: RocksDB, network: FarcasterNetwork, eventHandler?: StoreEventHandler) {
     this._db = db;
     this._network = network;
 
-    this._storageCache = new StorageCache();
-    this.eventHandler = new StoreEventHandler(db, this._storageCache);
+    this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
@@ -146,7 +143,7 @@ class Engine {
     this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent);
 
-    await this._storageCache.syncFromDb(this._db);
+    await this.eventHandler.syncCache();
     log.info('engine started');
   }
 

@@ -13,14 +13,12 @@ import {
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import UserDataStore from '~/storage/stores/userDataStore';
-import { getMessage, makeTsHash } from '../db/message';
-import { UserPostfix } from '../db/types';
-import { StorageCache } from '~/storage/engine/storageCache';
+import { getMessage, makeTsHash } from '~/storage/db/message';
+import { UserPostfix } from '~/storage/db/types';
 import { err } from 'neverthrow';
 
 const db = jestRocksDB('protobufs.userDataSet.test');
-const cache = new StorageCache();
-const eventHandler = new StoreEventHandler(db, cache);
+const eventHandler = new StoreEventHandler(db);
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -295,7 +293,7 @@ describe('pruneMessages', () => {
   });
 
   beforeEach(async () => {
-    await cache.syncFromDb(db);
+    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {

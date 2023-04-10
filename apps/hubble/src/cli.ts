@@ -32,6 +32,12 @@ const PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS = 10_000;
 const SHUTDOWN_GRACE_PERIOD_MS = 30_000;
 let isExiting = false;
 
+const parseNumber = (string: string) => {
+  const number = Number(string);
+  if (isNaN(number)) throw new Error('Not a number.');
+  return number;
+};
+
 const app = new Command();
 app.name('hub').description('Farcaster Hub').version(APP_VERSION);
 
@@ -72,6 +78,8 @@ app
   .option('--admin-server-host <host>', "The host the admin server should listen on. (default: '127.0.0.1')")
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
+  .option('--commit-lock-timeout <number>', 'Commit lock timeout in milliseconds (default: 500)', parseNumber)
+  .option('--commit-lock-max-pending <number>', 'Commit lock max pending jobs (default: 1000)', parseNumber)
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
   .action(async (cliOptions) => {
@@ -285,6 +293,8 @@ app
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB,
       rebuildSyncTrie,
+      commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
+      commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
       testUsers,
@@ -341,12 +351,6 @@ app
       handleShutdownSignal('unhandledRejection');
     });
   });
-
-const parseNumber = (string: string) => {
-  const number = Number(string);
-  if (isNaN(number)) throw new Error('Not a number.');
-  return number;
-};
 
 /** Write a given PeerId to a file */
 const writePeerId = async (peerId: PeerId, filepath: string) => {

@@ -22,9 +22,11 @@ import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserMessagePostfix } from '~/storage/db/types';
-import { StorageCache } from '~/storage/engine/storageCache';
+import { StorageCache } from '~/storage/stores/storageCache';
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
+const DEFAULT_LOCK_MAX_PENDING = 1_000;
+const DEFAULT_LOCK_TIMEOUT = 500; // in ms
 
 export type StoreEvents = {
   /**
@@ -126,23 +128,36 @@ const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => 
   return txn.put(key, value);
 };
 
+export type StoreEventHandlerOptions = {
+  lockMaxPending?: number;
+  lockTimeout?: number;
+};
+
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _db: RocksDB;
   private _generator: HubEventIdGenerator;
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
 
-  constructor(db: RocksDB, storageCache: StorageCache) {
+  constructor(db: RocksDB, options: StoreEventHandlerOptions = {}) {
     super();
 
     this._db = db;
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
-    this._lock = new AsyncLock({ maxPending: 1_000, timeout: 500 });
-    this._storageCache = storageCache;
+    this._lock = new AsyncLock({
+      maxPending: options.lockMaxPending ?? DEFAULT_LOCK_MAX_PENDING,
+      timeout: options.lockTimeout ?? DEFAULT_LOCK_TIMEOUT,
+    });
+
+    this._storageCache = new StorageCache();
   }
 
   getCacheMessageCount(fid: number, set: UserMessagePostfix): HubResult<number> {
     return this._storageCache.getMessageCount(fid, set);
+  }
+
+  async syncCache(): HubAsyncResult<void> {
+    return ResultAsync.fromPromise(this._storageCache.syncFromDb(this._db), (e) => e as HubError);
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {

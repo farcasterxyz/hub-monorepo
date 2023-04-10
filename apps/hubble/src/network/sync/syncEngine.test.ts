@@ -19,7 +19,7 @@ import { SyncId } from '~/network/sync/syncId';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { sleepWhile } from '~/utils/crypto';
-import { NetworkFactories } from '../utils/factories';
+import { NetworkFactories } from '~/network/utils/factories';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.syncEngine.test`);

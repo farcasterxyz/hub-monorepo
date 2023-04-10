@@ -3,7 +3,7 @@ import { HubEvent, HubEventType, Factories, HubError } from '@farcaster/hub-node
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { putMessage } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
-import { StorageCache } from '~/storage/engine/storageCache';
+import { StorageCache } from '~/storage/stores/storageCache';
 
 const db = jestRocksDB('engine.storageCache.test');
 
