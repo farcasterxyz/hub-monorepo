@@ -50,12 +50,11 @@ import { MessagesPage, PageOptions } from '~/storage/stores/types';
 import UserDataStore from '~/storage/stores/userDataStore';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { logger } from '~/utils/logger';
-import { StorageCache } from '~/storage/engine/storageCache';
 import {
   RevokeMessagesBySignerJobQueue,
   RevokeMessagesBySignerJobWorker,
 } from '~/storage/jobs/revokeMessagesBySignerJob';
-import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent';
+import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';
 
 const log = logger.child({
   component: 'Engine',
@@ -84,7 +83,7 @@ class Engine {
     this._db = db;
     this._network = network;
 
-    this.eventHandler = eventHandler ?? new StoreEventHandler(db, new StorageCache());
+    this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
@@ -144,7 +143,7 @@ class Engine {
     this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent);
 
-    await this.eventHandler.init();
+    await this.eventHandler.syncCache();
     log.info('engine started');
   }
 

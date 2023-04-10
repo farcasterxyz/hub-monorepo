@@ -44,7 +44,7 @@ export const Config = {
   /** Commit lock timeout in ms */
   commitLockTimeout: 500,
   /** Commit lock queue size */
-  commitLockQueueSize: 1_000,
+  commitLockMaxPending: 1_000,
   /** Farcaster network */
   network: DEFAULT_NETWORK,
   /** Start the admin server? */

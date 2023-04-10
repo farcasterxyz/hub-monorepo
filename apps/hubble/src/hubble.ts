@@ -54,7 +54,6 @@ import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrR
 import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJob';
 import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorageCache } from '~/storage/engine/storageCache';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
 
@@ -141,7 +140,7 @@ export interface HubOptions {
   commitLockTimeout: number;
 
   /** Commit lock queue size */
-  commitLockQueueSize: number;
+  commitLockMaxPending: number;
 
   /** Enables the Admin Server */
   adminServerEnabled?: boolean;
@@ -218,12 +217,10 @@ export class Hub implements HubInterface {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
     }
 
-    const eventHandler = new StoreEventHandler(
-      this.rocksDB,
-      new StorageCache(),
-      options.commitLockQueueSize,
-      options.commitLockTimeout
-    );
+    const eventHandler = new StoreEventHandler(this.rocksDB, {
+      lockMaxPending: options.commitLockMaxPending,
+      lockTimeout: options.commitLockTimeout,
+    });
     this.engine = new Engine(this.rocksDB, options.network, eventHandler);
     this.syncEngine = new SyncEngine(this.engine, this.rocksDB, this.ethRegistryProvider);
 
