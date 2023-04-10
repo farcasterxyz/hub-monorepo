@@ -1,0 +1,19 @@
+name: Label Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  label_issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add label
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.issue.number;
+            const repo = context.repo;
+            const labelToAdd = "s-triage";
+            github.issues.addLabels({...repo, issue_number: issueNumber, labels: [labelToAdd]});
