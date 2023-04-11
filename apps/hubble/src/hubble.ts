@@ -563,14 +563,7 @@ export class Hub implements HubInterface {
         return;
       }
 
-      // Ignore peers that are below the minimum supported version.
-      const theirVersion = message.hubVersion;
-      const versionCheckResult = ensureAboveMinFarcasterVersion(theirVersion);
-      if (versionCheckResult.isErr() || message.network !== this.options.network) {
-        log.warn(
-          { peerId, theirVersion, theirNetwork: message.network },
-          'Peer is running an invalid or outdated version, ignoring'
-        );
+      if (!(await this.isValidPeer(peerId, message))) {
         await this.gossipNode.removePeerFromAddressBook(peerId);
         this.syncEngine.removeContactInfoForPeerId(peerId.toString());
         return;
@@ -834,6 +827,29 @@ export class Hub implements HubInterface {
     txn.put(Buffer.from([RootPrefix.Network]), value);
 
     return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
+  }
+  async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
+    const theirVersion = message.hubVersion;
+    const theirNetwork = message.network;
+
+    const versionCheckResult = ensureAboveMinFarcasterVersion(theirVersion);
+    if (versionCheckResult.isErr()) {
+      log.warn(
+        { peerId: ourPeerId, theirVersion, ourVersion: FARCASTER_VERSION, errMsg: versionCheckResult.error.message },
+        'Peer is running an outdated version, ignoring'
+      );
+      return false;
+    }
+
+    if (theirNetwork !== this.options.network) {
+      log.warn(
+        { peerId: ourPeerId, theirNetwork, ourNetwork: this.options.network },
+        'Peer is running a different network, ignoring'
+      );
+      return false;
+    }
+
+    return true;
   }
 
   /* -------------------------------------------------------------------------- */
