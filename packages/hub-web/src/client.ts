@@ -11,8 +11,7 @@ import { NodeHttpTransport } from '@improbable-eng/grpc-web-node-http-transport'
 import { grpc } from '@improbable-eng/grpc-web';
 import { err, ok } from 'neverthrow';
 import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
-import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 export { grpc } from '@improbable-eng/grpc-web';
 export { Observable } from 'rxjs';
@@ -55,7 +54,7 @@ type WrappedUnaryCall<T, U> = (request: T, metadata?: grpc.Metadata) => Promise<
 
 type OriginalStream<T, U> = (request: T, metadata?: grpc.Metadata) => Observable<U>;
 
-type WrappedStream<T, U> = (request: T, metadata?: grpc.Metadata) => Promise<HubResult<Observable<U>>>;
+type WrappedStream<T, U> = (request: T, metadata?: grpc.Metadata) => HubResult<Observable<U>>;
 
 type WrappedClient<C> = { $: C } & {
   [prop in keyof C]: C[prop] extends OriginalUnaryCall<infer T, infer U>
@@ -76,7 +75,7 @@ const wrapClient = <C extends object>(client: C) => {
       const func = target[key];
       if (typeof func === 'function') {
         return (...args: unknown[]) => {
-          let result = func.call(target, ...args);
+          const result = func.call(target, ...args);
           if (result instanceof Promise) {
             return (result as Promise<any>).then(
               (res) => ok(res),
@@ -84,15 +83,6 @@ const wrapClient = <C extends object>(client: C) => {
             );
           }
 
-          if (result instanceof Observable) {
-            result = result.pipe(
-              catchError((e, _caught) => {
-                // TODO: investigate error handling
-                return of(err(e));
-              })
-            );
-            return ok(result);
-          }
           return ok(result);
         };
       }
@@ -123,7 +113,7 @@ export const getAuthMetadata = (username: string, password: string): grpc.Metada
     // nodejs
     metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
   } else {
-    // browswer
+    // browser
     metadata.set('authorization', `Basic ${btoa(`${username}:${password}`)}`);
   }
   return metadata;
