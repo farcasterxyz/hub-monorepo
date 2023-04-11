@@ -1,5 +1,11 @@
 # @farcaster/hub-web
 
+## 0.2.4
+
+### Patch Changes
+
+- 6e5449a: use raw Observable for subscribe method
+
 ## 0.2.3
 
 ### Patch Changes
