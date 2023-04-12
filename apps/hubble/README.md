@@ -24,7 +24,7 @@ Hubble can be started in testnet mode where it peers with other hubs. The Farcas
 messages every 10 seconds to make testing easy. To connect to testnet:
 
 1. Run `yarn start -e <eth-rpc-url> -b /dns/testnet1.farcaster.xyz/tcp/2282 -n 2`
-2. Pass `--reset-db` flag on first run, if you've previously connected to devnet or mainnet
+2. If you've previously connected to devnet or mainnet, run `yarn dbreset` to clear the database before starting
 
 #### Connecting to Mainnet
 
