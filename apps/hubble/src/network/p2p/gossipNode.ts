@@ -1,6 +1,14 @@
 import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { noise } from '@chainsafe/libp2p-noise';
-import { ContactInfoContent, GossipMessage, HubAsyncResult, HubError, HubResult, Message } from '@farcaster/hub-nodejs';
+import {
+  ContactInfoContent,
+  FarcasterNetwork,
+  GossipMessage,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  Message,
+} from '@farcaster/hub-nodejs';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { mplex } from '@libp2p/mplex';
@@ -11,7 +19,6 @@ import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { ConnectionFilter } from '~/network/p2p/connectionFilter';
-import { GOSSIP_TOPICS, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
@@ -57,6 +64,12 @@ interface NodeOptions {
 export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
+  private _network: FarcasterNetwork;
+
+  constructor(network?: FarcasterNetwork) {
+    super();
+    this._network = network ?? FarcasterNetwork.NONE;
+  }
 
   /** Returns the PeerId (public key) of this node */
   get peerId() {
@@ -174,7 +187,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async gossipMessage(message: Message) {
     const gossipMessage = GossipMessage.create({
       message,
-      topics: [NETWORK_TOPIC_PRIMARY],
+      topics: [this.primaryTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
     });
     await this.publish(gossipMessage);
@@ -184,7 +197,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async gossipContactInfo(contactInfo: ContactInfoContent) {
     const gossipMessage = GossipMessage.create({
       contactInfoContent: contactInfo,
-      topics: [NETWORK_TOPIC_PRIMARY],
+      topics: [this.contactInfoTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
     });
     await this.publish(gossipMessage);
@@ -252,7 +265,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     });
     this.gossip?.addEventListener('message', (event) => {
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
-      if (GOSSIP_TOPICS.includes(event.detail.topic)) {
+      if (this.gossipTopics().includes(event.detail.topic)) {
         this.emit('message', event.detail.topic, GossipNode.decodeMessage(event.detail.data));
       }
     });
@@ -269,7 +282,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       log.info({ identity: this.identity }, `Disconnected from: ${event.detail.remotePeer.toString()} `);
     });
     this.gossip?.addEventListener('message', (event) => {
-      log.info({ identity: this.identity }, `Received message for topic: ${event.detail.topic}`);
+      log.info(
+        { identity: this.identity, from: (event.detail as any)['from'] },
+        `Received message for topic: ${event.detail.topic}`
+      );
     });
     this.gossip?.addEventListener('subscription-change', (event) => {
       log.info(
@@ -279,6 +295,17 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         })}`
       );
     });
+  }
+
+  primaryTopic() {
+    return `f_network_${this._network}_primary`;
+  }
+  contactInfoTopic() {
+    return `f_network_${this._network}_contact_info`;
+  }
+
+  gossipTopics() {
+    return [this.primaryTopic(), this.contactInfoTopic()];
   }
 
   //TODO: Needs better typesafety
@@ -315,6 +342,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
+    const peerDiscoveryTopic = `_farcaster.${this._network}.peer_discovery`;
 
     let announceMultiAddrStrList: string[] = [];
     if (options.announceIp && options.gossipPort) {
@@ -358,7 +386,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
         pubsub: gossip,
-        peerDiscovery: [pubsubPeerDiscovery()],
+        peerDiscovery: [pubsubPeerDiscovery({ topics: [peerDiscoveryTopic] })],
       }),
       (e) => new HubError('unavailable', { message: 'failed to create libp2p node', cause: e as Error })
     );

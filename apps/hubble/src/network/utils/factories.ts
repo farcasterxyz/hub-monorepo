@@ -10,7 +10,6 @@ import {
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Factory } from 'fishery';
-import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
 
 const GossipAddressInfoFactory = Factory.define<GossipAddressInfo>(() => {
@@ -42,7 +41,7 @@ const GossipMessageFactory = Factory.define<GossipMessage, { peerId?: PeerId }, 
     return GossipMessage.create({
       peerId: transientParams.peerId ? transientParams.peerId.toBytes() : new Uint8Array(),
       message: Factories.Message.build(),
-      topics: [NETWORK_TOPIC_PRIMARY],
+      topics: ['f_network_0_primary'],
       version: GossipVersion.V1,
     });
   }

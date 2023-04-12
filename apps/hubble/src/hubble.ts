@@ -23,7 +23,6 @@ import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
 import { Result, ResultAsync, err, ok } from 'neverthrow';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from '~/network/p2p/gossipNode';
-import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { PeriodicSyncJobScheduler } from '~/network/sync/periodicSyncJob';
 import SyncEngine from '~/network/sync/syncEngine';
 import AdminServer from '~/rpc/adminServer';
@@ -200,7 +199,7 @@ export class Hub implements HubInterface {
   constructor(options: HubOptions) {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode();
+    this.gossipNode = new GossipNode(this.options.network);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
@@ -677,8 +676,8 @@ export class Hub implements HubInterface {
 
   private registerEventHandlers() {
     // Subscribes to all relevant topics
-    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
-    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);
+    this.gossipNode.gossip?.subscribe(this.gossipNode.primaryTopic());
+    this.gossipNode.gossip?.subscribe(this.gossipNode.contactInfoTopic());
 
     this.gossipNode.on('message', async (_topic, message) => {
       await message.match(

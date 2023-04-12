@@ -1,5 +1,4 @@
 import { GossipNode } from '~/network/p2p/gossipNode';
-import { NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { sleep } from '~/utils/crypto';
 import { NetworkFactories } from '../../network/utils/factories';
 import { GossipMessage } from '@farcaster/hub-nodejs';
@@ -41,9 +40,9 @@ describe('gossip network tests', () => {
         const result = await n.connect(nodes[0] as GossipNode);
         expect(result.isOk()).toBeTruthy();
       }
-
+      const primaryTopic = nodes[0]!.primaryTopic();
       // Subscribe each node to the test topic
-      nodes.forEach((n) => n.gossip?.subscribe(NETWORK_TOPIC_PRIMARY));
+      nodes.forEach((n) => n.gossip?.subscribe(primaryTopic));
 
       // Sleep 5 heartbeats to let the gossipsub network form
       await sleep(PROPAGATION_DELAY);
@@ -82,8 +81,8 @@ describe('gossip network tests', () => {
       nonSenderNodes.map((n) => {
         const topics = messageStore.get(n.peerId?.toString() ?? '');
         expect(topics).toBeDefined();
-        expect(topics?.has(NETWORK_TOPIC_PRIMARY)).toBeTruthy();
-        const topicMessages = topics?.get(NETWORK_TOPIC_PRIMARY) ?? [];
+        expect(topics?.has(primaryTopic)).toBeTruthy();
+        const topicMessages = topics?.get(primaryTopic) ?? [];
         expect(topicMessages.length).toBe(1);
         expect(topicMessages[0]).toEqual(message);
       });
