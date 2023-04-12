@@ -254,7 +254,7 @@ export const benchSyncEngine = async ({
           } while (theirSyncEngine === ourSyncEngine);
 
           const otherSnapshot = (await theirSyncEngine.getSnapshot())._unsafeUnwrap();
-          if ((await ourSyncEngine.shouldSync(otherSnapshot))._unsafeUnwrap()) {
+          if ((await ourSyncEngine.syncStatus(otherSnapshot))._unsafeUnwrap().shouldSync) {
             const rpcClient = new MockRpcClient((theirSyncEngine as any).engine, theirSyncEngine);
             await ourSyncEngine.performSync(otherSnapshot, rpcClient as unknown as HubRpcClient);
 
