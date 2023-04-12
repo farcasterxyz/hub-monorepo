@@ -265,10 +265,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.info(
         {
           peerId,
-          shouldSync: syncStatus.shouldSync,
+          inSync: syncStatus.isSyncing ? 'unknown' : !syncStatus.shouldSync,
           isSyncing: syncStatus.isSyncing,
           theirMessages: syncStatus.theirSnapshot.numMessages,
           ourMessages: syncStatus.ourSnapshot?.numMessages,
+          peerNetwork: peerContact.network,
+          peerVersion: peerContact.hubVersion,
         },
         'SyncStatus' // Search for this string in the logs to get summary of sync status
       );
