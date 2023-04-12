@@ -1,4 +1,5 @@
 name: Release Packages
+on: workflow_dispatch
 
 # prevent multiple simultaneous test runs
 concurrency:
