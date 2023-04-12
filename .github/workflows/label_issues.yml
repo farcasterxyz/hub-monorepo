@@ -9,11 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Add label
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issueNumber = context.issue.number;
-            const repo = context.repo;
-            const labelToAdd = "s-triage";
-            github.issues.addLabels({...repo, issue_number: issueNumber, labels: [labelToAdd]});
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['s-triage']
+            })
