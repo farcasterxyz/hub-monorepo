@@ -51,6 +51,13 @@ type PeerContact = {
   peerId: PeerId;
 };
 
+type SyncStatus = {
+  isSyncing: boolean;
+  shouldSync: boolean;
+  theirSnapshot: TrieSnapshot;
+  ourSnapshot?: TrieSnapshot;
+};
+
 class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
 
@@ -246,14 +253,29 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       }
 
       const peerState = peerStateResult.value;
-      const shouldSync = await this.shouldSync(peerState);
-      if (shouldSync.isErr()) {
+      const syncStatusResult = await this.syncStatus(peerState);
+      if (syncStatusResult.isErr()) {
         log.warn(`Diffsync: Failed to get shouldSync`);
         this.emit('syncComplete', false);
         return;
       }
 
-      if (shouldSync.value === true) {
+      // Log sync status for visibility
+      const syncStatus = syncStatusResult.value;
+      log.info(
+        {
+          peerId,
+          inSync: syncStatus.isSyncing ? 'unknown' : !syncStatus.shouldSync,
+          isSyncing: syncStatus.isSyncing,
+          theirMessages: syncStatus.theirSnapshot.numMessages,
+          ourMessages: syncStatus.ourSnapshot?.numMessages,
+          peerNetwork: peerContact.network,
+          peerVersion: peerContact.hubVersion,
+        },
+        'SyncStatus' // Search for this string in the logs to get summary of sync status
+      );
+
+      if (syncStatus.shouldSync === true) {
         log.info({ peerId }, `Diffsync: Syncing with peer`);
         await this.performSync(peerState, rpcClient);
       } else {
@@ -276,22 +298,27 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
   }
 
-  public async shouldSync(otherSnapshot: TrieSnapshot): HubAsyncResult<boolean> {
+  public async syncStatus(theirSnapshot: TrieSnapshot): HubAsyncResult<SyncStatus> {
     if (this._isSyncing) {
       log.info('shouldSync: already syncing');
-      return ok(false);
+      return ok({ isSyncing: true, shouldSync: false, theirSnapshot });
     }
 
-    return (await this.getSnapshot(otherSnapshot.prefix)).map((ourSnapshot) => {
+    const ourSnapshotResult = await this.getSnapshot(theirSnapshot.prefix);
+    if (ourSnapshotResult.isErr()) {
+      return err(ourSnapshotResult.error);
+    } else {
+      const ourSnapshot = ourSnapshotResult.value;
       const excludedHashesMatch =
-        ourSnapshot.excludedHashes.length === otherSnapshot.excludedHashes.length &&
+        ourSnapshot.excludedHashes.length === theirSnapshot.excludedHashes.length &&
         // NOTE: `index` is controlled by `every` and so not at risk of object injection.
         // eslint-disable-next-line security/detect-object-injection
-        ourSnapshot.excludedHashes.every((value, index) => value === otherSnapshot.excludedHashes[index]);
+        ourSnapshot.excludedHashes.every((value, index) => value === theirSnapshot.excludedHashes[index]);
 
       log.info({ excludedHashesMatch }, `shouldSync: excluded hashes`);
-      return !excludedHashesMatch;
-    });
+
+      return ok({ isSyncing: false, shouldSync: !excludedHashesMatch, ourSnapshot, theirSnapshot });
+    }
   }
 
   async performSync(otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
@@ -306,7 +333,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       } else {
         const ourSnapshot = snapshot.value;
         const divergencePrefix = await this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
-        log.info({ divergencePrefix, prefix: ourSnapshot.prefix }, 'Divergence prefix');
+        log.info(
+          {
+            divergencePrefix: Buffer.from(divergencePrefix).toString('ascii'),
+            prefix: Buffer.from(ourSnapshot.prefix).toString('ascii'),
+          },
+          'Divergence prefix'
+        );
 
         let missingCount = 0;
         await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {

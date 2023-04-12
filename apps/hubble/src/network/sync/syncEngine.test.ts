@@ -225,18 +225,20 @@ describe('SyncEngine', () => {
     expect(snapshotTimestamp).toEqual(Math.floor(nowInSeconds / 10) * 10);
   });
 
-  test('shouldSync returns false when already syncing', async () => {
+  test('syncStatus.shouldSync is false when already syncing', async () => {
     const mockRPCClient = mock<HubRpcClient>();
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything(), anything())).thenCall(async () => {
-      const shouldSync = await syncEngine.shouldSync({
+      const shouldSync = await syncEngine.syncStatus({
         prefix: new Uint8Array(),
         numMessages: 10,
         excludedHashes: [],
       });
       expect(shouldSync.isOk()).toBeTruthy();
-      expect(shouldSync._unsafeUnwrap()).toBeFalsy();
+      expect(shouldSync._unsafeUnwrap().isSyncing).toBeTruthy();
+      expect(shouldSync._unsafeUnwrap().shouldSync).toBeFalsy();
+      expect(shouldSync._unsafeUnwrap().ourSnapshot).toBeUndefined();
       called = true;
 
       // Return an empty child map so sync will finish with a noop
@@ -259,15 +261,26 @@ describe('SyncEngine', () => {
     expect(called).toBeTruthy();
   });
 
-  test('shouldSync returns false when excludedHashes match', async () => {
+  test('syncStatus returns their snapshot and our snapshot when not syncing', async () => {
+    const theirSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
+    const syncStatus = await syncEngine.syncStatus(theirSnapshot);
+    expect(syncStatus.isOk()).toBeTruthy();
+    expect(syncStatus._unsafeUnwrap().isSyncing).toBeFalsy();
+    expect(syncStatus._unsafeUnwrap().theirSnapshot).toEqual(theirSnapshot);
+    expect(syncStatus._unsafeUnwrap().ourSnapshot).toBeTruthy();
+  });
+
+  test('syncStatus.shouldSync is false when excludedHashes match', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
-    expect((await syncEngine.shouldSync((await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()).toBeFalsy();
+    expect(
+      (await syncEngine.syncStatus((await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
+    ).toBeFalsy();
   });
 
-  test('shouldSync returns true when hashes dont match', async () => {
+  test('syncStatus.shouldSync is true when hashes dont match', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
@@ -275,7 +288,7 @@ describe('SyncEngine', () => {
     const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
     await addMessagesWithTimestamps([30662372]);
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
-    expect((await syncEngine.shouldSync(oldSnapshot))._unsafeUnwrap()).toBeTruthy();
+    expect((await syncEngine.syncStatus(oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
   });
 
   test('initialize populates the trie with all existing messages', async () => {
