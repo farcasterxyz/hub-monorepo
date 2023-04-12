@@ -16,7 +16,9 @@
     "test": "./node_modules/.bin/turbo run test",
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "version-packages": "changeset version --ignore @farcaster/hubble",
+    "release-packages": "yarn build && changeset publish"
   },
   "engines": {
     "npm": ">=8.0.0",
