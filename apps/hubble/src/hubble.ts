@@ -23,7 +23,6 @@ import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
 import { Result, ResultAsync, err, ok } from 'neverthrow';
 import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from '~/network/p2p/gossipNode';
-import { NETWORK_TOPIC_CONTACT, NETWORK_TOPIC_PRIMARY } from '~/network/p2p/protocol';
 import { PeriodicSyncJobScheduler } from '~/network/sync/periodicSyncJob';
 import SyncEngine from '~/network/sync/syncEngine';
 import AdminServer from '~/rpc/adminServer';
@@ -200,7 +199,7 @@ export class Hub implements HubInterface {
   constructor(options: HubOptions) {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode();
+    this.gossipNode = new GossipNode(this.options.network);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
@@ -563,14 +562,7 @@ export class Hub implements HubInterface {
         return;
       }
 
-      // Ignore peers that are below the minimum supported version.
-      const theirVersion = message.hubVersion;
-      const versionCheckResult = ensureAboveMinFarcasterVersion(theirVersion);
-      if (versionCheckResult.isErr() || message.network !== this.options.network) {
-        log.warn(
-          { peerId, theirVersion, theirNetwork: message.network },
-          'Peer is running an invalid or outdated version, ignoring'
-        );
+      if (!(await this.isValidPeer(peerId, message))) {
         await this.gossipNode.removePeerFromAddressBook(peerId);
         this.syncEngine.removeContactInfoForPeerId(peerId.toString());
         return;
@@ -684,8 +676,8 @@ export class Hub implements HubInterface {
 
   private registerEventHandlers() {
     // Subscribes to all relevant topics
-    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_PRIMARY);
-    this.gossipNode.gossip?.subscribe(NETWORK_TOPIC_CONTACT);
+    this.gossipNode.gossip?.subscribe(this.gossipNode.primaryTopic());
+    this.gossipNode.gossip?.subscribe(this.gossipNode.contactInfoTopic());
 
     this.gossipNode.on('message', async (_topic, message) => {
       await message.match(
@@ -834,6 +826,29 @@ export class Hub implements HubInterface {
     txn.put(Buffer.from([RootPrefix.Network]), value);
 
     return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
+  }
+  async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
+    const theirVersion = message.hubVersion;
+    const theirNetwork = message.network;
+
+    const versionCheckResult = ensureAboveMinFarcasterVersion(theirVersion);
+    if (versionCheckResult.isErr()) {
+      log.warn(
+        { peerId: ourPeerId, theirVersion, ourVersion: FARCASTER_VERSION, errMsg: versionCheckResult.error.message },
+        'Peer is running an outdated version, ignoring'
+      );
+      return false;
+    }
+
+    if (theirNetwork !== this.options.network) {
+      log.warn(
+        { peerId: ourPeerId, theirNetwork, ourNetwork: this.options.network },
+        'Peer is running a different network, ignoring'
+      );
+      return false;
+    }
+
+    return true;
   }
 
   /* -------------------------------------------------------------------------- */
