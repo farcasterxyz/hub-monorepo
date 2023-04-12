@@ -41,6 +41,17 @@ const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient): HubAsync
   return ok(casts.filter((message) => !message.data.castAddBody.parentCastId));
 };
 
+const getFnameFromFid = async (fid: number, client: HubRpcClient): HubAsyncResult<string> => {
+  const result = await client.getUserData({ fid: fid, userDataType: UserDataType.FNAME });
+  return result.map((message) => {
+    if (isUserDataAddMessage(message)) {
+      return message.data.userDataBody.value;
+    } else {
+      return '';
+    }
+  });
+};
+
 /**
  * Compares two CastAddMessages by timestamp, in reverse chronological order.
  */
@@ -57,7 +68,7 @@ const compareCasts = (a: CastAddMessage, b: CastAddMessage) => {
 /**
  * Converts a CastAddMessage into a printable string representation.
  */
-const castToString = (cast: CastAddMessage, nameMapping: Map<number, string>) => {
+const castToString = async (cast: CastAddMessage, nameMapping: Map<number, string>, client: HubRpcClient) => {
   const fname = nameMapping.get(cast.data.fid);
 
   // Convert the timestamp to a human readable string
@@ -65,8 +76,23 @@ const castToString = (cast: CastAddMessage, nameMapping: Map<number, string>) =>
   const unixTime = fromFarcasterTime(cast.data.timestamp)._unsafeUnwrap();
   const dateString = timeAgo.format(new Date(unixTime));
 
+  const { text, mentions, mentionsPositions } = cast.data.castAddBody;
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(text);
+
+  const decoder = new TextDecoder();
+  let textWithMentions = '';
+  let indexBytes = 0;
+  for (let i = 0; i < mentions.length; i++) {
+    textWithMentions += decoder.decode(bytes.slice(indexBytes, mentionsPositions[i]));
+    const result = await getFnameFromFid(mentions[i], client);
+    result.map((fname) => (textWithMentions += fname));
+    indexBytes = mentionsPositions[i];
+  }
+  textWithMentions += decoder.decode(bytes.slice(indexBytes));
+
   // Remove newlines from the message text
-  const textNoLineBreaks = cast.data.castAddBody.text.replace(/(\r\n|\n|\r)/gm, ' ');
+  const textNoLineBreaks = textWithMentions.replace(/(\r\n|\n|\r)/gm, ' ');
 
   return `${fname}: ${textNoLineBreaks}\n${dateString}\n`;
 };
@@ -107,7 +133,7 @@ const castToString = (cast: CastAddMessage, nameMapping: Map<number, string>) =>
   }
 
   const sortedCasts = castsResult.value.flat().sort(compareCasts); // sort casts by timestamp
-  const stringifiedCasts = sortedCasts.map((c) => castToString(c, fidToFname)); // convert casts to printable strings
+  const stringifiedCasts = await Promise.all(sortedCasts.map((c) => castToString(c, fidToFname, client))); // convert casts to printable strings
 
   for (const outputCast of stringifiedCasts) {
     console.log(outputCast);
