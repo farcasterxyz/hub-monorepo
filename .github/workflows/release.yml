@@ -1,4 +1,4 @@
-name: Release Hubble
+name: Release All
 on: workflow_dispatch
 
 # prevent multiple simultaneous test runs
