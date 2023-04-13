@@ -1,5 +1,19 @@
 # @farcaster/hubble
 
+## 1.1.0
+
+### Minor Changes
+
+- 34fe54f: Include network id in gossip topics to keep networks isolated
+
+### Patch Changes
+
+- 31d8917: Add cli option to configure commit lock size and timeout
+- 0fbbbcc: Make dbreset its own command
+- a3b0d09: Check in list of allowed peers on Mainnet
+- 25c768d: Hangup on peer when removing from address book.
+- 8758ef2: log sync status for better visibility
+
 ## 1.0.22
 
 ### Patch Changes
