@@ -18,7 +18,8 @@
     "lint": "./node_modules/.bin/turbo run lint --parallel",
     "prepare": "husky install",
     "version-packages": "changeset version --ignore @farcaster/hubble",
-    "release-packages": "yarn build && changeset publish"
+    "release-packages": "yarn build && changeset publish",
+    "release-all": "yarn build && changeset publish && changeset tag"
   },
   "engines": {
     "npm": ">=8.0.0",
