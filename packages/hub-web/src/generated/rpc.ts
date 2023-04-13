@@ -1,5 +1,8 @@
 /* eslint-disable */
-import { grpc } from '@improbable-eng/grpc-web';
+import grpcWeb from '@improbable-eng/grpc-web';
+const grpc = grpcWeb.grpc;
+type grpc = typeof grpcWeb.grpc;
+// import { grpc } from '@improbable-eng/grpc-web';
 import { BrowserHeaders } from 'browser-headers';
 import { Observable } from 'rxjs';
 import { share } from 'rxjs/operators';

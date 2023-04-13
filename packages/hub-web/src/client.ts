@@ -13,7 +13,7 @@ import { err, ok } from 'neverthrow';
 import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
 import { Observable } from 'rxjs';
 
-export { grpc } from '@improbable-eng/grpc-web';
+// export { grpc } from '@improbable-eng/grpc-web';
 export { Observable } from 'rxjs';
 
 const grpcCodeToHubErrorCode = (code: grpc.Code): HubErrorCode => {
