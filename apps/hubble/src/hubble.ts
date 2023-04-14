@@ -732,6 +732,11 @@ export class Hub implements HubInterface {
       }
     );
 
+    // When submitting a message via RPC, we want to gossip it to other nodes
+    if (mergeResult.isOk() && source === 'rpc') {
+      void this.gossipNode.gossipMessage(message);
+    }
+
     return mergeResult;
   }
 

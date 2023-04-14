@@ -406,11 +406,6 @@ export default class Server {
         const result = await this.hub?.submitMessage(message, 'rpc');
         result?.match(
           () => {
-            if (this.gossipNode) {
-              // When submitting a message via RPC, we want to gossip it to other nodes.
-              // This is a promise, but we won't await it.
-              this.gossipNode.gossipMessage(message);
-            }
             callback(null, message);
           },
           (err: HubError) => {
