@@ -8,7 +8,6 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@improbable-eng/grpc-web": "^0.15.0",
     "javascript-time-ago": "^2.5.9"
   },
   "devDependencies": {

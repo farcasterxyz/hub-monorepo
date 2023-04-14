@@ -13,8 +13,8 @@ import {
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en';
 import { err, ok, Result } from 'neverthrow';
-import { grpc } from '@improbable-eng/grpc-web';
-console.log(grpc);
+// import { grpc } from '@improbable-eng/grpc-web';
+// console.log(grpc);
 
 TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo('en-US');
@@ -101,7 +101,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
 
 (async () => {
   // Set address as an environment variable or pass in directly here
-  const client = getHubRpcClient(HUB_URL, true);
+  const client = getHubRpcClient(HUB_URL, false);
 
   // 1. Create a mapping of fids to fnames, which we'll need later to display messages
   const fidToFname = new Map<number, string>();
