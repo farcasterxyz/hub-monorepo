@@ -8,25 +8,24 @@ import {
 } from './generated/rpc';
 import { NodeHttpTransport } from '@improbable-eng/grpc-web-node-http-transport';
 
-import { grpc } from '@improbable-eng/grpc-web';
+import grpcWeb from '@improbable-eng/grpc-web';
 import { err, ok } from 'neverthrow';
 import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
 import { Observable } from 'rxjs';
 
-export { grpc } from '@improbable-eng/grpc-web';
 export { Observable } from 'rxjs';
 
-const grpcCodeToHubErrorCode = (code: grpc.Code): HubErrorCode => {
+const grpcCodeToHubErrorCode = (code: grpcWeb.grpc.Code): HubErrorCode => {
   switch (code) {
-    case grpc.Code.Unauthenticated:
+    case grpcWeb.grpc.Code.Unauthenticated:
       return 'unauthenticated';
-    case grpc.Code.PermissionDenied:
+    case grpcWeb.grpc.Code.PermissionDenied:
       return 'unauthorized';
-    case grpc.Code.InvalidArgument:
+    case grpcWeb.grpc.Code.InvalidArgument:
       return 'bad_request';
-    case grpc.Code.NotFound:
+    case grpcWeb.grpc.Code.NotFound:
       return 'not_found';
-    case grpc.Code.Unavailable:
+    case grpcWeb.grpc.Code.Unavailable:
       return 'unavailable';
     default:
       return 'unknown';
@@ -48,13 +47,13 @@ const fromServiceError = (err: GrpcWebError): HubError => {
 };
 
 // wrap grpc-web client with HubResult to make sure APIs are consistent with hub-nodejs
-type OriginalUnaryCall<T, U> = (request: T, metadata?: grpc.Metadata) => Promise<U>;
+type OriginalUnaryCall<T, U> = (request: T, metadata?: grpcWeb.grpc.Metadata) => Promise<U>;
 
-type WrappedUnaryCall<T, U> = (request: T, metadata?: grpc.Metadata) => Promise<HubResult<U>>;
+type WrappedUnaryCall<T, U> = (request: T, metadata?: grpcWeb.grpc.Metadata) => Promise<HubResult<U>>;
 
-type OriginalStream<T, U> = (request: T, metadata?: grpc.Metadata) => Observable<U>;
+type OriginalStream<T, U> = (request: T, metadata?: grpcWeb.grpc.Metadata) => Observable<U>;
 
-type WrappedStream<T, U> = (request: T, metadata?: grpc.Metadata) => HubResult<Observable<U>>;
+type WrappedStream<T, U> = (request: T, metadata?: grpcWeb.grpc.Metadata) => HubResult<Observable<U>>;
 
 type WrappedClient<C> = { $: C } & {
   [prop in keyof C]: C[prop] extends OriginalUnaryCall<infer T, infer U>
@@ -107,8 +106,8 @@ const getRpcWebClient = (address: string, isBrowser = true): GrpcWebImpl => {
   return new GrpcWebImpl(address, isBrowser ? {} : { transport: NodeHttpTransport() });
 };
 
-export const getAuthMetadata = (username: string, password: string): grpc.Metadata => {
-  const metadata = new grpc.Metadata();
+export const getAuthMetadata = (username: string, password: string): grpcWeb.grpc.Metadata => {
+  const metadata = new grpcWeb.grpc.Metadata();
   if (typeof btoa === 'undefined') {
     // nodejs
     metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);

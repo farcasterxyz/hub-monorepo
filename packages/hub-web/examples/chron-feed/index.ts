@@ -3,13 +3,13 @@
 import {
   CastAddMessage,
   fromFarcasterTime,
-  getSSLHubRpcClient,
+  getHubRpcClient,
   HubAsyncResult,
   HubRpcClient,
   isCastAddMessage,
   isUserDataAddMessage,
   UserDataType,
-} from '@farcaster/hub-nodejs';
+} from '@farcaster/hub-web';
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en';
 import { err, ok, Result } from 'neverthrow';
@@ -99,8 +99,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
 
 (async () => {
   // Set address as an environment variable or pass in directly here
-  // const client = getInsecureHubRpcClient(HUB_URL); // Use this if you're not using SSL
-  const client = getSSLHubRpcClient(HUB_URL);
+  const client = getHubRpcClient(HUB_URL, false);
 
   // 1. Create a mapping of fids to fnames, which we'll need later to display messages
   const fidToFname = new Map<number, string>();
@@ -138,7 +137,4 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   for (const outputCast of stringifiedCasts) {
     console.log(outputCast);
   }
-
-  // 3. Close the connection
-  client.close();
 })();
