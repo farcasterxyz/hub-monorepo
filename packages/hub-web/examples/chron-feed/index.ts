@@ -13,8 +13,6 @@ import {
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en';
 import { err, ok, Result } from 'neverthrow';
-// import { grpc } from '@improbable-eng/grpc-web';
-// console.log(grpc);
 
 TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo('en-US');
