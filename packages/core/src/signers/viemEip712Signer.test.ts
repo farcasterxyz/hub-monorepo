@@ -1,4 +1,3 @@
-import { FarcasterNetwork } from '@farcaster/protobufs';
 import { blake3 } from '@noble/hashes/blake3';
 import { randomBytes } from 'crypto';
 import { Wallet } from 'ethers';
@@ -9,6 +8,7 @@ import { eip712 } from '../crypto';
 import { Factories } from '../factories';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from '../verifications';
 import { ViemEip712Signer } from './viemEip712Signer';
+import { FarcasterNetwork } from '../protobufs';
 
 const parseTypedDataJSON = (params: any) => {
   const [, jsonData] = params;
