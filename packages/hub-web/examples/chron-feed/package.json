@@ -8,6 +8,7 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
+    "@farcaster/hub-web": "^0.2.4",
     "javascript-time-ago": "^2.5.9"
   },
   "devDependencies": {
