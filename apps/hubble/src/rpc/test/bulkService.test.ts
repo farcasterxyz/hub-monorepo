@@ -34,7 +34,7 @@ let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(engine, db));
+  server = new Server(hub, engine, new SyncEngine(hub, db));
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });

@@ -11,7 +11,6 @@ import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
 import SyncEngine from '../sync/syncEngine';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -128,8 +127,6 @@ describe('GossipNode', () => {
   describe('gossip messages', () => {
     const db = jestRocksDB('protobufs.rpc.gossipMessageTest.test');
     const network = FarcasterNetwork.TESTNET;
-    const engine = new Engine(db, network);
-    const hub = new MockHub(db, engine);
     const fid = Factories.Fid.build();
     const signer = Factories.Ed25519Signer.build();
     const custodySigner = Factories.Eip712Signer.build();
@@ -153,10 +150,6 @@ describe('GossipNode', () => {
       castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
     });
 
-    afterAll(async () => {
-      await engine.stop();
-    });
-
     test('gossip messages only from rpc', async () => {
       let numMessagesGossiped = 0;
       const mockGossipNode = {
@@ -164,9 +157,10 @@ describe('GossipNode', () => {
           numMessagesGossiped += 1;
         },
       } as unknown as GossipNode;
+      const hub = new MockHub(db, undefined, mockGossipNode);
 
-      const syncEngine = new SyncEngine(engine, db);
-      server = new Server(hub, engine, syncEngine, mockGossipNode);
+      const syncEngine = new SyncEngine(hub, db);
+      server = new Server(hub, hub.engine, syncEngine, mockGossipNode);
       const port = await server.start();
       client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
@@ -185,7 +179,7 @@ describe('GossipNode', () => {
       expect(numMessagesGossiped).toEqual(0);
 
       client.close();
-      await server.stop();
+      await server.stop(true); // force
       await syncEngine.stop();
     });
   });

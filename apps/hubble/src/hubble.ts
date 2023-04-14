@@ -54,7 +54,7 @@ import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJ
 import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 
-export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider';
+export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = process.env['HUBBLE_NAME'] ?? 'Farcaster Hub';
@@ -221,7 +221,7 @@ export class Hub implements HubInterface {
       lockTimeout: options.commitLockTimeout,
     });
     this.engine = new Engine(this.rocksDB, options.network, eventHandler);
-    this.syncEngine = new SyncEngine(this.engine, this.rocksDB, this.ethRegistryProvider);
+    this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider);
 
     this.rpcServer = new Server(
       this,

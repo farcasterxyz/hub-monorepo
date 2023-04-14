@@ -1,21 +1,38 @@
-import { HubAsyncResult, HubError, HubState, IdRegistryEvent, Message, NameRegistryEvent } from '@farcaster/hub-nodejs';
+import {
+  FarcasterNetwork,
+  HubAsyncResult,
+  HubError,
+  HubState,
+  IdRegistryEvent,
+  Message,
+  NameRegistryEvent,
+} from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
-import { HubInterface } from '~/hubble';
+import { HubInterface, HubSubmitSource } from '~/hubble';
+import { GossipNode } from '~/network/p2p/gossipNode';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 
 export class MockHub implements HubInterface {
   public db: RocksDB;
   public engine: Engine;
+  public gossipNode: GossipNode | undefined;
   public gossipCount = 0;
 
-  constructor(db: RocksDB, engine: Engine) {
+  constructor(db: RocksDB, engine?: Engine, gossipNode?: GossipNode) {
     this.db = db;
-    this.engine = engine;
+    this.engine = engine ?? new Engine(db, FarcasterNetwork.TESTNET);
+    this.gossipNode = gossipNode;
   }
 
-  async submitMessage(message: Message): HubAsyncResult<number> {
-    return this.engine.mergeMessage(message);
+  async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
+    const result = await this.engine.mergeMessage(message);
+
+    if (result.isOk() && source === 'rpc' && this.gossipNode !== undefined) {
+      void this.gossipNode.gossipMessage(message);
+    }
+
+    return result;
   }
 
   async submitIdRegistryEvent(event: IdRegistryEvent): HubAsyncResult<number> {
