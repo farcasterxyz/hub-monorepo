@@ -832,6 +832,7 @@ export class Hub implements HubInterface {
 
     return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
+
   async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
     const theirVersion = message.hubVersion;
     const theirNetwork = message.network;
@@ -854,13 +855,5 @@ export class Hub implements HubInterface {
     }
 
     return true;
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                                  Test API                                  */
-  /* -------------------------------------------------------------------------- */
-
-  async destroyDB() {
-    await this.rocksDB.destroy();
   }
 }
