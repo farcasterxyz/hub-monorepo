@@ -14,6 +14,7 @@ import {
   Message,
   FidRequest,
   TrieNodeMetadataResponse,
+  bytesToHexString,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { err, ok, Result } from 'neverthrow';
@@ -328,7 +329,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this._isSyncing = true;
       const snapshot = await this.getSnapshot(otherSnapshot.prefix);
       if (snapshot.isErr()) {
-        log.warn(snapshot.error, `Error performing sync`);
+        log.warn({ errCode: snapshot.error.errCode }, `Error performing sync: ${snapshot.error.message}}`);
       } else {
         const ourSnapshot = snapshot.value;
         const divergencePrefix = await this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
@@ -417,7 +418,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         if (result.error.errCode === 'bad_request.validation_failure') {
           if (result.error.message.startsWith('invalid signer')) {
             // The user's signer was not found. So fetch all signers from the peer and retry.
-            log.warn({ fid: msg.data?.fid, err: result.error.message }, 'Invalid signer, fetching signers from peer');
+            log.warn(
+              { fid: msg.data?.fid, err: result.error.message },
+              `Invalid signer ${bytesToHexString(msg.signer)._unsafeUnwrap()}, fetching signers from peer`
+            );
             const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
             mergeResults.push(retryResult);
           } else if (result.error.message.startsWith('unknown fid')) {
@@ -436,8 +440,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           // Just update the trie.
           await this.trie.insert(new SyncId(msg));
           mergeResults.push(result);
-        } else {
-          log.warn({ error: result.error, errorMessage: result.error.message }, 'Failed to merge message during sync');
         }
       } else {
         mergeResults.push(result);
@@ -446,21 +448,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._syncMergeQ -= messages.length;
 
     if (mergeResults.length > 0) {
+      const successCount = mergeResults.filter((r) => r.isOk()).length;
       log.info(
         {
           total: mergeResults.length,
-          success: mergeResults.filter((r) => r.isOk()).length,
+          success: successCount,
         },
-        'Merged messages'
-      );
-    }
-
-    // If there was a failed merge, log the error and move on. We'll only log one error, since they're likely all the same.
-    const failedMerge = mergeResults.find((r) => r.isErr());
-    if (failedMerge) {
-      log.warn(
-        { error: failedMerge._unsafeUnwrapErr(), errorMessage: failedMerge._unsafeUnwrapErr().message },
-        'Failed to merge message'
+        `Merged ${successCount} messages during sync with ${mergeResults.length - successCount} failures`
       );
     }
 
@@ -650,7 +644,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } else {
       // if at least one signer message was merged, retry the original message
       return (await this._hub.submitMessage(message, 'sync')).mapErr((e) => {
-        log.warn(e, `Failed to merge message type ${message.data?.type}`);
         return new HubError('unavailable.storage_failure', e);
       });
     }
