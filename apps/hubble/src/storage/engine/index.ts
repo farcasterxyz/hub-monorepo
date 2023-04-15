@@ -38,10 +38,9 @@ import {
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import fs from 'fs';
 import { Worker } from 'worker_threads';
-import { SyncId } from '~/network/sync/syncId';
-import { getManyMessages, getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '~/storage/db/message';
+import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
+import { TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
@@ -352,61 +351,6 @@ class Engine {
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {
     return this.eventHandler.getEvent(id);
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                             Sync Methods                                   */
-  /* -------------------------------------------------------------------------- */
-
-  async forEachMessage(callback: (message: Message, key: Buffer) => Promise<boolean | void>): Promise<void> {
-    const allUserPrefix = Buffer.from([RootPrefix.User]);
-    const iterator = this._db.iteratorByPrefix(allUserPrefix, { keys: true });
-
-    for await (const [key, value] of iterator) {
-      if (!key || !value) {
-        await iterator.end();
-        break;
-      }
-
-      if (key.length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
-        // Not a message key, so we can skip it.
-        continue;
-      }
-
-      // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
-      const postfix = key.slice(1 + FID_BYTES, 1 + FID_BYTES + 1)[0];
-      if (
-        postfix !== UserPostfix.CastMessage &&
-        postfix !== UserPostfix.AmpMessage &&
-        postfix !== UserPostfix.ReactionMessage &&
-        postfix !== UserPostfix.VerificationMessage &&
-        postfix !== UserPostfix.SignerMessage &&
-        postfix !== UserPostfix.UserDataMessage
-      ) {
-        // Not a message key, so we can skip it.
-        continue;
-      }
-
-      const message = Result.fromThrowable(
-        () => Message.decode(new Uint8Array(value)),
-        (e) => e as HubError
-      )();
-
-      if (message.isOk()) {
-        const done = await callback(message.value, key);
-        if (done) {
-          await iterator.end();
-          break;
-        }
-      }
-    }
-  }
-
-  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
-    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
-    const messages = await ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
-
-    return messages;
   }
 
   /* -------------------------------------------------------------------------- */

@@ -9,11 +9,12 @@ import {
   Empty,
 } from '@farcaster/hub-nodejs';
 import * as net from 'net';
-import { err, ok } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import { HubInterface } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
 import { authenticateUser, getRPCUsersFromAuthString, RpcUsers, toServiceError } from '~/rpc/server';
 import RocksDB from '~/storage/db/rocksdb';
+import { RootPrefix } from '~/storage/db/types';
 import Engine from '~/storage/engine';
 import { logger } from '~/utils/logger';
 
@@ -114,31 +115,30 @@ export default class AdminServer {
           }
 
           log.warn('Deleting all messages from DB');
-          let done = false;
-          do {
-            const toDelete: Buffer[] = [];
-            await this.engine?.forEachMessage(async (_message, key) => {
-              toDelete.push(key);
-              if (toDelete.length >= 10_000) {
-                return true;
-              }
-              return false;
-            });
+          let deletedCount = 0;
+          const prefixes = [
+            RootPrefix.User,
+            RootPrefix.CastsByMention,
+            RootPrefix.CastsByParent,
+            RootPrefix.ReactionsByTarget,
+          ];
+          for (const prefix of prefixes) {
+            const prefixBuffer = Buffer.from([prefix]);
+            const iterator = this.db.iteratorByPrefix(prefixBuffer);
 
-            // If there is nothing remaining to be deleted, we are done
-            if (toDelete.length === 0) {
-              done = true;
-              break;
+            for await (const [key] of iterator) {
+              const result = await ResultAsync.fromPromise(this.db.del(key as Buffer), (e) => e as HubError);
+              result.match(
+                () => {
+                  deletedCount += 1;
+                },
+                (e) => {
+                  log.error({ errCode: e.errCode }, 'Failed to delete key: ${e.message}');
+                }
+              );
             }
-
-            // Delete in batches of 10_000
-            const txn = this.db?.transaction();
-            toDelete.forEach((key) => {
-              txn?.del(key);
-            });
-            await this.db?.commit(txn);
-            log.warn(`Deleted ${toDelete.length} messages from DB`);
-          } while (!done);
+          }
+          log.info(`Deleted ${deletedCount} keys from db`);
 
           // Rebuild the sync trie after deleting all messages
           await this.syncEngine?.rebuildSyncTrie();

@@ -288,7 +288,7 @@ export default class Server {
       getAllMessagesBySyncIds: async (call, callback) => {
         const request = call.request;
 
-        const messagesResult = await this.engine?.getAllMessagesBySyncIds(request.syncIds);
+        const messagesResult = await this.syncEngine?.getAllMessagesBySyncIds(request.syncIds);
         messagesResult?.match(
           (messages) => {
             // Check the messages for corruption. If a message is blank, that means it was present

@@ -17,13 +17,14 @@ import {
   bytesToHexString,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { err, ok, Result } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import { Hub, HubInterface } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
+import { getManyMessages } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
@@ -60,7 +61,7 @@ type SyncStatus = {
 
 class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
-
+  private readonly _db: RocksDB;
   private readonly _hub: HubInterface;
   private readonly _ethEventsProvider: EthEventsProvider | undefined;
 
@@ -77,6 +78,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   constructor(hub: HubInterface, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider) {
     super();
 
+    this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
     this._ethEventsProvider = ethEventsProvider;
 
@@ -135,7 +137,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   /** Rebuild the entire Sync Trie */
   public async rebuildSyncTrie() {
     log.info('Rebuilding sync trie...');
-    await this._trie.rebuild(this._hub.engine); // TODO: no need to pass engine
+    await this._trie.rebuild();
     log.info('Rebuilding sync trie complete');
   }
 
@@ -358,6 +360,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     return success;
+  }
+
+  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
+    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
+    return ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
   }
 
   /**

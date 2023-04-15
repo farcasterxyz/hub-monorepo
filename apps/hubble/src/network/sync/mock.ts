@@ -68,7 +68,7 @@ export class MockRpcClient {
 
   async getAllMessagesBySyncIds(request: SyncIds): Promise<HubResult<MessagesResponse>> {
     this.getAllMessagesBySyncIdsCalls.push(request);
-    const messagesResult = await this.engine.getAllMessagesBySyncIds(request.syncIds);
+    const messagesResult = await this.syncEngine.getAllMessagesBySyncIds(request.syncIds);
     return messagesResult.map((messages) => {
       this.getAllMessagesBySyncIdsReturns += messages.length;
       return MessagesResponse.create({ messages: messages ?? [] });

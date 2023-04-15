@@ -142,7 +142,7 @@ describe('SyncEngine', () => {
     const id = new SyncId(castRemove);
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
-    const allMessages = await engine.getAllMessagesBySyncIds([id.syncId()]);
+    const allMessages = await syncEngine.getAllMessagesBySyncIds([id.syncId()]);
     expect(allMessages.isOk()).toBeTruthy();
     expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(MessageType.CAST_REMOVE);
 
@@ -155,7 +155,7 @@ describe('SyncEngine', () => {
 
   test('getAllMessages returns empty with invalid syncId', async () => {
     expect(await syncEngine.trie.items()).toEqual(0);
-    const result = await engine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
+    const result = await syncEngine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()[0]?.data).toBeUndefined();
     expect(result._unsafeUnwrap()[0]?.hash.length).toEqual(0);
