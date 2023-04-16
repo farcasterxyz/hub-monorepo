@@ -14,7 +14,7 @@ describe('EthersV5Eip712Signer', () => {
   let signerKey: Uint8Array;
 
   beforeAll(async () => {
-    ethersSigner = Wallet.createRandom();
+    ethersSigner = new Wallet('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80');
     signer = new EthersV5Eip712Signer(ethersSigner);
     signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   });

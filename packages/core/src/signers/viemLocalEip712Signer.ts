@@ -10,7 +10,7 @@ import { HubAsyncResult, HubError } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Eip712Signer } from './eip712Signer';
 
-export class ViemEip712Signer extends Eip712Signer {
+export class ViemLocalEip712Signer extends Eip712Signer {
   private readonly _viemLocalAccount: LocalAccount<string>;
 
   constructor(viemLocalAccount: LocalAccount<string>) {

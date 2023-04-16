@@ -3,16 +3,16 @@ import { bytesToHexString } from '../bytes';
 import { eip712 } from '../crypto';
 import { Factories } from '../factories';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from '../verifications';
-import { ViemEip712Signer } from './viemEip712Signer';
+import { ViemLocalEip712Signer } from './ViemLocalEip712Signer';
 import { FarcasterNetwork } from '../protobufs';
 import { Wallet } from 'ethers5';
 import { ethersWalletToAccount } from 'viem/ethers';
 import { blake3 } from '@noble/hashes/blake3';
 // import { privateKeyToAccount } from 'viem/accounts';
 
-describe('ViemEip712Signer', () => {
+describe('ViemLocalEip712Signer', () => {
   describe('with ethers account', () => {
-    let signer: ViemEip712Signer;
+    let signer: ViemLocalEip712Signer;
     let signerKey: Uint8Array;
 
     beforeAll(async () => {
@@ -20,7 +20,7 @@ describe('ViemEip712Signer', () => {
       const ethersAccount = ethersWalletToAccount(
         new Wallet('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80')
       );
-      signer = new ViemEip712Signer(ethersAccount);
+      signer = new ViemLocalEip712Signer(ethersAccount);
       signerKey = (await signer.getSignerKey())._unsafeUnwrap();
     });
 
@@ -66,7 +66,7 @@ describe('ViemEip712Signer', () => {
   });
 
   // describe('with private key account', () => {
-  //   let signer: ViemEip712Signer;
+  //   let signer: ViemLocalEip712Signer;
   //   let signerKey: Uint8Array;
 
   //   beforeAll(async () => {
@@ -74,7 +74,7 @@ describe('ViemEip712Signer', () => {
   //     const privateKeyAccount = privateKeyToAccount(
   //       '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
   //     );
-  //     signer = new ViemEip712Signer(privateKeyAccount);
+  //     signer = new ViemLocalEip712Signer(privateKeyAccount);
   //     signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   //   });
 

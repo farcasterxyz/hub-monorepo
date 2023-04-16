@@ -2,4 +2,4 @@
 '@farcaster/utils': minor
 ---
 
-feat: add ViemEip712Signer
+feat: add ViemLocalEip712Signer
