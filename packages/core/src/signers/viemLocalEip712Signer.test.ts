@@ -16,7 +16,6 @@ describe('ViemLocalEip712Signer', () => {
     let signerKey: Uint8Array;
 
     beforeAll(async () => {
-      // Works
       const ethersAccount = ethersWalletToAccount(
         new Wallet('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80')
       );
@@ -70,7 +69,6 @@ describe('ViemLocalEip712Signer', () => {
   //   let signerKey: Uint8Array;
 
   //   beforeAll(async () => {
-  //     // Works
   //     const privateKeyAccount = privateKeyToAccount(
   //       '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
   //     );
