@@ -1,5 +1,5 @@
 import { ResultAsync } from 'neverthrow';
-import { Address, getAccount, WalletClient } from 'viem';
+import { LocalAccount } from 'viem/accounts';
 import { hexStringToBytes } from '../bytes';
 import {
   EIP_712_FARCASTER_MESSAGE_DATA,
@@ -11,11 +11,11 @@ import { VerificationEthAddressClaim } from '../verifications';
 import { Eip712Signer } from './eip712Signer';
 
 export class ViemEip712Signer extends Eip712Signer {
-  private readonly _viemWallet: WalletClient;
+  private readonly _viemLocalAccount: LocalAccount<string>;
 
-  constructor(viemWallet: WalletClient) {
+  constructor(viemLocalAccount: LocalAccount<string>) {
     super();
-    this._viemWallet = viemWallet;
+    this._viemLocalAccount = viemLocalAccount;
   }
 
   private _toViemCompat712Domain() {
@@ -27,12 +27,7 @@ export class ViemEip712Signer extends Eip712Signer {
   }
 
   private async _getSignerKey() {
-    const [address] = await this._viemWallet.getAddresses();
-    return address;
-  }
-
-  private async _getSignerAccount() {
-    return getAccount((await this._getSignerKey()) as Address);
+    return this._viemLocalAccount.address;
   }
 
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
@@ -43,8 +38,7 @@ export class ViemEip712Signer extends Eip712Signer {
 
   public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
-      this._viemWallet.signTypedData({
-        account: await this._getSignerAccount(),
+      this._viemLocalAccount.signTypedData({
         domain: this._toViemCompat712Domain(),
         types: { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
         primaryType: 'MessageData',
@@ -59,8 +53,7 @@ export class ViemEip712Signer extends Eip712Signer {
 
   public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
-      this._viemWallet.signTypedData({
-        account: await this._getSignerAccount(),
+      this._viemLocalAccount.signTypedData({
         domain: this._toViemCompat712Domain(),
         types: { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
         primaryType: 'VerificationClaim',
