@@ -19,14 +19,6 @@ export class ViemLocalEip712Signer extends Eip712Signer {
     this._viemLocalAccount = viemLocalAccount;
   }
 
-  private _toViemCompat712Domain() {
-    const { salt, ...rest } = EIP_712_FARCASTER_DOMAIN;
-    return {
-      salt: salt as `0x${string}`,
-      ...rest,
-    };
-  }
-
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
     return ResultAsync.fromPromise(
       Promise.resolve(this._viemLocalAccount.address),
@@ -37,7 +29,7 @@ export class ViemLocalEip712Signer extends Eip712Signer {
   public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
-        domain: this._toViemCompat712Domain(),
+        domain: EIP_712_FARCASTER_DOMAIN,
         types: { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
         primaryType: 'MessageData',
         message: {
@@ -52,7 +44,7 @@ export class ViemLocalEip712Signer extends Eip712Signer {
   public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
-        domain: this._toViemCompat712Domain(),
+        domain: EIP_712_FARCASTER_DOMAIN,
         types: { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
         primaryType: 'VerificationClaim',
         message: {
