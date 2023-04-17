@@ -119,9 +119,7 @@ describe('ViemLocalEip712Signer', () => {
     let signerKey: Uint8Array;
 
     beforeAll(async () => {
-      const mnemonicAccount = mnemonicToAccount(
-        'legal winner thank year wave sausage worth useful legal winner thank yellow'
-      );
+      const mnemonicAccount = mnemonicToAccount(Wallet.createRandom().mnemonic.phrase);
       signer = new ViemLocalEip712Signer(mnemonicAccount);
       signerKey = (await signer.getSignerKey())._unsafeUnwrap();
     });
