@@ -1,5 +1,6 @@
 import { ResultAsync } from 'neverthrow';
 import { LocalAccount } from 'viem/accounts';
+import { bytesToHex } from 'viem/utils';
 import { hexStringToBytes } from '../bytes';
 import {
   EIP_712_FARCASTER_MESSAGE_DATA,
@@ -43,7 +44,7 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         types: { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
         primaryType: 'MessageData',
         message: {
-          hash,
+          hash: bytesToHex(hash),
         },
       }),
       (e) => new HubError('bad_request.invalid_param', e as Error)
