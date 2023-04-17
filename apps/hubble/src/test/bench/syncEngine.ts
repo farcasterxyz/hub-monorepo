@@ -25,7 +25,6 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { blake3Truncate160, sleepWhile } from '~/utils/crypto';
 import { avgRecords } from './helpers';
 import { yieldToEventLoop } from './utils';
-import { StorageCache } from '~/storage/engine/storageCache';
 
 const INITIAL_MESSAGES_COUNT = 10_000;
 const FID_COUNT = 10_000;
@@ -39,7 +38,7 @@ class MockEngine {
 
   constructor(db: RocksDB) {
     this.db = db;
-    this.eventHandler = new StoreEventHandler(db, new StorageCache());
+    this.eventHandler = new StoreEventHandler(db);
   }
 
   async mergeMessage(message: Message): Promise<HubResult<void>> {
@@ -255,7 +254,7 @@ export const benchSyncEngine = async ({
           } while (theirSyncEngine === ourSyncEngine);
 
           const otherSnapshot = (await theirSyncEngine.getSnapshot())._unsafeUnwrap();
-          if ((await ourSyncEngine.shouldSync(otherSnapshot))._unsafeUnwrap()) {
+          if ((await ourSyncEngine.syncStatus(otherSnapshot))._unsafeUnwrap().shouldSync) {
             const rpcClient = new MockRpcClient((theirSyncEngine as any).engine, theirSyncEngine);
             await ourSyncEngine.performSync(otherSnapshot, rpcClient as unknown as HubRpcClient);
 

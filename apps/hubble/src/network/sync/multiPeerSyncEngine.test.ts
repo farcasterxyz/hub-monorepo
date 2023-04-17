@@ -164,7 +164,7 @@ describe('Multi peer sync engine', () => {
 
       // Engine 2 should sync with engine1
       expect(
-        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
+        (await syncEngine2.syncStatus((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
       ).toBeTruthy();
 
       // Sync engine 2 with engine 1
@@ -175,7 +175,7 @@ describe('Multi peer sync engine', () => {
 
       // Should sync should now be false with the new excluded hashes
       expect(
-        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
+        (await syncEngine2.syncStatus((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
       ).toBeFalsy();
 
       // Add more messages
@@ -194,7 +194,7 @@ describe('Multi peer sync engine', () => {
       expect(await syncEngine1.trie.rootHash()).toEqual(newSnapshot.rootHash);
 
       // Should sync should now be true
-      expect((await syncEngine2.shouldSync(newSnapshot))._unsafeUnwrap()).toBeTruthy();
+      expect((await syncEngine2.syncStatus(newSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
       // Do the sync again
       await syncEngine2.performSync(newSnapshot, clientForServer1);
@@ -512,7 +512,7 @@ describe('Multi peer sync engine', () => {
 
       // Engine 2 should sync with engine1
       expect(
-        (await syncEngine2.shouldSync((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
+        (await syncEngine2.syncStatus((await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
       ).toBeTruthy();
 
       await engine2.mergeIdRegistryEvent(custodyEvent);

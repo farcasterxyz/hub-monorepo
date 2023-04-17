@@ -14,6 +14,7 @@ _Choose all relevant options below by adding an `x` now or at any time before su
 - [ ] PR has a [changeset](../CONTRIBUTING.md#35-adding-changesets)
 - [ ] PR has been tagged with a change label(s) (i.e. documentation, feature, bugfix, or chore)
 - [ ] PR does not require changes to the [protocol](https://github.com/farcasterxyz/protocol)
+- [ ] All [commits have been signed](../CONTRIBUTING.md#22-signing-commits)
 
 ## Additional Context
 

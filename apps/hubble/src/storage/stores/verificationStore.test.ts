@@ -17,12 +17,10 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import VerificationStore from '~/storage/stores/verificationStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
-import { StorageCache } from '~/storage/engine/storageCache';
 import { err } from 'neverthrow';
 
 const db = jestRocksDB('verificationStore.test');
-const cache = new StorageCache();
-const eventHandler = new StoreEventHandler(db, cache);
+const eventHandler = new StoreEventHandler(db);
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.Fid.build();
 
@@ -535,7 +533,7 @@ describe('pruneMessages', () => {
   });
 
   beforeEach(async () => {
-    await cache.syncFromDb(db);
+    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {

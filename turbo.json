@@ -14,6 +14,9 @@
     "lint": {
       "outputs": []
     },
+    "protoc": {
+      "outputs": []
+    },
     "test": {
       "dependsOn": ["lint", "build"],
       "inputs": ["src/**/*.ts"],

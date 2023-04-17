@@ -41,6 +41,10 @@ export const Config = {
   dbName: 'rocks.hub._default',
   /** Rebuild the sync trie before starting */
   rebuildSyncTrie: false,
+  /** Commit lock timeout in ms */
+  commitLockTimeout: 500,
+  /** Commit lock queue size */
+  commitLockMaxPending: 1_000,
   /** Farcaster network */
   network: DEFAULT_NETWORK,
   /** Start the admin server? */

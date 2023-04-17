@@ -7,16 +7,20 @@ import * as ed from '@noble/ed25519';
 
 const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
 
+// If the Hub requests authentication, set the following constants
+// const HUB_USERNAME = process.env['HUB_USERNAME'] || '';
+// const HUB_PASSWORD = process.env['HUB_PASSWORD'] || '';
+
 (async () => {
   /**
    * This should be set to the private key of a known signer for the user, instead of randomly generating
-   * one, or the Hubs will reject the message. See the make-data tutorial for examples of how to do this.
+   * one, or the Hubs will reject the message. See the write-data tutorial for examples of how to do this.
    */
   const privateKey = ed.utils.randomPrivateKey();
   const ed25519Signer = new NobleEd25519Signer(privateKey);
 
   const dataOptions = {
-    fid: 1,
+    fid: 1, // Set to your fid.
     network: FarcasterNetwork.DEVNET,
   };
 
@@ -150,6 +154,10 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
   // If your Hub is using SSL, use getSSLHubRpcClient instead
 
   castResults.map((castAddResult) => castAddResult.map((castAdd) => client.submitMessage(castAdd)));
+
+  // If your Hub requires authentication, use the following instead:
+  // const authMetadata = getAuthMetadata(HUB_USERNAME, HUB_PASSWORD);
+  // castResults.map((castAddResult) => castAddResult.map((castAdd) => client.submitMessage(castAdd, authMetadata)));
 
   client.close();
 })();

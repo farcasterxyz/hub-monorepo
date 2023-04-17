@@ -21,11 +21,9 @@ import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
 import ReactionStore from '~/storage/stores/reactionStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import { StorageCache } from '~/storage/engine/storageCache';
 
 const db = jestRocksDB('protobufs.reactionStore.test');
-const cache = new StorageCache();
-const eventHandler = new StoreEventHandler(db, cache);
+const eventHandler = new StoreEventHandler(db);
 const set = new ReactionStore(db, eventHandler);
 const fid = Factories.Fid.build();
 const castId = Factories.CastId.build();
@@ -812,7 +810,7 @@ describe('pruneMessages', () => {
   });
 
   beforeEach(async () => {
-    await cache.syncFromDb(db);
+    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {
