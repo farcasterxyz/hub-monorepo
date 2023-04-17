@@ -27,14 +27,11 @@ export class ViemLocalEip712Signer extends Eip712Signer {
     };
   }
 
-  private async _getSignerKey() {
-    return this._viemLocalAccount.address;
-  }
-
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
-    return ResultAsync.fromPromise(this._getSignerKey(), (e) => new HubError('unknown', e as Error)).andThen(
-      hexStringToBytes
-    );
+    return ResultAsync.fromPromise(
+      Promise.resolve(this._viemLocalAccount.address),
+      (e) => new HubError('unknown', e as Error)
+    ).andThen(hexStringToBytes);
   }
 
   public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
