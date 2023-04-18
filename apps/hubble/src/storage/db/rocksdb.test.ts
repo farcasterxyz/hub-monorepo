@@ -220,4 +220,13 @@ describe('with db', () => {
       expect(values).toEqual([Buffer.from('a'), Buffer.from('b')]);
     });
   });
+
+  describe('compact', () => {
+    test('succeeds', async () => {
+      await db.put(Buffer.from('foo'), Buffer.from('bar'));
+      await expect(db.get(Buffer.from('foo'))).resolves.toEqual(Buffer.from('bar'));
+      await expect(db.compact()).resolves.toEqual(undefined);
+      await expect(db.get(Buffer.from('foo'))).resolves.toEqual(Buffer.from('bar'));
+    });
+  });
 });

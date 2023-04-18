@@ -34,6 +34,7 @@ import { logger } from '~/utils/logger';
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 256;
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
+const COMPACTION_THRESHOLD = 100_000; // Sync
 
 const log = logger.child({
   component: 'SyncEngine',
@@ -74,6 +75,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _syncTrieQ = 0;
   // Number of messages waiting to get into the merge stores.
   private _syncMergeQ = 0;
+
+  // Number of messages since last compaction
+  private _messagesSinceLastCompaction = 0;
 
   constructor(hub: HubInterface, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider) {
     super();
@@ -418,6 +422,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // Merge messages sequentially, so we can handle missing users.
     this._syncMergeQ += messages.length;
+
+    this._messagesSinceLastCompaction += messages.length;
+    if (this._messagesSinceLastCompaction > COMPACTION_THRESHOLD) {
+      await this._db.compact().catch((e) => log.warn(e, `Error compacting DB: ${e.message}`));
+      this._messagesSinceLastCompaction = 0;
+    }
+
     for (const msg of messages) {
       const result = await this._hub.submitMessage(msg, 'sync');
 
