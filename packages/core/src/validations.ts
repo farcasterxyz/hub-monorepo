@@ -16,6 +16,8 @@ export const EIP712_MESSAGE_TYPES = [protobufs.MessageType.SIGNER_ADD, protobufs
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
 
+export const EMBEDS_V1_CUTOFF = 73612800; // 5/3/23 00:00 UTC
+
 export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> => {
   if (!hash || hash.length === 0) {
     return err(new HubError('bad_request.validation_failure', 'hash is missing'));
@@ -183,7 +185,9 @@ export const validateMessageData = <T extends protobufs.MessageData>(data: T): H
   // 5. Validate body
   let bodyResult: HubResult<any>;
   if (validType.value === protobufs.MessageType.CAST_ADD && !!data.castAddBody) {
-    bodyResult = validateCastAddBody(data.castAddBody);
+    // Allow usage of embedsDeprecated if timestamp is before cut-off
+    const allowEmbedsDeprecated = data.timestamp < EMBEDS_V1_CUTOFF;
+    bodyResult = validateCastAddBody(data.castAddBody, allowEmbedsDeprecated);
   } else if (validType.value === protobufs.MessageType.CAST_REMOVE && !!data.castRemoveBody) {
     bodyResult = validateCastRemoveBody(data.castRemoveBody);
   } else if (
@@ -284,7 +288,10 @@ export const validateEmbed = (embed: protobufs.Embed): HubResult<protobufs.Embed
   }
 };
 
-export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<protobufs.CastAddBody> => {
+export const validateCastAddBody = (
+  body: protobufs.CastAddBody,
+  allowEmbedsDeprecated = false
+): HubResult<protobufs.CastAddBody> => {
   const text = body.text;
   if (text === undefined || text === null) {
     return err(new HubError('bad_request.validation_failure', 'text is missing'));
@@ -304,12 +311,24 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     return err(new HubError('bad_request.validation_failure', 'embeds > 2'));
   }
 
+  if (allowEmbedsDeprecated && body.embedsDeprecated.length > 2) {
+    return err(new HubError('bad_request.validation_failure', 'string embeds > 2'));
+  }
+
+  if (!allowEmbedsDeprecated && body.embedsDeprecated.length > 0) {
+    return err(new HubError('bad_request.validation_failure', 'string embeds have been deprecated'));
+  }
+
   if (body.mentions.length > 10) {
     return err(new HubError('bad_request.validation_failure', 'mentions > 10'));
   }
 
   if (body.mentions.length !== body.mentionsPositions.length) {
     return err(new HubError('bad_request.validation_failure', 'mentions and mentionsPositions must match'));
+  }
+
+  if (body.embeds.length > 0 && body.embedsDeprecated.length > 0) {
+    return err(new HubError('bad_request.validation_failure', 'cannot use both embeds and string embeds'));
   }
 
   for (let i = 0; i < body.embeds.length; i++) {
@@ -321,6 +340,20 @@ export const validateCastAddBody = (body: protobufs.CastAddBody): HubResult<prot
     }
 
     const embedIsValid = validateEmbed(embed);
+    if (embedIsValid.isErr()) {
+      return err(embedIsValid.error);
+    }
+  }
+
+  for (let i = 0; i < body.embedsDeprecated.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection
+    const embed = body.embedsDeprecated[i];
+
+    if (embed === undefined) {
+      return err(new HubError('bad_request.validation_failure', 'string embed is missing'));
+    }
+
+    const embedIsValid = validateUrl(embed);
     if (embedIsValid.isErr()) {
       return err(embedIsValid.error);
     }
