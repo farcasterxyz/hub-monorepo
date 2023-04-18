@@ -3,8 +3,8 @@ import { ok } from 'neverthrow';
 import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from '@farcaster/hub-nodejs';
 
 import Engine from '~/storage/engine';
-import { NodeMetadata } from './merkleTrie';
-import SyncEngine from './syncEngine';
+import { NodeMetadata } from '~/network/sync/merkleTrie';
+import SyncEngine from '~/network/sync/syncEngine';
 
 export class MockRpcClient {
   engine: Engine;
@@ -68,7 +68,7 @@ export class MockRpcClient {
 
   async getAllMessagesBySyncIds(request: SyncIds): Promise<HubResult<MessagesResponse>> {
     this.getAllMessagesBySyncIdsCalls.push(request);
-    const messagesResult = await this.engine.getAllMessagesBySyncIds(request.syncIds);
+    const messagesResult = await this.syncEngine.getAllMessagesBySyncIds(request.syncIds);
     return messagesResult.map((messages) => {
       this.getAllMessagesBySyncIdsReturns += messages.length;
       return MessagesResponse.create({ messages: messages ?? [] });

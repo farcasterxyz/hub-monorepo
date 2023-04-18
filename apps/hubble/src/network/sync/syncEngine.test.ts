@@ -20,6 +20,8 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { sleepWhile } from '~/utils/crypto';
 import { NetworkFactories } from '~/network/utils/factories';
+import { HubInterface } from '~/hubble';
+import { MockHub } from '~/test/mocks';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
@@ -48,12 +50,14 @@ beforeAll(async () => {
 
 describe('SyncEngine', () => {
   let syncEngine: SyncEngine;
+  let hub: HubInterface;
   let engine: Engine;
 
   beforeEach(async () => {
-    await testDb.clear();
+    // await testDb.clear();
     engine = new Engine(testDb, FarcasterNetwork.TESTNET);
-    syncEngine = new SyncEngine(engine, testDb);
+    hub = new MockHub(testDb, engine);
+    syncEngine = new SyncEngine(hub, testDb);
   });
 
   afterEach(async () => {
@@ -138,7 +142,7 @@ describe('SyncEngine', () => {
     const id = new SyncId(castRemove);
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
-    const allMessages = await engine.getAllMessagesBySyncIds([id.syncId()]);
+    const allMessages = await syncEngine.getAllMessagesBySyncIds([id.syncId()]);
     expect(allMessages.isOk()).toBeTruthy();
     expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(MessageType.CAST_REMOVE);
 
@@ -151,7 +155,7 @@ describe('SyncEngine', () => {
 
   test('getAllMessages returns empty with invalid syncId', async () => {
     expect(await syncEngine.trie.items()).toEqual(0);
-    const result = await engine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
+    const result = await syncEngine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()[0]?.data).toBeUndefined();
     expect(result._unsafeUnwrap()[0]?.hash.length).toEqual(0);
@@ -199,7 +203,8 @@ describe('SyncEngine', () => {
     // Create a new engine and sync engine
     testDb2.clear();
     const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
-    const syncEngine2 = new SyncEngine(engine2, testDb2);
+    const hub2 = new MockHub(testDb2, engine2);
+    const syncEngine2 = new SyncEngine(hub2, testDb2);
     await engine2.mergeIdRegistryEvent(custodyEvent);
     await engine2.mergeMessage(signerAdd);
 
@@ -299,7 +304,7 @@ describe('SyncEngine', () => {
 
     expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
 
-    const syncEngine2 = new SyncEngine(engine, testDb);
+    const syncEngine2 = new SyncEngine(hub, testDb);
     await syncEngine2.initialize();
 
     // Make sure all messages exist
@@ -320,7 +325,7 @@ describe('SyncEngine', () => {
 
     expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
 
-    const syncEngine2 = new SyncEngine(engine, testDb);
+    const syncEngine2 = new SyncEngine(hub, testDb);
     await syncEngine2.initialize(true); // Rebuild from engine messages
 
     // Make sure all messages exist

@@ -46,7 +46,7 @@ afterAll(async () => {
 
 describe('auth tests', () => {
   test('fails with invalid password', async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(engine, db), undefined, 'admin:password');
+    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, 'admin:password');
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
@@ -89,7 +89,7 @@ describe('auth tests', () => {
   });
 
   test('all submit methods require auth', async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(engine, db), undefined, 'admin:password');
+    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, 'admin:password');
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 

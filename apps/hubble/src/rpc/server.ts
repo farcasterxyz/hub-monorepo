@@ -288,7 +288,7 @@ export default class Server {
       getAllMessagesBySyncIds: async (call, callback) => {
         const request = call.request;
 
-        const messagesResult = await this.engine?.getAllMessagesBySyncIds(request.syncIds);
+        const messagesResult = await this.syncEngine?.getAllMessagesBySyncIds(request.syncIds);
         messagesResult?.match(
           (messages) => {
             // Check the messages for corruption. If a message is blank, that means it was present
@@ -406,11 +406,6 @@ export default class Server {
         const result = await this.hub?.submitMessage(message, 'rpc');
         result?.match(
           () => {
-            if (this.gossipNode) {
-              // When submitting a message via RPC, we want to gossip it to other nodes.
-              // This is a promise, but we won't await it.
-              this.gossipNode.gossipMessage(message);
-            }
             callback(null, message);
           },
           (err: HubError) => {

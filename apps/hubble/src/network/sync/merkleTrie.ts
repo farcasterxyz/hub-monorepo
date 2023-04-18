@@ -1,9 +1,10 @@
-import { ResultAsync } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 import ReadWriteLock from 'rwlock';
+import { HubError, Message } from '@farcaster/hub-nodejs';
 import { SyncId } from '~/network/sync/syncId';
 import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
 import RocksDB from '~/storage/db/rocksdb';
-import Engine from '~/storage/engine';
+import { FID_BYTES, RootPrefix, UserMessagePostfixMax } from '~/storage/db/types';
 import { logger } from '~/utils/logger';
 
 const TRIE_UNLOAD_THRESHOLD = 25_000;
@@ -78,11 +79,12 @@ class MerkleTrie {
     });
   }
 
-  public async rebuild(engine: Engine): Promise<void> {
+  public async rebuild(): Promise<void> {
     // First, delete the root node
-    let txn = this._db.transaction();
-    txn = txn.del(TrieNode.makePrimaryKey(new Uint8Array()));
-    const dbStatus = await ResultAsync.fromPromise(this._db.commit(txn), (e) => e as Error);
+    const dbStatus = await ResultAsync.fromPromise(
+      this._db.del(TrieNode.makePrimaryKey(new Uint8Array())),
+      (e) => e as HubError
+    );
     if (dbStatus.isErr()) {
       log.warn('Error Deleting trie root node. Ignoring', dbStatus.error);
     }
@@ -90,15 +92,26 @@ class MerkleTrie {
     // Brand new empty root node
     this._root = new TrieNode();
 
-    // Rebuild the trie
+    // Rebuild the trie by iterating over all the messages in the db
+    const prefix = Buffer.from([RootPrefix.User]);
+    const iterator = this._db.iteratorByPrefix(prefix);
     let count = 0;
-    await engine.forEachMessage(async (message) => {
-      await this.insert(new SyncId(message));
-      count += 1;
-      if (count % 10_000 === 0) {
-        log.info({ count }, 'Rebuilding Merkle Trie');
+    for await (const [key, value] of iterator) {
+      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+      if (postfix < UserMessagePostfixMax) {
+        const message = Result.fromThrowable(
+          () => Message.decode(new Uint8Array(value as Buffer)),
+          (e) => e as HubError
+        )();
+        if (message.isOk()) {
+          await this.insert(new SyncId(message.value));
+          count += 1;
+          if (count % 10_000 === 0) {
+            log.info({ count }, 'Rebuilding Merkle Trie');
+          }
+        }
       }
-    });
+    }
   }
 
   public async insert(id: SyncId): Promise<boolean> {

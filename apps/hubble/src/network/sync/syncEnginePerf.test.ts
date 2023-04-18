@@ -1,9 +1,16 @@
 // eslint-disable-file security/detect-non-literal-fs-filename
 
-import { FarcasterNetwork, Factories, HubRpcClient, IdRegistryEvent, SignerAddMessage } from '@farcaster/hub-nodejs';
+import {
+  FarcasterNetwork,
+  Factories,
+  HubRpcClient,
+  IdRegistryEvent,
+  SignerAddMessage,
+  CastAddMessage,
+} from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
+import { MockHub } from '~/test/mocks';
 import { MockRpcClient } from './mock';
 import { EMPTY_HASH } from './trieNode';
 
@@ -30,28 +37,10 @@ beforeAll(async () => {
 });
 
 describe('SyncEngine', () => {
-  let engine: Engine;
-
-  beforeEach(async () => {
-    await testDb.clear();
-    engine = new Engine(testDb, FarcasterNetwork.TESTNET);
-  });
-
-  afterEach(async () => {
-    await engine.stop();
-  });
-
-  const addMessagesWithTimestamps = async (timestamps: number[], mergeEngine?: Engine) => {
+  const makeMessagesWithTimestamps = async (timestamps: number[]): Promise<CastAddMessage[]> => {
     return await Promise.all(
       timestamps.map(async (t) => {
-        const cast = await Factories.CastAddMessage.create(
-          { data: { fid, network, timestamp: t } },
-          { transient: { signer } }
-        );
-
-        const result = await (mergeEngine || engine).mergeMessage(cast);
-        expect(result.isOk()).toBeTruthy();
-        return Promise.resolve(cast);
+        return Factories.CastAddMessage.create({ data: { fid, network, timestamp: t } }, { transient: { signer } });
       })
     );
   };
@@ -60,30 +49,23 @@ describe('SyncEngine', () => {
     'should not fetch all messages when snapshot contains non-existent prefix',
     async () => {
       const nowOrig = Date.now;
-      let syncEngine1;
-      let syncEngine2;
 
-      let engine1;
-      let engine2;
+      const hub1 = new MockHub(testDb);
+      const syncEngine1 = new SyncEngine(hub1, testDb);
+      const hub2 = new MockHub(testDb2);
+      const syncEngine2 = new SyncEngine(hub2, testDb2);
 
       try {
-        testDb.clear();
-        testDb2.clear();
-
-        engine1 = new Engine(testDb, FarcasterNetwork.TESTNET);
-        syncEngine1 = new SyncEngine(engine1, testDb);
-        engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
-        syncEngine2 = new SyncEngine(engine2, testDb2);
-
-        await engine1.mergeIdRegistryEvent(custodyEvent);
-        await engine1.mergeMessage(signerAdd);
-        await engine2.mergeIdRegistryEvent(custodyEvent);
-        await engine2.mergeMessage(signerAdd);
+        await hub1.submitIdRegistryEvent(custodyEvent);
+        await hub1.submitMessage(signerAdd);
+        await hub2.submitIdRegistryEvent(custodyEvent);
+        await hub2.submitMessage(signerAdd);
 
         // Merge the same messages into both engines.
-        const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172], engine1);
+        const messages = await makeMessagesWithTimestamps([30662167, 30662169, 30662172]);
         for (const message of messages) {
-          await engine2.mergeMessage(message);
+          await hub1.submitMessage(message);
+          await hub2.submitMessage(message);
         }
 
         // Sanity check, they should equal
@@ -97,7 +79,7 @@ describe('SyncEngine', () => {
         // Force a non-existent prefix (the original bug #536 is fixed)
         snapshot2.prefix = Buffer.from('00306622', 'hex');
 
-        let rpcClient = new MockRpcClient(engine2, syncEngine2);
+        let rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
         await syncEngine1.performSync(snapshot2, rpcClient as unknown as HubRpcClient);
         expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
         expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
@@ -106,7 +88,7 @@ describe('SyncEngine', () => {
         expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
         // Even with a bad snapshot, we should still not call the sync APIs because the hashes match
-        rpcClient = new MockRpcClient(engine2, syncEngine2);
+        rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
         await syncEngine1.performSync(
           {
             numMessages: 1000,
@@ -120,10 +102,7 @@ describe('SyncEngine', () => {
       } finally {
         Date.now = nowOrig;
         await syncEngine1?.stop();
-        await engine1?.stop();
-
         await syncEngine2?.stop();
-        await engine2?.stop();
       }
     },
     15 * 1000

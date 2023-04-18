@@ -14,17 +14,18 @@ import {
   Message,
   FidRequest,
   TrieNodeMetadataResponse,
+  bytesToHexString,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { err, ok, Result } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
-import { Hub } from '~/hubble';
+import { Hub, HubInterface } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
 import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
+import { getManyMessages } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
-import Engine from '~/storage/engine';
 import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
 
@@ -60,8 +61,8 @@ type SyncStatus = {
 
 class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
-
-  private readonly engine: Engine;
+  private readonly _db: RocksDB;
+  private readonly _hub: HubInterface;
   private readonly _ethEventsProvider: EthEventsProvider | undefined;
 
   private _isSyncing = false;
@@ -74,15 +75,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Number of messages waiting to get into the merge stores.
   private _syncMergeQ = 0;
 
-  constructor(engine: Engine, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider) {
+  constructor(hub: HubInterface, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider) {
     super();
 
+    this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
     this._ethEventsProvider = ethEventsProvider;
 
-    this.engine = engine;
+    this._hub = hub;
 
-    this.engine.eventHandler.on('mergeMessage', async (event: MergeMessageHubEvent) => {
+    this._hub.engine.eventHandler.on('mergeMessage', async (event: MergeMessageHubEvent) => {
       const { message, deletedMessages } = event.mergeMessageBody;
       const totalMessages = 1 + (deletedMessages?.length ?? 0);
       this._syncTrieQ += totalMessages;
@@ -99,12 +101,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
     // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
     // Order of events does not matter. The trie will always converge to the same state.
-    this.engine.eventHandler.on('pruneMessage', async (event: PruneMessageHubEvent) => {
+    this._hub.engine.eventHandler.on('pruneMessage', async (event: PruneMessageHubEvent) => {
       this._syncTrieQ += 1;
       await this.removeMessage(event.pruneMessageBody.message);
       this._syncTrieQ -= 1;
     });
-    this.engine.eventHandler.on('revokeMessage', async (event: RevokeMessageHubEvent) => {
+    this._hub.engine.eventHandler.on('revokeMessage', async (event: RevokeMessageHubEvent) => {
       this._syncTrieQ += 1;
       await this.removeMessage(event.revokeMessageBody.message);
       this._syncTrieQ -= 1;
@@ -135,7 +137,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   /** Rebuild the entire Sync Trie */
   public async rebuildSyncTrie() {
     log.info('Rebuilding sync trie...');
-    await this._trie.rebuild(this.engine);
+    await this._trie.rebuild();
     log.info('Rebuilding sync trie complete');
   }
 
@@ -329,7 +331,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this._isSyncing = true;
       const snapshot = await this.getSnapshot(otherSnapshot.prefix);
       if (snapshot.isErr()) {
-        log.warn(snapshot.error, `Error performing sync`);
+        log.warn({ errCode: snapshot.error.errCode }, `Error performing sync: ${snapshot.error.message}}`);
       } else {
         const ourSnapshot = snapshot.value;
         const divergencePrefix = await this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
@@ -358,6 +360,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     return success;
+  }
+
+  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
+    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
+    return ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
   }
 
   /**
@@ -412,13 +419,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Merge messages sequentially, so we can handle missing users.
     this._syncMergeQ += messages.length;
     for (const msg of messages) {
-      const result = await this.engine.mergeMessage(msg);
+      const result = await this._hub.submitMessage(msg, 'sync');
 
       if (result.isErr()) {
         if (result.error.errCode === 'bad_request.validation_failure') {
           if (result.error.message.startsWith('invalid signer')) {
             // The user's signer was not found. So fetch all signers from the peer and retry.
-            log.warn({ fid: msg.data?.fid, err: result.error.message }, 'Invalid signer, fetching signers from peer');
+            log.warn(
+              { fid: msg.data?.fid, err: result.error.message },
+              `Invalid signer ${bytesToHexString(msg.signer)._unsafeUnwrap()}, fetching signers from peer`
+            );
             const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
             mergeResults.push(retryResult);
           } else if (result.error.message.startsWith('unknown fid')) {
@@ -437,8 +447,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           // Just update the trie.
           await this.trie.insert(new SyncId(msg));
           mergeResults.push(result);
-        } else {
-          log.warn({ error: result.error, errorMessage: result.error.message }, 'Failed to merge message during sync');
         }
       } else {
         mergeResults.push(result);
@@ -447,21 +455,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._syncMergeQ -= messages.length;
 
     if (mergeResults.length > 0) {
+      const successCount = mergeResults.filter((r) => r.isOk()).length;
       log.info(
         {
           total: mergeResults.length,
-          success: mergeResults.filter((r) => r.isOk()).length,
+          success: successCount,
         },
-        'Merged messages'
-      );
-    }
-
-    // If there was a failed merge, log the error and move on. We'll only log one error, since they're likely all the same.
-    const failedMerge = mergeResults.find((r) => r.isErr());
-    if (failedMerge) {
-      log.warn(
-        { error: failedMerge._unsafeUnwrapErr(), errorMessage: failedMerge._unsafeUnwrapErr().message },
-        'Failed to merge message'
+        `Merged ${successCount} messages during sync with ${mergeResults.length - successCount} failures`
       );
     }
 
@@ -643,13 +643,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return err(new HubError('unavailable.network_failure', 'Failed to fetch signer messages'));
     }
 
-    const results = await this.engine.mergeMessages(signerMessagesResult.value.messages);
+    const results = await Promise.all(
+      signerMessagesResult.value.messages.map((message) => this._hub.submitMessage(message, 'sync'))
+    );
     if (results.every((r) => r.isErr())) {
       return err(new HubError('unavailable.storage_failure', 'Failed to merge signer messages'));
     } else {
       // if at least one signer message was merged, retry the original message
-      return (await this.engine.mergeMessage(message)).mapErr((e) => {
-        log.warn(e, `Failed to merge message type ${message.data?.type}`);
+      return (await this._hub.submitMessage(message, 'sync')).mapErr((e) => {
         return new HubError('unavailable.storage_failure', e);
       });
     }

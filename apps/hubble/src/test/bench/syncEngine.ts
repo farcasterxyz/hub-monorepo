@@ -3,14 +3,11 @@
 import { Writable } from 'node:stream';
 
 import Chance from 'chance';
-import { ok } from 'neverthrow';
 
 import {
   CastAddBody,
   FarcasterNetwork,
   FARCASTER_EPOCH,
-  HubEventType,
-  HubResult,
   HubRpcClient,
   Message,
   MessageData,
@@ -20,11 +17,10 @@ import { MockRpcClient } from '~/network/sync/mock';
 import SyncEngine from '~/network/sync/syncEngine';
 import { SyncId } from '~/network/sync/syncId';
 import RocksDB from '~/storage/db/rocksdb';
-import Engine from '~/storage/engine';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { blake3Truncate160, sleepWhile } from '~/utils/crypto';
 import { avgRecords } from './helpers';
 import { yieldToEventLoop } from './utils';
+import { MockHub } from '../mocks';
 
 const INITIAL_MESSAGES_COUNT = 10_000;
 const FID_COUNT = 10_000;
@@ -32,48 +28,12 @@ const FID_COUNT = 10_000;
 const messages: Message[] = [];
 const peers: SyncEngine[] = [];
 
-class MockEngine {
-  eventHandler: StoreEventHandler;
-  db: RocksDB;
-
-  constructor(db: RocksDB) {
-    this.db = db;
-    this.eventHandler = new StoreEventHandler(db);
-  }
-
-  async mergeMessage(message: Message): Promise<HubResult<void>> {
-    await this.eventHandler.commitTransaction(this.db.transaction(), {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: [] },
-    });
-
-    return ok(undefined);
-  }
-
-  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): Promise<HubResult<Message[]>> {
-    return ok(
-      syncIds.map((syncId) => {
-        // The index is embeded in the last 10 bytes of the hash
-        const i = parseInt(
-          Buffer.from(syncId)
-            .subarray(syncId.length - 10)
-            .toString('utf8')
-        );
-        const m = messages[i];
-        if (!m) {
-          throw new Error(`syncid not found`);
-        }
-        return m;
-      })
-    );
-  }
-}
-
 const makeSyncEninge = async (id: number) => {
   const db = new RocksDB(`engine.syncEngine${id}.benchmark`);
   await db.open();
   await db.clear();
-  const syncEngine = new SyncEngine(new MockEngine(db) as unknown as Engine, db);
+  const hub = new MockHub(db);
+  const syncEngine = new SyncEngine(hub, db);
   (syncEngine as any)['_id'] = id;
   return syncEngine;
 };
