@@ -78,7 +78,6 @@ export interface MessagesResponse {
 }
 
 export interface CastsByParentRequest {
-  /** TODO: should cast_id be alias for parent_cast_id for backwards compatibility? */
   parentCastId?: CastId | undefined;
   parentUrl?: string | undefined;
   pageSize?: number | undefined;

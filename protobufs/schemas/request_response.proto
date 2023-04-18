@@ -69,7 +69,7 @@ message MessagesResponse {
 
 message CastsByParentRequest {
   oneof parent {
-    CastId parent_cast_id = 1; // TODO: should cast_id be alias for parent_cast_id for backwards compatibility?
+    CastId parent_cast_id = 1;
     string parent_url = 5;
   }
   optional uint32 page_size = 2;
