@@ -423,11 +423,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Merge messages sequentially, so we can handle missing users.
     this._syncMergeQ += messages.length;
 
-    this._messagesSinceLastCompaction += messages.length;
-    if (this._messagesSinceLastCompaction > COMPACTION_THRESHOLD) {
-      await this._db.compact().catch((e) => log.warn(e, `Error compacting DB: ${e.message}`));
-      this._messagesSinceLastCompaction = 0;
-    }
+    await this.compactDbIfRequired(messages.length);
 
     for (const msg of messages) {
       const result = await this._hub.submitMessage(msg, 'sync');
@@ -593,6 +589,22 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } else {
       return ok(await this._trie.getSnapshot(prefix));
     }
+  }
+
+  public async compactDbIfRequired(messagesLength: number): Promise<boolean> {
+    this._messagesSinceLastCompaction += messagesLength;
+    if (this.shouldCompactDb) {
+      logger.info('Starting DB compaction');
+      await this._db.compact().catch((e) => log.warn(e, `Error compacting DB: ${e.message}`));
+      logger.info('Completed DB compaction');
+      this._messagesSinceLastCompaction = 0;
+      return true;
+    }
+    return false;
+  }
+
+  public get shouldCompactDb(): boolean {
+    return this._messagesSinceLastCompaction > COMPACTION_THRESHOLD;
   }
 
   public async getSnapshot(prefix?: Uint8Array): HubAsyncResult<TrieSnapshot> {
