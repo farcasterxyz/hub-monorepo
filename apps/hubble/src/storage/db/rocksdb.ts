@@ -216,6 +216,15 @@ class RocksDB {
     }
     return this.iterator({ ...options, ...prefixOptions });
   }
+
+  async compact(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Compact all keys
+      this._db.compactRange(Buffer.from([0]), Buffer.from([255]), (e?: Error) => {
+        e ? reject(parseError(e)) : resolve(undefined);
+      });
+    });
+  }
 }
 
 export default RocksDB;

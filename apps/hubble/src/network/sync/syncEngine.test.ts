@@ -403,4 +403,18 @@ describe('SyncEngine', () => {
       expect(divergencePrefix).toEqual(prefixToTest);
     });
   });
+
+  describe('compactDbIfRequired', () => {
+    test('does not compact if under the threshold', async () => {
+      expect(syncEngine.shouldCompactDb).toBeFalsy();
+      expect(await syncEngine.compactDbIfRequired(1000)).toBeFalsy();
+      expect(syncEngine.shouldCompactDb).toBeFalsy();
+    });
+
+    test('compacts the db if over the threshold', async () => {
+      expect(syncEngine.shouldCompactDb).toBeFalsy();
+      expect(await syncEngine.compactDbIfRequired(1_000_000)).toBeTruthy();
+      expect(syncEngine.shouldCompactDb).toBeFalsy();
+    });
+  });
 });
