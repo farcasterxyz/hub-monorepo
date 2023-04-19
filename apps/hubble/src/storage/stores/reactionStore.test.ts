@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import {
   Factories,
   HubError,
@@ -242,6 +243,23 @@ describe('getReactionsByTarget', () => {
       messages: [reactionSameTarget, reactionAddRecast, reactionAdd],
       nextPageToken: undefined,
     });
+  });
+
+  test('returns reactions for a target url', async () => {
+    const targetUrl = faker.internet.url();
+    const reaction1 = await Factories.ReactionAddMessage.create({
+      data: { reactionBody: { targetCastId: undefined, targetUrl } },
+    });
+    const reaction2 = await Factories.ReactionAddMessage.create({
+      data: { reactionBody: { targetCastId: undefined, targetUrl }, timestamp: reaction1.data.timestamp + 1 },
+    });
+
+    await set.merge(reactionAdd);
+    await set.merge(reaction1);
+    await set.merge(reaction2);
+
+    const reactions = await set.getReactionsByTarget(targetUrl);
+    expect(reactions).toEqual({ messages: [reaction1, reaction2], nextPageToken: undefined });
   });
 
   test('returns empty array if reactions exist for a different target', async () => {
@@ -700,6 +718,41 @@ describe('revoke', () => {
     const result = await set.revoke(castAdd);
     expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
     expect(revokedMessages).toEqual([]);
+  });
+
+  test('deletes all keys relating to the reaction', async () => {
+    await set.merge(reactionAdd);
+    const reactionKeys: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeys.push(key as Buffer);
+    }
+    expect(reactionKeys.length).toBeGreaterThan(0);
+    await set.revoke(reactionAdd);
+    const reactionKeysAfterRevoke: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeysAfterRevoke.push(key as Buffer);
+    }
+    // Two hub events left behind (one merge, one revoke)
+    expect(reactionKeysAfterRevoke.length).toEqual(2);
+  });
+
+  test('deletes all keys relating to the cast with parent url', async () => {
+    const reaction = await Factories.ReactionAddMessage.create({
+      data: { reactionBody: { targetCastId: undefined, targetUrl: faker.internet.url() } },
+    });
+    await set.merge(reaction);
+    const reactionKeys: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeys.push(key as Buffer);
+    }
+    expect(reactionKeys.length).toBeGreaterThan(0);
+    await set.revoke(reaction);
+    const reactionKeysAfterRevoke: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeysAfterRevoke.push(key as Buffer);
+    }
+    // Two hub events left behind (one merge, one revoke)
+    expect(reactionKeysAfterRevoke.length).toEqual(2);
   });
 
   test('succeeds with ReactionAdd', async () => {
