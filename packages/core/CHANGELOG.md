@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.7.0
+
+### Minor Changes
+
+- 87b2789: support CastId embeds, cast parent URLs, and reaction target URLs
+
 ## 0.6.1
 
 ### Patch Changes
