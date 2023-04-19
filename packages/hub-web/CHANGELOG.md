@@ -1,5 +1,16 @@
 # @farcaster/hub-web
 
+## 0.3.0
+
+### Minor Changes
+
+- 87b2789: support CastId embeds, cast parent URLs, and reaction target URLs
+
+### Patch Changes
+
+- Updated dependencies [87b2789]
+  - @farcaster/core@0.7.0
+
 ## 0.2.5
 
 ### Patch Changes

@@ -1,5 +1,19 @@
 # @farcaster/hubble
 
+## 1.2.0
+
+### Minor Changes
+
+- 87b2789: upgrade to protocol version 2023.4.19
+- 87b2789: support CastId embeds, cast parent URLs, and reaction target URLs
+
+### Patch Changes
+
+- a027a3e: periodically compact the db while syncing to prevent bloat
+- 0cb0a52: chore: re-organize SyncEngine to merge messages through Hub's submitMessage method rather than the storage engine directly
+- Updated dependencies [87b2789]
+  - @farcaster/hub-nodejs@0.7.0
+
 ## 1.1.0
 
 ### Minor Changes
