@@ -78,7 +78,8 @@ export interface MessagesResponse {
 }
 
 export interface CastsByParentRequest {
-  castId: CastId | undefined;
+  parentCastId?: CastId | undefined;
+  parentUrl?: string | undefined;
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
   reverse?: boolean | undefined;
@@ -87,7 +88,8 @@ export interface CastsByParentRequest {
 export interface ReactionRequest {
   fid: number;
   reactionType: ReactionType;
-  castId: CastId | undefined;
+  targetCastId?: CastId | undefined;
+  targetUrl?: string | undefined;
 }
 
 export interface ReactionsByFidRequest {
@@ -98,8 +100,9 @@ export interface ReactionsByFidRequest {
   reverse?: boolean | undefined;
 }
 
-export interface ReactionsByCastRequest {
-  castId: CastId | undefined;
+export interface ReactionsByTargetRequest {
+  targetCastId?: CastId | undefined;
+  targetUrl?: string | undefined;
   reactionType?: ReactionType | undefined;
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
@@ -1086,13 +1089,22 @@ export const MessagesResponse = {
 };
 
 function createBaseCastsByParentRequest(): CastsByParentRequest {
-  return { castId: undefined, pageSize: undefined, pageToken: undefined, reverse: undefined };
+  return {
+    parentCastId: undefined,
+    parentUrl: undefined,
+    pageSize: undefined,
+    pageToken: undefined,
+    reverse: undefined,
+  };
 }
 
 export const CastsByParentRequest = {
   encode(message: CastsByParentRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.castId !== undefined) {
-      CastId.encode(message.castId, writer.uint32(10).fork()).ldelim();
+    if (message.parentCastId !== undefined) {
+      CastId.encode(message.parentCastId, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.parentUrl !== undefined) {
+      writer.uint32(42).string(message.parentUrl);
     }
     if (message.pageSize !== undefined) {
       writer.uint32(16).uint32(message.pageSize);
@@ -1118,7 +1130,14 @@ export const CastsByParentRequest = {
             break;
           }
 
-          message.castId = CastId.decode(reader, reader.uint32());
+          message.parentCastId = CastId.decode(reader, reader.uint32());
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.parentUrl = reader.string();
           continue;
         case 2:
           if (tag != 16) {
@@ -1152,7 +1171,8 @@ export const CastsByParentRequest = {
 
   fromJSON(object: any): CastsByParentRequest {
     return {
-      castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
+      parentCastId: isSet(object.parentCastId) ? CastId.fromJSON(object.parentCastId) : undefined,
+      parentUrl: isSet(object.parentUrl) ? String(object.parentUrl) : undefined,
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
       reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
@@ -1161,7 +1181,9 @@ export const CastsByParentRequest = {
 
   toJSON(message: CastsByParentRequest): unknown {
     const obj: any = {};
-    message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
+    message.parentCastId !== undefined &&
+      (obj.parentCastId = message.parentCastId ? CastId.toJSON(message.parentCastId) : undefined);
+    message.parentUrl !== undefined && (obj.parentUrl = message.parentUrl);
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
     message.pageToken !== undefined &&
       (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
@@ -1175,8 +1197,11 @@ export const CastsByParentRequest = {
 
   fromPartial<I extends Exact<DeepPartial<CastsByParentRequest>, I>>(object: I): CastsByParentRequest {
     const message = createBaseCastsByParentRequest();
-    message.castId =
-      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
+    message.parentCastId =
+      object.parentCastId !== undefined && object.parentCastId !== null
+        ? CastId.fromPartial(object.parentCastId)
+        : undefined;
+    message.parentUrl = object.parentUrl ?? undefined;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
     message.reverse = object.reverse ?? undefined;
@@ -1185,7 +1210,7 @@ export const CastsByParentRequest = {
 };
 
 function createBaseReactionRequest(): ReactionRequest {
-  return { fid: 0, reactionType: 0, castId: undefined };
+  return { fid: 0, reactionType: 0, targetCastId: undefined, targetUrl: undefined };
 }
 
 export const ReactionRequest = {
@@ -1196,8 +1221,11 @@ export const ReactionRequest = {
     if (message.reactionType !== 0) {
       writer.uint32(16).int32(message.reactionType);
     }
-    if (message.castId !== undefined) {
-      CastId.encode(message.castId, writer.uint32(26).fork()).ldelim();
+    if (message.targetCastId !== undefined) {
+      CastId.encode(message.targetCastId, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.targetUrl !== undefined) {
+      writer.uint32(34).string(message.targetUrl);
     }
     return writer;
   },
@@ -1228,7 +1256,14 @@ export const ReactionRequest = {
             break;
           }
 
-          message.castId = CastId.decode(reader, reader.uint32());
+          message.targetCastId = CastId.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.targetUrl = reader.string();
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -1243,7 +1278,8 @@ export const ReactionRequest = {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : 0,
-      castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
+      targetCastId: isSet(object.targetCastId) ? CastId.fromJSON(object.targetCastId) : undefined,
+      targetUrl: isSet(object.targetUrl) ? String(object.targetUrl) : undefined,
     };
   },
 
@@ -1251,7 +1287,9 @@ export const ReactionRequest = {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.reactionType !== undefined && (obj.reactionType = reactionTypeToJSON(message.reactionType));
-    message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
+    message.targetCastId !== undefined &&
+      (obj.targetCastId = message.targetCastId ? CastId.toJSON(message.targetCastId) : undefined);
+    message.targetUrl !== undefined && (obj.targetUrl = message.targetUrl);
     return obj;
   },
 
@@ -1263,8 +1301,11 @@ export const ReactionRequest = {
     const message = createBaseReactionRequest();
     message.fid = object.fid ?? 0;
     message.reactionType = object.reactionType ?? 0;
-    message.castId =
-      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
+    message.targetCastId =
+      object.targetCastId !== undefined && object.targetCastId !== null
+        ? CastId.fromPartial(object.targetCastId)
+        : undefined;
+    message.targetUrl = object.targetUrl ?? undefined;
     return message;
   },
 };
@@ -1381,14 +1422,24 @@ export const ReactionsByFidRequest = {
   },
 };
 
-function createBaseReactionsByCastRequest(): ReactionsByCastRequest {
-  return { castId: undefined, reactionType: undefined, pageSize: undefined, pageToken: undefined, reverse: undefined };
+function createBaseReactionsByTargetRequest(): ReactionsByTargetRequest {
+  return {
+    targetCastId: undefined,
+    targetUrl: undefined,
+    reactionType: undefined,
+    pageSize: undefined,
+    pageToken: undefined,
+    reverse: undefined,
+  };
 }
 
-export const ReactionsByCastRequest = {
-  encode(message: ReactionsByCastRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.castId !== undefined) {
-      CastId.encode(message.castId, writer.uint32(10).fork()).ldelim();
+export const ReactionsByTargetRequest = {
+  encode(message: ReactionsByTargetRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.targetCastId !== undefined) {
+      CastId.encode(message.targetCastId, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.targetUrl !== undefined) {
+      writer.uint32(50).string(message.targetUrl);
     }
     if (message.reactionType !== undefined) {
       writer.uint32(16).int32(message.reactionType);
@@ -1405,10 +1456,10 @@ export const ReactionsByCastRequest = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): ReactionsByCastRequest {
+  decode(input: _m0.Reader | Uint8Array, length?: number): ReactionsByTargetRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseReactionsByCastRequest();
+    const message = createBaseReactionsByTargetRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1417,7 +1468,14 @@ export const ReactionsByCastRequest = {
             break;
           }
 
-          message.castId = CastId.decode(reader, reader.uint32());
+          message.targetCastId = CastId.decode(reader, reader.uint32());
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.targetUrl = reader.string();
           continue;
         case 2:
           if (tag != 16) {
@@ -1456,9 +1514,10 @@ export const ReactionsByCastRequest = {
     return message;
   },
 
-  fromJSON(object: any): ReactionsByCastRequest {
+  fromJSON(object: any): ReactionsByTargetRequest {
     return {
-      castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
+      targetCastId: isSet(object.targetCastId) ? CastId.fromJSON(object.targetCastId) : undefined,
+      targetUrl: isSet(object.targetUrl) ? String(object.targetUrl) : undefined,
       reactionType: isSet(object.reactionType) ? reactionTypeFromJSON(object.reactionType) : undefined,
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
@@ -1466,9 +1525,11 @@ export const ReactionsByCastRequest = {
     };
   },
 
-  toJSON(message: ReactionsByCastRequest): unknown {
+  toJSON(message: ReactionsByTargetRequest): unknown {
     const obj: any = {};
-    message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
+    message.targetCastId !== undefined &&
+      (obj.targetCastId = message.targetCastId ? CastId.toJSON(message.targetCastId) : undefined);
+    message.targetUrl !== undefined && (obj.targetUrl = message.targetUrl);
     message.reactionType !== undefined &&
       (obj.reactionType = message.reactionType !== undefined ? reactionTypeToJSON(message.reactionType) : undefined);
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
@@ -1478,14 +1539,17 @@ export const ReactionsByCastRequest = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ReactionsByCastRequest>, I>>(base?: I): ReactionsByCastRequest {
-    return ReactionsByCastRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ReactionsByTargetRequest>, I>>(base?: I): ReactionsByTargetRequest {
+    return ReactionsByTargetRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<ReactionsByCastRequest>, I>>(object: I): ReactionsByCastRequest {
-    const message = createBaseReactionsByCastRequest();
-    message.castId =
-      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
+  fromPartial<I extends Exact<DeepPartial<ReactionsByTargetRequest>, I>>(object: I): ReactionsByTargetRequest {
+    const message = createBaseReactionsByTargetRequest();
+    message.targetCastId =
+      object.targetCastId !== undefined && object.targetCastId !== null
+        ? CastId.fromPartial(object.targetCastId)
+        : undefined;
+    message.targetUrl = object.targetUrl ?? undefined;
     message.reactionType = object.reactionType ?? undefined;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;

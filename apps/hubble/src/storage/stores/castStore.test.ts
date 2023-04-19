@@ -19,6 +19,7 @@ import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
 import { err } from 'neverthrow';
+import { faker } from '@faker-js/faker';
 
 const db = jestRocksDB('protobufs.castStore.test');
 const eventHandler = new StoreEventHandler(db);
@@ -154,12 +155,13 @@ describe('getCastsByParent', () => {
     expect(byTargetUser).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns empty array if casts exist, but for a different cast id', async () => {
+  test('returns empty array if casts exist, but for a different parent', async () => {
     await store.merge(castAdd);
     expect(await store.getCastsByParent(Factories.CastId.build())).toEqual({ messages: [], nextPageToken: undefined });
+    expect(await store.getCastsByParent('foo')).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that reply to a parent cast according to pageOptions', async () => {
+  test('returns casts that reply to a parent cast id according to pageOptions', async () => {
     const castAddSameParent = await Factories.CastAddMessage.create({
       data: { castAddBody: { parentCastId }, timestamp: castAdd.data.timestamp + 1 },
     });
@@ -178,6 +180,23 @@ describe('getCastsByParent', () => {
 
     const results3 = await store.getCastsByParent(parentCastId, { reverse: true });
     expect(results3).toEqual({ messages: [castAddSameParent, castAdd], nextPageToken: undefined });
+  });
+
+  test('returns casts that reply to a parent url', async () => {
+    const parentUrl = faker.internet.url();
+    const cast1 = await Factories.CastAddMessage.create({
+      data: { castAddBody: { parentUrl, parentCastId: undefined } },
+    });
+    const cast2 = await Factories.CastAddMessage.create({
+      data: { castAddBody: { parentUrl, parentCastId: undefined }, timestamp: cast1.data.timestamp + 1 },
+    });
+
+    await store.merge(castAdd);
+    await store.merge(cast1);
+    await store.merge(cast2);
+
+    const casts = await store.getCastsByParent(parentUrl);
+    expect(casts).toEqual({ messages: [cast1, cast2], nextPageToken: undefined });
   });
 });
 
@@ -555,6 +574,41 @@ describe('revoke', () => {
     const result = await store.revoke(reactionAdd);
     expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
     expect(revokedMessages).toEqual([]);
+  });
+
+  test('deletes all keys relating to the cast', async () => {
+    await store.merge(castAdd);
+    const castKeys: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      castKeys.push(key as Buffer);
+    }
+    expect(castKeys.length).toBeGreaterThan(0);
+    await store.revoke(castAdd);
+    const castKeysAfterRevoke: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      castKeysAfterRevoke.push(key as Buffer);
+    }
+    // Two hub events left behind (one merge, one revoke)
+    expect(castKeysAfterRevoke.length).toEqual(2);
+  });
+
+  test('deletes all keys relating to the cast with parent url', async () => {
+    const cast = await Factories.CastAddMessage.create({
+      data: { castAddBody: { parentCastId: undefined, parentUrl: faker.internet.url() } },
+    });
+    await store.merge(cast);
+    const castKeys: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      castKeys.push(key as Buffer);
+    }
+    expect(castKeys.length).toBeGreaterThan(0);
+    await store.revoke(cast);
+    const castKeysAfterRevoke: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      castKeysAfterRevoke.push(key as Buffer);
+    }
+    // Two hub events left behind (one merge, one revoke)
+    expect(castKeysAfterRevoke.length).toEqual(2);
   });
 
   test('succeeds with CastAdd', async () => {

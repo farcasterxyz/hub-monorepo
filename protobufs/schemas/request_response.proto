@@ -68,7 +68,10 @@ message MessagesResponse {
 }
 
 message CastsByParentRequest {
-  CastId cast_id = 1;
+  oneof parent {
+    CastId parent_cast_id = 1;
+    string parent_url = 5;
+  }
   optional uint32 page_size = 2;
   optional bytes page_token = 3;
   optional bool reverse = 4;
@@ -77,7 +80,10 @@ message CastsByParentRequest {
 message ReactionRequest {
   uint64 fid = 1;
   ReactionType reaction_type = 2;
-  CastId cast_id = 3;
+  oneof target {
+    CastId target_cast_id = 3;
+    string target_url = 4;
+  }
 }
 
 message ReactionsByFidRequest {
@@ -88,8 +94,11 @@ message ReactionsByFidRequest {
   optional bool reverse = 5;
 }
 
-message ReactionsByCastRequest {
-  CastId cast_id = 1;
+message ReactionsByTargetRequest {
+  oneof target {
+    CastId target_cast_id = 1;
+    string target_url = 6;
+  }
   optional ReactionType reaction_type = 2;
   optional uint32 page_size = 3;
   optional bytes page_token = 4;

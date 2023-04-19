@@ -4,7 +4,7 @@ import { err, ok } from 'neverthrow';
 import { bytesToUtf8String } from './bytes';
 import { HubError } from './errors';
 import { Factories } from './factories';
-import { getFarcasterTime } from './time';
+import { fromFarcasterTime, getFarcasterTime } from './time';
 import * as validations from './validations';
 import { makeVerificationEthAddressClaim } from './verifications';
 
@@ -205,6 +205,53 @@ describe('validateCastAddBody', () => {
     expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 
+  describe('when string embeds are allowed', () => {
+    test('with embedsDeprecated if allowed', () => {
+      const body = Factories.CastAddBody.build({
+        embedsDeprecated: [faker.internet.url(), faker.internet.url()],
+        embeds: [],
+      });
+      expect(validations.validateCastAddBody(body, true)).toEqual(ok(body));
+    });
+
+    describe('fails', () => {
+      let body: protobufs.CastAddBody;
+      let hubErrorMessage: string;
+
+      afterEach(() => {
+        expect(validations.validateCastAddBody(body, true)).toEqual(
+          err(new HubError('bad_request.validation_failure', hubErrorMessage))
+        );
+      });
+
+      test('with more than 2 string embeds', () => {
+        body = Factories.CastAddBody.build({
+          embedsDeprecated: [faker.internet.url(), faker.internet.url(), faker.internet.url()],
+          embeds: [],
+        });
+        hubErrorMessage = 'string embeds > 2';
+      });
+
+      test('with an empty embed url string', () => {
+        body = Factories.CastAddBody.build({
+          embedsDeprecated: [''],
+          embeds: [],
+        });
+        hubErrorMessage = 'url < 1 byte';
+      });
+
+      test('with an embed url string over 256 ASCII characters', () => {
+        body = Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.random.alphaNumeric(257)] });
+        hubErrorMessage = 'url > 256 bytes';
+      });
+
+      test('with an embed url string over 256 bytes', () => {
+        body = Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.random.alphaNumeric(254) + '🤓'] });
+        hubErrorMessage = 'url > 256 bytes';
+      });
+    });
+  });
+
   describe('fails', () => {
     let body: protobufs.CastAddBody;
     let hubErrorMessage: string;
@@ -239,30 +286,45 @@ describe('validateCastAddBody', () => {
 
     test('with more than 2 embeds', () => {
       body = Factories.CastAddBody.build({
-        embeds: [faker.internet.url(), faker.internet.url(), faker.internet.url()],
+        embeds: [Factories.Embed.build(), Factories.Embed.build(), Factories.Embed.build()],
       });
       hubErrorMessage = 'embeds > 2';
     });
 
-    test('with an empty embed string', () => {
+    test('with an empty embed url string', () => {
       body = Factories.CastAddBody.build({
-        embeds: [''],
+        embeds: [{ url: '' }],
       });
-      hubErrorMessage = 'embed < 1 byte';
+      hubErrorMessage = 'url < 1 byte';
     });
 
-    test('with an embed string over 256 ASCII characters', () => {
+    test('with an embed url string over 256 ASCII characters', () => {
       body = Factories.CastAddBody.build({
-        embeds: [faker.random.alphaNumeric(257)],
+        embeds: [{ url: faker.random.alphaNumeric(257) }],
       });
-      hubErrorMessage = 'embed > 256 bytes';
+      hubErrorMessage = 'url > 256 bytes';
     });
 
-    test('with an embed string over 256 bytes', () => {
+    test('with an embed url string over 256 bytes', () => {
       body = Factories.CastAddBody.build({
-        embeds: [faker.random.alphaNumeric(254) + '🤓'],
+        embeds: [{ url: faker.random.alphaNumeric(254) + '🤓' }],
       });
-      hubErrorMessage = 'embed > 256 bytes';
+      hubErrorMessage = 'url > 256 bytes';
+    });
+
+    test('with embedsDeprecated', () => {
+      body = Factories.CastAddBody.build({
+        embeds: [],
+        embedsDeprecated: [faker.internet.url(), faker.internet.url()],
+      });
+      hubErrorMessage = 'string embeds have been deprecated';
+    });
+
+    test('with an invalid embed CastId', () => {
+      body = Factories.CastAddBody.build({
+        embeds: [{ castId: Factories.CastId.build({ fid: undefined }) }],
+      });
+      hubErrorMessage = 'fid is missing';
     });
 
     test('when parent fid is missing', () => {
@@ -730,7 +792,7 @@ describe('validateMessage', () => {
 });
 
 describe('validateMessageData', () => {
-  test('fails with timestamp more than 10 mins in the future', async () => {
+  test('fails with timestamp more than 10 mins in the future', () => {
     const data = Factories.MessageData.build({
       timestamp: getFarcasterTime()._unsafeUnwrap() + validations.ALLOWED_CLOCK_SKEW_SECONDS + 1,
     });
@@ -738,5 +800,45 @@ describe('validateMessageData', () => {
     expect(result).toEqual(
       err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'))
     );
+  });
+
+  describe('with stubbed Date.now', () => {
+    let realDateNow: () => number;
+
+    beforeAll(() => {
+      realDateNow = Date.now.bind(global.Date);
+      global.Date.now = () => fromFarcasterTime(validations.EMBEDS_V1_CUTOFF)._unsafeUnwrap();
+    });
+
+    afterAll(() => {
+      global.Date.now = realDateNow;
+    });
+
+    test('fails with embedsDeprecated when timestamp is past cut-off', () => {
+      const data = Factories.CastAddData.build({
+        timestamp: validations.EMBEDS_V1_CUTOFF + 1,
+        castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
+      });
+      const result = validations.validateMessageData(data);
+      expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'string embeds have been deprecated')));
+    });
+
+    test('fails with embedsDeprecated when timestamp is at cut-off', () => {
+      const data = Factories.CastAddData.build({
+        timestamp: validations.EMBEDS_V1_CUTOFF,
+        castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
+      });
+      const result = validations.validateMessageData(data);
+      expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'string embeds have been deprecated')));
+    });
+
+    test('succeeds with embedsDeprecated when timestamp is before cut-off', () => {
+      const data = Factories.CastAddData.build({
+        timestamp: validations.EMBEDS_V1_CUTOFF - 1,
+        castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
+      });
+      const result = validations.validateMessageData(data);
+      expect(result).toEqual(ok(data));
+    });
   });
 });

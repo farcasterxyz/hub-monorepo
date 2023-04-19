@@ -27,13 +27,13 @@ beforeAll(async () => {
 describe('makeCastAddData', () => {
   test('succeeds', async () => {
     const data = await builders.makeCastAddData(
-      {
+      protobufs.CastAddBody.create({
         text: faker.random.alphaNumeric(200),
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [10, 20],
         parentCastId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
-        embeds: [faker.internet.url()],
-      },
+        embeds: [{ url: faker.internet.url() }, { castId: Factories.CastId.build() }],
+      }),
       { fid, network }
     );
     expect(data.isOk()).toBeTruthy();
@@ -54,13 +54,13 @@ describe('makeCastRemoveData', () => {
 describe('makeCastAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeCastAdd(
-      {
+      protobufs.CastAddBody.create({
         text: faker.random.alphaNumeric(200),
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [10, 20],
         parentCastId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
-        embeds: [faker.internet.url()],
-      },
+        embeds: [{ url: faker.internet.url() }, { castId: Factories.CastId.build() }],
+      }),
       { fid, network },
       ed25519Signer
     );
@@ -110,7 +110,10 @@ describe('makeReactionRemoveData', () => {
 describe('makeReactionAdd', () => {
   test('succeeds', async () => {
     const message = await builders.makeReactionAdd(
-      { type: Factories.ReactionType.build(), targetCastId: { fid, hash: Factories.MessageHash.build() } },
+      protobufs.ReactionBody.create({
+        type: Factories.ReactionType.build(),
+        targetCastId: { fid, hash: Factories.MessageHash.build() },
+      }),
       { fid, network },
       ed25519Signer
     );

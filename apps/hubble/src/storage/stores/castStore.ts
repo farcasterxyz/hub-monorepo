@@ -76,10 +76,11 @@ const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
  * @param tsHash the timestamp hash of the cast message
  * @returns RocksDB index key of the form <root_prefix>:<parentFid>:<parentTsHash>:<tsHash?>:<fid?>
  */
-const makeCastsByParentKey = (parentId: CastId, fid?: number, tsHash?: Uint8Array): Buffer => {
+const makeCastsByParentKey = (parent: CastId | string, fid?: number, tsHash?: Uint8Array): Buffer => {
+  const parentKey = typeof parent === 'string' ? Buffer.from(parent) : makeCastIdKey(parent);
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByParent]),
-    makeCastIdKey(parentId),
+    parentKey,
     Buffer.from(tsHash ?? ''),
     fid ? makeFidKey(fid) : Buffer.from(''),
   ]);
@@ -183,8 +184,11 @@ class CastStore {
   }
 
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
-  async getCastsByParent(parentId: CastId, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
-    const prefix = makeCastsByParentKey(parentId);
+  async getCastsByParent(
+    parent: CastId | string,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<CastAddMessage>> {
+    const prefix = makeCastsByParentKey(parent);
 
     const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
 
@@ -528,11 +532,9 @@ class CastStore {
     txn = txn.put(makeCastAddsKey(message.data.fid, message.hash), Buffer.from(tsHash.value));
 
     // Puts the message key into the ByParent index
-    if (message.data.castAddBody.parentCastId) {
-      txn = txn.put(
-        makeCastsByParentKey(message.data.castAddBody.parentCastId, message.data.fid, tsHash.value),
-        TRUE_VALUE
-      );
+    const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
+    if (parent) {
+      txn = txn.put(makeCastsByParentKey(parent, message.data.fid, tsHash.value), TRUE_VALUE);
     }
 
     // Puts the message key into the ByMentions index
@@ -556,8 +558,9 @@ class CastStore {
     }
 
     // Delete the message key from the ByParent index
-    if (message.data.castAddBody.parentCastId) {
-      txn = txn.del(makeCastsByParentKey(message.data.castAddBody.parentCastId, message.data.fid, tsHash.value));
+    const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
+    if (parent) {
+      txn = txn.del(makeCastsByParentKey(parent, message.data.fid, tsHash.value));
     }
 
     // Delete the message key from the CastAdd set index

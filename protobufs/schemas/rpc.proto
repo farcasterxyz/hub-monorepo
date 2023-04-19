@@ -23,7 +23,8 @@ service HubService {
   // Reactions
   rpc GetReaction(ReactionRequest) returns (Message);
   rpc GetReactionsByFid(ReactionsByFidRequest) returns (MessagesResponse);
-  rpc GetReactionsByCast(ReactionsByCastRequest) returns (MessagesResponse);
+  rpc GetReactionsByCast(ReactionsByTargetRequest) returns (MessagesResponse); // To be deprecated
+  rpc GetReactionsByTarget(ReactionsByTargetRequest) returns (MessagesResponse);
 
   // User Data
   rpc GetUserData(UserDataRequest) returns (Message);

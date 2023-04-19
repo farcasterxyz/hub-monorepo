@@ -59,9 +59,10 @@ export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync';
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = process.env['HUBBLE_NAME'] ?? 'Farcaster Hub';
 
-export const FARCASTER_VERSION = '2023.3.1';
+export const FARCASTER_VERSION = '2023.4.19';
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: '2023.3.1', expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
+  { version: '2023.4.19', expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
 ];
 
 export interface HubInterface {
