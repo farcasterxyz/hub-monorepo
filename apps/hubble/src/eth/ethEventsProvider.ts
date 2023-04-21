@@ -235,11 +235,11 @@ export class EthEventsProvider {
    * @param blockNumber
    */
   public async retryEventsFromBlock(blockNumber: number) {
-    await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, blockNumber, blockNumber, this._chunkSize);
-    await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, blockNumber, blockNumber, this._chunkSize);
+    await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, blockNumber, blockNumber + 1, 1);
+    await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, blockNumber, blockNumber + 1, 1);
 
     // Sync old Name Transfer events
-    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, blockNumber, blockNumber, this._chunkSize);
+    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, blockNumber, blockNumber + 1, 1);
   }
 
   /**

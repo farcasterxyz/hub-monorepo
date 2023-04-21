@@ -17,8 +17,11 @@ import { SyncId } from '~/network/sync/syncId';
 import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
-import { MockHub } from '~/test/mocks';
-import { sleepWhile } from '~/utils/crypto';
+import { MockHub, MockRPCProvider } from '~/test/mocks';
+import { sleep, sleepWhile } from '~/utils/crypto';
+import { EthEventsProvider } from '~/eth/ethEventsProvider';
+import { Contract } from 'ethers';
+import { IdRegistry, NameRegistry } from '~/eth/abis';
 
 /* eslint-disable security/detect-non-literal-fs-filename */
 
@@ -296,6 +299,35 @@ describe('Multi peer sync engine', () => {
 
     await syncEngine2.stop();
     await engine2.stop();
+  });
+
+  test('retries the id registry event if it is missing', async () => {
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeMessage(signerAdd);
+
+    // Add a cast to engine1
+    await addMessagesWithTimestamps(engine1, [30662167]);
+
+    // Do not merge the custory event into engine2
+    const engine2 = new Engine(testDb2, network);
+    const hub2 = new MockHub(testDb2, engine2);
+    const mockRPCProvider = new MockRPCProvider();
+    const ethEventsProvider = new EthEventsProvider(
+      hub2,
+      mockRPCProvider,
+      new Contract('0x000001', IdRegistry.abi, mockRPCProvider),
+      new Contract('0x000002', NameRegistry.abi, mockRPCProvider),
+      1,
+      10000
+    );
+    const syncEngine2 = new SyncEngine(hub2, testDb2, ethEventsProvider);
+
+    // Sync engine 2 with engine 1
+    await syncEngine2.performSync((await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+    // Because do it without awaiting, we need to wait for the promise to resolve
+    await sleep(100);
+    expect(mockRPCProvider.getLogsCount).toBeGreaterThan(0);
   });
 
   test('Merge with multiple signers', async () => {
