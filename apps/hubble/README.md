@@ -1,50 +1,130 @@
 # Hubble
 
-Hubble is a Typescript implementation of a Farcaster Hub. Hubs store messages uploaded by users and replicate them to other Hubs according to the [protocol specification](https://github.com/farcasterxyz/protocol).
+Hubble is a Typescript implementation of a [Farcaster Hub](https://github.com/farcasterxyz/protocol).
 
-## Getting Started
+A Hub will download an entire copy of the network to your machine and keep it in sync. Messages can be created and uploaded to a Hub and they will propagate to all other Hubs. Running a Hub gives you a private instance that you can query as much as you like and helps decentralized the network.
 
-### Starting Hubble
+If you already have the URL of a publicly hosted Hub, just follow instructions on [interacting with Hubs](#🔨-interacting-with-hubble).
 
-You'll need to [install dependencies](../../CONTRIBUTING.md#2-setting-up-your-development-environment) and have the RPC URL of an Ethereum Goerli node, which you can get [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/). Then:
+## :computer: Getting Started Locally
 
-1. Navigate to this folder (`/apps/hubble`) from the root
-2. Run `yarn identity create` to generate an identity key pair.
+Run a local Hubble instance to familiarize yourself with the basics.
 
-#### Connecting to Devnet
+### 1. Set up the Repository
 
-Hubble can be started in devnet mode which is used for local testing. Identity state will be read from on-chain contracts but
-it will not connect to peers. To connect to devnet:
+1. Install [dependencies](../../CONTRIBUTING.md#21-installing-dependencies)
+2. Navigate to `/apps/hubble`
+3. Run `yarn identity create` to generate an identity key pair
+4. Get an Ethereum Goerli node RPC URL from [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/)
 
-1. Run `yarn start -e <eth-rpc-url> -n 3` to boot up the Hub, where `eth-rpc-url` points to the Goerli node's RPC
+### 2. Connect to Testnet
 
-#### Connecting to Testnet
-
-Hubble can be started in testnet mode where it peers with other hubs. The Farcaster team runs a set of hub that publish
-messages every 10 seconds to make testing easy. To connect to testnet:
+Testnet is a sandboxed environment where you can read and write messages without affecting your production account. Dummy messages are broadcast every 10 seconds for testing. Minimum requirements are 4GB RAM and 5 GB of free space.
 
 1. Run `yarn start -e <eth-rpc-url> -b /dns/testnet1.farcaster.xyz/tcp/2282 -n 2`
-2. If you've previously connected to devnet or mainnet, run `yarn dbreset` to clear the database before starting
 
-#### Connecting to Mainnet
+### 3. Verify Your Setup
 
-Hubble mainnet is not yet available.
+Hubble will sync with the on-chain contracts, and issue thousands of messages like this:
 
-### Deploying Hubble in the cloud
+```jsx
+0 | hubble | { level: 30, time: 1679703063660, pid: 3259, hostname: 'ip-10-0-0-85', component: 'EthEventsProvider', blockNumber: 8712752, msg: 'new block: 8712752 };
 
-Hubble can be run on cloud servers with 2 vCPUs, 8 GiB RAM and 15 GiB of SSD storage. Follow these guides to get Hubble running on your preferred provider:
+0 | hubble | { level: 30, time: 1679702496763, pid: 3259, hostname: 'ip-10-0-0-85', component: 'SyncEngine', total: 1, success: 1, msg: 'Merged messages', };
+```
+
+### 4. Switch to Mainnet
+
+Mainnet is Farcaster's production environment apps use and writing a message here will make it show up in all applications. Minimum requirements are 8GB RAM and 20GB of disk space.
+
+1. If you were on a different network, run `yarn dbreset` to clear the database.
+2. Get your PeerId from the file `/apps/hubble/.hub/<PEER_ID>_id.protobuf`
+3. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
+4. Wait for the core team to deploy changes, usually within 24-48 hours.
+5. If you were on a different network, run `yarn dbreset` to clear the database.
+6. Run `yarn start -e <node url> -b /dns/nemes.farcaster.xyz/tcp/2282 -n 1`
+
+## :cloud: Getting Started in the Cloud
+
+Deploy Hubble to the cloud for long-term usage.
+
+A server with at least 2 vCPUs, 8 GiB RAM and 20 GiB of SSD storage is recommended. The instance must have a publicly accessible IP address and ports 2282 and 2283 must be open.
+
+### 1. Set up a Linux VM
+
+Set up your Linux VM. Guides are available for some cloud providers:
 
 - [AWS EC2](https://warpcast.notion.site/Set-up-Hubble-on-EC2-Public-23b4e81d8f604ca9bf8b68f4bb086042)
-- GCP (planned)
-- Azure (planned)
 - [Digital Ocean](https://warpcast.notion.site/Set-up-Hubble-on-DigitalOcean-Public-e38173c487874c91828665e73eac94c1)
 
-### Interacting with Hubble
+### 2. Set up the Environment
 
-Hubble exposes [gRPC](https://grpc.io/) API's and uses [Protobufs](https://github.com/protocolbuffers/protobuf) for data serialization. SDK's are available to interact with Hubble API's:
+Next follow these instructions which should work on most Linux environments:
+
+1. Install [nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+2. Run `. ~/.nvm/nvm.sh`
+3. Install node with `nvm install 18.7.0`
+4. Install yarn and pm2 with `npm install -g yarn`
+5. Clone the code with `git clone https://github.com/farcasterxyz/hubble.git`
+6. Checkout the stable release `cd hubble && git checkout @farcaster/hubble@1.0.22`
+7. Build Hubble with `yarn install && yarn build`
+8. Create an identity with `cd apps/hubble/ && yarn identity create`
+9. Get an Ethereum Goerli node RPC URL from [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/)
+
+### 3. Connect to Testnet
+
+Testnet is a sandboxed environment where you can read and write messages without affecting your production account. Dummy messages are broadcast every 10 seconds for testing. Minimum requirements are 4GB RAM and 5 GB of free space.
+
+1. Install pm2 to mange the process with `npm install -g pm2`
+2. Start Hubble with `pm2 start "yarn start -e <node url> -b /dns/testnet1.farcaster.xyz/tcp/2282 -n 2" --name hubble`
+3. Check the logs with `pm2 logs`
+
+### 4. Verify Your Setup
+
+Hubble will sync with the on-chain contracts, and issue thousands of messages like this:
+
+```jsx
+0 | hubble | { level: 30, time: 1679703063660, pid: 3259, hostname: 'ip-10-0-0-85', component: 'EthEventsProvider', blockNumber: 8712752, msg: 'new block: 8712752 };
+
+0 | hubble | { level: 30, time: 1679702496763, pid: 3259, hostname: 'ip-10-0-0-85', component: 'SyncEngine', total: 1, success: 1, msg: 'Merged messages', };
+```
+
+### 5. Switch to Mainnet
+
+Mainnet is Farcaster's production environment apps use and writing a message here will make it show up in all applications. Minimum requirements are 8GB RAM and 20GB of disk space.
+
+1. Stop running hubs with `pm2 stop all`
+2. Navigate to `apps/hubble`
+3. Clean the db with `yarn dbreset`, if you are moving over from testnet.
+4. Get your PeerId from the file `.hub/<PEER_ID>_id.protobuf`
+5. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
+6. Wait for the core team to deploy changes, usually within 24-48 hours.
+7. Run `pm2 start "yarn start -e <node url> -b /dns/nemes.farcaster.xyz/tcp/2282 -n 1" --name hubble`
+
+## :hammer: Interacting with Hubble
+
+Fetching data from Hubble requires communicating with its [gRPC](https://grpc.io/) API's and reading the [Protobuf](https://github.com/protocolbuffers/protobuf) messages. There are SDK's in a few languages to make this easier:
 
 - [Javascript / Typescript](../../packages/hub-nodejs/)
-- Golang (planned)
+- [Python](https://github.com/mirceapasoi/hub_py)
+
+## :gear: Advanced Setup
+
+### Upgrading your Hubs
+
+1. Stop running hubs with `pm2 stop hubble` (or relevant command)
+2. Navigate to the repository root and run `git fetch && git checkout @farcaster/hubble@1.2.0` (or your preferred version)
+3. Run `yarn install && yarn build`
+4. Navigate to `apps/hubble`
+5. Start your hub with `pm2 start hubble` (or relevant command)
+
+### Authentication
+
+Your hub is not authenticated meaning that _anyone_ can connect to it and request messages. You can add authentication by setting up SSL and adding a username and password to your hubs (instructions to follow).
+
+### Peering
+
+Your node will try to discover its public IP by connecting to a third party service, so that it can broadcast its contact details to peers. If you have a custom config or prefer not to use a service, specify your IP with the `--announce-ip` flag when calling yarn start.
 
 ## Architecture
 
