@@ -42,7 +42,6 @@ First, ensure that the following are installed globally on your machine:
 
 - [Node.js 18+](https://github.com/nvm-sh/nvm)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
-- [Flatbuffers](https://github.com/google/flatbuffers) (`brew install flatbuffers` on OSX)
 
 Then, from the root folder run:
 

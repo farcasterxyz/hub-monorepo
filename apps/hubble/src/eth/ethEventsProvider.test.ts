@@ -17,7 +17,7 @@ import { getNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
 import Engine from '~/storage/engine';
 import { MockHub, MockRPCProvider } from '~/test/mocks';
 
-const db = jestRocksDB('flatbuffers.ethEventsProvider.test');
+const db = jestRocksDB('protobufs.ethEventsProvider.test');
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const hub = new MockHub(db, engine);
 
