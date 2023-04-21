@@ -146,9 +146,9 @@ export class EthEventsProvider {
     return this._lastBlockNumber;
   }
 
-  public async start() {
+  public async start(resyncEvents?: boolean) {
     // Connect to Ethereum RPC
-    await this.connectAndSyncHistoricalEvents();
+    await this.connectAndSyncHistoricalEvents(resyncEvents);
   }
 
   public async stop() {
@@ -186,7 +186,7 @@ export class EthEventsProvider {
   /* -------------------------------------------------------------------------- */
 
   /** Connect to Ethereum RPC */
-  private async connectAndSyncHistoricalEvents() {
+  private async connectAndSyncHistoricalEvents(resyncEvents?: boolean) {
     const latestBlockResult = await ResultAsync.fromPromise(this._jsonRpcProvider.getBlock('latest'), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error(
@@ -211,6 +211,11 @@ export class EthEventsProvider {
     const hubState = await this._hub.getHubState();
     if (hubState.isOk()) {
       lastSyncedBlock = hubState.value.lastEthBlock;
+    }
+
+    if (resyncEvents) {
+      log.info(`Resyncing events from ${this._firstBlock} instead of ${lastSyncedBlock}`);
+      lastSyncedBlock = this._firstBlock;
     }
 
     log.info({ lastSyncedBlock }, 'last synced block');
