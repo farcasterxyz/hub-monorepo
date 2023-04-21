@@ -146,9 +146,9 @@ export class EthEventsProvider {
     return this._lastBlockNumber;
   }
 
-  public async start() {
+  public async start(resyncEvents?: boolean) {
     // Connect to Ethereum RPC
-    await this.connectAndSyncHistoricalEvents();
+    await this.connectAndSyncHistoricalEvents(resyncEvents);
   }
 
   public async stop() {
@@ -186,7 +186,7 @@ export class EthEventsProvider {
   /* -------------------------------------------------------------------------- */
 
   /** Connect to Ethereum RPC */
-  private async connectAndSyncHistoricalEvents() {
+  private async connectAndSyncHistoricalEvents(resyncEvents?: boolean) {
     const latestBlockResult = await ResultAsync.fromPromise(this._jsonRpcProvider.getBlock('latest'), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error(
@@ -213,6 +213,11 @@ export class EthEventsProvider {
       lastSyncedBlock = hubState.value.lastEthBlock;
     }
 
+    if (resyncEvents) {
+      log.info(`Resyncing events from ${this._firstBlock} instead of ${lastSyncedBlock}`);
+      lastSyncedBlock = this._firstBlock;
+    }
+
     log.info({ lastSyncedBlock }, 'last synced block');
     const toBlock = latestBlock.number;
 
@@ -235,11 +240,11 @@ export class EthEventsProvider {
    * @param blockNumber
    */
   public async retryEventsFromBlock(blockNumber: number) {
-    await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, blockNumber, blockNumber, this._chunkSize);
-    await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, blockNumber, blockNumber, this._chunkSize);
+    await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, blockNumber, blockNumber + 1, 1);
+    await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, blockNumber, blockNumber + 1, 1);
 
     // Sync old Name Transfer events
-    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, blockNumber, blockNumber, this._chunkSize);
+    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, blockNumber, blockNumber + 1, 1);
   }
 
   /**

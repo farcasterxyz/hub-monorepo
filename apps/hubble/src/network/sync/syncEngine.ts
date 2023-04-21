@@ -443,7 +443,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             // if we don't get all the events from the Ethereum RPC provider.
             // We'll do it in the background, since this will not block the sync.
             setTimeout(async () => {
-              this.retryIdRegistryEvent(msg, rpcClient);
+              log.warn(
+                { fid: msg.data?.fid, err: result.error.message },
+                `Unknown fid ${msg.data?.fid}, reprocessing ID registry event`
+              );
+              await this.retryIdRegistryEvent(msg, rpcClient);
             }, 0);
 
             // We'll push this message as a failure, and we'll retry it on the next sync.
@@ -644,6 +648,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Get the ethereum block number from the custody event
     const custodyEventBlockNumber = custodyEventResult.value.blockNumber;
 
+    logger.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
     // We'll retry all events from this block number
     await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
   }

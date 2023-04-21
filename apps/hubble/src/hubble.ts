@@ -127,6 +127,9 @@ export interface HubOptions {
   /** Number of blocks to batch when syncing historical events  */
   chunkSize?: number;
 
+  /** Resync events */
+  resyncEvents?: boolean;
+
   /** Name of the RocksDB instance */
   rocksDBName?: string;
 
@@ -351,7 +354,7 @@ export class Hub implements HubInterface {
 
     // Start the ETH registry provider first
     if (this.ethRegistryProvider) {
-      await this.ethRegistryProvider.start();
+      await this.ethRegistryProvider.start(this.options.resyncEvents);
     }
 
     // Start the sync engine

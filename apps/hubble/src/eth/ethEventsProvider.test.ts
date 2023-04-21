@@ -15,7 +15,7 @@ import { getIdRegistryEvent } from '~/storage/db/idRegistryEvent';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { getNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
 import Engine from '~/storage/engine';
-import { MockHub } from '~/test/mocks';
+import { MockHub, MockRPCProvider } from '~/test/mocks';
 
 const db = jestRocksDB('flatbuffers.ethEventsProvider.test');
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
@@ -32,22 +32,6 @@ let mockNameRegistry: Contract;
 const generateEthAddressHex = () => {
   return bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
 };
-
-/** A Mock RPC provider */
-class MockRPCProvider extends AbstractProvider {
-  constructor() {
-    // The Goerli networkID is 5
-    super(5);
-  }
-
-  override async getLogs() {
-    return [];
-  }
-
-  override async getBlockNumber() {
-    return 1;
-  }
-}
 
 /** A Mock Event. Note the disabled no-empty-function rule at the top, it is needed to allow no-op functions in the mock. */
 class MockEvent implements Log {

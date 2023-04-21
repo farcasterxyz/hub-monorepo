@@ -12,6 +12,7 @@ import { HubInterface, HubSubmitSource } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
+import { AbstractProvider } from 'ethers';
 
 export class MockHub implements HubInterface {
   public db: RocksDB;
@@ -58,5 +59,24 @@ export class MockHub implements HubInterface {
   async gossipContactInfo(): HubAsyncResult<void> {
     this.gossipCount += 1;
     return ok(undefined);
+  }
+}
+
+/** A Mock RPC provider */
+export class MockRPCProvider extends AbstractProvider {
+  public getLogsCount = 0;
+
+  constructor() {
+    // The Goerli networkID is 5
+    super(5);
+  }
+
+  override async getLogs() {
+    this.getLogsCount += 1;
+    return [];
+  }
+
+  override async getBlockNumber() {
+    return 1;
   }
 }
