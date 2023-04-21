@@ -26,12 +26,12 @@ pnpm install @farcaster/hub-nodejs
 ### Fetching Data from Hubs
 
 ```typescript
-import { getInsecureHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
 (async () => {
   const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
-  const castsResult = await client.getCastsByFid({ fid: 2 });
+  const castsResult = await client.getCastsByFid({ fid: 8928 });
 
   castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
 
