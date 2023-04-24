@@ -66,7 +66,7 @@ Next follow these instructions which should work on most Linux environments:
 3. Install node with `nvm install 18.7.0`
 4. Install yarn and pm2 with `npm install -g yarn`
 5. Clone the code with `git clone https://github.com/farcasterxyz/hubble.git`
-6. Checkout the stable release `cd hubble && git checkout @farcaster/hubble@1.0.22`
+6. Checkout the stable release `cd hubble && git checkout @farcaster/hubble@latest`
 7. Build Hubble with `yarn install && yarn build`
 8. Create an identity with `cd apps/hubble/ && yarn identity create`
 9. Get an Ethereum Goerli node RPC URL from [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/)
@@ -113,7 +113,7 @@ Fetching data from Hubble requires communicating with its [gRPC](https://grpc.io
 ### Upgrading your Hubs
 
 1. Stop running hubs with `pm2 stop hubble` (or relevant command)
-2. Navigate to the repository root and run `git fetch && git checkout @farcaster/hubble@1.2.0` (or your preferred version)
+2. Navigate to the repository root and run `git fetch && git checkout @farcaster/hubble@latest` (or your preferred version)
 3. Run `yarn install && yarn build`
 4. Navigate to `apps/hubble`
 5. Start your hub with `pm2 start hubble` (or relevant command)
