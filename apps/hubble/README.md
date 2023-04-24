@@ -76,7 +76,8 @@ Next follow these instructions which should work on most Linux environments:
 Testnet is a sandboxed environment where you can read and write messages without affecting your production account. Dummy messages are broadcast every 10 seconds for testing. Minimum requirements are 4GB RAM and 5 GB of free space.
 
 1. Install pm2 to mange the process with `npm install -g pm2`
-2. Start Hubble with `pm2 start "yarn start -e <node url> -b /dns/testnet1.farcaster.xyz/tcp/2282 -n 2" --name hubble`
+2. Install pm2 logrotate to ensure the log files get trimmed `pm2 install pm2-logrotate` 
+2. Start Hubble with `pm2 start "yarn start -e <node url> -b /dns/testnet1.farcaster.xyz/tcp/2282 -n 2" --name hubble --exp-backoff-restart-delay=100`
 3. Check the logs with `pm2 logs`
 
 ### 4. Verify Your Setup
@@ -99,7 +100,7 @@ Mainnet is Farcaster's production environment apps use and writing a message her
 4. Get your PeerId from the file `.hub/<PEER_ID>_id.protobuf`
 5. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
 6. Wait for the core team to deploy changes, usually within 24-48 hours.
-7. Run `pm2 start "yarn start -e <node url> -b /dns/nemes.farcaster.xyz/tcp/2282 -n 1" --name hubble`
+7. Run `pm2 start "yarn start -e <node url> -b /dns/nemes.farcaster.xyz/tcp/2282 -n 1" --name hubble --exp-backoff-restart-delay=100`
 
 ## :hammer: Interacting with Hubble
 
