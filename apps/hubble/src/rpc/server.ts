@@ -269,10 +269,20 @@ export default class Server {
         (async () => {
           const info = HubInfoResponse.create({
             version: APP_VERSION,
-            isSynced: !this.syncEngine?.isSyncing(),
+            isSyncing: !this.syncEngine?.isSyncing(),
             nickname: APP_NICKNAME,
             rootHash: (await this.syncEngine?.trie.rootHash()) ?? '',
           });
+
+          if (call.request.syncStats && this.syncEngine) {
+            const stats = await this.syncEngine.getSyncStats();
+            const syncStats = SyncStats.create({
+              numMessages: stats?.numMessages,
+              numFidEvents: stats?.numFids,
+              numFnameEvents: stats?.numFnames,
+            });
+            info.syncStats = syncStats;
+          }
 
           callback(null, info);
         })();

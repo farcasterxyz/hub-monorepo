@@ -50,7 +50,7 @@ service HubService {
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
 
   // Sync Methods
-  rpc GetInfo(Empty) returns (HubInfoResponse);
+  rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
   rpc GetAllSyncIdsByPrefix(TrieNodePrefix) returns (SyncIds);
   rpc GetAllMessagesBySyncIds(SyncIds) returns (MessagesResponse);
   rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);

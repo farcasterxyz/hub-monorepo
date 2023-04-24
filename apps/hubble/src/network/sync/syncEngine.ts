@@ -28,6 +28,7 @@ import { getManyMessages } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
+import { RootPrefix } from '~/storage/db/types';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -58,6 +59,12 @@ type SyncStatus = {
   shouldSync: boolean;
   theirSnapshot: TrieSnapshot;
   ourSnapshot?: TrieSnapshot;
+};
+
+type SyncStats = {
+  numMessages: number;
+  numFids: number;
+  numFnames: number;
 };
 
 class SyncEngine extends TypedEmitter<SyncEvents> {
@@ -605,6 +612,31 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return true;
     }
     return false;
+  }
+
+  public async getSyncStats(): Promise<SyncStats> {
+    let numFids = 0,
+      numFnames = 0;
+
+    for await (const [,] of this._db.iteratorByPrefix(Buffer.from([RootPrefix.IdRegistryEvent]), {
+      keys: false,
+      values: false,
+    })) {
+      numFids += 1;
+    }
+
+    for await (const [,] of this._db.iteratorByPrefix(Buffer.from([RootPrefix.NameRegistryEvent]), {
+      keys: false,
+      values: false,
+    })) {
+      numFnames += 1;
+    }
+
+    return {
+      numMessages: await this._trie.items(),
+      numFids: numFids,
+      numFnames: numFnames,
+    };
   }
 
   public get shouldCompactDb(): boolean {

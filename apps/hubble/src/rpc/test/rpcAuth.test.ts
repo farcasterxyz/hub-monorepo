@@ -7,7 +7,7 @@ import {
   FarcasterNetwork,
   IdRegistryEvent,
   SignerAddMessage,
-  Empty,
+  HubInfoRequest,
 } from '@farcaster/hub-nodejs';
 import SyncEngine from '~/network/sync/syncEngine';
 
@@ -81,7 +81,7 @@ describe('auth tests', () => {
     expect(result4.isOk()).toBeTruthy();
 
     // Non submit methods work without auth
-    const result5 = await authClient.getInfo(Empty.create());
+    const result5 = await authClient.getInfo(HubInfoRequest.create());
     expect(result5.isOk()).toBeTruthy();
 
     await authServer.stop();
