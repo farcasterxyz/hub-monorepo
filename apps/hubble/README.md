@@ -37,7 +37,7 @@ Hubble will sync with the on-chain contracts, and issue thousands of messages li
 
 Mainnet is Farcaster's production environment apps use and writing a message here will make it show up in all applications. Minimum requirements are 8GB RAM and 20GB of disk space.
 
-1. If you were on a different network, run `yarn dbreset` to clear the database.
+1. If you were on a different network, run `pm2 stop hubble` to stop the hub.
 2. Get your PeerId from the file `/apps/hubble/.hub/<PEER_ID>_id.protobuf`
 3. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
 4. Wait for the core team to deploy changes, usually within 24-48 hours.
