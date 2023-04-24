@@ -771,6 +771,8 @@ export default class Server {
       subscribe: async (stream) => {
         const { request } = stream;
 
+        log.info({ request }, 'subscribe: starting stream');
+
         // We'll write using a Buffered Stream Writer
         const bufferedStreamWriter = new BufferedStreamWriter(stream);
 
