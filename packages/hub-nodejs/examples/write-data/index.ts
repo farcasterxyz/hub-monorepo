@@ -1,12 +1,12 @@
 import {
   EthersEip712Signer,
   FarcasterNetwork,
+  getSSLHubRpcClient,
   makeSignerAdd,
   makeUserDataAdd,
   NobleEd25519Signer,
   UserDataType,
 } from '@farcaster/hub-nodejs';
-import { getInsecureHubRpcClient } from '@farcaster/utils';
 import * as ed from '@noble/ed25519';
 import { Wallet } from 'ethers';
 
@@ -16,11 +16,22 @@ import { Wallet } from 'ethers';
  * Populate the following constants with your own values
  */
 
-const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub - make sure to include port 2283
+// Recovery phrase of the custody address and the
+const MNEMONIC = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 
-// If the Hub requests authentication, set the following constants
-// const HUB_USERNAME = process.env['HUB_USERNAME'] || '';
-// const HUB_PASSWORD = process.env['HUB_PASSWORD'] || '';
+// Fid owned by the custody address
+const FID = 2;
+
+// Testnet Configuration
+const HUB_URL = 'testnet1.farcaster.xyz:2283'; // URL + Port of the Hub
+const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
+
+// Mainnet Configuration
+// const HUB_URL = 'nemes.farcaster.xyz:2283';
+// const NETWORK = FarcasterNetwork.MAINNET;
+// Note: nemes is the Farcaster team's mainnet hub, which is password protected to prevent abuse. Configure auth in
+// step 2 by getting a username and password from the Farcaster team. Or, run your own mainnet hub and broadcast
+// to it permissionlessly.
 
 (async () => {
   /**
@@ -35,8 +46,7 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub - make sure to 
    */
 
   // Create an EIP712 Signer with the wallet that holds the custody address of the user
-  const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
-  const wallet = Wallet.fromPhrase(mnemonic);
+  const wallet = Wallet.fromPhrase(MNEMONIC);
   const eip712Signer = new EthersEip712Signer(wallet);
 
   // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
@@ -46,8 +56,8 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub - make sure to 
 
   // Create a SignerAdd message that contains the public key of the signer
   const dataOptions = {
-    fid: 1, // Set to your fid.
-    network: FarcasterNetwork.DEVNET,
+    fid: FID,
+    network: NETWORK,
   };
 
   const signerAddResult = await makeSignerAdd({ signer: signerPublicKey }, dataOptions, eip712Signer);
@@ -60,15 +70,24 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub - make sure to 
    * generating it yourself if your application manages the user's mnemonic. Now you can submit it to the Hub.
    */
 
-  const client = getInsecureHubRpcClient(HUB_URL);
-  // const client = getSSLHubRpcClient(HUB_URL); if you want to use SSL
+  // 1. If your client does not use SSL.
+  // const client = getInsecureHubRpcClient(HUB_URL);
 
-  // If your Hub requires authentication, use the following instead:
-  // const authMetadata = getAuthMetadata(HUB_USERNAME, HUB_PASSWORD);
-  // const result = await client.submitMessage(signerAdd);
-
+  // 2. If your client uses SSL.
+  const client = getSSLHubRpcClient(HUB_URL);
   const result = await client.submitMessage(signerAdd);
-  result.isOk() ? console.log('SignerAdd was published successfully!') : console.log(result.error);
+
+  // 3. If your client uses SSL and requires authentication.
+  // const client = getSSLHubRpcClient(HUB_URL);
+  // const authMetadata = getAuthMetadata("username", "password");
+  // const result = await client.submitMessage(signerAdd, authMetadata);
+
+  if (result.isErr()) {
+    console.log(result.error);
+    return;
+  }
+
+  console.log('SignerAdd was published successfully!');
 
   /**
    *
