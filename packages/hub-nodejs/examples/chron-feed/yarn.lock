@@ -293,10 +293,10 @@
   resolved "https://registry.npmjs.org/@faker-js/faker/-/faker-7.6.0.tgz#9ea331766084288634a9247fcd8b84f16ff4ba07"
   integrity sha512-XK6BTq1NDMo9Xqw/YkYyGjSsg44fbNwYRx7QK2CuoQgyy+f1rrTDHoExVM5PsyXCtfl2vs2vVJ0MN0yN6LppRw==
 
-"@farcaster/core@0.6.1":
-  version "0.6.1"
-  resolved "https://registry.npmjs.org/@farcaster/core/-/core-0.6.1.tgz#08debfcf1938b76b2aad804e5e7e371f8741f6fc"
-  integrity sha512-gukmCefLKc+tTZbRaM1CdbT0+gvZbzpxi5/7CcvgZ2M2yicTE36j6qrJ0XkYLTZBy+/UCY3UaE3FpAi17CBNjg==
+"@farcaster/core@0.7.0":
+  version "0.7.0"
+  resolved "https://registry.npmjs.org/@farcaster/core/-/core-0.7.0.tgz#5397af42edd768e7bc0dabcdc4e554c38c007cc5"
+  integrity sha512-eP0vVnfIdnEZAyM3Iaa25y89AQyj88v8T7YbUe08qVGWCEIq82/7Y/pBYB+vRrMgXW4PUVuPfUi1hu9eE7KeDQ==
   dependencies:
     "@ethersproject/abstract-signer" "^5.7.0"
     "@faker-js/faker" "^7.6.0"
@@ -305,12 +305,12 @@
     ethers "~6.2.1"
     neverthrow "^6.0.0"
 
-"@farcaster/hub-nodejs@^0.6.3":
-  version "0.6.3"
-  resolved "https://registry.npmjs.org/@farcaster/hub-nodejs/-/hub-nodejs-0.6.3.tgz#49462e9e5b0a78708a91a00a243f6507a12be8f9"
-  integrity sha512-GjQd4OrK2LJg5mSjU9poVe4ZnmWjLO8WxPHGah0uNzx1Tc2awDU2zUpcwyJwe5t/emS/FslrX7FDPD/XA5DfPQ==
+"@farcaster/hub-nodejs@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.npmjs.org/@farcaster/hub-nodejs/-/hub-nodejs-0.7.0.tgz#ce148d73e447556a6927d1aa1532e32acd6f7fd2"
+  integrity sha512-dH/C929VKDPEdGxkwL2xBPINzXgcQTF4R7XIfCFyFMBe5uUW47ux1VOeBQS6oe8lBbsM9FWQeshtKlbfuwpNaA==
   dependencies:
-    "@farcaster/core" "0.6.1"
+    "@farcaster/core" "0.7.0"
     "@grpc/grpc-js" "^1.8.13"
     "@noble/hashes" "^1.3.0"
     ethers "~6.2.1"

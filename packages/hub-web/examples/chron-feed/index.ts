@@ -21,7 +21,7 @@ const timeAgo = new TimeAgo('en-US');
  * Populate the following constants with your own values
  */
 
-const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
+const HUB_URL = 'nemes.farcaster.xyz:2283'; // URL of the Hub
 const FIDS = [2, 3]; // User IDs to fetch casts for
 
 /**

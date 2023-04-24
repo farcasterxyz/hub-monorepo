@@ -8,7 +8,7 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.6.3",
+    "@farcaster/hub-nodejs": "^0.7.0",
     "javascript-time-ago": "^2.5.9"
   },
   "devDependencies": {

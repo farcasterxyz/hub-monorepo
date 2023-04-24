@@ -21,7 +21,7 @@ const timeAgo = new TimeAgo('en-US');
  * Populate the following constants with your own values
  */
 
-const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
+const HUB_URL = 'nemes.farcaster.xyz:2283'; // URL of the Hub
 const FIDS = [2, 3]; // User IDs to fetch casts for
 
 /**
@@ -98,7 +98,6 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
 };
 
 (async () => {
-  // Set address as an environment variable or pass in directly here
   // const client = getInsecureHubRpcClient(HUB_URL); // Use this if you're not using SSL
   const client = getSSLHubRpcClient(HUB_URL);
 
@@ -109,6 +108,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   const fnameResults = Result.combine(await Promise.all(fnameResultPromises));
 
   if (fnameResults.isErr()) {
+    console.error('Fetching fnames failed');
     console.error(fnameResults.error);
     return;
   }
@@ -128,7 +128,8 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   const castsResult = Result.combine(await Promise.all(castResultPromises));
 
   if (castsResult.isErr()) {
-    console.error('Fetching fnames failed:' + castsResult.error);
+    console.error('Fetching casts failed');
+    console.error(castsResult.error);
     return;
   }
 
