@@ -42,7 +42,7 @@ Mainnet is Farcaster's production environment apps use and writing a message her
 3. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
 4. Wait for the core team to deploy changes, usually within 24-48 hours.
 5. If you were on a different network, run `yarn dbreset` to clear the database.
-6. Run `yarn start -e <node url> -b /dns/nemes.farcaster.xyz/tcp/2282 -n 1`
+6. Run `pm2 start "yarn start -e <node url> -b /dns/nemes.farcaster.xyz/tcp/2282 -n 1" --name hubble`
 
 ## :cloud: Getting Started in the Cloud
 
