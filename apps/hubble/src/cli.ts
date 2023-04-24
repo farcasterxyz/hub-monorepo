@@ -51,7 +51,8 @@ app
   .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts')
   .option(
     '--chunk-size <number>',
-    'The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)'
+    'The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)',
+    parseNumber
   )
   .option('-b, --bootstrap <peer-multiaddrs...>', 'A list of peer multiaddrs to bootstrap libp2p')
   .option('-a, --allowed-peers <peerIds...>', 'An allow-list of peer ids permitted to connect to the hub')
