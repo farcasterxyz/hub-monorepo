@@ -318,7 +318,8 @@ describe('Multi peer sync engine', () => {
       new Contract('0x000001', IdRegistry.abi, mockRPCProvider),
       new Contract('0x000002', NameRegistry.abi, mockRPCProvider),
       1,
-      10000
+      10000,
+      false
     );
     const syncEngine2 = new SyncEngine(hub2, testDb2, ethEventsProvider);
 
