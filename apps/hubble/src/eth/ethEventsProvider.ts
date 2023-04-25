@@ -54,6 +54,7 @@ export class EthEventsProvider {
   private _idEventsByBlock: Map<number, Array<IdRegistryEvent>>;
   private _nameEventsByBlock: Map<number, Array<NameRegistryEvent>>;
   private _renewEventsByBlock: Map<number, Array<NameRegistryRenewEvent>>;
+  private _retryDedupMap: Map<number, boolean>;
 
   private _lastBlockNumber: number;
 
@@ -87,6 +88,7 @@ export class EthEventsProvider {
     this._nameEventsByBlock = new Map();
     this._idEventsByBlock = new Map();
     this._renewEventsByBlock = new Map();
+    this._retryDedupMap = new Map();
 
     // Setup IdRegistry contract
     this._idRegistryContract.on('Register', (to: string, id: bigint, _recovery, _url, event: ContractEventPayload) => {
@@ -240,6 +242,10 @@ export class EthEventsProvider {
    * @param blockNumber
    */
   public async retryEventsFromBlock(blockNumber: number) {
+    if (this._retryDedupMap.has(blockNumber)) {
+      return;
+    }
+    this._retryDedupMap.set(blockNumber, true);
     await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, blockNumber, blockNumber + 1, 1);
     await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, blockNumber, blockNumber + 1, 1);
 
@@ -471,6 +477,8 @@ export class EthEventsProvider {
             await this._hub.submitNameRegistryEvent(updatedEvent);
           }
         }
+
+        this._retryDedupMap.delete(cachedBlock);
       }
     }
 

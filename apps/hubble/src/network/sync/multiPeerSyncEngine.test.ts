@@ -327,7 +327,7 @@ describe('Multi peer sync engine', () => {
 
     // Because do it without awaiting, we need to wait for the promise to resolve
     await sleep(100);
-    expect(mockRPCProvider.getLogsCount).toBeGreaterThan(0);
+    expect(mockRPCProvider.getLogsCount).toEqual(3);
   });
 
   test('Merge with multiple signers', async () => {
