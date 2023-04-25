@@ -9,7 +9,7 @@ import {
   CastAddMessage,
   Message,
   TrieNodePrefix,
-  Empty,
+  HubInfoRequest,
 } from '@farcaster/hub-nodejs';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
 import SyncEngine from '~/network/sync/syncEngine';
@@ -122,7 +122,7 @@ describe('Multi peer sync engine', () => {
     await engine1.mergeMessage(signerAdd);
 
     // Get info first
-    const info = await clientForServer1.getInfo(Empty.create());
+    const info = await clientForServer1.getInfo(HubInfoRequest.create());
     expect(info.isOk()).toBeTruthy();
     const infoResult = info._unsafeUnwrap();
     expect(infoResult.version).toEqual(APP_VERSION);
@@ -318,7 +318,8 @@ describe('Multi peer sync engine', () => {
       new Contract('0x000001', IdRegistry.abi, mockRPCProvider),
       new Contract('0x000002', NameRegistry.abi, mockRPCProvider),
       1,
-      10000
+      10000,
+      false
     );
     const syncEngine2 = new SyncEngine(hub2, testDb2, ethEventsProvider);
 

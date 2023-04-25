@@ -24,6 +24,7 @@ import {
   FidRequest,
   FidsRequest,
   FidsResponse,
+  HubInfoRequest,
   HubInfoResponse,
   IdRegistryEventByAddressRequest,
   IdRegistryEventRequest,
@@ -293,8 +294,8 @@ export const HubServiceService = {
     path: '/HubService/GetInfo',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    requestSerialize: (value: HubInfoRequest) => Buffer.from(HubInfoRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => HubInfoRequest.decode(value),
     responseSerialize: (value: HubInfoResponse) => Buffer.from(HubInfoResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => HubInfoResponse.decode(value),
   },
@@ -375,7 +376,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getAllSignerMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Sync Methods */
-  getInfo: handleUnaryCall<Empty, HubInfoResponse>;
+  getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
   getAllSyncIdsByPrefix: handleUnaryCall<TrieNodePrefix, SyncIds>;
   getAllMessagesBySyncIds: handleUnaryCall<SyncIds, MessagesResponse>;
   getSyncMetadataByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeMetadataResponse>;
@@ -762,14 +763,17 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   /** Sync Methods */
-  getInfo(request: Empty, callback: (error: ServiceError | null, response: HubInfoResponse) => void): ClientUnaryCall;
   getInfo(
-    request: Empty,
+    request: HubInfoRequest,
+    callback: (error: ServiceError | null, response: HubInfoResponse) => void
+  ): ClientUnaryCall;
+  getInfo(
+    request: HubInfoRequest,
     metadata: Metadata,
     callback: (error: ServiceError | null, response: HubInfoResponse) => void
   ): ClientUnaryCall;
   getInfo(
-    request: Empty,
+    request: HubInfoRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: HubInfoResponse) => void

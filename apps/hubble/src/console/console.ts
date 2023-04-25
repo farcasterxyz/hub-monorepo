@@ -1,5 +1,5 @@
 import {
-  Empty,
+  HubInfoRequest,
   Metadata,
   getAdminRpcClient,
   getAuthMetadata,
@@ -88,7 +88,9 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
 
   // Run the info command to start
 
-  const info = await rpcClient.getInfo(Empty.create(), new Metadata(), { deadline: Date.now() + 2000 });
+  const info = await rpcClient.getInfo(HubInfoRequest.create({ syncStats: true }), new Metadata(), {
+    deadline: Date.now() + 2000,
+  });
 
   if (info.isErr()) {
     replServer.output.write('Could not connect to hub at "' + addressString + '"\n');

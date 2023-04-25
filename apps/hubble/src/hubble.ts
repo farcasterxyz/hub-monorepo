@@ -128,7 +128,7 @@ export interface HubOptions {
   chunkSize?: number;
 
   /** Resync events */
-  resyncEvents?: boolean;
+  resyncEthEvents?: boolean;
 
   /** Name of the RocksDB instance */
   rocksDBName?: string;
@@ -214,7 +214,8 @@ export class Hub implements HubInterface {
         options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
         options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
         options.firstBlock ?? GoerliEthConstants.FirstBlock,
-        options.chunkSize ?? GoerliEthConstants.ChunkSize
+        options.chunkSize ?? GoerliEthConstants.ChunkSize,
+        options.resyncEthEvents ?? false
       );
     } else {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
@@ -354,7 +355,7 @@ export class Hub implements HubInterface {
 
     // Start the ETH registry provider first
     if (this.ethRegistryProvider) {
-      await this.ethRegistryProvider.start(this.options.resyncEvents);
+      await this.ethRegistryProvider.start();
     }
 
     // Start the sync engine

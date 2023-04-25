@@ -48,6 +48,7 @@ export class EthEventsProvider {
   private _nameRegistryContract: Contract;
   private _firstBlock: number;
   private _chunkSize: number;
+  private _resyncEvents: boolean;
 
   private _numConfirmations: number;
 
@@ -67,7 +68,8 @@ export class EthEventsProvider {
     idRegistryContract: Contract,
     nameRegistryContract: Contract,
     firstBlock: number,
-    chunkSize: number
+    chunkSize: number,
+    resyncEvents: boolean
   ) {
     this._hub = hub;
     this._jsonRpcProvider = jsonRpcProvider;
@@ -75,6 +77,7 @@ export class EthEventsProvider {
     this._nameRegistryContract = nameRegistryContract;
     this._firstBlock = firstBlock;
     this._chunkSize = chunkSize;
+    this._resyncEvents = resyncEvents;
 
     // Number of blocks to wait before processing an event.
     // This is hardcoded to 6 for now, because that's the threshold beyond which blocks are unlikely to reorg anymore.
@@ -124,7 +127,8 @@ export class EthEventsProvider {
     idRegistryAddress: string,
     nameRegistryAddress: string,
     firstBlock: number,
-    chunkSize: number
+    chunkSize: number,
+    resyncEvents: boolean
   ): EthEventsProvider {
     // Setup provider and the contracts
     const jsonRpcProvider = new JsonRpcProvider(ethRpcUrl);
@@ -138,7 +142,8 @@ export class EthEventsProvider {
       idRegistryContract,
       nameRegistryContract,
       firstBlock,
-      chunkSize
+      chunkSize,
+      resyncEvents
     );
 
     return provider;
@@ -148,9 +153,9 @@ export class EthEventsProvider {
     return this._lastBlockNumber;
   }
 
-  public async start(resyncEvents?: boolean) {
+  public async start() {
     // Connect to Ethereum RPC
-    await this.connectAndSyncHistoricalEvents(resyncEvents);
+    await this.connectAndSyncHistoricalEvents();
   }
 
   public async stop() {
@@ -188,7 +193,7 @@ export class EthEventsProvider {
   /* -------------------------------------------------------------------------- */
 
   /** Connect to Ethereum RPC */
-  private async connectAndSyncHistoricalEvents(resyncEvents?: boolean) {
+  private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._jsonRpcProvider.getBlock('latest'), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error(
@@ -215,7 +220,7 @@ export class EthEventsProvider {
       lastSyncedBlock = hubState.value.lastEthBlock;
     }
 
-    if (resyncEvents) {
+    if (this._resyncEvents) {
       log.info(`Resyncing events from ${this._firstBlock} instead of ${lastSyncedBlock}`);
       lastSyncedBlock = this._firstBlock;
     }

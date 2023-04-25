@@ -100,7 +100,7 @@ afterAll(async () => {
 
 describe('process events', () => {
   beforeEach(async () => {
-    ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry, 1, 10000);
+    ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry, 1, 10000, false);
     mockRPCProvider._forEachSubscriber((s) => s.start());
     await ethEventsProvider.start();
   });

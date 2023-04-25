@@ -3,33 +3,34 @@ import {
   CastId,
   CastRemoveMessage,
   FidsResponse,
+  getServer,
+  HubAsyncResult,
+  HubError,
   HubEvent,
   HubEventType,
   HubInfoResponse,
+  HubServiceServer,
+  HubServiceService,
   IdRegistryEvent,
   Message,
   MessagesResponse,
+  Metadata,
   NameRegistryEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
+  Server as GrpcServer,
+  ServerCredentials,
+  ServiceError,
   SignerAddMessage,
   SignerRemoveMessage,
+  status,
   SyncIds,
+  SyncStats,
   TrieNodeMetadataResponse,
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-  ServerCredentials,
-  ServiceError,
-  Metadata,
-  HubServiceServer,
-  HubAsyncResult,
-  HubError,
-  HubServiceService,
-  Server as GrpcServer,
-  getServer,
-  status,
 } from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
@@ -40,7 +41,7 @@ import Engine from '~/storage/engine';
 import { MessagesPage } from '~/storage/stores/types';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts } from '~/utils/p2p';
-import { RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
+import { RateLimiterAbstract, RateLimiterMemory } from 'rate-limiter-flexible';
 import { BufferedStreamWriter } from './bufferedStreamWriter';
 import { sleep } from '~/utils/crypto';
 
@@ -269,10 +270,19 @@ export default class Server {
         (async () => {
           const info = HubInfoResponse.create({
             version: APP_VERSION,
-            isSynced: !this.syncEngine?.isSyncing(),
+            isSyncing: !this.syncEngine?.isSyncing(),
             nickname: APP_NICKNAME,
             rootHash: (await this.syncEngine?.trie.rootHash()) ?? '',
           });
+
+          if (call.request.syncStats && this.syncEngine) {
+            const stats = await this.syncEngine.getSyncStats();
+            info.syncStats = SyncStats.create({
+              numMessages: stats?.numMessages,
+              numFidEvents: stats?.numFids,
+              numFnameEvents: stats?.numFnames,
+            });
+          }
 
           callback(null, info);
         })();

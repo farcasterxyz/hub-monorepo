@@ -296,6 +296,19 @@ describe('SyncEngine', () => {
     expect((await syncEngine.syncStatus(oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
   });
 
+  test('getSyncStats is correct', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
+    await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
+    await engine.mergeMessage(signerAdd);
+    await addMessagesWithTimestamps([30662167, 30662169]);
+
+    const stats = await syncEngine.getSyncStats();
+    expect(stats.numFids).toEqual(1);
+    expect(stats.numFnames).toEqual(2);
+    expect(stats.numMessages).toEqual(3);
+  });
+
   test('initialize populates the trie with all existing messages', async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);

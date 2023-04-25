@@ -1,5 +1,5 @@
 /* eslint-disable */
-import grpcWeb from '@improbable-eng/grpc-web'; // Override generated ts-proto code to use default export
+import grpcWeb from '@improbable-eng/grpc-web';
 import { BrowserHeaders } from 'browser-headers';
 import { Observable } from 'rxjs';
 import { share } from 'rxjs/operators';
@@ -14,6 +14,7 @@ import {
   FidRequest,
   FidsRequest,
   FidsResponse,
+  HubInfoRequest,
   HubInfoResponse,
   IdRegistryEventByAddressRequest,
   IdRegistryEventRequest,
@@ -105,7 +106,7 @@ export interface HubService {
     metadata?: grpcWeb.grpc.Metadata
   ): Promise<MessagesResponse>;
   /** Sync Methods */
-  getInfo(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
+  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
   getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds>;
   getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   getSyncMetadataByPrefix(
@@ -300,8 +301,8 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceGetAllUserDataMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getInfo(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
-    return this.rpc.unary(HubServiceGetInfoDesc, Empty.fromPartial(request), metadata);
+  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
+    return this.rpc.unary(HubServiceGetInfoDesc, HubInfoRequest.fromPartial(request), metadata);
   }
 
   getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds> {
@@ -934,7 +935,7 @@ export const HubServiceGetInfoDesc: UnaryMethodDefinitionish = {
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return Empty.encode(this).finish();
+      return HubInfoRequest.encode(this).finish();
     },
   } as any,
   responseType: {

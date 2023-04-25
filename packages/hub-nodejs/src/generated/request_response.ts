@@ -24,12 +24,23 @@ export interface EventRequest {
   id: number;
 }
 
+export interface HubInfoRequest {
+  syncStats: boolean;
+}
+
 /** Response Types for the Sync RPC Methods */
 export interface HubInfoResponse {
   version: string;
-  isSynced: boolean;
+  isSyncing: boolean;
   nickname: string;
   rootHash: string;
+  syncStats: SyncStats | undefined;
+}
+
+export interface SyncStats {
+  numMessages: number;
+  numFidEvents: number;
+  numFnameEvents: number;
 }
 
 export interface TrieNodeMetadataResponse {
@@ -322,8 +333,64 @@ export const EventRequest = {
   },
 };
 
+function createBaseHubInfoRequest(): HubInfoRequest {
+  return { syncStats: false };
+}
+
+export const HubInfoRequest = {
+  encode(message: HubInfoRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.syncStats === true) {
+      writer.uint32(8).bool(message.syncStats);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): HubInfoRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseHubInfoRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.syncStats = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): HubInfoRequest {
+    return { syncStats: isSet(object.syncStats) ? Boolean(object.syncStats) : false };
+  },
+
+  toJSON(message: HubInfoRequest): unknown {
+    const obj: any = {};
+    message.syncStats !== undefined && (obj.syncStats = message.syncStats);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<HubInfoRequest>, I>>(base?: I): HubInfoRequest {
+    return HubInfoRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<HubInfoRequest>, I>>(object: I): HubInfoRequest {
+    const message = createBaseHubInfoRequest();
+    message.syncStats = object.syncStats ?? false;
+    return message;
+  },
+};
+
 function createBaseHubInfoResponse(): HubInfoResponse {
-  return { version: '', isSynced: false, nickname: '', rootHash: '' };
+  return { version: '', isSyncing: false, nickname: '', rootHash: '', syncStats: undefined };
 }
 
 export const HubInfoResponse = {
@@ -331,14 +398,17 @@ export const HubInfoResponse = {
     if (message.version !== '') {
       writer.uint32(10).string(message.version);
     }
-    if (message.isSynced === true) {
-      writer.uint32(16).bool(message.isSynced);
+    if (message.isSyncing === true) {
+      writer.uint32(16).bool(message.isSyncing);
     }
     if (message.nickname !== '') {
       writer.uint32(26).string(message.nickname);
     }
     if (message.rootHash !== '') {
       writer.uint32(34).string(message.rootHash);
+    }
+    if (message.syncStats !== undefined) {
+      SyncStats.encode(message.syncStats, writer.uint32(42).fork()).ldelim();
     }
     return writer;
   },
@@ -362,7 +432,7 @@ export const HubInfoResponse = {
             break;
           }
 
-          message.isSynced = reader.bool();
+          message.isSyncing = reader.bool();
           continue;
         case 3:
           if (tag != 26) {
@@ -378,6 +448,13 @@ export const HubInfoResponse = {
 
           message.rootHash = reader.string();
           continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.syncStats = SyncStats.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -390,18 +467,21 @@ export const HubInfoResponse = {
   fromJSON(object: any): HubInfoResponse {
     return {
       version: isSet(object.version) ? String(object.version) : '',
-      isSynced: isSet(object.isSynced) ? Boolean(object.isSynced) : false,
+      isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
       nickname: isSet(object.nickname) ? String(object.nickname) : '',
       rootHash: isSet(object.rootHash) ? String(object.rootHash) : '',
+      syncStats: isSet(object.syncStats) ? SyncStats.fromJSON(object.syncStats) : undefined,
     };
   },
 
   toJSON(message: HubInfoResponse): unknown {
     const obj: any = {};
     message.version !== undefined && (obj.version = message.version);
-    message.isSynced !== undefined && (obj.isSynced = message.isSynced);
+    message.isSyncing !== undefined && (obj.isSyncing = message.isSyncing);
     message.nickname !== undefined && (obj.nickname = message.nickname);
     message.rootHash !== undefined && (obj.rootHash = message.rootHash);
+    message.syncStats !== undefined &&
+      (obj.syncStats = message.syncStats ? SyncStats.toJSON(message.syncStats) : undefined);
     return obj;
   },
 
@@ -412,9 +492,95 @@ export const HubInfoResponse = {
   fromPartial<I extends Exact<DeepPartial<HubInfoResponse>, I>>(object: I): HubInfoResponse {
     const message = createBaseHubInfoResponse();
     message.version = object.version ?? '';
-    message.isSynced = object.isSynced ?? false;
+    message.isSyncing = object.isSyncing ?? false;
     message.nickname = object.nickname ?? '';
     message.rootHash = object.rootHash ?? '';
+    message.syncStats =
+      object.syncStats !== undefined && object.syncStats !== null ? SyncStats.fromPartial(object.syncStats) : undefined;
+    return message;
+  },
+};
+
+function createBaseSyncStats(): SyncStats {
+  return { numMessages: 0, numFidEvents: 0, numFnameEvents: 0 };
+}
+
+export const SyncStats = {
+  encode(message: SyncStats, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.numMessages !== 0) {
+      writer.uint32(8).uint64(message.numMessages);
+    }
+    if (message.numFidEvents !== 0) {
+      writer.uint32(16).uint64(message.numFidEvents);
+    }
+    if (message.numFnameEvents !== 0) {
+      writer.uint32(24).uint64(message.numFnameEvents);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SyncStats {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSyncStats();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.numMessages = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.numFidEvents = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.numFnameEvents = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SyncStats {
+    return {
+      numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
+      numFidEvents: isSet(object.numFidEvents) ? Number(object.numFidEvents) : 0,
+      numFnameEvents: isSet(object.numFnameEvents) ? Number(object.numFnameEvents) : 0,
+    };
+  },
+
+  toJSON(message: SyncStats): unknown {
+    const obj: any = {};
+    message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
+    message.numFidEvents !== undefined && (obj.numFidEvents = Math.round(message.numFidEvents));
+    message.numFnameEvents !== undefined && (obj.numFnameEvents = Math.round(message.numFnameEvents));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SyncStats>, I>>(base?: I): SyncStats {
+    return SyncStats.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SyncStats>, I>>(object: I): SyncStats {
+    const message = createBaseSyncStats();
+    message.numMessages = object.numMessages ?? 0;
+    message.numFidEvents = object.numFidEvents ?? 0;
+    message.numFnameEvents = object.numFnameEvents ?? 0;
     return message;
   },
 };

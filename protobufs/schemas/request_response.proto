@@ -14,12 +14,23 @@ message EventRequest {
   uint64 id = 1;
 }
 
+message HubInfoRequest {
+  bool sync_stats = 1;
+}
+
 // Response Types for the Sync RPC Methods
 message HubInfoResponse {
   string version = 1;
-  bool is_synced = 2;
+  bool is_syncing = 2;
   string nickname = 3;
   string root_hash = 4;
+  SyncStats sync_stats = 5;
+}
+
+message SyncStats {
+  uint64 num_messages = 1;
+  uint64 num_fid_events = 2;
+  uint64 num_fname_events = 3;
 }
 
 message TrieNodeMetadataResponse {
