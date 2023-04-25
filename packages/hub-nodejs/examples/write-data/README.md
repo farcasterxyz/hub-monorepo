@@ -2,7 +2,7 @@
 
 An example that updates a user's profile picture url given their custody address' recovery phrase. 
 
-The custody address is used to create a SignerAdd message, and teh Signer is used to create a UserDataAdd messages which updates the profile picture. The example runs on testnet by default so that you can make changes safely without affecting your mainnet data.
+The custody address is used to create a SignerAdd message, and the Signer is used to create a UserDataAdd message which updates the profile picture. The example runs on testnet by default so that you can make changes safely without affecting your mainnet data.
 
 ### Run on StackBlitz
 

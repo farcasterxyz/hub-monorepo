@@ -1,28 +1,70 @@
-import { FarcasterNetwork, NobleEd25519Signer, getInsecureHubRpcClient, makeCastAdd } from '@farcaster/hub-nodejs';
+import {
+  EthersEip712Signer,
+  FarcasterNetwork,
+  NobleEd25519Signer,
+  getSSLHubRpcClient,
+  makeCastAdd,
+  makeSignerAdd,
+} from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
+import { Wallet } from 'ethers';
+
+/* eslint no-console: 0 */
 
 /**
  * Populate the following constants with your own values
  */
 
-const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
+// Recovery phrase of the custody address and the
+const MNEMONIC = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 
-// If the Hub requests authentication, set the following constants
-// const HUB_USERNAME = process.env['HUB_USERNAME'] || '';
-// const HUB_PASSWORD = process.env['HUB_PASSWORD'] || '';
+// Fid owned by the custody address
+const FID = 2;
+
+// Testnet Configuration
+const HUB_URL = 'testnet1.farcaster.xyz:2283'; // URL + Port of the Hub
+const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
 (async () => {
-  /**
-   * This should be set to the private key of a known signer for the user, instead of randomly generating
-   * one, or the Hubs will reject the message. See the write-data tutorial for examples of how to do this.
-   */
-  const privateKey = ed.utils.randomPrivateKey();
-  const ed25519Signer = new NobleEd25519Signer(privateKey);
+  // Create an EIP712 Signer with the wallet that holds the custody address of the user
+  const wallet = Wallet.fromPhrase(MNEMONIC);
+  const eip712Signer = new EthersEip712Signer(wallet);
+
+  // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
+  const signerPrivateKey = ed.utils.randomPrivateKey();
+  const ed25519Signer = new NobleEd25519Signer(signerPrivateKey);
+  const signerPublicKey = (await ed25519Signer.getSignerKey())._unsafeUnwrap();
 
   const dataOptions = {
-    fid: 1, // Set to your fid.
-    network: FarcasterNetwork.DEVNET,
+    fid: FID,
+    network: NETWORK,
   };
+
+  const signerAddResult = await makeSignerAdd({ signer: signerPublicKey }, dataOptions, eip712Signer);
+  const signerAdd = signerAddResult._unsafeUnwrap();
+
+  /**
+   * Step 2: Broadcast SignerAdd to Hub
+   *
+   * You should have acquired a SignerAdd message either through the Signer Request flow in an app like Warpcast or by
+   * generating it yourself if your application manages the user's mnemonic. Now you can submit it to the Hub.
+   */
+
+  // 1. If your client does not use SSL.
+  // const client = getInsecureHubRpcClient(HUB_URL);
+
+  const client = getSSLHubRpcClient(HUB_URL);
+  const result = await client.submitMessage(signerAdd);
+
+  // 3. If your client uses SSL and requires authentication.
+  // const client = getSSLHubRpcClient(HUB_URL);
+  // const authMetadata = getAuthMetadata("username", "password");
+  // const result = await client.submitMessage(signerAdd, authMetadata);
+
+  if (result.isErr()) {
+    console.log(result.error);
+    return;
+  }
 
   const castResults = [];
 
@@ -36,6 +78,7 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
     {
       text: 'This is a cast with no mentions',
       embeds: [],
+      embedsDeprecated: [],
       mentions: [],
       mentionsPositions: [],
     },
@@ -53,6 +96,7 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
     {
       text: ' and  are big fans of ',
       embeds: [],
+      embedsDeprecated: [],
       mentions: [3, 2, 1],
       mentionsPositions: [0, 5, 22],
     },
@@ -69,7 +113,8 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
   const castWithMentionsAndAttachment = await makeCastAdd(
     {
       text: 'Hey , check this out!',
-      embeds: ['https://farcaster.xyz'],
+      embeds: [{ url: 'https://farcaster.xyz' }],
+      embedsDeprecated: [],
       mentions: [3],
       mentionsPositions: [4],
     },
@@ -86,7 +131,8 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
   const castWithMentionsAttachmentLink = await makeCastAdd(
     {
       text: 'Hey , check out https://farcaster.xyz!',
-      embeds: ['https://farcaster.xyz'],
+      embeds: [{ url: 'https://farcaster.xyz' }],
+      embedsDeprecated: [],
       mentions: [3],
       mentionsPositions: [4],
     },
@@ -105,6 +151,7 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
     {
       text: 'You can mention  multiple times:   ',
       embeds: [],
+      embedsDeprecated: [],
       mentions: [2, 2, 2, 2],
       mentionsPositions: [16, 33, 34, 35],
     },
@@ -122,6 +169,7 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
     {
       text: '🤓 can mention immediately after emoji',
       embeds: [],
+      embedsDeprecated: [],
       mentions: [1],
       mentionsPositions: [4],
     },
@@ -139,25 +187,18 @@ const HUB_URL = process.env['HUB_ADDR'] || ''; // URL of the Hub
   const castWithEmojiLinkAttachmnent = await makeCastAdd(
     {
       text: '🤓https://url-after-unicode.com can include URL immediately after emoji',
-      embeds: ['https://url-after-unicode.com'],
+      embeds: [{ url: 'https://url-after-unicode.com' }],
+      embedsDeprecated: [],
       mentions: [],
       mentionsPositions: [],
     },
     dataOptions,
     ed25519Signer
   );
-
   castResults.push(castWithEmojiLinkAttachmnent);
 
-  // Submit Casts to the Hub
-  const client = getInsecureHubRpcClient(HUB_URL);
-  // If your Hub is using SSL, use getSSLHubRpcClient instead
-
   castResults.map((castAddResult) => castAddResult.map((castAdd) => client.submitMessage(castAdd)));
-
-  // If your Hub requires authentication, use the following instead:
-  // const authMetadata = getAuthMetadata(HUB_USERNAME, HUB_PASSWORD);
-  // castResults.map((castAddResult) => castAddResult.map((castAdd) => client.submitMessage(castAdd, authMetadata)));
+  console.log(`Broadcast ${castResults.length} casts`);
 
   client.close();
 })();
