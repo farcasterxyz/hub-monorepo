@@ -16,7 +16,7 @@ import { Wallet } from 'ethers';
  * Populate the following constants with your own values
  */
 
-// Recovery phrase of the custody address and the
+// Recovery phrase of the custody address
 const MNEMONIC = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 
 // Fid owned by the custody address
