@@ -6,6 +6,8 @@ import {
   IdRegistryEvent,
   SignerAddMessage,
   Message,
+  GossipMessage,
+  ContactInfoContent,
 } from '@farcaster/hub-nodejs';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
@@ -15,6 +17,7 @@ import { MockHub } from '~/test/mocks';
 import SyncEngine from '../sync/syncEngine';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { sleep } from '~/utils/crypto';
+import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
@@ -136,8 +139,10 @@ describe('GossipNode', () => {
     let custodyEvent: IdRegistryEvent;
     let signerAdd: SignerAddMessage;
     let castAdd: Message;
+    let peerId: PeerId;
 
     beforeAll(async () => {
+      peerId = await createEd25519PeerId();
       const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
       const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
       custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
@@ -181,6 +186,90 @@ describe('GossipNode', () => {
       client.close();
       await server.stop(true); // force
       await syncEngine.stop();
+    });
+
+    test('Gossip Ids match for farcaster protocol messages', async () => {
+      const node = new GossipNode();
+      await node.start([]);
+      await node.gossipMessage(castAdd);
+      // should be detected as a duplicate
+      let result = await node.gossipMessage(castAdd);
+      result.forEach((res) => {
+        expect(res.isErr()).toBeTruthy();
+        expect(res._unsafeUnwrapErr().errCode).toEqual('bad_request.duplicate');
+      });
+
+      const gossipMessage = GossipMessage.create({
+        idRegistryEvent: custodyEvent,
+        topics: [node.primaryTopic()],
+        peerId: node.peerId?.toBytes() ?? new Uint8Array(),
+      });
+
+      await node.publish(gossipMessage);
+      result = await node.publish(gossipMessage);
+      result.forEach((res) => {
+        expect(res.isErr()).toBeTruthy();
+        expect(res._unsafeUnwrapErr().errCode).toEqual('bad_request.duplicate');
+      });
+
+      await node.stop();
+    });
+
+    test('Gossip Ids do not match for gossip internal messages', async () => {
+      const node = new GossipNode();
+      await node.start([]);
+
+      const contactInfo = ContactInfoContent.create();
+      await node.gossipContactInfo(contactInfo);
+      const result = await node.gossipContactInfo(contactInfo);
+      result.forEach((res) => expect(res.isOk()).toBeTruthy());
+
+      await node.stop();
+    });
+
+    test('Gossip Message decode works for valid messages', async () => {
+      const contactInfo = ContactInfoContent.create();
+      let gossipMessage = GossipMessage.create({
+        contactInfoContent: contactInfo,
+        topics: ['foobar'],
+        peerId: peerId.toBytes(),
+      });
+      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
+
+      gossipMessage = GossipMessage.create({
+        message: castAdd,
+        topics: ['foobar'],
+        peerId: peerId.toBytes(),
+      });
+      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
+
+      gossipMessage = GossipMessage.create({
+        idRegistryEvent: custodyEvent,
+        topics: ['foobar'],
+        peerId: peerId.toBytes(),
+      });
+      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
+    });
+
+    test('Gossip Message decode fails for invalid buffers', async () => {
+      expect(GossipNode.decodeMessage(new Uint8Array()).isErr()).toBeTruthy();
+      expect(GossipNode.decodeMessage(Message.encode(castAdd).finish()).isErr()).toBeTruthy();
+
+      let gossipMessage = GossipMessage.create({
+        message: castAdd,
+        // empty topics are not allowed
+        topics: [],
+        peerId: peerId.toBytes(),
+      });
+      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+
+      gossipMessage = GossipMessage.create({
+        message: castAdd,
+        topics: ['foobar'],
+        // invalid peerIds are not allowed
+        peerId: new Uint8Array(),
+      });
+      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
     });
   });
 });
