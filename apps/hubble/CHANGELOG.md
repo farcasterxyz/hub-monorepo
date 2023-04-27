@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.2.1
+
+### Patch Changes
+
+- 4fc3198: Dedupe eth events when retrying to be more efficient with api calls
+- 5cee2c5: Fix sync stalling because id registry events weren't retried correctly
+- 427ced4: Remember bad peers during sync and ignore them for a while to reduced excessive sync attempts
+- 421c385: Add sync stats to getInfo rpc call
+- Updated dependencies [421c385]
+  - @farcaster/hub-nodejs@0.7.1
+
 ## 1.2.0
 
 ### Minor Changes
