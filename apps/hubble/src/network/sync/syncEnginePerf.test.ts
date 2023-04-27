@@ -80,7 +80,7 @@ describe('SyncEngine', () => {
         snapshot2.prefix = Buffer.from('00306622', 'hex');
 
         let rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
-        await syncEngine1.performSync(snapshot2, rpcClient as unknown as HubRpcClient);
+        await syncEngine1.performSync('engine2', snapshot2, rpcClient as unknown as HubRpcClient);
         expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
         expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
 
@@ -90,6 +90,7 @@ describe('SyncEngine', () => {
         // Even with a bad snapshot, we should still not call the sync APIs because the hashes match
         rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
         await syncEngine1.performSync(
+          'engine2',
           {
             numMessages: 1000,
             prefix: Buffer.from('999999'),
