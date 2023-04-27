@@ -8,6 +8,7 @@ import {
   Message,
   GossipMessage,
   ContactInfoContent,
+  GossipVersion,
 } from '@farcaster/hub-nodejs';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
@@ -203,6 +204,7 @@ describe('GossipNode', () => {
         idRegistryEvent: custodyEvent,
         topics: [node.primaryTopic()],
         peerId: node.peerId?.toBytes() ?? new Uint8Array(),
+        version: GossipVersion.V1_1,
       });
 
       await node.publish(gossipMessage);
@@ -224,6 +226,25 @@ describe('GossipNode', () => {
       const result = await node.gossipContactInfo(contactInfo);
       result.forEach((res) => expect(res.isOk()).toBeTruthy());
 
+      await node.stop();
+    });
+
+    test('Gossip Ids do not match for gossip V1 messages', async () => {
+      const node = new GossipNode();
+      await node.start([]);
+      const v1Message = GossipMessage.create({
+        message: castAdd,
+        topics: [node.primaryTopic()],
+        peerId: node.peerId?.toBytes() ?? new Uint8Array(),
+        version: GossipVersion.V1,
+      });
+
+      await node.publish(v1Message);
+      // won't be detected as a duplicate
+      const result = await node.publish(v1Message);
+      result.forEach((res) => {
+        expect(res.isOk()).toBeTruthy();
+      });
       await node.stop();
     });
 
@@ -268,6 +289,15 @@ describe('GossipNode', () => {
         topics: ['foobar'],
         // invalid peerIds are not allowed
         peerId: new Uint8Array(),
+      });
+      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+
+      gossipMessage = GossipMessage.create({
+        message: castAdd,
+        topics: ['foobar'],
+        peerId: peerId.toBytes(),
+        // invalid versions are not allowed
+        version: 12345 as GossipVersion,
       });
       expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
     });

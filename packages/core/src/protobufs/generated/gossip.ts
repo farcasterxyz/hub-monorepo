@@ -5,6 +5,7 @@ import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON, Mes
 
 export enum GossipVersion {
   V1 = 0,
+  V1_1 = 1,
 }
 
 export function gossipVersionFromJSON(object: any): GossipVersion {
@@ -12,6 +13,9 @@ export function gossipVersionFromJSON(object: any): GossipVersion {
     case 0:
     case 'GOSSIP_VERSION_V1':
       return GossipVersion.V1;
+    case 1:
+    case 'GOSSIP_VERSION_V1_1':
+      return GossipVersion.V1_1;
     default:
       throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum GossipVersion');
   }
@@ -21,6 +25,8 @@ export function gossipVersionToJSON(object: GossipVersion): string {
   switch (object) {
     case GossipVersion.V1:
       return 'GOSSIP_VERSION_V1';
+    case GossipVersion.V1_1:
+      return 'GOSSIP_VERSION_V1_1';
     default:
       throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum GossipVersion');
   }

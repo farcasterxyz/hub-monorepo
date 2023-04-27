@@ -5,6 +5,7 @@ import {
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
+  GossipVersion,
   HubAsyncResult,
   HubError,
   HubResult,
@@ -192,6 +193,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       message,
       topics: [this.primaryTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
     });
     return this.publish(gossipMessage);
   }
@@ -202,6 +204,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       contactInfoContent: contactInfo,
       topics: [this.contactInfoTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
     });
     return this.publish(gossipMessage);
   }
@@ -342,7 +345,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     // Convert GossipMessage to Uint8Array or decode will return nested Uint8Arrays as Buffers
     try {
       const gossipMessage = GossipMessage.decode(Uint8Array.from(message));
-      if (gossipMessage.topics.length == 0 || gossipMessage.version != GOSSIP_PROTOCOL_VERSION) {
+      const supportedVersions = [GOSSIP_PROTOCOL_VERSION, GossipVersion.V1];
+      if (gossipMessage.topics.length == 0 || supportedVersions.findIndex((v) => v == gossipMessage.version) == -1) {
         return err(new HubError('bad_request.parse_failure', 'invalid message'));
       }
       peerIdFromBytes(gossipMessage.peerId);
@@ -381,7 +385,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     if (message.topic.includes(this.primaryTopic())) {
       // check if message is a Farcaster Protocol Message
       const protocolMessage = GossipNode.decodeMessage(message.data);
-      if (protocolMessage.isOk()) {
+      if (protocolMessage.isOk() && protocolMessage.value.version == GossipVersion.V1_1) {
         if (protocolMessage.value.message != undefined)
           return protocolMessage._unsafeUnwrap().message?.hash as Uint8Array;
         if (protocolMessage.value.idRegistryEvent != undefined)

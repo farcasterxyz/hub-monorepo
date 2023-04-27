@@ -5,6 +5,7 @@ import "id_registry_event.proto";
 
 enum GossipVersion {
   GOSSIP_VERSION_V1 = 0;
+  GOSSIP_VERSION_V1_1 = 1;
 }
 
 message GossipAddressInfo {
