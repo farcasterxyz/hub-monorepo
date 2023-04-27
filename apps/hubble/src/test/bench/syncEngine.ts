@@ -214,9 +214,9 @@ export const benchSyncEngine = async ({
           } while (theirSyncEngine === ourSyncEngine);
 
           const otherSnapshot = (await theirSyncEngine.getSnapshot())._unsafeUnwrap();
-          if ((await ourSyncEngine.syncStatus(otherSnapshot))._unsafeUnwrap().shouldSync) {
+          if ((await ourSyncEngine.syncStatus(i.toString(), otherSnapshot))._unsafeUnwrap().shouldSync) {
             const rpcClient = new MockRpcClient((theirSyncEngine as any).engine, theirSyncEngine);
-            await ourSyncEngine.performSync(otherSnapshot, rpcClient as unknown as HubRpcClient);
+            await ourSyncEngine.performSync(i.toString(), otherSnapshot, rpcClient as unknown as HubRpcClient);
 
             const nodeMetadata = await ourSyncEngine.getTrieNodeMetadata(new Uint8Array());
             stats[i] = {

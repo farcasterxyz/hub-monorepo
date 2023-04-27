@@ -235,7 +235,7 @@ describe('SyncEngine', () => {
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything(), anything())).thenCall(async () => {
-      const shouldSync = await syncEngine.syncStatus({
+      const shouldSync = await syncEngine.syncStatus('test', {
         prefix: new Uint8Array(),
         numMessages: 10,
         excludedHashes: [],
@@ -256,6 +256,7 @@ describe('SyncEngine', () => {
       return Promise.resolve(ok(emptyMetadata));
     });
     await syncEngine.performSync(
+      'test',
       {
         prefix: new Uint8Array(),
         numMessages: 10,
@@ -268,7 +269,7 @@ describe('SyncEngine', () => {
 
   test('syncStatus returns their snapshot and our snapshot when not syncing', async () => {
     const theirSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
-    const syncStatus = await syncEngine.syncStatus(theirSnapshot);
+    const syncStatus = await syncEngine.syncStatus('test', theirSnapshot);
     expect(syncStatus.isOk()).toBeTruthy();
     expect(syncStatus._unsafeUnwrap().isSyncing).toBeFalsy();
     expect(syncStatus._unsafeUnwrap().theirSnapshot).toEqual(theirSnapshot);
@@ -281,7 +282,7 @@ describe('SyncEngine', () => {
 
     await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
     expect(
-      (await syncEngine.syncStatus((await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
+      (await syncEngine.syncStatus('test', (await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
     ).toBeFalsy();
   });
 
@@ -293,7 +294,32 @@ describe('SyncEngine', () => {
     const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
     await addMessagesWithTimestamps([30662372]);
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
-    expect((await syncEngine.syncStatus(oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+    expect((await syncEngine.syncStatus('test', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+  });
+
+  test('syncStatus.shouldSync is false if we didnt merge any messages successfully recently', async () => {
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    const mockRPCClient = mock<HubRpcClient>();
+    const rpcClient = instance(mockRPCClient);
+
+    const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
+    const result = await syncEngine.mergeMessages([castAdd], rpcClient);
+    expect(result.successCount).toEqual(1);
+
+    // Should sync should return true becuase the excluded hashes don't match
+    expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
+    expect((await syncEngine.syncStatus('test', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+
+    const failedResult = await syncEngine.mergeMessages([castAdd], rpcClient);
+    expect(failedResult.successCount).toEqual(0);
+    expect(failedResult.errCount).toEqual(1);
+
+    // Should sync should return false because we failed to merge any messages
+    expect((await syncEngine.syncStatus('test', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+
+    // shouldSync should be true for the same snapshot with a different peerId
+    expect((await syncEngine.syncStatus('new_peer', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
   });
 
   test('getSyncStats is correct', async () => {
