@@ -1,5 +1,14 @@
 # @farcaster/hub-web
 
+## 0.3.1
+
+### Patch Changes
+
+- 421c385: Add sync stats to getInfo rpc call
+- Updated dependencies [6a84860]
+- Updated dependencies [421c385]
+  - @farcaster/core@0.7.1
+
 ## 0.3.0
 
 ### Minor Changes

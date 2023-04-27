@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.7.1
+
+### Patch Changes
+
+- 6a84860: feat: add ViemLocalEip712Signer
+- 421c385: Add sync stats to getInfo rpc call
+
 ## 0.7.0
 
 ### Minor Changes
