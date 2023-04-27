@@ -11,7 +11,7 @@ export const EIP_712_FARCASTER_DOMAIN = {
   name: 'Farcaster Verify Ethereum Address',
   version: '2.0.0',
   // fixed salt to minimize collisions
-  salt: '0xf2d857f4a3edcb9b78b4d503bfe733db1e3f6cdc2b7971ee739626c97e86a558',
+  salt: '0xf2d857f4a3edcb9b78b4d503bfe733db1e3f6cdc2b7971ee739626c97e86a558' as `0x${string}`, // Type cast for viem compatibility
 };
 
 export const EIP_712_FARCASTER_VERIFICATION_CLAIM = [
