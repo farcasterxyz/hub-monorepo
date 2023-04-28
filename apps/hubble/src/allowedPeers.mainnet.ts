@@ -26,4 +26,5 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWJwBPFDdCkxWqVE6tCWPs4sDx2t4Pgy2cCewqKzLTRHgr', // @cryptobenkei
   '12D3KooWPaHFmDULq5ahsFM7TQ9tC3UmpiC5XUjtYe9xaoaw7iAs', // @les
   '12D3KooWEZbpDyiupf2p9dWREfAigKou5wT4jcvxGVTcdXKXBuMu', // Jam.so
+  '12D3KooWEr4WoKduAQg8VJSgwcNsqptbdkSQLw1ceEr8oSBQurJX', // @yanisme
 ];
