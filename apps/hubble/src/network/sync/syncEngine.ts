@@ -64,6 +64,7 @@ type MergeResult = {
 
 type SyncStatus = {
   isSyncing: boolean;
+  inSync: 'true' | 'false' | 'unknown';
   shouldSync: boolean;
   theirSnapshot: TrieSnapshot;
   ourSnapshot?: TrieSnapshot;
@@ -289,7 +290,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.info(
         {
           peerId,
-          inSync: syncStatus.isSyncing ? 'unknown' : !syncStatus.shouldSync,
+          inSync: syncStatus.inSync,
           isSyncing: syncStatus.isSyncing,
           theirMessages: syncStatus.theirSnapshot.numMessages,
           ourMessages: syncStatus.ourSnapshot?.numMessages,
@@ -326,13 +327,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   public async syncStatus(peerId: string, theirSnapshot: TrieSnapshot): HubAsyncResult<SyncStatus> {
     if (this._isSyncing) {
       log.info('shouldSync: already syncing');
-      return ok({ isSyncing: true, shouldSync: false, theirSnapshot });
+      return ok({ isSyncing: true, inSync: 'unknown', shouldSync: false, theirSnapshot });
     }
 
     const lastBadSync = this._unproductivePeers.get(peerId);
     if (lastBadSync && Date.now() < lastBadSync.getTime() + BAD_PEER_BLOCK_TIMEOUT) {
       log.info(`shouldSync: bad peer (blocked until ${lastBadSync.getTime() + BAD_PEER_BLOCK_TIMEOUT})`);
-      return ok({ isSyncing: false, shouldSync: false, theirSnapshot });
+      return ok({ isSyncing: false, inSync: 'false', shouldSync: false, theirSnapshot });
     }
 
     const ourSnapshotResult = await this.getSnapshot(theirSnapshot.prefix);
@@ -348,7 +349,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
       log.info({ excludedHashesMatch }, `shouldSync: excluded hashes`);
 
-      return ok({ isSyncing: false, shouldSync: !excludedHashesMatch, ourSnapshot, theirSnapshot });
+      return ok({
+        isSyncing: false,
+        inSync: excludedHashesMatch ? 'true' : 'false',
+        shouldSync: !excludedHashesMatch,
+        ourSnapshot,
+        theirSnapshot,
+      });
     }
   }
 
