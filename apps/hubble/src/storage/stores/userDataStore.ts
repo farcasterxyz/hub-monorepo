@@ -164,7 +164,7 @@ class UserDataStore {
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const commits: number[] = [];
 
-    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
@@ -185,7 +185,7 @@ class UserDataStore {
         return ok(undefined); // Nothing left to prune
       }
 
-      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
+      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
       if (count.isErr()) {
         return err(count.error);
       }

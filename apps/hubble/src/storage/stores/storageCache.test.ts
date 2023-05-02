@@ -10,7 +10,7 @@ const db = jestRocksDB('engine.storageCache.test');
 let cache: StorageCache;
 
 beforeEach(() => {
-  cache = new StorageCache();
+  cache = new StorageCache(db);
 });
 
 describe('syncFromDb', () => {
@@ -45,15 +45,23 @@ describe('syncFromDb', () => {
         await putMessage(db, message);
       }
     }
-    await cache.syncFromDb(db);
+    await cache.syncFromDb();
     for (const fidUsage of usage) {
-      expect(cache.getMessageCount(fidUsage.fid, UserPostfix.CastMessage)).toEqual(ok(fidUsage.usage.cast));
-      expect(cache.getMessageCount(fidUsage.fid, UserPostfix.ReactionMessage)).toEqual(ok(fidUsage.usage.reaction));
-      expect(cache.getMessageCount(fidUsage.fid, UserPostfix.VerificationMessage)).toEqual(
+      await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.CastMessage)).resolves.toEqual(
+        ok(fidUsage.usage.cast)
+      );
+      await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.ReactionMessage)).resolves.toEqual(
+        ok(fidUsage.usage.reaction)
+      );
+      await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.VerificationMessage)).resolves.toEqual(
         ok(fidUsage.usage.verification)
       );
-      expect(cache.getMessageCount(fidUsage.fid, UserPostfix.UserDataMessage)).toEqual(ok(fidUsage.usage.userData));
-      expect(cache.getMessageCount(fidUsage.fid, UserPostfix.SignerMessage)).toEqual(ok(fidUsage.usage.signer));
+      await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.UserDataMessage)).resolves.toEqual(
+        ok(fidUsage.usage.userData)
+      );
+      await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.SignerMessage)).resolves.toEqual(
+        ok(fidUsage.usage.signer)
+      );
     }
   });
 });
@@ -64,10 +72,10 @@ describe('processEvent', () => {
     const message = await Factories.CastAddMessage.create({ data: { fid } });
     const event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } });
 
-    await cache.syncFromDb(db);
-    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(0));
+    await cache.syncFromDb();
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(0));
     cache.processEvent(event);
-    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
   test('increments count with merge cast remove message event', async () => {
@@ -75,10 +83,10 @@ describe('processEvent', () => {
     const message = await Factories.CastRemoveMessage.create({ data: { fid } });
     const event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } });
 
-    await cache.syncFromDb(db);
-    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(0));
+    await cache.syncFromDb();
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(0));
     cache.processEvent(event);
-    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
   test('count is unchanged when removing existing cast', async () => {
@@ -93,10 +101,10 @@ describe('processEvent', () => {
     });
 
     await putMessage(db, cast);
-    await cache.syncFromDb(db);
-    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
+    await cache.syncFromDb();
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
     cache.processEvent(event);
-    expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).toEqual(ok(1));
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
   test('count is decremented with prune message event', async () => {
@@ -105,10 +113,10 @@ describe('processEvent', () => {
     const event = HubEvent.create({ type: HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
 
     await putMessage(db, message);
-    await cache.syncFromDb(db);
-    expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).toEqual(ok(1));
+    await cache.syncFromDb();
+    await expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).resolves.toEqual(ok(1));
     cache.processEvent(event);
-    expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).toEqual(ok(0));
+    await expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).resolves.toEqual(ok(0));
   });
 
   test('count is decremented with revoke message event', async () => {
@@ -117,10 +125,10 @@ describe('processEvent', () => {
     const event = HubEvent.create({ type: HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
 
     await putMessage(db, message);
-    await cache.syncFromDb(db);
-    expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).toEqual(ok(1));
+    await cache.syncFromDb();
+    await expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).resolves.toEqual(ok(1));
     cache.processEvent(event);
-    expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).toEqual(ok(0));
+    await expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).resolves.toEqual(ok(0));
   });
 
   test('fails when cache is not synced', async () => {

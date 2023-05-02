@@ -291,7 +291,7 @@ class SignerStore {
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const commits: number[] = [];
 
-    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
@@ -312,7 +312,7 @@ class SignerStore {
         return ok(undefined); // Nothing left to prune
       }
 
-      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
+      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
       if (count.isErr()) {
         return err(count.error);
       }

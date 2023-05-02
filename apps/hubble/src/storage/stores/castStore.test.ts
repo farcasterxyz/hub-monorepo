@@ -18,7 +18,7 @@ import { UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
-import { err } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import { faker } from '@faker-js/faker';
 
 const db = jestRocksDB('protobufs.castStore.test');
@@ -775,6 +775,31 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([]);
     });
+
+    test('does not merge a message which would be immediately pruned', async () => {
+      await expect(eventHandler.getEarliestMessageTimestamp(fid, UserPostfix.CastMessage)).resolves.toEqual(
+        ok(undefined)
+      );
+      await sizePrunedStore.merge(add2);
+      await expect(eventHandler.getEarliestMessageTimestamp(fid, UserPostfix.CastMessage)).resolves.toEqual(
+        makeTsHash(add2.data.timestamp, add2.hash)
+      );
+      await sizePrunedStore.merge(add3);
+      // earliest ts does not change
+      await expect(eventHandler.getEarliestMessageTimestamp(fid, UserPostfix.CastMessage)).resolves.toEqual(
+        makeTsHash(add2.data.timestamp, add2.hash)
+      );
+
+      await sizePrunedStore.merge(add4);
+
+      // add1 is older than add2 so it's rejected
+      await expect(sizePrunedStore.merge(add1)).rejects.toEqual(new HubError('bad_request.pruned', 'message pruned'));
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+
+      expect(prunedMessages).toEqual([]);
+    });
   });
 
   describe('with time limit', () => {
@@ -796,6 +821,22 @@ describe('pruneMessages', () => {
       await expect(timePrunedStore.getCastRemove(fid, removeOld3.data.castRemoveBody.targetHash)).rejects.toThrow(
         HubError
       );
+    });
+
+    test('does not merge a message which would be immediately pruned', async () => {
+      const messages = [add1, add2];
+      for (const message of messages) {
+        await timePrunedStore.merge(message);
+      }
+
+      await expect(timePrunedStore.merge(addOld1)).rejects.toEqual(
+        new HubError('bad_request.pruned', 'message pruned')
+      );
+
+      const result = await timePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+
+      expect(prunedMessages).toEqual([]);
     });
   });
 });

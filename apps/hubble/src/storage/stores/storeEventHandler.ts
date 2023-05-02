@@ -149,15 +149,19 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       timeout: options.lockTimeout ?? DEFAULT_LOCK_TIMEOUT,
     });
 
-    this._storageCache = new StorageCache();
+    this._storageCache = new StorageCache(this._db);
   }
 
-  getCacheMessageCount(fid: number, set: UserMessagePostfix): HubResult<number> {
+  async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
     return this._storageCache.getMessageCount(fid, set);
   }
 
+  async getEarliestMessageTimestamp(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
+    return this._storageCache.getEarliestMessageTimestamp(fid, set);
+  }
+
   async syncCache(): HubAsyncResult<void> {
-    return ResultAsync.fromPromise(this._storageCache.syncFromDb(this._db), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._storageCache.syncFromDb(), (e) => e as HubError);
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {

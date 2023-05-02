@@ -316,7 +316,7 @@ class CastStore {
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const commits: number[] = [];
 
-    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
@@ -345,7 +345,7 @@ class CastStore {
         return ok(undefined); // Nothing left to prune
       }
 
-      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
+      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
       if (count.isErr()) {
         return err(count.error);
       }
@@ -400,6 +400,13 @@ class CastStore {
   /* -------------------------------------------------------------------------- */
 
   private async mergeAdd(message: CastAddMessage): Promise<number> {
+    const prunableResult = await this._isPrunable(message);
+    if (prunableResult.isErr()) {
+      throw prunableResult.error;
+    } else if (prunableResult.value) {
+      throw new HubError('bad_request.pruned', 'message pruned');
+    }
+
     // Start RocksDB transaction
     let txn = this._db.transaction();
 
@@ -442,6 +449,13 @@ class CastStore {
   }
 
   private async mergeRemove(message: CastRemoveMessage): Promise<number> {
+    const prunableResult = await this._isPrunable(message);
+    if (prunableResult.isErr()) {
+      throw prunableResult.error;
+    } else if (prunableResult.value) {
+      throw new HubError('bad_request.pruned', 'message pruned');
+    }
+
     // Define cast hash for lookups
     const removeTargetHash = message.data.castRemoveBody.targetHash;
 
@@ -595,6 +609,50 @@ class CastStore {
 
     // Delete message
     return deleteMessageTransaction(txn, message);
+  }
+
+  private async _isPrunable(message: CastAddMessage | CastRemoveMessage): HubAsyncResult<boolean> {
+    // todo: will any of these error checks actually fail?
+
+    const farcasterTime = getFarcasterTime();
+    if (farcasterTime.isErr()) {
+      return err(farcasterTime.error);
+    }
+
+    // Calculate the timestamp cut-off to prune
+    const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
+
+    if (message.data.timestamp < timestampToPrune) {
+      return ok(true);
+    }
+
+    const messageCount = await this._eventHandler.getCacheMessageCount(message.data.fid, UserPostfix.CastMessage);
+    if (messageCount.isErr()) {
+      return err(messageCount.error);
+    }
+    if (messageCount.value < this._pruneSizeLimit) {
+      return ok(false);
+    }
+
+    const earliestTimestamp = await this._eventHandler.getEarliestMessageTimestamp(
+      message.data.fid,
+      UserPostfix.CastMessage
+    );
+    if (earliestTimestamp.isErr()) {
+      return err(earliestTimestamp.error);
+    }
+    const tsHash = makeTsHash(message.data.timestamp, message.hash);
+    if (tsHash.isErr()) {
+      return err(tsHash.error);
+    }
+    if (earliestTimestamp.value === undefined) {
+      return ok(false);
+    }
+    if (bytesCompare(tsHash.value, earliestTimestamp.value) < 0) {
+      return ok(true);
+    } else {
+      return ok(false);
+    }
   }
 }
 
