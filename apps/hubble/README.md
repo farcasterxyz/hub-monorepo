@@ -4,7 +4,7 @@ Hubble is a Typescript implementation of a [Farcaster Hub](https://github.com/fa
 
 A Hub will download an entire copy of the network to your machine and keep it in sync. Messages can be created and uploaded to a Hub and they will propagate to all other Hubs. Running a Hub gives you a private instance that you can query as much as you like and helps decentralized the network.
 
-If you already have the URL of a publicly hosted Hub, just follow instructions on [interacting with Hubs](#🔨-interacting-with-hubble).
+If you already have the URL of a publicly hosted Hub, just follow instructions on [interacting with Hubs](#hammer-interacting-with-hubble).
 
 ## :computer: Getting Started Locally
 
