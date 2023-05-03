@@ -138,6 +138,16 @@ class UserDataStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.UserDataMessage,
+            this._pruneSizeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
+          }
           return this.mergeDataAdd(message);
         },
         { timeout: MERGE_TIMEOUT_DEFAULT }

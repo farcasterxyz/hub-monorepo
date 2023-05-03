@@ -169,19 +169,21 @@ describe('SyncEngine', () => {
     const rsigneradd = await engine.mergeMessage(signerAdd);
     expect(rsigneradd.isOk()).toBeTruthy();
 
+    const currentTime = getFarcasterTime()._unsafeUnwrap();
+
     // Reaction
     const reactionBody = {
       targetCastId: { fid, hash: castAdd.hash },
       type: ReactionType.LIKE,
     };
     const reaction1 = await Factories.ReactionAddMessage.create(
-      { data: { fid, network, timestamp: 30662167, reactionBody } },
+      { data: { fid, network, timestamp: currentTime + 10, reactionBody } },
       { transient: { signer } }
     );
 
     // Same reaction, but with different timestamp
     const reaction2 = await Factories.ReactionAddMessage.create(
-      { data: { fid, network, timestamp: 30662168, reactionBody } },
+      { data: { fid, network, timestamp: currentTime + 15, reactionBody } },
       { transient: { signer } }
     );
 

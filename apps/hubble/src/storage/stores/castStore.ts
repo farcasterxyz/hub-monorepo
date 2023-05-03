@@ -282,7 +282,12 @@ class CastStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
-          const prunableResult = await this._isPrunable(message);
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.CastMessage,
+            this._pruneSizeLimit,
+            this._pruneTimeLimit
+          );
           if (prunableResult.isErr()) {
             throw prunableResult.error;
           } else if (prunableResult.value) {
@@ -602,45 +607,6 @@ class CastStore {
 
     // Delete message
     return deleteMessageTransaction(txn, message);
-  }
-
-  private async _isPrunable(message: CastAddMessage | CastRemoveMessage): HubAsyncResult<boolean> {
-    const farcasterTime = getFarcasterTime();
-    if (farcasterTime.isErr()) {
-      return err(farcasterTime.error);
-    }
-
-    // Calculate the timestamp cut-off to prune
-    const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
-
-    if (message.data.timestamp < timestampToPrune) {
-      return ok(true);
-    }
-
-    const messageCount = await this._eventHandler.getCacheMessageCount(message.data.fid, UserPostfix.CastMessage);
-    if (messageCount.isErr()) {
-      return err(messageCount.error);
-    }
-    if (messageCount.value < this._pruneSizeLimit) {
-      return ok(false);
-    }
-
-    const earliestTimestamp = await this._eventHandler.getEarliestTsHash(message.data.fid, UserPostfix.CastMessage);
-    if (earliestTimestamp.isErr()) {
-      return err(earliestTimestamp.error);
-    }
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      return err(tsHash.error);
-    }
-    if (earliestTimestamp.value === undefined) {
-      return ok(false);
-    }
-    if (bytesCompare(tsHash.value, earliestTimestamp.value) < 0) {
-      return ok(true);
-    } else {
-      return ok(false);
-    }
   }
 }
 

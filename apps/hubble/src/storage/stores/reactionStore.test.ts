@@ -22,6 +22,7 @@ import { getMessage, makeTsHash } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
 import ReactionStore from '~/storage/stores/reactionStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { FARCASTER_EPOCH } from '@farcaster/core';
 
 const db = jestRocksDB('protobufs.reactionStore.test');
 const eventHandler = new StoreEventHandler(db);
@@ -816,15 +817,12 @@ describe('pruneMessages', () => {
   let add3: ReactionAddMessage;
   let add4: ReactionAddMessage;
   let add5: ReactionAddMessage;
-  let addOld1: ReactionAddMessage;
-  let addOld2: ReactionAddMessage;
 
   let remove1: ReactionRemoveMessage;
   let remove2: ReactionRemoveMessage;
   let remove3: ReactionRemoveMessage;
   let remove4: ReactionRemoveMessage;
   let remove5: ReactionRemoveMessage;
-  let removeOld3: ReactionRemoveMessage;
 
   const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<ReactionAddMessage> => {
     return Factories.ReactionAddMessage.create({ data: { fid, timestamp } });
@@ -851,15 +849,12 @@ describe('pruneMessages', () => {
     add3 = await generateAddWithTimestamp(fid, time + 3);
     add4 = await generateAddWithTimestamp(fid, time + 4);
     add5 = await generateAddWithTimestamp(fid, time + 5);
-    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
-    addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
 
     remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.reactionBody);
     remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.reactionBody);
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.reactionBody);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.reactionBody);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.reactionBody);
-    removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
   });
 
   beforeEach(async () => {
@@ -951,35 +946,41 @@ describe('pruneMessages', () => {
     const timePrunedStore = new ReactionStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
 
     test('prunes earliest messages', async () => {
-      const messages = [add1, remove2, addOld1, addOld2, removeOld3];
+      const messages = [add1, add2, remove3, add4];
       for (const message of messages) {
         await timePrunedStore.merge(message);
       }
 
-      const result = await timePrunedStore.pruneMessages(fid);
-      expect(result.isOk()).toBeTruthy();
+      const nowOrig = Date.now;
+      Date.now = () => FARCASTER_EPOCH + (add4.data.timestamp - 1 + 60 * 60) * 1000;
+      try {
+        const result = await timePrunedStore.pruneMessages(fid);
+        expect(result.isOk()).toBeTruthy();
+      } finally {
+        Date.now = nowOrig;
+      }
 
-      expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
+      expect(prunedMessages).toEqual([add1, add2, remove3]);
 
       await expect(
         timePrunedStore.getReactionAdd(
           fid,
-          addOld1.data.reactionBody.type,
-          addOld1.data.reactionBody.targetCastId ?? Factories.CastId.build()
+          add1.data.reactionBody.type,
+          add1.data.reactionBody.targetCastId ?? Factories.CastId.build()
         )
       ).rejects.toThrow(HubError);
       await expect(
         timePrunedStore.getReactionAdd(
           fid,
-          addOld2.data.reactionBody.type,
-          addOld2.data.reactionBody.targetCastId ?? Factories.CastId.build()
+          add2.data.reactionBody.type,
+          add2.data.reactionBody.targetCastId ?? Factories.CastId.build()
         )
       ).rejects.toThrow(HubError);
       await expect(
         timePrunedStore.getReactionRemove(
           fid,
-          removeOld3.data.reactionBody.type,
-          removeOld3.data.reactionBody.targetCastId ?? Factories.CastId.build()
+          remove3.data.reactionBody.type,
+          remove3.data.reactionBody.targetCastId ?? Factories.CastId.build()
         )
       ).rejects.toThrow(HubError);
     });

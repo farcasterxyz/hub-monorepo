@@ -170,6 +170,16 @@ class VerificationStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.VerificationMessage,
+            this._pruneSizeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
+          }
           if (isVerificationAddEthAddressMessage(message)) {
             return this.mergeAdd(message);
           } else if (isVerificationRemoveMessage(message)) {

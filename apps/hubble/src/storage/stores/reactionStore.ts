@@ -289,6 +289,18 @@ class ReactionStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.ReactionMessage,
+            this._pruneSizeLimit,
+            this._pruneTimeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
+          }
+
           if (isReactionAddMessage(message)) {
             return this.mergeAdd(message);
           } else if (isReactionRemoveMessage(message)) {

@@ -257,6 +257,17 @@ class SignerStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.SignerMessage,
+            this._pruneSizeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
+          }
+
           if (isSignerAddMessage(message)) {
             return this.mergeAdd(message);
           } else if (isSignerRemoveMessage(message)) {
