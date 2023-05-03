@@ -272,7 +272,7 @@ export const getAllMessagesBySigner = async <T extends Message>(
 
 export const getMessagesPruneIterator = (db: RocksDB, fid: number, setPostfix: UserMessagePostfix): Iterator => {
   const prefix = makeMessagePrimaryKey(fid, setPostfix);
-  return db.iteratorByPrefix(prefix);
+  return db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
 };
 
 export const getNextMessageFromIterator = async (iterator: Iterator): Promise<Message> => {
