@@ -773,29 +773,54 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([]);
     });
 
-    test('does not merge a message which would be immediately pruned', async () => {
+    test('fails to merge message which would be immediately pruned', async () => {
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(undefined));
-      await sizePrunedStore.merge(add2);
+
+      await expect(sizePrunedStore.merge(add3)).resolves.toBeGreaterThan(0);
+      await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-        makeTsHash(add2.data.timestamp, add2.hash)
+        makeTsHash(add3.data.timestamp, add3.hash)
       );
-      await sizePrunedStore.merge(add3);
-      // earliest ts does not change
+
+      await expect(sizePrunedStore.merge(add2)).resolves.toBeGreaterThan(0);
+      await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(2));
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
         makeTsHash(add2.data.timestamp, add2.hash)
       );
 
-      await sizePrunedStore.merge(add4);
+      await expect(sizePrunedStore.merge(remove2)).resolves.toBeGreaterThan(0);
+      await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(2));
+      await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+        makeTsHash(remove2.data.timestamp, remove2.hash)
+      );
 
-      // add1 is older than add2 so it's rejected
+      await expect(sizePrunedStore.merge(add4)).resolves.toBeGreaterThan(0);
+      await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(3));
+      await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+        makeTsHash(remove2.data.timestamp, remove2.hash)
+      );
+
+      // remove1 is older than remove2 and the store is at capacity so it's rejected
+      await expect(sizePrunedStore.merge(remove1)).rejects.toEqual(
+        new HubError('bad_request.prunable', 'message would be pruned')
+      );
+
+      // add1 is older than remove2 and the store is at capacity so it's rejected
       await expect(sizePrunedStore.merge(add1)).rejects.toEqual(
         new HubError('bad_request.prunable', 'message would be pruned')
+      );
+
+      // merging add5 succeeds because while the store is at capacity, add5 would not be pruned
+      await expect(sizePrunedStore.merge(add5)).resolves.toBeGreaterThan(0);
+      await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(4));
+      await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+        makeTsHash(remove2.data.timestamp, remove2.hash)
       );
 
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
 
-      expect(prunedMessages).toEqual([]);
+      expect(prunedMessages).toEqual([remove2]);
     });
   });
 
@@ -826,7 +851,7 @@ describe('pruneMessages', () => {
       );
     });
 
-    test('does not merge a message which would be immediately pruned', async () => {
+    test('fails to merge message which would be immediately pruned', async () => {
       const messages = [add1, add2];
       for (const message of messages) {
         await timePrunedStore.merge(message);
