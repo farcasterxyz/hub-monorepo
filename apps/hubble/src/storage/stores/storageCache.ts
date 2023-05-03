@@ -11,7 +11,13 @@ import { err, ok } from 'neverthrow';
 import RocksDB from '~/storage/db/rocksdb';
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from '~/storage/db/types';
 import { logger } from '~/utils/logger';
-import { getMessagesPruneIterator, makeFidKey, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
+import {
+  getMessagesPruneIterator,
+  makeFidKey,
+  makeMessagePrimaryKey,
+  makeTsHash,
+  typeToSetPostfix,
+} from '~/storage/db/message';
 import { bytesCompare, HubAsyncResult } from '@farcaster/core';
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
@@ -46,7 +52,8 @@ export class StorageCache {
         const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString('hex');
         const count = usage.get(lookupKey) ?? 0;
         if (this._earliestTsHashes.get(lookupKey) === undefined) {
-          this._earliestTsHashes.set(lookupKey, (key as Buffer).subarray(1 + FID_BYTES + 1));
+          const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
+          this._earliestTsHashes.set(lookupKey, tsHash);
         }
         usage.set(lookupKey, count + 1);
       }
@@ -71,7 +78,6 @@ export class StorageCache {
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
-    // sync on initial load
     const key = makeKey(fid, set);
     const messageCount = await this.getMessageCount(fid, set);
     if (messageCount.isErr()) {
@@ -80,20 +86,26 @@ export class StorageCache {
     if (messageCount.value === 0) {
       return ok(undefined);
     }
-    if (this._earliestTsHashes.get(key) === undefined) {
-      const pruneIterator = getMessagesPruneIterator(this._db, fid, set);
-      const [firstKey] = await pruneIterator.next();
-      await pruneIterator.end();
+    const value = this._earliestTsHashes.get(key);
+    if (value === undefined) {
+      const prefix = makeMessagePrimaryKey(fid, set);
+      const iterator = this._db.iteratorByPrefix(prefix, { values: false });
+      const [firstKey] = await iterator.next();
+      await iterator.end();
+
       if (firstKey === undefined) {
-        // todo: this might be normal (empty sets)
+        return ok(undefined);
+      }
+
+      if (firstKey && firstKey.length === 0) {
         return err(new HubError('unavailable.storage_failure', 'could not read earliest message from db'));
       }
 
-      const tsHash = firstKey.subarray(1 + FID_BYTES + 1);
+      const tsHash = Uint8Array.from(firstKey.subarray(1 + FID_BYTES + 1));
       this._earliestTsHashes.set(key, tsHash);
       return ok(tsHash);
     } else {
-      return ok(this._earliestTsHashes.get(key));
+      return ok(value);
     }
   }
 
