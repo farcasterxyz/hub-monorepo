@@ -70,7 +70,7 @@ export class StorageCache {
     return ok(this._counts.get(key) ?? 0);
   }
 
-  async getEarliestMessageTimestamp(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
+  async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
     // sync on initial load
     const key = makeKey(fid, set);
     const messageCount = await this.getMessageCount(fid, set);
@@ -90,8 +90,7 @@ export class StorageCache {
       }
 
       const tsHash = firstKey.subarray(1 + FID_BYTES + 1);
-      const lookupKey = firstKey.subarray(1, 1 + FID_BYTES + 1).toString('hex');
-      this._earliestTsHashes.set(lookupKey, tsHash);
+      this._earliestTsHashes.set(key, tsHash);
       return ok(tsHash);
     } else {
       return ok(this._earliestTsHashes.get(key));
@@ -126,14 +125,13 @@ export class StorageCache {
       this._counts.set(key, count + 1);
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
-      if (tsHashResult.isOk()) {
-        const currentEarliest = this._earliestTsHashes.get(key);
-        // todo: check direction on the compare
-        if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) > 0) {
-          this._earliestTsHashes.set(key, tsHashResult.value);
-        }
-      } else {
+      if (!tsHashResult.isOk()) {
         log.error(`error: could not make ts hash for message ${message.hash}`);
+        return;
+      }
+      const currentEarliest = this._earliestTsHashes.get(key);
+      if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) > 0) {
+        this._earliestTsHashes.set(key, tsHashResult.value);
       }
     }
   }
@@ -151,14 +149,13 @@ export class StorageCache {
       }
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
-      if (tsHashResult.isOk()) {
-        const currentEarliest = this._earliestTsHashes.get(key);
-        // todo: Should this be an exact match? Is there an ordering issue here when two messages have the same timestamp?
-        if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) === 0) {
-          this._earliestTsHashes.delete(key);
-        }
-      } else {
+      if (!tsHashResult.isOk()) {
         log.error(`error: could not make ts hash for message ${message.hash}`);
+        return;
+      }
+      const currentEarliest = this._earliestTsHashes.get(key);
+      if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) === 0) {
+        this._earliestTsHashes.delete(key);
       }
     }
   }

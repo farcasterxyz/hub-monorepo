@@ -3,6 +3,7 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
+import { FARCASTER_EPOCH, getFarcasterTime } from '@farcaster/core';
 
 const db = jestRocksDB('jobs.pruneMessagesJob.test');
 
@@ -48,21 +49,21 @@ describe('doJobs', () => {
   test(
     'prunes messages for all fids',
     async () => {
-      const timestampToPrune = 1; // 1 second after farcaster epoch (1/1/22)
+      const currentTime = getFarcasterTime()._unsafeUnwrap();
 
       const fid1 = Factories.Fid.build();
 
       const signer1 = Factories.Ed25519Signer.build();
       const signer1Key = (await signer1.getSignerKey())._unsafeUnwrap();
       await seedSigner(engine, fid1, signer1Key);
-      await seedMessagesFromTimestamp(engine, fid1, signer1, timestampToPrune);
+      await seedMessagesFromTimestamp(engine, fid1, signer1, currentTime);
 
       const fid2 = Factories.Fid.build();
 
       const signer2 = Factories.Ed25519Signer.build();
       const signer2Key = (await signer2.getSignerKey())._unsafeUnwrap();
       await seedSigner(engine, fid2, signer2Key);
-      await seedMessagesFromTimestamp(engine, fid2, signer2, timestampToPrune);
+      await seedMessagesFromTimestamp(engine, fid2, signer2, currentTime);
 
       for (const fid of [fid1, fid2]) {
         const casts = await engine.getCastsByFid(fid);
@@ -72,8 +73,14 @@ describe('doJobs', () => {
         expect(reactions._unsafeUnwrap().messages.length).toEqual(1);
       }
 
-      const result = await scheduler.doJobs();
-      expect(result._unsafeUnwrap()).toEqual(undefined);
+      const nowOrig = Date.now;
+      Date.now = () => FARCASTER_EPOCH + (currentTime + 60 * 60 * 24 * 365 + 1) * 1000; // advance 1 year and 1 second
+      try {
+        const result = await scheduler.doJobs();
+        expect(result._unsafeUnwrap()).toEqual(undefined);
+      } finally {
+        Date.now = nowOrig;
+      }
 
       for (const fid of [fid1, fid2]) {
         const casts = await engine.getCastsByFid(fid);

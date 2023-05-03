@@ -20,6 +20,7 @@ import StoreEventHandler from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
 import { err, ok } from 'neverthrow';
 import { faker } from '@faker-js/faker';
+import { FARCASTER_EPOCH } from '@farcaster/core';
 
 const db = jestRocksDB('protobufs.castStore.test');
 const eventHandler = new StoreEventHandler(db);
@@ -662,14 +663,12 @@ describe('pruneMessages', () => {
   let add4: CastAddMessage;
   let add5: CastAddMessage;
   let addOld1: CastAddMessage;
-  let addOld2: CastAddMessage;
 
   let remove1: CastRemoveMessage;
   let remove2: CastRemoveMessage;
   let remove3: CastRemoveMessage;
   let remove4: CastRemoveMessage;
   let remove5: CastRemoveMessage;
-  let removeOld3: CastRemoveMessage;
 
   const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<CastAddMessage> => {
     return Factories.CastAddMessage.create({
@@ -695,14 +694,12 @@ describe('pruneMessages', () => {
     add4 = await generateAddWithTimestamp(fid, time + 4);
     add5 = await generateAddWithTimestamp(fid, time + 5);
     addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
-    addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
 
     remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1);
     remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2);
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5);
-    removeOld3 = await generateRemoveWithTimestamp(fid, time - 60 * 60 + 2);
   });
 
   beforeEach(async () => {
@@ -777,23 +774,23 @@ describe('pruneMessages', () => {
     });
 
     test('does not merge a message which would be immediately pruned', async () => {
-      await expect(eventHandler.getEarliestMessageTimestamp(fid, UserPostfix.CastMessage)).resolves.toEqual(
-        ok(undefined)
-      );
+      await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(undefined));
       await sizePrunedStore.merge(add2);
-      await expect(eventHandler.getEarliestMessageTimestamp(fid, UserPostfix.CastMessage)).resolves.toEqual(
+      await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
         makeTsHash(add2.data.timestamp, add2.hash)
       );
       await sizePrunedStore.merge(add3);
       // earliest ts does not change
-      await expect(eventHandler.getEarliestMessageTimestamp(fid, UserPostfix.CastMessage)).resolves.toEqual(
+      await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
         makeTsHash(add2.data.timestamp, add2.hash)
       );
 
       await sizePrunedStore.merge(add4);
 
       // add1 is older than add2 so it's rejected
-      await expect(sizePrunedStore.merge(add1)).rejects.toEqual(new HubError('bad_request.pruned', 'message pruned'));
+      await expect(sizePrunedStore.merge(add1)).rejects.toEqual(
+        new HubError('bad_request.prunable', 'message would be pruned')
+      );
 
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
@@ -806,19 +803,25 @@ describe('pruneMessages', () => {
     const timePrunedStore = new CastStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
 
     test('prunes earliest messages', async () => {
-      const messages = [add1, remove2, addOld1, addOld2, removeOld3];
+      const messages = [add1, add2, remove3, add4];
       for (const message of messages) {
         await timePrunedStore.merge(message);
       }
 
-      const result = await timePrunedStore.pruneMessages(fid);
-      expect(result.isOk()).toBeTruthy();
+      const nowOrig = Date.now;
+      Date.now = () => FARCASTER_EPOCH + (add4.data.timestamp - 1 + 60 * 60) * 1000;
+      try {
+        const result = await timePrunedStore.pruneMessages(fid);
+        expect(result.isOk()).toBeTruthy();
 
-      expect(prunedMessages).toEqual([addOld1, addOld2, removeOld3]);
+        expect(prunedMessages).toEqual([add1, add2, remove3]);
+      } finally {
+        Date.now = nowOrig;
+      }
 
-      await expect(timePrunedStore.getCastAdd(fid, addOld1.hash)).rejects.toThrow(HubError);
-      await expect(timePrunedStore.getCastAdd(fid, addOld2.hash)).rejects.toThrow(HubError);
-      await expect(timePrunedStore.getCastRemove(fid, removeOld3.data.castRemoveBody.targetHash)).rejects.toThrow(
+      await expect(timePrunedStore.getCastAdd(fid, add1.hash)).rejects.toThrow(HubError);
+      await expect(timePrunedStore.getCastAdd(fid, add1.hash)).rejects.toThrow(HubError);
+      await expect(timePrunedStore.getCastRemove(fid, remove3.data.castRemoveBody.targetHash)).rejects.toThrow(
         HubError
       );
     });
@@ -830,7 +833,7 @@ describe('pruneMessages', () => {
       }
 
       await expect(timePrunedStore.merge(addOld1)).rejects.toEqual(
-        new HubError('bad_request.pruned', 'message pruned')
+        new HubError('bad_request.prunable', 'message would be pruned')
       );
 
       const result = await timePrunedStore.pruneMessages(fid);

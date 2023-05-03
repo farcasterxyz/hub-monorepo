@@ -156,8 +156,8 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return this._storageCache.getMessageCount(fid, set);
   }
 
-  async getEarliestMessageTimestamp(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
-    return this._storageCache.getEarliestMessageTimestamp(fid, set);
+  async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
+    return this._storageCache.getEarliestTsHash(fid, set);
   }
 
   async syncCache(): HubAsyncResult<void> {
