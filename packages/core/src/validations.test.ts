@@ -339,6 +339,27 @@ describe('validateCastAddBody', () => {
       hubErrorMessage = 'hash is missing';
     });
 
+    test('with a parentUrl over 256 bytes', () => {
+      body = Factories.CastAddBody.build({
+        parentUrl: faker.random.alphaNumeric(257),
+        parentCastId: undefined,
+      });
+      hubErrorMessage = 'url > 256 bytes';
+    });
+
+    test('with a parentUrl of empty string', () => {
+      body = Factories.CastAddBody.build({ parentUrl: '', parentCastId: undefined });
+      hubErrorMessage = 'url < 1 byte';
+    });
+
+    test('with both parentUrl and parentCastId', () => {
+      body = Factories.CastAddBody.build({
+        parentUrl: faker.internet.url(),
+        parentCastId: Factories.CastId.build(),
+      });
+      hubErrorMessage = 'cannot use both parentUrl and parentCastId';
+    });
+
     test('with up to 10 mentions', () => {
       const body = Factories.CastAddBody.build({
         text: '',
@@ -443,8 +464,8 @@ describe('validateCastRemoveBody', () => {
 });
 
 describe('validateReactionBody', () => {
-  test('succeeds', async () => {
-    const body = await Factories.ReactionBody.build();
+  test('succeeds', () => {
+    const body = Factories.ReactionBody.build();
     expect(validations.validateReactionBody(body)._unsafeUnwrap()).toEqual(body);
   });
 
@@ -453,28 +474,54 @@ describe('validateReactionBody', () => {
     let hubErrorMessage: string;
 
     afterEach(async () => {
-      expect(validations.validateReactionBody(body)._unsafeUnwrapErr()).toEqual(
-        new HubError('bad_request.validation_failure', hubErrorMessage)
+      expect(validations.validateReactionBody(body)).toEqual(
+        err(new HubError('bad_request.validation_failure', hubErrorMessage))
       );
     });
 
-    test('with invalid reaction type', async () => {
-      body = await Factories.ReactionBody.build({ type: 100 as unknown as protobufs.ReactionType });
+    test('with invalid reaction type', () => {
+      body = Factories.ReactionBody.build({ type: 100 as unknown as protobufs.ReactionType });
       hubErrorMessage = 'invalid reaction type';
     });
 
-    test('when cast fid is missing', async () => {
-      body = await Factories.ReactionBody.build({
+    test('without target', () => {
+      body = Factories.ReactionBody.build({ targetCastId: undefined, targetUrl: undefined });
+      hubErrorMessage = 'target is missing';
+    });
+
+    test('when cast fid is missing', () => {
+      body = Factories.ReactionBody.build({
         targetCastId: Factories.CastId.build({ fid: undefined }),
       });
       hubErrorMessage = 'fid is missing';
     });
 
-    test('when cast hash is missing', async () => {
+    test('when cast hash is missing', () => {
       body = Factories.ReactionBody.build({
         targetCastId: Factories.CastId.build({ hash: undefined }),
       });
       hubErrorMessage = 'hash is missing';
+    });
+
+    test('with a targetUrl over 256 bytes', () => {
+      body = Factories.ReactionBody.build({
+        targetUrl: faker.random.alphaNumeric(257),
+        targetCastId: undefined,
+      });
+      hubErrorMessage = 'url > 256 bytes';
+    });
+
+    test('with a targetUrl of empty string', () => {
+      body = Factories.ReactionBody.build({ targetUrl: '', targetCastId: undefined });
+      hubErrorMessage = 'url < 1 byte';
+    });
+
+    test('with both targetUrl and targetCastId', () => {
+      body = Factories.ReactionBody.build({
+        targetUrl: faker.internet.url(),
+        targetCastId: Factories.CastId.build(),
+      });
+      hubErrorMessage = 'cannot use both targetUrl and targetCastId';
     });
   });
 });

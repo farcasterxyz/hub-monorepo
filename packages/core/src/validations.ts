@@ -384,10 +384,15 @@ export const validateCastAddBody = (
     }
   }
 
-  if (body.parentCastId) {
-    const validateParent = validateCastId(body.parentCastId);
-    if (validateParent.isErr()) {
-      return err(validateParent.error);
+  if (body.parentCastId !== undefined && body.parentUrl !== undefined) {
+    return err(new HubError('bad_request.validation_failure', 'cannot use both parentUrl and parentCastId'));
+  }
+
+  const parent = body.parentCastId ?? body.parentUrl;
+  if (parent !== undefined) {
+    const validParent = validateParent(parent);
+    if (validParent.isErr()) {
+      return err(validParent.error);
     }
   }
 
@@ -434,6 +439,10 @@ export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<pr
   const validatedType = validateReactionType(body.type);
   if (validatedType.isErr()) {
     return err(validatedType.error);
+  }
+
+  if (body.targetCastId !== undefined && body.targetUrl !== undefined) {
+    return err(new HubError('bad_request.validation_failure', 'cannot use both targetUrl and targetCastId'));
   }
 
   const target = body.targetCastId ?? body.targetUrl;
