@@ -493,6 +493,7 @@ describe('pruneMessages', () => {
   let add3: VerificationAddEthAddressMessage;
   let add4: VerificationAddEthAddressMessage;
   let add5: VerificationAddEthAddressMessage;
+  let addOld1: VerificationAddEthAddressMessage;
 
   let remove1: VerificationRemoveMessage;
   let remove2: VerificationRemoveMessage;
@@ -524,6 +525,7 @@ describe('pruneMessages', () => {
     add3 = await generateAddWithTimestamp(fid, time + 3);
     add4 = await generateAddWithTimestamp(fid, time + 4);
     add5 = await generateAddWithTimestamp(fid, time + 5);
+    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
 
     remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.verificationAddEthAddressBody.address);
     remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.verificationAddEthAddressBody.address);
@@ -602,6 +604,18 @@ describe('pruneMessages', () => {
       expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([]);
+    });
+
+    test('fails to add messages older than the earliest message', async () => {
+      const messages = [add1, add2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      // Older messages are rejected
+      await expect(sizePrunedStore.merge(addOld1)).rejects.toEqual(
+        new HubError('bad_request.prunable', 'message would be pruned')
+      );
     });
   });
 });

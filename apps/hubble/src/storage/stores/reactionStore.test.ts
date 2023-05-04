@@ -817,6 +817,8 @@ describe('pruneMessages', () => {
   let add3: ReactionAddMessage;
   let add4: ReactionAddMessage;
   let add5: ReactionAddMessage;
+  let addOld1: ReactionAddMessage;
+  let addOld2: ReactionAddMessage;
 
   let remove1: ReactionRemoveMessage;
   let remove2: ReactionRemoveMessage;
@@ -849,6 +851,8 @@ describe('pruneMessages', () => {
     add3 = await generateAddWithTimestamp(fid, time + 3);
     add4 = await generateAddWithTimestamp(fid, time + 4);
     add5 = await generateAddWithTimestamp(fid, time + 5);
+    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
+    addOld2 = await generateAddWithTimestamp(fid, time - 60 * 60 + 1);
 
     remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.reactionBody);
     remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.reactionBody);
@@ -940,6 +944,28 @@ describe('pruneMessages', () => {
 
       expect(prunedMessages).toEqual([]);
     });
+
+    test('fails to add messages older than the earliest message', async () => {
+      const messages = [add1, add2, add3];
+      for (const message of messages) {
+        await sizePrunedStore.merge(message);
+      }
+
+      // Older messages are rejected
+      await expect(sizePrunedStore.merge(addOld1)).rejects.toEqual(
+        new HubError('bad_request.prunable', 'message would be pruned')
+      );
+
+      // newer messages can still be added
+      await expect(sizePrunedStore.merge(add4)).resolves.toBeGreaterThan(0);
+
+      // Prune removes earliest
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+      expect(result._unsafeUnwrap().length).toEqual(1);
+
+      expect(prunedMessages).toEqual([add1]);
+    });
   });
 
   describe('with time limit', () => {
@@ -983,6 +1009,25 @@ describe('pruneMessages', () => {
           remove3.data.reactionBody.targetCastId ?? Factories.CastId.build()
         )
       ).rejects.toThrow(HubError);
+    });
+
+    test('fails to merge messages that would be immediately pruned', async () => {
+      const messages = [add1, add2];
+      for (const message of messages) {
+        await timePrunedStore.merge(message);
+      }
+
+      await expect(timePrunedStore.merge(addOld1)).rejects.toEqual(
+        new HubError('bad_request.prunable', 'message would be pruned')
+      );
+      await expect(timePrunedStore.merge(addOld2)).rejects.toEqual(
+        new HubError('bad_request.prunable', 'message would be pruned')
+      );
+
+      const result = await timePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+
+      expect(prunedMessages).toEqual([]);
     });
   });
 });
