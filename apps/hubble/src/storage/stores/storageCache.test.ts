@@ -1,7 +1,7 @@
-import { ok, err } from 'neverthrow';
-import { HubEvent, HubEventType, Factories, HubError } from '@farcaster/hub-nodejs';
+import { ok } from 'neverthrow';
+import { Factories, HubEvent, HubEventType } from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { putMessage } from '~/storage/db/message';
+import { makeTsHash, putMessage } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
 import { StorageCache } from '~/storage/stores/storageCache';
 
@@ -63,6 +63,50 @@ describe('syncFromDb', () => {
         ok(fidUsage.usage.signer)
       );
     }
+  });
+});
+
+describe('getMessageCount', () => {
+  test('returns the correct count even if the cache is not synced', async () => {
+    const fid = Factories.Fid.build();
+    const message = await Factories.CastAddMessage.create({ data: { fid } });
+    const message2 = await Factories.CastAddMessage.create({ data: { fid } });
+    const message3_differnt_fid = await Factories.CastAddMessage.create();
+    await putMessage(db, message);
+    await putMessage(db, message2);
+    await putMessage(db, message3_differnt_fid);
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(2));
+    await expect(cache.getMessageCount(message3_differnt_fid.data.fid, UserPostfix.CastMessage)).resolves.toEqual(
+      ok(1)
+    );
+    await expect(cache.getMessageCount(Factories.Fid.build(), UserPostfix.CastMessage)).resolves.toEqual(ok(0));
+  });
+});
+
+describe('getEarliestTsHash', () => {
+  test('returns undefined if there are no messages', async () => {
+    await expect(cache.getEarliestTsHash(Factories.Fid.build(), UserPostfix.CastMessage)).resolves.toEqual(
+      ok(undefined)
+    );
+  });
+
+  test('returns the earliest tsHash by scanning the db on first use', async () => {
+    const fid = Factories.Fid.build();
+    const first = await Factories.CastAddMessage.create({ data: { fid, timestamp: 123 } });
+    const second = await Factories.CastAddMessage.create({ data: { fid, timestamp: 213 } });
+    const third = await Factories.CastAddMessage.create({ data: { fid, timestamp: 321 } });
+    await putMessage(db, second);
+    await putMessage(db, first);
+
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+      makeTsHash(first.data.timestamp, first.hash)
+    );
+
+    await putMessage(db, third);
+    // Unchanged
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+      makeTsHash(first.data.timestamp, first.hash)
+    );
   });
 });
 
@@ -131,12 +175,72 @@ describe('processEvent', () => {
     await expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).resolves.toEqual(ok(0));
   });
 
-  test('fails when cache is not synced', async () => {
+  test('sets earliest tsHash with merge cast message event', async () => {
     const fid = Factories.Fid.build();
-    const message = await Factories.CastAddMessage.create({ data: { fid } });
-    const event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } });
-    expect(cache.processEvent(event)).toEqual(
-      err(new HubError('unavailable.storage_failure', 'storage cache is not synced with db'))
+
+    const middleMessage = await Factories.CastAddMessage.create({ data: { fid } });
+    let event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: middleMessage } });
+
+    // Earliest tsHash is undefined initially
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(undefined));
+    cache.processEvent(event);
+
+    // Earliest tsHash is set
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+      makeTsHash(middleMessage.data.timestamp, middleMessage.hash)
     );
+
+    // Adding a later messages does not change the earliest tsHash
+    const laterMessage = await Factories.CastAddMessage.create({
+      data: { fid, timestamp: middleMessage.data.timestamp + 10 },
+    });
+    event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: laterMessage } });
+    cache.processEvent(event);
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+      makeTsHash(middleMessage.data.timestamp, middleMessage.hash)
+    );
+
+    // Adding an earlier message changes the earliest tsHash
+    const earlierMessage = await Factories.CastAddMessage.create({
+      data: { fid, timestamp: middleMessage.data.timestamp - 10 },
+    });
+    event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: earlierMessage } });
+    cache.processEvent(event);
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
+      makeTsHash(earlierMessage.data.timestamp, earlierMessage.hash)
+    );
+  });
+
+  test('unsets the earliest tsHash if the earliest message is removed', async () => {
+    const fid = Factories.Fid.build();
+    const firstMessage = await Factories.ReactionAddMessage.create({ data: { fid } });
+    const laterMessage = await Factories.ReactionAddMessage.create({
+      data: { fid, timestamp: firstMessage.data.timestamp + 10 },
+    });
+    const firstEvent = HubEvent.create({
+      type: HubEventType.PRUNE_MESSAGE,
+      pruneMessageBody: { message: firstMessage },
+    });
+    const laterEvent = HubEvent.create({
+      type: HubEventType.PRUNE_MESSAGE,
+      pruneMessageBody: { message: laterMessage },
+    });
+
+    await putMessage(db, firstMessage);
+    await putMessage(db, laterMessage);
+    await cache.syncFromDb();
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.ReactionMessage)).resolves.toEqual(
+      makeTsHash(firstMessage.data.timestamp, firstMessage.hash)
+    );
+
+    cache.processEvent(laterEvent);
+    // Unchanged
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.ReactionMessage)).resolves.toEqual(
+      makeTsHash(firstMessage.data.timestamp, firstMessage.hash)
+    );
+
+    cache.processEvent(firstEvent);
+    // Unset
+    await expect(cache.getEarliestTsHash(fid, UserPostfix.ReactionMessage)).resolves.toEqual(ok(undefined));
   });
 });

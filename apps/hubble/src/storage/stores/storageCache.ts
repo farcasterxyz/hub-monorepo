@@ -30,7 +30,6 @@ export class StorageCache {
   private _db: RocksDB;
   private _counts: Map<string, number>;
   private _earliestTsHashes: Map<string, Uint8Array>;
-  private _synced = false;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
@@ -61,7 +60,6 @@ export class StorageCache {
 
     this._counts = usage;
     this._earliestTsHashes = new Map();
-    this._synced = true;
     log.info('storage cache synced');
   }
 
@@ -110,11 +108,6 @@ export class StorageCache {
   }
 
   processEvent(event: HubEvent): HubResult<void> {
-    if (this._synced !== true) {
-      const error = new HubError('unavailable.storage_failure', 'storage cache is not synced with db');
-      log.error({ errCode: error.errCode }, `processEvent error: ${error.message}`);
-      return err(error);
-    }
     if (isMergeMessageHubEvent(event)) {
       this.addMessage(event.mergeMessageBody.message);
       for (const message of event.mergeMessageBody.deletedMessages) {

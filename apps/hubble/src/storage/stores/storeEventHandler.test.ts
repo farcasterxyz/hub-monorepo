@@ -1,15 +1,17 @@
-import { CastAddMessage, HubEvent, HubEventType, Factories } from '@farcaster/hub-nodejs';
+import { CastAddMessage, Factories, HubEvent, HubEventType } from '@farcaster/hub-nodejs';
 import { ok, Result } from 'neverthrow';
 import { jestRocksDB } from '~/storage/db/jestUtils';
-import { getMessage, makeTsHash, putMessageTransaction } from '~/storage/db/message';
+import { getMessage, makeTsHash, putMessage, putMessageTransaction } from '~/storage/db/message';
 import { UserPostfix } from '~/storage/db/types';
 import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from '~/storage/stores/storeEventHandler';
 import { sleep } from '~/utils/crypto';
+import { getFarcasterTime } from '@farcaster/core';
 
 const db = jestRocksDB('stores.storeEventHandler.test');
 const eventHandler = new StoreEventHandler(db);
 
 let events: HubEvent[] = [];
+let currentTime = 0;
 
 const eventListener = (event: HubEvent) => {
   events.push(event);
@@ -21,6 +23,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   events = [];
+  currentTime = getFarcasterTime()._unsafeUnwrap();
 });
 
 afterAll(() => {
@@ -70,6 +73,50 @@ describe('commitTransaction', () => {
     const event = await eventHandler.getEvent(eventId as number);
     expect(event).toMatchObject(ok(eventArgs));
     expect(events).toEqual([event._unsafeUnwrap()]);
+  });
+});
+
+describe('isPrunable', () => {
+  test('returns true if messsage is earlier than prune time limit', async () => {
+    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 101 } });
+    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10, 100)).resolves.toEqual(ok(true));
+  });
+  test('returns false if there is no prune time limit', async () => {
+    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 101 } });
+    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10)).resolves.toEqual(ok(false));
+  });
+  test('returns false if message is later than prune time limit', async () => {
+    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
+    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10, 100)).resolves.toEqual(ok(false));
+  });
+  test('returns false if under size limit', async () => {
+    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
+    await putMessage(db, message);
+    await expect(eventHandler.getCacheMessageCount(message.data.fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
+    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(false));
+  });
+  test('returns false if over size limit and message is later than earliest message', async () => {
+    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
+    await putMessage(db, message);
+    await expect(eventHandler.getCacheMessageCount(message.data.fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
+
+    const laterMessage = await Factories.CastAddMessage.create({
+      data: { fid: message.data.fid, timestamp: currentTime + 50 },
+    });
+    await expect(eventHandler.isPrunable(laterMessage, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(false));
+  });
+  test('returns true if over size limit and message is earlier than earliest message', async () => {
+    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
+    await putMessage(db, message);
+    await expect(eventHandler.getCacheMessageCount(message.data.fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
+    await expect(eventHandler.getEarliestTsHash(message.data.fid, UserPostfix.CastMessage)).resolves.toEqual(
+      makeTsHash(message.data.timestamp, message.hash)
+    );
+
+    const earlierMessage = await Factories.CastAddMessage.create({
+      data: { fid: message.data.fid, timestamp: currentTime - 75 },
+    });
+    await expect(eventHandler.isPrunable(earlierMessage, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(true));
   });
 });
 
