@@ -1,23 +1,22 @@
 import * as protobufs from '../protobufs';
-import * as ed from '@noble/ed25519';
+import { ed25519 as ed } from '@noble/curves/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
 import { randomBytes } from 'ethers';
-import { HubError } from '../errors';
 import { Factories } from '../factories';
 import * as ed25519 from './ed25519';
 
 let publicKey: Uint8Array;
 let privateKey: Uint8Array;
 
-beforeAll(async () => {
+beforeAll(() => {
   privateKey = ed.utils.randomPrivateKey();
-  publicKey = await ed.getPublicKey(privateKey);
+  publicKey = ed.getPublicKey(privateKey);
 });
 
 describe('getPublicKey', () => {
   test('succeeds with valid signature', async () => {
-    const result = await ed25519.getPublicKey(privateKey);
-    expect(result._unsafeUnwrap()).toEqual(publicKey);
+    const result = ed25519.getPublicKey(privateKey);
+    expect(result).toEqual(publicKey);
   });
 });
 
@@ -26,8 +25,8 @@ describe('signMessageHash', () => {
     const messageData = Factories.SignerAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
-    const signature = await ed25519.signMessageHash(hash, privateKey);
-    const isValid = await ed.verify(signature._unsafeUnwrap(), hash, publicKey);
+    const signature = ed25519.signMessageHash(hash, privateKey);
+    const isValid = ed.verify(signature, hash, publicKey);
     expect(isValid).toBe(true);
   });
 });
@@ -37,16 +36,15 @@ describe('verifyMessageHashSignature', () => {
     const messageData = Factories.SignerAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
-    const signature = await ed25519.signMessageHash(hash, privateKey);
-    const isValid = await ed25519.verifyMessageHashSignature(signature._unsafeUnwrap(), hash, publicKey);
-    expect(isValid._unsafeUnwrap()).toBe(true);
+    const signature = ed25519.signMessageHash(hash, privateKey);
+    const isValid = ed25519.verifyMessageHashSignature(signature, hash, publicKey);
+    expect(isValid).toBe(true);
   });
 
   test('fails with invalid signature', async () => {
     const messageData = Factories.SignerAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
-    const isValid = await ed25519.verifyMessageHashSignature(randomBytes(32), hash, privateKey);
-    expect(isValid._unsafeUnwrapErr()).toBeInstanceOf(HubError);
+    expect(() => ed25519.verifyMessageHashSignature(randomBytes(32), hash, privateKey)).toThrow();
   });
 });
