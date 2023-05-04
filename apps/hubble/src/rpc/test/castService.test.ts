@@ -18,6 +18,7 @@ import Server from '~/rpc/server';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import Engine from '~/storage/engine';
 import { MockHub } from '~/test/mocks';
+import { getFarcasterTime } from '@farcaster/core';
 
 const db = jestRocksDB('protobufs.rpc.castService.test');
 const network = FarcasterNetwork.TESTNET;
@@ -108,10 +109,11 @@ describe('getCast', () => {
     test('returns casts in chronological order', async () => {
       const castsAsJson = [];
       let latestCast;
+      const currentTime = getFarcasterTime()._unsafeUnwrap();
       for (let i = 0; i < 4; i++) {
         latestCast = await Factories.CastAddMessage.create(
           {
-            data: { fid, network, timestamp: i },
+            data: { fid, network, timestamp: currentTime + i },
           },
           { transient: { signer } }
         );

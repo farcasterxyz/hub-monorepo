@@ -13,6 +13,7 @@ import { jestRocksDB } from '~/storage/db/jestUtils';
 import { MockHub } from '~/test/mocks';
 import { MockRpcClient } from './mock';
 import { EMPTY_HASH } from './trieNode';
+import { getFarcasterTime } from '@farcaster/core';
 
 const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
 const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
@@ -36,11 +37,15 @@ beforeAll(async () => {
   );
 });
 
-describe('SyncEngine', () => {
-  const makeMessagesWithTimestamps = async (timestamps: number[]): Promise<CastAddMessage[]> => {
+describe('SyncEnginePerfTest', () => {
+  const makeMessagesWithTimeDelta = async (timeDeltas: number[]): Promise<CastAddMessage[]> => {
     return await Promise.all(
-      timestamps.map(async (t) => {
-        return Factories.CastAddMessage.create({ data: { fid, network, timestamp: t } }, { transient: { signer } });
+      timeDeltas.map(async (t) => {
+        const farcasterTime = getFarcasterTime()._unsafeUnwrap();
+        return Factories.CastAddMessage.create(
+          { data: { fid, network, timestamp: farcasterTime + t } },
+          { transient: { signer } }
+        );
       })
     );
   };
@@ -61,21 +66,24 @@ describe('SyncEngine', () => {
         await hub2.submitIdRegistryEvent(custodyEvent);
         await hub2.submitMessage(signerAdd);
 
+        Date.now = () => 1683074200000;
         // Merge the same messages into both engines.
-        const messages = await makeMessagesWithTimestamps([30662167, 30662169, 30662172]);
+        const messages = await makeMessagesWithTimeDelta([167, 169, 172]);
         for (const message of messages) {
-          await hub1.submitMessage(message);
-          await hub2.submitMessage(message);
+          let res = await hub1.submitMessage(message);
+          expect(res.isOk()).toBeTruthy();
+          res = await hub2.submitMessage(message);
+          expect(res.isOk()).toBeTruthy();
         }
 
         // Sanity check, they should equal
         expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
         // A timestamp after all the messages
-        Date.now = () => 1609459200000 + 30662200 * 1000;
+        Date.now = () => 1683074200000 + 200 * 1000;
 
         const snapshot2 = (await syncEngine2.getSnapshot())._unsafeUnwrap();
-        expect((snapshot2.prefix as Buffer).toString('utf8')).toEqual('0030662');
+        expect((snapshot2.prefix as Buffer).toString('utf8')).toEqual('0073615');
         // Force a non-existent prefix (the original bug #536 is fixed)
         snapshot2.prefix = Buffer.from('00306622', 'hex');
 

@@ -170,6 +170,16 @@ class VerificationStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.VerificationMessage,
+            this._pruneSizeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
+          }
           if (isVerificationAddEthAddressMessage(message)) {
             return this.mergeAdd(message);
           } else if (isVerificationRemoveMessage(message)) {
@@ -204,7 +214,7 @@ class VerificationStore {
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const commits: number[] = [];
 
-    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.VerificationMessage);
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.VerificationMessage);
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
@@ -225,7 +235,7 @@ class VerificationStore {
         return ok(undefined); // Nothing left to prune
       }
 
-      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.VerificationMessage);
+      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.VerificationMessage);
       if (count.isErr()) {
         return err(count.error);
       }

@@ -23,10 +23,35 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
 import { RootPrefix, UserMessagePostfix } from '~/storage/db/types';
 import { StorageCache } from '~/storage/stores/storageCache';
+import { makeTsHash } from '~/storage/db/message';
+import {
+  bytesCompare,
+  CastAddMessage,
+  CastRemoveMessage,
+  getFarcasterTime,
+  ReactionAddMessage,
+  ReactionRemoveMessage,
+  SignerAddMessage,
+  SignerRemoveMessage,
+  UserDataAddMessage,
+  VerificationAddEthAddressMessage,
+  VerificationRemoveMessage,
+} from '@farcaster/core';
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 1_000;
 const DEFAULT_LOCK_TIMEOUT = 500; // in ms
+
+type PrunableMessage =
+  | CastAddMessage
+  | CastRemoveMessage
+  | ReactionAddMessage
+  | ReactionRemoveMessage
+  | SignerAddMessage
+  | SignerRemoveMessage
+  | UserDataAddMessage
+  | VerificationAddEthAddressMessage
+  | VerificationRemoveMessage;
 
 export type StoreEvents = {
   /**
@@ -149,15 +174,19 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       timeout: options.lockTimeout ?? DEFAULT_LOCK_TIMEOUT,
     });
 
-    this._storageCache = new StorageCache();
+    this._storageCache = new StorageCache(this._db);
   }
 
-  getCacheMessageCount(fid: number, set: UserMessagePostfix): HubResult<number> {
+  async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
     return this._storageCache.getMessageCount(fid, set);
   }
 
+  async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
+    return this._storageCache.getEarliestTsHash(fid, set);
+  }
+
   async syncCache(): HubAsyncResult<void> {
-    return ResultAsync.fromPromise(this._storageCache.syncFromDb(this._db), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._storageCache.syncFromDb(), (e) => e as HubError);
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {
@@ -186,6 +215,52 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       events.push(event);
     }
     return ok(events);
+  }
+
+  public async isPrunable(
+    message: PrunableMessage,
+    set: UserMessagePostfix,
+    sizeLimit: number,
+    timeLimit: number | undefined = undefined
+  ): HubAsyncResult<boolean> {
+    const farcasterTime = getFarcasterTime();
+    if (farcasterTime.isErr()) {
+      return err(farcasterTime.error);
+    }
+
+    // Calculate the timestamp cut-off to prune if set supports time based expiry
+    if (timeLimit !== undefined) {
+      const timestampToPrune = farcasterTime.value - timeLimit;
+
+      if (message.data.timestamp < timestampToPrune) {
+        return ok(true);
+      }
+    }
+
+    const messageCount = await this.getCacheMessageCount(message.data.fid, set);
+    if (messageCount.isErr()) {
+      return err(messageCount.error);
+    }
+    if (messageCount.value < sizeLimit) {
+      return ok(false);
+    }
+
+    const earliestTimestamp = await this.getEarliestTsHash(message.data.fid, set);
+    if (earliestTimestamp.isErr()) {
+      return err(earliestTimestamp.error);
+    }
+    const tsHash = makeTsHash(message.data.timestamp, message.hash);
+    if (tsHash.isErr()) {
+      return err(tsHash.error);
+    }
+    if (earliestTimestamp.value === undefined) {
+      return ok(false);
+    }
+    if (bytesCompare(tsHash.value, earliestTimestamp.value) < 0) {
+      return ok(true);
+    } else {
+      return ok(false);
+    }
   }
 
   async commitTransaction(txn: Transaction, eventArgs: HubEventArgs): HubAsyncResult<number> {

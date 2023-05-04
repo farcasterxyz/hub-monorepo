@@ -282,6 +282,18 @@ class CastStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.CastMessage,
+            this._pruneSizeLimit,
+            this._pruneTimeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
+          }
+
           if (isCastAddMessage(message)) {
             return this.mergeAdd(message);
           } else if (isCastRemoveMessage(message)) {
@@ -316,7 +328,7 @@ class CastStore {
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const commits: number[] = [];
 
-    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
@@ -345,7 +357,7 @@ class CastStore {
         return ok(undefined); // Nothing left to prune
       }
 
-      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
+      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
       if (count.isErr()) {
         return err(count.error);
       }

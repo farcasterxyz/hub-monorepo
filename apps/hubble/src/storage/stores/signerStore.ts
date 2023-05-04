@@ -257,6 +257,17 @@ class SignerStore {
       .acquire(
         message.data.fid.toString(),
         async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            message,
+            UserPostfix.SignerMessage,
+            this._pruneSizeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
+          }
+
           if (isSignerAddMessage(message)) {
             return this.mergeAdd(message);
           } else if (isSignerRemoveMessage(message)) {
@@ -291,7 +302,7 @@ class SignerStore {
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const commits: number[] = [];
 
-    const cachedCount = this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
@@ -312,7 +323,7 @@ class SignerStore {
         return ok(undefined); // Nothing left to prune
       }
 
-      const count = this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
+      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.SignerMessage);
       if (count.isErr()) {
         return err(count.error);
       }

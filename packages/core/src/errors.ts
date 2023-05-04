@@ -66,6 +66,7 @@ export type HubErrorCode =
   | 'bad_request.validation_failure'
   | 'bad_request.duplicate'
   | 'bad_request.conflict'
+  | 'bad_request.prunable'
   /* The requested resource could not be found */
   | 'not_found'
   /* The request could not be completed because the operation is not executable */

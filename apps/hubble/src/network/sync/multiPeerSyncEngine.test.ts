@@ -22,6 +22,7 @@ import { sleep, sleepWhile } from '~/utils/crypto';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import { Contract } from 'ethers';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
+import { getFarcasterTime } from '@farcaster/core';
 
 /* eslint-disable security/detect-non-literal-fs-filename */
 
@@ -51,11 +52,12 @@ beforeAll(async () => {
 });
 
 describe('Multi peer sync engine', () => {
-  const addMessagesWithTimestamps = async (engine: Engine, timestamps: number[]) => {
+  const addMessagesWithTimeDelta = async (engine: Engine, timeDelta: number[]) => {
     return await Promise.all(
-      timestamps.map(async (t) => {
+      timeDelta.map(async (t) => {
+        const farcasterTime = getFarcasterTime()._unsafeUnwrap();
         const cast = await Factories.CastAddMessage.create(
-          { data: { fid, network, timestamp: t } },
+          { data: { fid, network, timestamp: farcasterTime + t } },
           { transient: { signer } }
         );
 
@@ -156,7 +158,7 @@ describe('Multi peer sync engine', () => {
       await engine1.mergeMessage(signerAdd);
 
       // Add messages to engine 1
-      await addMessagesWithTimestamps(engine1, [30662167, 30662169, 30662172]);
+      await addMessagesWithTimeDelta(engine1, [167, 169, 172]);
       await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
       const engine2 = new Engine(testDb2, network);
@@ -185,7 +187,7 @@ describe('Multi peer sync engine', () => {
       ).toBeFalsy();
 
       // Add more messages
-      await addMessagesWithTimestamps(engine1, [30663167, 30663169, 30663172]);
+      await addMessagesWithTimeDelta(engine1, [367, 369, 372]);
       await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
       // grab a new snapshot from the RPC for engine1
@@ -220,7 +222,7 @@ describe('Multi peer sync engine', () => {
     await engine1.mergeMessage(signerAdd);
 
     // Add a cast to engine1
-    const castAdd = (await addMessagesWithTimestamps(engine1, [30662167]))[0] as Message;
+    const castAdd = (await addMessagesWithTimeDelta(engine1, [167]))[0] as Message;
     await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
 
     const engine2 = new Engine(testDb2, network);
@@ -308,7 +310,7 @@ describe('Multi peer sync engine', () => {
     await engine1.mergeMessage(signerAdd);
 
     // Add a cast to engine1
-    await addMessagesWithTimestamps(engine1, [30662167]);
+    await addMessagesWithTimeDelta(engine1, [167]);
 
     // Do not merge the custory event into engine2
     const engine2 = new Engine(testDb2, network);
@@ -408,8 +410,8 @@ describe('Multi peer sync engine', () => {
     expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
     // Add two different messages to engine1 and engine2
-    await addMessagesWithTimestamps(engine1, [30662167]);
-    await addMessagesWithTimestamps(engine2, [30662169]);
+    await addMessagesWithTimeDelta(engine1, [167]);
+    await addMessagesWithTimeDelta(engine2, [169]);
 
     await sleepWhile(async () => (await syncEngine1.trie.items()) !== 2, 1000);
     await sleepWhile(async () => (await syncEngine2.trie.items()) !== 2, 1000);
@@ -456,8 +458,8 @@ describe('Multi peer sync engine', () => {
     expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
     // Add two different messages to engine1 and engine2
-    await addMessagesWithTimestamps(engine1, [30662167, 30662168]);
-    await addMessagesWithTimestamps(engine2, [30662169]);
+    await addMessagesWithTimeDelta(engine1, [167, 168]);
+    await addMessagesWithTimeDelta(engine2, [169]);
 
     await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
@@ -534,7 +536,7 @@ describe('Multi peer sync engine', () => {
             timestamps.push(msgTimestamp + j);
           }
           // console.log('adding batch', i, ' of ', numBatches);
-          const addedMessages = await addMessagesWithTimestamps(engine1, timestamps);
+          const addedMessages = await addMessagesWithTimeDelta(engine1, timestamps);
           await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
           castMessagesToRemove = addedMessages.slice(0, 10);
 

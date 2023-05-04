@@ -65,11 +65,12 @@ describe('SyncEngine', () => {
     await engine.stop();
   });
 
-  const addMessagesWithTimestamps = async (timestamps: number[]) => {
+  const addMessagesWithTimestamps = async (timeDelta: number[]) => {
     const results = await Promise.all(
-      timestamps.map(async (t) => {
+      timeDelta.map(async (t) => {
+        const farcasterTime = getFarcasterTime()._unsafeUnwrap();
         const cast = await Factories.CastAddMessage.create(
-          { data: { fid, network, timestamp: t } },
+          { data: { fid, network, timestamp: farcasterTime + t } },
           { transient: { signer } }
         );
 
@@ -168,19 +169,21 @@ describe('SyncEngine', () => {
     const rsigneradd = await engine.mergeMessage(signerAdd);
     expect(rsigneradd.isOk()).toBeTruthy();
 
+    const currentTime = getFarcasterTime()._unsafeUnwrap();
+
     // Reaction
     const reactionBody = {
       targetCastId: { fid, hash: castAdd.hash },
       type: ReactionType.LIKE,
     };
     const reaction1 = await Factories.ReactionAddMessage.create(
-      { data: { fid, network, timestamp: 30662167, reactionBody } },
+      { data: { fid, network, timestamp: currentTime + 10, reactionBody } },
       { transient: { signer } }
     );
 
     // Same reaction, but with different timestamp
     const reaction2 = await Factories.ReactionAddMessage.create(
-      { data: { fid, network, timestamp: 30662168, reactionBody } },
+      { data: { fid, network, timestamp: currentTime + 15, reactionBody } },
       { transient: { signer } }
     );
 
@@ -280,7 +283,7 @@ describe('SyncEngine', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
-    await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+    await addMessagesWithTimestamps([167, 169, 172]);
     expect(
       (await syncEngine.syncStatus('test', (await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
     ).toBeFalsy();
@@ -290,9 +293,9 @@ describe('SyncEngine', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
-    await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+    await addMessagesWithTimestamps([167, 169, 172]);
     const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
-    await addMessagesWithTimestamps([30662372]);
+    await addMessagesWithTimestamps([372]);
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
     expect((await syncEngine.syncStatus('test', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
   });
@@ -327,7 +330,7 @@ describe('SyncEngine', () => {
     await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
     await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
     await engine.mergeMessage(signerAdd);
-    await addMessagesWithTimestamps([30662167, 30662169]);
+    await addMessagesWithTimestamps([167, 169]);
 
     const stats = await syncEngine.getSyncStats();
     expect(stats.numFids).toEqual(1);
@@ -339,7 +342,7 @@ describe('SyncEngine', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
-    const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+    const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
     expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
 
@@ -360,7 +363,7 @@ describe('SyncEngine', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
-    const messages = await addMessagesWithTimestamps([30662167, 30662169, 30662172]);
+    const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
     expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
 
@@ -381,13 +384,14 @@ describe('SyncEngine', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
-    await addMessagesWithTimestamps([30662160, 30662169, 30662172]);
     const nowOrig = Date.now;
-    Date.now = () => 1609459200000 + 30662167 * 1000;
+    Date.now = () => 1683074200000;
     try {
+      await addMessagesWithTimestamps([160, 169, 172]);
+      Date.now = () => 1683074200000 + 167 * 1000;
       const result = await syncEngine.getSnapshot();
       const snapshot = result._unsafeUnwrap();
-      expect((snapshot.prefix as Buffer).toString('utf8')).toEqual('0030662160');
+      expect((snapshot.prefix as Buffer).toString('utf8')).toEqual('0073615160');
     } finally {
       Date.now = nowOrig;
     }
