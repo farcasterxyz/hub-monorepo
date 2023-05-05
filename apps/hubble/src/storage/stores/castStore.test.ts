@@ -39,6 +39,10 @@ beforeAll(async () => {
   });
 });
 
+beforeEach(async () => {
+  await eventHandler.syncCache();
+});
+
 describe('getCastAdd', () => {
   const getCastAdd = () => store.getCastAdd(fid, castAdd.hash);
 
@@ -700,10 +704,6 @@ describe('pruneMessages', () => {
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5);
-  });
-
-  beforeEach(async () => {
-    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {

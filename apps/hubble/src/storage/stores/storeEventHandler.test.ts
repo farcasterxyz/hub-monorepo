@@ -21,9 +21,10 @@ beforeAll(() => {
   eventHandler.on('mergeMessage', eventListener);
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   events = [];
   currentTime = getFarcasterTime()._unsafeUnwrap();
+  await eventHandler.syncCache();
 });
 
 afterAll(() => {

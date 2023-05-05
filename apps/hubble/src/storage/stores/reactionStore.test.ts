@@ -63,6 +63,10 @@ beforeAll(async () => {
   });
 });
 
+beforeEach(async () => {
+  await eventHandler.syncCache();
+});
+
 describe('getReactionAdd', () => {
   test('fails if no ReactionAdd is present', async () => {
     await expect(set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, castId)).rejects.toThrow(HubError);
@@ -859,10 +863,6 @@ describe('pruneMessages', () => {
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.reactionBody);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.reactionBody);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.reactionBody);
-  });
-
-  beforeEach(async () => {
-    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {

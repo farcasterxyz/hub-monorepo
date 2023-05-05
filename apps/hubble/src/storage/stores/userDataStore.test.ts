@@ -34,6 +34,10 @@ beforeAll(async () => {
   });
 });
 
+beforeEach(async () => {
+  await eventHandler.syncCache();
+});
+
 describe('getUserDataAdd', () => {
   test('fails if missing', async () => {
     await expect(set.getUserDataAdd(fid, UserDataType.PFP)).rejects.toThrow(HubError);
@@ -292,10 +296,6 @@ describe('pruneMessages', () => {
     add3 = await generateAddWithTimestamp(fid, time + 3, UserDataType.BIO);
     add4 = await generateAddWithTimestamp(fid, time + 5, UserDataType.URL);
     addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60, UserDataType.URL);
-  });
-
-  beforeEach(async () => {
-    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {

@@ -65,6 +65,10 @@ beforeAll(async () => {
   );
 });
 
+beforeEach(async () => {
+  await eventHandler.syncCache();
+});
+
 describe('getIdRegistryEvent', () => {
   test('returns contract event if it exists', async () => {
     await set.mergeIdRegistryEvent(custody1Event);
@@ -997,7 +1001,6 @@ describe('pruneMessages', () => {
   });
 
   beforeEach(() => {
-    eventHandler.syncCache();
     prunedMessages = [];
   });
 
@@ -1048,10 +1051,6 @@ describe('pruneMessages', () => {
     remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.signerAddBody.signer);
     remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.signerAddBody.signer);
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.signerAddBody.signer);
-  });
-
-  beforeEach(async () => {
-    await eventHandler.syncCache();
   });
 
   describe('with size limit', () => {
