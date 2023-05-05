@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine # Smaller image for demonstration purposes
+    restart: unless-stopped
+    ports:
+      - '6543:5432' # Use a port unlikely to be in use
+    environment:
+      - POSTGRES_DB=hub
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready']
+      interval: 10s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pgdata:
