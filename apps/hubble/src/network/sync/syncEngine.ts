@@ -37,6 +37,7 @@ const HASHES_PER_FETCH = 256;
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
+const BAD_PEER_MESSAGE_THRESHOLD = 1000; // Number of messages we can't merge before we consider a peer "bad"
 
 const log = logger.child({
   component: 'SyncEngine',
@@ -390,7 +391,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         log.info({ syncResult: fullSyncResult }, 'Fetched missing hashes');
 
         // If we did not merge any messages and didn't defer any. Then this peer only had old messages.
-        if (fullSyncResult.successCount === 0 && fullSyncResult.deferredCount === 0) {
+        if (
+          fullSyncResult.total > BAD_PEER_MESSAGE_THRESHOLD &&
+          fullSyncResult.successCount === 0 &&
+          fullSyncResult.deferredCount === 0
+        ) {
           log.warn(`No messages were successfully fetched`);
           this._unproductivePeers.set(peerId, new Date());
         }
