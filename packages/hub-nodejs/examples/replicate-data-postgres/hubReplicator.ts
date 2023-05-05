@@ -37,6 +37,10 @@ import { bytesToHex, farcasterTimeToDate } from './util';
 
 type StoreMessageOperation = 'merge' | 'delete' | 'prune' | 'revoke';
 
+// If you're hitting out-of-memory errors, try decreasing this to reduce overall
+// memory usage.
+const MAX_PAGE_SIZE = 1_000;
+
 export class HubReplicator {
   private client: HubRpcClient;
   private subscriber: HubSubscriber;
@@ -47,19 +51,26 @@ export class HubReplicator {
 
     this.subscriber.on('event', async (hubEvent) => {
       if (isMergeMessageHubEvent(hubEvent)) {
+        this.log.info(`Processing merge event ${hubEvent.id} from stream`);
         await this.onMergeMessage(hubEvent.mergeMessageBody.message);
 
         for (const deletedMessage of hubEvent.mergeMessageBody.deletedMessages) {
           await this.storeMessage(deletedMessage, 'delete');
         }
       } else if (isPruneMessageHubEvent(hubEvent)) {
+        this.log.info(`Processing prune event ${hubEvent.id}`);
         await this.onPruneMessage(hubEvent.pruneMessageBody.message);
       } else if (isRevokeMessageHubEvent(hubEvent)) {
+        this.log.info(`Processing revoke event ${hubEvent.id}`);
         await this.onRevokeMessage(hubEvent.revokeMessageBody.message);
       } else if (isMergeIdRegistryEventHubEvent(hubEvent)) {
+        this.log.info(`Processing ID registry event ${hubEvent.id}`);
         await this.onIdRegistryEvent(hubEvent.mergeIdRegistryEventBody.idRegistryEvent);
       } else if (isMergeNameRegistryEventHubEvent(hubEvent)) {
+        this.log.info(`Processing name registry event ${hubEvent.id}`);
         await this.onNameRegistryEvent(hubEvent.mergeNameRegistryEventBody.nameRegistryEvent);
+      } else {
+        this.log.warn(`Unknown type ${hubEvent.type} of event ${hubEvent.id}. Ignoring`);
       }
 
       // Keep track of how many events we've processed.
@@ -84,7 +95,9 @@ export class HubReplicator {
 
     const { numMessages } = infoResult.value.syncStats;
 
-    this.log.info(`Syncing ${numMessages} messages from ${this.hubAddress}`);
+    // Not technically true, since hubs don't return CastRemove/etc. messages,
+    // but at least gives a rough ballpark of order of magnitude.
+    this.log.info(`Syncing messages from hub ${this.hubAddress} (~${numMessages} messages)`);
 
     // Start backfilling all historical data in the background
     this.backfill();
@@ -125,25 +138,103 @@ export class HubReplicator {
       .getIdRegistryEvent({ fid })
       .then((result) => result.map((event) => this.onIdRegistryEvent(event)));
 
-    await this.client
-      .getCastsByFid({ fid })
-      .then((result) => result.map((response) => response.messages.map((message) => this.onMergeMessage(message))));
+    // Fetch all messages serially in batches to reduce memory consumption.
+    // Your implementation can likely do more in parallel, but we wanted an
+    // example that works on resource constrained hardware.
+    for (const fn of [
+      this.getCastsByFidInBatchesOf,
+      this.getReactionsByFidInBatchesOf,
+      this.getSignersByFidInBatchesOf,
+      this.getVerificationsByFidInBatchesOf,
+      this.getUserDataByFidInBatchesOf,
+    ]) {
+      for await (const messages of fn.call(this, fid, MAX_PAGE_SIZE)) {
+        for (const message of messages) {
+          this.log.debug(`Backfilling message ${bytesToHex(message.hash)} (type ${message.data?.type})`);
+          await this.onMergeMessage(message);
+        }
+      }
+    }
+  }
 
-    await this.client
-      .getReactionsByFid({ fid })
-      .then((result) => result.map((response) => response.messages.map((message) => this.onMergeMessage(message))));
+  private async *getCastsByFidInBatchesOf(fid: number, pageSize: number) {
+    let result = await this.client.getCastsByFid({ pageSize, fid });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error('Unable to backfill', { cause: result.error });
+      }
 
-    await this.client
-      .getSignersByFid({ fid })
-      .then((result) => result.map((response) => response.messages.map((message) => this.onMergeMessage(message))));
+      const { messages, nextPageToken: pageToken } = result.value;
 
-    await this.client
-      .getVerificationsByFid({ fid })
-      .then((result) => result.map((response) => response.messages.map((message) => this.onMergeMessage(message))));
+      yield messages;
 
-    await this.client
-      .getUserDataByFid({ fid })
-      .then((result) => result.map((response) => response.messages.map((message) => this.onMergeMessage(message))));
+      if (!pageToken?.length) break;
+      result = await this.client.getCastsByFid({ pageSize, pageToken, fid });
+    }
+  }
+
+  private async *getReactionsByFidInBatchesOf(fid: number, pageSize: number) {
+    let result = await this.client.getReactionsByFid({ pageSize, fid });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error('Unable to backfill', { cause: result.error });
+      }
+
+      const { messages, nextPageToken: pageToken } = result.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      result = await this.client.getReactionsByFid({ pageSize, pageToken, fid });
+    }
+  }
+
+  private async *getSignersByFidInBatchesOf(fid: number, pageSize: number) {
+    let result = await this.client.getSignersByFid({ pageSize, fid });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error('Unable to backfill', { cause: result.error });
+      }
+
+      const { messages, nextPageToken: pageToken } = result.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      result = await this.client.getSignersByFid({ pageSize, pageToken, fid });
+    }
+  }
+
+  private async *getVerificationsByFidInBatchesOf(fid: number, pageSize: number) {
+    let result = await this.client.getVerificationsByFid({ pageSize, fid });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error('Unable to backfill', { cause: result.error });
+      }
+
+      const { messages, nextPageToken: pageToken } = result.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      result = await this.client.getVerificationsByFid({ pageSize, pageToken, fid });
+    }
+  }
+
+  private async *getUserDataByFidInBatchesOf(fid: number, pageSize: number) {
+    let result = await this.client.getUserDataByFid({ pageSize, fid });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error('Unable to backfill', { cause: result.error });
+      }
+
+      const { messages, nextPageToken: pageToken } = result.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      result = await this.client.getUserDataByFid({ pageSize, pageToken, fid });
+    }
   }
 
   private async storeMessage(message: Message, operation: StoreMessageOperation) {
