@@ -42,7 +42,7 @@ const GossipMessageFactory = Factory.define<GossipMessage, { peerId?: PeerId }, 
       peerId: transientParams.peerId ? transientParams.peerId.toBytes() : new Uint8Array(),
       message: Factories.Message.build(),
       topics: ['f_network_0_primary'],
-      version: GossipVersion.V1,
+      version: GossipVersion.V1_1,
     });
   }
 );

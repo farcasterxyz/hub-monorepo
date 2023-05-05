@@ -68,9 +68,11 @@ describe('gossip network tests', () => {
       });
 
       // Create a message and send it to a random node
-      const message = NetworkFactories.GossipMessage.build();
+      const message = await NetworkFactories.GossipMessage.create();
       const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as GossipNode;
-      expect(randomNode.publish(message)).resolves.toBeUndefined();
+      const publishResult = await randomNode.publish(message);
+      expect(publishResult.length).toBe(1);
+      expect(publishResult[0]?.isOk()).toBeTruthy();
 
       // Sleep 5 heartbeat ticks
       await sleep(PROPAGATION_DELAY);

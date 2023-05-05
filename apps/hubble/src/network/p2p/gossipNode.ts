@@ -1,9 +1,11 @@
 import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
+import { Message as GossipSubMessage, PublishResult } from '@libp2p/interface-pubsub';
 import { noise } from '@chainsafe/libp2p-noise';
 import {
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
+  GossipVersion,
   HubAsyncResult,
   HubError,
   HubResult,
@@ -11,6 +13,7 @@ import {
 } from '@farcaster/hub-nodejs';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
+import { peerIdFromBytes } from '@libp2p/peer-id';
 import { mplex } from '@libp2p/mplex';
 import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery';
 import { tcp } from '@libp2p/tcp';
@@ -22,6 +25,7 @@ import { ConnectionFilter } from '~/network/p2p/connectionFilter';
 import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
+import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -184,40 +188,57 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Serializes and publishes a Farcaster Message to the network */
-  async gossipMessage(message: Message) {
+  async gossipMessage(message: Message): Promise<HubResult<PublishResult>[]> {
     const gossipMessage = GossipMessage.create({
       message,
       topics: [this.primaryTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
     });
-    await this.publish(gossipMessage);
+    return this.publish(gossipMessage);
   }
 
   /** Serializes and publishes this node's ContactInfo to the network */
-  async gossipContactInfo(contactInfo: ContactInfoContent) {
+  async gossipContactInfo(contactInfo: ContactInfoContent): Promise<HubResult<PublishResult>[]> {
     const gossipMessage = GossipMessage.create({
       contactInfoContent: contactInfo,
       topics: [this.contactInfoTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
     });
-    await this.publish(gossipMessage);
+    return this.publish(gossipMessage);
   }
 
   /** Publishes a Gossip Message to the network */
-  async publish(message: GossipMessage) {
+  async publish(message: GossipMessage): Promise<HubResult<PublishResult>[]> {
     const topics = message.topics;
     const encodedMessage = GossipNode.encodeMessage(message);
 
     log.debug({ identity: this.identity }, `Publishing message to topics: ${topics}`);
-    encodedMessage.match(
-      async (msg) => {
-        const results = await Promise.all(topics.map((topic) => this.gossip?.publish(topic, msg)));
-        log.debug({ identity: this.identity, results }, 'Published to gossip peers');
-      },
-      async (err) => {
-        log.error(err, 'Failed to publish message.');
-      }
-    );
+    if (this.gossip == undefined) {
+      return [err(new HubError('unavailable', new Error('GossipSub not initialized')))];
+    }
+    const gossip = this.gossip;
+
+    if (encodedMessage.isErr()) {
+      log.error(encodedMessage.error, 'Failed to publish message.');
+      return [err(encodedMessage.error)];
+    } else {
+      const results = await Promise.all(
+        topics.map(async (topic) => {
+          try {
+            const publishResult = await gossip.publish(topic, encodedMessage.value);
+            return ok(publishResult);
+          } catch (error: any) {
+            log.error(error, 'Failed to publish message');
+            return err(new HubError('bad_request.duplicate', error));
+          }
+        })
+      );
+
+      log.debug({ identity: this.identity, results }, 'Published to gossip peers');
+      return results;
+    }
   }
 
   /** Connects to a peer GossipNode */
@@ -263,10 +284,17 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       log.info({ peer: event.detail.remotePeer }, `P2P Connection disconnected`);
       this.emit('peerDisconnect', event.detail);
     });
-    this.gossip?.addEventListener('message', (event) => {
+    this.gossip?.addEventListener('gossipsub:message', (event) => {
+      log.debug({
+        identity: this.identity,
+        gossipMessageId: event.detail.msgId,
+        from: event.detail.propagationSource,
+        topic: event.detail.msg.topic,
+      });
+
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
-      if (this.gossipTopics().includes(event.detail.topic)) {
-        this.emit('message', event.detail.topic, GossipNode.decodeMessage(event.detail.data));
+      if (this.gossipTopics().includes(event.detail.msg.topic)) {
+        this.emit('message', event.detail.msg.topic, GossipNode.decodeMessage(event.detail.msg.data));
       }
     });
   }
@@ -313,10 +341,19 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return ok(GossipMessage.encode(message).finish());
   }
 
-  //TODO: Needs better typesafety
   static decodeMessage(message: Uint8Array): HubResult<GossipMessage> {
     // Convert GossipMessage to Uint8Array or decode will return nested Uint8Arrays as Buffers
-    return ok(GossipMessage.decode(Uint8Array.from(message)));
+    try {
+      const gossipMessage = GossipMessage.decode(Uint8Array.from(message));
+      const supportedVersions = [GOSSIP_PROTOCOL_VERSION, GossipVersion.V1];
+      if (gossipMessage.topics.length == 0 || supportedVersions.findIndex((v) => v == gossipMessage.version) == -1) {
+        return err(new HubError('bad_request.parse_failure', 'invalid message'));
+      }
+      peerIdFromBytes(gossipMessage.peerId);
+      return ok(GossipMessage.decode(Uint8Array.from(message)));
+    } catch (error: any) {
+      return err(new HubError('bad_request.parse_failure', error));
+    }
   }
 
   /* -------------------------------------------------------------------------- */
@@ -335,6 +372,27 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     }
 
     return ok(undefined);
+  }
+
+  /* Generates a message ID for gossip messages
+   *
+   * Specifically overrides the default behavior for Farcaster Protocol Messages that are created by user interactions
+   *
+   * @param message - The message to generate an ID for
+   * @returns The message ID as an Uint8Array
+   */
+  public getMessageId(message: GossipSubMessage): Uint8Array {
+    if (message.topic.includes(this.primaryTopic())) {
+      // check if message is a Farcaster Protocol Message
+      const protocolMessage = GossipNode.decodeMessage(message.data);
+      if (protocolMessage.isOk() && protocolMessage.value.version == GossipVersion.V1_1) {
+        if (protocolMessage.value.message != undefined)
+          return protocolMessage._unsafeUnwrap().message?.hash as Uint8Array;
+        if (protocolMessage.value.idRegistryEvent != undefined)
+          return protocolMessage.value.idRegistryEvent?.transactionHash as Uint8Array;
+      }
+    }
+    return msgIdFnStrictSign(message);
   }
 
   /** Creates a Libp2p node with GossipSub */
@@ -363,6 +421,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       emitSelf: false,
       allowPublishToZeroPeers: true,
       globalSignaturePolicy: 'StrictSign',
+      msgIdFn: this.getMessageId.bind(this),
     });
 
     if (options.allowedPeerIdStrs) {
