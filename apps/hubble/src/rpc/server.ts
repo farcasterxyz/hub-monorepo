@@ -275,9 +275,9 @@ export default class Server {
             rootHash: (await this.syncEngine?.trie.rootHash()) ?? '',
           });
 
-          if (call.request.syncStats && this.syncEngine) {
-            const stats = await this.syncEngine.getSyncStats();
-            info.syncStats = SyncStats.create({
+          if (call.request.dbStats && this.syncEngine) {
+            const stats = await this.syncEngine.getDbStats();
+            info.dbStats = DbStats.create({
               numMessages: stats?.numMessages,
               numFidEvents: stats?.numFids,
               numFnameEvents: stats?.numFnames,
@@ -285,6 +285,20 @@ export default class Server {
           }
 
           callback(null, info);
+        })();
+      },
+      getSyncStatus: (call, callback) => {
+        (async () => {
+          if (!this.gossipNode || !this.syncEngine || !this.hub) {
+            callback(null);
+            return;
+          }
+          const peersToCheck = this.gossipNode.bootstrapPeerIds ?? [];
+          for (const peerId of peersToCheck) {
+            await this.syncEngine.getSyncStatusForPeer(peerId, this.hub);
+          }
+
+          callback(null);
         })();
       },
       getAllSyncIdsByPrefix: (call, callback) => {

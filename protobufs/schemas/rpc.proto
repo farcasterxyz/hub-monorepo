@@ -51,6 +51,7 @@ service HubService {
 
   // Sync Methods
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
+  rpc GetSyncStatus(SyncStatusRequest) returns (SyncStatusResponse);
   rpc GetAllSyncIdsByPrefix(TrieNodePrefix) returns (SyncIds);
   rpc GetAllMessagesBySyncIds(SyncIds) returns (MessagesResponse);
   rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);

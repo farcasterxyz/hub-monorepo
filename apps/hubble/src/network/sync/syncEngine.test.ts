@@ -332,7 +332,7 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
     await addMessagesWithTimestamps([167, 169]);
 
-    const stats = await syncEngine.getSyncStats();
+    const stats = await syncEngine.getDbStats();
     expect(stats.numFids).toEqual(1);
     expect(stats.numFnames).toEqual(2);
     expect(stats.numMessages).toEqual(3);
