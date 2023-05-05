@@ -442,8 +442,9 @@ export class HubReplicator {
       })
       .onConflict((oc) =>
         oc
-          .columns(['hash'])
+          .columns(['fid', 'type'])
           .doUpdateSet({
+            hash: message.hash,
             timestamp: farcasterTimeToDate(message.data.timestamp),
             value: message.data.userDataBody.value,
             updatedAt: new Date(),
@@ -451,6 +452,7 @@ export class HubReplicator {
           .where(({ or, cmpr, ref }) =>
             // Only update if a value has actually changed
             or([
+              cmpr('excluded.hash', '!=', ref('userData.hash')),
               cmpr('excluded.timestamp', '!=', ref('userData.timestamp')),
               cmpr('excluded.value', '!=', ref('userData.value')),
               cmpr('excluded.updatedAt', '!=', ref('userData.updatedAt')),
