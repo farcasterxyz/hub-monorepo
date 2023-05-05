@@ -6,6 +6,7 @@ contained repository that includes a StackBlitz link to run it in a cloud REPL.
 - [Generate a chronological feed](./chron-feed/)
 - [Writing data for a user](./write-data/)
 - [Building casts correctly](./make-cast/)
+- [Replicating data into Postgres](./replicate-data-postgres/)
 
 Other examples that should be added:
 
