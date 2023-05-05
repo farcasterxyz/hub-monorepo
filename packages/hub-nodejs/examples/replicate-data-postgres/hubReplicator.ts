@@ -146,23 +146,6 @@ export class HubReplicator {
       .then((result) => result.map((response) => response.messages.map((message) => this.onMergeMessage(message))));
   }
 
-  // More for demonstration purposes. Can always just get the latest FID
-  private async *getAllFids() {
-    let fidsResult = await this.client.getFids({ pageSize: 1000 });
-    for (;;) {
-      if (fidsResult.isErr()) {
-        throw new Error('Unable to backfill', { cause: fidsResult.error });
-      }
-
-      const { fids, nextPageToken } = fidsResult.value;
-
-      yield fids;
-
-      if (!nextPageToken) break;
-      fidsResult = await this.client.getFids({ pageSize: 1000, pageToken: nextPageToken });
-    }
-  }
-
   private async storeMessage(message: Message, operation: StoreMessageOperation) {
     if (!message.data) {
       throw new Error('Message data is missing');

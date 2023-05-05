@@ -83,9 +83,6 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
       });
   }
 
-  /**
-   * Processes the stream in paused mode so hub events are processed serially and in order.
-   */
   private async processStream(stream: ClientReadableStream<HubEvent>) {
     this.log.debug(`Started hub event stream processing`);
     try {
