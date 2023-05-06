@@ -1,5 +1,10 @@
 #!/usr/bin/env node
-import { FarcasterNetwork } from '@farcaster/hub-nodejs';
+import {
+  FarcasterNetwork,
+  getInsecureHubRpcClient,
+  getSSLHubRpcClient,
+  SyncStatusRequest,
+} from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';
@@ -436,6 +441,45 @@ app
   .description('Create or verify a peerID')
   .addCommand(createIdCommand)
   .addCommand(verifyIdCommand);
+
+app
+  .command('syncstatus')
+  .description('Reports the sync status of the hub')
+  .option(
+    '-s, --server <url>',
+    'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283)',
+    DEFAULT_RPC_CONSOLE
+  )
+  .option('--insecure', 'Allow insecure connections to the RPC server', false)
+  .option('-p, --peerId <peerId>', 'Peer id of the hub to compare with (defaults to bootstrap peers)')
+  .action(async (cliOptions) => {
+    let rpcClient;
+    if (cliOptions.insecure) {
+      rpcClient = getInsecureHubRpcClient(cliOptions.server);
+    } else {
+      rpcClient = getSSLHubRpcClient(cliOptions.server);
+    }
+
+    const syncStatusResult = await rpcClient.getSyncStatus(SyncStatusRequest.create({ peerId: cliOptions.peerId }));
+    if (syncStatusResult.isErr()) {
+      logger.error(
+        { errCode: syncStatusResult.error.errCode, errMsg: syncStatusResult.error.message },
+        'Failed to get sync status'
+      );
+      exit(1);
+    }
+    for (const peerStatus of syncStatusResult.value.syncStatus) {
+      const messageDelta = peerStatus.theirMessages - peerStatus.ourMessages;
+      if (!syncStatusResult.value.isSyncing) {
+        logger.info(`Peer ${peerStatus.peerId}: Sync in progress with a peer. (msg delta: ${messageDelta})`);
+      } else {
+        logger.info(
+          `Peer ${peerStatus.peerId}: In Sync: ${peerStatus.inSync} (msg delta: ${messageDelta}, diverged ${peerStatus.divergenceSecondsAgo} seconds ago)`
+        );
+      }
+    }
+    exit(0);
+  });
 
 app
   .command('console')

@@ -69,7 +69,7 @@ type SyncStatus = {
   inSync: 'true' | 'false' | 'unknown' | 'blocked';
   shouldSync: boolean;
   theirSnapshot: TrieSnapshot;
-  ourSnapshot?: TrieSnapshot;
+  ourSnapshot: TrieSnapshot;
   divergencePrefix: string;
   divergenceSecondsAgo: number;
   lastBadSync: number;
@@ -333,12 +333,20 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async syncStatus(peerId: string, theirSnapshot: TrieSnapshot): HubAsyncResult<SyncStatus> {
     const lastBadSync = this._unproductivePeers.get(peerId);
+    const ourSnapshotResult = await this.getSnapshot(theirSnapshot.prefix);
+
+    if (ourSnapshotResult.isErr()) {
+      return err(ourSnapshotResult.error);
+    }
+    const ourSnapshot = ourSnapshotResult.value;
+
     if (this._isSyncing) {
       return ok({
         isSyncing: true,
         inSync: 'unknown',
         shouldSync: false,
         theirSnapshot,
+        ourSnapshot,
         divergencePrefix: '',
         divergenceSecondsAgo: -1,
         lastBadSync: -1,
@@ -351,43 +359,38 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         inSync: 'blocked',
         shouldSync: false,
         theirSnapshot,
+        ourSnapshot,
         divergencePrefix: '',
         divergenceSecondsAgo: -1,
         lastBadSync: lastBadSync.getTime(),
       });
     }
 
-    const ourSnapshotResult = await this.getSnapshot(theirSnapshot.prefix);
-    if (ourSnapshotResult.isErr()) {
-      return err(ourSnapshotResult.error);
-    } else {
-      const ourSnapshot = ourSnapshotResult.value;
-      const excludedHashesMatch =
-        ourSnapshot.excludedHashes.length === theirSnapshot.excludedHashes.length &&
-        // NOTE: `index` is controlled by `every` and so not at risk of object injection.
-        // eslint-disable-next-line security/detect-object-injection
-        ourSnapshot.excludedHashes.every((value, index) => value === theirSnapshot.excludedHashes[index]);
+    const excludedHashesMatch =
+      ourSnapshot.excludedHashes.length === theirSnapshot.excludedHashes.length &&
+      // NOTE: `index` is controlled by `every` and so not at risk of object injection.
+      // eslint-disable-next-line security/detect-object-injection
+      ourSnapshot.excludedHashes.every((value, index) => value === theirSnapshot.excludedHashes[index]);
 
-      const divergencePrefix = Buffer.from(
-        this.getDivergencePrefix(ourSnapshot, theirSnapshot.excludedHashes)
-      ).toString('ascii');
-      const divergedAt = fromFarcasterTime(prefixToTimestamp(divergencePrefix));
-      let divergenceSecondsAgo = -1;
-      if (divergedAt.isOk()) {
-        divergenceSecondsAgo = Math.floor((Date.now() - divergedAt.value) / 1000);
-      }
-
-      return ok({
-        isSyncing: false,
-        inSync: excludedHashesMatch ? 'true' : 'false',
-        shouldSync: !excludedHashesMatch,
-        ourSnapshot,
-        theirSnapshot,
-        divergencePrefix,
-        divergenceSecondsAgo,
-        lastBadSync: lastBadSync?.getTime() ?? -1,
-      });
+    const divergencePrefix = Buffer.from(this.getDivergencePrefix(ourSnapshot, theirSnapshot.excludedHashes)).toString(
+      'ascii'
+    );
+    const divergedAt = fromFarcasterTime(prefixToTimestamp(divergencePrefix));
+    let divergenceSecondsAgo = -1;
+    if (divergedAt.isOk()) {
+      divergenceSecondsAgo = Math.floor((Date.now() - divergedAt.value) / 1000);
     }
+
+    return ok({
+      isSyncing: false,
+      inSync: excludedHashesMatch ? 'true' : 'false',
+      shouldSync: !excludedHashesMatch,
+      ourSnapshot,
+      theirSnapshot,
+      divergencePrefix,
+      divergenceSecondsAgo,
+      lastBadSync: lastBadSync?.getTime() ?? -1,
+    });
   }
 
   async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {

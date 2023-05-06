@@ -36,6 +36,8 @@ import {
   SignerRequest,
   SubscribeRequest,
   SyncIds,
+  SyncStatusRequest,
+  SyncStatusResponse,
   TrieNodeMetadataResponse,
   TrieNodePrefix,
   TrieNodeSnapshotResponse,
@@ -299,6 +301,15 @@ export const HubServiceService = {
     responseSerialize: (value: HubInfoResponse) => Buffer.from(HubInfoResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => HubInfoResponse.decode(value),
   },
+  getSyncStatus: {
+    path: '/HubService/GetSyncStatus',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SyncStatusRequest) => Buffer.from(SyncStatusRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SyncStatusRequest.decode(value),
+    responseSerialize: (value: SyncStatusResponse) => Buffer.from(SyncStatusResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SyncStatusResponse.decode(value),
+  },
   getAllSyncIdsByPrefix: {
     path: '/HubService/GetAllSyncIdsByPrefix',
     requestStream: false,
@@ -377,6 +388,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
+  getSyncStatus: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   getAllSyncIdsByPrefix: handleUnaryCall<TrieNodePrefix, SyncIds>;
   getAllMessagesBySyncIds: handleUnaryCall<SyncIds, MessagesResponse>;
   getSyncMetadataByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeMetadataResponse>;
@@ -777,6 +789,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: HubInfoResponse) => void
+  ): ClientUnaryCall;
+  getSyncStatus(
+    request: SyncStatusRequest,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void
+  ): ClientUnaryCall;
+  getSyncStatus(
+    request: SyncStatusRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void
+  ): ClientUnaryCall;
+  getSyncStatus(
+    request: SyncStatusRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void
   ): ClientUnaryCall;
   getAllSyncIdsByPrefix(
     request: TrieNodePrefix,

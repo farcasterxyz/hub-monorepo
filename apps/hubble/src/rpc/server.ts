@@ -25,12 +25,14 @@ import {
   SignerRemoveMessage,
   status,
   SyncIds,
-  SyncStats,
+  DbStats,
   TrieNodeMetadataResponse,
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
+  SyncStatusResponse,
+  SyncStatus,
 } from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
@@ -290,15 +292,41 @@ export default class Server {
       getSyncStatus: (call, callback) => {
         (async () => {
           if (!this.gossipNode || !this.syncEngine || !this.hub) {
-            callback(null);
+            callback(toServiceError(new HubError('bad_request', "Hub isn't initialized")));
             return;
           }
-          const peersToCheck = this.gossipNode.bootstrapPeerIds ?? [];
-          for (const peerId of peersToCheck) {
-            await this.syncEngine.getSyncStatusForPeer(peerId, this.hub);
+          let peersToCheck: string[];
+          if (call.request.peerId && call.request.peerId.length > 0) {
+            peersToCheck = [call.request.peerId];
+          } else {
+            peersToCheck = Array.from(this.gossipNode.bootstrapPeerIds.values());
           }
 
-          callback(null);
+          const response = SyncStatusResponse.create({
+            isSyncing: false,
+            syncStatus: [],
+          });
+
+          for (const peerId of peersToCheck) {
+            const statusResult = await this.syncEngine.getSyncStatusForPeer(peerId, this.hub);
+            if (statusResult.isOk()) {
+              const status = statusResult.value;
+              response.isSyncing = status.isSyncing;
+              const peerStatus = SyncStatus.create({
+                peerId,
+                inSync: status.inSync,
+                shouldSync: status.shouldSync,
+                lastBadSync: status.lastBadSync,
+                divergencePrefix: status.divergencePrefix,
+                divergenceSecondsAgo: status.divergenceSecondsAgo,
+                ourMessages: status.ourSnapshot.numMessages,
+                theirMessages: status.theirSnapshot.numMessages,
+              });
+              response.syncStatus.push(peerStatus);
+            }
+          }
+
+          callback(null, response);
         })();
       },
       getAllSyncIdsByPrefix: (call, callback) => {

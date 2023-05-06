@@ -246,7 +246,6 @@ describe('SyncEngine', () => {
       expect(shouldSync.isOk()).toBeTruthy();
       expect(shouldSync._unsafeUnwrap().isSyncing).toBeTruthy();
       expect(shouldSync._unsafeUnwrap().shouldSync).toBeFalsy();
-      expect(shouldSync._unsafeUnwrap().ourSnapshot).toBeUndefined();
       called = true;
 
       // Return an empty child map so sync will finish with a noop
