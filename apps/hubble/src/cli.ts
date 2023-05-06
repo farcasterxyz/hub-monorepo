@@ -3,6 +3,7 @@ import {
   FarcasterNetwork,
   getInsecureHubRpcClient,
   getSSLHubRpcClient,
+  HubInfoRequest,
   SyncStatusRequest,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -443,8 +444,8 @@ app
   .addCommand(verifyIdCommand);
 
 app
-  .command('syncstatus')
-  .description('Reports the sync status of the hub')
+  .command('status')
+  .description('Reports the db and sync status of the hub')
   .option(
     '-s, --server <url>',
     'Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283)',
@@ -459,15 +460,17 @@ app
     } else {
       rpcClient = getSSLHubRpcClient(cliOptions.server);
     }
-
+    const infoResult = await rpcClient.getInfo(HubInfoRequest.create({ dbStats: true }));
     const syncStatusResult = await rpcClient.getSyncStatus(SyncStatusRequest.create({ peerId: cliOptions.peerId }));
-    if (syncStatusResult.isErr()) {
-      logger.error(
-        { errCode: syncStatusResult.error.errCode, errMsg: syncStatusResult.error.message },
-        'Failed to get sync status'
-      );
+    if (syncStatusResult.isErr() || infoResult.isErr()) {
+      const res = infoResult.isErr() ? infoResult : syncStatusResult;
+      logger.error({ errCode: res.error.errCode, errMsg: res.error.message }, 'Failed to get hub status');
       exit(1);
     }
+    const dbStats = infoResult.value.dbStats;
+    logger.info(
+      `Hub Version: ${infoResult.value.version} Messages: ${dbStats?.numMessages} FIDs: ${dbStats?.numFidEvents} FNames: ${dbStats?.numFnameEvents}}`
+    );
     for (const peerStatus of syncStatusResult.value.syncStatus) {
       const messageDelta = peerStatus.theirMessages - peerStatus.ourMessages;
       if (syncStatusResult.value.isSyncing) {

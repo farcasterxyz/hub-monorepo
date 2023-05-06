@@ -25,7 +25,7 @@
     "identity": "tsx src/cli.ts identity",
     "dbreset": "tsx src/cli.ts dbreset",
     "console": "tsx src/cli.ts console",
-    "syncstatus": "tsx src/cli.ts syncstatus",
+    "status": "tsx src/cli.ts status",
     "test": "yarn build && NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
   },

@@ -64,7 +64,7 @@ export class MockHub implements HubInterface {
     return ok(undefined);
   }
 
-  async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
+  async getRPCClientForPeer(_peerId: PeerId, _peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
     return undefined;
   }
 }
