@@ -470,8 +470,8 @@ app
     }
     for (const peerStatus of syncStatusResult.value.syncStatus) {
       const messageDelta = peerStatus.theirMessages - peerStatus.ourMessages;
-      if (!syncStatusResult.value.isSyncing) {
-        logger.info(`Peer ${peerStatus.peerId}: Sync in progress with a peer. (msg delta: ${messageDelta})`);
+      if (syncStatusResult.value.isSyncing) {
+        logger.info(`Peer ${peerStatus.peerId}: Sync in progress. (msg delta: ${messageDelta})`);
       } else {
         logger.info(
           `Peer ${peerStatus.peerId}: In Sync: ${peerStatus.inSync} (msg delta: ${messageDelta}, diverged ${peerStatus.divergenceSecondsAgo} seconds ago)`
