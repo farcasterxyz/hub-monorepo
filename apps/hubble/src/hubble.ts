@@ -73,6 +73,7 @@ export interface HubInterface {
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
+  getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined>;
 }
 
 export interface HubOptions {

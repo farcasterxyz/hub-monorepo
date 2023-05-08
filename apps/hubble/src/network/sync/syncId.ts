@@ -64,4 +64,8 @@ const timestampToPaddedTimestampPrefix = (timestamp: number): string => {
   return Math.floor(timestamp).toString().padStart(TIMESTAMP_LENGTH, '0');
 };
 
-export { SyncId, timestampToPaddedTimestampPrefix, TIMESTAMP_LENGTH, HASH_LENGTH };
+const prefixToTimestamp = (prefix: string): number => {
+  return parseInt(prefix.padEnd(TIMESTAMP_LENGTH, '0'), 10);
+};
+
+export { SyncId, timestampToPaddedTimestampPrefix, prefixToTimestamp, TIMESTAMP_LENGTH, HASH_LENGTH };

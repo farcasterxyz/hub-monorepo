@@ -15,7 +15,7 @@ message EventRequest {
 }
 
 message HubInfoRequest {
-  bool sync_stats = 1;
+  bool db_stats = 1;
 }
 
 // Response Types for the Sync RPC Methods
@@ -24,13 +24,33 @@ message HubInfoResponse {
   bool is_syncing = 2;
   string nickname = 3;
   string root_hash = 4;
-  SyncStats sync_stats = 5;
+  DbStats db_stats = 5;
 }
 
-message SyncStats {
+message DbStats {
   uint64 num_messages = 1;
   uint64 num_fid_events = 2;
   uint64 num_fname_events = 3;
+}
+
+message SyncStatusRequest {
+  optional string peerId = 1;
+}
+
+message SyncStatusResponse {
+  bool is_syncing = 1;
+  repeated SyncStatus sync_status = 2;
+}
+
+message SyncStatus {
+  string peerId = 1;
+  string inSync = 2;
+  bool shouldSync = 3;
+  string divergencePrefix = 4;
+  int32 divergenceSecondsAgo = 5;
+  uint64 theirMessages = 6;
+  uint64 ourMessages = 7;
+  int64 lastBadSync = 8;
 }
 
 message TrieNodeMetadataResponse {

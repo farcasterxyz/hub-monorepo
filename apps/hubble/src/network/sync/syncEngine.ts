@@ -22,13 +22,14 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import { EthEventsProvider } from '~/eth/ethEventsProvider';
 import { Hub, HubInterface } from '~/hubble';
 import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
-import { SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
+import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
 import { TrieSnapshot } from '~/network/sync/trieNode';
 import { getManyMessages } from '~/storage/db/message';
 import RocksDB from '~/storage/db/rocksdb';
 import { sleepWhile } from '~/utils/crypto';
 import { logger } from '~/utils/logger';
 import { RootPrefix } from '~/storage/db/types';
+import { fromFarcasterTime } from '@farcaster/core';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -65,13 +66,16 @@ type MergeResult = {
 
 type SyncStatus = {
   isSyncing: boolean;
-  inSync: 'true' | 'false' | 'unknown';
+  inSync: 'true' | 'false' | 'unknown' | 'blocked';
   shouldSync: boolean;
   theirSnapshot: TrieSnapshot;
-  ourSnapshot?: TrieSnapshot;
+  ourSnapshot: TrieSnapshot;
+  divergencePrefix: string;
+  divergenceSecondsAgo: number;
+  lastBadSync: number;
 };
 
-type SyncStats = {
+type DbStats = {
   numMessages: number;
   numFids: number;
   numFnames: number;
@@ -297,7 +301,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           ourMessages: syncStatus.ourSnapshot?.numMessages,
           peerNetwork: peerContact.network,
           peerVersion: peerContact.hubVersion,
-          lastBadSync: this._unproductivePeers.get(peerIdString)?.getTime(),
+          divergencePrefix: syncStatus.divergencePrefix,
+          divergenceSeconds: syncStatus.divergenceSecondsAgo,
+          lastBadSync: syncStatus.lastBadSync,
         },
         'SyncStatus' // Search for this string in the logs to get summary of sync status
       );
@@ -326,38 +332,65 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async syncStatus(peerId: string, theirSnapshot: TrieSnapshot): HubAsyncResult<SyncStatus> {
-    if (this._isSyncing) {
-      log.info('shouldSync: already syncing');
-      return ok({ isSyncing: true, inSync: 'unknown', shouldSync: false, theirSnapshot });
-    }
-
     const lastBadSync = this._unproductivePeers.get(peerId);
-    if (lastBadSync && Date.now() < lastBadSync.getTime() + BAD_PEER_BLOCK_TIMEOUT) {
-      log.info(`shouldSync: bad peer (blocked until ${lastBadSync.getTime() + BAD_PEER_BLOCK_TIMEOUT})`);
-      return ok({ isSyncing: false, inSync: 'false', shouldSync: false, theirSnapshot });
-    }
-
     const ourSnapshotResult = await this.getSnapshot(theirSnapshot.prefix);
+
     if (ourSnapshotResult.isErr()) {
       return err(ourSnapshotResult.error);
-    } else {
-      const ourSnapshot = ourSnapshotResult.value;
-      const excludedHashesMatch =
-        ourSnapshot.excludedHashes.length === theirSnapshot.excludedHashes.length &&
-        // NOTE: `index` is controlled by `every` and so not at risk of object injection.
-        // eslint-disable-next-line security/detect-object-injection
-        ourSnapshot.excludedHashes.every((value, index) => value === theirSnapshot.excludedHashes[index]);
+    }
+    const ourSnapshot = ourSnapshotResult.value;
 
-      log.info({ excludedHashesMatch }, `shouldSync: excluded hashes`);
-
+    if (this._isSyncing) {
       return ok({
-        isSyncing: false,
-        inSync: excludedHashesMatch ? 'true' : 'false',
-        shouldSync: !excludedHashesMatch,
-        ourSnapshot,
+        isSyncing: true,
+        inSync: 'unknown',
+        shouldSync: false,
         theirSnapshot,
+        ourSnapshot,
+        divergencePrefix: '',
+        divergenceSecondsAgo: -1,
+        lastBadSync: -1,
       });
     }
+
+    if (lastBadSync && Date.now() < lastBadSync.getTime() + BAD_PEER_BLOCK_TIMEOUT) {
+      return ok({
+        isSyncing: false,
+        inSync: 'blocked',
+        shouldSync: false,
+        theirSnapshot,
+        ourSnapshot,
+        divergencePrefix: '',
+        divergenceSecondsAgo: -1,
+        lastBadSync: lastBadSync.getTime(),
+      });
+    }
+
+    const excludedHashesMatch =
+      ourSnapshot.excludedHashes.length === theirSnapshot.excludedHashes.length &&
+      // NOTE: `index` is controlled by `every` and so not at risk of object injection.
+      // eslint-disable-next-line security/detect-object-injection
+      ourSnapshot.excludedHashes.every((value, index) => value === theirSnapshot.excludedHashes[index]);
+
+    const divergencePrefix = Buffer.from(this.getDivergencePrefix(ourSnapshot, theirSnapshot.excludedHashes)).toString(
+      'ascii'
+    );
+    const divergedAt = fromFarcasterTime(prefixToTimestamp(divergencePrefix));
+    let divergenceSecondsAgo = -1;
+    if (divergedAt.isOk()) {
+      divergenceSecondsAgo = Math.floor((Date.now() - divergedAt.value) / 1000);
+    }
+
+    return ok({
+      isSyncing: false,
+      inSync: excludedHashesMatch ? 'true' : 'false',
+      shouldSync: !excludedHashesMatch,
+      ourSnapshot,
+      theirSnapshot,
+      divergencePrefix,
+      divergenceSecondsAgo,
+      lastBadSync: lastBadSync?.getTime() ?? -1,
+    });
   }
 
   async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
@@ -371,7 +404,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         log.warn({ errCode: snapshot.error.errCode }, `Error performing sync: ${snapshot.error.message}}`);
       } else {
         const ourSnapshot = snapshot.value;
-        const divergencePrefix = await this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
+        const divergencePrefix = this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
         log.info(
           {
             divergencePrefix: Buffer.from(divergencePrefix).toString('ascii'),
@@ -423,7 +456,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
    * @param prefix - the prefix of the external trie.
    * @param otherExcludedHashes - the excluded hashes of the external trie.
    */
-  async getDivergencePrefix(ourSnapshot: TrieSnapshot, otherExcludedHashes: string[]): Promise<Uint8Array> {
+  getDivergencePrefix(ourSnapshot: TrieSnapshot, otherExcludedHashes: string[]): Uint8Array {
     const { prefix, excludedHashes } = ourSnapshot;
 
     for (let i = 0; i < prefix.length; i++) {
@@ -661,7 +694,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return false;
   }
 
-  public async getSyncStats(): Promise<SyncStats> {
+  public async getDbStats(): Promise<DbStats> {
     let numFids = 0,
       numFnames = 0;
 
@@ -684,6 +717,28 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       numFids: numFids,
       numFnames: numFnames,
     };
+  }
+
+  public async getSyncStatusForPeer(peerId: string, hub: HubInterface): HubAsyncResult<SyncStatus> {
+    const c = this.currentHubPeerContacts.get(peerId);
+    if (!c?.peerId || !c?.contactInfo) {
+      return err(new HubError('unavailable.network_failure', `No contact info for peer ${peerId}`));
+    }
+    const rpcClient = await hub.getRPCClientForPeer(c?.peerId, c?.contactInfo);
+    if (!rpcClient) {
+      return err(new HubError('unavailable.network_failure', `Could not create a RPC client for peer ${peerId}`));
+    }
+    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
+      TrieNodePrefix.create({ prefix: new Uint8Array() }),
+      new Metadata(),
+      rpcDeadline()
+    );
+    if (peerStateResult.isErr()) {
+      return err(peerStateResult.error);
+    }
+
+    const theirSnapshot = peerStateResult.value;
+    return this.syncStatus(peerId, theirSnapshot);
   }
 
   public get shouldCompactDb(): boolean {

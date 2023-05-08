@@ -1,4 +1,5 @@
 /* eslint-disable */
+// This must be manually change to a default import right now
 import grpcWeb from '@improbable-eng/grpc-web';
 import { BrowserHeaders } from 'browser-headers';
 import { Observable } from 'rxjs';
@@ -26,6 +27,8 @@ import {
   SignerRequest,
   SubscribeRequest,
   SyncIds,
+  SyncStatusRequest,
+  SyncStatusResponse,
   TrieNodeMetadataResponse,
   TrieNodePrefix,
   TrieNodeSnapshotResponse,
@@ -107,6 +110,7 @@ export interface HubService {
   ): Promise<MessagesResponse>;
   /** Sync Methods */
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
+  getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
   getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds>;
   getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   getSyncMetadataByPrefix(
@@ -151,6 +155,7 @@ export class HubServiceClientImpl implements HubService {
     this.getAllSignerMessagesByFid = this.getAllSignerMessagesByFid.bind(this);
     this.getAllUserDataMessagesByFid = this.getAllUserDataMessagesByFid.bind(this);
     this.getInfo = this.getInfo.bind(this);
+    this.getSyncStatus = this.getSyncStatus.bind(this);
     this.getAllSyncIdsByPrefix = this.getAllSyncIdsByPrefix.bind(this);
     this.getAllMessagesBySyncIds = this.getAllMessagesBySyncIds.bind(this);
     this.getSyncMetadataByPrefix = this.getSyncMetadataByPrefix.bind(this);
@@ -303,6 +308,13 @@ export class HubServiceClientImpl implements HubService {
 
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
     return this.rpc.unary(HubServiceGetInfoDesc, HubInfoRequest.fromPartial(request), metadata);
+  }
+
+  getSyncStatus(
+    request: DeepPartial<SyncStatusRequest>,
+    metadata?: grpcWeb.grpc.Metadata
+  ): Promise<SyncStatusResponse> {
+    return this.rpc.unary(HubServiceGetSyncStatusDesc, SyncStatusRequest.fromPartial(request), metadata);
   }
 
   getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds> {
@@ -941,6 +953,29 @@ export const HubServiceGetInfoDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = HubInfoResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetSyncStatusDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetSyncStatus',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SyncStatusRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = SyncStatusResponse.decode(data);
       return {
         ...value,
         toObject() {

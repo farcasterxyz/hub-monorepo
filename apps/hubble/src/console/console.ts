@@ -88,7 +88,7 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
 
   // Run the info command to start
 
-  const info = await rpcClient.getInfo(HubInfoRequest.create({ syncStats: true }), new Metadata(), {
+  const info = await rpcClient.getInfo(HubInfoRequest.create({ dbStats: true }), new Metadata(), {
     deadline: Date.now() + 2000,
   });
 

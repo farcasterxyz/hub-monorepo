@@ -246,7 +246,6 @@ describe('SyncEngine', () => {
       expect(shouldSync.isOk()).toBeTruthy();
       expect(shouldSync._unsafeUnwrap().isSyncing).toBeTruthy();
       expect(shouldSync._unsafeUnwrap().shouldSync).toBeFalsy();
-      expect(shouldSync._unsafeUnwrap().ourSnapshot).toBeUndefined();
       called = true;
 
       // Return an empty child map so sync will finish with a noop
@@ -332,7 +331,7 @@ describe('SyncEngine', () => {
     await engine.mergeMessage(signerAdd);
     await addMessagesWithTimestamps([167, 169]);
 
-    const stats = await syncEngine.getSyncStats();
+    const stats = await syncEngine.getDbStats();
     expect(stats.numFids).toEqual(1);
     expect(stats.numFnames).toEqual(2);
     expect(stats.numMessages).toEqual(3);

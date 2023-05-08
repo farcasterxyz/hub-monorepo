@@ -2,6 +2,7 @@ import {
   FarcasterNetwork,
   HubAsyncResult,
   HubError,
+  HubRpcClient,
   HubState,
   IdRegistryEvent,
   Message,
@@ -13,6 +14,8 @@ import { GossipNode } from '~/network/p2p/gossipNode';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
 import { AbstractProvider } from 'ethers';
+import { PeerId } from '@libp2p/interface-peer-id';
+import { ContactInfoContent } from '@farcaster/core';
 
 export class MockHub implements HubInterface {
   public db: RocksDB;
@@ -59,6 +62,10 @@ export class MockHub implements HubInterface {
   async gossipContactInfo(): HubAsyncResult<void> {
     this.gossipCount += 1;
     return ok(undefined);
+  }
+
+  async getRPCClientForPeer(_peerId: PeerId, _peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
+    return undefined;
   }
 }
 
