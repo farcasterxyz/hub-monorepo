@@ -51,26 +51,26 @@ export class HubReplicator {
 
     this.subscriber.on('event', async (hubEvent) => {
       if (isMergeMessageHubEvent(hubEvent)) {
-        this.log.info(`Processing merge event ${hubEvent.id} from stream`);
+        this.log.info(`[Sync] Processing merge event ${hubEvent.id} from stream`);
         await this.onMergeMessage(hubEvent.mergeMessageBody.message);
 
         for (const deletedMessage of hubEvent.mergeMessageBody.deletedMessages) {
           await this.storeMessage(deletedMessage, 'delete');
         }
       } else if (isPruneMessageHubEvent(hubEvent)) {
-        this.log.info(`Processing prune event ${hubEvent.id}`);
+        this.log.info(`[Sync] Processing prune event ${hubEvent.id}`);
         await this.onPruneMessage(hubEvent.pruneMessageBody.message);
       } else if (isRevokeMessageHubEvent(hubEvent)) {
-        this.log.info(`Processing revoke event ${hubEvent.id}`);
+        this.log.info(`[Sync] Processing revoke event ${hubEvent.id}`);
         await this.onRevokeMessage(hubEvent.revokeMessageBody.message);
       } else if (isMergeIdRegistryEventHubEvent(hubEvent)) {
-        this.log.info(`Processing ID registry event ${hubEvent.id}`);
+        this.log.info(`[Sync] Processing ID registry event ${hubEvent.id}`);
         await this.onIdRegistryEvent(hubEvent.mergeIdRegistryEventBody.idRegistryEvent);
       } else if (isMergeNameRegistryEventHubEvent(hubEvent)) {
-        this.log.info(`Processing name registry event ${hubEvent.id}`);
+        this.log.info(`[Sync] Processing name registry event ${hubEvent.id}`);
         await this.onNameRegistryEvent(hubEvent.mergeNameRegistryEventBody.nameRegistryEvent);
       } else {
-        this.log.warn(`Unknown type ${hubEvent.type} of event ${hubEvent.id}. Ignoring`);
+        this.log.warn(`[Sync] Unknown type ${hubEvent.type} of event ${hubEvent.id}. Ignoring`);
       }
 
       // Keep track of how many events we've processed.
@@ -99,9 +99,6 @@ export class HubReplicator {
     // but at least gives a rough ballpark of order of magnitude.
     this.log.info(`Syncing messages from hub ${this.hubAddress} (~${numMessages} messages)`);
 
-    // Start backfilling all historical data in the background
-    this.backfill();
-
     // Process live events going forward, starting from the last event we
     // processed (if there was one).
     const subscription = await this.db
@@ -110,6 +107,9 @@ export class HubReplicator {
       .select('lastEventId')
       .executeTakeFirst();
     this.subscriber.start(subscription?.lastEventId);
+
+    // Start backfilling all historical data in the background
+    this.backfill();
   }
 
   public stop() {
@@ -127,9 +127,9 @@ export class HubReplicator {
     const maxFid = maxFidResult.value.fids[0];
 
     for (let fid = 1; fid <= maxFid; fid++) {
-      this.log.info(`Starting backfill for FID ${fid}`);
+      this.log.info(`[Backfill] Starting FID ${fid}/${maxFid}`);
       await this.processAllMessagesForFid(fid);
-      this.log.info(`Completed backfill for FID ${fid}`);
+      this.log.info(`[Backfill] Completed FID ${fid}/${maxFid}`);
     }
   }
 
