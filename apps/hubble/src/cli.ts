@@ -462,9 +462,14 @@ app
     }
     const infoResult = await rpcClient.getInfo(HubInfoRequest.create({ dbStats: true }));
     const syncStatusResult = await rpcClient.getSyncStatus(SyncStatusRequest.create({ peerId: cliOptions.peerId }));
-    if (syncStatusResult.isErr() || infoResult.isErr()) {
-      const res = infoResult.isErr() ? infoResult : syncStatusResult;
-      logger.error({ errCode: res.error.errCode, errMsg: res.error.message }, 'Failed to get hub status');
+    if (syncStatusResult.isErr()) {
+      logger.error(
+        { errCode: syncStatusResult.error.errCode, errMsg: syncStatusResult.error.message },
+        'Failed to get hub status'
+      );
+      exit(1);
+    } else if (infoResult.isErr()) {
+      logger.error({ errCode: infoResult.error.errCode, errMsg: infoResult.error.message }, 'Failed to get hub status');
       exit(1);
     }
     const dbStats = infoResult.value.dbStats;
