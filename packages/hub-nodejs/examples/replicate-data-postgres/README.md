@@ -6,10 +6,11 @@ This example shows you how you can quickly start ingesting data from a Farcaster
 
 Note that these are rough guidelines. Recommend you over-allocate resources to accommodate eventual growth of the Farcaster network.
 
-* **Node.js Application**
+* **Node.js application**
     * ~200MB for installing NPM packages
-    * At most 1GB of RAM (typically around ~250MB is normally used)
-* ~2GB of space on your Postgres server to store all active Farcaster messages.
+    * 512MB of memory (typically around ~250MB is normally used)
+* **Postgres server**
+    * ~2GB of space on your Postgres server to store all active Farcaster messages.
 
 If you are running both the Node.js application and Postgres instance locally on your own machine, this will take about 3-4 hours to complete a backfill. If you are running them on separate servers, it may take significantly longer since the latency between the application and Postgres has a significant effect on backfill time.
 
@@ -27,9 +28,22 @@ To wipe your local data, run `docker compose down -v` from this directory.
 
 Render allows you to run a Node.js application and a Postgres server in the same private network, which results in a reasonably
 
-1. Create a new Standard Postgres instance via Render's dashboard.
-2. Create a new **Background Worker** and copy+paste the GitHub URL for the repo: git@github.com:farcasterxyz/hub-monorepo.git
-  Disable Auto-Deploy
+1. Create a new **PostgreSQL** instance in your project. Select the **Standard** instance type (for the storage).
+2. Create a new **Background Worker**, and connect a **Public Git repository** using the following URL: `https://github.com/farcasterxyz/hub-monorepo`
+   * Select the `main` branch
+   * Use the directory of this README for the **Root Directory** (`packages/hub-nodejs/examples/replicate-data-postgres`
+   * Set `Node` as the **Runtime**
+   * Set `yarn install` as the **Build Command**
+   * Set `yarn start` as the **Start Command**
+   * Select **Starter** for the instance type
+   * Under the **Advanced** section:
+      * Add a `POSTGRES_URL` environment variable, setting it to the **Internal Database URL** of the Postgres instance you created earlier.
+      * Disable **Auto-Deploy**
+   * Click **Create Background Worker**.
+
+Go to the **Logs** tab and confirm the application is running.
+
+You can query the database by going to the **Shell** tab and running `psql $POSTGRES_URL` to open a DB console session.
 
 ### Run on StackBlitz
 
