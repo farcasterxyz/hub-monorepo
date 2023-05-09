@@ -1,5 +1,13 @@
 # @farcaster/core
 
+## 0.7.2
+
+### Patch Changes
+
+- 1236b4e: Add a GetSyncStatus rpc call that exposes the hubs sync status with different peers
+- 2e633db: Reject prunable messages on merge
+- d2cb5e4: fix: validate parentUrl and targetUrl comprehensively
+
 ## 0.7.1
 
 ### Patch Changes

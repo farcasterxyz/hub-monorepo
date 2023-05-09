@@ -28,15 +28,17 @@ pnpm install @farcaster/hub-nodejs
 ```typescript
 import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
-
-  const castsResult = await client.getCastsByFid({ fid: 8928 });
-
-  castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
-
-  client.close();
-})();
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
+    const castsResult = await client.getCastsByFid({ fid: 8928 });
+    castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
+    client.close();
+  }
+});
 ```
 
 ## Contributing

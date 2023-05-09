@@ -126,7 +126,7 @@ export const up = async (db: Kysely<any>) => {
     .addColumn('hash', sql`bytea`, (col) => col.notNull())
     .addColumn('claim', 'jsonb', (col) => col.notNull())
     .addUniqueConstraint('verifications_hash_unique', ['hash'])
-    .addForeignKeyConstraint('verifications_ash_foreign', ['hash'], 'messages', ['hash'])
+    .addForeignKeyConstraint('verifications_hash_foreign', ['hash'], 'messages', ['hash'])
     .execute();
 
   await db.schema

@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "NODE_OPTIONS=--max-old-space-size=1024 tsx index.ts"
+    "start": "NODE_OPTIONS=--max-old-space-size=512 tsx index.ts"
   },
   "dependencies": {
     "@farcaster/hub-nodejs": "^0.7.1",
