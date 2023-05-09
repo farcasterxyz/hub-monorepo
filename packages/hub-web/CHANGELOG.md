@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.3.2
+
+### Patch Changes
+
+- 1236b4e: Add a GetSyncStatus rpc call that exposes the hubs sync status with different peers
+- Updated dependencies [1236b4e]
+- Updated dependencies [2e633db]
+- Updated dependencies [d2cb5e4]
+  - @farcaster/core@0.7.2
+
 ## 0.3.1
 
 ### Patch Changes

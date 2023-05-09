@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.2.2
+
+### Patch Changes
+
+- 5308788: improve handling of duplicate messages on gossip
+- 1236b4e: Add a GetSyncStatus rpc call that exposes the hubs sync status with different peers
+- 2e633db: Reject prunable messages on merge
+- Updated dependencies [1236b4e]
+  - @farcaster/hub-nodejs@0.7.2
+
 ## 1.2.1
 
 ### Patch Changes
