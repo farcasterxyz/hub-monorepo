@@ -48,7 +48,7 @@ app
   .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
   .option('--fir-address <address>', 'The address of the Farcaster ID Registry contract')
   .option('--fnr-address <address>', 'The address of the Farcaster Name Registry contract')
-  .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts')
+  .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts', parseNumber)
   .option(
     '--chunk-size <number>',
     'The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)',
