@@ -28,20 +28,13 @@ The @farcaster/hub-web APIs are largely the same as @farcaster/hub-nodejs. Read 
 ```typescript
 import { getHubRpcClient } from '@farcaster/hub-web';
 
-const hubRpcEndpoint = 'https://testnet1.farcaster.xyz:2285';
-const client = getHubRpcClient(hubRpcEndpoint);
-client.$.waitForReady(Date.now() + 5000, async (e) => {
-  if (e) {
-    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
-    process.exit(1);
-  } else {
-    console.log(`Connected to ${hubRpcEndpoint}`);
+(async () => {
+  const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
 
-    const castsResult = await client.getCastsByFid({ fid: 15 });
-    castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
-    client.close();
-  }
-});
+  const castsResult = await client.getCastsByFid({ fid: 15 });
+
+  castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
+})();
 ```
 
 ### Instantiating a client
@@ -53,22 +46,12 @@ The method to construct a Hub gRPC client differs from @farcaster/hub-nodejs. Us
 ```typescript
 import { getHubRpcClient } from '@farcaster/hub-web';
 
-const hubRpcEndpoint = 'https://testnet1.farcaster.xyz:2285';
-const client = getHubRpcClient(hubRpcEndpoint);
-// If you're using gRPC-Web from a Nodejs environment, add a second false parameter
-// const nodeClient = getHubRpcClient('https://testnet1.farcaster.xyz:2285', false);
+(async () => {
+  const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
 
-client.$.waitForReady(Date.now() + 5000, async (e) => {
-  if (e) {
-    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
-    process.exit(1);
-  } else {
-    console.log(`Connected to ${hubRpcEndpoint}`);
-
-    // Do your stuff here
-    client.close();
-  }
-});
+  // If you're using gRPC-Web from a Nodejs environment, add a second false parameter
+  // const nodeClient = getHubRpcClient('https://testnet1.farcaster.xyz:2285', false);
+})();
 ```
 
 #### Returns
@@ -93,29 +76,22 @@ gRPC-Web hub event streams are instances of the [Observable class](https://rxjs.
 ```typescript
 import { getHubRpcClient } from '@farcaster/hub-web';
 
-const hubRpcEndpoint = 'https://testnet1.farcaster.xyz:2285';
-const client = getHubRpcClient(hubRpcEndpoint);
+async () => {
+  const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
 
-client.$.waitForReady(Date.now() + 5000, async (e) => {
-  if (e) {
-    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
-    process.exit(1);
-  } else {
-    console.log(`Connected to ${hubRpcEndpoint}`);
+  const result = client.subscribe({ eventTypes: [HubEventType.PRUNE_MESSAGE], fromId: 0 });
 
-    const result = client.subscribe({ eventTypes: [HubEventType.PRUNE_MESSAGE], fromId: 0 });
-    result.map((observable) => {
-      observable.subscribe({
-        next(event: HubEvent) {
-          console.log('received event', event);
-        },
-        error(err) {
-          console.error(err);
-        },
-      });
+  result.map((observable) => {
+    observable.subscribe({
+      next(event: HubEvent) {
+        console.log('received event', event);
+      },
+      error(err) {
+        console.error(err);
+      },
     });
-  }
-});
+  });
+};
 ```
 
 #### Returns
