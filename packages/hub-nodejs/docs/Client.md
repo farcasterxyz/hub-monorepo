@@ -15,17 +15,29 @@ getInsecureHubRpcClient returns a Hub RPC Client. Use getSSLHubRpcClient if the 
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+// Instantiate the gRPC client for a secure connection
+const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
 
-  // If the Hub does not use SSL, call the getInsecureHubRpcClient method instead
-  // const insecureClient = getInsecureHubRpcClient('https://testnet1.farcaster.xyz:2283');
+// If the Hub does not use SSL, call the getInsecureHubRpcClient method instead
+// const insecureClient = getInsecureHubRpcClient('https://testnet1.farcaster.xyz:2283');
 
-  // After everything, close the RPC connection
-  client.close();
-})();
+// Wait for the gRPC client to be ready before making any requests
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to the gRPC server:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to the gRPC server`);
+
+    // Add any gRPC calls you want to make here, for example:
+    // const castsResult = await client.getCastsByFid({ fid: 8928 });
+
+    // After everything, close the RPC connection
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -112,34 +124,42 @@ if (castResult.isOk()) {
 Methods that return multiple values support pagination in requests with a `pageSize` and `pageToken` property.
 
 ```typescript
-import { geSSLHubRpcClient, HubResult, MessagesResponse } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, HubResult, MessagesResponse } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  let nextPageToken: Uint8Array | undefined = undefined;
-  let isNextPage = true;
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  while (isNextPage) {
-    const castsResult: HubResult<MessagesResponse> = await client.getCastsByFid({
-      fid: 2,
-      pageSize: 10,
-      pageToken: nextPageToken,
-    });
+    let nextPageToken: Uint8Array | undefined = undefined;
+    let isNextPage = true;
 
-    if (castsResult.isErr()) {
-      break;
+    while (isNextPage) {
+      const castsResult: HubResult<MessagesResponse> = await client.getCastsByFid({
+        fid: 2,
+        pageSize: 10,
+        pageToken: nextPageToken,
+      });
+
+      if (castsResult.isErr()) {
+        break;
+      }
+
+      const castsResponse: MessagesResponse = castsResult.value;
+      castsResponse.messages.map((cast) => console.log(cast?.data?.castAddBody?.text));
+
+      nextPageToken = castsResponse.nextPageToken;
+      isNextPage = !!nextPageToken && nextPageToken.length > 0;
     }
 
-    const castsResponse: MessagesResponse = castsResult.value;
-    castsResponse.messages.map((cast) => console.log(cast?.data?.castAddBody?.text));
-
-    nextPageToken = castsResponse.nextPageToken;
-    isNextPage = !!nextPageToken && nextPageToken.length > 0;
+    client.close();
   }
-
-  client.close();
-})();
+});
 ```
 
 ## Method Request Documentation
@@ -151,23 +171,30 @@ Returns an active signer message given an fid and the public key of the signer.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const signerPubKeyHex = '5feb9e21f3df044197e634e3602a594a3423c71c6f208876074dc5a3e0d7b9ce';
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  const signer = hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(); // Safety: signerPubKeyHex is known and can't error
+    const signerPubKeyHex = '5feb9e21f3df044197e634e3602a594a3423c71c6f208876074dc5a3e0d7b9ce';
+    const signer = hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(); // Safety: signerPubKeyHex is known and can't error
 
-  const signerResult = await client.getSigner({
-    fid: 2,
-    signer,
-  });
+    const signerResult = await client.getSigner({
+      fid: 2,
+      signer,
+    });
 
-  signerResult.map((signerAdd) => console.log(signerAdd));
-  client.close();
-})();
+    signerResult.map((signerAdd) => console.log(signerAdd));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -192,16 +219,24 @@ Returns all active signers created by an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  signersResult.map((signers) => console.log(signers.messages));
-  client.close();
-})();
+    const signersResult = await client.getSignersByFid({ fid: 2 });
+    signersResult.map((signers) => console.log(signers.messages));
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -228,16 +263,24 @@ Returns all active and inactive signers created by an fid in reverse chronologic
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  signersResult.map((signers) => console.log(signers.messages));
-  client.close();
-})();
+    const signersResult = await client.getAllSignerMessagesByFid({ fid: 2 });
+    signersResult.map((signers) => console.log(signers.messages));
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -264,16 +307,24 @@ Returns a specific piece of metadata about the user.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, UserDataType } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const userDataResult = await client.getUserData({ fid: 2, userDataType: UserDataType.DISPLAY });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  userDataResult.map((userData) => console.log(userData));
-  client.close();
-})();
+    const userDataResult = await client.getUserData({ fid: 2, userDataType: UserDataType.DISPLAY });
+    userDataResult.map((userData) => console.log(userData));
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -298,16 +349,24 @@ Returns all metadata about the user.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const userDataResult = await client.getAllUserDataMessagesByFid({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  userDataResult.map((userData) => userData.messages.map((message) => console.log(message)));
-  client.close();
-})();
+    const userDataResult = await client.getAllUserDataMessagesByFid({ fid: 2 });
+    userDataResult.map((userData) => userData.messages.map((message) => console.log(message)));
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -338,19 +397,26 @@ Returns an active cast for a user.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const castHashHex = '460a87ace7014adefe4a2944fb62833b1bf2a6be';
-  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
+    const castHashHex = '460a87ace7014adefe4a2944fb62833b1bf2a6be';
+    const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
 
-  const castResult = await client.getCast({ fid: 2, hash: castHashBytes });
+    const castResult = await client.getCast({ fid: 2, hash: castHashBytes });
 
-  castResult.map((cast) => console.log(cast));
-  client.close();
-})();
+    castResult.map((cast) => console.log(cast));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -375,16 +441,24 @@ Returns active casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const castsResult = await client.getCastsByFid({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  castsResult.map((casts) => console.log(casts.messages));
-  client.close();
-})();
+    client.getCastsByFid({ fid: 2 }).then((castsResult) => {
+      castsResult.map((casts) => console.log(casts.messages));
+      client.close();
+    });
+  }
+});
 ```
 
 #### Returns
@@ -411,16 +485,24 @@ Returns all active casts that mention an fid in reverse chronological order.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const castsResult = await client.getCastsByMention({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  castsResult.map((casts) => console.log(casts.messages));
-  client.close();
-})();
+    const castsResult = await client.getCastsByMention({ fid: 2 });
+
+    castsResult.map((casts) => console.log(casts.messages));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -449,17 +531,25 @@ Returns all active casts that are replies to a specific cast in reverse chronolo
 ```typescript
 import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253';
-  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  const castsResult = await client.getCastsByParent({ castId: { fid: 2, hash: castHashBytes } });
+    const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253';
+    const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known
 
-  castsResult.map((casts) => console.log(casts.messages));
-  client.close();
-})();
+    const castsResult = await client.getCastsByParent({ castId: { fid: 2, hash: castHashBytes } });
+
+    castsResult.map((casts) => console.log(casts.messages));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -486,15 +576,24 @@ Returns all active and inactive casts for a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const castsResult = await client.getAllCastMessagesByFid({ fid: 2 });
-  castsResult.map((casts) => console.log(casts.messages));
-  client.close();
-})();
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
+
+    const castsResult = await client.getAllCastMessagesByFid({ fid: 2 });
+    castsResult.map((casts) => console.log(casts.messages));
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -523,24 +622,32 @@ Returns an active reaction of a particular type made by a user to a cast.
 ```typescript
 import { geSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
-  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  const reactionsResult = await client.getReaction({
-    fid: 8150,
-    reactionType: ReactionType.LIKE,
-    castId: {
-      fid: 2,
-      hash: castHashBytes,
-    },
-  });
+    const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
+    const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
 
-  reactionsResult.map((reaction) => console.log(reaction));
-  client.close();
-})();
+    const reactionsResult = await client.getReaction({
+      fid: 8150,
+      reactionType: ReactionType.LIKE,
+      castId: {
+        fid: 2,
+        hash: castHashBytes,
+      },
+    });
+
+    reactionsResult.map((reaction) => console.log(reaction));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -566,25 +673,33 @@ Returns all active reactions made by users to a cast.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
-  const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  const reactionsResult = await client.getReactionsByCast({
-    reactionType: ReactionType.LIKE,
-    castId: {
-      fid: 2,
-      hash: castHashBytes,
-    },
-  });
+    const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253'; // Cast to fetch reactions for
+    const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known and can't error
 
-  reactionsResult.map((reaction) => console.log(reaction.messages));
-  client.close();
-})();
+    const reactionsResult = await client.getReactionsByCast({
+      reactionType: ReactionType.LIKE,
+      castId: {
+        fid: 2,
+        hash: castHashBytes,
+      },
+    });
+
+    reactionsResult.map((reaction) => console.log(reaction.messages));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -612,16 +727,23 @@ Returns all active reactions made by a user in reverse chronological order.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, ReactionType } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const reactionsResult = await client.getReactionsByFid({ fid: 2, reactionType: ReactionType.LIKE });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  reactionsResult.map((reaction) => console.log(reaction.messages));
-  client.close();
-})();
+    const reactionsResult = await client.getReactionsByFid({ fid: 2, reactionType: ReactionType.LIKE });
+    reactionsResult.map((reaction) => console.log(reaction.messages));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -649,16 +771,24 @@ Returns all active and inactive reactions made by a user in reverse chronologica
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const reactionsResult = await client.getAllReactionMessagesByFid({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  reactionsResult.map((reaction) => console.log(reaction.messages));
-  client.close();
-})();
+    const reactionsResult = await client.getAllReactionMessagesByFid({ fid: 2 });
+    reactionsResult.map((reaction) => console.log(reaction.messages));
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -685,19 +815,27 @@ Returns an active verification for a specific Ethereum address made by a user.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const addressHex = '0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5';
-  const addressBytes = hexStringToBytes(addressHex)._unsafeUnwrap(); // Safety: addressHex is known and can't error
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  const verificationResult = await client.getVerification({ fid: 2, address: addressBytes });
+    const addressHex = '0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5';
+    const addressBytes = hexStringToBytes(addressHex)._unsafeUnwrap(); // Safety: addressHex is known and can't error
 
-  verificationResult.map((verification) => console.log(verification));
-  client.close();
-})();
+    const verificationResult = await client.getVerification({ fid: 2, address: addressBytes });
+
+    verificationResult.map((verification) => console.log(verification));
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -722,20 +860,28 @@ Returns all active verifications for Ethereum addresses made by a user in revers
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const verificationsResult = await client.getVerificationsByFid({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  verificationsResult.map((verificationsResponse) =>
-    verificationsResponse.messages.map((v) => {
-      console.log(v);
-    })
-  );
-  client.close();
-})();
+    const verificationsResult = await client.getVerificationsByFid({ fid: 2 });
+
+    verificationsResult.map((verificationsResponse) =>
+      verificationsResponse.messages.map((v) => {
+        console.log(v);
+      })
+    );
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -762,20 +908,28 @@ Returns all active and inactive verifications for Ethereum addresses made by a u
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const verificationsResult = await client.getAllVerificationMessagesByFid({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  verificationsResult.map((verificationsResponse) =>
-    verificationsResponse.messages.map((v) => {
-      console.log(v);
-    })
-  );
-  client.close();
-})();
+    const verificationsResult = await client.getAllVerificationMessagesByFid({ fid: 2 });
+    verificationsResult.map((verificationsResponse) =>
+      verificationsResponse.messages.map((v) => {
+        console.log(v);
+      })
+    );
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -806,24 +960,33 @@ which helps with recovery when clients get disconnected temporarily.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, HubEventType } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const subscribeResult = await client.subscribe({
-    eventTypes: [HubEventType.MERGE_MESSAGE],
-  });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  if (subscribeResult.isOk()) {
-    const stream = subscribeResult.value;
+    const subscribeResult = await client.subscribe({
+      eventTypes: [HubEventType.MERGE_MESSAGE],
+    });
 
-    for await (const event of stream) {
-      console.log(event);
+    if (subscribeResult.isOk()) {
+      const stream = subscribeResult.value;
+
+      for await (const event of stream) {
+        console.log(event);
+      }
     }
+
+    client.close();
   }
-  client.close();
-})();
+});
 ```
 
 #### Returns
@@ -848,21 +1011,29 @@ Submits a new message to the Hub. A Hub can choose to require basic authenticati
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, getAuthMetadata } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const message; // Any valid message constructed with a Builder
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  const authMetadata = getAuthMetadata('username', 'password'); // Only necessary if the hubble instance requires auth
-  const submitResult = await client.submitMessage(message, authMetadata);
+    const message; // Any valid message constructed with a Builder
 
-  const submitResult = await client.submitMessage(message);
-  console.log(submitResult);
+    const authMetadata = getAuthMetadata('username', 'password'); // Only necessary if the hubble instance requires auth
+    const submitResult = await client.submitMessage(message, authMetadata);
 
-  client.close();
-})();
+    const submitResult = await client.submitMessage(message);
+    console.log(submitResult);
+
+    client.close();
+  }
+});
 ```
 
 #### Returns
@@ -887,16 +1058,23 @@ Returns the on-chain event most recently associated with changing an fid's owner
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const idrResult = await client.getIdRegistryEvent({ fid: 2 });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  idrResult.map((event) => console.log(event));
+    const idrResult = await client.getIdRegistryEvent({ fid: 2 });
+    idrResult.map((event) => console.log(event));
+  }
   client.close();
-})();
+});
 ```
 
 #### Returns
@@ -920,17 +1098,25 @@ Returns the on-chain event most recently associated with changing an fname's own
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient } from '@farcaster/hub-nodejs';
 
-(async () => {
-  const client = getSSLHubRpcClient('testnet1.farcaster.xyz:2283');
+const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
-  const fnameBytes = new TextEncoder().encode('v');
-  const nrResult = await client.getNameRegistryEvent({ name: fnameBytes });
+client.$.waitForReady(Date.now() + 5000, async (e) => {
+  if (e) {
+    console.error(`Failed to connect to ${hubRpcEndpoint}:`, e);
+    process.exit(1);
+  } else {
+    console.log(`Connected to ${hubRpcEndpoint}`);
 
-  nrResult.map((event) => console.log(event));
-  client.close();
-})();
+    const fnameBytes = new TextEncoder().encode('v');
+    const nrResult = await client.getNameRegistryEvent({ name: fnameBytes });
+
+    nrResult.map((event) => console.log(event));
+    client.close();
+  }
+});
 ```
 
 #### Returns
