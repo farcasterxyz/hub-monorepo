@@ -29,4 +29,5 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWEr4WoKduAQg8VJSgwcNsqptbdkSQLw1ceEr8oSBQurJX', // @yanisme
   '12D3KooWMZK4VeMX3ZARugTuGexXFHNiGHgNFq6XE2vzi88fMgwC', // @event
   '12D3KooWEs1QcvJcoVv3ihHqqa3yxh4gijegrjyyVkvso2qayUdj', // @colin / @paragraph
+  '12D3KooWBhm9XdafZiBWPncDVcvMhcmV3kLFLnBiS83CjY833sWN', // @pjc (fc.bus.events)
 ];
