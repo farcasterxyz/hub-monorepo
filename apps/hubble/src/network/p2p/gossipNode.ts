@@ -69,12 +69,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
-  private _bootstrapPeerIds: Set<string>;
 
   constructor(network?: FarcasterNetwork) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
-    this._bootstrapPeerIds = new Set<string>();
   }
 
   /** Returns the PeerId (public key) of this node */
@@ -261,16 +259,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Connect to a peer Gossip Node using a specific address */
-  async connectAddress(address: Multiaddr, isBootstrapNode = false): Promise<HubResult<void>> {
+  async connectAddress(address: Multiaddr): Promise<HubResult<void>> {
     log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
     try {
       const conn = await this._node?.dial(address);
 
       if (conn) {
         log.info({ identity: this.identity, address }, `Connected to peer at address: ${address}`);
-        if (isBootstrapNode) {
-          this._bootstrapPeerIds.add(conn.remotePeer.toString());
-        }
         return ok(undefined);
       }
     } catch (error: any) {
@@ -341,8 +336,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return [this.primaryTopic(), this.contactInfoTopic()];
   }
 
-  get bootstrapPeerIds(): Set<string> {
-    return this._bootstrapPeerIds;
+  allPeerIds(): string[] {
+    return this._node?.getPeers()?.map((peer) => peer.toString()) ?? [];
   }
 
   //TODO: Needs better typesafety
@@ -372,7 +367,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /* Attempts to dial all the addresses in the bootstrap list */
   public async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
     if (bootstrapAddrs.length == 0) return ok(undefined);
-    const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr, true)));
+    const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
 
     const finalResults = Result.combineWithAllErrors(results) as Result<void[], HubError[]>;
     if (finalResults.isErr() && finalResults.error.length == bootstrapAddrs.length) {
