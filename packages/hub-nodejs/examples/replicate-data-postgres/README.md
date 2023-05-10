@@ -2,31 +2,93 @@
 
 This example shows you how you can quickly start ingesting data from a Farcaster hub into a traditional database like Postgres.
 
-### Requirements
+* [Caveats](#caveats)
+* [Running the example](#running-the-example)
+    * [Run locally](#run-locally-recommended-for-quick-experimentation)
+    * [Run on Render](#running-on-render)
+* [What does it do?](#what-does-it-do)
+* [Examples of SQL queries](#examples-of-sql-queries)
+* [Database tables](#database-tables)
 
-Note that these are rough guidelines. Recommend you over-allocate resources to accommodate eventual growth of the Farcaster network.
+## Caveats
 
-* **Node.js application**
-    * ~200MB for installing NPM packages
-    * 512MB of memory (typically around ~250MB is normally used)
-* **Postgres server**
-    * ~2GB of space on your Postgres server to store all active Farcaster messages.
+There are some important points to consider when using this example:
 
-If you are running both the Node.js application and Postgres instance locally on your own machine, this will take about 3-4 hours to complete a backfill. If you are running them on separate servers, it may take significantly longer since the latency between the application and Postgres has a significant effect on backfill time.
+* **This is not intended to be used in production!**
+  It's intended to be an easy-to-understand example of what a production implementation might look like, but it focuses on how to think about processing messages and events and the associated side effects.
+
+* If you are running the Node.js application and Postgres DB on different servers, the time it takes to sync will be heavily dependent on the latency between those servers. It is strongly recommended that you connect these using a private network, rather than connecting to them over the public internet, which some platforms like Supabase, Vercel, etc. do (at time of writing). If you don't, the initial backfill will take significantly longer (potentially days).
+
+* While the created tables have some indexes for query performance, they are not built to consider all query patterns.
+
+## Running the example
+
+Below are instructions for two different ways to run the example. If you want to get started quickly with as few commands as possible, we recommend you run the example locally.
+
+* [Run locally](#run-locally-recommended-for-quick-experimentation)
+* [Run on Render](#running-on-render)
+
+These two options are recommended because they are relatively quick and also allow you to run the application and Postgres database with low latency between each other, which makes downloading data from the hubs much faster. However, you can get the example running with any platform you choose.
 
 ### Run locally (recommended for quick experimentation)
 
-1. Clone the repo locally
+#### Requirements
+
+* 1GB of memory
+* 4GB of free disk space
+* Docker. If you're running macOS, run `brew bundle && open -a Docker` from this example's directory. Otherwise instructions can be found [here](https://docs.docker.com/get-docker/).
+
+#### Instructions
+
+1. Clone the repo locally: `git clone git@github.com:farcasterxyz/hub-monorepo.git`
 2. Navigate to this directory with `cd packages/hub-nodejs/examples/replicate-data-postgres`
-3. Run `yarn install` to install dependencies
-4. Run `docker compose up -d` to start a Postgres instance ([install Docker](https://docs.docker.com/get-docker/) if you do not yet have it)
-5. Run `yarn start`
+3. Run `docker compose up`
 
-To wipe your local data, run `docker compose down -v` from this directory.
+Once the Docker images have finished downloading, you should start to see messages like:
 
-### Running on Render
+```
+replicate-data-postgres-app-1   | [01:06:37.823] INFO (86): [Backfill] Starting FID 1/12830
+replicate-data-postgres-app-1   | [01:06:38.478] INFO (86): [Backfill] Completed FID 1/12830
+replicate-data-postgres-app-1   | [01:06:38.478] INFO (86): [Backfill] Starting FID 2/12830
+...
+replicate-data-postgres-app-1   | [01:06:50.142] INFO (86): [Sync] Processing merge event 304011714592768 from stream
+replicate-data-postgres-app-1   | [01:06:50.142] INFO (86): [Sync] Processing merge event 304011726786560 from stream
+...
+```
 
-Render allows you to run a Node.js application and a Postgres server in the same private network, which results in a reasonably
+If messages like these are appearing, replication is working as expected.
+
+#### Connecting to Postgres
+
+While it will take a few hours to fully sync all data from the hub, you can start to query data right away.
+
+Run:
+
+```sh
+docker compose exec postgres psql -U app hub
+```
+
+See [Examples of SQL queries](#examples-of-sql-queries) below.
+
+#### Cleanup
+
+If you're done with the example and no longer need the data locally:
+
+* Go to the example's directory (`cd packages/hub-nodejs/examples/replicate-data-postgres`)
+* Run `docker compose down --rmi -v`.
+
+This will remove the Docker images, NPM packages, and Postgres data.
+
+### Run on Render
+
+[Render](https://render.com/) allows you to run a Node.js application and a Postgres server in the same network.
+
+#### Requirements
+
+* Register an account at Render and create a project.
+* You'll need a subscription to pay for the **Standard** instance type for Postgres ($20/mth at time of writing).
+
+#### Instructions
 
 1. Create a new **PostgreSQL** instance in your project. Select the **Standard** instance type (for the storage).
 2. Create a new **Background Worker**, and connect a **Public Git repository** using the following URL: `https://github.com/farcasterxyz/hub-monorepo`
@@ -43,15 +105,20 @@ Render allows you to run a Node.js application and a Postgres server in the same
 
 Go to the **Logs** tab and confirm the application is running.
 
-You can query the database by going to the **Shell** tab and running `psql $POSTGRES_URL` to open a DB console session.
+#### Connecting to Postgres
 
-### Run on StackBlitz
+While it will take a few hours to fully sync all data from the hub, you can start to query data right away.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/farcasterxyz/hubble/tree/main/packages/hub-nodejs/examples/replicate-data-postgres)
+1. Go to the Postgres instance you created and select the **Shell** tab.
+2. Within the shell, run `psql $POSTGRES_URL` to open a DB console session.
 
-Note: this will require you to specify `POSTGRES_URL`.
+See [Examples of SQL queries](#examples-of-sql-queries) below.
 
-### What does it do?
+#### Cleanup
+
+If you're done with the example and no longer need the data, you can delete the Background Worker and Postgres instances.
+
+## What does it do?
 
 This example application starts two high-level processes:
 
@@ -62,7 +129,7 @@ If left running, the backfill will eventually complete and the subscription will
 
 If you stop the process and start it again, it will start the backfill process for each FID from the beginning (i.e. will download the same messages again, but ignoring messages it already has). It will start reading live events from the last event it saw from the event stream.
 
-#### Examples of SQL queries
+## Examples of SQL queries
 
 Note that you'll need to wait until a full backfill has completed before some queries will return correct data. But you could start querying data for specific users (especially those with lower FIDs) after a few minutes and start to get data.
 
@@ -83,22 +150,11 @@ select c.hash, count(*) as recast_count from casts as c join reactions as r on r
 
 See the list of tables below for the schema.
 
-### Caveats
-
-There are some important points to consider when using this example:
-
-* **This is not intended to be used in production!**
-  It's intended to be an easy-to-understand example of what a production implementation might look like, but it focuses on how to think about processing messages and events and the associated side effects.
-
-* If you are running the Node.js application and Postgres DB on different servers, the time it takes to sync will be heavily dependent on the latency between those servers. It is strongly recommended that you connect these using a private network, rather than connecting to them over the public internet, which some platforms like Supabase, Vercel, etc. do (at time of writing). If you don't, the initial backfill will take significantly longer (potentially days).
-
-* While the created tables have some indexes for query performance, they are not built to consider all query patterns.
-
-### Database Tables
+## Database tables
 
 The following tables are automatically created in the Postgres DB:
 
-#### `messages`
+### `messages`
 
 All Farcaster messages retrieved from the hub are stored in this table. Messages are never deleted, only soft-deleted (i.e. marked as deleted but not actually removed from the DB).
 
@@ -120,7 +176,7 @@ signature_scheme | `smallint` | Message hash scheme.
 signer | `bytea` | Signer used to sign this message.
 raw | `bytea` | Raw bytes representing the serialized message [protobuf](https://protobuf.dev/).
 
-#### `casts`
+### `casts`
 
 Represents a cast authored by a user.
 
@@ -141,7 +197,7 @@ embeds | `text[]` | Array of URLs that were embedded with this cast.
 mentions | `bigint[]` | Array of FIDs mentioned in the cast.
 mentions_positions | `smallint[]` | UTF8 byte offsets of the mentioned FIDs in the cast.
 
-#### `reactions`
+### `reactions`
 
 Represents a user reacting (liking or recasting) content.
 
@@ -159,7 +215,7 @@ target_hash | `bytea` | If target was a cast, the hash of the cast. `null` other
 target_fid | `bigint` | If target was a cast, the FID of the author of the cast. `null` otherwise.
 target_url | `text` | If target was a URL (e.g. NFT, a web URL, etc.), the URL. `null` otherwise.
 
-#### `verifications`
+### `verifications`
 
 Represents a user verifying something on the network. Currently, the only verification is proving ownership of an Ethereum wallet address.
 
@@ -174,7 +230,7 @@ fid | `bigint` | FID of the user that signed the message.
 hash | `bytea` | Message hash.
 claim | `jsonb` | JSON object in the form `{"address": "0x...", "blockHash": "0x...", "ethSignature": "0x..."}`. See [specification](https://github.com/farcasterxyz/protocol/blob/main/docs/SPECIFICATION.md#15-verifications) for details.
 
-#### `signers`
+### `signers`
 
 Represents signers that users have registered as authorized to sign Farcaster messages on the user's behalf.
 
@@ -191,7 +247,7 @@ custody_address | `bytea` | The address of the FID that signed the `SignerAdd` m
 signer | `bytea` | The public key of the signer that was added.
 name | `text` | User-specified human-readable name for the signer (e.g. the application it is used for).
 
-#### `user_data`
+### `user_data`
 
 Represents data associated with a user (e.g. profile photo, bio, username, etc.)
 
@@ -207,7 +263,7 @@ hash | `bytea` | Message hash.
 type | `smallint` | The type of user data (PFP, bio, username, etc.)
 value | `text` | The string value of the field.
 
-#### `fids`
+### `fids`
 
 Stores the custody address that owns a given FID (i.e. a Farcaster user).
 
