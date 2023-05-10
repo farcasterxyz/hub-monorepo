@@ -10,7 +10,7 @@ import { log } from './log';
  */
 const HUB_HOST = process.env['HUB_HOST'] || 'nemes.farcaster.xyz:2283';
 const HUB_SSL = (process.env['HUB_SSL'] || 'true') === 'true';
-const POSTGRES_URL = process.env['POSTGRES_URL'] || 'postgres://app:password@localhost:6543/hub';
+const POSTGRES_URL = process.env['POSTGRES_URL'] || 'postgres://app:password@localhost:6541/hub';
 
 const db = getDbClient(POSTGRES_URL);
 
