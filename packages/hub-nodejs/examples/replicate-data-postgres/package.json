@@ -12,6 +12,7 @@
     "kysely": "^0.24.2",
     "kysely-postgres-js": "^1.1.1",
     "pino": "^8.12.1",
+    "pino-pretty": "^10.0.0",
     "postgres": "^3.3.4",
     "tiny-typed-emitter": "^2.1.0"
   },

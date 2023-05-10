@@ -1,11 +1,27 @@
 version: '3.9'
 
 services:
+  app:
+    image: 'node:20-alpine'
+    restart: unless-stopped
+    command: ["sh", "-c", "yarn install && exec yarn start"]
+    init: true
+    environment:
+      - POSTGRES_URL=postgres://app:password@postgres:5432/hub
+    volumes:
+      - .:/home/node/app
+      - app_node_modules:/home/node/app/node_modules
+    working_dir: /home/node/app
+    depends_on:
+      - postgres
+    networks:
+      - my_network
+
   postgres:
-    image: postgres:15-alpine # Smaller image for demonstration purposes
+    image: 'postgres:15-alpine'
     restart: unless-stopped
     ports:
-      - '6543:5432' # Use a port unlikely to be in use
+      - '6541:5432' # Use a port unlikely to be in use so the example "Just Works"
     environment:
       - POSTGRES_DB=hub
       - POSTGRES_USER=app
@@ -17,6 +33,12 @@ services:
       interval: 10s
       timeout: 10s
       retries: 3
+    networks:
+      - my_network
 
 volumes:
   pgdata:
+  app_node_modules:
+
+networks:
+  my_network:
