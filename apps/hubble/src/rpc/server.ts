@@ -299,7 +299,7 @@ export default class Server {
           if (call.request.peerId && call.request.peerId.length > 0) {
             peersToCheck = [call.request.peerId];
           } else {
-            peersToCheck = Array.from(this.gossipNode.bootstrapPeerIds.values());
+            peersToCheck = this.gossipNode.allPeerIds();
           }
 
           const response = SyncStatusResponse.create({
