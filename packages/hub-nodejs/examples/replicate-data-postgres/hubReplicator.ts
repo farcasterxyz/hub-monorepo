@@ -34,12 +34,19 @@ import { Logger } from 'pino';
 import { Database } from './db';
 import { Kysely, sql } from 'kysely';
 import { bytesToHex, farcasterTimeToDate } from './util';
+import * as fastq from 'fastq';
+import type { queueAsPromised } from 'fastq';
+import prettyMilliseconds from 'pretty-ms';
+import os from 'node:os';
 
 type StoreMessageOperation = 'merge' | 'delete' | 'prune' | 'revoke';
 
 // If you're hitting out-of-memory errors, try decreasing this to reduce overall
 // memory usage.
-const MAX_PAGE_SIZE = 1_000;
+const MAX_PAGE_SIZE = 3_000;
+
+// Max FIDs to fetch in parallel
+const MAX_JOB_CONCURRENCY = Number(process.env['MAX_CONCURRENCY']) || os.cpus().length;
 
 export class HubReplicator {
   private client: HubRpcClient;
@@ -52,17 +59,14 @@ export class HubReplicator {
     this.subscriber.on('event', async (hubEvent) => {
       if (isMergeMessageHubEvent(hubEvent)) {
         this.log.info(`[Sync] Processing merge event ${hubEvent.id} from stream`);
-        await this.onMergeMessage(hubEvent.mergeMessageBody.message);
-
-        for (const deletedMessage of hubEvent.mergeMessageBody.deletedMessages) {
-          await this.storeMessage(deletedMessage, 'delete');
-        }
+        await this.onMergeMessages([hubEvent.mergeMessageBody.message]);
+        await this.storeMessages(hubEvent.mergeMessageBody.deletedMessages, 'delete');
       } else if (isPruneMessageHubEvent(hubEvent)) {
         this.log.info(`[Sync] Processing prune event ${hubEvent.id}`);
-        await this.onPruneMessage(hubEvent.pruneMessageBody.message);
+        await this.onPruneMessages([hubEvent.pruneMessageBody.message]);
       } else if (isRevokeMessageHubEvent(hubEvent)) {
         this.log.info(`[Sync] Processing revoke event ${hubEvent.id}`);
-        await this.onRevokeMessage(hubEvent.revokeMessageBody.message);
+        await this.onRevokeMessages([hubEvent.revokeMessageBody.message]);
       } else if (isMergeIdRegistryEventHubEvent(hubEvent)) {
         this.log.info(`[Sync] Processing ID registry event ${hubEvent.id}`);
         await this.onIdRegistryEvent(hubEvent.mergeIdRegistryEventBody.idRegistryEvent);
@@ -97,7 +101,7 @@ export class HubReplicator {
 
     // Not technically true, since hubs don't return CastRemove/etc. messages,
     // but at least gives a rough ballpark of order of magnitude.
-    this.log.info(`Syncing messages from hub ${this.hubAddress} (~${numMessages} messages)`);
+    this.log.info(`[Backfill] Fetching messages from hub ${this.hubAddress} (~${numMessages} messages)`);
 
     // Process live events going forward, starting from the last event we
     // processed (if there was one).
@@ -125,12 +129,24 @@ export class HubReplicator {
     if (maxFidResult.isErr()) throw new Error('Unable to backfill', { cause: maxFidResult.error });
 
     const maxFid = maxFidResult.value.fids[0];
+    let totalProcessed = 0;
+    const startTime = Date.now();
+    const queue: queueAsPromised<{ fid: number }> = fastq.promise(async ({ fid }) => {
+      await this.processAllMessagesForFid(fid);
+
+      totalProcessed += 1;
+      const elapsedMs = Date.now() - startTime;
+      const millisRemaining = Math.ceil((elapsedMs / totalProcessed) * maxFid);
+      this.log.info(
+        `[Backfill] Completed FID ${fid}/${maxFid}. Estimated time remaining: ${prettyMilliseconds(millisRemaining)}`
+      );
+    }, MAX_JOB_CONCURRENCY);
 
     for (let fid = 1; fid <= maxFid; fid++) {
-      this.log.info(`[Backfill] Starting FID ${fid}/${maxFid}`);
-      await this.processAllMessagesForFid(fid);
-      this.log.info(`[Backfill] Completed FID ${fid}/${maxFid}`);
+      queue.push({ fid });
     }
+
+    await queue.drained();
   }
 
   private async processAllMessagesForFid(fid: number) {
@@ -149,9 +165,7 @@ export class HubReplicator {
       this.getUserDataByFidInBatchesOf,
     ]) {
       for await (const messages of fn.call(this, fid, MAX_PAGE_SIZE)) {
-        for (const message of messages) {
-          await this.onMergeMessage(message);
-        }
+        await this.onMergeMessages(messages);
       }
     }
   }
@@ -236,42 +250,47 @@ export class HubReplicator {
     }
   }
 
-  private async storeMessage(message: Message, operation: StoreMessageOperation) {
-    if (!message.data) {
-      throw new Error('Message data is missing');
-    }
+  private async storeMessages(messages: Message[], operation: StoreMessageOperation) {
+    if (!messages?.length) return {};
 
     const now = new Date();
 
-    const messageRow = await this.db
+    const messageRows = await this.db
       .insertInto('messages')
-      .values({
-        fid: message.data.fid,
-        messageType: message.data.type,
-        timestamp: farcasterTimeToDate(message.data.timestamp),
-        hash: message.hash,
-        hashScheme: message.hashScheme,
-        signature: message.signature,
-        signatureScheme: message.signatureScheme,
-        signer: message.signer,
-        raw: Message.encode(message).finish(),
-        deletedAt: operation === 'delete' ? now : null,
-        prunedAt: operation === 'prune' ? now : null,
-        revokedAt: operation === 'revoke' ? now : null,
-      })
-      .onConflict((oc) =>
-        oc
-          .columns(['hash'])
-          .doUpdateSet({
+      .values(
+        messages.map((message) => {
+          if (!message.data) throw new Error('Message missing data!'); // Shouldn't happen
+          return {
+            createdAt: now,
             updatedAt: now,
-            // Only the signer or message state could have changed
+            fid: message.data.fid,
+            messageType: message.data.type,
+            timestamp: farcasterTimeToDate(message.data.timestamp),
+            hash: message.hash,
+            hashScheme: message.hashScheme,
             signature: message.signature,
             signatureScheme: message.signatureScheme,
             signer: message.signer,
+            raw: Message.encode(message).finish(),
             deletedAt: operation === 'delete' ? now : null,
             prunedAt: operation === 'prune' ? now : null,
             revokedAt: operation === 'revoke' ? now : null,
-          })
+          };
+        })
+      )
+      .onConflict((oc) =>
+        oc
+          .columns(['hash'])
+          .doUpdateSet(({ ref }) => ({
+            updatedAt: now,
+            // Only the signer or message state could have changed
+            signature: ref('excluded.signature'),
+            signatureScheme: ref('excluded.signatureScheme'),
+            signer: ref('excluded.signer'),
+            deletedAt: operation === 'delete' ? now : null,
+            prunedAt: operation === 'prune' ? now : null,
+            revokedAt: operation === 'revoke' ? now : null,
+          }))
           .where(({ or, cmpr, ref }) =>
             // Only update if a value has actually changed
             or([
@@ -284,11 +303,12 @@ export class HubReplicator {
             ])
           )
       )
-      .returning(['updatedAt', 'createdAt'])
-      .executeTakeFirst();
+      .returning(['hash', 'updatedAt', 'createdAt'])
+      .execute();
 
-    // Return boolean indicating whether this is a new message
-    return !!(messageRow && messageRow.updatedAt === messageRow.createdAt);
+    // Return map indicating whether a given hash is a new message.
+    // No entry means it wasn't a new message.
+    return Object.fromEntries(messageRows.map((row) => [bytesToHex(row.hash), row.updatedAt === row.createdAt]));
   }
 
   private async onIdRegistryEvent(event: IdRegistryEvent) {
@@ -314,214 +334,243 @@ export class HubReplicator {
       .execute();
   }
 
-  private async onMergeMessage(message: Message) {
-    this.log.debug(`Merging message ${bytesToHex(message.hash)} (type ${message.data?.type})`);
+  private async onMergeMessages(messages: Message[]) {
+    if (!messages?.length) return;
 
-    const isInitialCreation = await this.storeMessage(message, 'merge');
+    const firstMessage = messages[0]; // All messages will have the same type as the first
+    const isInitialCreation = await this.storeMessages(messages, 'merge');
 
-    if (isCastAddMessage(message)) {
-      await this.onCastAdd(message, isInitialCreation);
-    } else if (isCastRemoveMessage(message)) {
-      await this.onCastRemove(message);
-    } else if (isReactionAddMessage(message)) {
-      await this.onReactionAdd(message, isInitialCreation);
-    } else if (isReactionRemoveMessage(message)) {
-      await this.onReactionRemove(message);
-    } else if (isVerificationAddEthAddressMessage(message)) {
-      await this.onVerificationAddEthAddress(message, isInitialCreation);
-    } else if (isVerificationRemoveMessage(message)) {
-      await this.onVerificationRemove(message);
-    } else if (isSignerAddMessage(message)) {
-      await this.onSignerAdd(message, isInitialCreation);
-    } else if (isSignerRemoveMessage(message)) {
-      await this.onSignerRemove(message);
-    } else if (isUserDataAddMessage(message)) {
-      await this.onUserDataAdd(message, isInitialCreation);
-    } else {
-      this.log.warn(`Ignoring unknown message type ${message.data?.type}`);
+    if (isCastAddMessage(firstMessage)) {
+      await this.onCastAdd(messages as CastAddMessage[], isInitialCreation);
+    } else if (isCastRemoveMessage(firstMessage)) {
+      await this.onCastRemove(messages as CastRemoveMessage[]);
+    } else if (isReactionAddMessage(firstMessage)) {
+      await this.onReactionAdd(messages as ReactionAddMessage[], isInitialCreation);
+    } else if (isReactionRemoveMessage(firstMessage)) {
+      await this.onReactionRemove(messages as ReactionRemoveMessage[]);
+    } else if (isVerificationAddEthAddressMessage(firstMessage)) {
+      await this.onVerificationAddEthAddress(messages as VerificationAddEthAddressMessage[], isInitialCreation);
+    } else if (isVerificationRemoveMessage(firstMessage)) {
+      await this.onVerificationRemove(messages as VerificationRemoveMessage[]);
+    } else if (isSignerAddMessage(firstMessage)) {
+      await this.onSignerAdd(messages as SignerAddMessage[], isInitialCreation);
+    } else if (isSignerRemoveMessage(firstMessage)) {
+      await this.onSignerRemove(messages as SignerRemoveMessage[]);
+    } else if (isUserDataAddMessage(firstMessage)) {
+      await this.onUserDataAdd(messages as UserDataAddMessage[], isInitialCreation);
     }
   }
 
-  private async onPruneMessage(message: Message) {
-    this.log.debug(`Pruning message ${bytesToHex(message.hash)} (type ${message.data?.type})`);
-    this.storeMessage(message, 'prune');
+  private async onPruneMessages(messages: Message[]) {
+    this.storeMessages(messages, 'prune');
   }
 
-  private async onRevokeMessage(message: Message) {
-    this.log.debug(`Revoking message ${bytesToHex(message.hash)} (type ${message.data?.type})`);
-    this.storeMessage(message, 'revoke');
+  private async onRevokeMessages(messages: Message[]) {
+    this.storeMessages(messages, 'revoke');
   }
 
-  private async onCastAdd(message: CastAddMessage, isInitialCreation: boolean) {
+  private async onCastAdd(messages: CastAddMessage[], isInitialCreation: Record<string, boolean>) {
     await this.db
       .insertInto('casts')
-      .values({
-        timestamp: farcasterTimeToDate(message.data.timestamp),
-        fid: message.data.fid,
-        text: message.data.castAddBody.text,
-        hash: message.hash,
-        parentHash: message.data.castAddBody.parentCastId?.hash,
-        parentFid: message.data.castAddBody.parentCastId?.fid,
-        parentUrl: message.data.castAddBody.parentUrl,
-        embeds: message.data.castAddBody.embedsDeprecated,
-        mentions: message.data.castAddBody.mentions,
-        mentionsPositions: message.data.castAddBody.mentionsPositions,
-      })
+      .values(
+        messages.map((message) => ({
+          timestamp: farcasterTimeToDate(message.data.timestamp),
+          fid: message.data.fid,
+          text: message.data.castAddBody.text,
+          hash: message.hash,
+          parentHash: message.data.castAddBody.parentCastId?.hash,
+          parentFid: message.data.castAddBody.parentCastId?.fid,
+          parentUrl: message.data.castAddBody.parentUrl,
+          embeds: message.data.castAddBody.embedsDeprecated,
+          mentions: message.data.castAddBody.mentions,
+          mentionsPositions: message.data.castAddBody.mentionsPositions,
+        }))
+      )
       // Do nothing on conflict since nothing should have changed if hash is the same.
       .onConflict((oc) => oc.columns(['hash']).doNothing())
       .execute();
 
-    if (isInitialCreation) {
-      // TODO: Execute any one-time side effects, e.g. sending push
-      // notifications to user whose cast was replied to, etc.
+    for (const message of messages) {
+      if (isInitialCreation[bytesToHex(message.hash)]) {
+        // TODO: Execute any one-time side effects, e.g. sending push
+        // notifications to user whose cast was replied to, etc.
+      }
     }
   }
 
-  private async onCastRemove(message: CastRemoveMessage) {
-    await this.db
-      .updateTable('casts')
-      .where('fid', '=', message.data.fid)
-      .where('hash', '=', message.data.castRemoveBody.targetHash)
-      .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
-      .execute();
+  private async onCastRemove(messages: CastRemoveMessage[]) {
+    for (const message of messages) {
+      await this.db
+        .updateTable('casts')
+        .where('fid', '=', message.data.fid)
+        .where('hash', '=', message.data.castRemoveBody.targetHash)
+        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
+        .execute();
 
-    // TODO: Execute any cleanup side effects to remove the cast
+      // TODO: Execute any cleanup side effects to remove the cast
+    }
   }
 
-  private async onReactionAdd(message: ReactionAddMessage, isInitialCreation: boolean) {
+  private async onReactionAdd(messages: ReactionAddMessage[], isInitialCreation: Record<string, boolean>) {
     await this.db
       .insertInto('reactions')
-      .values({
-        fid: message.data.fid,
-        timestamp: farcasterTimeToDate(message.data.timestamp),
-        hash: message.hash,
-        reactionType: message.data.reactionBody.type,
-        targetHash: message.data.reactionBody.targetCastId?.hash,
-        targetFid: message.data.reactionBody.targetCastId?.fid,
-        targetUrl: message.data.reactionBody.targetUrl,
-      })
+      .values(
+        messages.map((message) => ({
+          fid: message.data.fid,
+          timestamp: farcasterTimeToDate(message.data.timestamp),
+          hash: message.hash,
+          reactionType: message.data.reactionBody.type,
+          targetHash: message.data.reactionBody.targetCastId?.hash,
+          targetFid: message.data.reactionBody.targetCastId?.fid,
+          targetUrl: message.data.reactionBody.targetUrl,
+        }))
+      )
       // Do nothing on conflict since nothing should have changed if hash is the same.
       .onConflict((oc) => oc.columns(['hash']).doNothing())
       .execute();
 
-    if (isInitialCreation) {
-      // TODO: Execute any one-time side effects, e.g. sending push
-      // notifications to user whose cast was liked, etc.
+    for (const message of messages) {
+      if (isInitialCreation[bytesToHex(message.hash)]) {
+        // TODO: Execute any one-time side effects, e.g. sending push
+        // notifications to user whose cast was liked, etc.
+      }
     }
   }
 
-  private async onReactionRemove(message: ReactionRemoveMessage) {
-    await this.db
-      .updateTable('reactions')
-      .where('fid', '=', message.data.fid)
-      .where((eb) => {
-        // Search based on the type of reaction
-        if (message.data.reactionBody.targetUrl) {
-          return eb.where('targetUrl', '=', message.data.reactionBody.targetUrl);
-        } else if (message.data.reactionBody.targetCastId) {
-          return eb
-            .where('targetFid', '=', message.data.reactionBody.targetCastId.fid)
-            .where('targetHash', '=', message.data.reactionBody.targetCastId.hash);
-        } else {
-          throw new Error('Reaction had neither targetUrl nor targetCastId');
-        }
-      })
-      .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
-      .execute();
+  private async onReactionRemove(messages: ReactionRemoveMessage[]) {
+    for (const message of messages) {
+      await this.db
+        .updateTable('reactions')
+        .where('fid', '=', message.data.fid)
+        .where((eb) => {
+          // Search based on the type of reaction
+          if (message.data.reactionBody.targetUrl) {
+            return eb.where('targetUrl', '=', message.data.reactionBody.targetUrl);
+          } else if (message.data.reactionBody.targetCastId) {
+            return eb
+              .where('targetFid', '=', message.data.reactionBody.targetCastId.fid)
+              .where('targetHash', '=', message.data.reactionBody.targetCastId.hash);
+          } else {
+            throw new Error('Reaction had neither targetUrl nor targetCastId');
+          }
+        })
+        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
+        .execute();
 
-    // TODO: Execute any cleanup side effects to remove the cast
+      // TODO: Execute any cleanup side effects to remove the cast
+    }
   }
 
-  private async onVerificationAddEthAddress(message: VerificationAddEthAddressMessage, isInitialCreation: boolean) {
+  private async onVerificationAddEthAddress(
+    messages: VerificationAddEthAddressMessage[],
+    isInitialCreation: Record<string, boolean>
+  ) {
     await this.db
       .insertInto('verifications')
-      .values({
-        fid: message.data.fid,
-        timestamp: farcasterTimeToDate(message.data.timestamp),
-        hash: message.hash,
-        claim: {
-          address: bytesToHex(message.data.verificationAddEthAddressBody.address),
-          ethSignature: bytesToHex(message.data.verificationAddEthAddressBody.ethSignature),
-          blockHash: bytesToHex(message.data.verificationAddEthAddressBody.blockHash),
-        },
-      })
+      .values(
+        messages.map((message) => ({
+          fid: message.data.fid,
+          timestamp: farcasterTimeToDate(message.data.timestamp),
+          hash: message.hash,
+          claim: {
+            address: bytesToHex(message.data.verificationAddEthAddressBody.address),
+            ethSignature: bytesToHex(message.data.verificationAddEthAddressBody.ethSignature),
+            blockHash: bytesToHex(message.data.verificationAddEthAddressBody.blockHash),
+          },
+        }))
+      )
       // Do nothing on conflict since nothing should have changed if hash is the same.
       .onConflict((oc) => oc.columns(['hash']).doNothing())
       .execute();
 
-    if (isInitialCreation) {
-      // TODO: Execute any one-time side effects
+    for (const message of messages) {
+      if (isInitialCreation[bytesToHex(message.hash)]) {
+        // TODO: Execute any one-time side effects
+      }
+
+      // TODO: Execute any side effects that should happen any time the user
+      // connects the wallet (even if they are reconnecting a previously
+      // disconnected wallet), e.g. fetching token balances and NFTs for their
+      // wallet address.
     }
-
-    // TODO: Execute any side effects that should happen any time the user
-    // connects the wallet (even if they are reconnecting a previously
-    // disconnected wallet), e.g. fetching token balances and NFTs for their
-    // wallet address.
   }
 
-  private async onVerificationRemove(message: VerificationRemoveMessage) {
-    await this.db
-      .updateTable('verifications')
-      .where('fid', '=', message.data.fid)
-      .where(sql`claim ->> 'address'`, '=', bytesToHex(message.data.verificationRemoveBody.address))
-      .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
-      .execute();
+  private async onVerificationRemove(messages: VerificationRemoveMessage[]) {
+    for (const message of messages) {
+      await this.db
+        .updateTable('verifications')
+        .where('fid', '=', message.data.fid)
+        .where(sql`claim ->> 'address'`, '=', bytesToHex(message.data.verificationRemoveBody.address))
+        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
+        .execute();
 
-    // TODO: Execute any cleanup side effects, e.g. updating NFT ownership
+      // TODO: Execute any cleanup side effects, e.g. updating NFT ownership
+    }
   }
 
-  private async onSignerAdd(message: SignerAddMessage, isInitialCreation: boolean) {
-    const signerName = message.data.signerAddBody.name;
-
+  private async onSignerAdd(messages: SignerAddMessage[], isInitialCreation: Record<string, boolean>) {
     await this.db
       .insertInto('signers')
-      .values({
-        fid: message.data.fid,
-        timestamp: farcasterTimeToDate(message.data.timestamp),
-        hash: message.hash,
-        custodyAddress: message.signer,
-        signer: message.data.signerAddBody.signer,
-        name: signerName?.length ? signerName : null, // Treat empty string signer names as not specified
-      })
+      .values(
+        messages.map((message) => {
+          const signerName = message.data.signerAddBody.name;
+          return {
+            fid: message.data.fid,
+            timestamp: farcasterTimeToDate(message.data.timestamp),
+            hash: message.hash,
+            custodyAddress: message.signer,
+            signer: message.data.signerAddBody.signer,
+            name: signerName?.length ? signerName : null, // Treat empty string signer names as not specified
+          };
+        })
+      )
       // Do nothing on conflict since nothing should have changed if hash is the same.
       .onConflict((oc) => oc.columns(['hash']).doNothing())
       .execute();
 
-    if (isInitialCreation) {
-      // TODO: Execute any one-time side effects
+    for (const message of messages) {
+      if (isInitialCreation[bytesToHex(message.hash)]) {
+        // TODO: Execute any one-time side effects
+      }
     }
   }
 
-  private async onSignerRemove(message: SignerRemoveMessage) {
-    await this.db
-      .updateTable('signers')
-      .where('fid', '=', message.data.fid)
-      .where('signer', '=', message.data.signerRemoveBody.signer)
-      .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
-      .execute();
+  private async onSignerRemove(messages: SignerRemoveMessage[]) {
+    for (const message of messages) {
+      await this.db
+        .updateTable('signers')
+        .where('fid', '=', message.data.fid)
+        .where('signer', '=', message.data.signerRemoveBody.signer)
+        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
+        .execute();
 
-    // TODO: Execute any cleanup side effects
+      // TODO: Execute any cleanup side effects
+    }
   }
 
-  private async onUserDataAdd(message: UserDataAddMessage, isInitialCreation: boolean) {
+  private async onUserDataAdd(messages: UserDataAddMessage[], isInitialCreation: Record<string, boolean>) {
+    const now = new Date();
+
     await this.db
       .insertInto('userData')
-      .values({
-        timestamp: farcasterTimeToDate(message.data.timestamp),
-        fid: message.data.fid,
-        hash: message.hash,
-        type: message.data.userDataBody.type,
-        value: message.data.userDataBody.value,
-      })
+      .values(
+        messages.map((message) => ({
+          timestamp: farcasterTimeToDate(message.data.timestamp),
+          fid: message.data.fid,
+          hash: message.hash,
+          type: message.data.userDataBody.type,
+          value: message.data.userDataBody.value,
+        }))
+      )
       .onConflict((oc) =>
         oc
           .columns(['fid', 'type'])
-          .doUpdateSet({
-            hash: message.hash,
-            timestamp: farcasterTimeToDate(message.data.timestamp),
-            value: message.data.userDataBody.value,
-            updatedAt: new Date(),
-          })
+          .doUpdateSet(({ ref }) => ({
+            hash: ref('excluded.hash'),
+            timestamp: ref('excluded.timestamp'),
+            value: ref('excluded.value'),
+            updatedAt: now,
+          }))
           .where(({ or, cmpr, ref }) =>
             // Only update if a value has actually changed
             or([
@@ -534,8 +583,10 @@ export class HubReplicator {
       )
       .execute();
 
-    if (isInitialCreation) {
-      // TODO: Execute any one-time side effects
+    for (const message of messages) {
+      if (isInitialCreation[bytesToHex(message.hash)]) {
+        // TODO: Execute any one-time side effects
+      }
     }
   }
 }

@@ -14,12 +14,11 @@ This example shows you how you can quickly start ingesting data from a Farcaster
 
 There are some important points to consider when using this example:
 
-* **This is not intended to be used in production!**
-  It makes some simplifying assumptions (e.g. inserting messages one at a time instead of batching together, etc.) in order to be easily understandable.
+* **This is not intended to be used in production systems!** It's meant to serve as an example.
 
-* If you are running the Node.js application and Postgres DB on different servers, the time it takes to sync will be heavily dependent on the latency between those servers, making a process that normally takes a few hours take days instead. It is strongly recommended that you connect them using a private network, rather than connecting them via public internet. Many platforms like Supabase, Vercel, etc. (at time of writing) don't give you a low-latency connection due to their architecture.
+* The time it takes to sync is heavily dependent on the latency between the Node.js application and the Postgres database.
 
-* While the created tables have some indexes for query performance, they are not built to consider all possible query patterns.
+* While the created tables have some indexes to improve query performance, they are not built to consider all possible query patterns.
 
 ## Running the example
 
@@ -47,16 +46,17 @@ These two options are recommended because they are relatively quick and also all
 Once the Docker images have finished downloading, you should start to see messages like:
 
 ```
-replicate-data-postgres-app-1   | [01:06:37.823] INFO (86): [Backfill] Starting FID 1/12830
-replicate-data-postgres-app-1   | [01:06:38.478] INFO (86): [Backfill] Completed FID 1/12830
-replicate-data-postgres-app-1   | [01:06:38.478] INFO (86): [Backfill] Starting FID 2/12830
+replicate-data-postgres-app-1   | [04:46:13.051] INFO (61): [Backfill] Completed FID 1/12837. Estimated time remaining: 2h 6m 22.5s
+replicate-data-postgres-app-1   | [04:46:13.053] INFO (61): [Backfill] Completed FID 5/12837. Estimated time remaining: 2h 33m 36.9s
+replicate-data-postgres-app-1   | [04:46:13.767] INFO (61): [Backfill] Completed FID 6/12837. Estimated time remaining: 2h 33m 19.8s
+replicate-data-postgres-app-1   | [04:46:14.636] INFO (61): [Backfill] Completed FID 7/12837. Estimated time remaining: 2h 41m 25.5s
 ...
-replicate-data-postgres-app-1   | [01:06:50.142] INFO (86): [Sync] Processing merge event 304011714592768 from stream
-replicate-data-postgres-app-1   | [01:06:50.142] INFO (86): [Sync] Processing merge event 304011726786560 from stream
+replicate-data-postgres-app-1   | [04:56:50.142] INFO (86): [Sync] Processing merge event 304011714592768 from stream
+replicate-data-postgres-app-1   | [04:56:50.142] INFO (86): [Sync] Processing merge event 304011726786560 from stream
 ...
 ```
 
-If messages like these are appearing, replication is working as expected. Any other messages can usually be ignored.
+You may see messages out of order—this is fine. If messages like above are appearing, replication is working as expected. The message `FATAL:  role "root" does not exist` can safely be ignored.
 
 #### Connecting to Postgres
 

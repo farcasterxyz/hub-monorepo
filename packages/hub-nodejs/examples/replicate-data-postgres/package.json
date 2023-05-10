@@ -5,15 +5,17 @@
   "version": "0.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "NODE_OPTIONS=--max-old-space-size=512 tsx index.ts"
+    "start": "tsx index.ts"
   },
   "dependencies": {
     "@farcaster/hub-nodejs": "^0.7.1",
+    "fastq": "^1.15.0",
     "kysely": "^0.24.2",
     "kysely-postgres-js": "^1.1.1",
     "pino": "^8.12.1",
     "pino-pretty": "^10.0.0",
     "postgres": "^3.3.4",
+    "pretty-ms": "^8.0.0",
     "tiny-typed-emitter": "^2.1.0"
   },
   "devDependencies": {
