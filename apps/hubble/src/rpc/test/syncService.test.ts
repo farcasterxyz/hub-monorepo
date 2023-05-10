@@ -19,7 +19,7 @@ import { GossipNode } from '~/network/p2p/gossipNode';
 const db = jestRocksDB('protobufs.rpc.syncService.test');
 const network = FarcasterNetwork.TESTNET;
 const mockGossipNode = {
-  bootstrapPeerIds: ['test'],
+  allPeerIds: () => ['test'],
 } as unknown as GossipNode;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine, mockGossipNode);
