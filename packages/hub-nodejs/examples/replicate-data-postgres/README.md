@@ -56,7 +56,7 @@ replicate-data-postgres-app-1   | [04:56:50.142] INFO (86): [Sync] Processing me
 ...
 ```
 
-You may see messages out of order—this is fine. If messages like above are appearing, replication is working as expected. The message `FATAL:  role "root" does not exist` can safely be ignored.
+You may see messages out of order—this is fine. If messages like above are appearing, replication is working as expected.
 
 #### Connecting to Postgres
 

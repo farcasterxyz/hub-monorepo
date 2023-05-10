@@ -30,7 +30,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready']
+      # Need to specify name/user to avoid `FATAL: role "root" does not exist` errors in logs
+      test: ['CMD-SHELL', 'env', 'pg_isready', '--dbname', '$$POSTGRES_DB', '-U', '$$POSTGRES_USER']
       interval: 10s
       timeout: 10s
       retries: 3
