@@ -136,7 +136,7 @@ export class HubReplicator {
 
       totalProcessed += 1;
       const elapsedMs = Date.now() - startTime;
-      const millisRemaining = Math.ceil((elapsedMs / totalProcessed) * maxFid);
+      const millisRemaining = Math.ceil((elapsedMs / totalProcessed) * (maxFid - totalProcessed));
       this.log.info(
         `[Backfill] Completed FID ${fid}/${maxFid}. Estimated time remaining: ${prettyMilliseconds(millisRemaining)}`
       );
@@ -147,6 +147,7 @@ export class HubReplicator {
     }
 
     await queue.drained();
+    this.log.info(`[Backfill] Completed in ${prettyMilliseconds(Date.now() - startTime)}`);
   }
 
   private async processAllMessagesForFid(fid: number) {
