@@ -15,7 +15,7 @@ import {
   CastAddBody,
 } from '@farcaster/hub-nodejs';
 import { logger } from '~/utils/logger';
-import * as ed from '@noble/ed25519';
+import { ed25519 as ed } from '@noble/curves/ed25519';
 import { faker } from '@faker-js/faker';
 import Server from '~/rpc/server';
 import { Result } from 'neverthrow';

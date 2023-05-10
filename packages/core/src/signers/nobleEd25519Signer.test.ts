@@ -1,9 +1,8 @@
 import { blake3 } from '@noble/hashes/blake3';
 import { randomBytes } from 'ethers';
-import { ok } from 'neverthrow';
-import { ed25519 } from '../crypto';
 import { Factories } from '../factories';
 import { NobleEd25519Signer } from './nobleEd25519Signer';
+import { ed25519 } from '@noble/curves/ed25519';
 
 describe('NobleEd25519Signer', () => {
   const privateKey = Factories.Ed25519PrivateKey.build();
@@ -20,8 +19,8 @@ describe('NobleEd25519Signer', () => {
       const hash = blake3(bytes, { dkLen: 20 });
       const signature = await signer.signMessageHash(hash);
       expect(signature.isOk()).toBeTruthy();
-      const isValid = await ed25519.verifyMessageHashSignature(signature._unsafeUnwrap(), hash, signerKey);
-      expect(isValid).toEqual(ok(true));
+      const isValid = ed25519.verify(signature._unsafeUnwrap(), hash, signerKey);
+      expect(isValid).toEqual(true);
     });
   });
 });

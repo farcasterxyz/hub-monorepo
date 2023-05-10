@@ -1,8 +1,9 @@
 import * as protobufs from './protobufs';
 import { blake3 } from '@noble/hashes/blake3';
+import { ed25519 } from '@noble/curves/ed25519';
 import { err, ok, Result } from 'neverthrow';
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from './bytes';
-import { ed25519, eip712 } from './crypto';
+import { eip712 } from './crypto';
 import { HubAsyncResult, HubError, HubResult } from './errors';
 import { getFarcasterTime } from './time';
 import { makeVerificationEthAddressClaim } from './verifications';
@@ -142,8 +143,8 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
       return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
-    const signatureIsValid = await ed25519.verifyMessageHashSignature(signature, hash, signer);
-    if (signatureIsValid.isErr() || (signatureIsValid.isOk() && !signatureIsValid.value)) {
+    const signatureIsValid = ed25519.verify(signature, hash, signer);
+    if (!signatureIsValid) {
       return err(new HubError('bad_request.validation_failure', 'invalid signature'));
     }
   } else {

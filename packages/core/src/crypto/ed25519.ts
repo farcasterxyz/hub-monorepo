@@ -1,21 +1,17 @@
-import * as ed from '@noble/ed25519';
-import { sha512 } from '@noble/hashes/sha512';
-import { ResultAsync } from 'neverthrow';
+import { ed25519 } from '@noble/curves/ed25519';
+import { Result } from 'neverthrow';
 import { HubAsyncResult, HubError } from '../errors';
 
-/** Setup ed to hash synchronously */
-ed.utils.sha512Sync = (...m) => sha512(ed.utils.concatBytes(...m));
-
-export const getPublicKeySync = (privateKey: Uint8Array): Uint8Array => {
-  return ed.sync.getPublicKey(privateKey);
-};
+const safeGetPublicKey = Result.fromThrowable(ed25519.getPublicKey, (err) => new HubError('bad_request', err as Error));
+const safeSign = Result.fromThrowable(ed25519.sign, (err) => new HubError('bad_request', err as Error));
+const safeVerify = Result.fromThrowable(ed25519.verify, (err) => new HubError('bad_request', err as Error));
 
 export const getPublicKey = async (privateKey: Uint8Array): HubAsyncResult<Uint8Array> => {
-  return ResultAsync.fromPromise(ed.getPublicKey(privateKey), (err) => new HubError('bad_request', err as Error));
+  return safeGetPublicKey(privateKey);
 };
 
 export const signMessageHash = async (hash: Uint8Array, privateKey: Uint8Array): HubAsyncResult<Uint8Array> => {
-  return ResultAsync.fromPromise(ed.sign(hash, privateKey), (err) => new HubError('bad_request', err as Error));
+  return safeSign(hash, privateKey);
 };
 
 export const verifyMessageHashSignature = async (
@@ -23,8 +19,5 @@ export const verifyMessageHashSignature = async (
   hash: Uint8Array,
   publicKey: Uint8Array
 ): HubAsyncResult<boolean> => {
-  return ResultAsync.fromPromise(
-    ed.verify(signature, hash, publicKey),
-    (err) => new HubError('bad_request', err as Error)
-  );
+  return safeVerify(signature, hash, publicKey);
 };
