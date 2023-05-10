@@ -5,8 +5,8 @@ This example shows you how you can quickly start ingesting data from a Farcaster
 * [Caveats](#caveats)
 * [Running the example](#running-the-example)
     * [Run locally](#run-locally-recommended-for-quick-experimentation)
-    * [Run on Render](#running-on-render)
-* [What does it do?](#what-does-it-do)
+    * [Run on Render](#run-on-render)
+* [What does the example do?](#what-does-the-example-do)
 * [Examples of SQL queries](#examples-of-sql-queries)
 * [Database tables](#database-tables)
 
@@ -15,18 +15,18 @@ This example shows you how you can quickly start ingesting data from a Farcaster
 There are some important points to consider when using this example:
 
 * **This is not intended to be used in production!**
-  It's intended to be an easy-to-understand example of what a production implementation might look like, but it focuses on how to think about processing messages and events and the associated side effects.
+  It makes some simplifying assumptions (e.g. inserting messages one at a time instead of batching together, etc.) in order to be easily understandable.
 
-* If you are running the Node.js application and Postgres DB on different servers, the time it takes to sync will be heavily dependent on the latency between those servers. It is strongly recommended that you connect these using a private network, rather than connecting to them over the public internet, which some platforms like Supabase, Vercel, etc. do (at time of writing). If you don't, the initial backfill will take significantly longer (potentially days).
+* If you are running the Node.js application and Postgres DB on different servers, the time it takes to sync will be heavily dependent on the latency between those servers, making a process that normally takes a few hours take days instead. It is strongly recommended that you connect them using a private network, rather than connecting them via public internet. Many platforms like Supabase, Vercel, etc. (at time of writing) don't give you a low-latency connection due to their architecture.
 
-* While the created tables have some indexes for query performance, they are not built to consider all query patterns.
+* While the created tables have some indexes for query performance, they are not built to consider all possible query patterns.
 
 ## Running the example
 
 Below are instructions for two different ways to run the example. If you want to get started quickly with as few commands as possible, we recommend you run the example locally.
 
 * [Run locally](#run-locally-recommended-for-quick-experimentation)
-* [Run on Render](#running-on-render)
+* [Run on Render](#run-on-render)
 
 These two options are recommended because they are relatively quick and also allow you to run the application and Postgres database with low latency between each other, which makes downloading data from the hubs much faster. However, you can get the example running with any platform you choose.
 
@@ -56,7 +56,7 @@ replicate-data-postgres-app-1   | [01:06:50.142] INFO (86): [Sync] Processing me
 ...
 ```
 
-If messages like these are appearing, replication is working as expected.
+If messages like these are appearing, replication is working as expected. Any other messages can usually be ignored.
 
 #### Connecting to Postgres
 
@@ -75,7 +75,7 @@ See [Examples of SQL queries](#examples-of-sql-queries) below.
 If you're done with the example and no longer need the data locally:
 
 * Go to the example's directory (`cd packages/hub-nodejs/examples/replicate-data-postgres`)
-* Run `docker compose down --rmi -v`.
+* Run `docker compose down --rmi all -v`.
 
 This will remove the Docker images, NPM packages, and Postgres data.
 
@@ -105,6 +105,18 @@ This will remove the Docker images, NPM packages, and Postgres data.
 
 Go to the **Logs** tab and confirm the application is running.
 
+```
+[01:06:37.823] INFO (86): [Backfill] Starting FID 1/12830
+[01:06:38.478] INFO (86): [Backfill] Completed FID 1/12830
+[01:06:38.478] INFO (86): [Backfill] Starting FID 2/12830
+
+[01:06:50.142] INFO (86): [Sync] Processing merge event 304011714592768 from stream
+[01:06:50.142] INFO (86): [Sync] Processing merge event 304011726786560 from stream
+...
+```
+
+If you see messages like the above, everything is working as expected.
+
 #### Connecting to Postgres
 
 While it will take a few hours to fully sync all data from the hub, you can start to query data right away.
@@ -118,16 +130,16 @@ See [Examples of SQL queries](#examples-of-sql-queries) below.
 
 If you're done with the example and no longer need the data, you can delete the Background Worker and Postgres instances.
 
-## What does it do?
+## What does the example do?
 
-This example application starts two high-level processes:
+This example application does two things:
 
-1. Backfills all existing data from the hub, one FID (user) at a time.
-2. Subscribes to the hub's event stream to sync live events.
+1. Backfills all historical data from a hub, one user (FID) at a time.
+2. Syncs live events from the hub.
 
 If left running, the backfill will eventually complete and the subscription will continue processing live events in real-time. You can therefore start the application and it will remain up to date with the hub you connected to.
 
-If you stop the process and start it again, it will start the backfill process for each FID from the beginning (i.e. will download the same messages again, but ignoring messages it already has). It will start reading live events from the last event it saw from the event stream.
+When stopping/restarting the application the backfill process will start over again, but the existing data already downloaded will be preserved. It is therefore safe to start/stop the application as you please.
 
 ## Examples of SQL queries
 
