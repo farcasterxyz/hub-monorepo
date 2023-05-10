@@ -1,43 +1,23 @@
-## Replicate hub data into Postgres
+# Replicate Hub data to Postgres
 
-This example shows you how you can quickly start ingesting data from a Farcaster hub into a traditional database like Postgres.
+An example Node.js application that keeps a PostgresDB in sync with a Farcaster Hub. Sync is performed using a two-phase process:
 
-* [Caveats](#caveats)
-* [Running the example](#running-the-example)
-    * [Run locally](#run-locally-recommended-for-quick-experimentation)
-    * [Run on Render](#run-on-render)
-* [What does the example do?](#what-does-the-example-do)
-* [Examples of SQL queries](#examples-of-sql-queries)
-* [Database tables](#database-tables)
+1. A streaming process that will receive new messages from the Hub
+2. A backfill process that will receive older messages from the Hub
 
-## Caveats
+When the app is run, both processes are kicked off to bring the database in sync. The streaming ensures that new messages are pushed to the DB. The backfill downloads older messages and can take 1 or more hours depending on your configuration. It is stateful and can be resumed safely without re-ingesting all the data. 
 
-There are some important points to consider when using this example:
+## Run locally
 
-* **This is not intended to be used in production systems!** It's meant to serve as an example.
+Sets up the Node.js application and Postgres DB locally using docker containers. We recommend using this for quick experimentation. 
 
-* The time it takes to sync is heavily dependent on the latency between the Node.js application and the Postgres database.
-
-* While the created tables have some indexes to improve query performance, they are not built to consider all possible query patterns.
-
-## Running the example
-
-Below are instructions for two different ways to run the example. If you want to get started quickly with as few commands as possible, we recommend you run the example locally.
-
-* [Run locally](#run-locally-recommended-for-quick-experimentation)
-* [Run on Render](#run-on-render)
-
-These two options are recommended because they are relatively quick and also allow you to run the application and Postgres database with low latency between each other, which makes downloading data from the hubs much faster. However, you can get the example running with any platform you choose.
-
-### Run locally (recommended for quick experimentation)
-
-#### Requirements
+### Requirements
 
 * 1GB of memory
 * 4GB of free disk space
-* Docker. If you're running macOS, run `brew bundle && open -a Docker` from this example's directory. Otherwise instructions can be found [here](https://docs.docker.com/get-docker/).
+* Docker. If you're running macOS, run `brew bundle && open -a Docker` from this directory, otherwise go [here](https://docs.docker.com/get-docker/).
 
-#### Instructions
+### Instructions
 
 1. Clone the repo locally: `git clone git@github.com:farcasterxyz/hub-monorepo.git`
 2. Navigate to this directory with `cd packages/hub-nodejs/examples/replicate-data-postgres`
@@ -58,7 +38,7 @@ replicate-data-postgres-app-1   | [04:56:50.142] INFO (86): [Sync] Processing me
 
 You may see messages out of order—this is fine. If messages like above are appearing, replication is working as expected.
 
-#### Connecting to Postgres
+### Connecting to Postgres
 
 While it will take a few hours to fully sync all data from the hub, you can start to query data right away.
 
@@ -70,7 +50,7 @@ docker compose exec postgres psql -U app hub
 
 See [Examples of SQL queries](#examples-of-sql-queries) below.
 
-#### Cleanup
+### Cleanup
 
 If you're done with the example and no longer need the data locally:
 
@@ -79,16 +59,16 @@ If you're done with the example and no longer need the data locally:
 
 This will remove the Docker images, NPM packages, and Postgres data.
 
-### Run on Render
+## Run on Render
 
-[Render](https://render.com/) allows you to run a Node.js application and a Postgres server in the same network.
+Set up the Node.js application and Postgres DB in the cloud using [Render](https://render.com/). This will be slower than running locally.
 
-#### Requirements
+### Requirements
 
 * Register an account at Render and create a project.
 * You'll need a subscription to pay for the **Standard** instance type for Postgres ($20/mth at time of writing).
 
-#### Instructions
+### Instructions
 
 1. Create a new **PostgreSQL** instance in your project. Select the **Standard** instance type (for the storage).
 2. Create a new **Background Worker**, and connect a **Public Git repository** using the following URL: `https://github.com/farcasterxyz/hub-monorepo`
@@ -117,7 +97,7 @@ Go to the **Logs** tab and confirm the application is running.
 
 If you see messages like the above, everything is working as expected.
 
-#### Connecting to Postgres
+### Connecting to Postgres
 
 While it will take a few hours to fully sync all data from the hub, you can start to query data right away.
 
@@ -126,45 +106,34 @@ While it will take a few hours to fully sync all data from the hub, you can star
 
 See [Examples of SQL queries](#examples-of-sql-queries) below.
 
-#### Cleanup
+### Cleanup
 
 If you're done with the example and no longer need the data, you can delete the Background Worker and Postgres instances.
 
-## What does the example do?
-
-This example application does two things:
-
-1. Backfills all historical data from a hub, one user (FID) at a time.
-2. Syncs live events from the hub.
-
-If left running, the backfill will eventually complete and the subscription will continue processing live events in real-time. You can therefore start the application and it will remain up to date with the hub you connected to.
-
-When stopping/restarting the application the backfill process will start over again, but the existing data already downloaded will be preserved. It is therefore safe to start/stop the application as you please.
-
 ## Examples of SQL queries
 
-Note that you'll need to wait until a full backfill has completed before some queries will return correct data. But you could start querying data for specific users (especially those with lower FIDs) after a few minutes and start to get data.
+Once some data is populated, you can start to query it using SQL. Here are some examples: 
 
 Get the 10 most recent casts for a user:
 ```sql
-select timestamp, text, mentions, mentions_positions, embeds from casts where fid = 2 order by timestamp desc limit 10
+select timestamp, text, mentions, mentions_positions, embeds from casts where fid = 2 order by timestamp desc limit 10;
 ```
 
 Get the number of likes for a user's last 20 casts:
 ```sql
-select timestamp, (select count(*) from reactions where reaction_type = 1 and target_hash = casts.hash and target_fid = casts.fid) from casts where fid = 3 order by timestamp desc limit 20
+select timestamp, (select count(*) from reactions where reaction_type = 1 and target_hash = casts.hash and target_fid = casts.fid) from casts where fid = 3 order by timestamp desc limit 20;
 ```
 
 Get the top-20 most recasted casts:
 ```sql
-select c.hash, count(*) as recast_count from casts as c join reactions as r on r.target_hash = c.hash and r.target_fid = c.fid where r.reaction_type = 2 group by c.hash order by recast_count desc limit 20
+select c.hash, count(*) as recast_count from casts as c join reactions as r on r.target_hash = c.hash and r.target_fid = c.fid where r.reaction_type = 2 group by c.hash order by recast_count desc limit 20;
 ```
 
 See the list of tables below for the schema.
 
-## Database tables
+## Database Schema
 
-The following tables are automatically created in the Postgres DB:
+The example initializes the following tables in Postgres DB where data from the Hubs are stored:
 
 ### `messages`
 
