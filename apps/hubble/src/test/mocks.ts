@@ -13,7 +13,7 @@ import { HubInterface, HubSubmitSource } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
-import { AbstractProvider } from 'ethers';
+import { AbstractProvider, EthersError, Networkish } from 'ethers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { ContactInfoContent } from '@farcaster/core';
 
@@ -73,9 +73,9 @@ export class MockHub implements HubInterface {
 export class MockRPCProvider extends AbstractProvider {
   public getLogsCount = 0;
 
-  constructor() {
+  constructor(_network?: Networkish | undefined) {
     // The Goerli networkID is 5
-    super(5);
+    super(_network || 5);
   }
 
   override async getLogs() {
@@ -85,5 +85,40 @@ export class MockRPCProvider extends AbstractProvider {
 
   override async getBlockNumber() {
     return 1;
+  }
+}
+
+/** A Mock Faulty RPC provider – fails every other call */
+export class MockFaultyRPCProvider extends MockRPCProvider {
+  private isWorking = false;
+
+  constructor() {
+    super();
+  }
+
+  override getLogs() {
+    return this.faultyCall(() => super.getLogs());
+  }
+
+  override getBlockNumber() {
+    return this.faultyCall(() => super.getBlockNumber());
+  }
+
+  private faultyCall<T>(fn: () => Promise<T>): Promise<T> {
+    this.isWorking = !this.isWorking;
+
+    if (this.isWorking) {
+      return fn();
+    }
+
+    return new Promise<T>((_, reject) =>
+      reject({
+        code: 'UNKNOWN_ERROR',
+        error: {
+          name: 'UNKNOWN_ERROR',
+          message: 'mock decided to say no today',
+        },
+      } as EthersError)
+    );
   }
 }
