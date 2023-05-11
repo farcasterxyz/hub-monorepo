@@ -88,9 +88,9 @@ export class MockRPCProvider extends AbstractProvider {
   }
 }
 
-/** A Mock Faulty RPC provider – fails every other call */
+/** A Mock Faulty RPC provider – fails every fourth call */
 export class MockFaultyRPCProvider extends MockRPCProvider {
-  private isWorking = false;
+  private isWorking = 0;
 
   constructor() {
     super();
@@ -105,9 +105,9 @@ export class MockFaultyRPCProvider extends MockRPCProvider {
   }
 
   private async faultyCall<T>(fn: () => Promise<T>): Promise<T> {
-    this.isWorking = !this.isWorking;
+    this.isWorking = (this.isWorking + 1) % 4;
 
-    if (this.isWorking) {
+    if (this.isWorking !== 3) {
       return await fn();
     }
 

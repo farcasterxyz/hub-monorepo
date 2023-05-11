@@ -13,8 +13,8 @@ export function RetryProvider<
   }>
 >(SuperClass: T) {
   return class RetryProvider extends SuperClass {
-    public override _perform = (req: PerformActionRequest) => {
-      return this.performWithRetry(req, 0);
+    public override _perform = async (req: PerformActionRequest) => {
+      return await this.performWithRetry(req, 0);
     };
 
     private async performWithRetry(req: PerformActionRequest, attempt: number): Promise<any> {
@@ -31,8 +31,8 @@ export function RetryProvider<
     }
 
     // Not necessary for JsonRpcProvider, but required for direct implementations of AbstractProvider:
-    public override getLogs = (_filter: Filter | FilterByBlockHash): Promise<Array<Log>> => {
-      return this.getLogsWithRetry(_filter, 0);
+    public override getLogs = async (_filter: Filter | FilterByBlockHash): Promise<Array<Log>> => {
+      return await this.getLogsWithRetry(_filter, 0);
     };
 
     private async getLogsWithRetry(_filter: Filter | FilterByBlockHash, attempt: number): Promise<any> {
@@ -48,8 +48,8 @@ export function RetryProvider<
       }
     }
 
-    public override getBlockNumber = (): Promise<number> => {
-      return this.getBlockNumberWithRetry(0);
+    public override getBlockNumber = async (): Promise<number> => {
+      return await this.getBlockNumberWithRetry(0);
     };
 
     private async getBlockNumberWithRetry(attempt: number): Promise<any> {
