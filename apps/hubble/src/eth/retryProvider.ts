@@ -22,7 +22,7 @@ export function RetryProvider<
         return await super._perform(req);
       } catch (e: any) {
         if (e.statusCode !== 429 || attempt >= RETRY_LIMIT) {
-          return Promise.reject(e);
+          throw e;
         } else {
           await new Promise<void>((resolve) => setTimeout(() => resolve(), ETHERS_CACHE_DELAY_MS));
           return await this.performWithRetry(req, attempt + 1);
@@ -40,7 +40,7 @@ export function RetryProvider<
         return await super.getLogs(_filter);
       } catch (e: any) {
         if (attempt >= RETRY_LIMIT) {
-          return Promise.reject(e);
+          throw e;
         } else {
           await new Promise<void>((resolve) => setTimeout(() => resolve(), ETHERS_CACHE_DELAY_MS));
           return await this.getLogsWithRetry(_filter, attempt + 1);
@@ -57,7 +57,7 @@ export function RetryProvider<
         return await super.getBlockNumber();
       } catch (e: any) {
         if (attempt >= RETRY_LIMIT) {
-          return Promise.reject(e);
+          throw e;
         } else {
           await new Promise<void>((resolve) => setTimeout(() => resolve(), ETHERS_CACHE_DELAY_MS));
           return await this.getBlockNumberWithRetry(attempt + 1);
