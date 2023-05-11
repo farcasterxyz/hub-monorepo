@@ -50,6 +50,7 @@
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
     "@farcaster/hub-nodejs": "^0.7.2",
+    "@farcaster/rocksdb": "^5.5.0",
     "@grpc/grpc-js": "~1.8.7",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^2.0.0",
@@ -68,7 +69,6 @@
     "node-cron": "~3.0.2",
     "pino": "~8.11.0",
     "rate-limiter-flexible": "^2.4.1",
-    "rocksdb": "~5.2.1",
     "rwlock": "~5.0.0",
     "tiny-typed-emitter": "~2.1.0",
     "tsx": "~3.12.5"

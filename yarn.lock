@@ -1141,6 +1141,15 @@
   dependencies:
     lodash.mergewith "^4.6.2"
 
+"@farcaster/rocksdb@^5.5.0":
+  version "5.5.0"
+  resolved "https://registry.npmjs.org/@farcaster/rocksdb/-/rocksdb-5.5.0.tgz#c352480a7d6e08c2eee8e1690dc0a49e5a72c8fd"
+  integrity sha512-E5xavqAOrS9yXV2zw2lEyv7j4w1jZd0UNtsi5C9tqk5Kw9voCojA/zTgb5WugEqHAT6Bt/szahhnNuWxbo9NPg==
+  dependencies:
+    abstract-leveldown "^7.2.0"
+    napi-macros "^2.0.0"
+    node-gyp-build "^4.3.0"
+
 "@grpc/grpc-js@^1.8.13":
   version "1.8.13"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.8.13.tgz#e775685962909b76f8d4b813833c3d123867165b"
@@ -6987,15 +6996,6 @@ rimraf@^4.1.2:
   integrity sha512-X36S+qpCUR0HjXlkDe4NAOhS//aHH0Z+h8Ckf2auGJk3PTnx5rLmrHkwNdbVQuCSUhOyFrlRvFEllZOYE+yZGQ==
   dependencies:
     glob "^9.2.0"
-
-rocksdb@~5.2.1:
-  version "5.2.1"
-  resolved "https://registry.npmjs.org/rocksdb/-/rocksdb-5.2.1.tgz#40fd54b798f8843290521313462f4347b702e60d"
-  integrity sha512-SN9RRLfqDEGfZ6MgfjpQ4DIn3+TdN5ECKYHgeuPKFy6Yw0I9hYyE46giLidngjZU47JXUmWXJDZuU1CyEcf4Fw==
-  dependencies:
-    abstract-leveldown "^7.2.0"
-    napi-macros "^2.0.0"
-    node-gyp-build "^4.3.0"
 
 rollup@^3.2.5:
   version "3.19.1"
