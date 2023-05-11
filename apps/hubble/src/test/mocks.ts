@@ -13,7 +13,7 @@ import { HubInterface, HubSubmitSource } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
-import { AbstractProvider, EthersError, Networkish } from 'ethers';
+import { AbstractProvider, Networkish } from 'ethers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { ContactInfoContent } from '@farcaster/core';
 
@@ -113,12 +113,13 @@ export class MockFaultyRPCProvider extends MockRPCProvider {
 
     return await new Promise<T>((_, reject) =>
       reject({
+        statusCode: 429,
         code: 'UNKNOWN_ERROR',
         error: {
           name: 'UNKNOWN_ERROR',
           message: 'mock decided to say no today',
         },
-      } as EthersError)
+      })
     );
   }
 }
