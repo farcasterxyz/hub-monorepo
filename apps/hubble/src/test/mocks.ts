@@ -96,22 +96,22 @@ export class MockFaultyRPCProvider extends MockRPCProvider {
     super();
   }
 
-  override getLogs() {
-    return this.faultyCall(() => super.getLogs());
+  override async getLogs() {
+    return await this.faultyCall(() => super.getLogs());
   }
 
-  override getBlockNumber() {
-    return this.faultyCall(() => super.getBlockNumber());
+  override async getBlockNumber() {
+    return await this.faultyCall(() => super.getBlockNumber());
   }
 
-  private faultyCall<T>(fn: () => Promise<T>): Promise<T> {
+  private async faultyCall<T>(fn: () => Promise<T>): Promise<T> {
     this.isWorking = !this.isWorking;
 
     if (this.isWorking) {
-      return fn();
+      return await fn();
     }
 
-    return new Promise<T>((_, reject) =>
+    return await new Promise<T>((_, reject) =>
       reject({
         code: 'UNKNOWN_ERROR',
         error: {
