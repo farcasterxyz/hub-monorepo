@@ -94,6 +94,7 @@ describe('process events', () => {
     mockRPCProvider = new MockRPCProvider();
     mockIdRegistry = new Contract('0x000001', IdRegistry.abi, mockRPCProvider);
     mockNameRegistry = new Contract('0x000002', NameRegistry.abi, mockRPCProvider);
+    await engine.start();
   });
 
   afterAll(async () => {
@@ -122,13 +123,13 @@ describe('process events', () => {
   const waitForBlock = async (blockNumber: number) => {
     while (ethEventsProvider.getLatestBlockNumber() < blockNumber) {
       // Wait for all async promises to resolve
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 1));
     }
   };
 
   const addBlocks = async (startAt: number, n: number): Promise<number> => {
     for (let i = 0; i < n; i++) {
-      expect(mockRPCProvider.emit('block', startAt + i)).toBeTruthy();
+      expect(await mockRPCProvider.emit('block', startAt + i)).toBeTruthy();
       await waitForBlock(startAt + i);
     }
 
@@ -142,7 +143,7 @@ describe('process events', () => {
     const address2 = generateEthAddressHex();
 
     // Emit a "Register event"
-    const rRegister = mockIdRegistry.emit('Register', address1, BigInt(fid), '', '', {
+    const rRegister = await mockIdRegistry.emit('Register', address1, BigInt(fid), '', '', {
       log: new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider),
     });
     expect(rRegister).toBeTruthy();
@@ -158,9 +159,10 @@ describe('process events', () => {
     expect(idRegistryEvent.fid).toEqual(fid);
 
     // Transfer the ID to another address
-    mockIdRegistry.emit('Transfer', address1, address2, BigInt(fid), {
+    await mockIdRegistry.emit('Transfer', address1, address2, BigInt(fid), {
       log: new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider),
     });
+
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Register event
     const existingIdRegistryEvent = await getIdRegistryEvent(db, fid);
     expect(existingIdRegistryEvent.type).toEqual(IdRegistryEventType.REGISTER);
@@ -180,9 +182,15 @@ describe('process events', () => {
     let blockNumber = 1;
 
     // Emit a "Transfer event"
-    const rTransfer = mockNameRegistry.emit('Transfer', '0x000001', '0x000002', bytesToBytes32(fname)._unsafeUnwrap(), {
-      log: new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider),
-    });
+    const rTransfer = await mockNameRegistry.emit(
+      'Transfer',
+      '0x000001',
+      '0x000002',
+      bytesToBytes32(fname)._unsafeUnwrap(),
+      {
+        log: new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockRPCProvider),
+      }
+    );
     expect(rTransfer).toBeTruthy();
 
     // The event is not immediately available, since it has to wait for confirmations
@@ -195,7 +203,7 @@ describe('process events', () => {
     expect((await getNameRegistryEvent(db, fname)).fname).toEqual(fname);
 
     // Renew the fname
-    mockNameRegistry.emit('Renew', bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
+    await mockNameRegistry.emit('Renew', bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
       log: new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockRPCProvider),
     });
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
@@ -233,6 +241,7 @@ describe('process events with faulty rpc', () => {
 
     mockFaultyIdRegistry = new Contract('0x000001', IdRegistry.abi, mockFaultyRPCProvider);
     mockFaultyNameRegistry = new Contract('0x000002', NameRegistry.abi, mockFaultyRPCProvider);
+    await engine.start();
   });
 
   beforeEach(async () => {
@@ -262,13 +271,13 @@ describe('process events with faulty rpc', () => {
   const waitForBlock = async (blockNumber: number) => {
     while (ethEventsProvider.getLatestBlockNumber() < blockNumber) {
       // Wait for all async promises to resolve
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 1));
     }
   };
 
   const addBlocks = async (startAt: number, n: number): Promise<number> => {
     for (let i = 0; i < n; i++) {
-      expect(mockFaultyRPCProvider.emit('block', startAt + i)).toBeTruthy();
+      expect(await mockFaultyRPCProvider.emit('block', startAt + i)).toBeTruthy();
       await waitForBlock(startAt + i);
     }
 
@@ -282,7 +291,7 @@ describe('process events with faulty rpc', () => {
     const address2 = generateEthAddressHex();
 
     // Emit a "Register event"
-    const rRegister = mockFaultyIdRegistry.emit('Register', address1, BigInt(fid), '', '', {
+    const rRegister = await mockFaultyIdRegistry.emit('Register', address1, BigInt(fid), '', '', {
       log: new MockEvent(blockNumber++, '0xb00001', '0x400001', 0, mockFaultyRPCProvider),
     });
     expect(rRegister).toBeTruthy();
@@ -298,9 +307,10 @@ describe('process events with faulty rpc', () => {
     expect(idRegistryEvent.fid).toEqual(fid);
 
     // Transfer the ID to another address
-    mockFaultyIdRegistry.emit('Transfer', address1, address2, BigInt(fid), {
+    await mockFaultyIdRegistry.emit('Transfer', address1, address2, BigInt(fid), {
       log: new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockFaultyRPCProvider),
     });
+
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Register event
     const existingIdRegistryEvent = await getIdRegistryEvent(db, fid);
     expect(existingIdRegistryEvent.type).toEqual(IdRegistryEventType.REGISTER);
@@ -320,7 +330,7 @@ describe('process events with faulty rpc', () => {
     let blockNumber = 1;
 
     // Emit a "Transfer event"
-    const rTransfer = mockFaultyNameRegistry.emit(
+    const rTransfer = await mockFaultyNameRegistry.emit(
       'Transfer',
       '0x000001',
       '0x000002',
@@ -341,7 +351,7 @@ describe('process events with faulty rpc', () => {
     expect((await getNameRegistryEvent(db, fname)).fname).toEqual(fname);
 
     // Renew the fname
-    mockFaultyNameRegistry.emit('Renew', bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
+    await mockFaultyNameRegistry.emit('Renew', bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
       log: new MockEvent(blockNumber++, '0xb00002', '0x400002', 0, mockFaultyRPCProvider),
     });
 
