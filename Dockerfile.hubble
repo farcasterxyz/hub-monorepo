@@ -1,0 +1,47 @@
+# Produces the Docker image published at farcasterxyz/hubble
+#
+# This assumes the Docker build context is the root of the monorepo
+# (i.e. not the same as
+
+FROM node:18.16.0-alpine3.17 as build
+
+# Needed for compilation step
+RUN apk add --no-cache libc6-compat python3 make g++ linux-headers
+
+USER node
+RUN mkdir /home/node/app
+WORKDIR /home/node/app
+
+WORKDIR /home/node/app/apps/hubble
+
+# Don't include yarn.lock since that's for the monorepo, not Hubble specifically
+COPY ./apps/hubble/package.json ./package.json
+
+RUN yarn install --production --prefer-offline
+
+WORKDIR /home/node/app
+
+COPY ./tsconfig.json ./tsconfig.json
+COPY ./apps/hubble/tsconfig.json ./apps/hubble/tsconfig.json
+COPY ./apps/hubble/.config ./apps/hubble/.config
+COPY ./apps/hubble/src ./apps/hubble/src
+
+FROM node:18.16.0-alpine3.17 as app
+
+# Requirement for runtime metrics integrations
+RUN apk add --no-cache libc6-compat
+
+USER node
+RUN mkdir /home/node/app
+WORKDIR /home/node/app
+
+COPY --from=build /home/node/app ./
+
+# BuildKit doesn't support the --squash flag, so we emulate it
+# copying everything into a single layer.
+FROM scratch
+COPY --from=app / /
+
+WORKDIR /home/node/app/apps/hubble
+
+CMD ["yarn", "start", "--ip", "0.0.0.0", "--gossip-port", "2282", "--rpc-port", "2283", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1"]

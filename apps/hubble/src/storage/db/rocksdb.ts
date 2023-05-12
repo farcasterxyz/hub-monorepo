@@ -1,7 +1,7 @@
 import { bytesIncrement, HubError, isHubError } from '@farcaster/hub-nodejs';
 import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from 'abstract-leveldown';
 import { mkdir } from 'fs';
-import AbstractRocksDB from 'rocksdb';
+import AbstractRocksDB from '@farcaster/rocksdb';
 
 export const DB_DIRECTORY = '.rocks';
 const DB_NAME_DEFAULT = 'farcaster';
