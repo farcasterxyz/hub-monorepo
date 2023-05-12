@@ -18,21 +18,6 @@ import Engine from '~/storage/engine';
 import { MockFaultyRPCProvider, MockHub, MockRPCProvider } from '~/test/mocks';
 import { RetryProvider } from './retryProvider';
 
-const db = jestRocksDB('protobufs.ethEventsProvider.test');
-const engine = new Engine(db, FarcasterNetwork.TESTNET);
-const hub = new MockHub(db, engine);
-
-const fid = Factories.Fid.build();
-const fname = Factories.Fname.build();
-
-let ethEventsProvider: EthEventsProvider;
-let mockRPCProvider: MockRPCProvider;
-let mockIdRegistry: Contract;
-let mockNameRegistry: Contract;
-let mockFaultyRPCProvider: MockFaultyRPCProvider;
-let mockFaultyIdRegistry: Contract;
-let mockFaultyNameRegistry: Contract;
-
 const generateEthAddressHex = () => {
   return bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
 };
@@ -92,23 +77,29 @@ class MockEvent implements Log {
   }
 }
 
-beforeAll(async () => {
-  mockRPCProvider = new MockRPCProvider();
-  mockIdRegistry = new Contract('0x000001', IdRegistry.abi, mockRPCProvider);
-  mockNameRegistry = new Contract('0x000002', NameRegistry.abi, mockRPCProvider);
-
-  const RetryingProvider = RetryProvider(MockFaultyRPCProvider);
-  mockFaultyRPCProvider = new RetryingProvider();
-
-  mockFaultyIdRegistry = new Contract('0x000001', IdRegistry.abi, mockFaultyRPCProvider);
-  mockFaultyNameRegistry = new Contract('0x000002', NameRegistry.abi, mockFaultyRPCProvider);
-});
-
-afterAll(async () => {
-  await engine.stop();
-});
-
 describe('process events', () => {
+  const db = jestRocksDB('protobufs.ethEventsProvider.test');
+  const engine = new Engine(db, FarcasterNetwork.TESTNET);
+  const hub = new MockHub(db, engine);
+
+  const fid = Factories.Fid.build();
+  const fname = Factories.Fname.build();
+
+  let ethEventsProvider: EthEventsProvider;
+  let mockRPCProvider: MockRPCProvider;
+  let mockIdRegistry: Contract;
+  let mockNameRegistry: Contract;
+
+  beforeAll(async () => {
+    mockRPCProvider = new MockRPCProvider();
+    mockIdRegistry = new Contract('0x000001', IdRegistry.abi, mockRPCProvider);
+    mockNameRegistry = new Contract('0x000002', NameRegistry.abi, mockRPCProvider);
+  });
+
+  afterAll(async () => {
+    await engine.stop();
+  });
+
   beforeEach(async () => {
     ethEventsProvider = EthEventsProvider.build(
       hub,
@@ -224,6 +215,26 @@ describe('process events', () => {
 });
 
 describe('process events with faulty rpc', () => {
+  const db = jestRocksDB('protobufs.ethEventsProvider.test');
+  const engine = new Engine(db, FarcasterNetwork.TESTNET);
+  const hub = new MockHub(db, engine);
+
+  const fid = Factories.Fid.build();
+  const fname = Factories.Fname.build();
+
+  let ethEventsProvider: EthEventsProvider;
+  let mockFaultyRPCProvider: MockFaultyRPCProvider;
+  let mockFaultyIdRegistry: Contract;
+  let mockFaultyNameRegistry: Contract;
+
+  beforeAll(async () => {
+    const RetryingProvider = RetryProvider(MockFaultyRPCProvider);
+    mockFaultyRPCProvider = new RetryingProvider();
+
+    mockFaultyIdRegistry = new Contract('0x000001', IdRegistry.abi, mockFaultyRPCProvider);
+    mockFaultyNameRegistry = new Contract('0x000002', NameRegistry.abi, mockFaultyRPCProvider);
+  });
+
   beforeEach(async () => {
     ethEventsProvider = EthEventsProvider.build(
       hub,
@@ -237,6 +248,10 @@ describe('process events with faulty rpc', () => {
     );
     mockFaultyRPCProvider._forEachSubscriber((s) => s.start());
     await ethEventsProvider.start();
+  });
+
+  afterAll(async () => {
+    await engine.stop();
   });
 
   afterEach(async () => {
