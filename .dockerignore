@@ -9,6 +9,7 @@
 **/.editorconfig
 **/.aws
 **/.github
+**/.hub
 **/.rocks
 **/build
 **/.husky

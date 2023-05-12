@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-test-image:
     timeout-minutes: 10
     runs-on: ubuntu-latest
 
@@ -29,12 +29,52 @@ jobs:
         with:
           cache-from: type=gha
           cache-to: type=gha,type=inline
+          context: .
+          file: Dockerfile.hubble.test
           load: true
           tags: farcasterxyz/hubble:test
 
       - name: Run Hubble
         shell: bash
         run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'yarn --cwd=apps/hubble identity create && yarn --cwd=apps/hubble start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --network 3 --allowed-peers none'
+
+      - name: Download grpcurl
+        shell: bash
+        run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz -o - | tar -xzf -
+
+      - name: Check that gRPC server is running
+        uses: nick-fields/retry@v2
+        with:
+          timeout_seconds: 10
+          retry_wait_seconds: 5
+          max_attempts: 10
+          shell: bash
+          command: ./grpcurl -plaintext -import-path protobufs/schemas -proto protobufs/schemas/rpc.proto 127.0.0.1:2283 HubService.GetInfo
+          on_retry_command: docker logs hub
+
+  build-public-image:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: depot/setup-action@v1
+
+      - uses: depot/build-push-action@v1
+        with:
+          buildx-fallback: true # If Depot fails, try building locally
+          project: ${{ secrets.DEPOT_PROJECT_ID }}
+          token: ${{ secrets.DEPOT_TOKEN }}
+          context: .
+          file: Dockerfile.hubble
+          platforms: 'linux/amd64,linux/arm64'
+          tags: farcasterxyz/hubble:test
+          load: true # Load into Docker daemon
+
+      - name: Run Hubble
+        shell: bash
+        run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'yarn identity create && yarn start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --network 3 --allowed-peers none'
 
       - name: Download grpcurl
         shell: bash

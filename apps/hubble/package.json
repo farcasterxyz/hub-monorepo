@@ -6,13 +6,13 @@
   "license": "",
   "private": true,
   "bugs": {
-    "url": "https://github.com/farcasterxyz/hub/issues"
+    "url": "https://github.com/farcasterxyz/hub-monorepo/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/farcasterxyz/hub.git"
   },
-  "homepage": "https://github.com/farcasterxyz/hub#readme",
+  "homepage": "https://github.com/farcasterxyz/hub-monorepo#readme",
   "type": "module",
   "scripts": {
     "bench": "NODE_OPTIONS='--max-old-space-size=8192' tsx src/test/bench",
@@ -70,6 +70,7 @@
     "pino": "~8.11.0",
     "rate-limiter-flexible": "^2.4.1",
     "rwlock": "~5.0.0",
+    "semver": "^7.5.0",
     "tiny-typed-emitter": "~2.1.0",
     "tsx": "~3.12.5"
   }
