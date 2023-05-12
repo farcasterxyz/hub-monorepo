@@ -97,7 +97,6 @@ beforeAll(async () => {
   mockIdRegistry = new Contract('0x000001', IdRegistry.abi, mockRPCProvider);
   mockNameRegistry = new Contract('0x000002', NameRegistry.abi, mockRPCProvider);
 
-  // simulates build behaviors:
   const RetryingProvider = RetryProvider(MockFaultyRPCProvider);
   mockFaultyRPCProvider = new RetryingProvider();
 
@@ -111,7 +110,15 @@ afterAll(async () => {
 
 describe('process events', () => {
   beforeEach(async () => {
-    ethEventsProvider = new EthEventsProvider(hub, mockRPCProvider, mockIdRegistry, mockNameRegistry, 1, 10000, false);
+    ethEventsProvider = EthEventsProvider.build(
+      hub,
+      mockRPCProvider,
+      mockIdRegistry,
+      mockNameRegistry,
+      1,
+      10000,
+      false
+    );
     mockRPCProvider._forEachSubscriber((s) => s.start());
     await ethEventsProvider.start();
   });
@@ -218,7 +225,7 @@ describe('process events', () => {
 
 describe('process events with faulty rpc', () => {
   beforeEach(async () => {
-    ethEventsProvider = new EthEventsProvider(
+    ethEventsProvider = EthEventsProvider.build(
       hub,
       mockFaultyRPCProvider,
       mockFaultyIdRegistry,
@@ -337,4 +344,8 @@ describe('process events with faulty rpc', () => {
       type: NameRegistryEventType.RENEW,
     });
   }, 20000);
+
+  test('fname expiry handles retry', async () => {
+    await expect(await ethEventsProvider.getFnameExpiry(Buffer.from('test', 'utf-8'))).resolves;
+  });
 });

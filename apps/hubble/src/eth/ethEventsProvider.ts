@@ -10,21 +10,12 @@ import {
   NameRegistryEventType,
   toFarcasterTime,
 } from '@farcaster/hub-nodejs';
-import {
-  AbstractProvider,
-  BaseContractMethod,
-  Contract,
-  ContractEventPayload,
-  EthersError,
-  EventLog,
-  JsonRpcProvider,
-} from 'ethers';
+import { AbstractProvider, BaseContractMethod, Contract, ContractEventPayload, EthersError, EventLog } from 'ethers';
 import { Err, err, Ok, ok, Result, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from '~/eth/abis';
 import { bytes32ToBytes, bytesToBytes32 } from '~/eth/utils';
 import { HubInterface } from '~/hubble';
 import { logger } from '~/utils/logger';
-import { RetryProvider } from './retryProvider';
 
 const log = logger.child({
   component: 'EthEventsProvider',
@@ -128,28 +119,30 @@ export class EthEventsProvider {
    */
   public static build(
     hub: HubInterface,
-    ethRpcUrl: string,
-    idRegistryAddress: string,
-    nameRegistryAddress: string,
+    rpcProvider: AbstractProvider,
+    idRegistry: string | Contract,
+    nameRegistry: string | Contract,
     firstBlock: number,
     chunkSize: number,
-    resyncEvents: boolean
+    resyncEvents: boolean,
+    ethersPromiseCacheDelayMS = 250
   ): EthEventsProvider {
-    // Setup provider and the contracts
-    const RetryingJsonRPCProvider = RetryProvider(JsonRpcProvider);
-    const jsonRpcProvider = new RetryingJsonRPCProvider(ethRpcUrl);
-
-    const idRegistryContract = new Contract(idRegistryAddress, IdRegistry.abi, jsonRpcProvider);
-    const nameRegistryContract = new Contract(nameRegistryAddress, NameRegistry.abi, jsonRpcProvider);
+    const idRegistryContract = (idRegistry as Contract).target
+      ? (idRegistry as Contract)
+      : new Contract(idRegistry as string, IdRegistry.abi, rpcProvider);
+    const nameRegistryContract = (nameRegistry as Contract).target
+      ? (nameRegistry as Contract)
+      : new Contract(nameRegistry as string, NameRegistry.abi, rpcProvider);
 
     const provider = new EthEventsProvider(
       hub,
-      jsonRpcProvider,
+      rpcProvider,
       idRegistryContract,
       nameRegistryContract,
       firstBlock,
       chunkSize,
-      resyncEvents
+      resyncEvents,
+      ethersPromiseCacheDelayMS
     );
 
     return provider;
