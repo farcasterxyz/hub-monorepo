@@ -13,7 +13,7 @@ import { HubInterface, HubSubmitSource } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
-import { AbstractProvider, Networkish } from 'ethers';
+import { AbstractProvider, Block, BlockTag, Network, Networkish, TransactionRequest } from 'ethers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { ContactInfoContent } from '@farcaster/core';
 
@@ -86,6 +86,28 @@ export class MockRPCProvider extends AbstractProvider {
   override async getBlockNumber() {
     return 1;
   }
+
+  override async _detectNetwork() {
+    return Network.from('goerli');
+  }
+
+  override async resolveName(_: string) {
+    return '0x0000000000000000000000000000000000000000';
+  }
+
+  override async getBlock(_block: BlockTag, _prefetchTx?: boolean | undefined) {
+    return {
+      number: 1,
+    } as Block;
+  }
+
+  override async call(_tx: TransactionRequest) {
+    return '0x0000000000000000000000000000000000000000';
+  }
+
+  override async getNetwork() {
+    return Network.from('goerli');
+  }
 }
 
 /** A Mock Faulty RPC provider – fails every fourth call */
@@ -97,11 +119,31 @@ export class MockFaultyRPCProvider extends MockRPCProvider {
   }
 
   override async getLogs() {
-    return await this.faultyCall(() => super.getLogs());
+    return await this.faultyCall(async () => await super.getLogs());
   }
 
   override async getBlockNumber() {
-    return await this.faultyCall(() => super.getBlockNumber());
+    return await this.faultyCall(async () => await super.getBlockNumber());
+  }
+
+  override async _detectNetwork() {
+    return await this.faultyCall(async () => await super._detectNetwork());
+  }
+
+  override async resolveName(name: string) {
+    return await super.resolveName(name);
+  }
+
+  override async getBlock(block: BlockTag, prefetchTx?: boolean | undefined) {
+    return await this.faultyCall(async () => await super.getBlock(block, prefetchTx));
+  }
+
+  override async getNetwork() {
+    return await this.faultyCall(async () => await super.getNetwork());
+  }
+
+  override async _getTransactionRequest(_request: TransactionRequest) {
+    return super._getTransactionRequest(_request);
   }
 
   private async faultyCall<T>(fn: () => Promise<T>): Promise<T> {
