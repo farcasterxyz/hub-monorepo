@@ -34,3 +34,9 @@ message GossipMessage {
   bytes peer_id = 5;
   GossipVersion version = 6;
 }
+
+message GossipMessageForSignatureVerification {
+  oneof content {
+    MessageForSignatureVerification message = 1;
+  }
+}

@@ -319,6 +319,11 @@ export interface Message {
   signer: Uint8Array;
 }
 
+export interface MessageForSignatureVerification {
+  /** Contents of the message as bytes, ignore the rest of the data */
+  data: Uint8Array;
+}
+
 /**
  * A MessageData object contains properties common to all messages and wraps a body object which
  * contains properties specific to the MessageType.
@@ -556,6 +561,65 @@ export const Message = {
     message.signature = object.signature ?? new Uint8Array();
     message.signatureScheme = object.signatureScheme ?? 0;
     message.signer = object.signer ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseMessageForSignatureVerification(): MessageForSignatureVerification {
+  return { data: new Uint8Array() };
+}
+
+export const MessageForSignatureVerification = {
+  encode(message: MessageForSignatureVerification, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.data.length !== 0) {
+      writer.uint32(10).bytes(message.data);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MessageForSignatureVerification {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMessageForSignatureVerification();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.data = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MessageForSignatureVerification {
+    return { data: isSet(object.data) ? bytesFromBase64(object.data) : new Uint8Array() };
+  },
+
+  toJSON(message: MessageForSignatureVerification): unknown {
+    const obj: any = {};
+    message.data !== undefined &&
+      (obj.data = base64FromBytes(message.data !== undefined ? message.data : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MessageForSignatureVerification>, I>>(base?: I): MessageForSignatureVerification {
+    return MessageForSignatureVerification.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MessageForSignatureVerification>, I>>(
+    object: I
+  ): MessageForSignatureVerification {
+    const message = createBaseMessageForSignatureVerification();
+    message.data = object.data ?? new Uint8Array();
     return message;
   },
 };

@@ -13,7 +13,11 @@ message Message {
   bytes signer = 6; // Public key or address of the key pair that produced the signature
 }
 
-  /** 
+message MessageForSignatureVerification {
+  bytes data = 1; // Contents of the message as bytes, ignore the rest of the data
+}
+
+  /**
  * A MessageData object contains properties common to all messages and wraps a body object which 
  * contains properties specific to the MessageType.
  */

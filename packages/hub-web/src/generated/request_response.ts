@@ -763,7 +763,7 @@ export const SyncStatus = {
       writer.uint32(34).string(message.divergencePrefix);
     }
     if (message.divergenceSecondsAgo !== 0) {
-      writer.uint32(40).uint64(message.divergenceSecondsAgo);
+      writer.uint32(40).int32(message.divergenceSecondsAgo);
     }
     if (message.theirMessages !== 0) {
       writer.uint32(48).uint64(message.theirMessages);
@@ -772,7 +772,7 @@ export const SyncStatus = {
       writer.uint32(56).uint64(message.ourMessages);
     }
     if (message.lastBadSync !== 0) {
-      writer.uint32(64).uint64(message.lastBadSync);
+      writer.uint32(64).int64(message.lastBadSync);
     }
     return writer;
   },
@@ -817,7 +817,7 @@ export const SyncStatus = {
             break;
           }
 
-          message.divergenceSecondsAgo = longToNumber(reader.uint64() as Long);
+          message.divergenceSecondsAgo = reader.int32();
           continue;
         case 6:
           if (tag != 48) {
@@ -838,7 +838,7 @@ export const SyncStatus = {
             break;
           }
 
-          message.lastBadSync = longToNumber(reader.uint64() as Long);
+          message.lastBadSync = longToNumber(reader.int64() as Long);
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {

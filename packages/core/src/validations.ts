@@ -7,6 +7,7 @@ import { eip712 } from './crypto';
 import { HubAsyncResult, HubError, HubResult } from './errors';
 import { getFarcasterTime } from './time';
 import { makeVerificationEthAddressClaim } from './verifications';
+import { MessageWithDataBytes } from './protobufs';
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -94,7 +95,7 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
   return ok(publicKey);
 };
 
-export const validateMessage = async (message: protobufs.Message): HubAsyncResult<protobufs.Message> => {
+export const validateMessage = async (message: MessageWithDataBytes): HubAsyncResult<protobufs.Message> => {
   // 1. Check the message data
   const data = message.data;
   if (!data) {
@@ -111,7 +112,12 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
     return err(new HubError('bad_request.validation_failure', 'hash is missing'));
   }
 
-  const dataBytes = protobufs.MessageData.encode(data).finish();
+  const dataBytes = message.dataAsBytes;
+
+  if (!dataBytes) {
+    return err(new HubError('bad_request.validation_failure', 'unable to decode data for signature verification'));
+  }
+
   if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
     const computedHash = blake3(dataBytes, { dkLen: 20 });
     // we have to use bytesCompare, because TypedArrays cannot be compared directly

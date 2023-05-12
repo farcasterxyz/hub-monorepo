@@ -2,6 +2,15 @@ import { IdRegistryEvent } from './generated/id_registry_event';
 import { NameRegistryEvent } from './generated/name_registry_event';
 import * as hubEventProtobufs from './generated/hub_event';
 import * as protobufs from './generated/message';
+import * as gossipProtobufs from './generated/gossip';
+
+export type MessageWithDataBytes = protobufs.Message & {
+  dataAsBytes?: Uint8Array | undefined;
+};
+
+export type GossipMessageWithDataBytes = gossipProtobufs.GossipMessage & {
+  message?: MessageWithDataBytes | undefined;
+};
 
 /** Message types */
 

@@ -1,5 +1,5 @@
 /* eslint-disable */
-// This must be manually change to a default import right now
+// This must be manually changed to a default import right now
 import grpcWeb from '@improbable-eng/grpc-web';
 import { BrowserHeaders } from 'browser-headers';
 import { Observable } from 'rxjs';
