@@ -1,0 +1,9 @@
+{$HUB_HOST}:2283 {
+        reverse_proxy h2c://hubble:2283 {
+        }
+}
+
+{$HUB_HOST}:2285 {
+        reverse_proxy http://envoy:2285 {
+        }
+}
