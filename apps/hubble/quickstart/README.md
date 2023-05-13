@@ -7,6 +7,12 @@ The following guide walks you through running a mainnet hub on your own server. 
    - 20GB of disk space
    - Docker installed
    - Publicly reachable IP address
+   - The following ports exposed:
+      - 80
+      - 443
+      - 2282
+      - 2283
+      - 2285
 - A domain name you control (i.e. you can set an `A` record to point at the server)
 
 ## Getting started
