@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  hubble:
+    image: farcasterxyz/hubble:latest
+    restart: unless-stopped
+    command: ["yarn", "start", "--ip", "0.0.0.0", "--gossip-port", "2282", "--rpc-port", "2283", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1"]
+    ports:
+      - '2282:2282'  # Gossip port
+      - '12283:2283' # RPC port 2283 served over TLS via Caddy. Use Port 12283 for plaintext.
+    volumes:
+      - hub_identity_data:/home/node/app/apps/hubble/.hub
+      - rocksdb_data:/home/node/app/apps/hubble/.rocks
+    networks:
+      - my-network
+
+  caddy:
+    image: caddy:2.6.4-alpine
+    restart: unless-stopped
+    environment:
+      - HUB_HOST
+    ports:
+      - '80:80'       # Needed for ACME TLS certificate
+      - '443:443'     # Needed for ACME TLS certificate
+      - '443:443/udp' # Needed for ACME TLS certificate
+      - '2283:2283'
+      - '2285:2285'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - my-network
+
+  envoy:
+    image: envoyproxy/envoy:v1.26.1
+    restart: unless-stopped
+    ports:
+      - '12285:2285' # grpc-web port 2285 served over TLS via Caddy. Use Port 12285 for plaintext.
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml
+    networks:
+      - my-network
+
+volumes:
+  caddy-data:
+  caddy-config:
+  hub_identity_data:
+  rocksdb_data:
+
+networks:
+  my-network:
