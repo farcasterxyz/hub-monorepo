@@ -5,6 +5,7 @@ import {
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
+  GossipMessageWithDataBytes,
   GossipVersion,
   HubAsyncResult,
   HubError,
@@ -26,6 +27,7 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
+import { GossipMessageForSignatureVerification } from '@farcaster/core';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -37,7 +39,7 @@ const log = logger.child({ component: 'Node' });
 /** Events emitted by a Farcaster Gossip Node */
 interface NodeEvents {
   /** Triggers on receipt of a new message and includes the topic and message contents */
-  message: (topic: string, message: HubResult<GossipMessage>) => void;
+  message: (topic: string, message: HubResult<GossipMessageWithDataBytes>) => void;
   /** Triggers when a peer connects and includes the libp2p Connection object*/
   peerConnect: (connection: Connection) => void;
   /** Triggers when a peer disconnects and includes the libp2p Connection object */
@@ -345,16 +347,20 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return ok(GossipMessage.encode(message).finish());
   }
 
-  static decodeMessage(message: Uint8Array): HubResult<GossipMessage> {
+  static decodeMessage(message: Uint8Array): HubResult<GossipMessageWithDataBytes> {
     // Convert GossipMessage to Uint8Array or decode will return nested Uint8Arrays as Buffers
     try {
-      const gossipMessage = GossipMessage.decode(Uint8Array.from(message));
+      const gossipMessage: GossipMessageWithDataBytes = GossipMessage.decode(Uint8Array.from(message));
       const supportedVersions = [GOSSIP_PROTOCOL_VERSION, GossipVersion.V1];
       if (gossipMessage.topics.length == 0 || supportedVersions.findIndex((v) => v == gossipMessage.version) == -1) {
         return err(new HubError('bad_request.parse_failure', 'invalid message'));
       }
       peerIdFromBytes(gossipMessage.peerId);
-      return ok(GossipMessage.decode(Uint8Array.from(message)));
+      if (gossipMessage.message !== undefined) {
+        const msg = GossipMessageForSignatureVerification.decode(Uint8Array.from(message));
+        gossipMessage.message.dataAsBytes = msg.message?.data;
+      }
+      return ok(gossipMessage);
     } catch (error: any) {
       return err(new HubError('bad_request.parse_failure', error));
     }

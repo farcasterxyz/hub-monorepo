@@ -18,6 +18,7 @@ import {
   MergeMessageHubEvent,
   MergeNameRegistryEventHubEvent,
   Message,
+  MessageWithDataBytes,
   NameRegistryEvent,
   NameRegistryEventType,
   PruneMessageHubEvent,
@@ -167,7 +168,7 @@ class Engine {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
 
-  async mergeMessage(message: Message): HubAsyncResult<number> {
+  async mergeMessage(message: MessageWithDataBytes): HubAsyncResult<number> {
     const validatedMessage = await this.validateMessage(message);
     if (validatedMessage.isErr()) {
       return err(validatedMessage.error);
@@ -605,7 +606,7 @@ class Engine {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async validateMessage(message: Message): HubAsyncResult<Message> {
+  private async validateMessage(message: MessageWithDataBytes): HubAsyncResult<Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError('bad_request.validation_failure', 'message data is missing'));

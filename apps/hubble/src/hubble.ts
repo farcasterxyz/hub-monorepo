@@ -2,7 +2,6 @@ import {
   ContactInfoContent,
   FarcasterNetwork,
   GossipAddressInfo,
-  GossipMessage,
   HubState,
   IdRegistryEvent,
   Message,
@@ -15,6 +14,8 @@ import {
   HubRpcClient,
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
+  GossipMessageWithDataBytes,
+  MessageWithDataBytes,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
@@ -500,7 +501,7 @@ export class Hub implements HubInterface {
   /*                                  Private Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  private async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
+  private async handleGossipMessage(gossipMessage: GossipMessageWithDataBytes): HubAsyncResult<void> {
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError('bad_request.parse_failure', error as Error)
@@ -687,7 +688,7 @@ export class Hub implements HubInterface {
 
     this.gossipNode.on('message', async (_topic, message) => {
       await message.match(
-        async (gossipMessage: GossipMessage) => {
+        async (gossipMessage: GossipMessageWithDataBytes) => {
           await this.handleGossipMessage(gossipMessage);
         },
         async (error: HubError) => {
@@ -714,7 +715,7 @@ export class Hub implements HubInterface {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
-  async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
+  async submitMessage(message: MessageWithDataBytes, source?: HubSubmitSource): HubAsyncResult<number> {
     // message is a reserved key in some logging systems, so we use submittedMessage instead
     const logMessage = log.child({ submittedMessage: messageToLog(message), source });
 
