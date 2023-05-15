@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.8.1
+
+### Patch Changes
+
+- Re-publish
+
 ## 0.8.0
 
 ### Minor Changes

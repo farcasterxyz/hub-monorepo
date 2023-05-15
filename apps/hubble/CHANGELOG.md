@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.2.4
+
+### Patch Changes
+
+- Re-publish
+- Updated dependencies
+  - @farcaster/hub-nodejs@0.7.4
+
 ## 1.2.3
 
 ### Patch Changes
