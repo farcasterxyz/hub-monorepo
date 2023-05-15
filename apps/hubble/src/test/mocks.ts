@@ -13,7 +13,7 @@ import { HubInterface, HubSubmitSource } from '~/hubble';
 import { GossipNode } from '~/network/p2p/gossipNode';
 import RocksDB from '~/storage/db/rocksdb';
 import Engine from '~/storage/engine';
-import { AbstractProvider } from 'ethers';
+import { AbstractProvider, Block, BlockTag, Network, Networkish, TransactionRequest } from 'ethers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { ContactInfoContent } from '@farcaster/core';
 
@@ -73,9 +73,9 @@ export class MockHub implements HubInterface {
 export class MockRPCProvider extends AbstractProvider {
   public getLogsCount = 0;
 
-  constructor() {
+  constructor(_network?: Networkish | undefined) {
     // The Goerli networkID is 5
-    super(5);
+    super(_network || 5);
   }
 
   override async getLogs() {
@@ -85,5 +85,84 @@ export class MockRPCProvider extends AbstractProvider {
 
   override async getBlockNumber() {
     return 1;
+  }
+
+  override async _detectNetwork() {
+    return Network.from('goerli');
+  }
+
+  override async resolveName(_: string) {
+    return '0x0000000000000000000000000000000000000000';
+  }
+
+  override async getBlock(_block: BlockTag, _prefetchTx?: boolean | undefined) {
+    return {
+      number: 1,
+    } as Block;
+  }
+
+  override async call(_tx: TransactionRequest) {
+    return '0x0000000000000000000000000000000000000000';
+  }
+
+  override async getNetwork() {
+    return Network.from('goerli');
+  }
+}
+
+// A Mock Faulty RPC provider – fails every eighth call – too many fails slows
+// the tests down, so keep it reasonable.
+export class MockFaultyRPCProvider extends MockRPCProvider {
+  private isWorking = 0;
+
+  constructor() {
+    super();
+  }
+
+  override async getLogs() {
+    return await this.faultyCall(async () => await super.getLogs());
+  }
+
+  override async getBlockNumber() {
+    return await this.faultyCall(async () => await super.getBlockNumber());
+  }
+
+  override async _detectNetwork() {
+    return await this.faultyCall(async () => await super._detectNetwork());
+  }
+
+  override async resolveName(name: string) {
+    return await super.resolveName(name);
+  }
+
+  override async getBlock(block: BlockTag, prefetchTx?: boolean | undefined) {
+    return await this.faultyCall(async () => await super.getBlock(block, prefetchTx));
+  }
+
+  override async getNetwork() {
+    return await this.faultyCall(async () => await super.getNetwork());
+  }
+
+  override async _getTransactionRequest(_request: TransactionRequest) {
+    return super._getTransactionRequest(_request);
+  }
+
+  private async faultyCall<T>(fn: () => Promise<T>): Promise<T> {
+    this.isWorking = (this.isWorking + 1) % 8;
+
+    if (this.isWorking !== 7) {
+      return await fn();
+    }
+
+    return await new Promise<T>((_, reject) =>
+      reject({
+        statusCode: 429,
+        code: 'UNKNOWN_ERROR',
+        error: {
+          name: 'UNKNOWN_ERROR',
+          message: 'mock decided to say no today',
+        },
+      })
+    );
   }
 }
