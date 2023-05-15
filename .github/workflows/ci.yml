@@ -59,18 +59,19 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: depot/setup-action@v1
+      - name: Install Docker buildx
+        uses: docker/setup-buildx-action@v2
 
-      - uses: depot/build-push-action@v1
+      - name: Build Docker image
+        id: docker-image
+        uses: docker/build-push-action@v4
         with:
-          buildx-fallback: true # If Depot fails, try building locally
-          project: ${{ secrets.DEPOT_PROJECT_ID }}
-          token: ${{ secrets.DEPOT_TOKEN }}
+          cache-from: type=gha
+          cache-to: type=gha,type=inline
           context: .
           file: Dockerfile.hubble
-          platforms: 'linux/amd64,linux/arm64'
+          load: true
           tags: farcasterxyz/hubble:test
-          load: true # Load into Docker daemon
 
       - name: Run Hubble
         shell: bash
