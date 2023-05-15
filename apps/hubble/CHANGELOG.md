@@ -1,5 +1,18 @@
 # @farcaster/hubble
 
+## 1.2.3
+
+### Patch Changes
+
+- c4891754: Add --watch to hub status command and more readable output
+- 2ca66b17: replace @noble/ed25519 with faster and more secure @noble/curves
+- 43444471: fix(eth): add stronger retry logic to eth events provider
+- ea55abcb: Include semver as explicit dependency
+- fe755fbd: Switch from `rocksdb` to `@farcaster/rocksdb` NPM package
+- 651df412: Add @faker-js/faker as prod dependency
+- Updated dependencies [2ca66b17]
+  - @farcaster/hub-nodejs@0.7.3
+
 ## 1.2.2
 
 ### Patch Changes
