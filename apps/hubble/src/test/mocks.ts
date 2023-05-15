@@ -110,7 +110,8 @@ export class MockRPCProvider extends AbstractProvider {
   }
 }
 
-/** A Mock Faulty RPC provider – fails every fourth call */
+// A Mock Faulty RPC provider – fails every eighth call – too many fails slows
+// the tests down, so keep it reasonable.
 export class MockFaultyRPCProvider extends MockRPCProvider {
   private isWorking = 0;
 
@@ -147,9 +148,9 @@ export class MockFaultyRPCProvider extends MockRPCProvider {
   }
 
   private async faultyCall<T>(fn: () => Promise<T>): Promise<T> {
-    this.isWorking = (this.isWorking + 1) % 4;
+    this.isWorking = (this.isWorking + 1) % 8;
 
-    if (this.isWorking !== 3) {
+    if (this.isWorking !== 7) {
       return await fn();
     }
 

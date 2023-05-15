@@ -11,10 +11,10 @@ export function RetryProvider<
     getLogs: (_filter: Filter | FilterByBlockHash) => Promise<Array<Log>>;
     getBlockNumber: () => Promise<number>;
   }>
->(SuperClass: T) {
+>(SuperClass: T, altDelay?: number | undefined) {
   return class RetryProvider extends SuperClass {
     public override _perform = async (req: PerformActionRequest) => {
-      return await this.performWithRetry(req, 0);
+      return await this.performWithRetry(req, 1);
     };
 
     private async performWithRetry(req: PerformActionRequest, attempt: number): Promise<any> {
@@ -24,7 +24,9 @@ export function RetryProvider<
         if (e.statusCode !== 429 || attempt >= RETRY_LIMIT) {
           throw e;
         } else {
-          await new Promise<void>((resolve) => setTimeout(() => resolve(), ETHERS_CACHE_DELAY_MS));
+          await new Promise<void>((resolve) =>
+            setTimeout(() => resolve(), (altDelay || ETHERS_CACHE_DELAY_MS) * Math.pow(attempt, attempt))
+          );
           return await this.performWithRetry(req, attempt + 1);
         }
       }
@@ -32,7 +34,7 @@ export function RetryProvider<
 
     // Not necessary for JsonRpcProvider, but required for direct implementations of AbstractProvider:
     public override getLogs = async (_filter: Filter | FilterByBlockHash): Promise<Array<Log>> => {
-      return await this.getLogsWithRetry(_filter, 0);
+      return await this.getLogsWithRetry(_filter, 1);
     };
 
     private async getLogsWithRetry(_filter: Filter | FilterByBlockHash, attempt: number): Promise<any> {
@@ -42,14 +44,16 @@ export function RetryProvider<
         if (attempt >= RETRY_LIMIT) {
           throw e;
         } else {
-          await new Promise<void>((resolve) => setTimeout(() => resolve(), ETHERS_CACHE_DELAY_MS));
+          await new Promise<void>((resolve) =>
+            setTimeout(() => resolve(), (altDelay || ETHERS_CACHE_DELAY_MS) * Math.pow(attempt, attempt))
+          );
           return await this.getLogsWithRetry(_filter, attempt + 1);
         }
       }
     }
 
     public override getBlockNumber = async (): Promise<number> => {
-      return await this.getBlockNumberWithRetry(0);
+      return await this.getBlockNumberWithRetry(1);
     };
 
     private async getBlockNumberWithRetry(attempt: number): Promise<any> {
@@ -59,7 +63,9 @@ export function RetryProvider<
         if (attempt >= RETRY_LIMIT) {
           throw e;
         } else {
-          await new Promise<void>((resolve) => setTimeout(() => resolve(), ETHERS_CACHE_DELAY_MS));
+          await new Promise<void>((resolve) =>
+            setTimeout(() => resolve(), (altDelay || ETHERS_CACHE_DELAY_MS) * Math.pow(attempt, attempt))
+          );
           return await this.getBlockNumberWithRetry(attempt + 1);
         }
       }

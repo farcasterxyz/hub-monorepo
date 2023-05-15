@@ -262,7 +262,7 @@ describe('process events with faulty rpc', () => {
   let mockFaultyNameRegistry: Contract;
 
   beforeAll(async () => {
-    const RetryingProvider = RetryProvider(MockFaultyRPCProvider);
+    const RetryingProvider = RetryProvider(MockFaultyRPCProvider, 1);
     mockFaultyRPCProvider = new RetryingProvider();
 
     mockFaultyIdRegistry = new Contract(
@@ -286,7 +286,7 @@ describe('process events with faulty rpc', () => {
       1,
       10000,
       false,
-      10
+      1
     );
     mockFaultyRPCProvider._forEachSubscriber((s) => s.start());
     await ethEventsProvider.start();
@@ -369,8 +369,10 @@ describe('process events with faulty rpc', () => {
     expect(newIdRegistryEvent.type).toEqual(IdRegistryEventType.TRANSFER);
     expect(newIdRegistryEvent.to).toEqual(hexStringToBytes(address2)._unsafeUnwrap());
     mockFaultyRPCProvider._forEachSubscriber((s) => s.stop());
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), 5000));
-  }, 25000);
+    // Because we have no control over ethers' polling (i.e. stop doesn't stop until the next delay), we have to wait it
+    // out.
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 6000));
+  }, 35000);
 
   test('processes transfer name', async () => {
     let blockNumber = 1;
@@ -427,12 +429,16 @@ describe('process events with faulty rpc', () => {
       type: NameRegistryEventType.RENEW,
     });
     mockFaultyRPCProvider._forEachSubscriber((s) => s.stop());
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), 5000));
-  }, 25000);
+    // Because we have no control over ethers' polling (i.e. stop doesn't stop until the next delay), we have to wait it
+    // out.
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 6000));
+  }, 35000);
 
   test('fname expiry handles retry', async () => {
     expect(await ethEventsProvider.getFnameExpiry(Buffer.from('test', 'utf-8'))).resolves;
     mockFaultyRPCProvider._forEachSubscriber((s) => s.stop());
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), 5000));
+    // Because we have no control over ethers' polling (i.e. stop doesn't stop until the next delay), we have to wait it
+    // out.
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 6000));
   }, 15000);
 });

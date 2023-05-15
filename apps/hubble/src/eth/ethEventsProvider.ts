@@ -641,11 +641,11 @@ export class EthEventsProvider {
               const logger = log.child({ event: { rpcError: err.code } });
               logger.warn(`ethRPCError: RPC returned response ${err.message}, retrying (attempt ${attempt}).`);
 
-              // delay is required because ethers caches results from promises for 250ms
+              // delay is required because ethers caches results from promises for 250ms, also exponential backoff
               await new Promise<void>((resolve) =>
                 setTimeout(() => {
                   resolve();
-                }, this._ethersPromiseCacheDelayMS + 1)
+                }, this._ethersPromiseCacheDelayMS * Math.pow(attempt, attempt) + 1)
               );
 
               return await this.executeCallAsPromiseWithRetry(call, errorFn, attempt + 1);
