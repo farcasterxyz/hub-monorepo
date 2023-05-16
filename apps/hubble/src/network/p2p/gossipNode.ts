@@ -27,7 +27,7 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
-import { AckMessageBody } from '~/../../../packages/core/dist';
+import { AckMessageBody, PingMessageBody } from '~/../../../packages/core/dist';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -71,10 +71,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
+  private _networkLatencyMessagesEnabled: boolean;
 
-  constructor(network?: FarcasterNetwork) {
+  constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
+    this._networkLatencyMessagesEnabled = networkLatencyMessagesEnabled ?? false;
   }
 
   /** Returns the PeerId (public key) of this node */
@@ -205,6 +207,24 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const gossipMessage = GossipMessage.create({
       contactInfoContent: contactInfo,
       topics: [this.contactInfoTopic()],
+      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
+    });
+    return this.publish(gossipMessage);
+  }
+
+  /** Serializes and sends a network latency ping message */
+  async gossipNetworkLatencyPing(): Promise<HubResult<PublishResult>[]> {
+    const pingMessage = PingMessageBody.create({
+      pingOriginPeerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      pingTimestamp: Date.now(),
+    });
+    const networkLatencyMessage = NetworkLatencyMessage.create({
+      pingMessage,
+    });
+    const gossipMessage = GossipMessage.create({
+      networkLatencyMessage,
+      topics: [this.primaryTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
       version: GOSSIP_PROTOCOL_VERSION,
     });
