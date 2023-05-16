@@ -32,6 +32,43 @@ export function gossipVersionToJSON(object: GossipVersion): string {
   }
 }
 
+export enum NetworkLatencyMessageType {
+  NETWORK_LATENCY_MESSAGE_NONE = 0,
+  /** NETWORK_LATENCY_MESSAGE_PING - Ping sent from hub measuring network latency */
+  NETWORK_LATENCY_MESSAGE_PING = 1,
+  /** NETWORK_LATENCY_MESSAGE_ACK - Acknowledgement sent from hub receiving a ping message */
+  NETWORK_LATENCY_MESSAGE_ACK = 2,
+}
+
+export function networkLatencyMessageTypeFromJSON(object: any): NetworkLatencyMessageType {
+  switch (object) {
+    case 0:
+    case 'NETWORK_LATENCY_MESSAGE_NONE':
+      return NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_NONE;
+    case 1:
+    case 'NETWORK_LATENCY_MESSAGE_PING':
+      return NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING;
+    case 2:
+    case 'NETWORK_LATENCY_MESSAGE_ACK':
+      return NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_ACK;
+    default:
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NetworkLatencyMessageType');
+  }
+}
+
+export function networkLatencyMessageTypeToJSON(object: NetworkLatencyMessageType): string {
+  switch (object) {
+    case NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_NONE:
+      return 'NETWORK_LATENCY_MESSAGE_NONE';
+    case NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING:
+      return 'NETWORK_LATENCY_MESSAGE_PING';
+    case NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_ACK:
+      return 'NETWORK_LATENCY_MESSAGE_ACK';
+    default:
+      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NetworkLatencyMessageType');
+  }
+}
+
 export interface GossipAddressInfo {
   address: string;
   family: number;
@@ -48,10 +85,26 @@ export interface ContactInfoContent {
   network: FarcasterNetwork;
 }
 
+export interface PingMessageBody {
+  pingTimestamp: number;
+}
+
+export interface AckMessageBody {
+  pingTimestamp: number;
+  ackTimestamp: number;
+}
+
+export interface NetworkLatencyMessage {
+  messageType: NetworkLatencyMessageType;
+  pingMessage?: PingMessageBody | undefined;
+  ackMessage?: AckMessageBody | undefined;
+}
+
 export interface GossipMessage {
   message?: Message | undefined;
   idRegistryEvent?: IdRegistryEvent | undefined;
   contactInfoContent?: ContactInfoContent | undefined;
+  networkLatencyMessage?: NetworkLatencyMessage | undefined;
   topics: string[];
   peerId: Uint8Array;
   version: GossipVersion;
@@ -289,11 +342,231 @@ export const ContactInfoContent = {
   },
 };
 
+function createBasePingMessageBody(): PingMessageBody {
+  return { pingTimestamp: 0 };
+}
+
+export const PingMessageBody = {
+  encode(message: PingMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pingTimestamp !== 0) {
+      writer.uint32(8).uint32(message.pingTimestamp);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): PingMessageBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePingMessageBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.pingTimestamp = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PingMessageBody {
+    return { pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0 };
+  },
+
+  toJSON(message: PingMessageBody): unknown {
+    const obj: any = {};
+    message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PingMessageBody>, I>>(base?: I): PingMessageBody {
+    return PingMessageBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PingMessageBody>, I>>(object: I): PingMessageBody {
+    const message = createBasePingMessageBody();
+    message.pingTimestamp = object.pingTimestamp ?? 0;
+    return message;
+  },
+};
+
+function createBaseAckMessageBody(): AckMessageBody {
+  return { pingTimestamp: 0, ackTimestamp: 0 };
+}
+
+export const AckMessageBody = {
+  encode(message: AckMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pingTimestamp !== 0) {
+      writer.uint32(8).uint32(message.pingTimestamp);
+    }
+    if (message.ackTimestamp !== 0) {
+      writer.uint32(16).uint32(message.ackTimestamp);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): AckMessageBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAckMessageBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.pingTimestamp = reader.uint32();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.ackTimestamp = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AckMessageBody {
+    return {
+      pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
+      ackTimestamp: isSet(object.ackTimestamp) ? Number(object.ackTimestamp) : 0,
+    };
+  },
+
+  toJSON(message: AckMessageBody): unknown {
+    const obj: any = {};
+    message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
+    message.ackTimestamp !== undefined && (obj.ackTimestamp = Math.round(message.ackTimestamp));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AckMessageBody>, I>>(base?: I): AckMessageBody {
+    return AckMessageBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<AckMessageBody>, I>>(object: I): AckMessageBody {
+    const message = createBaseAckMessageBody();
+    message.pingTimestamp = object.pingTimestamp ?? 0;
+    message.ackTimestamp = object.ackTimestamp ?? 0;
+    return message;
+  },
+};
+
+function createBaseNetworkLatencyMessage(): NetworkLatencyMessage {
+  return { messageType: 0, pingMessage: undefined, ackMessage: undefined };
+}
+
+export const NetworkLatencyMessage = {
+  encode(message: NetworkLatencyMessage, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.messageType !== 0) {
+      writer.uint32(8).int32(message.messageType);
+    }
+    if (message.pingMessage !== undefined) {
+      PingMessageBody.encode(message.pingMessage, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.ackMessage !== undefined) {
+      AckMessageBody.encode(message.ackMessage, writer.uint32(26).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): NetworkLatencyMessage {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseNetworkLatencyMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.messageType = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.pingMessage = PingMessageBody.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.ackMessage = AckMessageBody.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): NetworkLatencyMessage {
+    return {
+      messageType: isSet(object.messageType) ? networkLatencyMessageTypeFromJSON(object.messageType) : 0,
+      pingMessage: isSet(object.pingMessage) ? PingMessageBody.fromJSON(object.pingMessage) : undefined,
+      ackMessage: isSet(object.ackMessage) ? AckMessageBody.fromJSON(object.ackMessage) : undefined,
+    };
+  },
+
+  toJSON(message: NetworkLatencyMessage): unknown {
+    const obj: any = {};
+    message.messageType !== undefined && (obj.messageType = networkLatencyMessageTypeToJSON(message.messageType));
+    message.pingMessage !== undefined &&
+      (obj.pingMessage = message.pingMessage ? PingMessageBody.toJSON(message.pingMessage) : undefined);
+    message.ackMessage !== undefined &&
+      (obj.ackMessage = message.ackMessage ? AckMessageBody.toJSON(message.ackMessage) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<NetworkLatencyMessage>, I>>(base?: I): NetworkLatencyMessage {
+    return NetworkLatencyMessage.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<NetworkLatencyMessage>, I>>(object: I): NetworkLatencyMessage {
+    const message = createBaseNetworkLatencyMessage();
+    message.messageType = object.messageType ?? 0;
+    message.pingMessage =
+      object.pingMessage !== undefined && object.pingMessage !== null
+        ? PingMessageBody.fromPartial(object.pingMessage)
+        : undefined;
+    message.ackMessage =
+      object.ackMessage !== undefined && object.ackMessage !== null
+        ? AckMessageBody.fromPartial(object.ackMessage)
+        : undefined;
+    return message;
+  },
+};
+
 function createBaseGossipMessage(): GossipMessage {
   return {
     message: undefined,
     idRegistryEvent: undefined,
     contactInfoContent: undefined,
+    networkLatencyMessage: undefined,
     topics: [],
     peerId: new Uint8Array(),
     version: 0,
@@ -310,6 +583,9 @@ export const GossipMessage = {
     }
     if (message.contactInfoContent !== undefined) {
       ContactInfoContent.encode(message.contactInfoContent, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.networkLatencyMessage !== undefined) {
+      NetworkLatencyMessage.encode(message.networkLatencyMessage, writer.uint32(58).fork()).ldelim();
     }
     for (const v of message.topics) {
       writer.uint32(34).string(v!);
@@ -351,6 +627,13 @@ export const GossipMessage = {
 
           message.contactInfoContent = ContactInfoContent.decode(reader, reader.uint32());
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.networkLatencyMessage = NetworkLatencyMessage.decode(reader, reader.uint32());
+          continue;
         case 4:
           if (tag != 34) {
             break;
@@ -388,6 +671,9 @@ export const GossipMessage = {
       contactInfoContent: isSet(object.contactInfoContent)
         ? ContactInfoContent.fromJSON(object.contactInfoContent)
         : undefined,
+      networkLatencyMessage: isSet(object.networkLatencyMessage)
+        ? NetworkLatencyMessage.fromJSON(object.networkLatencyMessage)
+        : undefined,
       topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => String(e)) : [],
       peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
       version: isSet(object.version) ? gossipVersionFromJSON(object.version) : 0,
@@ -402,6 +688,10 @@ export const GossipMessage = {
     message.contactInfoContent !== undefined &&
       (obj.contactInfoContent = message.contactInfoContent
         ? ContactInfoContent.toJSON(message.contactInfoContent)
+        : undefined);
+    message.networkLatencyMessage !== undefined &&
+      (obj.networkLatencyMessage = message.networkLatencyMessage
+        ? NetworkLatencyMessage.toJSON(message.networkLatencyMessage)
         : undefined);
     if (message.topics) {
       obj.topics = message.topics.map((e) => e);
@@ -429,6 +719,10 @@ export const GossipMessage = {
     message.contactInfoContent =
       object.contactInfoContent !== undefined && object.contactInfoContent !== null
         ? ContactInfoContent.fromPartial(object.contactInfoContent)
+        : undefined;
+    message.networkLatencyMessage =
+      object.networkLatencyMessage !== undefined && object.networkLatencyMessage !== null
+        ? NetworkLatencyMessage.fromPartial(object.networkLatencyMessage)
         : undefined;
     message.topics = object.topics?.map((e) => e) || [];
     message.peerId = object.peerId ?? new Uint8Array();

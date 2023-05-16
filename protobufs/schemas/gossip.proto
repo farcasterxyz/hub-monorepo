@@ -24,11 +24,35 @@ message ContactInfoContent {
   FarcasterNetwork network = 6;
 }
 
+enum NetworkLatencyMessageType {
+  NETWORK_LATENCY_MESSAGE_NONE = 0;
+  NETWORK_LATENCY_MESSAGE_PING = 1; // Ping sent from hub measuring network latency
+  NETWORK_LATENCY_MESSAGE_ACK = 2; // Acknowledgement sent from hub receiving a ping message
+}
+
+message PingMessageBody {
+    uint32 ping_timestamp = 1;
+}
+
+message AckMessageBody {
+    uint32 ping_timestamp = 1;
+    uint32 ack_timestamp = 2;
+}
+
+message NetworkLatencyMessage {
+    NetworkLatencyMessageType messageType = 1;
+    oneof body {
+        PingMessageBody ping_message = 2;
+        AckMessageBody ack_message = 3;
+    }
+}
+
 message GossipMessage {
   oneof content {
     Message message = 1;
     IdRegistryEvent id_registry_event = 2;
     ContactInfoContent contact_info_content = 3;
+    NetworkLatencyMessage network_latency_message = 7;
   }
   repeated string topics = 4;
   bytes peer_id = 5;
