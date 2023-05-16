@@ -10,6 +10,8 @@ import {
   HubError,
   HubResult,
   Message,
+  NetworkLatencyMessage,
+  NetworkLatencyMessageType,
 } from '@farcaster/hub-nodejs';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -26,6 +28,7 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
+import { AckMessageBody, PingMessageBody } from '~/../../../packages/core/dist';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -203,6 +206,42 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const gossipMessage = GossipMessage.create({
       contactInfoContent: contactInfo,
       topics: [this.contactInfoTopic()],
+      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
+    });
+    return this.publish(gossipMessage);
+  }
+
+  async gossipNetworkLatencyPing(): Promise<HubResult<PublishResult>[]> {
+    const networkLatencyMessage = NetworkLatencyMessage.create({
+      messageType: NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING,
+      pingMessage: PingMessageBody.create({
+        pingTimestamp: Date.now(),
+      }),
+      ackMessage: undefined,
+    });
+    const gossipMessage = GossipMessage.create({
+      networkLatencyMessage,
+      topics: [this.primaryTopic()],
+      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
+    });
+    return this.publish(gossipMessage);
+  }
+
+  async gossipNetworkLatencyAck(senderPeerId: PeerId, pingTimestamp: number): Promise<HubResult<PublishResult>[]> {
+    const networkLatencyMessage = NetworkLatencyMessage.create({
+      messageType: NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING,
+      pingMessage: undefined,
+      ackMessage: AckMessageBody.create({
+        senderPeerId: senderPeerId.toBytes(),
+        pingTimestamp: pingTimestamp,
+        ackTimestamp: Date.now(),
+      }),
+    });
+    const gossipMessage = GossipMessage.create({
+      networkLatencyMessage,
+      topics: [this.primaryTopic()],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
       version: GOSSIP_PROTOCOL_VERSION,
     });

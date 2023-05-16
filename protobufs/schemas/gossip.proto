@@ -35,8 +35,9 @@ message PingMessageBody {
 }
 
 message AckMessageBody {
-    uint32 ping_timestamp = 1;
-    uint32 ack_timestamp = 2;
+    bytes sender_peer_id = 1;
+    uint32 ping_timestamp = 2;
+    uint32 ack_timestamp = 3;
 }
 
 message NetworkLatencyMessage {

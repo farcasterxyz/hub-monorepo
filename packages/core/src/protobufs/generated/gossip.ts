@@ -90,6 +90,7 @@ export interface PingMessageBody {
 }
 
 export interface AckMessageBody {
+  senderPeerId: Uint8Array;
   pingTimestamp: number;
   ackTimestamp: number;
 }
@@ -399,16 +400,19 @@ export const PingMessageBody = {
 };
 
 function createBaseAckMessageBody(): AckMessageBody {
-  return { pingTimestamp: 0, ackTimestamp: 0 };
+  return { senderPeerId: new Uint8Array(), pingTimestamp: 0, ackTimestamp: 0 };
 }
 
 export const AckMessageBody = {
   encode(message: AckMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.senderPeerId.length !== 0) {
+      writer.uint32(10).bytes(message.senderPeerId);
+    }
     if (message.pingTimestamp !== 0) {
-      writer.uint32(8).uint32(message.pingTimestamp);
+      writer.uint32(16).uint32(message.pingTimestamp);
     }
     if (message.ackTimestamp !== 0) {
-      writer.uint32(16).uint32(message.ackTimestamp);
+      writer.uint32(24).uint32(message.ackTimestamp);
     }
     return writer;
   },
@@ -421,14 +425,21 @@ export const AckMessageBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag != 10) {
+            break;
+          }
+
+          message.senderPeerId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
             break;
           }
 
           message.pingTimestamp = reader.uint32();
           continue;
-        case 2:
-          if (tag != 16) {
+        case 3:
+          if (tag != 24) {
             break;
           }
 
@@ -445,6 +456,7 @@ export const AckMessageBody = {
 
   fromJSON(object: any): AckMessageBody {
     return {
+      senderPeerId: isSet(object.senderPeerId) ? bytesFromBase64(object.senderPeerId) : new Uint8Array(),
       pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
       ackTimestamp: isSet(object.ackTimestamp) ? Number(object.ackTimestamp) : 0,
     };
@@ -452,6 +464,10 @@ export const AckMessageBody = {
 
   toJSON(message: AckMessageBody): unknown {
     const obj: any = {};
+    message.senderPeerId !== undefined &&
+      (obj.senderPeerId = base64FromBytes(
+        message.senderPeerId !== undefined ? message.senderPeerId : new Uint8Array()
+      ));
     message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
     message.ackTimestamp !== undefined && (obj.ackTimestamp = Math.round(message.ackTimestamp));
     return obj;
@@ -463,6 +479,7 @@ export const AckMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<AckMessageBody>, I>>(object: I): AckMessageBody {
     const message = createBaseAckMessageBody();
+    message.senderPeerId = object.senderPeerId ?? new Uint8Array();
     message.pingTimestamp = object.pingTimestamp ?? 0;
     message.ackTimestamp = object.ackTimestamp ?? 0;
     return message;
