@@ -28,6 +28,7 @@ import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } f
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
 import { AckMessageBody, PingMessageBody } from '~/../../../packages/core/dist';
+import { PeriodicLatencyPingScheduler } from './periodicLatencyPing';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -70,6 +71,7 @@ interface NodeOptions {
 export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
+  private _periodicLatencyPingJob?: PeriodicLatencyPingScheduler;
   private _network: FarcasterNetwork;
   private _networkLatencyMessagesEnabled: boolean;
 
@@ -172,6 +174,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     // Also start the periodic job to make sure we have peers
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
 
+    // Start sending network latency pings if enabled
+    if (this._networkLatencyMessagesEnabled) {
+      this._periodicLatencyPingJob = new PeriodicLatencyPingScheduler(this);
+      this._periodicLatencyPingJob?.start();
+    }
+
     return ok(undefined);
   }
 
@@ -183,6 +191,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async stop() {
     await this._node?.stop();
     this._periodicPeerCheckJob?.stop();
+    this._periodicLatencyPingJob?.stop();
 
     log.info({ identity: this.identity }, 'Stopped libp2p...');
   }
