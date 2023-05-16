@@ -2,6 +2,7 @@ import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Message as GossipSubMessage, PublishResult } from '@libp2p/interface-pubsub';
 import { noise } from '@chainsafe/libp2p-noise';
 import {
+  AckMessageBody,
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
@@ -11,6 +12,7 @@ import {
   HubResult,
   Message,
   NetworkLatencyMessage,
+  PingMessageBody,
 } from '@farcaster/hub-nodejs';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -27,7 +29,6 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
-import { AckMessageBody, PingMessageBody } from '~/../../../packages/core/dist';
 import { PeriodicLatencyPingScheduler } from './periodicLatencyPing';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
