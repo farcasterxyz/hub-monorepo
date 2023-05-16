@@ -32,43 +32,6 @@ export function gossipVersionToJSON(object: GossipVersion): string {
   }
 }
 
-export enum NetworkLatencyMessageType {
-  NETWORK_LATENCY_MESSAGE_NONE = 0,
-  /** NETWORK_LATENCY_MESSAGE_PING - Ping sent from hub measuring network latency */
-  NETWORK_LATENCY_MESSAGE_PING = 1,
-  /** NETWORK_LATENCY_MESSAGE_ACK - Acknowledgement sent from hub receiving a ping message */
-  NETWORK_LATENCY_MESSAGE_ACK = 2,
-}
-
-export function networkLatencyMessageTypeFromJSON(object: any): NetworkLatencyMessageType {
-  switch (object) {
-    case 0:
-    case 'NETWORK_LATENCY_MESSAGE_NONE':
-      return NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_NONE;
-    case 1:
-    case 'NETWORK_LATENCY_MESSAGE_PING':
-      return NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING;
-    case 2:
-    case 'NETWORK_LATENCY_MESSAGE_ACK':
-      return NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_ACK;
-    default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NetworkLatencyMessageType');
-  }
-}
-
-export function networkLatencyMessageTypeToJSON(object: NetworkLatencyMessageType): string {
-  switch (object) {
-    case NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_NONE:
-      return 'NETWORK_LATENCY_MESSAGE_NONE';
-    case NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING:
-      return 'NETWORK_LATENCY_MESSAGE_PING';
-    case NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_ACK:
-      return 'NETWORK_LATENCY_MESSAGE_ACK';
-    default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NetworkLatencyMessageType');
-  }
-}
-
 export interface GossipAddressInfo {
   address: string;
   family: number;
@@ -86,17 +49,17 @@ export interface ContactInfoContent {
 }
 
 export interface PingMessageBody {
+  pingOriginPeerId: Uint8Array;
   pingTimestamp: number;
 }
 
 export interface AckMessageBody {
-  senderPeerId: Uint8Array;
+  pingOriginPeerId: Uint8Array;
   pingTimestamp: number;
   ackTimestamp: number;
 }
 
 export interface NetworkLatencyMessage {
-  messageType: NetworkLatencyMessageType;
   pingMessage?: PingMessageBody | undefined;
   ackMessage?: AckMessageBody | undefined;
 }
@@ -344,13 +307,16 @@ export const ContactInfoContent = {
 };
 
 function createBasePingMessageBody(): PingMessageBody {
-  return { pingTimestamp: 0 };
+  return { pingOriginPeerId: new Uint8Array(), pingTimestamp: 0 };
 }
 
 export const PingMessageBody = {
   encode(message: PingMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pingOriginPeerId.length !== 0) {
+      writer.uint32(10).bytes(message.pingOriginPeerId);
+    }
     if (message.pingTimestamp !== 0) {
-      writer.uint32(8).uint32(message.pingTimestamp);
+      writer.uint32(16).uint32(message.pingTimestamp);
     }
     return writer;
   },
@@ -363,7 +329,14 @@ export const PingMessageBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag != 10) {
+            break;
+          }
+
+          message.pingOriginPeerId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
             break;
           }
 
@@ -379,11 +352,18 @@ export const PingMessageBody = {
   },
 
   fromJSON(object: any): PingMessageBody {
-    return { pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0 };
+    return {
+      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(),
+      pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
+    };
   },
 
   toJSON(message: PingMessageBody): unknown {
     const obj: any = {};
+    message.pingOriginPeerId !== undefined &&
+      (obj.pingOriginPeerId = base64FromBytes(
+        message.pingOriginPeerId !== undefined ? message.pingOriginPeerId : new Uint8Array()
+      ));
     message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
     return obj;
   },
@@ -394,19 +374,20 @@ export const PingMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<PingMessageBody>, I>>(object: I): PingMessageBody {
     const message = createBasePingMessageBody();
+    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array();
     message.pingTimestamp = object.pingTimestamp ?? 0;
     return message;
   },
 };
 
 function createBaseAckMessageBody(): AckMessageBody {
-  return { senderPeerId: new Uint8Array(), pingTimestamp: 0, ackTimestamp: 0 };
+  return { pingOriginPeerId: new Uint8Array(), pingTimestamp: 0, ackTimestamp: 0 };
 }
 
 export const AckMessageBody = {
   encode(message: AckMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.senderPeerId.length !== 0) {
-      writer.uint32(10).bytes(message.senderPeerId);
+    if (message.pingOriginPeerId.length !== 0) {
+      writer.uint32(10).bytes(message.pingOriginPeerId);
     }
     if (message.pingTimestamp !== 0) {
       writer.uint32(16).uint32(message.pingTimestamp);
@@ -429,7 +410,7 @@ export const AckMessageBody = {
             break;
           }
 
-          message.senderPeerId = reader.bytes();
+          message.pingOriginPeerId = reader.bytes();
           continue;
         case 2:
           if (tag != 16) {
@@ -456,7 +437,7 @@ export const AckMessageBody = {
 
   fromJSON(object: any): AckMessageBody {
     return {
-      senderPeerId: isSet(object.senderPeerId) ? bytesFromBase64(object.senderPeerId) : new Uint8Array(),
+      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(),
       pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
       ackTimestamp: isSet(object.ackTimestamp) ? Number(object.ackTimestamp) : 0,
     };
@@ -464,9 +445,9 @@ export const AckMessageBody = {
 
   toJSON(message: AckMessageBody): unknown {
     const obj: any = {};
-    message.senderPeerId !== undefined &&
-      (obj.senderPeerId = base64FromBytes(
-        message.senderPeerId !== undefined ? message.senderPeerId : new Uint8Array()
+    message.pingOriginPeerId !== undefined &&
+      (obj.pingOriginPeerId = base64FromBytes(
+        message.pingOriginPeerId !== undefined ? message.pingOriginPeerId : new Uint8Array()
       ));
     message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
     message.ackTimestamp !== undefined && (obj.ackTimestamp = Math.round(message.ackTimestamp));
@@ -479,7 +460,7 @@ export const AckMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<AckMessageBody>, I>>(object: I): AckMessageBody {
     const message = createBaseAckMessageBody();
-    message.senderPeerId = object.senderPeerId ?? new Uint8Array();
+    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array();
     message.pingTimestamp = object.pingTimestamp ?? 0;
     message.ackTimestamp = object.ackTimestamp ?? 0;
     return message;
@@ -487,14 +468,11 @@ export const AckMessageBody = {
 };
 
 function createBaseNetworkLatencyMessage(): NetworkLatencyMessage {
-  return { messageType: 0, pingMessage: undefined, ackMessage: undefined };
+  return { pingMessage: undefined, ackMessage: undefined };
 }
 
 export const NetworkLatencyMessage = {
   encode(message: NetworkLatencyMessage, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.messageType !== 0) {
-      writer.uint32(8).int32(message.messageType);
-    }
     if (message.pingMessage !== undefined) {
       PingMessageBody.encode(message.pingMessage, writer.uint32(18).fork()).ldelim();
     }
@@ -511,13 +489,6 @@ export const NetworkLatencyMessage = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.messageType = reader.int32() as any;
-          continue;
         case 2:
           if (tag != 18) {
             break;
@@ -543,7 +514,6 @@ export const NetworkLatencyMessage = {
 
   fromJSON(object: any): NetworkLatencyMessage {
     return {
-      messageType: isSet(object.messageType) ? networkLatencyMessageTypeFromJSON(object.messageType) : 0,
       pingMessage: isSet(object.pingMessage) ? PingMessageBody.fromJSON(object.pingMessage) : undefined,
       ackMessage: isSet(object.ackMessage) ? AckMessageBody.fromJSON(object.ackMessage) : undefined,
     };
@@ -551,7 +521,6 @@ export const NetworkLatencyMessage = {
 
   toJSON(message: NetworkLatencyMessage): unknown {
     const obj: any = {};
-    message.messageType !== undefined && (obj.messageType = networkLatencyMessageTypeToJSON(message.messageType));
     message.pingMessage !== undefined &&
       (obj.pingMessage = message.pingMessage ? PingMessageBody.toJSON(message.pingMessage) : undefined);
     message.ackMessage !== undefined &&
@@ -565,7 +534,6 @@ export const NetworkLatencyMessage = {
 
   fromPartial<I extends Exact<DeepPartial<NetworkLatencyMessage>, I>>(object: I): NetworkLatencyMessage {
     const message = createBaseNetworkLatencyMessage();
-    message.messageType = object.messageType ?? 0;
     message.pingMessage =
       object.pingMessage !== undefined && object.pingMessage !== null
         ? PingMessageBody.fromPartial(object.pingMessage)

@@ -11,7 +11,6 @@ import {
   HubResult,
   Message,
   NetworkLatencyMessage,
-  NetworkLatencyMessageType,
 } from '@farcaster/hub-nodejs';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -28,7 +27,7 @@ import { logger } from '~/utils/logger';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
-import { AckMessageBody, PingMessageBody } from '~/../../../packages/core/dist';
+import { AckMessageBody } from '~/../../../packages/core/dist';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -212,40 +211,50 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this.publish(gossipMessage);
   }
 
-  async gossipNetworkLatencyPing(): Promise<HubResult<PublishResult>[]> {
-    const networkLatencyMessage = NetworkLatencyMessage.create({
-      messageType: NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING,
-      pingMessage: PingMessageBody.create({
-        pingTimestamp: Date.now(),
-      }),
-      ackMessage: undefined,
-    });
-    const gossipMessage = GossipMessage.create({
-      networkLatencyMessage,
-      topics: [this.primaryTopic()],
-      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-      version: GOSSIP_PROTOCOL_VERSION,
-    });
-    return this.publish(gossipMessage);
-  }
-
-  async gossipNetworkLatencyAck(senderPeerId: PeerId, pingTimestamp: number): Promise<HubResult<PublishResult>[]> {
-    const networkLatencyMessage = NetworkLatencyMessage.create({
-      messageType: NetworkLatencyMessageType.NETWORK_LATENCY_MESSAGE_PING,
-      pingMessage: undefined,
-      ackMessage: AckMessageBody.create({
-        senderPeerId: senderPeerId.toBytes(),
-        pingTimestamp: pingTimestamp,
+  async handleNetworkLatencyMessage(message: NetworkLatencyMessage): Promise<HubResult<PublishResult | undefined>[]> {
+    if (message.pingMessage) {
+      // Respond to ping message with an ack message
+      const ackMessage = AckMessageBody.create({
+        pingOriginPeerId: message.pingMessage.pingOriginPeerId,
+        pingTimestamp: message.pingMessage.pingTimestamp,
         ackTimestamp: Date.now(),
-      }),
-    });
-    const gossipMessage = GossipMessage.create({
-      networkLatencyMessage,
-      topics: [this.primaryTopic()],
-      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-      version: GOSSIP_PROTOCOL_VERSION,
-    });
-    return this.publish(gossipMessage);
+      });
+      const networkLatencyMessage = NetworkLatencyMessage.create({
+        ackMessage,
+      });
+      const gossipMessage = GossipMessage.create({
+        networkLatencyMessage,
+        topics: [this.primaryTopic()],
+        peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+        version: GOSSIP_PROTOCOL_VERSION,
+      });
+      return this.publish(gossipMessage);
+    } else if (message.ackMessage) {
+      if (message.ackMessage.pingOriginPeerId == this.peerId?.toBytes()) {
+        log.info(
+          {
+            pingOriginPeerId: message.ackMessage.pingOriginPeerId,
+            pingTimestamp: message.ackMessage.pingTimestamp,
+            ackTimestamp: message.ackMessage.ackTimestamp,
+          },
+          'gossip network latency ack info'
+        );
+        // TODO(akshaan): Save tracing state to gossipNode so that we can compute
+        // network-level propagation stats for gossip messages (e.g. how long it takes
+        // for a message to reach 50/95/99% of the network)
+        return [ok(undefined)];
+      } else {
+        const networkLatencyMessage = message;
+        const gossipMessage = GossipMessage.create({
+          networkLatencyMessage,
+          topics: [this.primaryTopic()],
+          peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+          version: GOSSIP_PROTOCOL_VERSION,
+        });
+        return this.publish(gossipMessage);
+      }
+    }
+    return [err(new HubError('unavailable', { message: 'invalid message data in NetworkLatencyMessage' }))];
   }
 
   /** Publishes a Gossip Message to the network */
