@@ -540,7 +540,10 @@ export class Hub implements HubInterface {
       return ok(undefined);
     } else if (gossipMessage.networkLatencyMessage) {
       if (peerIdResult.isOk()) {
-        await this.gossipNode.handleNetworkLatencyMessage(gossipMessage.networkLatencyMessage);
+        await this.gossipNode.handleNetworkLatencyMessage(
+          peerIdResult._unsafeUnwrap(),
+          gossipMessage.networkLatencyMessage
+        );
       }
       return ok(undefined);
     } else {

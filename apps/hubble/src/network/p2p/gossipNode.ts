@@ -30,6 +30,7 @@ import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } f
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
 import { PeriodicLatencyPingScheduler } from './periodicLatencyPing';
+import { NetworkLatencyMetrics } from './networkLatencyMetrics';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -72,14 +73,19 @@ interface NodeOptions {
 export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
-  private _periodicLatencyPingJob?: PeriodicLatencyPingScheduler;
   private _network: FarcasterNetwork;
+  private _periodicLatencyPingJob?: PeriodicLatencyPingScheduler;
   private _networkLatencyMessagesEnabled: boolean;
+  private _networkLatencyMetrics?: NetworkLatencyMetrics;
 
   constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
     this._networkLatencyMessagesEnabled = networkLatencyMessagesEnabled ?? false;
+    if (this._networkLatencyMessagesEnabled) {
+      this._networkLatencyMetrics = new NetworkLatencyMetrics();
+      this._periodicLatencyPingJob = new PeriodicLatencyPingScheduler(this);
+    }
   }
 
   /** Returns the PeerId (public key) of this node */
@@ -176,10 +182,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
 
     // Start sending network latency pings if enabled
-    if (this._networkLatencyMessagesEnabled) {
-      this._periodicLatencyPingJob = new PeriodicLatencyPingScheduler(this);
-      this._periodicLatencyPingJob?.start();
-    }
+    this._periodicLatencyPingJob?.start();
 
     return ok(undefined);
   }
@@ -241,7 +244,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this.publish(gossipMessage);
   }
 
-  async handleNetworkLatencyMessage(message: NetworkLatencyMessage): Promise<HubResult<PublishResult | undefined>[]> {
+  async handleNetworkLatencyMessage(
+    senderPeerId: PeerId,
+    message: NetworkLatencyMessage
+  ): Promise<HubResult<PublishResult | undefined>[]> {
     if (message.pingMessage) {
       // Respond to ping message with an ack message
       const ackMessage = AckMessageBody.create({
@@ -261,17 +267,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       return this.publish(gossipMessage);
     } else if (message.ackMessage) {
       if (message.ackMessage.pingOriginPeerId == this.peerId?.toBytes()) {
-        log.info(
-          {
-            pingOriginPeerId: message.ackMessage.pingOriginPeerId,
-            pingTimestamp: message.ackMessage.pingTimestamp,
-            ackTimestamp: message.ackMessage.ackTimestamp,
-          },
-          'gossip network latency ack info'
-        );
-        // TODO(akshaan): Save tracing state to gossipNode so that we can compute
-        // network-level propagation stats for gossip messages (e.g. how long it takes
-        // for a message to reach 50/95/99% of the network)
+        this._networkLatencyMetrics?.logMetrics(senderPeerId, message);
         return [ok(undefined)];
       } else {
         const networkLatencyMessage = message;

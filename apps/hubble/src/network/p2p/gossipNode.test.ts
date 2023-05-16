@@ -11,6 +11,7 @@ import {
   ContactInfoContent,
   GossipVersion,
   PingMessageBody,
+  AckMessageBody,
 } from '@farcaster/hub-nodejs';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from '~/network/p2p/gossipNode';
@@ -22,7 +23,6 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { sleep } from '~/utils/crypto';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Result } from 'neverthrow';
-import { AckMessageBody } from '~/../../../packages/core/dist';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
@@ -309,6 +309,7 @@ describe('GossipNode', () => {
     test('Network latency messages are gossiped', async () => {
       const node = new GossipNode();
       await node.start([]);
+      const senderPeerId = await createEd25519PeerId();
       // Ping message should be responded to with an ack message
       const pingMessage = PingMessageBody.create({
         pingOriginPeerId: peerId.toBytes(),
@@ -317,10 +318,10 @@ describe('GossipNode', () => {
       let networkLatencyMessage = NetworkLatencyMessage.create({
         pingMessage,
       });
-      let result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
+      let result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
       expect(Result.combineWithAllErrors(result).isOk()).toBeTruthy();
 
-      // Ack message should be gossiped if the peerId differs from the node's peerId
+      // Ack message should be gossiped if the origin peerId differs from the node's peerId
       const ackPeerId = await createEd25519PeerId();
       let ackMessage = AckMessageBody.create({
         pingOriginPeerId: ackPeerId.toBytes(),
@@ -329,11 +330,11 @@ describe('GossipNode', () => {
       networkLatencyMessage = NetworkLatencyMessage.create({
         ackMessage,
       });
-      result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
+      result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
       let combinedResult = Result.combineWithAllErrors(result);
       expect(combinedResult._unsafeUnwrap()).toEqual([{ recipients: [] }]);
 
-      // Ack message should be logged if peerId matches node's peerId
+      // Ack message should be logged if the origin peerId matches node's peerId
       ackMessage = AckMessageBody.create({
         pingOriginPeerId: node.peerId?.toBytes() ?? new Uint8Array(),
         pingTimestamp: Date.now(),
@@ -341,7 +342,7 @@ describe('GossipNode', () => {
       networkLatencyMessage = NetworkLatencyMessage.create({
         ackMessage,
       });
-      result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
+      result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
       combinedResult = Result.combineWithAllErrors(result);
       expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
     });
