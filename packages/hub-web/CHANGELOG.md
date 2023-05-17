@@ -1,5 +1,22 @@
 # @farcaster/hub-web
 
+## 0.3.4
+
+### Patch Changes
+
+- Re-publish
+- Updated dependencies
+  - @farcaster/core@0.8.1
+
+## 0.3.3
+
+### Patch Changes
+
+- 2ca66b17: replace @noble/ed25519 with faster and more secure @noble/curves
+- Updated dependencies [651df412]
+- Updated dependencies [2ca66b17]
+  - @farcaster/core@0.8.0
+
 ## 0.3.2
 
 ### Patch Changes

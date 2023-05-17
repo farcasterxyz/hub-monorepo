@@ -114,14 +114,14 @@ export class HubEventIdGenerator {
   private _lastSeq: number;
   private _epoch: number;
 
-  constructor(options: { epoch?: number; lastTimestamp?: 0; lastIndex?: 0 } = {}) {
+  constructor(options: { epoch?: number; lastTimestamp?: number; lastIndex?: number } = {}) {
     this._epoch = options.epoch ?? 0;
     this._lastTimestamp = options.lastTimestamp ?? 0;
     this._lastSeq = options.lastIndex ?? 0;
   }
 
-  generateId(): HubResult<number> {
-    const timestamp = Date.now() - this._epoch;
+  generateId(options: { currentTimestamp?: number } = {}): HubResult<number> {
+    const timestamp = (options.currentTimestamp || Date.now()) - this._epoch;
 
     if (timestamp === this._lastTimestamp) {
       this._lastSeq = this._lastSeq + 1;
@@ -130,11 +130,11 @@ export class HubEventIdGenerator {
       this._lastSeq = 0;
     }
 
-    if (this._lastTimestamp > 2 ** TIMESTAMP_BITS) {
+    if (this._lastTimestamp >= 2 ** TIMESTAMP_BITS) {
       return err(new HubError('bad_request.invalid_param', `timestamp > ${TIMESTAMP_BITS} bits`));
     }
 
-    if (this._lastSeq > 2 ** SEQUENCE_BITS) {
+    if (this._lastSeq >= 2 ** SEQUENCE_BITS) {
       return err(new HubError('bad_request.invalid_param', `sequence > ${SEQUENCE_BITS} bits`));
     }
 

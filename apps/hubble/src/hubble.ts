@@ -53,6 +53,8 @@ import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrR
 import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJob';
 import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { RetryProvider } from './eth/retryProvider';
+import { JsonRpcProvider } from 'ethers';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync';
 
@@ -209,9 +211,12 @@ export class Hub implements HubInterface {
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
     if (options.ethRpcUrl) {
+      const RetryingJsonRPCProvider = RetryProvider(JsonRpcProvider);
+      const jsonRpcProvider = new RetryingJsonRPCProvider(options.ethRpcUrl);
+
       this.ethRegistryProvider = EthEventsProvider.build(
         this,
-        options.ethRpcUrl,
+        jsonRpcProvider,
         options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
         options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
         options.firstBlock ?? GoerliEthConstants.FirstBlock,

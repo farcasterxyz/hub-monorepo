@@ -23,7 +23,7 @@
   },
   "engines": {
     "npm": ">=8.0.0",
-    "node": "^18.7.0"
+    "node": ">=18.7"
   },
   "devDependencies": {
     "@changesets/changelog-git": "^0.1.14",

@@ -49,6 +49,13 @@ describe('HubEventIdGenerator', () => {
       lastId = id;
     }
   });
+
+  test('fails if sequence ID exceeds max allowed', () => {
+    const currentTimestamp = Date.now();
+    const generator = new HubEventIdGenerator({ lastTimestamp: currentTimestamp, lastIndex: 4094 });
+    expect(generator.generateId({ currentTimestamp }).isOk()).toEqual(true);
+    expect(generator.generateId({ currentTimestamp }).isErr()).toEqual(true);
+  });
 });
 
 describe('commitTransaction', () => {
