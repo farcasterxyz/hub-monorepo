@@ -3,7 +3,7 @@
 # This assumes the Docker build context is the root of the monorepo
 # (i.e. not the same as
 
-FROM node:18.16.0-alpine3.17 as build
+FROM node:20.1.0-alpine3.17 as build
 
 # Needed for compilation step
 RUN apk add --no-cache libc6-compat python3 make g++ linux-headers
@@ -26,7 +26,7 @@ COPY ./apps/hubble/tsconfig.json ./apps/hubble/tsconfig.json
 COPY ./apps/hubble/.config ./apps/hubble/.config
 COPY ./apps/hubble/src ./apps/hubble/src
 
-FROM node:18.16.0-alpine3.17 as app
+FROM node:20.1.0-alpine3.17 as app
 
 # Requirement for runtime metrics integrations
 RUN apk add --no-cache libc6-compat

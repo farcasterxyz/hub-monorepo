@@ -40,7 +40,7 @@ Before you get down to coding, take a minute to consider this:
 
 First, ensure that the following are installed globally on your machine:
 
-- [Node.js 18+](https://github.com/nvm-sh/nvm)
+- [Node.js 20+](https://nodejs.org/en/download/releases)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 
 Then, from the root folder run:

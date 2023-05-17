@@ -100,7 +100,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
@@ -122,19 +122,24 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node_version: [18, 20]
+        os: ['ubuntu-latest']
+
     steps:
       - uses: actions/checkout@v3
 
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: ${{ matrix.node_version }}
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}--node--${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('**/yarn.lock') }}
 
       - name: Install dependencies
         run: yarn install
