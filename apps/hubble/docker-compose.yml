@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  hubble:
+    image: farcasterxyz/hubble:latest
+    restart: unless-stopped
+    command: ["yarn", "start", "--ip", "0.0.0.0", "--gossip-port", "2282", "--rpc-port", "2283", "--eth-rpc-url", "$ETH_RPC_URL", "--network", "$FC_NETWORK_ID", "-b", "$BOOTSTRAP_NODE"]
+    ports:
+      - '2282:2282' # Gossip
+      - '2283:2283' # RPC
+    volumes:
+      - ./.hub:/home/node/app/apps/hubble/.hub
+      - ./.rocks:/home/node/app/apps/hubble/.rocks
