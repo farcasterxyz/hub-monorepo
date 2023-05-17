@@ -98,6 +98,10 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.UserDataMessage;
   }
 
+  if (type === MessageType.LINK_ADD || type === MessageType.LINK_REMOVE) {
+    return UserPostfix.LinkMessage;
+  }
+
   throw new Error('invalid type');
 };
 
