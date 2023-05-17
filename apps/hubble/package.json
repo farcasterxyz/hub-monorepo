@@ -16,7 +16,7 @@
   "type": "module",
   "scripts": {
     "bench": "NODE_OPTIONS='--max-old-space-size=8192' tsx src/test/bench",
-    "build": "yarn clean && tsc --project ./tsconfig.json",
+    "build": "yarn clean && tsc --project ./tsconfig.json && tsconfig-replace-paths --project tsconfig.json",
     "clean": "rimraf ./build",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "eslint  src/ --color --ext .ts",
@@ -43,7 +43,8 @@
     "pino-pretty": "~10.0.0",
     "prettier-config-custom": "*",
     "progress": "~2.0.3",
-    "ts-mockito": "~2.6.1"
+    "ts-mockito": "~2.6.1",
+    "tsconfig-replace-paths": "^0.0.14"
   },
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "6.1.0",
