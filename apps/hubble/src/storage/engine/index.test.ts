@@ -10,6 +10,7 @@ import {
   HubEventType,
   IdRegistryEvent,
   IdRegistryEventType,
+  LinkAddMessage,
   MergeMessageHubEvent,
   Message,
   MessageData,
@@ -54,6 +55,7 @@ let signerAdd: SignerAddMessage;
 let signerRemove: SignerRemoveMessage;
 let castAdd: CastAddMessage;
 let reactionAdd: ReactionAddMessage;
+let linkAdd: LinkAddMessage;
 let verificationAdd: VerificationAddEthAddressMessage;
 let userDataAdd: UserDataAddMessage;
 
@@ -75,6 +77,7 @@ beforeAll(async () => {
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+  linkAdd = await Factories.LinkAddMessage.create({ data: { fid, network } }, { transient: { signer } });
   verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
     { data: { fid, network } },
     { transient: { signer } }
@@ -155,6 +158,16 @@ describe('mergeMessage', () => {
           )
         ).resolves.toEqual(ok(reactionAdd));
         expect(mergedMessages).toEqual([signerAdd, reactionAdd]);
+      });
+    });
+
+    describe('LinkAdd', () => {
+      test('succeeds', async () => {
+        await expect(engine.mergeMessage(linkAdd)).resolves.toBeInstanceOf(Ok);
+        await expect(
+          engine.getLink(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number)
+        ).resolves.toEqual(ok(linkAdd));
+        expect(mergedMessages).toEqual([signerAdd, linkAdd]);
       });
     });
 
@@ -317,6 +330,40 @@ describe('mergeMessage', () => {
       const allMessages = await engine.getAllReactionMessagesByFid(fid);
       expect(allMessages._unsafeUnwrap().messages.length).toEqual(1);
     });
+
+    test('succeeds with concurrent, conflicting link messages', async () => {
+      const targetFid = Factories.Fid.build();
+      const body = Factories.LinkBody.build({
+        type: 'follow',
+        targetFid: targetFid,
+      });
+
+      const messages: Message[] = [];
+      for (let i = 0; i < 10; i++) {
+        if (Math.random() < 0.5) {
+          messages.push(
+            await Factories.LinkAddMessage.create({ data: { linkBody: body, fid, network } }, { transient: { signer } })
+          );
+        } else {
+          messages.push(
+            await Factories.LinkRemoveMessage.create(
+              { data: { linkBody: body, fid, network } },
+              { transient: { signer } }
+            )
+          );
+        }
+      }
+
+      const results = await Promise.all(messages.map((message) => engine.mergeMessage(message)));
+      expect(
+        results.every(
+          (result) => result.isOk() || (result.isErr() && result.error.errCode !== 'unavailable.storage_failure')
+        )
+      ).toBeTruthy();
+
+      const allMessages = await engine.getAllLinkMessagesByFid(fid);
+      expect(allMessages._unsafeUnwrap().messages.length).toEqual(1);
+    });
   });
 
   describe('fails when signer is invalid', () => {
@@ -330,6 +377,13 @@ describe('mergeMessage', () => {
     test('with ReactionAdd', async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       const result = await engine.mergeMessage(reactionAdd);
+      expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
+      expect(result._unsafeUnwrapErr().message).toMatch('invalid signer');
+    });
+
+    test('with LinkAdd', async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      const result = await engine.mergeMessage(linkAdd);
       expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
       expect(result._unsafeUnwrapErr().message).toMatch('invalid signer');
     });
@@ -347,6 +401,10 @@ describe('mergeMessage', () => {
 
     test('with ReactionAdd', () => {
       message = reactionAdd;
+    });
+
+    test('with LinkAdd', () => {
+      message = linkAdd;
     });
   });
 
@@ -386,12 +444,19 @@ describe('mergeMessages', () => {
   });
 
   test('succeeds and merges messages in parallel', async () => {
-    const results = await engine.mergeMessages([castAdd, reactionAdd, userDataAdd, verificationAdd, signerRemove]);
+    const results = await engine.mergeMessages([
+      castAdd,
+      reactionAdd,
+      linkAdd,
+      userDataAdd,
+      verificationAdd,
+      signerRemove,
+    ]);
     for (const result of results) {
       expect(result).toBeInstanceOf(Ok);
     }
     expect(new Set(mergedMessages)).toEqual(
-      new Set([signerAdd, castAdd, reactionAdd, userDataAdd, verificationAdd, signerRemove])
+      new Set([signerAdd, castAdd, reactionAdd, linkAdd, userDataAdd, verificationAdd, signerRemove])
     );
   });
 });
@@ -416,6 +481,7 @@ describe('revokeMessagesBySigner', () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
     await engine.mergeMessage(reactionAdd);
+    await engine.mergeMessage(linkAdd);
     await engine.mergeMessage(verificationAdd);
     await engine.mergeMessage(userDataAdd);
   });
@@ -439,7 +505,7 @@ describe('revokeMessagesBySigner', () => {
   });
 
   test('revokes messages signed by Ed25519 signer', async () => {
-    const signerMessages = [castAdd, reactionAdd, verificationAdd, userDataAdd];
+    const signerMessages = [castAdd, reactionAdd, linkAdd, verificationAdd, userDataAdd];
     for (const message of signerMessages) {
       await expect(checkMessage(message)).resolves.toEqual(message);
     }
@@ -481,7 +547,7 @@ describe('with listeners and workers', () => {
     beforeEach(async () => {
       await liveEngine.mergeIdRegistryEvent(custodyEvent);
       await liveEngine.mergeMessage(signerAdd);
-      await liveEngine.mergeMessages([castAdd, reactionAdd]);
+      await liveEngine.mergeMessages([castAdd, reactionAdd, linkAdd]);
       expect(await liveEngine.getCast(fid, castAdd.hash)).toEqual(ok(castAdd));
       expect(
         await liveEngine.getReaction(
@@ -490,13 +556,16 @@ describe('with listeners and workers', () => {
           reactionAdd.data.reactionBody.targetCastId as CastId
         )
       ).toEqual(ok(reactionAdd));
+      expect(
+        await liveEngine.getLink(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number)
+      ).toEqual(ok(linkAdd));
     });
 
     test('revokes messages when SignerRemove is merged', async () => {
       await liveEngine.mergeMessage(signerRemove);
       expect(revokedMessages).toEqual([]);
       await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([castAdd, reactionAdd]);
+      expect(revokedMessages).toEqual([castAdd, reactionAdd, linkAdd]);
     });
 
     test('revokes messages when fid is transferred', async () => {
@@ -508,7 +577,7 @@ describe('with listeners and workers', () => {
       await liveEngine.mergeIdRegistryEvent(custodyTransfer);
       expect(revokedMessages).toEqual([]);
       await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd]);
+      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd, linkAdd]);
     });
 
     test('revokes messages when SignerAdd is pruned', async () => {
@@ -519,7 +588,7 @@ describe('with listeners and workers', () => {
       liveEngine.eventHandler.emit('pruneMessage', event as PruneMessageHubEvent); // Hack to force prune
       expect(revokedMessages).toEqual([]);
       await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([castAdd, reactionAdd]);
+      expect(revokedMessages).toEqual([castAdd, reactionAdd, linkAdd]);
     });
 
     test('revokes messages when SignerAdd is revoked', async () => {
@@ -530,7 +599,7 @@ describe('with listeners and workers', () => {
       liveEngine.eventHandler.emit('revokeMessage', event as RevokeMessageHubEvent); // Hack to force revoke
       expect(revokedMessages).toEqual([signerAdd]);
       await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd]);
+      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd, linkAdd]);
     });
 
     test('revokes UserDataAdd when fname is transferred', async () => {

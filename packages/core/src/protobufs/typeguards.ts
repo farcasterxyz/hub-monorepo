@@ -28,6 +28,30 @@ export const isCastRemoveMessage = (message: protobufs.Message): message is type
   );
 };
 
+export const isLinkAddData = (data: protobufs.MessageData): data is types.LinkAddData => {
+  return data.type === protobufs.MessageType.LINK_ADD && typeof data.linkBody !== 'undefined';
+};
+
+export const isLinkAddMessage = (message: protobufs.Message): message is types.LinkAddMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== 'undefined' &&
+    isLinkAddData(message.data)
+  );
+};
+
+export const isLinkRemoveData = (data: protobufs.MessageData): data is types.LinkRemoveData => {
+  return data.type === protobufs.MessageType.LINK_REMOVE && typeof data.linkBody !== 'undefined';
+};
+
+export const isLinkRemoveMessage = (message: protobufs.Message): message is types.LinkRemoveMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== 'undefined' &&
+    isLinkRemoveData(message.data)
+  );
+};
+
 export const isReactionAddData = (data: protobufs.MessageData): data is types.ReactionAddData => {
   return data.type === protobufs.MessageType.REACTION_ADD && typeof data.reactionBody !== 'undefined';
 };

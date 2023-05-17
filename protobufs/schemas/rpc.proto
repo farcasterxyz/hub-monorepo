@@ -42,12 +42,18 @@ service HubService {
   rpc GetIdRegistryEventByAddress(IdRegistryEventByAddressRequest) returns (IdRegistryEvent);
   rpc GetFids(FidsRequest) returns (FidsResponse);
 
+  // Links
+  rpc GetLink(LinkRequest) returns (Message);
+  rpc GetLinksByFid(LinksByFidRequest) returns (MessagesResponse);
+  rpc GetLinksByTarget(LinksByTargetRequest) returns (MessagesResponse);
+
   // Bulk Methods
   rpc GetAllCastMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllReactionMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllVerificationMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllSignerMessagesByFid(FidRequest) returns (MessagesResponse);
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
+  rpc GetAllLinkMessagesByFid(FidRequest) returns (MessagesResponse);
 
   // Sync Methods
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
