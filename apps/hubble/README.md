@@ -22,7 +22,13 @@ Run a local Hubble instance on your computer to familiarize yourself with the ba
 
 Testnet is a sandboxed environment where you can read and write messages without affecting your production account. Dummy messages are broadcast every 10 seconds for testing. Minimum requirements are 4GB RAM and 5 GB of free space.
 
-Run `docker compose run hubble yarn start -e <eth-rpc-url> -b /dns/testnet1.farcaster.xyz/tcp/2282 -n 2`
+1. Create a `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
+   ```
+   ETH_RPC_URL=your-ETH-RPC-URL
+   FC_NETWORK_ID=2
+   BOOTSTRAP_NODE=/dns/testnet1.farcaster.xyz/tcp/2282
+   ```
+2. Run `docker compose up`
 
 ### 3. Verify Your Setup
 
@@ -43,11 +49,17 @@ docker compose exec hubble yarn status --watch --insecure
 
 Mainnet is Farcaster's production environment apps use and writing a message here will make it show up in all applications. Minimum requirements are 8GB RAM and 20GB of disk space.
 
-1. Get your PeerId from the file `/apps/hubble/.hub/<PEER_ID>_id.protobuf`
-2. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
-3. Wait for the core team to deploy changes, usually within 24-48 hours.
-4. If you were on a different network, run `docker compose stop && docker compose run hubble yarn dbreset` to clear the database.
-5. Run `docker compose run hubble yarn start -e <node url> -b /dns/nemes.farcaster.xyz/tcp/2282 -n 1`
+1. Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
+   ```
+   ETH_RPC_URL=your-ETH-RPC-URL
+   FC_NETWORK_ID=2
+   BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
+   ```
+2. Get your PeerId from the file `/apps/hubble/.hub/<PEER_ID>_id.protobuf`
+3. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
+4. Wait for the core team to deploy changes, usually within 24-48 hours.
+5. If you were on a different network, run `docker compose stop && docker compose run --rm hubble yarn dbreset` to clear the database.
+6. Run `docker compose up -d`
 
 ## :cloud: Getting Started in the Cloud
 
@@ -105,19 +117,17 @@ docker compose exec hubble yarn status --watch --insecure
 
 Mainnet is Farcaster's production environment apps use and writing a message here will make it show up in all applications. Minimum requirements are 8GB RAM and 20GB of disk space.
 
-Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
-
-```
-ETH_RPC_URL=your-ETH-RPC-URL
-FC_NETWORK_ID=2
-BOOTSTRAP_NODE=/dns/testnet1.farcaster.xyz/tcp/2282
-```
-
-1. Get your PeerId from the file `/apps/hubble/.hub/<PEER_ID>_id.protobuf`
-2. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
-3. Wait for the core team to deploy changes, usually within 24-48 hours.
-4. If you were previously on a different network (e.g. Testnet), run `docker compose stop && docker compose run --rm hubble yarn dbreset` to clear the database.
-5. Run `docker compose up -d`
+1. Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
+   ```
+   ETH_RPC_URL=your-ETH-RPC-URL
+   FC_NETWORK_ID=2
+   BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
+   ```
+2. Get your PeerId from the file `apps/hubble/.hub/<PEER_ID>_id.protobuf`
+3. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts).
+4. Wait for the core team to deploy changes, usually within 24-48 hours.
+5. If you were previously on a different network (e.g. Testnet), run `docker compose stop && docker compose run --rm hubble yarn dbreset` to clear the database.
+6. Run `docker compose up -d`
 
 You can monitor the status of the sync with:
 ```sh
