@@ -120,12 +120,11 @@ jobs:
 
   test:
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: 'buildjet-4vcpu-ubuntu-2204'
 
     strategy:
       matrix:
         node_version: [18, 20]
-        os: ['ubuntu-latest']
 
     steps:
       - uses: actions/checkout@v3
