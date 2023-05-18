@@ -42,6 +42,8 @@ export class PeriodicLatencyPingScheduler {
     const combinedResult = Result.combineWithAllErrors(result);
     if (combinedResult.isErr()) {
       log.warn({ err: combinedResult.error }, 'No Connected Peers');
+    } else {
+      log.info('Issuing gossip latency ping');
     }
   }
 }

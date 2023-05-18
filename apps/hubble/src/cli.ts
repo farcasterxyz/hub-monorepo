@@ -91,7 +91,7 @@ app
   .option('--commit-lock-max-pending <number>', 'Commit lock max pending jobs (default: 1000)', parseNumber)
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
-  .option('--networkLatencyMessagesEnabled', 'Enable gossip network latency pings. (default: disabled)')
+  .option('--gossip-latency-check-enabled', 'Enable gossip network latency pings. (default: disabled)')
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
@@ -309,7 +309,7 @@ app
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
       testUsers: testUsers,
-      networkLatencyMessagesEnabled: cliOptions.networkLatencyMessagesEnabled ?? false,
+      networkLatencyMessagesEnabled: cliOptions.gossipLatencyCheckEnabled ?? false,
     };
 
     const hubResult = Result.fromThrowable(
