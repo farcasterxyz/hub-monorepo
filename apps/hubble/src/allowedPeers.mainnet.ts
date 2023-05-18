@@ -31,4 +31,5 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWEs1QcvJcoVv3ihHqqa3yxh4gijegrjyyVkvso2qayUdj', // @colin / @paragraph
   '12D3KooWBhm9XdafZiBWPncDVcvMhcmV3kLFLnBiS83CjY833sWN', // @pjc (fc.bus.events)
   '12D3KooWFHsw17MsY9eSbYLhkemUYcAwAjPPA7D6g3wTuhnLgAbT', // @sds
+  '12D3KooWNR1PJaUH3Ssgfp7gcpF2F9Hm5HsXYyeBhujQdg1TU9Pm', // @blanker
 ];
