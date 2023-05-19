@@ -51,6 +51,7 @@ Mainnet is Farcaster's production environment apps use and writing a message her
 
 1. Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
    ```
+   # Note: this should still point to goerli and not eth mainnet
    ETH_RPC_URL=your-ETH-RPC-URL
    FC_NETWORK_ID=1
    BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
@@ -119,6 +120,7 @@ Mainnet is Farcaster's production environment apps use and writing a message her
 
 1. Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
    ```
+   # Note: this should still point to goerli and not eth mainnet
    ETH_RPC_URL=your-ETH-RPC-URL
    FC_NETWORK_ID=1
    BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282

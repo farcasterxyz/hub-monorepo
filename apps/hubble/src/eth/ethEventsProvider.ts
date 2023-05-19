@@ -26,6 +26,7 @@ export class GoerliEthConstants {
   public static NameRegistryAddress = '0xe3be01d99baa8db9905b33a3ca391238234b79d1';
   public static FirstBlock = 7648795;
   public static ChunkSize = 10000;
+  public static chainId = BigInt(5);
 }
 
 type NameRegistryRenewEvent = Omit<NameRegistryEvent, 'to' | 'from'>;
@@ -205,6 +206,16 @@ export class EthEventsProvider {
       return;
     }
 
+    const network = await this.executeCallAsPromiseWithRetry(
+      () => this._jsonRpcProvider.getNetwork(),
+      (err) => err
+    );
+
+    if (network.isErr() || network.value.chainId !== GoerliEthConstants.chainId) {
+      log.error({ err: network.isErr() ? network.error : `Wrong network ${network.value.chainId}` }, 'Bad network');
+      return;
+    }
+
     const latestBlock = latestBlockResult.value;
 
     if (!latestBlock) {
@@ -212,7 +223,7 @@ export class EthEventsProvider {
       return;
     }
 
-    log.info({ latestBlock: latestBlock.number }, 'connected to ethereum node');
+    log.info({ latestBlock: latestBlock.number, network: network.value.chainId }, 'connected to ethereum node');
 
     // Find how how much we need to sync
     let lastSyncedBlock = this._firstBlock;
