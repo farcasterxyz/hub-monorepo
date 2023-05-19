@@ -34,9 +34,6 @@ export class NetworkLatencyMetrics {
   public logMetrics(senderPeerId: PeerId, message: NetworkLatencyMessage) {
     if (message.ackMessage) {
       const ackMessage = message.ackMessage;
-      // Add peerId to recent peerIds
-      this._recentPeerIds.set(senderPeerId.toString(), Date.now());
-
       // Log ack latency for peer
       log.info(
         {
@@ -47,7 +44,7 @@ export class NetworkLatencyMetrics {
       );
 
       // Log network coverage
-      this.logNetworkCoverage(ackMessage);
+      this.logNetworkCoverage(senderPeerId, ackMessage);
 
       // Expire peerIds that are past the TTL
       this.expireEntries();
@@ -65,7 +62,11 @@ export class NetworkLatencyMetrics {
     );
   }
 
-  private logNetworkCoverage(ackMessage: AckMessageBody) {
+  private logNetworkCoverage(senderPeerId: PeerId, ackMessage: AckMessageBody) {
+    // Add peerId to recent peerIds
+    this._recentPeerIds.set(senderPeerId.toString(), Date.now());
+
+    // Compute coverage metrics
     const metricsKey = `${ackMessage.pingOriginPeerId}_${ackMessage.pingTimestamp}`;
     const currentMetrics = this._metrics.get(metricsKey);
     const newNumAcks = (this._metrics.get(metricsKey)?.numAcks ?? 0) + 1;
@@ -76,11 +77,13 @@ export class NetworkLatencyMetrics {
       lastAckTimestamp: ackMessage.ackTimestamp,
     };
     const timeTaken = ackMessage.ackTimestamp - ackMessage.pingTimestamp;
-    const coverageLabels = [0.5, 0.75, 0.9, 0.99];
-    coverageLabels.forEach((label) => {
-      if (!currentMetrics?.networkCoverage.get(label) && label <= coverageProportion) {
-        updatedMetrics.networkCoverage.set(label, timeTaken);
-        log.info({ networkCoverage: label, timeTaken: timeTaken }, 'gossip network coverage metrics');
+    const coverageThresholds = [0.5, 0.75, 0.9, 0.99];
+    coverageThresholds.forEach((threshold) => {
+      const coverageIsAboveThreshold = threshold <= coverageProportion;
+      const shouldUpdateMetricForThreshold = newNumAcks == 1 || (newNumAcks - 1) / newNumAcks < threshold;
+      if (shouldUpdateMetricForThreshold && coverageIsAboveThreshold) {
+        updatedMetrics.networkCoverage.set(threshold, timeTaken);
+        log.info({ networkCoverage: threshold, timeTaken: timeTaken }, 'gossip network coverage metrics');
       }
     });
     this._metrics.set(metricsKey, updatedMetrics);
