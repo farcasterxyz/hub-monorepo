@@ -14,19 +14,28 @@ interface Metrics {
 }
 
 export class NetworkLatencyMetrics {
-  private _recentPeerIds: Map<PeerId, number>;
-  private _metrics: Map<AckMessageBody, Metrics>;
+  private _recentPeerIds: Map<string, number>;
+  private _metrics: Map<string, Metrics>;
 
-  constructor() {
-    this._recentPeerIds = new Map();
-    this._metrics = new Map();
+  constructor();
+  constructor(recentPeerIds?: Map<PeerId, number>, metrics?: Map<AckMessageBody, Metrics>) {
+    this._recentPeerIds = recentPeerIds ?? new Map();
+    this._metrics = metrics ?? new Map();
+  }
+
+  get recentPeerIds() {
+    return this._recentPeerIds;
+  }
+
+  get metrics() {
+    return this._metrics;
   }
 
   public logMetrics(senderPeerId: PeerId, message: NetworkLatencyMessage) {
     if (message.ackMessage) {
       const ackMessage = message.ackMessage;
       // Add peerId to recent peerIds
-      this._recentPeerIds.set(senderPeerId, Date.now());
+      this._recentPeerIds.set(senderPeerId.toString(), Date.now());
 
       // Log ack latency for peer
       log.info(
@@ -57,13 +66,14 @@ export class NetworkLatencyMetrics {
   }
 
   private logNetworkCoverage(ackMessage: AckMessageBody) {
-    const currentMetrics = this._metrics.get(ackMessage);
-    const newNumAcks = (this._metrics.get(ackMessage)?.numAcks ?? 0) + 1;
+    const metricsKey = `${ackMessage.pingOriginPeerId}_${ackMessage.pingTimestamp}`;
+    const currentMetrics = this._metrics.get(metricsKey);
+    const newNumAcks = (this._metrics.get(metricsKey)?.numAcks ?? 0) + 1;
     const coverageProportion = newNumAcks / this._recentPeerIds.size;
     const updatedMetrics: Metrics = {
       numAcks: newNumAcks,
       networkCoverage: currentMetrics?.networkCoverage ?? new Map<number, number>(),
-      lastAckTimestamp: Date.now(),
+      lastAckTimestamp: ackMessage.ackTimestamp,
     };
     const timeTaken = ackMessage.ackTimestamp - ackMessage.pingTimestamp;
     const coverageLabels = [0.5, 0.75, 0.9, 0.99];
@@ -73,6 +83,6 @@ export class NetworkLatencyMetrics {
         log.info({ networkCoverage: label, timeTaken: timeTaken }, 'gossip network coverage metrics');
       }
     });
-    this._metrics.set(ackMessage, updatedMetrics);
+    this._metrics.set(metricsKey, updatedMetrics);
   }
 }
