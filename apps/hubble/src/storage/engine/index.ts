@@ -622,14 +622,13 @@ class Engine {
   /*                              Link Store Methods                            */
   /* -------------------------------------------------------------------------- */
 
-  async getLink(fid: number, type: string, target: number | string): HubAsyncResult<LinkAddMessage> {
+  async getLink(fid: number, type: string, target: number): HubAsyncResult<LinkAddMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    const validatedTarget =
-      typeof target === 'number' ? validations.validateFid(target) : validations.validateTarget(target);
+    const validatedTarget = validations.validateFid(target);
     if (validatedTarget.isErr()) {
       return err(validatedTarget.error);
     }
@@ -651,7 +650,7 @@ class Engine {
   }
 
   async getLinksByTarget(
-    target: number | string,
+    target: number,
     type?: string,
     pageOptions: PageOptions = {}
   ): HubAsyncResult<MessagesPage<LinkAddMessage>> {

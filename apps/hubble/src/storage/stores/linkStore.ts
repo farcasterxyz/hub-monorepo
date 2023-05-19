@@ -594,7 +594,7 @@ class LinkStore {
       throw new HubError('bad_request.validation_failure', 'type is missing');
     } else {
       const typeBuffer = Buffer.from(type);
-      if (typeBuffer.length === 0 || typeBuffer.length > 8) {
+      if (type.length === 0 || typeBuffer.length > 8) {
         throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
       }
     }
@@ -630,7 +630,7 @@ class LinkStore {
       throw new HubError('bad_request.validation_failure', 'type is missing');
     } else {
       const typeBuffer = Buffer.from(type);
-      if (typeBuffer.length === 0 || typeBuffer.length > 8) {
+      if (type.length === 0 || typeBuffer.length > 8) {
         throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
       }
     }
@@ -664,7 +664,7 @@ class LinkStore {
       throw new HubError('bad_request.validation_failure', 'type is missing');
     } else {
       const typeBuffer = Buffer.from(type);
-      if (typeBuffer.length === 0 || typeBuffer.length > 8) {
+      if (type.length === 0 || typeBuffer.length > 8) {
         throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
       }
     }
@@ -696,7 +696,7 @@ class LinkStore {
       throw new HubError('bad_request.validation_failure', 'type is missing');
     } else {
       const typeBuffer = Buffer.from(type);
-      if (typeBuffer.length === 0 || typeBuffer.length > 8) {
+      if (type.length === 0 || typeBuffer.length > 8) {
         throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
       }
     }

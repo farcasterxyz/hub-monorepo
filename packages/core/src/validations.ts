@@ -411,7 +411,7 @@ export const validateCastRemoveBody = (body: protobufs.CastRemoveBody): HubResul
 
 export const validateLinkType = (type: string): HubResult<string> => {
   const typeBuffer = Buffer.from(type);
-  if (typeBuffer.length === 0 || typeBuffer.length > 8) {
+  if (type.length === 0 || typeBuffer.length > 8) {
     return err(new HubError('bad_request.validation_failure', 'type must be between 1-8 bytes'));
   }
 
