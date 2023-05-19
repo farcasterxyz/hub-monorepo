@@ -91,6 +91,7 @@ app
   .option('--commit-lock-max-pending <number>', 'Commit lock max pending jobs (default: 1000)', parseNumber)
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
+  .option('--process-file-prefix <prefix>', 'Prefix for file to which hub process number is written. (default: "")')
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
@@ -119,7 +120,8 @@ app
 
     // We'll write our process number to a file so that we can detect if another hub process has taken over.
     const processFileDir = `${DB_DIRECTORY}/process/`;
-    const processFileName = `process_number.txt`;
+    const processFilePrefix = cliOptions.processFilePrefix ?? '';
+    const processFileName = `${processFilePrefix}_process_number.txt`;
 
     // Generate a random number to identify this hub instance
     // Note that we can't use the PID as the identifier, since the hub running in a docker container will
