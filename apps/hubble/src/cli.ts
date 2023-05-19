@@ -120,8 +120,8 @@ app
 
     // We'll write our process number to a file so that we can detect if another hub process has taken over.
     const processFileDir = `${DB_DIRECTORY}/process/`;
-    const processFilePrefix = cliOptions.processFilePrefix ?? '';
-    const processFileName = `${processFilePrefix}_process_number.txt`;
+    const processFilePrefix = cliOptions.processFilePrefix?.concat('_') ?? '';
+    const processFileName = `${processFilePrefix}process_number.txt`;
 
     // Generate a random number to identify this hub instance
     // Note that we can't use the PID as the identifier, since the hub running in a docker container will
