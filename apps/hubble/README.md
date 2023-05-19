@@ -52,7 +52,7 @@ Mainnet is Farcaster's production environment apps use and writing a message her
 1. Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
    ```
    ETH_RPC_URL=your-ETH-RPC-URL
-   FC_NETWORK_ID=2
+   FC_NETWORK_ID=1
    BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
    ```
 2. Get your PeerId from the file `/apps/hubble/.hub/<PEER_ID>_id.protobuf`
@@ -120,7 +120,7 @@ Mainnet is Farcaster's production environment apps use and writing a message her
 1. Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
    ```
    ETH_RPC_URL=your-ETH-RPC-URL
-   FC_NETWORK_ID=2
+   FC_NETWORK_ID=1
    BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
    ```
 2. Get your PeerId from the file `apps/hubble/.hub/<PEER_ID>_id.protobuf`
