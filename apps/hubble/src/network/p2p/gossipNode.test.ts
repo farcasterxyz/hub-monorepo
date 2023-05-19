@@ -306,7 +306,7 @@ describe('GossipNode', () => {
       expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
     });
 
-    test('Network latency messages are gossiped', async () => {
+    test('Network latency acks are sent on ping receipt', async () => {
       const node = new GossipNode();
       await node.start([]);
       const senderPeerId = await createEd25519PeerId();
@@ -315,24 +315,28 @@ describe('GossipNode', () => {
         pingOriginPeerId: peerId.toBytes(),
         pingTimestamp: Date.now(),
       });
-      let networkLatencyMessage = NetworkLatencyMessage.create({
+      const networkLatencyMessage = NetworkLatencyMessage.create({
         pingMessage,
       });
-      let result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
+      const result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
       expect(Result.combineWithAllErrors(result).isOk()).toBeTruthy();
+    });
 
-      // Ack message should be gossiped if the origin peerId differs from the node's peerId
+    test('Network latency metrics are logged on ack receipt', async () => {
+      const node = new GossipNode();
+      await node.start([]);
+      const senderPeerId = await createEd25519PeerId();
       const ackPeerId = await createEd25519PeerId();
       let ackMessage = AckMessageBody.create({
         pingOriginPeerId: ackPeerId.toBytes(),
         pingTimestamp: Date.now(),
       });
-      networkLatencyMessage = NetworkLatencyMessage.create({
+      let networkLatencyMessage = NetworkLatencyMessage.create({
         ackMessage,
       });
-      result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
+      let result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
       let combinedResult = Result.combineWithAllErrors(result);
-      expect(combinedResult._unsafeUnwrap()).toEqual([{ recipients: [] }]);
+      expect(combinedResult._unsafeUnwrap()).toEqual(undefined);
 
       // Ack message should be logged if the origin peerId matches node's peerId
       ackMessage = AckMessageBody.create({
