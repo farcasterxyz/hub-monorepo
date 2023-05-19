@@ -36,7 +36,8 @@ services:
         "--process-file-prefix",
         "hubble1",
         "--id",
-        "$TEST_HUB1_ID"
+        "$TEST_HUB1_ID",
+        "--gossip-latency-check-enabled"
       ]
     volumes:
       - ./apps/hubble/.hub:/home/node/app/apps/hubble/.hub
