@@ -30,7 +30,7 @@ const TEST_TIMEOUT_SHORT = 10 * 1000;
 class MockNetworkLatencyMetrics extends NetworkLatencyMetrics {
   public logCounter = 0;
 
-  public override logMetrics(_: PeerId, _: NetworkLatencyMessage): void {
+  public override logMetrics(_: PeerId, __: NetworkLatencyMessage): void {
     this.logCounter += 1;
   }
 }
