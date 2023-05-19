@@ -250,6 +250,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   ): Promise<HubResult<PublishResult | undefined>[]> {
     if (message.pingMessage) {
       // Respond to ping message with an ack message
+      log.info('handling gossip ping message');
       const ackMessage = AckMessageBody.create({
         pingOriginPeerId: message.pingMessage.pingOriginPeerId,
         pingTimestamp: message.pingMessage.pingTimestamp,
@@ -266,19 +267,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       });
       return this.publish(gossipMessage);
     } else if (message.ackMessage) {
-      if (message.ackMessage.pingOriginPeerId == this.peerId?.toBytes()) {
+      log.info('handling gossip ack message');
+      const peerIdMatchesOrigin = this.peerId?.equals(message.ackMessage.pingOriginPeerId) ?? false;
+      if (peerIdMatchesOrigin) {
         this._networkLatencyMetrics?.logMetrics(senderPeerId, message);
-        return [ok(undefined)];
-      } else {
-        const networkLatencyMessage = message;
-        const gossipMessage = GossipMessage.create({
-          networkLatencyMessage,
-          topics: [this.primaryTopic()],
-          peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-          version: GOSSIP_PROTOCOL_VERSION,
-        });
-        return this.publish(gossipMessage);
       }
+      return [ok(undefined)];
     }
     return [err(new HubError('unavailable', { message: 'invalid message data in NetworkLatencyMessage' }))];
   }
@@ -288,7 +282,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const topics = message.topics;
     const encodedMessage = GossipNode.encodeMessage(message);
 
-    log.debug({ identity: this.identity }, `Publishing message to topics: ${topics}`);
+    log.info({ identity: this.identity }, `Publishing message to topics: ${topics}`);
     if (this.gossip == undefined) {
       return [err(new HubError('unavailable', new Error('GossipSub not initialized')))];
     }
@@ -310,7 +304,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         })
       );
 
-      log.debug({ identity: this.identity, results }, 'Published to gossip peers');
+      log.info({ identity: this.identity, results }, 'Published to gossip peers');
       return results;
     }
   }

@@ -31,10 +31,10 @@ export class NetworkLatencyMetrics {
       // Log ack latency for peer
       log.info(
         {
-          pingOriginPeerId: ackMessage.pingOriginPeerId,
+          receivingHubPeerId: senderPeerId.toString(),
           latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
         },
-        'gossip network latency info'
+        'gossip network latency metrics'
       );
 
       // Log network coverage
@@ -60,10 +60,6 @@ export class NetworkLatencyMetrics {
     const currentMetrics = this._metrics.get(ackMessage);
     const newNumAcks = (this._metrics.get(ackMessage)?.numAcks ?? 0) + 1;
     const coverageProportion = newNumAcks / this._recentPeerIds.size;
-    if (coverageProportion < 0.5 || coverageProportion > 0.99) {
-      return;
-    }
-
     const updatedMetrics: Metrics = {
       numAcks: newNumAcks,
       networkCoverage: currentMetrics?.networkCoverage ?? new Map<number, number>(),
@@ -74,7 +70,7 @@ export class NetworkLatencyMetrics {
     coverageLabels.forEach((label) => {
       if (!currentMetrics?.networkCoverage.get(label) && label <= coverageProportion) {
         updatedMetrics.networkCoverage.set(label, timeTaken);
-        log.info({ networkCoverage: label, timeTaken: timeTaken }, 'gossip network coverage info');
+        log.info({ networkCoverage: label, timeTaken: timeTaken }, 'gossip network coverage metrics');
       }
     });
     this._metrics.set(ackMessage, updatedMetrics);

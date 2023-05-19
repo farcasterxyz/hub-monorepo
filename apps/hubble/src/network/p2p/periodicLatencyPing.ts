@@ -10,7 +10,7 @@ const log = logger.child({
 type SchedulerStatus = 'started' | 'stopped';
 
 // Every 5 minutes
-const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
+const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/1 * * * *';
 
 export class PeriodicLatencyPingScheduler {
   private _gossipNode: GossipNode;
@@ -41,9 +41,7 @@ export class PeriodicLatencyPingScheduler {
     const result = await this._gossipNode.gossipNetworkLatencyPing();
     const combinedResult = Result.combineWithAllErrors(result);
     if (combinedResult.isErr()) {
-      log.warn({ err: combinedResult.error }, 'No Connected Peers');
-    } else {
-      log.info('Issuing gossip latency ping');
+      log.warn({ err: combinedResult.error }, 'Failed to send gossip latency ping');
     }
   }
 }

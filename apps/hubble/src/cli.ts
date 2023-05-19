@@ -92,6 +92,7 @@ app
   .option('-i, --id <filepath>', 'Path to the PeerId file')
   .option('-n --network <network>', 'Farcaster network ID', parseNetwork)
   .option('--gossip-latency-check-enabled', 'Enable gossip network latency pings. (default: disabled)')
+  .option('--process-file-prefix <prefix>', 'Path to file where hub process number is written. (default: "")')
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
@@ -120,7 +121,8 @@ app
 
     // We'll write our process number to a file so that we can detect if another hub process has taken over.
     const processFileDir = `${DB_DIRECTORY}/process/`;
-    const processFileName = `process_number.txt`;
+    const processFilePrefix = cliOptions.processFilePrefix ?? '';
+    const processFileName = `${processFilePrefix}_process_number.txt`;
 
     // Generate a random number to identify this hub instance
     // Note that we can't use the PID as the identifier, since the hub running in a docker container will
