@@ -10,7 +10,7 @@ const log = logger.child({
 type SchedulerStatus = 'started' | 'stopped';
 
 // Every 5 minutes
-const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/1 * * * *';
+const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 
 export class PeriodicLatencyPingScheduler {
   private _gossipNode: GossipNode;
