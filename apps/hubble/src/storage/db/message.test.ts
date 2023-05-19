@@ -1,4 +1,11 @@
-import { MessageType, bytesCompare, Factories, HubError } from '@farcaster/hub-nodejs';
+import {
+  MessageType,
+  CastAddMessage,
+  ReactionAddMessage,
+  bytesCompare,
+  Factories,
+  HubError,
+} from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '~/storage/db/jestUtils';
 import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';
 import {
@@ -18,8 +25,13 @@ const db = jestRocksDB('storage.db.message.test');
 
 const signer = Factories.Ed25519Signer.build();
 
-const castMessage = await Factories.CastAddMessage.create({}, { transient: { signer } });
-const reactionMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
+let castMessage: CastAddMessage;
+let reactionMessage: ReactionAddMessage;
+
+beforeAll(async () => {
+  castMessage = await Factories.CastAddMessage.create({}, { transient: { signer } });
+  reactionMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
+});
 
 describe('makeUserKey', () => {
   test('orders keys by fid', () => {

@@ -4,7 +4,6 @@
     "paths": {
       "~/*": ["./*"]
     },
-
     "baseUrl": "./src",
     "outDir": "build",
     "rootDir": "src"
