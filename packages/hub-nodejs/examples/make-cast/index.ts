@@ -197,7 +197,38 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
   );
   castResults.push(castWithEmojiLinkAttachmnent);
 
+  /**
+   * Example 7: A cast that replies to a URL
+   *
+   * "I think this is a great protocol 🚀"
+   */
+
+  const castReplyingToAUrl = await makeCastAdd(
+    {
+      text: 'I think this is a great protocol 🚀',
+      embeds: [],
+      embedsDeprecated: [],
+      mentions: [],
+      mentionsPositions: [],
+      parentUrl: 'https://www.farcaster.xyz/',
+    },
+    dataOptions,
+    ed25519Signer
+  );
+  castResults.push(castReplyingToAUrl);
+
+  /**
+   * Step 3: Broadcast CastAdd messages to Hub
+   *
+   * Send the new casts to a Hub so that they become part of the Farcaster network
+   */
+
+  // 1. If your client does not use authentication.
   castResults.map((castAddResult) => castAddResult.map((castAdd) => client.submitMessage(castAdd)));
+
+  // 2. If your client uses authentication.
+  // castResults.map((castAddResult) => castAddResult.map((castAdd) => client.submitMessage(castAdd, authMetadata)));
+
   console.log(`Broadcast ${castResults.length} casts`);
 
   client.close();
