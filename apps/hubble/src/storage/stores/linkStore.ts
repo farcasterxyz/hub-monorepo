@@ -42,8 +42,8 @@ import { logger } from '~/utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 2_500;
 
-const makeTargetKey = (target: number | string): Buffer => {
-  return typeof target === 'string' ? Buffer.from(target) : makeFidKey(target);
+const makeTargetKey = (target: number): Buffer => {
+  return makeFidKey(target);
 };
 
 /**
@@ -55,7 +55,7 @@ const makeTargetKey = (target: number | string): Buffer => {
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
-const makeLinkAddsKey = (fid: number, type?: string, target?: number | string): Buffer => {
+const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
     throw new HubError('bad_request.validation_failure', 'targetId provided without type');
   }
@@ -81,7 +81,7 @@ const makeLinkAddsKey = (fid: number, type?: string, target?: number | string): 
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
-const makeLinkRemovesKey = (fid: number, type?: string, target?: number | string): Buffer => {
+const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
     throw new HubError('bad_request.validation_failure', 'targetId provided without type');
   }
@@ -107,7 +107,7 @@ const makeLinkRemovesKey = (fid: number, type?: string, target?: number | string
  *
  * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<fid?>:<tsHash?>
  */
-const makeLinksByTargetKey = (target: number | string, fid?: number, tsHash?: Uint8Array): Buffer => {
+const makeLinksByTargetKey = (target: number, fid?: number, tsHash?: Uint8Array): Buffer => {
   if (fid && !tsHash) {
     throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
   }
@@ -172,7 +172,7 @@ class LinkStore {
    *
    * @returns the LinkAdd Model if it exists, undefined otherwise
    */
-  async getLinkAdd(fid: number, type: string, target: number | string): Promise<LinkAddMessage> {
+  async getLinkAdd(fid: number, type: string, target: number): Promise<LinkAddMessage> {
     const linkAddsSetKey = makeLinkAddsKey(fid, type, target);
     const linkMessageKey = await this._db.get(linkAddsSetKey);
 
@@ -187,7 +187,7 @@ class LinkStore {
    * @param target id of the fid being linked to
    * @returns the LinkRemove message if it exists, undefined otherwise
    */
-  async getLinkRemove(fid: number, type: string, target: number | string): Promise<LinkRemoveMessage> {
+  async getLinkRemove(fid: number, type: string, target: number): Promise<LinkRemoveMessage> {
     const linkRemovesKey = makeLinkRemovesKey(fid, type, target);
     const linkMessageKey = await this._db.get(linkRemovesKey);
 
@@ -233,7 +233,7 @@ class LinkStore {
 
   /** Finds all LinkAdds that point to a specific target by iterating through the prefixes */
   async getLinksByTarget(
-    target: number | string,
+    target: number,
     type?: string,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<LinkAddMessage>> {
