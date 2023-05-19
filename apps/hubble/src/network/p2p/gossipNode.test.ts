@@ -23,8 +23,17 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { sleep } from '~/utils/crypto';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Result } from 'neverthrow';
+import { NetworkLatencyMetrics } from './networkLatencyMetrics';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
+
+class MockNetworkLatencyMetrics extends NetworkLatencyMetrics {
+  public logCounter = 0;
+
+  public override logMetrics(_: PeerId, _: NetworkLatencyMessage): void {
+    this.logCounter += 1;
+  }
+}
 
 describe('GossipNode', () => {
   test('start fails if IpMultiAddr has port or transport addrs', async () => {
@@ -323,9 +332,12 @@ describe('GossipNode', () => {
     });
 
     test('Network latency metrics are logged on ack receipt', async () => {
-      const node = new GossipNode();
+      const metrics = new MockNetworkLatencyMetrics();
+      const node = new GossipNode(undefined, true, metrics);
       await node.start([]);
       const senderPeerId = await createEd25519PeerId();
+
+      // Metrics should not be logged if ping origin peerId does not match node's peerId
       const ackPeerId = await createEd25519PeerId();
       let ackMessage = AckMessageBody.create({
         pingOriginPeerId: ackPeerId.toBytes(),
@@ -336,9 +348,10 @@ describe('GossipNode', () => {
       });
       let result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
       let combinedResult = Result.combineWithAllErrors(result);
-      expect(combinedResult._unsafeUnwrap()).toEqual(undefined);
+      expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
+      expect(metrics.logCounter).toEqual(0);
 
-      // Ack message should be logged if the origin peerId matches node's peerId
+      // Metrics should be logged if ping origin peerId matches node's peerId
       ackMessage = AckMessageBody.create({
         pingOriginPeerId: node.peerId?.toBytes() ?? new Uint8Array(),
         pingTimestamp: Date.now(),
@@ -349,6 +362,7 @@ describe('GossipNode', () => {
       result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
       combinedResult = Result.combineWithAllErrors(result);
       expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
+      expect(metrics.logCounter).toEqual(1);
     });
   });
 });

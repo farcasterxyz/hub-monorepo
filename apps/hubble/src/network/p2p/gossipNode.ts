@@ -78,12 +78,16 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _networkLatencyMessagesEnabled: boolean;
   private _networkLatencyMetrics?: NetworkLatencyMetrics;
 
-  constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
+  constructor(
+    network?: FarcasterNetwork,
+    networkLatencyMessagesEnabled?: boolean,
+    networkLatencyMetrics?: NetworkLatencyMetrics
+  ) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
     this._networkLatencyMessagesEnabled = networkLatencyMessagesEnabled ?? false;
     if (this._networkLatencyMessagesEnabled) {
-      this._networkLatencyMetrics = new NetworkLatencyMetrics();
+      this._networkLatencyMetrics = networkLatencyMetrics ?? new NetworkLatencyMetrics();
       this._periodicLatencyPingJob = new PeriodicLatencyPingScheduler(this);
     }
   }
