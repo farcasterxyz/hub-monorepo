@@ -32,4 +32,5 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWBhm9XdafZiBWPncDVcvMhcmV3kLFLnBiS83CjY833sWN', // @pjc (fc.bus.events)
   '12D3KooWFHsw17MsY9eSbYLhkemUYcAwAjPPA7D6g3wTuhnLgAbT', // @sds
   '12D3KooWKEuT74vxNfhGJh5XGUURaenDj1qokjA811Wv78tFo5WV', // @blanker
+  '12D3KooWMcDyq1KwcEgSjLixYLEPUZPYwDVFpWcyr8sp9nXCx6Dv', // Jam.so Hub 1
 ];
