@@ -709,7 +709,7 @@ export default class Server {
       getLink: async (call, callback) => {
         const request = call.request;
 
-        const linkResult = await this.engine?.getLink(request.fid, request.linkType, request.targetFid ?? '');
+        const linkResult = await this.engine?.getLink(request.fid, request.linkType, request.targetFid ?? 0);
         linkResult?.match(
           (link: LinkAddMessage) => {
             callback(null, link);
@@ -737,7 +737,7 @@ export default class Server {
       },
       getLinksByTarget: async (call, callback) => {
         const { targetFid, linkType, pageSize, pageToken, reverse } = call.request;
-        const linksResult = await this.engine?.getLinksByTarget(targetFid ?? '', linkType, {
+        const linksResult = await this.engine?.getLinksByTarget(targetFid ?? 0, linkType, {
           pageSize,
           pageToken,
           reverse,

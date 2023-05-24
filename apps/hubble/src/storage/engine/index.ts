@@ -57,6 +57,7 @@ import {
   RevokeMessagesBySignerJobWorker,
 } from '~/storage/jobs/revokeMessagesBySignerJob';
 import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';
+import { ensureAboveTargetFarcasterVersion } from '~/utils/versions';
 
 const log = logger.child({
   component: 'Engine',
@@ -623,6 +624,11 @@ class Engine {
   /* -------------------------------------------------------------------------- */
 
   async getLink(fid: number, type: string, target: number): HubAsyncResult<LinkAddMessage> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -641,6 +647,11 @@ class Engine {
     type?: string,
     pageOptions: PageOptions = {}
   ): HubAsyncResult<MessagesPage<LinkAddMessage>> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -654,6 +665,11 @@ class Engine {
     type?: string,
     pageOptions: PageOptions = {}
   ): HubAsyncResult<MessagesPage<LinkAddMessage>> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
     if (typeof target !== 'string') {
       const validatedTargetId = validations.validateFid(target);
       if (validatedTargetId.isErr()) {
@@ -668,6 +684,11 @@ class Engine {
     fid: number,
     pageOptions: PageOptions = {}
   ): HubAsyncResult<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);

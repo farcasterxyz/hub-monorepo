@@ -34,6 +34,7 @@ import { sleep } from '~/utils/crypto';
 import { getMessage, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
 import { StoreEvents } from '~/storage/stores/storeEventHandler';
 import { makeVerificationEthAddressClaim } from '@farcaster/core';
+import { setReferenceDateForTest } from '~/utils/versions';
 
 const db = jestRocksDB('protobufs.engine.test');
 const network = FarcasterNetwork.TESTNET;
@@ -163,6 +164,7 @@ describe('mergeMessage', () => {
 
     describe('LinkAdd', () => {
       test('succeeds', async () => {
+        setReferenceDateForTest(100000000000000000000000);
         await expect(engine.mergeMessage(linkAdd)).resolves.toBeInstanceOf(Ok);
         await expect(
           engine.getLink(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number)
@@ -332,6 +334,7 @@ describe('mergeMessage', () => {
     });
 
     test('succeeds with concurrent, conflicting link messages', async () => {
+      setReferenceDateForTest(100000000000000000000000);
       const targetFid = Factories.Fid.build();
       const body = Factories.LinkBody.build({
         type: 'follow',
@@ -382,6 +385,7 @@ describe('mergeMessage', () => {
     });
 
     test('with LinkAdd', async () => {
+      setReferenceDateForTest(100000000000000000000000);
       await engine.mergeIdRegistryEvent(custodyEvent);
       const result = await engine.mergeMessage(linkAdd);
       expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
@@ -404,6 +408,7 @@ describe('mergeMessage', () => {
     });
 
     test('with LinkAdd', () => {
+      setReferenceDateForTest(100000000000000000000000);
       message = linkAdd;
     });
   });
@@ -519,6 +524,7 @@ describe('revokeMessagesBySigner', () => {
 
 describe('with listeners and workers', () => {
   const liveEngine = new Engine(db, FarcasterNetwork.TESTNET);
+  setReferenceDateForTest(100000000000000000000000);
 
   let revokedMessages: Message[];
 
@@ -556,6 +562,7 @@ describe('with listeners and workers', () => {
           reactionAdd.data.reactionBody.targetCastId as CastId
         )
       ).toEqual(ok(reactionAdd));
+      setReferenceDateForTest(100000000000000000000000);
       expect(
         await liveEngine.getLink(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number)
       ).toEqual(ok(linkAdd));
