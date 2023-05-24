@@ -282,7 +282,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const topics = message.topics;
     const encodedMessage = GossipNode.encodeMessage(message);
 
-    log.info({ identity: this.identity }, `Publishing message to topics: ${topics}`);
+    log.debug({ identity: this.identity }, `Publishing message to topics: ${topics}`);
     if (this.gossip == undefined) {
       return [err(new HubError('unavailable', new Error('GossipSub not initialized')))];
     }
