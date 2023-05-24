@@ -184,6 +184,11 @@ class Engine {
 
     switch (setPostfix) {
       case UserPostfix.LinkMessage: {
+        const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+        if (versionCheck.isErr()) {
+          return err(versionCheck.error);
+        }
+
         return ResultAsync.fromPromise(this._linkStore.merge(message), (e) => e as HubError);
       }
       case UserPostfix.ReactionMessage: {
