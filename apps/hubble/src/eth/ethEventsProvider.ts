@@ -12,10 +12,10 @@ import {
 } from '@farcaster/hub-nodejs';
 import { AbstractProvider, BaseContractMethod, Contract, ContractEventPayload, EthersError, EventLog } from 'ethers';
 import { Err, err, Ok, ok, Result, ResultAsync } from 'neverthrow';
-import { IdRegistry, NameRegistry } from '~/eth/abis';
-import { bytes32ToBytes, bytesToBytes32 } from '~/eth/utils';
-import { HubInterface } from '~/hubble';
-import { logger } from '~/utils/logger';
+import { IdRegistry, NameRegistry } from './abis';
+import { bytes32ToBytes, bytesToBytes32 } from './utils';
+import { HubInterface } from '../hubble';
+import { logger } from '../utils/logger';
 
 const log = logger.child({
   component: 'EthEventsProvider',
@@ -354,7 +354,7 @@ export class EthEventsProvider {
 
     /*
      * Querying Blocks in Batches
-     *   
+     *
      * 1. Calculate difference between the first and last sync blocks (e.g. )
      * 2. Divide by batch size and round up to get runs, and iterate with for-loop
      * 3. Compute the fromBlock in each run as firstBlock + (loopIndex * batchSize)

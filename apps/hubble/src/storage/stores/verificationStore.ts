@@ -23,12 +23,12 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '~/storage/db/message';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
-import { logger } from '~/utils/logger';
+} from '../db/message';
+import RocksDB, { Transaction } from '../db/rocksdb';
+import { UserPostfix } from '../db/types';
+import StoreEventHandler, { HubEventArgs } from './storeEventHandler';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from './types';
+import { logger } from '../../utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 

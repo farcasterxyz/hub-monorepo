@@ -23,7 +23,6 @@ WORKDIR /home/node/app
 
 COPY ./tsconfig.json ./tsconfig.json
 COPY ./apps/hubble/tsconfig.json ./apps/hubble/tsconfig.json
-COPY ./apps/hubble/.config ./apps/hubble/.config
 COPY ./apps/hubble/src ./apps/hubble/src
 
 FROM node:20.1.0-alpine3.17 as app

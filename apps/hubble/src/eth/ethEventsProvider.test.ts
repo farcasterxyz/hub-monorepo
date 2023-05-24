@@ -8,14 +8,14 @@ import {
 } from '@farcaster/hub-nodejs';
 import { AbstractProvider, Block, Contract, Log, Provider, TransactionReceipt, TransactionResponse } from 'ethers';
 import { OrphanFilter } from 'ethers/types/providers';
-import { IdRegistry, NameRegistry } from '~/eth/abis';
-import { EthEventsProvider } from '~/eth/ethEventsProvider';
-import { bytesToBytes32 } from '~/eth/utils';
-import { getIdRegistryEvent } from '~/storage/db/idRegistryEvent';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { getNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
-import Engine from '~/storage/engine';
-import { MockFaultyRPCProvider, MockHub, MockRPCProvider } from '~/test/mocks';
+import { IdRegistry, NameRegistry } from './abis';
+import { EthEventsProvider } from './ethEventsProvider';
+import { bytesToBytes32 } from './utils';
+import { getIdRegistryEvent } from '../storage/db/idRegistryEvent';
+import { jestRocksDB } from '../storage/db/jestUtils';
+import { getNameRegistryEvent } from '../storage/db/nameRegistryEvent';
+import Engine from '../storage/engine';
+import { MockFaultyRPCProvider, MockHub, MockRPCProvider } from '../test/mocks';
 import { RetryProvider } from './retryProvider';
 
 const generateEthAddressHex = () => {

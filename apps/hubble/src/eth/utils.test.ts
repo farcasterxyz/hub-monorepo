@@ -1,4 +1,4 @@
-import { bytes32ToBytes, bytesToBytes32 } from '~/eth/utils';
+import { bytes32ToBytes, bytesToBytes32 } from './utils';
 
 const passingCases: [bigint, Uint8Array][] = [
   [

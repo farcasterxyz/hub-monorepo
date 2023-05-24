@@ -2,11 +2,11 @@
 
 import { blake3 } from '@noble/hashes/blake3';
 import { DbTrieNode } from '@farcaster/hub-nodejs';
-import { MerkleTrie } from '~/network/sync/merkleTrie';
-import { NetworkFactories } from '~/network/utils/factories';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import RocksDB from '~/storage/db/rocksdb';
-import { RootPrefix } from '~/storage/db/types';
+import { MerkleTrie } from '../sync/merkleTrie';
+import { NetworkFactories } from '../utils/factories';
+import { jestRocksDB } from '../../storage/db/jestUtils';
+import RocksDB from '../../storage/db/rocksdb';
+import { RootPrefix } from '../../storage/db/types';
 import { TIMESTAMP_LENGTH } from './syncId';
 import { EMPTY_HASH } from './trieNode';
 

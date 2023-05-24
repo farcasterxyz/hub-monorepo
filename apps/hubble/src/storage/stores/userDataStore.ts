@@ -22,14 +22,14 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '~/storage/db/message';
-import { getNameRegistryEvent, putNameRegistryEventTransaction } from '~/storage/db/nameRegistryEvent';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '~/storage/stores/types';
-import { eventCompare } from '~/storage/stores/utils';
-import { logger } from '~/utils/logger';
+} from '../db/message';
+import { getNameRegistryEvent, putNameRegistryEventTransaction } from '../db/nameRegistryEvent';
+import RocksDB, { Transaction } from '../db/rocksdb';
+import { UserPostfix } from '../db/types';
+import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '../stores/types';
+import { eventCompare } from '../stores/utils';
+import { logger } from '../../utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 

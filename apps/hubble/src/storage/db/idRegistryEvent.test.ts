@@ -1,5 +1,5 @@
 import { IdRegistryEvent, bytesCompare, Factories, HubError } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
+import { jestRocksDB } from './jestUtils';
 import {
   getIdRegistryEvent,
   getIdRegistryEventByCustodyAddress,

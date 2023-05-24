@@ -4,9 +4,9 @@ import {
   ensureAboveMinFarcasterVersion,
   setReferenceDateForTest,
   ensureAboveTargetFarcasterVersion,
-} from '~/utils/versions';
+} from '../utils/versions';
 import { ok } from 'neverthrow';
-import { FARCASTER_VERSION, FARCASTER_VERSIONS_SCHEDULE } from '~/hubble';
+import { FARCASTER_VERSION, FARCASTER_VERSIONS_SCHEDULE } from '../hubble';
 
 describe('versions tests', () => {
   describe('isBelowMinFarcasterVersion', () => {

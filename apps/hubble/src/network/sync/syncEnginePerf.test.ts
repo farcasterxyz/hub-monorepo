@@ -8,9 +8,9 @@ import {
   SignerAddMessage,
   CastAddMessage,
 } from '@farcaster/hub-nodejs';
-import SyncEngine from '~/network/sync/syncEngine';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { MockHub } from '~/test/mocks';
+import SyncEngine from '../../network/sync/syncEngine';
+import { jestRocksDB } from '../../storage/db/jestUtils';
+import { MockHub } from '../../test/mocks';
 import { MockRpcClient } from './mock';
 import { EMPTY_HASH } from './trieNode';
 import { getFarcasterTime } from '@farcaster/core';

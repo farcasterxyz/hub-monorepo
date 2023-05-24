@@ -20,10 +20,10 @@ import {
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix, UserMessagePostfix } from '~/storage/db/types';
-import { StorageCache } from '~/storage/stores/storageCache';
-import { makeTsHash } from '~/storage/db/message';
+import RocksDB, { Iterator, Transaction } from '../db/rocksdb';
+import { RootPrefix, UserMessagePostfix } from '../db/types';
+import { StorageCache } from './storageCache';
+import { makeTsHash } from '../db/message';
 import {
   bytesCompare,
   CastAddMessage,

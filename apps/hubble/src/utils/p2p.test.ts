@@ -7,7 +7,7 @@ import {
   ipMultiAddrStrFromAddressInfo,
   p2pMultiAddrStr,
   parseAddress,
-} from '~/utils/p2p';
+} from './p2p';
 
 describe('p2p utils tests', () => {
   test('parse a valid multiaddr', async () => {

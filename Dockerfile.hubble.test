@@ -71,18 +71,10 @@ WORKDIR /home/node/app
 # Copy results from previous stage.
 # The base image is same as the build stage, so it is safe to copy node_modules over to this stage.
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .
-COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
-COPY --chown=node:node --from=build /home/node/app/tsconfig.json ./tsconfig.json
+COPY --chown=node:node --from=build /home/node/app/apps/hubble/build ./apps/hubble/build
 COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node --from=build /home/node/app/packages/core/dist ./packages/core/dist/
-COPY --chown=node:node --from=build /home/node/app/packages/core/node_modules ./packages/core/node_modules/
 COPY --chown=node:node --from=build /home/node/app/packages/hub-nodejs/dist ./packages/hub-nodejs/dist/
-
-# TODO: determine if this can be removed while using tsx (or find alternative)
-# since we should be able to run with just the compiled javascript in build/
-COPY --chown=node:node --from=build /home/node/app/apps/hubble ./apps/hubble
-
-# TODO: load identity from some secure store. It is currently passed in via the 'IDENTITY_B64' env var
 
 # BuildKit doesn't support --squash flag, so emulate by copying into fewer layers
 FROM scratch
@@ -94,4 +86,4 @@ EXPOSE 2282
 EXPOSE 2283
 WORKDIR /home/node/app
 
-CMD ["yarn", "--cwd=apps/hubble", "start", "--rpc-port", "2283", "--ip", "0.0.0.0", "--gossip-port", "2282", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1", "--allowed-peers", "none"]
+CMD ["node", "apps/hubble/build/cli.js", "start", "--rpc-port", "2283", "--ip", "0.0.0.0", "--gossip-port", "2282", "--network", "1"]

@@ -37,17 +37,17 @@ import {
   SyncStatus,
 } from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
-import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
-import { GossipNode } from '~/network/p2p/gossipNode';
-import { NodeMetadata } from '~/network/sync/merkleTrie';
-import SyncEngine from '~/network/sync/syncEngine';
-import Engine from '~/storage/engine';
-import { MessagesPage } from '~/storage/stores/types';
-import { logger } from '~/utils/logger';
-import { addressInfoFromParts } from '~/utils/p2p';
+import { APP_NICKNAME, APP_VERSION, HubInterface } from '../hubble';
+import { GossipNode } from '../network/p2p/gossipNode';
+import { NodeMetadata } from '../network/sync/merkleTrie';
+import SyncEngine from '../network/sync/syncEngine';
+import Engine from '../storage/engine';
+import { MessagesPage } from '../storage/stores/types';
+import { logger } from '../utils/logger';
+import { addressInfoFromParts } from '../utils/p2p';
 import { RateLimiterAbstract, RateLimiterMemory } from 'rate-limiter-flexible';
 import { BufferedStreamWriter } from './bufferedStreamWriter';
-import { sleep } from '~/utils/crypto';
+import { sleep } from '../utils/crypto';
 
 export type RpcUsers = Map<string, string[]>;
 

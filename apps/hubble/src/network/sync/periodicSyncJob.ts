@@ -1,7 +1,7 @@
 import { ResultAsync } from 'neverthrow';
 import cron from 'node-cron';
-import { Hub } from '~/hubble';
-import { logger } from '~/utils/logger';
+import { Hub } from '../../hubble';
+import { logger } from '../..//utils/logger';
 import SyncEngine from './syncEngine';
 
 const log = logger.child({

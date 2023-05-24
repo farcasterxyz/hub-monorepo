@@ -13,11 +13,11 @@ import {
   MessageData,
   MessageType,
 } from '@farcaster/hub-nodejs';
-import { MockRpcClient } from '~/network/sync/mock';
-import SyncEngine from '~/network/sync/syncEngine';
-import { SyncId } from '~/network/sync/syncId';
-import RocksDB from '~/storage/db/rocksdb';
-import { blake3Truncate160, sleepWhile } from '~/utils/crypto';
+import { MockRpcClient } from '../../network/sync/mock';
+import SyncEngine from '../../network/sync/syncEngine';
+import { SyncId } from '../../network/sync/syncId';
+import RocksDB from '../../storage/db/rocksdb';
+import { blake3Truncate160, sleepWhile } from '../../utils/crypto';
 import { avgRecords } from './helpers';
 import { yieldToEventLoop } from './utils';
 import { MockHub } from '../mocks';

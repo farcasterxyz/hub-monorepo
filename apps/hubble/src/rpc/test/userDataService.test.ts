@@ -14,11 +14,11 @@ import {
   HubRpcClient,
 } from '@farcaster/hub-nodejs';
 import { Ok } from 'neverthrow';
-import SyncEngine from '~/network/sync/syncEngine';
-import Server from '~/rpc/server';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import { MockHub } from '~/test/mocks';
+import SyncEngine from '../../network/sync/syncEngine';
+import Server from '../server';
+import { jestRocksDB } from '../../storage/db/jestUtils';
+import Engine from '../../storage/engine';
+import { MockHub } from '../../test/mocks';
 
 const db = jestRocksDB('protobufs.rpc.userdataservice.test');
 const network = FarcasterNetwork.TESTNET;

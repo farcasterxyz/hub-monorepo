@@ -9,13 +9,13 @@ import {
   SignerAddMessage,
   HubInfoRequest,
 } from '@farcaster/hub-nodejs';
-import SyncEngine from '~/network/sync/syncEngine';
+import SyncEngine from '../../network/sync/syncEngine';
 
-import Server, { rateLimitByIp } from '~/rpc/server';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import { MockHub } from '~/test/mocks';
-import { sleep } from '~/utils/crypto';
+import Server, { rateLimitByIp } from '../server';
+import { jestRocksDB } from '../../storage/db/jestUtils';
+import Engine from '../../storage/engine';
+import { MockHub } from '../../test/mocks';
+import { sleep } from '../../utils/crypto';
 
 const db = jestRocksDB('protobufs.rpcAuth.test');
 const network = FarcasterNetwork.TESTNET;

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+/* eslint-disable security/detect-non-literal-fs-filename */
 import {
   FarcasterNetwork,
   getInsecureHubRpcClient,
@@ -14,14 +14,14 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Result, ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
-import { APP_VERSION, Hub, HubOptions } from '~/hubble';
-import { logger } from '~/utils/logger';
-import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
+import { APP_VERSION, Hub, HubOptions } from './hubble';
+import { logger } from './utils/logger';
+import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from './utils/p2p';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
 import RocksDB, { DB_DIRECTORY } from './storage/db/rocksdb';
 import { parseNetwork } from './utils/command';
-import { sleep } from '~/utils/crypto';
-import { Config as DefaultConfig } from '~/defaultConfig';
+import { sleep } from './utils/crypto';
+import { Config as DefaultConfig } from './defaultConfig';
 
 /** A CLI to accept options from the user and start the Hub */
 

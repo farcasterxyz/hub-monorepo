@@ -1,5 +1,5 @@
-import { GossipNode } from '~/network/p2p/gossipNode';
-import { sleep } from '~/utils/crypto';
+import { GossipNode } from '../../network/p2p/gossipNode';
+import { sleep } from '../../utils/crypto';
 import { NetworkFactories } from '../../network/utils/factories';
 import { GossipMessage } from '@farcaster/hub-nodejs';
 const NUM_NODES = 10;

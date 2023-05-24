@@ -9,10 +9,10 @@ import {
   NameRegistryEvent,
 } from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
-import { HubInterface, HubSubmitSource } from '~/hubble';
-import { GossipNode } from '~/network/p2p/gossipNode';
-import RocksDB from '~/storage/db/rocksdb';
-import Engine from '~/storage/engine';
+import { HubInterface, HubSubmitSource } from '../hubble';
+import { GossipNode } from '../network/p2p/gossipNode';
+import RocksDB from '../storage/db/rocksdb';
+import Engine from '../storage/engine';
 import { AbstractProvider, Block, BlockTag, Network, Networkish, TransactionRequest } from 'ethers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { ContactInfoContent } from '@farcaster/core';

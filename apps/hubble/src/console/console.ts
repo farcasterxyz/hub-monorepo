@@ -8,8 +8,8 @@ import {
 } from '@farcaster/hub-nodejs';
 import path from 'path';
 import * as repl from 'repl';
-import { ADMIN_SERVER_PORT } from '~/rpc/adminServer';
-import { logger } from '~/utils/logger';
+import { ADMIN_SERVER_PORT } from '../rpc/adminServer';
+import { logger } from '../utils/logger';
 import { AdminCommand } from './adminCommand';
 import { GenCommand } from './genCommand';
 import { FactoriesCommand, ProtobufCommand } from './protobufCommand';

@@ -8,9 +8,9 @@ import v8 from 'v8';
 
 import ProgressBar from 'progress';
 
-import { MerkleTrie } from '~/network/sync/merkleTrie';
+import { MerkleTrie } from '../../network/sync/merkleTrie';
 
-import RocksDB from '~/storage/db/rocksdb';
+import RocksDB from '../../storage/db/rocksdb';
 import { generateSyncIds } from './helpers';
 import { yieldToEventLoop } from './utils';
 

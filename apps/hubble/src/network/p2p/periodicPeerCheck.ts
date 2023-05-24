@@ -1,5 +1,5 @@
 import { Multiaddr } from '@multiformats/multiaddr';
-import { logger } from '~/utils/logger';
+import { logger } from '../../utils/logger';
 import cron from 'node-cron';
 import { GossipNode } from './gossipNode';
 

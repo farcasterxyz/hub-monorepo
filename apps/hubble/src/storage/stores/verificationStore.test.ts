@@ -12,9 +12,9 @@ import {
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import VerificationStore from '~/storage/stores/verificationStore';
+import { jestRocksDB } from '../db/jestUtils';
+import StoreEventHandler from './storeEventHandler';
+import VerificationStore from './verificationStore';
 import { getMessage, makeTsHash } from '../db/message';
 import { UserPostfix } from '../db/types';
 import { err } from 'neverthrow';

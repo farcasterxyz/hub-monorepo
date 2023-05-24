@@ -17,11 +17,11 @@ import {
   RevokeMessageHubEvent,
 } from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { getMessage, makeTsHash } from '~/storage/db/message';
-import { UserPostfix } from '~/storage/db/types';
-import ReactionStore from '~/storage/stores/reactionStore';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { jestRocksDB } from '../db/jestUtils';
+import { getMessage, makeTsHash } from '../db/message';
+import { UserPostfix } from '../db/types';
+import ReactionStore from '../stores/reactionStore';
+import StoreEventHandler from '../stores/storeEventHandler';
 import { FARCASTER_EPOCH } from '@farcaster/core';
 
 const db = jestRocksDB('protobufs.reactionStore.test');

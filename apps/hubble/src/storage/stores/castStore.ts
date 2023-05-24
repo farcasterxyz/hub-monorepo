@@ -28,18 +28,12 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '~/storage/db/message';
-import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix, TRUE_VALUE, TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
-import {
-  MERGE_TIMEOUT_DEFAULT,
-  MessagesPage,
-  PAGE_SIZE_MAX,
-  PageOptions,
-  StorePruneOptions,
-} from '~/storage/stores/types';
-import { logger } from '~/utils/logger';
+} from '../db/message';
+import RocksDB, { Iterator, Transaction } from '../db/rocksdb';
+import { RootPrefix, TRUE_VALUE, TSHASH_LENGTH, UserPostfix } from '../db/types';
+import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types';
+import { logger } from '../../utils/logger';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year

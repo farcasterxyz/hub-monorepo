@@ -2,9 +2,6 @@ import type { Config } from 'jest';
 
 const jestConfig: Config = {
   testEnvironment: 'node',
-  moduleNameMapper: {
-    '^~/(.*)$': '<rootDir>/src/$1',
-  },
   coveragePathIgnorePatterns: ['<rootDir>/build/', '<rootDir>/node_modules/'],
   testPathIgnorePatterns: ['<rootDir>/build', '<rootDir>/node_modules'],
   extensionsToTreatAsEsm: ['.ts'],

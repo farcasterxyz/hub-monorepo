@@ -10,13 +10,13 @@ import {
 } from '@farcaster/hub-nodejs';
 import * as net from 'net';
 import { err, ok, ResultAsync } from 'neverthrow';
-import { HubInterface } from '~/hubble';
-import SyncEngine from '~/network/sync/syncEngine';
-import { authenticateUser, getRPCUsersFromAuthString, RpcUsers, toServiceError } from '~/rpc/server';
-import RocksDB from '~/storage/db/rocksdb';
-import { RootPrefix } from '~/storage/db/types';
-import Engine from '~/storage/engine';
-import { logger } from '~/utils/logger';
+import { HubInterface } from '../hubble';
+import SyncEngine from '../network/sync/syncEngine';
+import { authenticateUser, getRPCUsersFromAuthString, RpcUsers, toServiceError } from './server';
+import RocksDB from '../storage/db/rocksdb';
+import { RootPrefix } from '../storage/db/types';
+import Engine from '../storage/engine';
+import { logger } from '../utils/logger';
 
 const log = logger.child({ module: 'rpc:admin' });
 export const ADMIN_SERVER_PORT = 2284;

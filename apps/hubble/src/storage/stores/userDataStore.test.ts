@@ -10,11 +10,11 @@ import {
   UserDataAddMessage,
   UserDataType,
 } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import UserDataStore from '~/storage/stores/userDataStore';
-import { getMessage, makeTsHash } from '~/storage/db/message';
-import { UserPostfix } from '~/storage/db/types';
+import { jestRocksDB } from '../db/jestUtils';
+import StoreEventHandler from './storeEventHandler';
+import UserDataStore from './userDataStore';
+import { getMessage, makeTsHash } from '../db/message';
+import { UserPostfix } from '../db/types';
 import { err } from 'neverthrow';
 
 const db = jestRocksDB('protobufs.userDataSet.test');

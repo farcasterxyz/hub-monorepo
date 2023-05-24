@@ -11,13 +11,13 @@ import {
   GossipVersion,
 } from '@farcaster/hub-nodejs';
 import { multiaddr } from '@multiformats/multiaddr/';
-import { GossipNode } from '~/network/p2p/gossipNode';
-import Server from '~/rpc/server';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { MockHub } from '~/test/mocks';
+import { GossipNode } from './gossipNode';
+import Server from '../../rpc/server';
+import { jestRocksDB } from '../../storage/db/jestUtils';
+import { MockHub } from '../../test/mocks';
 import SyncEngine from '../sync/syncEngine';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { sleep } from '~/utils/crypto';
+import { sleep } from '../../utils/crypto';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;

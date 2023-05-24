@@ -6,8 +6,8 @@ import {
   Factories,
   HubError,
 } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';
+import { jestRocksDB } from './jestUtils';
+import { TRUE_VALUE, UserPostfix } from './types';
 import {
   getAllMessagesByFid,
   getAllMessagesBySigner,

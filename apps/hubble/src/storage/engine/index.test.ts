@@ -27,12 +27,12 @@ import {
   VerificationAddEthAddressMessage,
 } from '@farcaster/hub-nodejs';
 import { err, Ok, ok } from 'neverthrow';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import SignerStore from '~/storage/stores/signerStore';
-import { sleep } from '~/utils/crypto';
-import { getMessage, makeTsHash, typeToSetPostfix } from '~/storage/db/message';
-import { StoreEvents } from '~/storage/stores/storeEventHandler';
+import { jestRocksDB } from '../db/jestUtils';
+import Engine from '../engine';
+import SignerStore from '../stores/signerStore';
+import { sleep } from '../../utils/crypto';
+import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message';
+import { StoreEvents } from '../stores/storeEventHandler';
 import { makeVerificationEthAddressClaim } from '@farcaster/core';
 import { setReferenceDateForTest } from '~/utils/versions';
 

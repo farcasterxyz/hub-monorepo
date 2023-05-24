@@ -21,38 +21,38 @@ import { peerIdFromBytes } from '@libp2p/peer-id';
 import { publicAddressesFirst } from '@libp2p/utils/address-sort';
 import { Multiaddr, multiaddr } from '@multiformats/multiaddr';
 import { Result, ResultAsync, err, ok } from 'neverthrow';
-import { EthEventsProvider, GoerliEthConstants } from '~/eth/ethEventsProvider';
-import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from '~/network/p2p/gossipNode';
-import { PeriodicSyncJobScheduler } from '~/network/sync/periodicSyncJob';
-import SyncEngine from '~/network/sync/syncEngine';
-import AdminServer from '~/rpc/adminServer';
-import Server from '~/rpc/server';
-import { getHubState, putHubState } from '~/storage/db/hubState';
-import RocksDB from '~/storage/db/rocksdb';
-import { RootPrefix } from '~/storage/db/types';
-import Engine from '~/storage/engine';
-import { PruneEventsJobScheduler } from '~/storage/jobs/pruneEventsJob';
-import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
+import { EthEventsProvider, GoerliEthConstants } from './eth/ethEventsProvider';
+import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from './network/p2p/gossipNode';
+import { PeriodicSyncJobScheduler } from './network/sync/periodicSyncJob';
+import SyncEngine from './network/sync/syncEngine';
+import AdminServer from './rpc/adminServer';
+import Server from './rpc/server';
+import { getHubState, putHubState } from './storage/db/hubState';
+import RocksDB from './storage/db/rocksdb';
+import { RootPrefix } from './storage/db/types';
+import Engine from './storage/engine';
+import { PruneEventsJobScheduler } from './storage/jobs/pruneEventsJob';
+import { PruneMessagesJobScheduler } from './storage/jobs/pruneMessagesJob';
 import {
   UpdateNameRegistryEventExpiryJobQueue,
   UpdateNameRegistryEventExpiryJobWorker,
-} from '~/storage/jobs/updateNameRegistryEventExpiryJob';
-import { sleep } from '~/utils/crypto';
-import { idRegistryEventToLog, logger, messageToLog, messageTypeToName, nameRegistryEventToLog } from '~/utils/logger';
+} from './storage/jobs/updateNameRegistryEventExpiryJob';
+import { sleep } from './utils/crypto';
+import { idRegistryEventToLog, logger, messageToLog, messageTypeToName, nameRegistryEventToLog } from './utils/logger';
 import {
   addressInfoFromGossip,
   addressInfoToString,
   getPublicIp,
   ipFamilyToString,
   p2pMultiAddrStr,
-} from '~/utils/p2p';
-import { PeriodicTestDataJobScheduler, TestUser } from '~/utils/periodicTestDataJob';
-import { ensureAboveMinFarcasterVersion, VersionSchedule } from '~/utils/versions';
-import { CheckFarcasterVersionJobScheduler } from '~/storage/jobs/checkFarcasterVersionJob';
-import { ValidateOrRevokeMessagesJobScheduler } from '~/storage/jobs/validateOrRevokeMessagesJob';
-import { GossipContactInfoJobScheduler } from '~/storage/jobs/gossipContactInfoJob';
+} from './utils/p2p';
+import { PeriodicTestDataJobScheduler, TestUser } from './utils/periodicTestDataJob';
+import { ensureAboveMinFarcasterVersion, VersionSchedule } from './utils/versions';
+import { CheckFarcasterVersionJobScheduler } from './storage/jobs/checkFarcasterVersionJob';
+import { ValidateOrRevokeMessagesJobScheduler } from './storage/jobs/validateOrRevokeMessagesJob';
+import { GossipContactInfoJobScheduler } from './storage/jobs/gossipContactInfoJob';
 import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import StoreEventHandler from './storage/stores/storeEventHandler';
 import { RetryProvider } from './eth/retryProvider';
 import { JsonRpcProvider } from 'ethers';
 
