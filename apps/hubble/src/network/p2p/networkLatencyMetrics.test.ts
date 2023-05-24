@@ -12,7 +12,7 @@ describe('NetworkLatencyMetrics', () => {
     const timeTaken1 = 3600 * 1000;
     let ackMessage = AckMessageBody.create({
       pingOriginPeerId: originPeerId.toBytes(),
-      ackPeerId: ackPeerId.toBytes(),
+      ackOriginPeerId: ackPeerId.toBytes(),
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken1,
     });
@@ -38,7 +38,7 @@ describe('NetworkLatencyMetrics', () => {
     const timeTaken2 = 7200 * 1000;
     ackMessage = AckMessageBody.create({
       pingOriginPeerId: originPeerId.toBytes(),
-      ackPeerId: ackPeerId.toBytes(),
+      ackOriginPeerId: ackPeerId.toBytes(),
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken2,
     });

@@ -253,7 +253,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // Respond to ping message with an ack message
       const ackMessage = AckMessageBody.create({
         pingOriginPeerId: message.pingMessage.pingOriginPeerId,
-        ackPeerId: this.peerId!.toBytes(),
+        ackOriginPeerId: this.peerId!.toBytes(),
         pingTimestamp: message.pingMessage.pingTimestamp,
         ackTimestamp: Date.now(),
       });

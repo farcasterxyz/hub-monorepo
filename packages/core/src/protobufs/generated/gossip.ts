@@ -55,7 +55,7 @@ export interface PingMessageBody {
 
 export interface AckMessageBody {
   pingOriginPeerId: Uint8Array;
-  ackPeerId: Uint8Array;
+  ackOriginPeerId: Uint8Array;
   pingTimestamp: number;
   ackTimestamp: number;
 }
@@ -382,7 +382,7 @@ export const PingMessageBody = {
 };
 
 function createBaseAckMessageBody(): AckMessageBody {
-  return { pingOriginPeerId: new Uint8Array(), ackPeerId: new Uint8Array(), pingTimestamp: 0, ackTimestamp: 0 };
+  return { pingOriginPeerId: new Uint8Array(), ackOriginPeerId: new Uint8Array(), pingTimestamp: 0, ackTimestamp: 0 };
 }
 
 export const AckMessageBody = {
@@ -390,8 +390,8 @@ export const AckMessageBody = {
     if (message.pingOriginPeerId.length !== 0) {
       writer.uint32(10).bytes(message.pingOriginPeerId);
     }
-    if (message.ackPeerId.length !== 0) {
-      writer.uint32(18).bytes(message.ackPeerId);
+    if (message.ackOriginPeerId.length !== 0) {
+      writer.uint32(18).bytes(message.ackOriginPeerId);
     }
     if (message.pingTimestamp !== 0) {
       writer.uint32(24).uint32(message.pingTimestamp);
@@ -421,7 +421,7 @@ export const AckMessageBody = {
             break;
           }
 
-          message.ackPeerId = reader.bytes();
+          message.ackOriginPeerId = reader.bytes();
           continue;
         case 3:
           if (tag != 24) {
@@ -449,7 +449,7 @@ export const AckMessageBody = {
   fromJSON(object: any): AckMessageBody {
     return {
       pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(),
-      ackPeerId: isSet(object.ackPeerId) ? bytesFromBase64(object.ackPeerId) : new Uint8Array(),
+      ackOriginPeerId: isSet(object.ackOriginPeerId) ? bytesFromBase64(object.ackOriginPeerId) : new Uint8Array(),
       pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
       ackTimestamp: isSet(object.ackTimestamp) ? Number(object.ackTimestamp) : 0,
     };
@@ -461,8 +461,10 @@ export const AckMessageBody = {
       (obj.pingOriginPeerId = base64FromBytes(
         message.pingOriginPeerId !== undefined ? message.pingOriginPeerId : new Uint8Array()
       ));
-    message.ackPeerId !== undefined &&
-      (obj.ackPeerId = base64FromBytes(message.ackPeerId !== undefined ? message.ackPeerId : new Uint8Array()));
+    message.ackOriginPeerId !== undefined &&
+      (obj.ackOriginPeerId = base64FromBytes(
+        message.ackOriginPeerId !== undefined ? message.ackOriginPeerId : new Uint8Array()
+      ));
     message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
     message.ackTimestamp !== undefined && (obj.ackTimestamp = Math.round(message.ackTimestamp));
     return obj;
@@ -475,7 +477,7 @@ export const AckMessageBody = {
   fromPartial<I extends Exact<DeepPartial<AckMessageBody>, I>>(object: I): AckMessageBody {
     const message = createBaseAckMessageBody();
     message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array();
-    message.ackPeerId = object.ackPeerId ?? new Uint8Array();
+    message.ackOriginPeerId = object.ackOriginPeerId ?? new Uint8Array();
     message.pingTimestamp = object.pingTimestamp ?? 0;
     message.ackTimestamp = object.ackTimestamp ?? 0;
     return message;

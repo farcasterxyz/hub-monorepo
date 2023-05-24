@@ -340,7 +340,7 @@ describe('GossipNode', () => {
       const ackPeerId = await createEd25519PeerId();
       let ackMessage = AckMessageBody.create({
         pingOriginPeerId: ackPeerId.toBytes(),
-        ackPeerId: senderPeerId.toBytes(),
+        ackOriginPeerId: senderPeerId.toBytes(),
         pingTimestamp: Date.now(),
       });
       let networkLatencyMessage = NetworkLatencyMessage.create({
@@ -354,7 +354,7 @@ describe('GossipNode', () => {
       // Metrics should be logged if ping origin peerId matches node's peerId
       ackMessage = AckMessageBody.create({
         pingOriginPeerId: node.peerId?.toBytes() ?? new Uint8Array(),
-        ackPeerId: senderPeerId.toBytes(),
+        ackOriginPeerId: senderPeerId.toBytes(),
         pingTimestamp: Date.now(),
       });
       networkLatencyMessage = NetworkLatencyMessage.create({

@@ -37,7 +37,7 @@ export class NetworkLatencyMetrics {
       // Log ack latency for peer
       log.info(
         {
-          receivingHubPeerId: message.ackMessage.ackPeerId.toString(),
+          receivingHubPeerId: message.ackMessage.ackOriginPeerId.toString(),
           latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
         },
         'GossipLatencyMetrics'
@@ -64,7 +64,7 @@ export class NetworkLatencyMetrics {
 
   private logNetworkCoverage(ackMessage: AckMessageBody) {
     // Add peerId to recent peerIds
-    this._recentPeerIds.set(ackMessage.ackPeerId.toString(), Date.now());
+    this._recentPeerIds.set(ackMessage.ackOriginPeerId.toString(), Date.now());
 
     // Compute coverage metrics
     const metricsKey = `${ackMessage.pingOriginPeerId}_${ackMessage.pingTimestamp}`;
