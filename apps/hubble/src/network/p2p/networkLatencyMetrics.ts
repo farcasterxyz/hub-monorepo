@@ -1,6 +1,8 @@
 import { PeerId } from '@libp2p/interface-peer-id';
-import { AckMessageBody, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
+import { AckMessageBody, HubError, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
 import { logger } from '~/utils/logger';
+import { Result } from 'neverthrow';
+import { peerIdFromBytes } from '@libp2p/peer-id';
 
 const RECENT_PEER_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire recent peers every 5 hours
 const METRICS_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire stored metrics every 5 hours
@@ -35,13 +37,19 @@ export class NetworkLatencyMetrics {
     if (message.ackMessage) {
       const ackMessage = message.ackMessage;
       // Log ack latency for peer
-      log.info(
-        {
-          receivingHubPeerId: message.ackMessage.ackOriginPeerId.toString(),
-          latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
-        },
-        'GossipLatencyMetrics'
-      );
+      const peerIdResult = Result.fromThrowable(
+        () => peerIdFromBytes(ackMessage.ackOriginPeerId ?? new Uint8Array([])),
+        (error) => new HubError('bad_request.parse_failure', error as Error)
+      )();
+      if (peerIdResult.isOk()) {
+        log.info(
+          {
+            receivingHubPeerId: peerIdResult.value,
+            latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
+          },
+          'GossipLatencyMetrics'
+        );
+      }
 
       // Log network coverage
       this.logNetworkCoverage(ackMessage);
