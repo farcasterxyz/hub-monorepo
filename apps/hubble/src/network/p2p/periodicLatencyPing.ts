@@ -11,6 +11,7 @@ type SchedulerStatus = 'started' | 'stopped';
 
 // Every 5 minutes
 const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
+const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 
 export class PeriodicLatencyPingScheduler {
   private _gossipNode: GossipNode;
@@ -38,6 +39,8 @@ export class PeriodicLatencyPingScheduler {
   }
 
   async doJobs() {
+    const jitter = Math.floor(Math.random() * MAX_JITTER_MILLISECONDS);
+    await new Promise((f) => setTimeout(f, jitter));
     const result = await this._gossipNode.gossipNetworkLatencyPing();
     const combinedResult = Result.combineWithAllErrors(result);
     if (combinedResult.isErr()) {
