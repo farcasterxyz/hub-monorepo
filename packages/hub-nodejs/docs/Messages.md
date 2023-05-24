@@ -78,9 +78,9 @@ Due to a quirk of how gRPC compiles types to TypeScript, MessageData has many op
 | :------------------- | :------------------ | ------------------------------------- |
 | `embeds?`            | `string[]`          | URLs to be embedded in the cast       |
 | `mentions?`          | `number[]`          | Fids mentioned in the cast            |
-| `mentionsPositions?` | `number[]`          | Parent cast of the cast               |
-| `parentCastId?`      | [`CastId`](#castid) | Text of the cast                      |
-| `text`               | `string`            | Positions of the mentions in the text |
+| `mentionsPositions?` | `number[]`          | Positions of the mentions in the text |
+| `parentCastId?`      | [`CastId`](#castid) | Parent cast of the cast               |
+| `text`               | `string`            | Text of the cast                      |
 
 ### CastRemoveBody
 
