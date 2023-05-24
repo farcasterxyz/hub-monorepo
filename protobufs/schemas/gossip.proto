@@ -22,6 +22,7 @@ message ContactInfoContent {
   uint32 count = 4;
   string hub_version = 5;
   FarcasterNetwork network = 6;
+  string app_version = 7;
 }
 
 message GossipMessage {
