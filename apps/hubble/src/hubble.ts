@@ -539,12 +539,7 @@ export class Hub implements HubInterface {
       }
       return ok(undefined);
     } else if (gossipMessage.networkLatencyMessage) {
-      if (peerIdResult.isOk()) {
-        await this.gossipNode.handleNetworkLatencyMessage(
-          peerIdResult._unsafeUnwrap(),
-          gossipMessage.networkLatencyMessage
-        );
-      }
+      await this.gossipNode.handleNetworkLatencyMessage(gossipMessage.networkLatencyMessage);
       return ok(undefined);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid message type'));

@@ -6,12 +6,13 @@ describe('NetworkLatencyMetrics', () => {
   test('logMetrics updates metrics state', async () => {
     const metrics = new NetworkLatencyMetrics();
     const originPeerId = await createEd25519PeerId();
+    let ackPeerId = await createEd25519PeerId();
     const pingTimestamp = Date.now();
 
-    let senderPeerId = await createEd25519PeerId();
     const timeTaken1 = 3600 * 1000;
     let ackMessage = AckMessageBody.create({
       pingOriginPeerId: originPeerId.toBytes(),
+      ackPeerId: ackPeerId.toBytes(),
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken1,
     });
@@ -19,10 +20,10 @@ describe('NetworkLatencyMetrics', () => {
     let networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
-    metrics.logMetrics(senderPeerId, networkLatencyMessage);
+    metrics.logMetrics(networkLatencyMessage);
 
     // Recent peers set should now have ack sender peerId
-    expect(metrics.recentPeerIds.get(senderPeerId.toString())).toBeTruthy();
+    expect(metrics.recentPeerIds.get(ackPeerId.toBytes().toString())).toBeTruthy();
 
     // Metrics map should have ack message with coverage
     expect(metrics.metrics.size).toEqual(1);
@@ -33,10 +34,11 @@ describe('NetworkLatencyMetrics', () => {
     expect(metrics.metrics.get(key)?.networkCoverage.get(0.9)).toEqual(timeTaken1);
     expect(metrics.metrics.get(key)?.networkCoverage.get(0.99)).toEqual(timeTaken1);
 
-    senderPeerId = await createEd25519PeerId();
+    ackPeerId = await createEd25519PeerId();
     const timeTaken2 = 7200 * 1000;
     ackMessage = AckMessageBody.create({
       pingOriginPeerId: originPeerId.toBytes(),
+      ackPeerId: ackPeerId.toBytes(),
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken2,
     });
@@ -44,11 +46,11 @@ describe('NetworkLatencyMetrics', () => {
     networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
-    metrics.logMetrics(senderPeerId, networkLatencyMessage);
+    metrics.logMetrics(networkLatencyMessage);
 
     // Recent peers set should have peerId from second ack
     expect(metrics.recentPeerIds.size).toEqual(2);
-    expect(metrics.recentPeerIds.get(senderPeerId.toString())).toBeTruthy();
+    expect(metrics.recentPeerIds.get(ackPeerId.toBytes().toString())).toBeTruthy();
 
     // Metrics map should have ack with updates coverage
     expect(metrics.metrics.size).toEqual(1);

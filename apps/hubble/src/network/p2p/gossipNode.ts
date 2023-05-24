@@ -233,7 +233,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /** Serializes and sends a network latency ping message */
   async gossipNetworkLatencyPing(): Promise<HubResult<PublishResult>[]> {
     const pingMessage = PingMessageBody.create({
-      pingOriginPeerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      pingOriginPeerId: this.peerId!.toBytes(),
       pingTimestamp: Date.now(),
     });
     const networkLatencyMessage = NetworkLatencyMessage.create({
@@ -248,15 +248,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this.publish(gossipMessage);
   }
 
-  async handleNetworkLatencyMessage(
-    senderPeerId: PeerId,
-    message: NetworkLatencyMessage
-  ): Promise<HubResult<PublishResult | undefined>[]> {
+  async handleNetworkLatencyMessage(message: NetworkLatencyMessage): Promise<HubResult<PublishResult | undefined>[]> {
     if (message.pingMessage) {
       // Respond to ping message with an ack message
-      log.info('handling gossip ping message');
       const ackMessage = AckMessageBody.create({
         pingOriginPeerId: message.pingMessage.pingOriginPeerId,
+        ackPeerId: this.peerId!.toBytes(),
         pingTimestamp: message.pingMessage.pingTimestamp,
         ackTimestamp: Date.now(),
       });
@@ -271,10 +268,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       });
       return this.publish(gossipMessage);
     } else if (message.ackMessage) {
-      log.info('handling gossip ack message');
       const peerIdMatchesOrigin = this.peerId?.equals(message.ackMessage.pingOriginPeerId) ?? false;
       if (peerIdMatchesOrigin) {
-        this._networkLatencyMetrics?.logMetrics(senderPeerId, message);
+        this._networkLatencyMetrics?.logMetrics(message);
       }
       return [ok(undefined)];
     }

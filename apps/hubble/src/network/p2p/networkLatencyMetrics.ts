@@ -2,8 +2,8 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { AckMessageBody, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
 import { logger } from '~/utils/logger';
 
-const RECENT_PEER_TTL_MILLISECONDS = 5 * 60 * 3600 * 1000;
-const METRICS_TTL_MILLISECONDS = 5 * 60 * 3600 * 1000;
+const RECENT_PEER_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire recent peers every 5 hours
+const METRICS_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire stored metrics every 5 hours
 
 const log = logger.child({ component: 'NetworkLatencyMetrics' });
 
@@ -31,20 +31,20 @@ export class NetworkLatencyMetrics {
     return this._metrics;
   }
 
-  public logMetrics(senderPeerId: PeerId, message: NetworkLatencyMessage) {
+  public logMetrics(message: NetworkLatencyMessage) {
     if (message.ackMessage) {
       const ackMessage = message.ackMessage;
       // Log ack latency for peer
       log.info(
         {
-          receivingHubPeerId: senderPeerId.toString(),
+          receivingHubPeerId: message.ackMessage.ackPeerId.toString(),
           latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
         },
-        'gossip network latency metrics'
+        'GossipLatencyMetrics'
       );
 
       // Log network coverage
-      this.logNetworkCoverage(senderPeerId, ackMessage);
+      this.logNetworkCoverage(ackMessage);
 
       // Expire peerIds that are past the TTL
       this.expireEntries();
@@ -62,14 +62,15 @@ export class NetworkLatencyMetrics {
     );
   }
 
-  private logNetworkCoverage(senderPeerId: PeerId, ackMessage: AckMessageBody) {
+  private logNetworkCoverage(ackMessage: AckMessageBody) {
     // Add peerId to recent peerIds
-    this._recentPeerIds.set(senderPeerId.toString(), Date.now());
+    this._recentPeerIds.set(ackMessage.ackPeerId.toString(), Date.now());
 
     // Compute coverage metrics
     const metricsKey = `${ackMessage.pingOriginPeerId}_${ackMessage.pingTimestamp}`;
     const currentMetrics = this._metrics.get(metricsKey);
-    const newNumAcks = (this._metrics.get(metricsKey)?.numAcks ?? 0) + 1;
+    const oldNumAcks = this._metrics.get(metricsKey)?.numAcks ?? 0;
+    const newNumAcks = oldNumAcks + 1;
     const coverageProportion = newNumAcks / this._recentPeerIds.size;
     const updatedMetrics: Metrics = {
       numAcks: newNumAcks,
@@ -80,10 +81,10 @@ export class NetworkLatencyMetrics {
     const coverageThresholds = [0.5, 0.75, 0.9, 0.99];
     coverageThresholds.forEach((threshold) => {
       const coverageIsAboveThreshold = threshold <= coverageProportion;
-      const shouldUpdateMetricForThreshold = newNumAcks == 1 || (newNumAcks - 1) / newNumAcks < threshold;
+      const shouldUpdateMetricForThreshold = oldNumAcks / newNumAcks < threshold;
       if (shouldUpdateMetricForThreshold && coverageIsAboveThreshold) {
         updatedMetrics.networkCoverage.set(threshold, timeTaken);
-        log.info({ networkCoverage: threshold, timeTaken: timeTaken }, 'gossip network coverage metrics');
+        log.info({ networkCoverage: threshold, timeTaken: timeTaken }, 'GossipCoverageMetrics');
       }
     });
     this._metrics.set(metricsKey, updatedMetrics);

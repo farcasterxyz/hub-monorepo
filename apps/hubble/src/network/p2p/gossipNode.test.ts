@@ -30,7 +30,7 @@ const TEST_TIMEOUT_SHORT = 10 * 1000;
 class MockNetworkLatencyMetrics extends NetworkLatencyMetrics {
   public logCounter = 0;
 
-  public override logMetrics(_: PeerId, __: NetworkLatencyMessage): void {
+  public override logMetrics(_: NetworkLatencyMessage): void {
     this.logCounter += 1;
   }
 }
@@ -318,7 +318,6 @@ describe('GossipNode', () => {
     test('Network latency acks are sent on ping receipt', async () => {
       const node = new GossipNode();
       await node.start([]);
-      const senderPeerId = await createEd25519PeerId();
       // Ping message should be responded to with an ack message
       const pingMessage = PingMessageBody.create({
         pingOriginPeerId: peerId.toBytes(),
@@ -327,7 +326,7 @@ describe('GossipNode', () => {
       const networkLatencyMessage = NetworkLatencyMessage.create({
         pingMessage,
       });
-      const result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
+      const result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
       expect(Result.combineWithAllErrors(result).isOk()).toBeTruthy();
     });
 
@@ -341,12 +340,13 @@ describe('GossipNode', () => {
       const ackPeerId = await createEd25519PeerId();
       let ackMessage = AckMessageBody.create({
         pingOriginPeerId: ackPeerId.toBytes(),
+        ackPeerId: senderPeerId.toBytes(),
         pingTimestamp: Date.now(),
       });
       let networkLatencyMessage = NetworkLatencyMessage.create({
         ackMessage,
       });
-      let result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
+      let result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
       let combinedResult = Result.combineWithAllErrors(result);
       expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
       expect(metrics.logCounter).toEqual(0);
@@ -354,12 +354,13 @@ describe('GossipNode', () => {
       // Metrics should be logged if ping origin peerId matches node's peerId
       ackMessage = AckMessageBody.create({
         pingOriginPeerId: node.peerId?.toBytes() ?? new Uint8Array(),
+        ackPeerId: senderPeerId.toBytes(),
         pingTimestamp: Date.now(),
       });
       networkLatencyMessage = NetworkLatencyMessage.create({
         ackMessage,
       });
-      result = await node.handleNetworkLatencyMessage(senderPeerId, networkLatencyMessage);
+      result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
       combinedResult = Result.combineWithAllErrors(result);
       expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
       expect(metrics.logCounter).toEqual(1);
