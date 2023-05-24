@@ -304,7 +304,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         })
       );
 
-      log.info({ identity: this.identity, results }, 'Published to gossip peers');
+      log.debug({ identity: this.identity, results }, 'Published to gossip peers');
       return results;
     }
   }
