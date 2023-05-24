@@ -431,6 +431,7 @@ export class Hub implements HubInterface {
         count: snapshot.numMessages,
         hubVersion: FARCASTER_VERSION,
         network: this.options.network,
+        appVersion: APP_VERSION,
       });
     });
   }

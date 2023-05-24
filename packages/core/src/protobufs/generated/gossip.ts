@@ -46,6 +46,7 @@ export interface ContactInfoContent {
   count: number;
   hubVersion: string;
   network: FarcasterNetwork;
+  appVersion: string;
 }
 
 export interface PingMessageBody {
@@ -173,7 +174,15 @@ export const GossipAddressInfo = {
 };
 
 function createBaseContactInfoContent(): ContactInfoContent {
-  return { gossipAddress: undefined, rpcAddress: undefined, excludedHashes: [], count: 0, hubVersion: '', network: 0 };
+  return {
+    gossipAddress: undefined,
+    rpcAddress: undefined,
+    excludedHashes: [],
+    count: 0,
+    hubVersion: '',
+    network: 0,
+    appVersion: '',
+  };
 }
 
 export const ContactInfoContent = {
@@ -195,6 +204,9 @@ export const ContactInfoContent = {
     }
     if (message.network !== 0) {
       writer.uint32(48).int32(message.network);
+    }
+    if (message.appVersion !== '') {
+      writer.uint32(58).string(message.appVersion);
     }
     return writer;
   },
@@ -248,6 +260,13 @@ export const ContactInfoContent = {
 
           message.network = reader.int32() as any;
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.appVersion = reader.string();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -265,6 +284,7 @@ export const ContactInfoContent = {
       count: isSet(object.count) ? Number(object.count) : 0,
       hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : '',
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
+      appVersion: isSet(object.appVersion) ? String(object.appVersion) : '',
     };
   },
 
@@ -282,6 +302,7 @@ export const ContactInfoContent = {
     message.count !== undefined && (obj.count = Math.round(message.count));
     message.hubVersion !== undefined && (obj.hubVersion = message.hubVersion);
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
+    message.appVersion !== undefined && (obj.appVersion = message.appVersion);
     return obj;
   },
 
@@ -303,6 +324,7 @@ export const ContactInfoContent = {
     message.count = object.count ?? 0;
     message.hubVersion = object.hubVersion ?? '';
     message.network = object.network ?? 0;
+    message.appVersion = object.appVersion ?? '';
     return message;
   },
 };

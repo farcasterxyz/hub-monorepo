@@ -301,6 +301,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           ourMessages: syncStatus.ourSnapshot?.numMessages,
           peerNetwork: peerContact.network,
           peerVersion: peerContact.hubVersion,
+          peerAppVersion: peerContact.appVersion,
           divergencePrefix: syncStatus.divergencePrefix,
           divergenceSeconds: syncStatus.divergenceSecondsAgo,
           lastBadSync: syncStatus.lastBadSync,
