@@ -161,7 +161,7 @@ message VerificationRemoveBody {
 /** Adds or removes a Link */
 message LinkBody {
   string type = 1; // Type of link, <= 8 characters
-  optional uint32 displayTimestamp = 2; // User-defined timestamp to preserve original time
+  optional uint32 displayTimestamp = 2; // User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction
   oneof target {
     uint64 target_fid = 3;  // The fid the link relates to
   }
