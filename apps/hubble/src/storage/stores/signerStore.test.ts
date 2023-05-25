@@ -14,11 +14,11 @@ import {
   SignerAddMessage,
   SignerRemoveMessage,
 } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils';
-import { getMessage, makeFidKey, makeTsHash } from '../db/message';
-import { UserPostfix } from '../db/types';
-import SignerStore from './signerStore';
-import StoreEventHandler from './storeEventHandler';
+import { jestRocksDB } from '../db/jestUtils.js';
+import { getMessage, makeFidKey, makeTsHash } from '../db/message.js';
+import { UserPostfix } from '../db/types.js';
+import SignerStore from './signerStore.js';
+import StoreEventHandler from './storeEventHandler.js';
 import { err } from 'neverthrow';
 
 const db = jestRocksDB('protobufs.signerStore.test');

@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { HubError } from '@farcaster/hub-nodejs';
 import { existsSync, mkdirSync, rmdirSync } from 'fs';
-import { jestRocksDB } from './jestUtils';
-import RocksDB from './rocksdb';
+import { jestRocksDB } from './jestUtils.js';
+import RocksDB from './rocksdb.js';
 
 //Safety: fs is safe to use in tests
 /* eslint-disable security/detect-non-literal-fs-filename */

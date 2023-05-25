@@ -1,4 +1,4 @@
-import { bytes32ToBytes, bytesToBytes32 } from './utils';
+import { bytes32ToBytes, bytesToBytes32 } from './utils.js';
 
 const passingCases: [bigint, Uint8Array][] = [
   [

@@ -14,14 +14,14 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Result, ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
-import { APP_VERSION, Hub, HubOptions } from './hubble';
-import { logger } from './utils/logger';
-import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from './utils/p2p';
-import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
-import RocksDB, { DB_DIRECTORY } from './storage/db/rocksdb';
-import { parseNetwork } from './utils/command';
-import { sleep } from './utils/crypto';
-import { Config as DefaultConfig } from './defaultConfig';
+import { APP_VERSION, Hub, HubOptions } from './hubble.js';
+import { logger } from './utils/logger.js';
+import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from './utils/p2p.js';
+import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console.js';
+import RocksDB, { DB_DIRECTORY } from './storage/db/rocksdb.js';
+import { parseNetwork } from './utils/command.js';
+import { sleep } from './utils/crypto.js';
+import { Config as DefaultConfig } from './defaultConfig.js';
 
 /** A CLI to accept options from the user and start the Hub */
 

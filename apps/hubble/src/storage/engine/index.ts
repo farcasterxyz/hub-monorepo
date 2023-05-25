@@ -40,21 +40,21 @@ import {
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import fs from 'fs';
 import { Worker } from 'worker_threads';
-import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '../db/message';
-import RocksDB from '../db/rocksdb';
-import { TSHASH_LENGTH, UserPostfix } from '../db/types';
-import CastStore from '../stores/castStore';
-import LinkStore from '../stores/linkStore';
-import ReactionStore from '../stores/reactionStore';
-import SignerStore from '../stores/signerStore';
-import StoreEventHandler from '../stores/storeEventHandler';
-import { MessagesPage, PageOptions } from '../stores/types';
-import UserDataStore from '../stores/userDataStore';
-import VerificationStore from '../stores/verificationStore';
-import { logger } from '../../utils/logger';
-import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from '../jobs/revokeMessagesBySignerJob';
-import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent';
-import { ensureAboveTargetFarcasterVersion } from '../../utils/versions';
+import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '../db/message.js';
+import RocksDB from '../db/rocksdb.js';
+import { TSHASH_LENGTH, UserPostfix } from '../db/types.js';
+import CastStore from '../stores/castStore.js';
+import LinkStore from '../stores/linkStore.js';
+import ReactionStore from '../stores/reactionStore.js';
+import SignerStore from '../stores/signerStore.js';
+import StoreEventHandler from '../stores/storeEventHandler.js';
+import { MessagesPage, PageOptions } from '../stores/types.js';
+import UserDataStore from '../stores/userDataStore.js';
+import VerificationStore from '../stores/verificationStore.js';
+import { logger } from '../../utils/logger.js';
+import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from '../jobs/revokeMessagesBySignerJob.js';
+import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent.js';
+import { ensureAboveTargetFarcasterVersion } from '../../utils/versions.js';
 
 const log = logger.child({
   component: 'Engine',

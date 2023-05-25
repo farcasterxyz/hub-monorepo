@@ -6,8 +6,8 @@ import {
   Factories,
   HubError,
 } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from './jestUtils';
-import { TRUE_VALUE, UserPostfix } from './types';
+import { jestRocksDB } from './jestUtils.js';
+import { TRUE_VALUE, UserPostfix } from './types.js';
 import {
   getAllMessagesByFid,
   getAllMessagesBySigner,
@@ -19,7 +19,7 @@ import {
   makeUserKey,
   putMessage,
   typeToSetPostfix,
-} from './message';
+} from './message.js';
 
 const db = jestRocksDB('storage.db.message.test');
 

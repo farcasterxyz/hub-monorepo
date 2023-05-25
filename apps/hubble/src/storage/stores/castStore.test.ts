@@ -12,12 +12,12 @@ import {
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
 } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils';
-import { getMessage, makeTsHash } from '../db/message';
-import { UserPostfix } from '../db/types';
-import CastStore from './castStore';
-import StoreEventHandler from './storeEventHandler';
-import { sleep } from '../../utils/crypto';
+import { jestRocksDB } from '../db/jestUtils.js';
+import { getMessage, makeTsHash } from '../db/message.js';
+import { UserPostfix } from '../db/types.js';
+import CastStore from './castStore.js';
+import StoreEventHandler from './storeEventHandler.js';
+import { sleep } from '../../utils/crypto.js';
 import { err, ok } from 'neverthrow';
 import { faker } from '@faker-js/faker';
 import { FARCASTER_EPOCH } from '@farcaster/core';

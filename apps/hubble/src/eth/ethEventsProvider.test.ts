@@ -6,17 +6,25 @@ import {
   IdRegistryEventType,
   NameRegistryEventType,
 } from '@farcaster/hub-nodejs';
-import { AbstractProvider, Block, Contract, Log, Provider, TransactionReceipt, TransactionResponse } from 'ethers';
-import { OrphanFilter } from 'ethers/types/providers';
-import { IdRegistry, NameRegistry } from './abis';
-import { EthEventsProvider } from './ethEventsProvider';
-import { bytesToBytes32 } from './utils';
-import { getIdRegistryEvent } from '../storage/db/idRegistryEvent';
-import { jestRocksDB } from '../storage/db/jestUtils';
-import { getNameRegistryEvent } from '../storage/db/nameRegistryEvent';
-import Engine from '../storage/engine';
-import { MockFaultyRPCProvider, MockHub, MockRPCProvider } from '../test/mocks';
-import { RetryProvider } from './retryProvider';
+import {
+  OrphanFilter,
+  AbstractProvider,
+  Block,
+  Contract,
+  Log,
+  Provider,
+  TransactionReceipt,
+  TransactionResponse,
+} from 'ethers';
+import { IdRegistry, NameRegistry } from './abis.js';
+import { EthEventsProvider } from './ethEventsProvider.js';
+import { bytesToBytes32 } from './utils.js';
+import { getIdRegistryEvent } from '../storage/db/idRegistryEvent.js';
+import { jestRocksDB } from '../storage/db/jestUtils.js';
+import { getNameRegistryEvent } from '../storage/db/nameRegistryEvent.js';
+import Engine from '../storage/engine/index.js';
+import { MockFaultyRPCProvider, MockHub, MockRPCProvider } from '../test/mocks.js';
+import { RetryProvider } from './retryProvider.js';
 
 const generateEthAddressHex = () => {
   return bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();

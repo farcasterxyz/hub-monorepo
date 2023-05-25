@@ -1,5 +1,5 @@
 import { Factories, Message } from '@farcaster/hub-nodejs';
-import { SyncId } from './syncId';
+import { SyncId } from './syncId.js';
 
 let message: Message;
 

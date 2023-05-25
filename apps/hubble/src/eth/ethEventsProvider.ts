@@ -12,10 +12,10 @@ import {
 } from '@farcaster/hub-nodejs';
 import { AbstractProvider, BaseContractMethod, Contract, ContractEventPayload, EthersError, EventLog } from 'ethers';
 import { Err, err, Ok, ok, Result, ResultAsync } from 'neverthrow';
-import { IdRegistry, NameRegistry } from './abis';
-import { bytes32ToBytes, bytesToBytes32 } from './utils';
-import { HubInterface } from '../hubble';
-import { logger } from '../utils/logger';
+import { IdRegistry, NameRegistry } from './abis.js';
+import { bytes32ToBytes, bytesToBytes32 } from './utils.js';
+import { HubInterface } from '../hubble.js';
+import { logger } from '../utils/logger.js';
 
 const log = logger.child({
   component: 'EthEventsProvider',

@@ -30,12 +30,12 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../db/message';
-import RocksDB, { Transaction } from '../db/rocksdb';
-import { RootPrefix, TSHASH_LENGTH, UserPostfix } from '../db/types';
-import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types';
-import { logger } from '../../utils/logger';
+} from '../db/message.js';
+import RocksDB, { Transaction } from '../db/rocksdb.js';
+import { RootPrefix, TSHASH_LENGTH, UserPostfix } from '../db/types.js';
+import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler.js';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types.js';
+import { logger } from '../../utils/logger.js';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days

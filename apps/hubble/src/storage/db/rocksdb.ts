@@ -52,7 +52,7 @@ export class Iterator {
   }
 
   async end(): Promise<void> {
-    if (this._iterator._ended) return Promise.resolve(undefined);
+    if (this._iterator['_ended']) return Promise.resolve(undefined);
 
     return new Promise((resolve, reject) => {
       this._iterator.end((err: Error | undefined) => {
@@ -76,7 +76,7 @@ class RocksDB {
   }
 
   get location() {
-    return this._db.location;
+    return this._db['location'];
   }
 
   get status() {
@@ -134,7 +134,7 @@ class RocksDB {
       } else {
         // NOTE: eslint falsely identifies `open(...)` as `fs.open`.
         // eslint-disable-next-line security/detect-non-literal-fs-filename
-        mkdir(this._db.location, { recursive: true }, (fsErr: Error | null) => {
+        mkdir(this._db['location'], { recursive: true }, (fsErr: Error | null) => {
           if (fsErr) reject(parseError(fsErr));
           this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: Error) => {
             if (!e) {
@@ -171,7 +171,7 @@ class RocksDB {
       if (!this._hasOpened) {
         reject(new Error('db never opened'));
       } else {
-        AbstractRocksDB.destroy(this._db.location, (e?: Error) => {
+        AbstractRocksDB.destroy(this._db['location'], (e?: Error) => {
           e ? reject(parseError(e)) : resolve(undefined);
         });
       }
