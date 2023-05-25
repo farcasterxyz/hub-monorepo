@@ -1,6 +1,6 @@
-import { GossipNode } from '~/network/p2p/gossipNode';
-import { sleep } from '~/utils/crypto';
-import { NetworkFactories } from '../../network/utils/factories';
+import { GossipNode } from '../../network/p2p/gossipNode.js';
+import { sleep } from '../../utils/crypto.js';
+import { NetworkFactories } from '../../network/utils/factories.js';
 import { GossipMessage } from '@farcaster/hub-nodejs';
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks

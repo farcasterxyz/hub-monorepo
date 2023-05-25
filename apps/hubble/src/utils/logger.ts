@@ -6,7 +6,7 @@ import {
   MessageType,
   NameRegistryEvent,
 } from '@farcaster/hub-nodejs';
-import { default as Pino } from 'pino';
+import pino from 'pino';
 
 /**
  * Logging Guidelines
@@ -37,7 +37,7 @@ import { default as Pino } from 'pino';
  * More info on best practices:
  * https://betterstack.com/community/guides/logging/how-to-install-setup-and-use-pino-to-log-node-js-applications/
  */
-const defaultOptions: Pino.LoggerOptions = {};
+const defaultOptions: pino.LoggerOptions = {};
 
 // Disable logging in tests and CI to reduce noise
 if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
@@ -45,7 +45,7 @@ if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
   defaultOptions.level = 'silent';
 }
 
-export const logger = Pino(defaultOptions);
+export const logger = pino.pino(defaultOptions);
 
 export const messageTypeToName = (type?: MessageType) => {
   if (!type) return '';

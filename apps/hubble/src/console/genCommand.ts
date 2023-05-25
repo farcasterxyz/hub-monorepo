@@ -7,7 +7,7 @@ import {
   Message,
   Metadata,
 } from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console';
+import { ConsoleCommandInterface } from './console.js';
 
 // We use console.log() in this file, so we disable the eslint rule. This is the REPL console, after all!
 /* eslint-disable no-console */

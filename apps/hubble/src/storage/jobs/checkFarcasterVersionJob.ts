@@ -1,9 +1,9 @@
 import { HubAsyncResult } from '@farcaster/hub-nodejs';
 import { ok } from 'neverthrow';
 import cron from 'node-cron';
-import { Hub } from '~/hubble';
-import { logger } from '~/utils/logger';
-import { getMinFarcasterVersion } from '~/utils/versions';
+import { Hub } from '../../hubble.js';
+import { logger } from '../../utils/logger.js';
+import { getMinFarcasterVersion } from '../../utils/versions.js';
 
 export const DEFAULT_CHECK_FARCASTER_VERSION_JOB_CRON = '1 0 * * *'; // Every day at 00:01 UTC
 

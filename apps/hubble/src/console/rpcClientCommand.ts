@@ -1,5 +1,5 @@
 import { HubRpcClient } from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console';
+import { ConsoleCommandInterface } from './console.js';
 
 export class RpcClientCommand implements ConsoleCommandInterface {
   constructor(private readonly rpcClient: HubRpcClient) {}

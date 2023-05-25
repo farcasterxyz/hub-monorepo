@@ -1,10 +1,10 @@
 import { Ed25519Signer, Factories, FarcasterNetwork, Message, PruneMessageHubEvent } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import { seedSigner } from '~/storage/engine/seed';
-import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
+import { jestRocksDB } from '../db/jestUtils.js';
+import Engine from '../engine/index.js';
+import { seedSigner } from '../engine/seed.js';
+import { PruneMessagesJobScheduler } from './pruneMessagesJob.js';
 import { FARCASTER_EPOCH, getFarcasterTime } from '@farcaster/core';
-import { setReferenceDateForTest } from '~/utils/versions';
+import { setReferenceDateForTest } from '../../utils/versions.js';
 
 const db = jestRocksDB('jobs.pruneMessagesJob.test');
 

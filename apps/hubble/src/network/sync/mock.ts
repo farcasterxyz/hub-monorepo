@@ -2,9 +2,9 @@ import { ok } from 'neverthrow';
 
 import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from '@farcaster/hub-nodejs';
 
-import Engine from '~/storage/engine';
-import { NodeMetadata } from '~/network/sync/merkleTrie';
-import SyncEngine from '~/network/sync/syncEngine';
+import Engine from '../../storage/engine/index.js';
+import { NodeMetadata } from './merkleTrie.js';
+import SyncEngine from './syncEngine.js';
 
 export class MockRpcClient {
   engine: Engine;

@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 
-import { benchMerkleTrie } from './merkleTrie';
-import { benchSyncEngine } from './syncEngine';
-import { outputWriter, waitForPromise } from './utils';
+import { benchMerkleTrie } from './merkleTrie.js';
+import { benchSyncEngine } from './syncEngine.js';
+import { outputWriter, waitForPromise } from './utils.js';
 
 const app = new Command();
 app

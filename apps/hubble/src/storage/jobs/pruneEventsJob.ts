@@ -1,8 +1,8 @@
 import { HubAsyncResult } from '@farcaster/hub-nodejs';
 import { ok } from 'neverthrow';
 import cron from 'node-cron';
-import Engine from '~/storage/engine';
-import { logger } from '~/utils/logger';
+import Engine from '../engine/index.js';
+import { logger } from '../../utils/logger.js';
 
 export const DEFAULT_PRUNE_EVENTS_JOB_CRON = '20 * * * *'; // Every hour at :20
 

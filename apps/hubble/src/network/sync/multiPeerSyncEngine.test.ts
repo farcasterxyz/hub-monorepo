@@ -11,17 +11,17 @@ import {
   TrieNodePrefix,
   HubInfoRequest,
 } from '@farcaster/hub-nodejs';
-import { APP_NICKNAME, APP_VERSION, HubInterface } from '~/hubble';
-import SyncEngine from '~/network/sync/syncEngine';
-import { SyncId } from '~/network/sync/syncId';
-import Server from '~/rpc/server';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import { MockHub, MockRPCProvider } from '~/test/mocks';
-import { sleep, sleepWhile } from '~/utils/crypto';
-import { EthEventsProvider } from '~/eth/ethEventsProvider';
+import { APP_NICKNAME, APP_VERSION, HubInterface } from '../../hubble.js';
+import SyncEngine from './syncEngine.js';
+import { SyncId } from './syncId.js';
+import Server from '../../rpc/server.js';
+import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import Engine from '../../storage/engine/index.js';
+import { MockHub, MockRPCProvider } from '../../test/mocks.js';
+import { sleep, sleepWhile } from '../../utils/crypto.js';
+import { EthEventsProvider } from '../../eth/ethEventsProvider.js';
 import { Contract } from 'ethers';
-import { IdRegistry, NameRegistry } from '~/eth/abis';
+import { IdRegistry, NameRegistry } from '../../eth/abis.js';
 import { getFarcasterTime } from '@farcaster/core';
 
 /* eslint-disable security/detect-non-literal-fs-filename */

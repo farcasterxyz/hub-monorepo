@@ -1,8 +1,8 @@
 import { HubAsyncResult } from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
 import cron from 'node-cron';
-import Engine from '~/storage/engine';
-import { logger } from '~/utils/logger';
+import Engine from '../engine/index.js';
+import { logger } from '../../utils/logger.js';
 
 export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = '0 * * * *'; // Every hour at :00
 

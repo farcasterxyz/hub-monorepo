@@ -1,5 +1,5 @@
-import { makeMessagePrimaryKey, typeToSetPostfix } from '~/storage/db/message';
-import { FID_BYTES, HASH_LENGTH } from '~/storage/db/types';
+import { makeMessagePrimaryKey, typeToSetPostfix } from '../../storage/db/message.js';
+import { FID_BYTES, HASH_LENGTH } from '../../storage/db/types.js';
 import { Message } from '@farcaster/hub-nodejs';
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp

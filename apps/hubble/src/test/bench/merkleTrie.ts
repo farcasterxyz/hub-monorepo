@@ -8,11 +8,11 @@ import v8 from 'v8';
 
 import ProgressBar from 'progress';
 
-import { MerkleTrie } from '~/network/sync/merkleTrie';
+import { MerkleTrie } from '../../network/sync/merkleTrie.js';
 
-import RocksDB from '~/storage/db/rocksdb';
-import { generateSyncIds } from './helpers';
-import { yieldToEventLoop } from './utils';
+import RocksDB from '../../storage/db/rocksdb.js';
+import { generateSyncIds } from './helpers.js';
+import { yieldToEventLoop } from './utils.js';
 
 /**
  * Benchmark MerkleTrie. This is a CPU bound test (no disk operations). The test focuses on the

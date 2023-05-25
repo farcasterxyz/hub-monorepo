@@ -8,16 +8,16 @@ import {
   Message,
 } from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
-import RocksDB from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from '~/storage/db/types';
-import { logger } from '~/utils/logger';
+import RocksDB from '../db/rocksdb.js';
+import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from '../db/types.js';
+import { logger } from '../../utils/logger.js';
 import {
   getMessagesPruneIterator,
   makeFidKey,
   makeMessagePrimaryKey,
   makeTsHash,
   typeToSetPostfix,
-} from '~/storage/db/message';
+} from '../db/message.js';
 import { bytesCompare, HubAsyncResult } from '@farcaster/core';
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {

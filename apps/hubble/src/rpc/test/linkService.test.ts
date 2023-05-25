@@ -12,12 +12,12 @@ import {
   getInsecureHubRpcClient,
   HubRpcClient,
 } from '@farcaster/hub-nodejs';
-import SyncEngine from '~/network/sync/syncEngine';
-import Server from '~/rpc/server';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import { MockHub } from '~/test/mocks';
-import { setReferenceDateForTest } from '~/utils/versions';
+import SyncEngine from '../../network/sync/syncEngine.js';
+import Server from '../../rpc/server.js';
+import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import Engine from '../../storage/engine/index.js';
+import { MockHub } from '../../test/mocks.js';
+import { setReferenceDateForTest } from '../../utils/versions.js';
 
 const db = jestRocksDB('protobufs.rpc.linkService.test');
 const network = FarcasterNetwork.TESTNET;

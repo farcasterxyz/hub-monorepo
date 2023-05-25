@@ -1,6 +1,6 @@
 import { IdRegistryEvent } from '@farcaster/hub-nodejs';
-import RocksDB, { Transaction } from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix } from '~/storage/db/types';
+import RocksDB, { Transaction } from './rocksdb.js';
+import { FID_BYTES, RootPrefix } from './types.js';
 
 /** <ID Registry root prefix byte, fid> */
 export const makeIdRegistryEventPrimaryKey = (fid: number): Buffer => {

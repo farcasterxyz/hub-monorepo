@@ -14,11 +14,11 @@ import {
   RevokeMessageHubEvent,
 } from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { getMessage, makeTsHash } from '~/storage/db/message';
-import { UserPostfix } from '~/storage/db/types';
-import LinkStore from '~/storage/stores/linkStore';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
+import { jestRocksDB } from '../db/jestUtils.js';
+import { getMessage, makeTsHash } from '../db/message.js';
+import { UserPostfix } from '../db/types.js';
+import LinkStore from './linkStore.js';
+import StoreEventHandler from './storeEventHandler.js';
 
 const db = jestRocksDB('protobufs.linkStore.test');
 const eventHandler = new StoreEventHandler(db);

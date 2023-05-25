@@ -19,16 +19,16 @@ import {
 import { PeerId } from '@libp2p/interface-peer-id';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { EthEventsProvider } from '~/eth/ethEventsProvider';
-import { Hub, HubInterface } from '~/hubble';
-import { MerkleTrie, NodeMetadata } from '~/network/sync/merkleTrie';
-import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from '~/network/sync/syncId';
-import { TrieSnapshot } from '~/network/sync/trieNode';
-import { getManyMessages } from '~/storage/db/message';
-import RocksDB from '~/storage/db/rocksdb';
-import { sleepWhile } from '~/utils/crypto';
-import { logger } from '~/utils/logger';
-import { RootPrefix } from '~/storage/db/types';
+import { EthEventsProvider } from '../../eth/ethEventsProvider.js';
+import { Hub, HubInterface } from '../../hubble.js';
+import { MerkleTrie, NodeMetadata } from '../../network/sync/merkleTrie.js';
+import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from '../../network/sync/syncId.js';
+import { TrieSnapshot } from './trieNode.js';
+import { getManyMessages } from '../../storage/db/message.js';
+import RocksDB from '../../storage/db/rocksdb.js';
+import { sleepWhile } from '../../utils/crypto.js';
+import { logger } from '../../utils/logger.js';
+import { RootPrefix } from '../../storage/db/types.js';
 import { fromFarcasterTime } from '@farcaster/core';
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only

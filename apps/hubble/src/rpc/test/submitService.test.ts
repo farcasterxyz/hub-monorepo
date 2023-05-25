@@ -10,12 +10,12 @@ import {
   CastId,
 } from '@farcaster/hub-nodejs';
 import { err } from 'neverthrow';
-import SyncEngine from '~/network/sync/syncEngine';
+import SyncEngine from '../../network/sync/syncEngine.js';
 
-import Server from '~/rpc/server';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import { MockHub } from '~/test/mocks';
+import Server from '../server.js';
+import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import Engine from '../../storage/engine/index.js';
+import { MockHub } from '../../test/mocks.js';
 
 const db = jestRocksDB('protobufs.rpc.submitService.test');
 const network = FarcasterNetwork.TESTNET;

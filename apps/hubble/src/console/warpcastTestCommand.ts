@@ -8,7 +8,7 @@ import {
   FarcasterNetwork,
   UserDataType,
 } from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console';
+import { ConsoleCommandInterface } from './console.js';
 
 export class WarpcastTestCommand implements ConsoleCommandInterface {
   constructor(private readonly rpcClient: HubRpcClient, private readonly adminClient: AdminRpcClient) {}
