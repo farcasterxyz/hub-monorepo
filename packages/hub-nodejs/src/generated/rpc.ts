@@ -28,6 +28,9 @@ import {
   HubInfoResponse,
   IdRegistryEventByAddressRequest,
   IdRegistryEventRequest,
+  LinkRequest,
+  LinksByFidRequest,
+  LinksByTargetRequest,
   MessagesResponse,
   NameRegistryEventRequest,
   ReactionRequest,
@@ -245,6 +248,34 @@ export const HubServiceService = {
     responseSerialize: (value: FidsResponse) => Buffer.from(FidsResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => FidsResponse.decode(value),
   },
+  /** Links */
+  getLink: {
+    path: '/HubService/GetLink',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: LinkRequest) => Buffer.from(LinkRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => LinkRequest.decode(value),
+    responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Message.decode(value),
+  },
+  getLinksByFid: {
+    path: '/HubService/GetLinksByFid',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: LinksByFidRequest) => Buffer.from(LinksByFidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => LinksByFidRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
+  getLinksByTarget: {
+    path: '/HubService/GetLinksByTarget',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: LinksByTargetRequest) => Buffer.from(LinksByTargetRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => LinksByTargetRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
   /** Bulk Methods */
   getAllCastMessagesByFid: {
     path: '/HubService/GetAllCastMessagesByFid',
@@ -284,6 +315,15 @@ export const HubServiceService = {
   },
   getAllUserDataMessagesByFid: {
     path: '/HubService/GetAllUserDataMessagesByFid',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
+  getAllLinkMessagesByFid: {
+    path: '/HubService/GetAllLinkMessagesByFid',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
@@ -380,12 +420,17 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getIdRegistryEvent: handleUnaryCall<IdRegistryEventRequest, IdRegistryEvent>;
   getIdRegistryEventByAddress: handleUnaryCall<IdRegistryEventByAddressRequest, IdRegistryEvent>;
   getFids: handleUnaryCall<FidsRequest, FidsResponse>;
+  /** Links */
+  getLink: handleUnaryCall<LinkRequest, Message>;
+  getLinksByFid: handleUnaryCall<LinksByFidRequest, MessagesResponse>;
+  getLinksByTarget: handleUnaryCall<LinksByTargetRequest, MessagesResponse>;
   /** Bulk Methods */
   getAllCastMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllReactionMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllVerificationMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllSignerMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  getAllLinkMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
   getSyncStatus: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
@@ -698,6 +743,49 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: FidsResponse) => void
   ): ClientUnaryCall;
+  /** Links */
+  getLink(request: LinkRequest, callback: (error: ServiceError | null, response: Message) => void): ClientUnaryCall;
+  getLink(
+    request: LinkRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Message) => void
+  ): ClientUnaryCall;
+  getLink(
+    request: LinkRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Message) => void
+  ): ClientUnaryCall;
+  getLinksByFid(
+    request: LinksByFidRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getLinksByFid(
+    request: LinksByFidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getLinksByFid(
+    request: LinksByFidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getLinksByTarget(
+    request: LinksByTargetRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getLinksByTarget(
+    request: LinksByTargetRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getLinksByTarget(
+    request: LinksByTargetRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
   /** Bulk Methods */
   getAllCastMessagesByFid(
     request: FidRequest,
@@ -769,6 +857,21 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: MessagesResponse) => void
   ): ClientUnaryCall;
   getAllUserDataMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getAllLinkMessagesByFid(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getAllLinkMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void
+  ): ClientUnaryCall;
+  getAllLinkMessagesByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,

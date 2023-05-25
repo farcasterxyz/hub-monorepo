@@ -29,6 +29,8 @@ import {
   CastAddMessage,
   CastRemoveMessage,
   getFarcasterTime,
+  LinkAddMessage,
+  LinkRemoveMessage,
   ReactionAddMessage,
   ReactionRemoveMessage,
   SignerAddMessage,
@@ -51,7 +53,9 @@ type PrunableMessage =
   | SignerRemoveMessage
   | UserDataAddMessage
   | VerificationAddEthAddressMessage
-  | VerificationRemoveMessage;
+  | VerificationRemoveMessage
+  | LinkAddMessage
+  | LinkRemoveMessage;
 
 export type StoreEvents = {
   /**

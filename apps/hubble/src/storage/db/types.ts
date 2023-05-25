@@ -27,8 +27,8 @@ export enum RootPrefix {
   CastsByParent = 2,
   /* Used to index casts by mention */
   CastsByMention = 3,
-  /* Used to index amps by fid */
-  AmpsByUser = 4,
+  /* Used to index links by target */
+  LinksByTarget = 4,
   /* Used to index reactions by target  */
   ReactionsByTarget = 5,
   /* Used to store custody events */
@@ -67,7 +67,7 @@ export enum UserPostfix {
   /* Message records (1-85) */
 
   CastMessage = 1,
-  AmpMessage = 2,
+  LinkMessage = 2,
   ReactionMessage = 3,
   VerificationMessage = 4,
   SignerMessage = 5,
@@ -81,9 +81,9 @@ export enum UserPostfix {
   CastAdds = 87,
   CastRemoves = 88,
 
-  /* AmpStore add and remove sets */
-  AmpAdds = 89,
-  AmpRemoves = 90,
+  /* LinkStore add and remove sets */
+  LinkAdds = 89,
+  LinkRemoves = 90,
 
   /** ReactionStore add and remove sets */
   ReactionAdds = 91,
@@ -109,7 +109,7 @@ export const UserMessagePostfixMax = 85;
 /** A union type of UserPostfixes that are used to store messages */
 export type UserMessagePostfix =
   | UserPostfix.CastMessage
-  | UserPostfix.AmpMessage
+  | UserPostfix.LinkMessage
   | UserPostfix.VerificationMessage
   | UserPostfix.SignerMessage
   | UserPostfix.ReactionMessage

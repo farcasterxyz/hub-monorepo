@@ -14,6 +14,8 @@ import {
   isSignerAddMessage,
   isSignerRemoveMessage,
   isUserDataAddMessage,
+  LinkAddMessage,
+  LinkRemoveMessage,
   MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
   MergeNameRegistryEventHubEvent,
@@ -42,6 +44,7 @@ import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from '~/sto
 import RocksDB from '~/storage/db/rocksdb';
 import { TSHASH_LENGTH, UserPostfix } from '~/storage/db/types';
 import CastStore from '~/storage/stores/castStore';
+import LinkStore from '~/storage/stores/linkStore';
 import ReactionStore from '~/storage/stores/reactionStore';
 import SignerStore from '~/storage/stores/signerStore';
 import StoreEventHandler from '~/storage/stores/storeEventHandler';
@@ -54,6 +57,7 @@ import {
   RevokeMessagesBySignerJobWorker,
 } from '~/storage/jobs/revokeMessagesBySignerJob';
 import { getIdRegistryEventByCustodyAddress } from '~/storage/db/idRegistryEvent';
+import { ensureAboveTargetFarcasterVersion } from '~/utils/versions';
 
 const log = logger.child({
   component: 'Engine',
@@ -65,6 +69,7 @@ class Engine {
   private _db: RocksDB;
   private _network: FarcasterNetwork;
 
+  private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
   private _signerStore: SignerStore;
   private _castStore: CastStore;
@@ -84,6 +89,7 @@ class Engine {
 
     this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
+    this._linkStore = new LinkStore(db, this.eventHandler);
     this._reactionStore = new ReactionStore(db, this.eventHandler);
     this._signerStore = new SignerStore(db, this.eventHandler);
     this._castStore = new CastStore(db, this.eventHandler);
@@ -177,6 +183,14 @@ class Engine {
     const setPostfix = typeToSetPostfix(message.data!.type);
 
     switch (setPostfix) {
+      case UserPostfix.LinkMessage: {
+        const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+        if (versionCheck.isErr()) {
+          return err(versionCheck.error);
+        }
+
+        return ResultAsync.fromPromise(this._linkStore.merge(message), (e) => e as HubError);
+      }
       case UserPostfix.ReactionMessage: {
         return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
       }
@@ -238,6 +252,9 @@ class Engine {
       }
 
       switch (setPostfix) {
+        case UserPostfix.LinkMessage: {
+          return this._linkStore.revoke(message.value);
+        }
         case UserPostfix.ReactionMessage: {
           return this._reactionStore.revoke(message.value);
         }
@@ -310,6 +327,9 @@ class Engine {
     const userDataResult = await this._userDataStore.pruneMessages(fid);
     logPruneResult(userDataResult, 'user data');
 
+    const linkResult = await this._linkStore.pruneMessages(fid);
+    logPruneResult(linkResult, 'link');
+
     return ok(undefined);
   }
 
@@ -321,6 +341,9 @@ class Engine {
       const setPostfix = typeToSetPostfix(message.data.type);
 
       switch (setPostfix) {
+        case UserPostfix.LinkMessage: {
+          return this._linkStore.revoke(message);
+        }
         case UserPostfix.ReactionMessage: {
           return this._reactionStore.revoke(message);
         }
@@ -599,6 +622,84 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                              Link Store Methods                            */
+  /* -------------------------------------------------------------------------- */
+
+  async getLink(fid: number, type: string, target: number): HubAsyncResult<LinkAddMessage> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const validatedTarget = validations.validateFid(target);
+    if (validatedTarget.isErr()) {
+      return err(validatedTarget.error);
+    }
+
+    return ResultAsync.fromPromise(this._linkStore.getLinkAdd(fid, type, target), (e) => e as HubError);
+  }
+
+  async getLinksByFid(
+    fid: number,
+    type?: string,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<LinkAddMessage>> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._linkStore.getLinkAddsByFid(fid, type, pageOptions), (e) => e as HubError);
+  }
+
+  async getLinksByTarget(
+    target: number,
+    type?: string,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<LinkAddMessage>> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
+    if (typeof target !== 'string') {
+      const validatedTargetId = validations.validateFid(target);
+      if (validatedTargetId.isErr()) {
+        return err(validatedTargetId.error);
+      }
+    }
+
+    return ResultAsync.fromPromise(this._linkStore.getLinksByTarget(target, type, pageOptions), (e) => e as HubError);
+  }
+
+  async getAllLinkMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): HubAsyncResult<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
+    const versionCheck = ensureAboveTargetFarcasterVersion('2023.4.19');
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._linkStore.getAllLinkMessagesByFid(fid, pageOptions), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */

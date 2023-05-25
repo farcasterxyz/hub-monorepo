@@ -4,6 +4,7 @@ import Engine from '~/storage/engine';
 import { seedSigner } from '~/storage/engine/seed';
 import { PruneMessagesJobScheduler } from '~/storage/jobs/pruneMessagesJob';
 import { FARCASTER_EPOCH, getFarcasterTime } from '@farcaster/core';
+import { setReferenceDateForTest } from '~/utils/versions';
 
 const db = jestRocksDB('jobs.pruneMessagesJob.test');
 
@@ -17,7 +18,8 @@ const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed
     { data: { fid, timestamp } },
     { transient: { signer } }
   );
-  return engine.mergeMessages([castAdd, reactionAdd]);
+  const linkAdd = await Factories.LinkAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
+  return engine.mergeMessages([castAdd, reactionAdd, linkAdd]);
 };
 
 let prunedMessages: Message[] = [];
@@ -28,6 +30,7 @@ const pruneMessageListener = (event: PruneMessageHubEvent) => {
 
 beforeAll(async () => {
   await engine.start();
+  setReferenceDateForTest(100000000000000000000000);
   engine.eventHandler.on('pruneMessage', pruneMessageListener);
 });
 
@@ -71,6 +74,9 @@ describe('doJobs', () => {
 
         const reactions = await engine.getReactionsByFid(fid);
         expect(reactions._unsafeUnwrap().messages.length).toEqual(1);
+
+        const links = await engine.getLinksByFid(fid);
+        expect(links._unsafeUnwrap().messages.length).toEqual(1);
       }
 
       const nowOrig = Date.now;
@@ -88,6 +94,10 @@ describe('doJobs', () => {
 
         const reactions = await engine.getReactionsByFid(fid);
         expect(reactions._unsafeUnwrap().messages).toEqual([]);
+
+        // These don't prune based on time
+        const links = await engine.getLinksByFid(fid);
+        expect(links._unsafeUnwrap().messages.length).toEqual(1);
       }
 
       expect(prunedMessages.length).toEqual(4);

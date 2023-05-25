@@ -5,6 +5,13 @@ import { FARCASTER_VERSIONS_SCHEDULE } from '~/hubble';
 
 export type VersionSchedule = { version: string; expiresAt: number };
 
+let overrideDate: number | undefined = undefined;
+
+// Helper method for tests which sets the date used for version checking
+export const setReferenceDateForTest = (referenceDate: number | undefined) => {
+  overrideDate = referenceDate;
+};
+
 export const getMinFarcasterVersion = (): HubResult<string> => {
   const timestamp = Date.now();
 
@@ -29,6 +36,30 @@ export const ensureAboveMinFarcasterVersion = (version: string): HubResult<void>
 
   if (semver.lt(version, minVersion.value)) {
     return err(new HubError('bad_request.validation_failure', 'version too low'));
+  }
+  return ok(undefined);
+};
+
+export const ensureAboveTargetFarcasterVersion = (targetVersion: string): HubResult<void> => {
+  if (!semver.valid(targetVersion)) {
+    return err(new HubError('bad_request.invalid_param', 'invalid version'));
+  }
+
+  const referenceDate = overrideDate || Date.now();
+  let targetVersionExpiresAt: number | undefined;
+  for (const { version, expiresAt } of FARCASTER_VERSIONS_SCHEDULE) {
+    if (version === targetVersion) {
+      targetVersionExpiresAt = expiresAt;
+      break;
+    }
+  }
+
+  if (targetVersionExpiresAt === undefined) {
+    return err(new HubError('bad_request.invalid_param', 'invalid version'));
+  }
+
+  if (referenceDate < targetVersionExpiresAt) {
+    return err(new HubError('bad_request.validation_failure', 'target version has not expired'));
   }
   return ok(undefined);
 };

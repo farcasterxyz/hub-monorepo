@@ -197,6 +197,11 @@ export const validateMessageData = <T extends protobufs.MessageData>(data: T): H
     !!data.reactionBody
   ) {
     bodyResult = validateReactionBody(data.reactionBody);
+  } else if (
+    (validType.value === protobufs.MessageType.LINK_ADD || validType.value === protobufs.MessageType.LINK_REMOVE) &&
+    !!data.linkBody
+  ) {
+    bodyResult = validateLinkBody(data.linkBody);
   } else if (validType.value === protobufs.MessageType.SIGNER_ADD && !!data.signerAddBody) {
     bodyResult = validateSignerAddBody(data.signerAddBody);
   } else if (validType.value === protobufs.MessageType.SIGNER_REMOVE && !!data.signerRemoveBody) {
@@ -404,6 +409,15 @@ export const validateCastRemoveBody = (body: protobufs.CastRemoveBody): HubResul
   return validateMessageHash(body.targetHash).map(() => body);
 };
 
+export const validateLinkType = (type: string): HubResult<string> => {
+  const typeBuffer = Buffer.from(type);
+  if (type.length === 0 || typeBuffer.length > 8) {
+    return err(new HubError('bad_request.validation_failure', 'type must be between 1-8 bytes'));
+  }
+
+  return ok(type);
+};
+
 export const validateReactionType = (type: number): HubResult<protobufs.ReactionType> => {
   if (!Object.values(protobufs.ReactionType).includes(type)) {
     return err(new HubError('bad_request.validation_failure', 'invalid reaction type'));
@@ -412,9 +426,13 @@ export const validateReactionType = (type: number): HubResult<protobufs.Reaction
   return ok(type);
 };
 
-export const validateTarget = (target: protobufs.CastId | string): HubResult<protobufs.CastId | string> => {
+export const validateTarget = (
+  target: protobufs.CastId | string | number
+): HubResult<protobufs.CastId | string | number> => {
   if (typeof target === 'string') {
     return validateUrl(target);
+  } else if (typeof target === 'number') {
+    return validateFid(target);
   } else {
     return validateCastId(target);
   }
@@ -434,6 +452,20 @@ export const validateNetwork = (network: number): HubResult<protobufs.FarcasterN
   }
 
   return ok(network);
+};
+
+export const validateLinkBody = (body: protobufs.LinkBody): HubResult<protobufs.LinkBody> => {
+  const validatedType = validateLinkType(body.type);
+  if (validatedType.isErr()) {
+    return err(validatedType.error);
+  }
+
+  const target = body.targetFid;
+  if (target === undefined) {
+    return err(new HubError('bad_request.validation_failure', 'target is missing'));
+  }
+
+  return validateTarget(target).map(() => body);
 };
 
 export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<protobufs.ReactionBody> => {

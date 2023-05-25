@@ -37,7 +37,7 @@ describe('makeMessagePrimaryKey', () => {
     const tsHash2 = makeTsHash(castMessage.data.timestamp + 1, castMessage.hash)._unsafeUnwrap();
     const key1 = makeMessagePrimaryKey(10, UserPostfix.CastMessage, tsHash1);
     const key2 = makeMessagePrimaryKey(10, UserPostfix.CastMessage, tsHash2);
-    const key3 = makeMessagePrimaryKey(10, UserPostfix.AmpMessage, tsHash1);
+    const key3 = makeMessagePrimaryKey(10, UserPostfix.LinkMessage, tsHash1);
     const key4 = makeMessagePrimaryKey(11, UserPostfix.CastMessage, tsHash1);
     const key5 = makeMessagePrimaryKey(11_000_000, UserPostfix.CastMessage, tsHash1);
     for (const key of [key1, key2, key3, key4, key5]) {
