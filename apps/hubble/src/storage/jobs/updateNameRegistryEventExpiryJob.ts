@@ -13,11 +13,11 @@ import {
 import { blake3 } from '@noble/hashes/blake3';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { EthEventsProvider } from '~/eth/ethEventsProvider';
-import RocksDB, { Iterator } from '~/storage/db/rocksdb';
-import { logger, nameRegistryEventToLog } from '~/utils/logger';
-import { getNameRegistryEvent, putNameRegistryEvent } from '~/storage/db/nameRegistryEvent';
-import { RootPrefix } from '~/storage/db/types';
+import { EthEventsProvider } from '../../eth/ethEventsProvider.js';
+import RocksDB, { Iterator } from '../db/rocksdb.js';
+import { logger, nameRegistryEventToLog } from '../../utils/logger.js';
+import { getNameRegistryEvent, putNameRegistryEvent } from '../db/nameRegistryEvent.js';
+import { RootPrefix } from '../db/types.js';
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;

@@ -1,6 +1,13 @@
-import { MessageType, bytesCompare, Factories, HubError } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { TRUE_VALUE, UserPostfix } from '~/storage/db/types';
+import {
+  MessageType,
+  CastAddMessage,
+  ReactionAddMessage,
+  bytesCompare,
+  Factories,
+  HubError,
+} from '@farcaster/hub-nodejs';
+import { jestRocksDB } from './jestUtils.js';
+import { TRUE_VALUE, UserPostfix } from './types.js';
 import {
   getAllMessagesByFid,
   getAllMessagesBySigner,
@@ -12,14 +19,19 @@ import {
   makeUserKey,
   putMessage,
   typeToSetPostfix,
-} from './message';
+} from './message.js';
 
 const db = jestRocksDB('storage.db.message.test');
 
 const signer = Factories.Ed25519Signer.build();
 
-const castMessage = await Factories.CastAddMessage.create({}, { transient: { signer } });
-const reactionMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
+let castMessage: CastAddMessage;
+let reactionMessage: ReactionAddMessage;
+
+beforeAll(async () => {
+  castMessage = await Factories.CastAddMessage.create({}, { transient: { signer } });
+  reactionMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
+});
 
 describe('makeUserKey', () => {
   test('orders keys by fid', () => {
@@ -37,7 +49,7 @@ describe('makeMessagePrimaryKey', () => {
     const tsHash2 = makeTsHash(castMessage.data.timestamp + 1, castMessage.hash)._unsafeUnwrap();
     const key1 = makeMessagePrimaryKey(10, UserPostfix.CastMessage, tsHash1);
     const key2 = makeMessagePrimaryKey(10, UserPostfix.CastMessage, tsHash2);
-    const key3 = makeMessagePrimaryKey(10, UserPostfix.AmpMessage, tsHash1);
+    const key3 = makeMessagePrimaryKey(10, UserPostfix.LinkMessage, tsHash1);
     const key4 = makeMessagePrimaryKey(11, UserPostfix.CastMessage, tsHash1);
     const key5 = makeMessagePrimaryKey(11_000_000, UserPostfix.CastMessage, tsHash1);
     for (const key of [key1, key2, key3, key4, key5]) {

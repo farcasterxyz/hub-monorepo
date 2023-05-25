@@ -20,15 +20,17 @@ import {
 import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix, UserMessagePostfix } from '~/storage/db/types';
-import { StorageCache } from '~/storage/stores/storageCache';
-import { makeTsHash } from '~/storage/db/message';
+import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
+import { RootPrefix, UserMessagePostfix } from '../db/types.js';
+import { StorageCache } from './storageCache.js';
+import { makeTsHash } from '../db/message.js';
 import {
   bytesCompare,
   CastAddMessage,
   CastRemoveMessage,
   getFarcasterTime,
+  LinkAddMessage,
+  LinkRemoveMessage,
   ReactionAddMessage,
   ReactionRemoveMessage,
   SignerAddMessage,
@@ -51,7 +53,9 @@ type PrunableMessage =
   | SignerRemoveMessage
   | UserDataAddMessage
   | VerificationAddEthAddressMessage
-  | VerificationRemoveMessage;
+  | VerificationRemoveMessage
+  | LinkAddMessage
+  | LinkRemoveMessage;
 
 export type StoreEvents = {
   /**

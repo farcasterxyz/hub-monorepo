@@ -25,6 +25,26 @@ export type CastRemoveMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type LinkAddData = protobufs.MessageData & {
+  type: protobufs.MessageType.LINK_ADD;
+  linkBody: protobufs.LinkBody;
+};
+
+export type LinkAddMessage = protobufs.Message & {
+  data: LinkAddData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
+export type LinkRemoveData = protobufs.MessageData & {
+  type: protobufs.MessageType.LINK_REMOVE;
+  linkBody: protobufs.LinkBody;
+};
+
+export type LinkRemoveMessage = protobufs.Message & {
+  data: LinkRemoveData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
 export type ReactionAddData = protobufs.MessageData & {
   type: protobufs.MessageType.REACTION_ADD;
   reactionBody: protobufs.ReactionBody;

@@ -2399,6 +2399,11 @@
   resolved "https://registry.npmjs.org/@tsconfig/node16/-/node16-1.0.3.tgz#472eaab5f15c1ffdd7f8628bd4c4f753995ec79e"
   integrity sha512-yOlFc+7UtL/89t2ZhjPvvB/DeAr3r+Dq58IgzsFkOAvVC6NMJXmCGjbptdXdR9qsX7pKcTL+s87FtYREi2dEEQ==
 
+"@types/abstract-leveldown@^7.2.1":
+  version "7.2.1"
+  resolved "https://registry.npmjs.org/@types/abstract-leveldown/-/abstract-leveldown-7.2.1.tgz#bb16403c17754b0c4d5772d71d03b924a03d4c80"
+  integrity sha512-YK8irIC+eMrrmtGx0H4ISn9GgzLd9dojZWJaMbjp1YHLl2VqqNFBNrL5Q3KjGf4VE3sf/4hmq6EhQZ7kZp1NoQ==
+
 "@types/async-lock@^1.4.0":
   version "1.4.0"
   resolved "https://registry.npmjs.org/@types/async-lock/-/async-lock-1.4.0.tgz#e7d555d037f93e911d54000acb626e783ff9023a"

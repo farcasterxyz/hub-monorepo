@@ -8,11 +8,11 @@ import {
   SignerAddMessage,
   CastAddMessage,
 } from '@farcaster/hub-nodejs';
-import SyncEngine from '~/network/sync/syncEngine';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { MockHub } from '~/test/mocks';
-import { MockRpcClient } from './mock';
-import { EMPTY_HASH } from './trieNode';
+import SyncEngine from '../../network/sync/syncEngine.js';
+import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import { MockHub } from '../../test/mocks.js';
+import { MockRpcClient } from './mock.js';
+import { EMPTY_HASH } from './trieNode.js';
 import { getFarcasterTime } from '@farcaster/core';
 
 const testDb = jestRocksDB(`engine.syncEnginePerf.test`);

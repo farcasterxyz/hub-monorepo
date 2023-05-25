@@ -13,14 +13,14 @@ import {
   MessageData,
   MessageType,
 } from '@farcaster/hub-nodejs';
-import { MockRpcClient } from '~/network/sync/mock';
-import SyncEngine from '~/network/sync/syncEngine';
-import { SyncId } from '~/network/sync/syncId';
-import RocksDB from '~/storage/db/rocksdb';
-import { blake3Truncate160, sleepWhile } from '~/utils/crypto';
-import { avgRecords } from './helpers';
-import { yieldToEventLoop } from './utils';
-import { MockHub } from '../mocks';
+import { MockRpcClient } from '../../network/sync/mock.js';
+import SyncEngine from '../../network/sync/syncEngine.js';
+import { SyncId } from '../../network/sync/syncId.js';
+import RocksDB from '../../storage/db/rocksdb.js';
+import { blake3Truncate160, sleepWhile } from '../../utils/crypto.js';
+import { avgRecords } from './helpers.js';
+import { yieldToEventLoop } from './utils.js';
+import { MockHub } from '../mocks.js';
 
 const INITIAL_MESSAGES_COUNT = 10_000;
 const FID_COUNT = 10_000;

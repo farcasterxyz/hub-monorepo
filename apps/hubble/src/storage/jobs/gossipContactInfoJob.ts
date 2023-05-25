@@ -1,6 +1,6 @@
 import cron from 'node-cron';
-import { HubInterface } from '~/hubble';
-import { logger } from '~/utils/logger';
+import { HubInterface } from '../../hubble.js';
+import { logger } from '../../utils/logger.js';
 import { HubAsyncResult } from '@farcaster/core';
 
 const log = logger.child({

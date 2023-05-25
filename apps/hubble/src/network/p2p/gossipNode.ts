@@ -21,11 +21,11 @@ import { Multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { ConnectionFilter } from '~/network/p2p/connectionFilter';
-import { logger } from '~/utils/logger';
-import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '~/utils/p2p';
-import { PeriodicPeerCheckScheduler } from './periodicPeerCheck';
-import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol';
+import { ConnectionFilter } from './connectionFilter.js';
+import { logger } from '../../utils/logger.js';
+import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '../../utils/p2p.js';
+import { PeriodicPeerCheckScheduler } from './periodicPeerCheck.js';
+import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol.js';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 

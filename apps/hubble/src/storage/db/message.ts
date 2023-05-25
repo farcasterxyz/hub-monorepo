@@ -1,15 +1,8 @@
 import { bytesIncrement, CastId, HubError, HubResult, Message, MessageType } from '@farcaster/hub-nodejs';
 import { err, ok, ResultAsync } from 'neverthrow';
-import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import {
-  FID_BYTES,
-  RootPrefix,
-  TRUE_VALUE,
-  UserMessagePostfix,
-  UserMessagePostfixMax,
-  UserPostfix,
-} from '~/storage/db/types';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '~/storage/stores/types';
+import RocksDB, { Iterator, Transaction } from './rocksdb.js';
+import { FID_BYTES, RootPrefix, TRUE_VALUE, UserMessagePostfix, UserMessagePostfixMax, UserPostfix } from './types.js';
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '../stores/types.js';
 
 export const makeFidKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(FID_BYTES);
@@ -96,6 +89,10 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
 
   if (type === MessageType.USER_DATA_ADD) {
     return UserPostfix.UserDataMessage;
+  }
+
+  if (type === MessageType.LINK_ADD || type === MessageType.LINK_REMOVE) {
+    return UserPostfix.LinkMessage;
   }
 
   throw new Error('invalid type');

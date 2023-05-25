@@ -18,7 +18,7 @@ import {
   getIdRegistryEvent,
   getIdRegistryEventByCustodyAddress,
   putIdRegistryEventTransaction,
-} from '~/storage/db/idRegistryEvent';
+} from '../db/idRegistryEvent.js';
 import {
   deleteMessageTransaction,
   getMessage,
@@ -30,19 +30,13 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '~/storage/db/message';
-import RocksDB, { Iterator, Transaction } from '~/storage/db/rocksdb';
-import { RootPrefix, UserPostfix } from '~/storage/db/types';
-import StoreEventHandler, { HubEventArgs } from '~/storage/stores/storeEventHandler';
-import {
-  MERGE_TIMEOUT_DEFAULT,
-  MessagesPage,
-  PAGE_SIZE_MAX,
-  PageOptions,
-  StorePruneOptions,
-} from '~/storage/stores/types';
-import { eventCompare } from '~/storage/stores/utils';
-import { logger } from '~/utils/logger';
+} from '../db/message.js';
+import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
+import { RootPrefix, UserPostfix } from '../db/types.js';
+import StoreEventHandler, { HubEventArgs } from './storeEventHandler.js';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from './types.js';
+import { eventCompare } from './utils.js';
+import { logger } from '../../utils/logger.js';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 

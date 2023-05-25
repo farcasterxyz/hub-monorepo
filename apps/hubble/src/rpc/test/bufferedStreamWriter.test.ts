@@ -1,4 +1,4 @@
-import { BufferedStreamWriter, STREAM_MESSAGE_BUFFER_SIZE } from '../bufferedStreamWriter';
+import { BufferedStreamWriter, STREAM_MESSAGE_BUFFER_SIZE } from '../bufferedStreamWriter.js';
 import { HubEvent, SubscribeRequest, ServerWritableStream } from '@farcaster/hub-nodejs';
 
 class MockStream {

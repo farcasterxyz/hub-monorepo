@@ -1,10 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "paths": {
-      "~/*": ["./*"]
-    },
-
+    "moduleResolution": "NodeNext",
     "baseUrl": "./src",
     "outDir": "build",
     "rootDir": "src"

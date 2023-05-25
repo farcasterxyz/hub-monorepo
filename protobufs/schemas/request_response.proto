@@ -155,6 +155,32 @@ message SignerRequest {
   bytes signer = 2;
 }
 
+message LinkRequest {
+  uint64 fid = 1;
+  string link_type = 2;
+  oneof target {
+    uint64 target_fid = 3;
+  }
+}
+
+message LinksByFidRequest {
+  uint64 fid = 1;
+  optional string link_type = 2;
+  optional uint32 page_size = 3;
+  optional bytes page_token = 4;
+  optional bool reverse = 5;
+}
+
+message LinksByTargetRequest {
+  oneof target {
+    uint64 target_fid = 1;
+  }
+  optional string link_type = 2;
+  optional uint32 page_size = 3;
+  optional bytes page_token = 4;
+  optional bool reverse = 5;
+}
+
 message IdRegistryEventRequest {
   uint64 fid = 1;
 }

@@ -1,5 +1,5 @@
 import { AdminRpcClient, Empty } from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console';
+import { ConsoleCommandInterface } from './console.js';
 
 export class AdminCommand implements ConsoleCommandInterface {
   constructor(private readonly adminClient: AdminRpcClient) {}

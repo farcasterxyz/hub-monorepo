@@ -31,6 +31,7 @@ message MessageData {
     SignerAddBody signer_add_body = 11;
     UserDataBody user_data_body = 12;
     SignerRemoveBody signer_remove_body = 13;
+    LinkBody link_body = 14;
   } // Properties specific to the MessageType
 }
 
@@ -54,6 +55,8 @@ enum MessageType {
   MESSAGE_TYPE_CAST_REMOVE = 2; // Remove an existing Cast
   MESSAGE_TYPE_REACTION_ADD = 3; // Add a Reaction to a Cast
   MESSAGE_TYPE_REACTION_REMOVE = 4; // Remove a Reaction from a Cast
+  MESSAGE_TYPE_LINK_ADD = 5; // Add a new Link
+  MESSAGE_TYPE_LINK_REMOVE = 6; // Remove an existing Link
   MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7; // Add a Verification of an Ethereum Address
   MESSAGE_TYPE_VERIFICATION_REMOVE = 8; // Remove a Verification
   MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
@@ -155,3 +158,11 @@ message VerificationRemoveBody {
   bytes address = 1; // Address of the Verification to remove
 }
 
+/** Adds or removes a Link */
+message LinkBody {
+  string type = 1; // Type of link, <= 8 characters
+  optional uint32 displayTimestamp = 2; // User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction
+  oneof target {
+    uint64 target_fid = 3;  // The fid the link relates to
+  }
+}

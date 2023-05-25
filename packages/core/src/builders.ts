@@ -24,6 +24,7 @@ type MessageBodyOptions = Pick<
   | 'signerAddBody'
   | 'signerRemoveBody'
   | 'userDataBody'
+  | 'linkBody'
 >;
 
 /** Generic Methods */
@@ -137,6 +138,48 @@ export const makeCastRemoveData = (
   dataOptions: MessageDataOptions
 ): HubResult<protobufs.CastRemoveData> => {
   return makeMessageData({ castRemoveBody: body }, protobufs.MessageType.CAST_REMOVE, dataOptions);
+};
+
+/* -------------------------------------------------------------------------- */
+/*                               LINK METHODS                                 */
+/* -------------------------------------------------------------------------- */
+
+export const makeLinkAdd = async (
+  body: protobufs.LinkBody,
+  dataOptions: MessageDataOptions,
+  signer: Signer
+): HubAsyncResult<protobufs.LinkAddMessage> => {
+  const data = makeLinkAddData(body, dataOptions);
+  if (data.isErr()) {
+    return err(data.error);
+  }
+  return makeMessage(data.value, signer);
+};
+
+export const makeLinkRemove = async (
+  body: protobufs.LinkBody,
+  dataOptions: MessageDataOptions,
+  signer: Signer
+): HubAsyncResult<protobufs.LinkRemoveMessage> => {
+  const data = makeLinkRemoveData(body, dataOptions);
+  if (data.isErr()) {
+    return err(data.error);
+  }
+  return makeMessage(data.value, signer);
+};
+
+export const makeLinkAddData = (
+  body: protobufs.LinkBody,
+  dataOptions: MessageDataOptions
+): HubResult<protobufs.LinkAddData> => {
+  return makeMessageData({ linkBody: body }, protobufs.MessageType.LINK_ADD, dataOptions);
+};
+
+export const makeLinkRemoveData = (
+  body: protobufs.LinkBody,
+  dataOptions: MessageDataOptions
+): HubResult<protobufs.LinkRemoveData> => {
+  return makeMessageData({ linkBody: body }, protobufs.MessageType.LINK_REMOVE, dataOptions);
 };
 
 /* -------------------------------------------------------------------------- */
