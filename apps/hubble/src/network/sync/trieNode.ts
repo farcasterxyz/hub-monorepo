@@ -1,11 +1,11 @@
 import { bytesCompare, DbTrieNode, HubError } from '@farcaster/hub-nodejs';
 import { blake3 } from '@noble/hashes/blake3';
 import { ResultAsync } from 'neverthrow';
-import { TIMESTAMP_LENGTH } from '~/network/sync/syncId';
-import RocksDB from '~/storage/db/rocksdb';
-import { RootPrefix } from '~/storage/db/types';
-import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from '~/utils/crypto';
-import { NodeMetadata } from './merkleTrie';
+import { TIMESTAMP_LENGTH } from './syncId.js';
+import RocksDB from '../../storage/db/rocksdb.js';
+import { RootPrefix } from '../../storage/db/types.js';
+import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from '../../utils/crypto.js';
+import { NodeMetadata } from './merkleTrie.js';
 
 export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString('hex');
 export const MAX_VALUES_RETURNED_PER_CALL = 1000;

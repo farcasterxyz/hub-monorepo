@@ -1,9 +1,9 @@
 import { ok } from 'neverthrow';
 import { Factories, HubEvent, HubEventType } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import { makeTsHash, putMessage } from '~/storage/db/message';
-import { UserPostfix } from '~/storage/db/types';
-import { StorageCache } from '~/storage/stores/storageCache';
+import { jestRocksDB } from '../db/jestUtils.js';
+import { makeTsHash, putMessage } from '../db/message.js';
+import { UserPostfix } from '../db/types.js';
+import { StorageCache } from './storageCache.js';
 
 const db = jestRocksDB('engine.storageCache.test');
 

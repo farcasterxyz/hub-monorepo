@@ -1,7 +1,12 @@
 import semver from 'semver';
-import { getMinFarcasterVersion, ensureAboveMinFarcasterVersion } from '~/utils/versions';
+import {
+  getMinFarcasterVersion,
+  ensureAboveMinFarcasterVersion,
+  setReferenceDateForTest,
+  ensureAboveTargetFarcasterVersion,
+} from '../utils/versions.js';
 import { ok } from 'neverthrow';
-import { FARCASTER_VERSION, FARCASTER_VERSIONS_SCHEDULE } from '~/hubble';
+import { FARCASTER_VERSION, FARCASTER_VERSIONS_SCHEDULE } from '../hubble.js';
 
 describe('versions tests', () => {
   describe('isBelowMinFarcasterVersion', () => {
@@ -41,6 +46,25 @@ describe('versions tests', () => {
       expect(current).toBeTruthy();
       const seven_days_in_ms = 7 * 24 * 60 * 60 * 1000;
       expect(current!.expiresAt - Date.now()).toBeGreaterThan(seven_days_in_ms);
+    });
+  });
+
+  describe('above target version', () => {
+    test('fails if target version has not expired', async () => {
+      const current = FARCASTER_VERSIONS_SCHEDULE.find((value) => value.version === FARCASTER_VERSION);
+      expect(current).toBeTruthy();
+      setReferenceDateForTest(0);
+      const result = ensureAboveTargetFarcasterVersion(current!.version);
+      expect(result.isErr()).toBeTruthy();
+      expect(result._unsafeUnwrapErr().message).toEqual('target version has not expired');
+    });
+
+    test('returns if target version has expired', async () => {
+      const current = FARCASTER_VERSIONS_SCHEDULE.find((value) => value.version === FARCASTER_VERSION);
+      expect(current).toBeTruthy();
+      setReferenceDateForTest(100000000000000000000000);
+      const result = ensureAboveTargetFarcasterVersion(current!.version);
+      expect(result).toEqual(ok(undefined));
     });
   });
 });

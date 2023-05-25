@@ -264,6 +264,53 @@ const CastRemoveMessageFactory = Factory.define<protobufs.CastRemoveMessage, { s
   }
 );
 
+const LinkBodyFactory = Factory.define<protobufs.LinkBody>(() => {
+  return protobufs.LinkBody.create({
+    targetFid: FidFactory.build(),
+    type: 'follow',
+  });
+});
+
+const LinkAddDataFactory = Factory.define<protobufs.LinkAddData>(() => {
+  return MessageDataFactory.build({
+    linkBody: LinkBodyFactory.build(),
+    type: protobufs.MessageType.LINK_ADD,
+  }) as protobufs.LinkAddData;
+});
+
+const LinkAddMessageFactory = Factory.define<protobufs.LinkAddMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.LinkAddMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: LinkAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams }
+    ) as protobufs.LinkAddMessage;
+  }
+);
+
+const LinkRemoveDataFactory = Factory.define<protobufs.LinkRemoveData>(() => {
+  return MessageDataFactory.build({
+    linkBody: LinkBodyFactory.build(),
+    type: protobufs.MessageType.LINK_REMOVE,
+  }) as protobufs.LinkRemoveData;
+});
+
+const LinkRemoveMessageFactory = Factory.define<protobufs.LinkRemoveMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.LinkRemoveMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: LinkRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams }
+    ) as protobufs.LinkRemoveMessage;
+  }
+);
+
 const ReactionBodyFactory = Factory.define<protobufs.ReactionBody>(() => {
   return protobufs.ReactionBody.create({
     targetCastId: CastIdFactory.build(),
@@ -564,6 +611,11 @@ export const Factories = {
   CastRemoveBody: CastRemoveBodyFactory,
   CastRemoveData: CastRemoveDataFactory,
   CastRemoveMessage: CastRemoveMessageFactory,
+  LinkBody: LinkBodyFactory,
+  LinkAddData: LinkAddDataFactory,
+  LinkAddMessage: LinkAddMessageFactory,
+  LinkRemoveData: LinkRemoveDataFactory,
+  LinkRemoveMessage: LinkRemoveMessageFactory,
   ReactionBody: ReactionBodyFactory,
   ReactionAddData: ReactionAddDataFactory,
   ReactionAddMessage: ReactionAddMessageFactory,

@@ -14,7 +14,7 @@ services:
   hubble1:
     build:
       context: .
-      dockerfile: Dockerfile.hubble.test
+      dockerfile: Dockerfile.hubble
     ports:
       - '2282:2282'
       - '2283:2283'
@@ -45,7 +45,7 @@ services:
   hubble2:
     build:
       context: .
-      dockerfile: Dockerfile.hubble.test
+      dockerfile: Dockerfile.hubble
     ports:
       - '2284:2284'
       - '2285:2285'

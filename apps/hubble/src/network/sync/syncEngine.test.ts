@@ -14,14 +14,14 @@ import {
 } from '@farcaster/hub-nodejs';
 import { ok } from 'neverthrow';
 import { anything, instance, mock, when } from 'ts-mockito';
-import SyncEngine from '~/network/sync/syncEngine';
-import { SyncId } from '~/network/sync/syncId';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import Engine from '~/storage/engine';
-import { sleepWhile } from '~/utils/crypto';
-import { NetworkFactories } from '~/network/utils/factories';
-import { HubInterface } from '~/hubble';
-import { MockHub } from '~/test/mocks';
+import SyncEngine from './syncEngine.js';
+import { SyncId } from './syncId.js';
+import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import Engine from '../../storage/engine/index.js';
+import { sleepWhile } from '../../utils/crypto.js';
+import { NetworkFactories } from '../../network/utils/factories.js';
+import { HubInterface } from '../../hubble.js';
+import { MockHub } from '../../test/mocks.js';
 
 const testDb = jestRocksDB(`engine.syncEngine.test`);
 const testDb2 = jestRocksDB(`engine2.syncEngine.test`);

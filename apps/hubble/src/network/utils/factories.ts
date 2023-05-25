@@ -10,7 +10,7 @@ import {
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Factory } from 'fishery';
-import { HASH_LENGTH, SyncId } from '~/network/sync/syncId';
+import { HASH_LENGTH, SyncId } from '../../network/sync/syncId.js';
 
 const GossipAddressInfoFactory = Factory.define<GossipAddressInfo>(() => {
   return GossipAddressInfo.create({

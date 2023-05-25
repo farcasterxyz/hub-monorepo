@@ -32,9 +32,11 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWBhm9XdafZiBWPncDVcvMhcmV3kLFLnBiS83CjY833sWN', // @pjc (fc.bus.events)
   '12D3KooWFHsw17MsY9eSbYLhkemUYcAwAjPPA7D6g3wTuhnLgAbT', // @sds
   '12D3KooWKEuT74vxNfhGJh5XGUURaenDj1qokjA811Wv78tFo5WV', // @blanker
+  '12D3KooWCeDDcnpiwRMTGJjxsMayYuUuhRY71QxHxsLtx1ZP2Eq8', // @myz1237
   '12D3KooWMcDyq1KwcEgSjLixYLEPUZPYwDVFpWcyr8sp9nXCx6Dv', // Jam.so Hub 1
   '12D3KooWBP4DbXcJrjpwTAsWbLfEXAcWKLQhZoP9HpXrWbbNiogC', // Jam.so Hub 2
   '12D3KooWNXZSmpCLKBtkS9QyzEqG3qTZARLtKUkShxkTWV2EqsaK', // Jam.so Hub 3
   '12D3KooWSJj9pDSX5sEFoZum1fsdHuCJnoxwgHKhCg5rrLU7Gepe', // @pfista
+  '12D3KooWDXSemEhSAidFCZT1HyRhTHayunCokg68VSuwStf8UEU5', // @98967eth
   '12D3KooWHcViME8KUZXo1wStoRF2jmg4edWidexGy5utVyoxNNnn', // @parthkohli
 ];

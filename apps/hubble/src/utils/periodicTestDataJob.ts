@@ -14,10 +14,10 @@ import {
   ReactionType,
   CastAddBody,
 } from '@farcaster/hub-nodejs';
-import { logger } from '~/utils/logger';
+import { logger } from '../utils/logger.js';
 import { ed25519 as ed } from '@noble/curves/ed25519';
 import { faker } from '@faker-js/faker';
-import Server from '~/rpc/server';
+import Server from '../rpc/server.js';
 import { Result } from 'neverthrow';
 
 const log = logger.child({

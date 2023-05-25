@@ -159,6 +159,28 @@ export interface SignerRequest {
   signer: Uint8Array;
 }
 
+export interface LinkRequest {
+  fid: number;
+  linkType: string;
+  targetFid?: number | undefined;
+}
+
+export interface LinksByFidRequest {
+  fid: number;
+  linkType?: string | undefined;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
+export interface LinksByTargetRequest {
+  targetFid?: number | undefined;
+  linkType?: string | undefined;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
 export interface IdRegistryEventRequest {
   fid: number;
 }
@@ -2300,6 +2322,312 @@ export const SignerRequest = {
     const message = createBaseSignerRequest();
     message.fid = object.fid ?? 0;
     message.signer = object.signer ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseLinkRequest(): LinkRequest {
+  return { fid: 0, linkType: '', targetFid: undefined };
+}
+
+export const LinkRequest = {
+  encode(message: LinkRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.linkType !== '') {
+      writer.uint32(18).string(message.linkType);
+    }
+    if (message.targetFid !== undefined) {
+      writer.uint32(24).uint64(message.targetFid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): LinkRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLinkRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.linkType = reader.string();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.targetFid = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LinkRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      linkType: isSet(object.linkType) ? String(object.linkType) : '',
+      targetFid: isSet(object.targetFid) ? Number(object.targetFid) : undefined,
+    };
+  },
+
+  toJSON(message: LinkRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.linkType !== undefined && (obj.linkType = message.linkType);
+    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LinkRequest>, I>>(base?: I): LinkRequest {
+    return LinkRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<LinkRequest>, I>>(object: I): LinkRequest {
+    const message = createBaseLinkRequest();
+    message.fid = object.fid ?? 0;
+    message.linkType = object.linkType ?? '';
+    message.targetFid = object.targetFid ?? undefined;
+    return message;
+  },
+};
+
+function createBaseLinksByFidRequest(): LinksByFidRequest {
+  return { fid: 0, linkType: undefined, pageSize: undefined, pageToken: undefined, reverse: undefined };
+}
+
+export const LinksByFidRequest = {
+  encode(message: LinksByFidRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.linkType !== undefined) {
+      writer.uint32(18).string(message.linkType);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(24).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(34).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(40).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): LinksByFidRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLinksByFidRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.linkType = reader.string();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LinksByFidRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      linkType: isSet(object.linkType) ? String(object.linkType) : undefined,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: LinksByFidRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.linkType !== undefined && (obj.linkType = message.linkType);
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LinksByFidRequest>, I>>(base?: I): LinksByFidRequest {
+    return LinksByFidRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<LinksByFidRequest>, I>>(object: I): LinksByFidRequest {
+    const message = createBaseLinksByFidRequest();
+    message.fid = object.fid ?? 0;
+    message.linkType = object.linkType ?? undefined;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseLinksByTargetRequest(): LinksByTargetRequest {
+  return { targetFid: undefined, linkType: undefined, pageSize: undefined, pageToken: undefined, reverse: undefined };
+}
+
+export const LinksByTargetRequest = {
+  encode(message: LinksByTargetRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.targetFid !== undefined) {
+      writer.uint32(8).uint64(message.targetFid);
+    }
+    if (message.linkType !== undefined) {
+      writer.uint32(18).string(message.linkType);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(24).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(34).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(40).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): LinksByTargetRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLinksByTargetRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.targetFid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.linkType = reader.string();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LinksByTargetRequest {
+    return {
+      targetFid: isSet(object.targetFid) ? Number(object.targetFid) : undefined,
+      linkType: isSet(object.linkType) ? String(object.linkType) : undefined,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: LinksByTargetRequest): unknown {
+    const obj: any = {};
+    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
+    message.linkType !== undefined && (obj.linkType = message.linkType);
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LinksByTargetRequest>, I>>(base?: I): LinksByTargetRequest {
+    return LinksByTargetRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<LinksByTargetRequest>, I>>(object: I): LinksByTargetRequest {
+    const message = createBaseLinksByTargetRequest();
+    message.targetFid = object.targetFid ?? undefined;
+    message.linkType = object.linkType ?? undefined;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };

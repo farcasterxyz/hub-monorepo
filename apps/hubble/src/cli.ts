@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+/* eslint-disable security/detect-non-literal-fs-filename */
 import {
   FarcasterNetwork,
   getInsecureHubRpcClient,
@@ -14,17 +14,17 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Result, ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
 import { exit } from 'process';
-import { APP_VERSION, Hub, HubOptions } from '~/hubble';
-import { logger } from '~/utils/logger';
-import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from '~/utils/p2p';
-import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console';
-import RocksDB, { DB_DIRECTORY } from './storage/db/rocksdb';
-import { parseNetwork } from './utils/command';
-import { sleep } from '~/utils/crypto';
+import { APP_VERSION, Hub, HubOptions } from './hubble.js';
+import { logger } from './utils/logger.js';
+import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from './utils/p2p.js';
+import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console.js';
+import RocksDB, { DB_DIRECTORY } from './storage/db/rocksdb.js';
+import { parseNetwork } from './utils/command.js';
+import { sleep } from './utils/crypto.js';
+import { Config as DefaultConfig } from './defaultConfig.js';
 
 /** A CLI to accept options from the user and start the Hub */
 
-const DEFAULT_CONFIG_FILE = './.config/hub.config.ts';
 const PEER_ID_FILENAME = 'id.protobuf';
 const DEFAULT_PEER_ID_DIR = './.hub';
 const DEFAULT_PEER_ID_FILENAME = `default_${PEER_ID_FILENAME}`;
@@ -52,7 +52,7 @@ app
   .command('start')
   .description('Start a Hub')
   .option('-e, --eth-rpc-url <url>', 'RPC URL of a Goerli Ethereum Node')
-  .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
+  .option('-c, --config <filepath>', 'Path to a config file with options')
   .option('--fir-address <address>', 'The address of the Farcaster ID Registry contract')
   .option('--fnr-address <address>', 'The address of the Farcaster Name Registry contract')
   .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts', parseNumber)
@@ -163,7 +163,7 @@ app
     }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
-    const hubConfig = (await import(resolve(cliOptions.config))).Config;
+    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
 
     // Read PeerID from 1. CLI option, 2. Environment variable, 3. Config file
     let peerId;
@@ -412,9 +412,9 @@ app
   .command('dbreset')
   .description('Completely remove the database')
   .option('--db-name <name>', 'The name of the RocksDB instance')
-  .option('-c, --config <filepath>', 'Path to a config file with options', DEFAULT_CONFIG_FILE)
+  .option('-c, --config <filepath>', 'Path to a config file with options')
   .action(async (cliOptions) => {
-    const hubConfig = (await import(resolve(cliOptions.config))).Config;
+    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
     const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? '';
 
     if (!rocksDBName) throw new Error('No RocksDB name provided.');

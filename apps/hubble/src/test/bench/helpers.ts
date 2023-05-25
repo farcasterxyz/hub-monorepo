@@ -2,7 +2,7 @@
 import Chance from 'chance';
 
 import { Message } from '@farcaster/hub-nodejs';
-import { SyncId } from '~/network/sync/syncId';
+import { SyncId } from '../../network/sync/syncId.js';
 
 /**
  * Generate `n` SyncId. The SyncIds are sampled from FIDs between 1 to `numFids`.  Timestamp in

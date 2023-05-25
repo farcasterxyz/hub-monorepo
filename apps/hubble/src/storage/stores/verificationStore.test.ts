@@ -12,11 +12,11 @@ import {
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import StoreEventHandler from '~/storage/stores/storeEventHandler';
-import VerificationStore from '~/storage/stores/verificationStore';
-import { getMessage, makeTsHash } from '../db/message';
-import { UserPostfix } from '../db/types';
+import { jestRocksDB } from '../db/jestUtils.js';
+import StoreEventHandler from './storeEventHandler.js';
+import VerificationStore from './verificationStore.js';
+import { getMessage, makeTsHash } from '../db/message.js';
+import { UserPostfix } from '../db/types.js';
 import { err } from 'neverthrow';
 
 const db = jestRocksDB('verificationStore.test');

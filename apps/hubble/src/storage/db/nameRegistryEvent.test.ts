@@ -1,5 +1,5 @@
 import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '~/storage/db/jestUtils';
+import { jestRocksDB } from './jestUtils.js';
 import {
   deleteNameRegistryEvent,
   getNameRegistryEvent,
@@ -8,7 +8,7 @@ import {
   makeNameRegistryEventByExpiryKey,
   makeNameRegistryEventPrimaryKey,
   putNameRegistryEvent,
-} from './nameRegistryEvent';
+} from './nameRegistryEvent.js';
 
 const db = jestRocksDB('storage.db.nameRegistryEvent.test');
 

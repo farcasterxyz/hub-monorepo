@@ -1,8 +1,8 @@
 import { ResultAsync } from 'neverthrow';
 import cron from 'node-cron';
-import { Hub } from '~/hubble';
-import { logger } from '~/utils/logger';
-import SyncEngine from './syncEngine';
+import { Hub } from '../../hubble.js';
+import { logger } from '../..//utils/logger.js';
+import SyncEngine from './syncEngine.js';
 
 const log = logger.child({
   component: 'PeriodicSyncJob',

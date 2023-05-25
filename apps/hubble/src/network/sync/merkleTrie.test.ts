@@ -2,13 +2,13 @@
 
 import { blake3 } from '@noble/hashes/blake3';
 import { DbTrieNode } from '@farcaster/hub-nodejs';
-import { MerkleTrie } from '~/network/sync/merkleTrie';
-import { NetworkFactories } from '~/network/utils/factories';
-import { jestRocksDB } from '~/storage/db/jestUtils';
-import RocksDB from '~/storage/db/rocksdb';
-import { RootPrefix } from '~/storage/db/types';
-import { TIMESTAMP_LENGTH } from './syncId';
-import { EMPTY_HASH } from './trieNode';
+import { MerkleTrie } from '../sync/merkleTrie.js';
+import { NetworkFactories } from '../utils/factories.js';
+import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import RocksDB from '../../storage/db/rocksdb.js';
+import { RootPrefix } from '../../storage/db/types.js';
+import { TIMESTAMP_LENGTH } from './syncId.js';
+import { EMPTY_HASH } from './trieNode.js';
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 

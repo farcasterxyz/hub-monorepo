@@ -3,7 +3,7 @@ import { Multiaddr, NodeAddress, multiaddr } from '@multiformats/multiaddr';
 import { get } from 'http';
 import { AddressInfo, isIP } from 'net';
 import { Result, err, ok } from 'neverthrow';
-import { logger } from '~/utils/logger';
+import { logger } from './logger.js';
 
 /** Parses an address to verify it is actually a valid MultiAddr */
 export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {

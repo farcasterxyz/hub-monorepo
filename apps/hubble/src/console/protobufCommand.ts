@@ -1,6 +1,6 @@
 import * as hubNodejs from '@farcaster/hub-nodejs';
 import { Factories } from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console';
+import { ConsoleCommandInterface } from './console.js';
 
 export class ProtobufCommand implements ConsoleCommandInterface {
   commandName(): string {

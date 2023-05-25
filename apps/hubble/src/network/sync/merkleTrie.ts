@@ -1,11 +1,11 @@
 import { Result, ResultAsync } from 'neverthrow';
 import ReadWriteLock from 'rwlock';
 import { HubError, Message } from '@farcaster/hub-nodejs';
-import { SyncId } from '~/network/sync/syncId';
-import { TrieNode, TrieSnapshot } from '~/network/sync/trieNode';
-import RocksDB from '~/storage/db/rocksdb';
-import { FID_BYTES, RootPrefix, UserMessagePostfixMax } from '~/storage/db/types';
-import { logger } from '~/utils/logger';
+import { SyncId } from './syncId.js';
+import { TrieNode, TrieSnapshot } from './trieNode.js';
+import RocksDB from '../../storage/db/rocksdb.js';
+import { FID_BYTES, RootPrefix, UserMessagePostfixMax } from '../../storage/db/types.js';
+import { logger } from '../../utils/logger.js';
 
 const TRIE_UNLOAD_THRESHOLD = 25_000;
 

@@ -1,7 +1,7 @@
 import { Multiaddr } from '@multiformats/multiaddr';
-import { logger } from '~/utils/logger';
+import { logger } from '../../utils/logger.js';
 import cron from 'node-cron';
-import { GossipNode } from './gossipNode';
+import { GossipNode } from './gossipNode.js';
 
 const log = logger.child({
   component: 'PeriodicSyncJob',
