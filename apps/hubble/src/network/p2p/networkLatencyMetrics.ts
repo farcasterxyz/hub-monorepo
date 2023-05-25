@@ -1,6 +1,6 @@
 import { PeerId } from '@libp2p/interface-peer-id';
 import { AckMessageBody, HubError, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
-import { logger } from '~/utils/logger';
+import { logger } from '../../utils/logger.js';
 import { Result } from 'neverthrow';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 

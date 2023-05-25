@@ -1,6 +1,6 @@
-import { logger } from '~/utils/logger';
+import { logger } from '../../utils/logger.js';
 import cron from 'node-cron';
-import { GossipNode } from './gossipNode';
+import { GossipNode } from './gossipNode.js';
 import { Result } from 'neverthrow';
 
 const log = logger.child({

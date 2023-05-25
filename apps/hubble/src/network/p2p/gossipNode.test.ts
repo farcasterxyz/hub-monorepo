@@ -23,7 +23,7 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { sleep } from '../../utils/crypto.js';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Result } from 'neverthrow';
-import { NetworkLatencyMetrics } from './networkLatencyMetrics';
+import { NetworkLatencyMetrics } from './networkLatencyMetrics.js';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 

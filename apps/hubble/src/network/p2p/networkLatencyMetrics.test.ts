@@ -1,5 +1,5 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { NetworkLatencyMetrics } from './networkLatencyMetrics';
+import { NetworkLatencyMetrics } from './networkLatencyMetrics.js';
 import { AckMessageBody, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
 
 describe('NetworkLatencyMetrics', () => {
