@@ -92,7 +92,7 @@ export class NetworkLatencyMetrics {
       const shouldUpdateMetricForThreshold = oldNumAcks / newNumAcks < threshold;
       if (shouldUpdateMetricForThreshold && coverageIsAboveThreshold) {
         updatedMetrics.networkCoverage.set(threshold, timeTaken);
-        log.info({ networkCoverage: threshold, timeTaken: timeTaken }, 'GossipCoverageMetrics');
+        log.info({ networkCoverage: threshold, timeTakenMilliseconds: timeTaken }, 'GossipCoverageMetrics');
       }
     });
     this._metrics.set(metricsKey, updatedMetrics);
