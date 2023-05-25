@@ -14,3 +14,4 @@
 **/build
 **/.husky
 **/dist
+**/Dockerfile*

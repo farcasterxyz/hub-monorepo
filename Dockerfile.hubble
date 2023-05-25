@@ -1,9 +1,29 @@
-# Produces the Docker image published at farcasterxyz/hubble
-#
-# This assumes the Docker build context is the root of the monorepo
-# (i.e. not the same as
+# This docker file uses a multi-stage build pattern as described here:
+# https://github.com/goldbergyoni/nodebestpractices/blob/master/sections/docker/multi_stage_builds.md
 
-FROM node:20.1.0-alpine3.17 as build
+###############################################################################
+############## Stage 1: Create pruned version of monorepo #####################
+###############################################################################
+
+FROM node:20-alpine AS prune
+
+RUN apk add --no-cache libc6-compat
+
+USER node
+RUN mkdir /home/node/app
+WORKDIR /home/node/app
+
+# Run turbo prune to create a pruned version of monorepo
+COPY --chown=node:node ./package.json ./package.json
+RUN yarn global add turbo@$(node -e "console.log(require('./package.json').devDependencies.turbo)")
+COPY --chown=node:node . .
+RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
+
+###############################################################################
+############## Stage 2: Build the code using a full node image ################
+###############################################################################
+
+FROM node:20-alpine AS build
 
 # Needed for compilation step
 RUN apk add --no-cache libc6-compat python3 make g++ linux-headers
@@ -12,35 +32,57 @@ USER node
 RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
-WORKDIR /home/node/app/apps/hubble
+# Copy dependency information and install all dependencies
+COPY --chown=node:node --from=prune /home/node/app/out/json/ .
+COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
 
-# Don't include yarn.lock since that's for the monorepo, not Hubble specifically
-COPY ./apps/hubble/package.json ./package.json
+RUN yarn install --frozen-lockfile --network-timeout 1800000
 
-RUN yarn install --production --prefer-offline
+# Copy source code (and all other relevant files)
+COPY --chown=node:node --from=prune /home/node/app/out/full/ .
+# turbo prune doesn't include global tsconfig.json (https://github.com/vercel/turbo/issues/2177)
+COPY --chown=node:node tsconfig.json tsconfig.json
 
-WORKDIR /home/node/app
+# Build code
+RUN yarn build
 
-COPY ./tsconfig.json ./tsconfig.json
-COPY ./apps/hubble/tsconfig.json ./apps/hubble/tsconfig.json
-COPY ./apps/hubble/src ./apps/hubble/src
+# Purge dev dependencies and only install production dependencies
+RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-offline --force --frozen-lockfile
 
-FROM node:20.1.0-alpine3.17 as app
+###############################################################################
+########## Stage 3: Copy over the built code to a leaner alpine image #########
+###############################################################################
+
+FROM node:20-alpine as app
 
 # Requirement for runtime metrics integrations
-RUN apk add --no-cache libc6-compat
+RUN apk add libc6-compat
 
+# Set non-root user and expose ports
 USER node
+
+# Many npm packages use this to trigger production optimized behaviors
+ENV NODE_ENV production
+
 RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
-COPY --from=build /home/node/app ./
+# Copy results from previous stage.
+# The base image is same as the build stage, so it is safe to copy node_modules over to this stage.
+COPY --chown=node:node --from=prune /home/node/app/out/json/ .
+COPY --chown=node:node --from=build /home/node/app/apps/hubble/build ./apps/hubble/build
+COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
+COPY --chown=node:node --from=build /home/node/app/packages/core/dist ./packages/core/dist/
+COPY --chown=node:node --from=build /home/node/app/packages/hub-nodejs/dist ./packages/hub-nodejs/dist/
 
-# BuildKit doesn't support the --squash flag, so we emulate it
-# copying everything into a single layer.
+# BuildKit doesn't support --squash flag, so emulate by copying into fewer layers
 FROM scratch
 COPY --from=app / /
 
-WORKDIR /home/node/app/apps/hubble
+# Repeat of above since it is lost between build stages
+USER node
+EXPOSE 2282
+EXPOSE 2283
+WORKDIR /home/node/app
 
-CMD ["yarn", "start", "--ip", "0.0.0.0", "--gossip-port", "2282", "--rpc-port", "2283", "--eth-rpc-url", "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd", "--network", "1"]
+CMD ["node", "apps/hubble/build/cli.js", "start", "--network", "1"]
