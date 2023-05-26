@@ -37,18 +37,18 @@ describe('NetworkLatencyMetrics', () => {
     const nodePeerId = await createEd25519PeerId();
     const node = new MockGossipNode(nodePeerId);
     const recorder = new NetworkLatencyMetricsRecorder(node);
-    const originPeerId = await createEd25519PeerId();
+    const otherPeerId = await createEd25519PeerId();
     let ackPeerId = await createEd25519PeerId();
     const pingTimestamp = Date.now();
 
     const timeTaken1 = 3600 * 1000;
     let ackMessage = AckMessageBody.create({
-      pingOriginPeerId: originPeerId.toBytes(),
+      pingOriginPeerId: otherPeerId.toBytes(),
       ackOriginPeerId: ackPeerId.toBytes(),
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken1,
     });
-    let key = `${ackMessage.pingOriginPeerId}_${ackMessage.pingTimestamp}`;
+    let key = `${ackPeerId.toString()}_${ackMessage.pingTimestamp}`;
     let networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
@@ -61,7 +61,7 @@ describe('NetworkLatencyMetrics', () => {
     recorder.recordMessageReceipt(gossipMessage);
 
     // Recent peers set should now have ack sender peerId
-    expect(recorder.recentPeerIds.get(ackPeerId.toBytes().toString())).toBeFalsy();
+    expect(recorder.recentPeerIds.size).toEqual(0);
 
     // Metrics map should have ack message with coverage
     expect(recorder.metrics.size).toEqual(0);
@@ -77,7 +77,7 @@ describe('NetworkLatencyMetrics', () => {
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken2,
     });
-    key = `${ackMessage.pingOriginPeerId}_${ackMessage.pingTimestamp}`;
+    key = `${ackPeerId.toString()}_${ackMessage.pingTimestamp}`;
     networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
@@ -91,10 +91,11 @@ describe('NetworkLatencyMetrics', () => {
 
     // Recent peers set should have peerId from second ack
     expect(recorder.recentPeerIds.size).toEqual(1);
-    expect(recorder.recentPeerIds.get(ackPeerId.toBytes().toString())).toBeTruthy();
+    expect(recorder.recentPeerIds.get(ackPeerId.toString())).toBeTruthy();
 
     // Metrics map should have ack with updates coverage
     expect(recorder.metrics.size).toEqual(1);
+    expect(Array.from(recorder.metrics.keys())[0]?.split('_')[0]).toEqual(ackPeerId.toString());
     expect(recorder.metrics.get(key)?.numAcks).toEqual(1);
     expect(recorder.metrics.get(key)?.lastAckTimestamp).toEqual(pingTimestamp + timeTaken2);
     expect(recorder.metrics.get(key)?.networkCoverage.get(0.5)).toEqual(timeTaken2);

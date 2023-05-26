@@ -7,8 +7,8 @@ import { peerIdFromBytes } from '@libp2p/peer-id';
 import cron from 'node-cron';
 import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
 
-const RECENT_PEER_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire recent peers every 5 hours
-const METRICS_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire stored metrics every 5 hours
+const RECENT_PEER_TTL_MILLISECONDS = 3600 * 1000; // Expire recent peers every 1 hour
+const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
 const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 
@@ -117,12 +117,13 @@ export class NetworkLatencyMetricsRecorder {
               },
               'GossipLatencyMetrics'
             );
-          }
-          // Log network coverage
-          this.logNetworkCoverage(ackMessage);
 
-          // Expire peerIds that are past the TTL
-          this.expireEntries();
+            // Log network coverage
+            this.logNetworkCoverage(ackMessage, ackPeerIdResultResult.value);
+
+            // Expire peerIds that are past the TTL
+            this.expireEntries();
+          }
         }
       }
     }
@@ -142,12 +143,12 @@ export class NetworkLatencyMetricsRecorder {
     this._averageMergeTime = [0, 0];
   }
 
-  private logNetworkCoverage(ackMessage: AckMessageBody) {
+  private logNetworkCoverage(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
     // Add peerId to recent peerIds
-    this._recentPeerIds.set(ackMessage.ackOriginPeerId.toString(), Date.now());
+    this._recentPeerIds.set(ackOriginPeerId.toString(), Date.now());
 
     // Compute coverage metrics
-    const metricsKey = `${ackMessage.pingOriginPeerId}_${ackMessage.pingTimestamp}`;
+    const metricsKey = `${ackOriginPeerId.toString()}_${ackMessage.pingTimestamp}`;
     const currentMetrics = this._metrics.get(metricsKey);
     const oldNumAcks = this._metrics.get(metricsKey)?.numAcks ?? 0;
     const newNumAcks = oldNumAcks + 1;
