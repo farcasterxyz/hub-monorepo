@@ -13,7 +13,7 @@ const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 
 type SchedulerStatus = 'started' | 'stopped';
 
-const log = logger.child({ component: 'NetworkLatencyMetrics' });
+const log = logger.child({ component: 'NetworkLatencyMetricsRecorder' });
 
 interface Metrics {
   numAcks?: number;

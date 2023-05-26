@@ -20,9 +20,9 @@ services:
       - '2283:2283'
     command:
       [
-        "yarn",
-        "--cwd=apps/hubble",
-        "start",
+	"node", 
+	"apps/hubble/build/cli.js", 
+	"start",
         "--gossip-port",
         "2282",
         "--rpc-port",
@@ -51,8 +51,8 @@ services:
       - '2285:2285'
     command:
       [
-        "yarn",
-        "--cwd=apps/hubble",
+	"node", 
+	"apps/hubble/build/cli.js", 
         "start",
         "--gossip-port",
         "2284",
