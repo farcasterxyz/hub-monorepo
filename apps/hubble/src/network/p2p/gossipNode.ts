@@ -70,14 +70,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
-  private _networkLatencyMessagesEnabled: boolean;
   private _networkLatencyMetricsRecorder?: NetworkLatencyMetricsRecorder;
 
   constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
-    this._networkLatencyMessagesEnabled = networkLatencyMessagesEnabled ?? false;
-    if (this._networkLatencyMessagesEnabled) {
+    if (networkLatencyMessagesEnabled) {
       this._networkLatencyMetricsRecorder = new NetworkLatencyMetricsRecorder(this);
     }
   }
