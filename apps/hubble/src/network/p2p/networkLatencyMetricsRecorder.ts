@@ -129,10 +129,12 @@ export class NetworkLatencyMetricsRecorder {
   }
 
   private logMessageCountAndMergeMetrics() {
+    const numMergeTimes = this._averageMergeTime[1];
+    const averageMergeTime = numMergeTimes == 0 ? 0 : this._averageMergeTime[0] / this._averageMergeTime[1];
     log.info(
       {
         messageCount: this._messageCount,
-        mergeTimeMilliseconds: this._averageMergeTime[0] / this._averageMergeTime[1],
+        mergeTimeMilliseconds: averageMergeTime,
       },
       'GossipMessageCount'
     );
