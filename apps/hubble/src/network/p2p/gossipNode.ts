@@ -268,15 +268,19 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     } else if (message.ackMessage) {
       const peerIdMatchesOrigin = this.peerId?.equals(message.ackMessage.pingOriginPeerId) ?? false;
       if (peerIdMatchesOrigin) {
-        this._networkLatencyMetricsRecorder?.logMetrics(message);
+        this._networkLatencyMetricsRecorder?.recordLatencyMessageReceipt(message);
       }
       return [ok(undefined)];
     }
     return [err(new HubError('unavailable', { message: 'invalid message data in NetworkLatencyMessage' }))];
   }
 
-  async incrementMessageCount() {
-    this._networkLatencyMetricsRecorder?.incrementMessageCount();
+  async recordMessageReceipt() {
+    this._networkLatencyMetricsRecorder?.recordMessageReceipt();
+  }
+
+  async recordMessageMerge(mergeTime: number) {
+    this._networkLatencyMetricsRecorder?.recordMessageMerge(mergeTime);
   }
 
   /** Publishes a Gossip Message to the network */

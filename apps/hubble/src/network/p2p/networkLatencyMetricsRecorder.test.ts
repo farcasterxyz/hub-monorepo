@@ -22,7 +22,7 @@ describe('NetworkLatencyMetrics', () => {
     let networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
-    metrics.logMetrics(networkLatencyMessage);
+    metrics.recordLatencyMessageReceipt(networkLatencyMessage);
 
     // Recent peers set should now have ack sender peerId
     expect(metrics.recentPeerIds.get(ackPeerId.toBytes().toString())).toBeTruthy();
@@ -48,7 +48,7 @@ describe('NetworkLatencyMetrics', () => {
     networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
-    metrics.logMetrics(networkLatencyMessage);
+    metrics.recordLatencyMessageReceipt(networkLatencyMessage);
 
     // Recent peers set should have peerId from second ack
     expect(metrics.recentPeerIds.size).toEqual(2);

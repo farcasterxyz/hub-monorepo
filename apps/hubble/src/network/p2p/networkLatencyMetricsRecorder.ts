@@ -25,6 +25,7 @@ export class NetworkLatencyMetricsRecorder {
   private _recentPeerIds: Map<string, number>;
   private _metrics: Map<string, Metrics>;
   private _messageCount: number;
+  private _averageMergeTime: [number, number];
   private _gossipNode: GossipNode;
   private _cronTask?: cron.ScheduledTask;
 
@@ -34,6 +35,7 @@ export class NetworkLatencyMetricsRecorder {
     this._metrics = metrics ?? new Map();
     this._messageCount = 0;
     this._gossipNode = gossipNode;
+    this._averageMergeTime = [0, 0];
   }
 
   get recentPeerIds() {
@@ -64,20 +66,16 @@ export class NetworkLatencyMetricsRecorder {
     return this._cronTask ? 'started' : 'stopped';
   }
 
-  async sendPing() {
-    const jitter = Math.floor(Math.random() * MAX_JITTER_MILLISECONDS);
-    await new Promise((f) => setTimeout(f, jitter));
-    const result = await this._gossipNode.gossipNetworkLatencyPing();
-    const combinedResult = Result.combineWithAllErrors(result);
-    if (combinedResult.isErr()) {
-      log.warn({ err: combinedResult.error }, 'Failed to send gossip latency ping');
-    }
-    // Since logging message counts on each message might make logs too noisy,
-    // we log message count metrics here instead
-    this.logMessageCount();
+  recordMessageReceipt() {
+    this._messageCount += 1;
   }
 
-  public logMetrics(message: NetworkLatencyMessage) {
+  recordMessageMerge(latestMergeTime: number) {
+    const currentMergeTime = this._averageMergeTime;
+    this._averageMergeTime = [currentMergeTime[0] + latestMergeTime, currentMergeTime[1] + 1];
+  }
+
+  recordLatencyMessageReceipt(message: NetworkLatencyMessage) {
     if (message.ackMessage) {
       const ackMessage = message.ackMessage;
       // Log ack latency for peer
@@ -104,22 +102,16 @@ export class NetworkLatencyMetricsRecorder {
     return;
   }
 
-  public logMessageCount() {
-    log.info({ messageCount: this._messageCount }, 'GossipMessageCount');
-  }
-
-  public incrementMessageCount() {
-    this._messageCount += 1;
-  }
-
-  private expireEntries() {
-    const currTime = Date.now();
-    this._recentPeerIds = new Map(
-      [...this._recentPeerIds].filter(([_, v]) => currTime - v < RECENT_PEER_TTL_MILLISECONDS)
+  private logMessageAndMergeMetrics() {
+    log.info(
+      {
+        messageCount: this._messageCount,
+        mergeTimeMilliseconds: this._averageMergeTime[0] / this._averageMergeTime[1],
+      },
+      'GossipMessageCount'
     );
-    this._metrics = new Map(
-      [...this._metrics].filter(([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS)
-    );
+    // Reset average merge time metric
+    this._averageMergeTime = [0, 0];
   }
 
   private logNetworkCoverage(ackMessage: AckMessageBody) {
@@ -148,5 +140,28 @@ export class NetworkLatencyMetricsRecorder {
       }
     });
     this._metrics.set(metricsKey, updatedMetrics);
+  }
+
+  private async sendPing() {
+    const jitter = Math.floor(Math.random() * MAX_JITTER_MILLISECONDS);
+    await new Promise((f) => setTimeout(f, jitter));
+    const result = await this._gossipNode.gossipNetworkLatencyPing();
+    const combinedResult = Result.combineWithAllErrors(result);
+    if (combinedResult.isErr()) {
+      log.warn({ err: combinedResult.error }, 'Failed to send gossip latency ping');
+    }
+    // Since logging message counts on each message might make logs too noisy,
+    // we log message count metrics here instead
+    this.logMessageAndMergeMetrics();
+  }
+
+  private expireEntries() {
+    const currTime = Date.now();
+    this._recentPeerIds = new Map(
+      [...this._recentPeerIds].filter(([_, v]) => currTime - v < RECENT_PEER_TTL_MILLISECONDS)
+    );
+    this._metrics = new Map(
+      [...this._metrics].filter(([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS)
+    );
   }
 }

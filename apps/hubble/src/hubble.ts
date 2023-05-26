@@ -516,7 +516,7 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   private async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
-    this.gossipNode.incrementMessageCount();
+    this.gossipNode.recordMessageReceipt();
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError('bad_request.parse_failure', error as Error)
@@ -539,7 +539,12 @@ export class Hub implements HubInterface {
       }
 
       // Merge the message
+      const submitStartTimestamp = Date.now();
       const result = await this.submitMessage(message, 'gossip');
+      if (result.isOk()) {
+        const submitEndTimestamp = Date.now();
+        this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
+      }
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       if (peerIdResult.isOk()) {
