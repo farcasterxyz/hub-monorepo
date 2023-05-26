@@ -95,11 +95,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.peerStore.addressBook;
   }
 
-  /** Returns this node's latency metrics */
-  get networkLatencyMetricsRecorder() {
-    return this._networkLatencyMetricsRecorder;
-  }
-
   async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {
     if (!this.addressBook) {
       log.error({}, 'address book missing for gossipNode');
