@@ -48,7 +48,6 @@ describe('NetworkLatencyMetrics', () => {
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken1,
     });
-    let key = `${ackPeerId.toString()}_${ackMessage.pingTimestamp}`;
     let networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
@@ -59,25 +58,26 @@ describe('NetworkLatencyMetrics', () => {
       version: GOSSIP_PROTOCOL_VERSION,
     });
     recorder.recordMessageReceipt(gossipMessage);
+    const peerMetricsKey = { peerId: ackPeerId, pingTimestamp: pingTimestamp };
 
     // Recent peers set should now have ack sender peerId
     expect(recorder.recentPeerIds.size).toEqual(0);
 
     // Metrics map should have ack message with coverage
-    expect(recorder.metrics.size).toEqual(0);
+    expect(recorder.peerLatencyMetrics.size).toEqual(0);
 
     // Message count should be incremented
-    expect(recorder.messageCount).toEqual(1);
+    expect(recorder.peerMessageMetrics.size).toEqual(1);
+    expect(recorder.peerMessageMetrics.get(nodePeerId)?.messageCount).toEqual(1);
 
     ackPeerId = await createEd25519PeerId();
     const timeTaken2 = 7200 * 1000;
     ackMessage = AckMessageBody.create({
-      pingOriginPeerId: node.peerId!.toBytes(),
+      pingOriginPeerId: nodePeerId.toBytes(),
       ackOriginPeerId: ackPeerId.toBytes(),
       pingTimestamp: pingTimestamp,
       ackTimestamp: pingTimestamp + timeTaken2,
     });
-    key = `${ackPeerId.toString()}_${ackMessage.pingTimestamp}`;
     networkLatencyMessage = NetworkLatencyMessage.create({
       ackMessage,
     });
@@ -91,20 +91,22 @@ describe('NetworkLatencyMetrics', () => {
 
     // Recent peers set should have peerId from second ack
     expect(recorder.recentPeerIds.size).toEqual(1);
-    expect(recorder.recentPeerIds.get(ackPeerId.toString())).toBeTruthy();
+    expect(recorder.recentPeerIds.get(ackPeerId)).toBeTruthy();
 
     // Metrics map should have ack with updates coverage
-    expect(recorder.metrics.size).toEqual(1);
-    expect(Array.from(recorder.metrics.keys())[0]?.split('_')[0]).toEqual(ackPeerId.toString());
-    expect(recorder.metrics.get(key)?.numAcks).toEqual(1);
-    expect(recorder.metrics.get(key)?.lastAckTimestamp).toEqual(pingTimestamp + timeTaken2);
-    expect(recorder.metrics.get(key)?.networkCoverage.get(0.5)).toEqual(timeTaken2);
-    expect(recorder.metrics.get(key)?.networkCoverage.get(0.75)).toEqual(timeTaken2);
-    expect(recorder.metrics.get(key)?.networkCoverage.get(0.9)).toEqual(timeTaken2);
-    expect(recorder.metrics.get(key)?.networkCoverage.get(0.99)).toEqual(timeTaken2);
-
-    // Message count should be incremented
-    expect(recorder.messageCount).toEqual(2);
+    const updatedPeerLatencyMetrics = recorder.peerLatencyMetrics.get(peerMetricsKey);
+    const updatedGlobalMetrics = recorder.globalMetrics;
+    const updatedPeerMessageMetrics = recorder.peerMessageMetrics.get(nodePeerId);
+    expect(recorder.peerLatencyMetrics.size).toEqual(1);
+    expect(updatedPeerLatencyMetrics?.numAcks).toEqual(1);
+    expect(updatedPeerLatencyMetrics?.lastAckTimestamp).toEqual(pingTimestamp + timeTaken2);
+    expect(updatedPeerMessageMetrics?.messageCount).toEqual(1);
+    expect(updatedGlobalMetrics?.networkCoverage.get(pingTimestamp)?.getLoggableObject()).toEqual({
+      '0.5': timeTaken2,
+      '0.75': timeTaken2,
+      '0.9': timeTaken2,
+      '0.99': timeTaken2,
+    });
   });
 
   test('Network latency acks are sent on ping receipt', async () => {
@@ -113,7 +115,7 @@ describe('NetworkLatencyMetrics', () => {
     const recorder = new NetworkLatencyMetricsRecorder(node);
     // Ping message should be responded to with an ack message
     const pingMessage = PingMessageBody.create({
-      pingOriginPeerId: node.peerId!.toBytes(),
+      pingOriginPeerId: nodePeerId.toBytes(),
       pingTimestamp: Date.now(),
     });
     const networkLatencyMessage = NetworkLatencyMessage.create({

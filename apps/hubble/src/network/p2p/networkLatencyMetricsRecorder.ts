@@ -40,15 +40,18 @@ class Average {
   }
 }
 
-interface PeerMetrics {
+interface PeerLatencyMetrics {
   numAcks: number;
   lastAckTimestamp: number;
-  messageCount: number;
 }
 
-interface PeerMetricsKey {
+interface PeerLatencyMetricsKey {
   peerId: PeerId;
   pingTimestamp: number;
+}
+
+interface PeerMessageMetrics {
+  messageCount: number;
 }
 
 class NetworkCoverageTimes {
@@ -84,19 +87,16 @@ interface GlobalMetrics {
 
 export class NetworkLatencyMetricsRecorder {
   private _recentPeerIds: Map<PeerId, number>;
-  private _peerMetrics: Map<PeerMetricsKey, PeerMetrics>;
+  private _peerLatencyMetrics: Map<PeerLatencyMetricsKey, PeerLatencyMetrics>;
+  private _peerMessageMetrics: Map<PeerId, PeerMessageMetrics>;
   private _globalMetrics: GlobalMetrics;
   private _gossipNode: GossipNode;
   private _cronTask?: cron.ScheduledTask;
 
-  constructor(gossipNode: GossipNode);
-  constructor(
-    gossipNode: GossipNode,
-    recentPeerIds?: Map<PeerId, number>,
-    perPeerMetrics?: Map<AckMessageBody, PeerMetrics>
-  ) {
-    this._recentPeerIds = recentPeerIds ?? new Map();
-    this._peerMetrics = perPeerMetrics ?? new Map();
+  constructor(gossipNode: GossipNode) {
+    this._recentPeerIds = new Map();
+    this._peerLatencyMetrics = new Map();
+    this._peerMessageMetrics = new Map();
     this._globalMetrics = { networkCoverage: new Map(), messageMergeTime: new Average() };
     this._gossipNode = gossipNode;
   }
@@ -105,8 +105,16 @@ export class NetworkLatencyMetricsRecorder {
     return this._recentPeerIds;
   }
 
-  get peerMetrics() {
-    return this._peerMetrics;
+  get peerLatencyMetrics() {
+    return this._peerLatencyMetrics;
+  }
+
+  get peerMessageMetrics() {
+    return this._peerMessageMetrics;
+  }
+
+  get globalMetrics() {
+    return this._globalMetrics;
   }
 
   start() {
@@ -130,6 +138,9 @@ export class NetworkLatencyMetricsRecorder {
   }
 
   async recordMessageReceipt(gossipMessage: GossipMessage) {
+    // Update peer-level message metrics
+    this.computePeerMessageMetrics(gossipMessage);
+
     if (!gossipMessage.networkLatencyMessage) {
       return;
     } else if (gossipMessage.networkLatencyMessage.pingMessage) {
@@ -164,7 +175,7 @@ export class NetworkLatencyMetricsRecorder {
             this._recentPeerIds.set(ackPeerId, Date.now());
 
             // Compute peer and coverage metrics
-            this.computePeerAndCoverageMetrics(ackMessage, ackPeerId);
+            this.computePeerLatencyAndCoverageMetrics(ackMessage, ackPeerId);
 
             // Expire peerIds that are past the TTL
             this.expireMetrics();
@@ -174,16 +185,26 @@ export class NetworkLatencyMetricsRecorder {
     }
   }
 
-  private computePeerAndCoverageMetrics(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
-    // Compute peer-level metrics
+  private computePeerMessageMetrics(gossipMessage: GossipMessage) {
+    const peerId = this.getPeerIdFromBytes(gossipMessage.peerId);
+    if (peerId) {
+      const currentMessageMetrics = this._peerMessageMetrics.get(peerId);
+      const updatedMessageMetrics = {
+        messageCount: (currentMessageMetrics?.messageCount ?? 0) + 1,
+      };
+      this._peerMessageMetrics.set(peerId, updatedMessageMetrics);
+    }
+  }
+
+  private computePeerLatencyAndCoverageMetrics(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
+    // Compute peer-level latency metrics
     const key = { peerId: ackOriginPeerId, pingTimestamp: ackMessage.pingTimestamp };
-    const currentMetrics = this._peerMetrics.get(key);
-    const updatedMetrics: PeerMetrics = {
-      numAcks: (currentMetrics?.numAcks ?? 0) + 1,
-      lastAckTimestamp: currentMetrics?.lastAckTimestamp ?? ackMessage.ackTimestamp,
-      messageCount: (currentMetrics?.messageCount ?? 0) + 1,
+    const currentLatencyMetrics = this._peerLatencyMetrics.get(key);
+    const updatedLatencyMetrics: PeerLatencyMetrics = {
+      numAcks: (currentLatencyMetrics?.numAcks ?? 0) + 1,
+      lastAckTimestamp: currentLatencyMetrics?.lastAckTimestamp ?? ackMessage.ackTimestamp,
     };
-    this._peerMetrics.set(key, updatedMetrics);
+    this._peerLatencyMetrics.set(key, updatedLatencyMetrics);
 
     // Compute coverage metrics
     const coverageKey = ackMessage.pingTimestamp;
@@ -226,17 +247,25 @@ export class NetworkLatencyMetricsRecorder {
   }
 
   private logMetrics() {
-    // Log peer-level metrics
-    [...this._peerMetrics].forEach(([key, metrics]) => {
+    // Log peer-level latency metrics
+    [...this._peerLatencyMetrics].forEach(([key, metrics]) => {
       log.info(
         {
           peerId: key.peerId.toString(),
           latencyMilliseconds: metrics.lastAckTimestamp - key.pingTimestamp,
-          messageCount: metrics.messageCount,
         },
-        'GossipPeerMetrics'
+        'GossipPeerLatencyMetrics'
       );
     });
+
+    // Log peer-level message metrics
+    [...this.peerMessageMetrics].forEach(([peerId, metrics]) => {
+      log.info({
+        peerId: peerId.toString(),
+        messageCount: metrics.messageCount,
+      });
+    });
+
     // Log global metrics
     [...this._globalMetrics.networkCoverage].forEach(([_, coverage]) => {
       log.info(coverage.getLoggableObject(), 'GossipNetworkCoverage');
@@ -260,8 +289,8 @@ export class NetworkLatencyMetricsRecorder {
       )
     );
     this._globalMetrics.messageMergeTime.clear();
-    this._peerMetrics = new Map(
-      [...this._peerMetrics].filter(([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS)
+    this._peerLatencyMetrics = new Map(
+      [...this._peerLatencyMetrics].filter(([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS)
     );
   }
 
