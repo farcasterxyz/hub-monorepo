@@ -1,10 +1,11 @@
 import { PeerId } from '@libp2p/interface-peer-id';
-import { AckMessageBody, HubError, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
+import { AckMessageBody, PingMessageBody, HubError, NetworkLatencyMessage, GossipMessage } from '@farcaster/hub-nodejs';
 import { logger } from '../../utils/logger.js';
 import { GossipNode } from './gossipNode.js';
 import { Result } from 'neverthrow';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import cron from 'node-cron';
+import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
 
 const RECENT_PEER_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire recent peers every 5 hours
 const METRICS_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire stored metrics every 5 hours
@@ -66,43 +67,68 @@ export class NetworkLatencyMetricsRecorder {
     return this._cronTask ? 'started' : 'stopped';
   }
 
-  recordMessageReceipt() {
-    this._messageCount += 1;
-  }
-
   recordMessageMerge(latestMergeTime: number) {
     const currentMergeTime = this._averageMergeTime;
     this._averageMergeTime = [currentMergeTime[0] + latestMergeTime, currentMergeTime[1] + 1];
   }
 
-  recordLatencyMessageReceipt(message: NetworkLatencyMessage) {
-    if (message.ackMessage) {
-      const ackMessage = message.ackMessage;
-      // Log ack latency for peer
-      const peerIdResult = Result.fromThrowable(
-        () => peerIdFromBytes(ackMessage.ackOriginPeerId ?? new Uint8Array([])),
+  async recordMessageReceipt(gossipMessage: GossipMessage) {
+    this._messageCount += 1;
+    if (!gossipMessage.networkLatencyMessage) {
+      return;
+    } else if (gossipMessage.networkLatencyMessage.pingMessage) {
+      // Respond to ping message with an ack message
+      const pingMessage = gossipMessage.networkLatencyMessage.pingMessage;
+      const ackMessage = AckMessageBody.create({
+        pingOriginPeerId: pingMessage.pingOriginPeerId,
+        ackOriginPeerId: this._gossipNode.peerId!.toBytes(),
+        pingTimestamp: pingMessage.pingTimestamp,
+        ackTimestamp: Date.now(),
+      });
+      const networkLatencyMessage = NetworkLatencyMessage.create({
+        ackMessage,
+      });
+      const ackGossipMessage = GossipMessage.create({
+        networkLatencyMessage,
+        topics: [this._gossipNode.primaryTopic()],
+        peerId: this._gossipNode.peerId?.toBytes() ?? new Uint8Array(),
+        version: GOSSIP_PROTOCOL_VERSION,
+      });
+      await this._gossipNode.publish(ackGossipMessage);
+    } else if (gossipMessage.networkLatencyMessage.ackMessage) {
+      const ackMessage = gossipMessage.networkLatencyMessage.ackMessage;
+      const pingOriginPeerIdResult = Result.fromThrowable(
+        () => peerIdFromBytes(ackMessage.pingOriginPeerId ?? new Uint8Array([])),
         (error) => new HubError('bad_request.parse_failure', error as Error)
       )();
-      if (peerIdResult.isOk()) {
-        log.info(
-          {
-            receivingHubPeerId: peerIdResult.value,
-            latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
-          },
-          'GossipLatencyMetrics'
-        );
+      if (pingOriginPeerIdResult.isOk()) {
+        const peerIdMatchesOrigin = this._gossipNode.peerId?.equals(pingOriginPeerIdResult.value) ?? false;
+        if (peerIdMatchesOrigin) {
+          // Log ack latency for peer
+          const ackPeerIdResultResult = Result.fromThrowable(
+            () => peerIdFromBytes(ackMessage.ackOriginPeerId ?? new Uint8Array([])),
+            (error) => new HubError('bad_request.parse_failure', error as Error)
+          )();
+          if (ackPeerIdResultResult.isOk()) {
+            log.info(
+              {
+                receivingHubPeerId: ackPeerIdResultResult.value,
+                latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
+              },
+              'GossipLatencyMetrics'
+            );
+          }
+          // Log network coverage
+          this.logNetworkCoverage(ackMessage);
+
+          // Expire peerIds that are past the TTL
+          this.expireEntries();
+        }
       }
-
-      // Log network coverage
-      this.logNetworkCoverage(ackMessage);
-
-      // Expire peerIds that are past the TTL
-      this.expireEntries();
     }
-    return;
   }
 
-  private logMessageAndMergeMetrics() {
+  private logMessageCountAndMergeMetrics() {
     log.info(
       {
         messageCount: this._messageCount,
@@ -145,14 +171,28 @@ export class NetworkLatencyMetricsRecorder {
   private async sendPing() {
     const jitter = Math.floor(Math.random() * MAX_JITTER_MILLISECONDS);
     await new Promise((f) => setTimeout(f, jitter));
-    const result = await this._gossipNode.gossipNetworkLatencyPing();
+
+    const pingMessage = PingMessageBody.create({
+      pingOriginPeerId: this._gossipNode.peerId!.toBytes(),
+      pingTimestamp: Date.now(),
+    });
+    const networkLatencyMessage = NetworkLatencyMessage.create({
+      pingMessage,
+    });
+    const gossipMessage = GossipMessage.create({
+      networkLatencyMessage,
+      topics: [this._gossipNode.primaryTopic()],
+      peerId: this._gossipNode.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
+    });
+    const result = await this._gossipNode.publish(gossipMessage);
     const combinedResult = Result.combineWithAllErrors(result);
     if (combinedResult.isErr()) {
       log.warn({ err: combinedResult.error }, 'Failed to send gossip latency ping');
     }
     // Since logging message counts on each message might make logs too noisy,
     // we log message count metrics here instead
-    this.logMessageAndMergeMetrics();
+    this.logMessageCountAndMergeMetrics();
   }
 
   private expireEntries() {

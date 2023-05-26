@@ -6,12 +6,9 @@ import {
   IdRegistryEvent,
   SignerAddMessage,
   Message,
-  NetworkLatencyMessage,
   GossipMessage,
   ContactInfoContent,
   GossipVersion,
-  PingMessageBody,
-  AckMessageBody,
 } from '@farcaster/hub-nodejs';
 import { multiaddr } from '@multiformats/multiaddr/';
 import { GossipNode } from './gossipNode.js';
@@ -22,7 +19,6 @@ import SyncEngine from '../sync/syncEngine.js';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { sleep } from '../../utils/crypto.js';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { Result } from 'neverthrow';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 
@@ -304,56 +300,6 @@ describe('GossipNode', () => {
         version: 12345 as GossipVersion,
       });
       expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
-    });
-
-    test('Network latency acks are sent on ping receipt', async () => {
-      const node = new GossipNode();
-      await node.start([]);
-      // Ping message should be responded to with an ack message
-      const pingMessage = PingMessageBody.create({
-        pingOriginPeerId: peerId.toBytes(),
-        pingTimestamp: Date.now(),
-      });
-      const networkLatencyMessage = NetworkLatencyMessage.create({
-        pingMessage,
-      });
-      const result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
-      expect(Result.combineWithAllErrors(result).isOk()).toBeTruthy();
-    });
-
-    test('Network latency metrics are logged on ack receipt', async () => {
-      const node = new GossipNode(undefined, true);
-      await node.start([]);
-      const senderPeerId = await createEd25519PeerId();
-
-      // Metrics should not be logged if ping origin peerId does not match node's peerId
-      const ackPeerId = await createEd25519PeerId();
-      let ackMessage = AckMessageBody.create({
-        pingOriginPeerId: ackPeerId.toBytes(),
-        ackOriginPeerId: senderPeerId.toBytes(),
-        pingTimestamp: Date.now(),
-      });
-      let networkLatencyMessage = NetworkLatencyMessage.create({
-        ackMessage,
-      });
-      let result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
-      let combinedResult = Result.combineWithAllErrors(result);
-      expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
-      expect(node.networkLatencyMetricsRecorder?.recentPeerIds.size).toEqual(0);
-
-      // Metrics should be logged if ping origin peerId matches node's peerId
-      ackMessage = AckMessageBody.create({
-        pingOriginPeerId: node.peerId?.toBytes() ?? new Uint8Array(),
-        ackOriginPeerId: senderPeerId.toBytes(),
-        pingTimestamp: Date.now(),
-      });
-      networkLatencyMessage = NetworkLatencyMessage.create({
-        ackMessage,
-      });
-      result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
-      combinedResult = Result.combineWithAllErrors(result);
-      expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
-      expect(node.networkLatencyMetricsRecorder?.recentPeerIds.size).toEqual(1);
     });
   });
 });

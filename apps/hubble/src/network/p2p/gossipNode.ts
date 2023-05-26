@@ -2,7 +2,6 @@ import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Message as GossipSubMessage, PublishResult } from '@libp2p/interface-pubsub';
 import { noise } from '@chainsafe/libp2p-noise';
 import {
-  AckMessageBody,
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
@@ -11,8 +10,6 @@ import {
   HubError,
   HubResult,
   Message,
-  NetworkLatencyMessage,
-  PingMessageBody,
 } from '@farcaster/hub-nodejs';
 import { Connection } from '@libp2p/interface-connection';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -228,55 +225,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this.publish(gossipMessage);
   }
 
-  /** Serializes and sends a network latency ping message */
-  async gossipNetworkLatencyPing(): Promise<HubResult<PublishResult>[]> {
-    const pingMessage = PingMessageBody.create({
-      pingOriginPeerId: this.peerId!.toBytes(),
-      pingTimestamp: Date.now(),
-    });
-    const networkLatencyMessage = NetworkLatencyMessage.create({
-      pingMessage,
-    });
-    const gossipMessage = GossipMessage.create({
-      networkLatencyMessage,
-      topics: [this.primaryTopic()],
-      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-      version: GOSSIP_PROTOCOL_VERSION,
-    });
-    return this.publish(gossipMessage);
-  }
-
-  async handleNetworkLatencyMessage(message: NetworkLatencyMessage): Promise<HubResult<PublishResult | undefined>[]> {
-    if (message.pingMessage) {
-      // Respond to ping message with an ack message
-      const ackMessage = AckMessageBody.create({
-        pingOriginPeerId: message.pingMessage.pingOriginPeerId,
-        ackOriginPeerId: this.peerId!.toBytes(),
-        pingTimestamp: message.pingMessage.pingTimestamp,
-        ackTimestamp: Date.now(),
-      });
-      const networkLatencyMessage = NetworkLatencyMessage.create({
-        ackMessage,
-      });
-      const gossipMessage = GossipMessage.create({
-        networkLatencyMessage,
-        topics: [this.primaryTopic()],
-        peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-        version: GOSSIP_PROTOCOL_VERSION,
-      });
-      return this.publish(gossipMessage);
-    } else if (message.ackMessage) {
-      const peerIdMatchesOrigin = this.peerId?.equals(message.ackMessage.pingOriginPeerId) ?? false;
-      if (peerIdMatchesOrigin) {
-        this._networkLatencyMetricsRecorder?.recordLatencyMessageReceipt(message);
-      }
-      return [ok(undefined)];
-    }
-    return [err(new HubError('unavailable', { message: 'invalid message data in NetworkLatencyMessage' }))];
-  }
-
-  async recordMessageReceipt() {
-    this._networkLatencyMetricsRecorder?.recordMessageReceipt();
+  async recordMessageReceipt(gossipMessage: GossipMessage) {
+    this._networkLatencyMetricsRecorder?.recordMessageReceipt(gossipMessage);
   }
 
   async recordMessageMerge(mergeTime: number) {

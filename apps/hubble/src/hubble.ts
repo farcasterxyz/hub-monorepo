@@ -516,7 +516,6 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   private async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
-    this.gossipNode.recordMessageReceipt();
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError('bad_request.parse_failure', error as Error)
@@ -524,6 +523,8 @@ export class Hub implements HubInterface {
     if (peerIdResult.isErr()) {
       return Promise.resolve(err(peerIdResult.error));
     }
+
+    this.gossipNode.recordMessageReceipt(gossipMessage);
 
     if (gossipMessage.message) {
       const message = gossipMessage.message;
@@ -552,7 +553,6 @@ export class Hub implements HubInterface {
       }
       return ok(undefined);
     } else if (gossipMessage.networkLatencyMessage) {
-      await this.gossipNode.handleNetworkLatencyMessage(gossipMessage.networkLatencyMessage);
       return ok(undefined);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid message type'));
