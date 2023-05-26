@@ -29,8 +29,7 @@ import { logger } from '../../utils/logger.js';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '../../utils/p2p.js';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck.js';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol.js';
-import { PeriodicLatencyPingScheduler } from './periodicLatencyPing.js';
-import { NetworkLatencyMetrics } from './networkLatencyMetrics.js';
+import { NetworkLatencyMetricsRecorder } from './networkLatencyMetricsRecorder.js';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -74,21 +73,15 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
-  private _periodicLatencyPingJob?: PeriodicLatencyPingScheduler;
   private _networkLatencyMessagesEnabled: boolean;
-  private _networkLatencyMetrics?: NetworkLatencyMetrics;
+  private _networkLatencyMetricsRecorder?: NetworkLatencyMetricsRecorder;
 
-  constructor(
-    network?: FarcasterNetwork,
-    networkLatencyMessagesEnabled?: boolean,
-    networkLatencyMetrics?: NetworkLatencyMetrics
-  ) {
+  constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
     this._networkLatencyMessagesEnabled = networkLatencyMessagesEnabled ?? false;
     if (this._networkLatencyMessagesEnabled) {
-      this._networkLatencyMetrics = networkLatencyMetrics ?? new NetworkLatencyMetrics();
-      this._periodicLatencyPingJob = new PeriodicLatencyPingScheduler(this);
+      this._networkLatencyMetricsRecorder = new NetworkLatencyMetricsRecorder(this);
     }
   }
 
@@ -105,6 +98,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /** Returns the node's libp2p AddressBook */
   get addressBook() {
     return this._node?.peerStore.addressBook;
+  }
+
+  /** Returns this node's latency metrics */
+  get networkLatencyMetricsRecorder() {
+    return this._networkLatencyMetricsRecorder;
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {
@@ -186,7 +184,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
 
     // Start sending network latency pings if enabled
-    this._periodicLatencyPingJob?.start();
+    this._networkLatencyMetricsRecorder?.start();
 
     return ok(undefined);
   }
@@ -199,7 +197,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async stop() {
     await this._node?.stop();
     this._periodicPeerCheckJob?.stop();
-    this._periodicLatencyPingJob?.stop();
+    this._networkLatencyMetricsRecorder?.stop();
 
     log.info({ identity: this.identity }, 'Stopped libp2p...');
   }
@@ -270,11 +268,15 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     } else if (message.ackMessage) {
       const peerIdMatchesOrigin = this.peerId?.equals(message.ackMessage.pingOriginPeerId) ?? false;
       if (peerIdMatchesOrigin) {
-        this._networkLatencyMetrics?.logMetrics(message);
+        this._networkLatencyMetricsRecorder?.logMetrics(message);
       }
       return [ok(undefined)];
     }
     return [err(new HubError('unavailable', { message: 'invalid message data in NetworkLatencyMessage' }))];
+  }
+
+  async incrementMessageCount() {
+    this._networkLatencyMetricsRecorder?.incrementMessageCount();
   }
 
   /** Publishes a Gossip Message to the network */

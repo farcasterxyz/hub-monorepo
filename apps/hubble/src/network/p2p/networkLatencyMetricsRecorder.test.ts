@@ -1,10 +1,12 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { NetworkLatencyMetrics } from './networkLatencyMetrics.js';
+import { NetworkLatencyMetricsRecorder } from './networkLatencyMetricsRecorder.js';
 import { AckMessageBody, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
+import { GossipNode } from './gossipNode.js';
 
 describe('NetworkLatencyMetrics', () => {
   test('logMetrics updates metrics state', async () => {
-    const metrics = new NetworkLatencyMetrics();
+    const node = new GossipNode();
+    const metrics = new NetworkLatencyMetricsRecorder(node);
     const originPeerId = await createEd25519PeerId();
     let ackPeerId = await createEd25519PeerId();
     const pingTimestamp = Date.now();

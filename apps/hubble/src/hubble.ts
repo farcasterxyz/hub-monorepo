@@ -516,6 +516,7 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   private async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
+    this.gossipNode.incrementMessageCount();
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError('bad_request.parse_failure', error as Error)

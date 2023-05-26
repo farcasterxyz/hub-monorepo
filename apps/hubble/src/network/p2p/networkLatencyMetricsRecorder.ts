@@ -1,11 +1,17 @@
 import { PeerId } from '@libp2p/interface-peer-id';
 import { AckMessageBody, HubError, NetworkLatencyMessage } from '@farcaster/hub-nodejs';
 import { logger } from '../../utils/logger.js';
+import { GossipNode } from './gossipNode.js';
 import { Result } from 'neverthrow';
 import { peerIdFromBytes } from '@libp2p/peer-id';
+import cron from 'node-cron';
 
 const RECENT_PEER_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire recent peers every 5 hours
 const METRICS_TTL_MILLISECONDS = 5 * 3600 * 1000; // Expire stored metrics every 5 hours
+const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
+const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
+
+type SchedulerStatus = 'started' | 'stopped';
 
 const log = logger.child({ component: 'NetworkLatencyMetrics' });
 
@@ -15,14 +21,19 @@ interface Metrics {
   networkCoverage: Map<number, number>;
 }
 
-export class NetworkLatencyMetrics {
+export class NetworkLatencyMetricsRecorder {
   private _recentPeerIds: Map<string, number>;
   private _metrics: Map<string, Metrics>;
+  private _messageCount: number;
+  private _gossipNode: GossipNode;
+  private _cronTask?: cron.ScheduledTask;
 
-  constructor();
-  constructor(recentPeerIds?: Map<PeerId, number>, metrics?: Map<AckMessageBody, Metrics>) {
+  constructor(gossipNode: GossipNode);
+  constructor(gossipNode: GossipNode, recentPeerIds?: Map<PeerId, number>, metrics?: Map<AckMessageBody, Metrics>) {
     this._recentPeerIds = recentPeerIds ?? new Map();
     this._metrics = metrics ?? new Map();
+    this._messageCount = 0;
+    this._gossipNode = gossipNode;
   }
 
   get recentPeerIds() {
@@ -31,6 +42,39 @@ export class NetworkLatencyMetrics {
 
   get metrics() {
     return this._metrics;
+  }
+
+  get messageCount() {
+    return this._messageCount;
+  }
+
+  start() {
+    this._cronTask = cron.schedule(DEFAULT_PERIODIC_LATENCY_PING_CRON, () => {
+      return this.sendPing();
+    });
+  }
+
+  stop() {
+    if (this._cronTask) {
+      return this._cronTask.stop();
+    }
+  }
+
+  status(): SchedulerStatus {
+    return this._cronTask ? 'started' : 'stopped';
+  }
+
+  async sendPing() {
+    const jitter = Math.floor(Math.random() * MAX_JITTER_MILLISECONDS);
+    await new Promise((f) => setTimeout(f, jitter));
+    const result = await this._gossipNode.gossipNetworkLatencyPing();
+    const combinedResult = Result.combineWithAllErrors(result);
+    if (combinedResult.isErr()) {
+      log.warn({ err: combinedResult.error }, 'Failed to send gossip latency ping');
+    }
+    // Since logging message counts on each message might make logs too noisy,
+    // we log message count metrics here instead
+    this.logMessageCount();
   }
 
   public logMetrics(message: NetworkLatencyMessage) {
@@ -58,6 +102,14 @@ export class NetworkLatencyMetrics {
       this.expireEntries();
     }
     return;
+  }
+
+  public logMessageCount() {
+    log.info({ messageCount: this._messageCount }, 'GossipMessageCount');
+  }
+
+  public incrementMessageCount() {
+    this._messageCount += 1;
   }
 
   private expireEntries() {

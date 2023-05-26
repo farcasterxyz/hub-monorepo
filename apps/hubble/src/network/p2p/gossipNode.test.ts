@@ -23,17 +23,8 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { sleep } from '../../utils/crypto.js';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { Result } from 'neverthrow';
-import { NetworkLatencyMetrics } from './networkLatencyMetrics.js';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
-
-class MockNetworkLatencyMetrics extends NetworkLatencyMetrics {
-  public logCounter = 0;
-
-  public override logMetrics(_: NetworkLatencyMessage): void {
-    this.logCounter += 1;
-  }
-}
 
 describe('GossipNode', () => {
   test('start fails if IpMultiAddr has port or transport addrs', async () => {
@@ -331,8 +322,7 @@ describe('GossipNode', () => {
     });
 
     test('Network latency metrics are logged on ack receipt', async () => {
-      const metrics = new MockNetworkLatencyMetrics();
-      const node = new GossipNode(undefined, true, metrics);
+      const node = new GossipNode(undefined, true);
       await node.start([]);
       const senderPeerId = await createEd25519PeerId();
 
@@ -349,7 +339,7 @@ describe('GossipNode', () => {
       let result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
       let combinedResult = Result.combineWithAllErrors(result);
       expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
-      expect(metrics.logCounter).toEqual(0);
+      expect(node.networkLatencyMetricsRecorder?.recentPeerIds.size).toEqual(0);
 
       // Metrics should be logged if ping origin peerId matches node's peerId
       ackMessage = AckMessageBody.create({
@@ -363,7 +353,7 @@ describe('GossipNode', () => {
       result = await node.handleNetworkLatencyMessage(networkLatencyMessage);
       combinedResult = Result.combineWithAllErrors(result);
       expect(combinedResult._unsafeUnwrap()).toEqual([undefined]);
-      expect(metrics.logCounter).toEqual(1);
+      expect(node.networkLatencyMetricsRecorder?.recentPeerIds.size).toEqual(1);
     });
   });
 });
