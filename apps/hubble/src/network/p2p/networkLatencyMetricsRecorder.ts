@@ -11,49 +11,107 @@ const RECENT_PEER_TTL_MILLISECONDS = 3600 * 1000; // Expire recent peers every 1
 const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
 const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
+const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
 
 type SchedulerStatus = 'started' | 'stopped';
 
 const log = logger.child({ component: 'NetworkLatencyMetricsRecorder' });
 
-interface Metrics {
-  numAcks?: number;
+class Average {
+  private _sum = 0;
+  private _numElements = 0;
+
+  addValue(value: number) {
+    this._sum += value;
+    this._numElements += 1;
+  }
+
+  getAverage() {
+    if (this._numElements == 0) {
+      return 0;
+    } else {
+      return this._sum / this._numElements;
+    }
+  }
+
+  clear() {
+    this._sum = 0;
+    this._numElements = 0;
+  }
+}
+
+interface PeerMetrics {
+  numAcks: number;
   lastAckTimestamp: number;
-  networkCoverage: Map<number, number>;
+  messageCount: number;
+}
+
+interface PeerMetricsKey {
+  peerId: PeerId;
+  pingTimestamp: number;
+}
+
+class NetworkCoverageTimes {
+  private _coverageMap = new Map<number, number>();
+  private _seenPeerIds = new Map<PeerId, number>();
+
+  addAckFromPeer(peerId: PeerId, time: number, numTotalPeerIds: number) {
+    if (this._seenPeerIds.has(peerId)) {
+      return;
+    } else {
+      this._seenPeerIds.set(peerId, time);
+      const numSeenPeerIds = this._seenPeerIds.size;
+      const coverage = numSeenPeerIds / numTotalPeerIds;
+      NETWORK_COVERAGE_THRESHOLD.forEach((threshold) => {
+        const coverageIsAboveThreshold = threshold <= coverage;
+        const shouldUpdateMetricForThreshold = (numSeenPeerIds - 1) / numSeenPeerIds < threshold;
+        if (shouldUpdateMetricForThreshold && coverageIsAboveThreshold) {
+          this._coverageMap.set(threshold, time);
+        }
+      });
+    }
+  }
+
+  getLoggableObject() {
+    Object.fromEntries(this._coverageMap.entries());
+  }
+}
+
+interface GlobalMetrics {
+  networkCoverage: Map<number, NetworkCoverageTimes>;
+  messageMergeTime: Average;
 }
 
 export class NetworkLatencyMetricsRecorder {
-  private _recentPeerIds: Map<string, number>;
-  private _metrics: Map<string, Metrics>;
-  private _messageCount: number;
-  private _averageMergeTime: [number, number];
+  private _recentPeerIds: Map<PeerId, number>;
+  private _peerMetrics: Map<PeerMetricsKey, PeerMetrics>;
+  private _globalMetrics: GlobalMetrics;
   private _gossipNode: GossipNode;
   private _cronTask?: cron.ScheduledTask;
 
   constructor(gossipNode: GossipNode);
-  constructor(gossipNode: GossipNode, recentPeerIds?: Map<PeerId, number>, metrics?: Map<AckMessageBody, Metrics>) {
+  constructor(
+    gossipNode: GossipNode,
+    recentPeerIds?: Map<PeerId, number>,
+    perPeerMetrics?: Map<AckMessageBody, PeerMetrics>
+  ) {
     this._recentPeerIds = recentPeerIds ?? new Map();
-    this._metrics = metrics ?? new Map();
-    this._messageCount = 0;
+    this._peerMetrics = perPeerMetrics ?? new Map();
+    this._globalMetrics = { networkCoverage: new Map(), messageMergeTime: new Average() };
     this._gossipNode = gossipNode;
-    this._averageMergeTime = [0, 0];
   }
 
   get recentPeerIds() {
     return this._recentPeerIds;
   }
 
-  get metrics() {
-    return this._metrics;
-  }
-
-  get messageCount() {
-    return this._messageCount;
+  get peerMetrics() {
+    return this._peerMetrics;
   }
 
   start() {
     this._cronTask = cron.schedule(DEFAULT_PERIODIC_LATENCY_PING_CRON, () => {
-      return this.sendPing();
+      return this.sendPingAndLogMetrics();
     });
   }
 
@@ -68,12 +126,10 @@ export class NetworkLatencyMetricsRecorder {
   }
 
   recordMessageMerge(latestMergeTime: number) {
-    const currentMergeTime = this._averageMergeTime;
-    this._averageMergeTime = [currentMergeTime[0] + latestMergeTime, currentMergeTime[1] + 1];
+    this._globalMetrics.messageMergeTime.addValue(latestMergeTime);
   }
 
   async recordMessageReceipt(gossipMessage: GossipMessage) {
-    this._messageCount += 1;
     if (!gossipMessage.networkLatencyMessage) {
       return;
     } else if (gossipMessage.networkLatencyMessage.pingMessage) {
@@ -97,81 +153,52 @@ export class NetworkLatencyMetricsRecorder {
       await this._gossipNode.publish(ackGossipMessage);
     } else if (gossipMessage.networkLatencyMessage.ackMessage) {
       const ackMessage = gossipMessage.networkLatencyMessage.ackMessage;
-      const pingOriginPeerIdResult = Result.fromThrowable(
-        () => peerIdFromBytes(ackMessage.pingOriginPeerId ?? new Uint8Array([])),
-        (error) => new HubError('bad_request.parse_failure', error as Error)
-      )();
-      if (pingOriginPeerIdResult.isOk()) {
-        const peerIdMatchesOrigin = this._gossipNode.peerId?.equals(pingOriginPeerIdResult.value) ?? false;
+      const pingOriginPeerId = this.getPeerIdFromBytes(ackMessage.pingOriginPeerId);
+      if (pingOriginPeerId) {
+        const peerIdMatchesOrigin = this._gossipNode.peerId?.equals(pingOriginPeerId) ?? false;
         if (peerIdMatchesOrigin) {
           // Log ack latency for peer
-          const ackPeerIdResultResult = Result.fromThrowable(
-            () => peerIdFromBytes(ackMessage.ackOriginPeerId ?? new Uint8Array([])),
-            (error) => new HubError('bad_request.parse_failure', error as Error)
-          )();
-          if (ackPeerIdResultResult.isOk()) {
-            log.info(
-              {
-                receivingHubPeerId: ackPeerIdResultResult.value,
-                latencyMilliseconds: ackMessage.ackTimestamp - ackMessage.pingTimestamp,
-              },
-              'GossipLatencyMetrics'
-            );
+          const ackPeerId = this.getPeerIdFromBytes(ackMessage.ackOriginPeerId);
+          if (ackPeerId) {
+            // Add peerId to recent peerIds
+            this._recentPeerIds.set(ackPeerId, Date.now());
 
-            // Log network coverage
-            this.logNetworkCoverage(ackMessage, ackPeerIdResultResult.value);
+            // Compute peer and coverage metrics
+            this.computePeerAndCoverageMetrics(ackMessage, ackPeerId);
 
             // Expire peerIds that are past the TTL
-            this.expireEntries();
+            this.expireMetrics();
           }
         }
       }
     }
   }
 
-  private logMessageCountAndMergeMetrics() {
-    const numMergeTimes = this._averageMergeTime[1];
-    const averageMergeTime = numMergeTimes == 0 ? 0 : this._averageMergeTime[0] / this._averageMergeTime[1];
-    log.info(
-      {
-        messageCount: this._messageCount,
-        mergeTimeMilliseconds: averageMergeTime,
-      },
-      'GossipMessageCount'
-    );
-    // Reset average merge time metric
-    this._averageMergeTime = [0, 0];
-  }
-
-  private logNetworkCoverage(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
-    // Add peerId to recent peerIds
-    this._recentPeerIds.set(ackOriginPeerId.toString(), Date.now());
+  private computePeerAndCoverageMetrics(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
+    // Compute peer-level metrics
+    const key = { peerId: ackOriginPeerId, pingTimestamp: ackMessage.pingTimestamp };
+    const currentMetrics = this._peerMetrics.get(key);
+    const updatedMetrics: PeerMetrics = {
+      numAcks: (currentMetrics?.numAcks ?? 0) + 1,
+      lastAckTimestamp: currentMetrics?.lastAckTimestamp ?? ackMessage.ackTimestamp,
+      messageCount: (currentMetrics?.messageCount ?? 0) + 1,
+    };
+    this._peerMetrics.set(key, updatedMetrics);
 
     // Compute coverage metrics
-    const metricsKey = `${ackOriginPeerId.toString()}_${ackMessage.pingTimestamp}`;
-    const currentMetrics = this._metrics.get(metricsKey);
-    const oldNumAcks = this._metrics.get(metricsKey)?.numAcks ?? 0;
-    const newNumAcks = oldNumAcks + 1;
-    const coverageProportion = newNumAcks / this._recentPeerIds.size;
-    const updatedMetrics: Metrics = {
-      numAcks: newNumAcks,
-      networkCoverage: currentMetrics?.networkCoverage ?? new Map<number, number>(),
-      lastAckTimestamp: ackMessage.ackTimestamp,
-    };
+    const coverageKey = ackMessage.pingTimestamp;
     const timeTaken = ackMessage.ackTimestamp - ackMessage.pingTimestamp;
-    const coverageThresholds = [0.5, 0.75, 0.9, 0.99];
-    coverageThresholds.forEach((threshold) => {
-      const coverageIsAboveThreshold = threshold <= coverageProportion;
-      const shouldUpdateMetricForThreshold = oldNumAcks / newNumAcks < threshold;
-      if (shouldUpdateMetricForThreshold && coverageIsAboveThreshold) {
-        updatedMetrics.networkCoverage.set(threshold, timeTaken);
-        log.info({ networkCoverage: threshold, timeTakenMilliseconds: timeTaken }, 'GossipCoverageMetrics');
-      }
-    });
-    this._metrics.set(metricsKey, updatedMetrics);
+    const currentCoverage = this._globalMetrics.networkCoverage.get(coverageKey);
+    if (currentCoverage) {
+      currentCoverage.addAckFromPeer(ackOriginPeerId, timeTaken, this._recentPeerIds.size);
+    } else {
+      const networkCoverage = new NetworkCoverageTimes();
+      networkCoverage.addAckFromPeer(ackOriginPeerId, timeTaken, this._recentPeerIds.size);
+      this._globalMetrics.networkCoverage.set(coverageKey, networkCoverage);
+    }
   }
 
-  private async sendPing() {
+  private async sendPingAndLogMetrics() {
     const jitter = Math.floor(Math.random() * MAX_JITTER_MILLISECONDS);
     await new Promise((f) => setTimeout(f, jitter));
 
@@ -195,16 +222,62 @@ export class NetworkLatencyMetricsRecorder {
     }
     // Since logging message counts on each message might make logs too noisy,
     // we log message count metrics here instead
-    this.logMessageCountAndMergeMetrics();
+    this.logMetrics();
   }
 
-  private expireEntries() {
+  private logMetrics() {
+    // Log peer-level metrics
+    [...this._peerMetrics].forEach(([key, metrics]) => {
+      log.info(
+        {
+          peerId: key.peerId.toString(),
+          latencyMilliseconds: metrics.lastAckTimestamp - key.pingTimestamp,
+          messageCount: metrics.messageCount,
+        },
+        'GossipPeerMetrics'
+      );
+    });
+    // Log global metrics
+    [...this._globalMetrics.networkCoverage].forEach(([_, coverage]) => {
+      log.info(coverage.getLoggableObject(), 'GossipNetworkCoverage');
+    });
+    log.info(
+      {
+        messageMergeTime: this._globalMetrics.messageMergeTime.getAverage(),
+      },
+      'GossipMergeMetrics'
+    );
+  }
+
+  expireMetrics() {
     const currTime = Date.now();
     this._recentPeerIds = new Map(
       [...this._recentPeerIds].filter(([_, v]) => currTime - v < RECENT_PEER_TTL_MILLISECONDS)
     );
-    this._metrics = new Map(
-      [...this._metrics].filter(([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS)
+    this._globalMetrics.networkCoverage = new Map(
+      [...this._globalMetrics.networkCoverage].filter(
+        ([timestamp, _]) => currTime - timestamp < METRICS_TTL_MILLISECONDS
+      )
     );
+    this._globalMetrics.messageMergeTime.clear();
+    this._peerMetrics = new Map(
+      [...this._peerMetrics].filter(([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS)
+    );
+  }
+
+  private getPeerIdFromBytes(peerIdBytes?: Uint8Array): PeerId | undefined {
+    if (!peerIdBytes) {
+      return undefined;
+    } else {
+      const peerIdResult = Result.fromThrowable(
+        () => peerIdFromBytes(peerIdBytes),
+        (error) => new HubError('bad_request.parse_failure', error as Error)
+      )();
+      if (peerIdResult.isOk()) {
+        return peerIdResult.value;
+      } else {
+        return undefined;
+      }
+    }
   }
 }
