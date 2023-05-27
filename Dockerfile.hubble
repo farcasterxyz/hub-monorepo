@@ -83,6 +83,6 @@ COPY --from=app / /
 USER node
 EXPOSE 2282
 EXPOSE 2283
-WORKDIR /home/node/app
+WORKDIR /home/node/app/apps/hubble
 
-CMD ["node", "apps/hubble/build/cli.js", "start", "--network", "1"]
+CMD ["node", "build/cli.js", "start", "--network", "1"]
