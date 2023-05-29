@@ -15,7 +15,7 @@ const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
 
 type SchedulerStatus = 'started' | 'stopped';
 
-const log = logger.child({ component: 'NetworkLatencyMetricsRecorder' });
+const log = logger.child({ component: 'GossipMetricsRecorder' });
 
 class Average {
   private _sum = 0;
@@ -45,24 +45,19 @@ interface PeerLatencyMetrics {
   lastAckTimestamp: number;
 }
 
-interface PeerLatencyMetricsKey {
-  peerId: PeerId;
-  pingTimestamp: number;
-}
-
 interface PeerMessageMetrics {
   messageCount: number;
 }
 
 class NetworkCoverageTimes {
   private _coverageMap = new Map<number, number>();
-  private _seenPeerIds = new Map<PeerId, number>();
+  private _seenPeerIds = new Map<string, number>();
 
   addAckFromPeer(peerId: PeerId, time: number, numTotalPeerIds: number) {
-    if (this._seenPeerIds.has(peerId)) {
+    if (this._seenPeerIds.has(peerId.toString())) {
       return;
     } else {
-      this._seenPeerIds.set(peerId, time);
+      this._seenPeerIds.set(peerId.toString(), time);
       const numSeenPeerIds = this._seenPeerIds.size;
       const coverage = numSeenPeerIds / numTotalPeerIds;
       NETWORK_COVERAGE_THRESHOLD.forEach((threshold) => {
@@ -76,7 +71,7 @@ class NetworkCoverageTimes {
   }
 
   getLoggableObject() {
-    Object.fromEntries(this._coverageMap.entries());
+    return Object.fromEntries(this._coverageMap);
   }
 }
 
@@ -85,10 +80,10 @@ interface GlobalMetrics {
   messageMergeTime: Average;
 }
 
-export class NetworkLatencyMetricsRecorder {
-  private _recentPeerIds: Map<PeerId, number>;
-  private _peerLatencyMetrics: Map<PeerLatencyMetricsKey, PeerLatencyMetrics>;
-  private _peerMessageMetrics: Map<PeerId, PeerMessageMetrics>;
+export class GossipMetricsRecorder {
+  private _recentPeerIds: Map<string, number>;
+  private _peerLatencyMetrics: Map<string, PeerLatencyMetrics>;
+  private _peerMessageMetrics: Map<string, PeerMessageMetrics>;
   private _globalMetrics: GlobalMetrics;
   private _gossipNode: GossipNode;
   private _cronTask?: cron.ScheduledTask;
@@ -166,13 +161,13 @@ export class NetworkLatencyMetricsRecorder {
       const ackMessage = gossipMessage.networkLatencyMessage.ackMessage;
       const pingOriginPeerId = this.getPeerIdFromBytes(ackMessage.pingOriginPeerId);
       if (pingOriginPeerId) {
-        const peerIdMatchesOrigin = this._gossipNode.peerId?.equals(pingOriginPeerId) ?? false;
+        const peerIdMatchesOrigin = this._gossipNode.peerId?.toString() == pingOriginPeerId.toString() ?? false;
         if (peerIdMatchesOrigin) {
           // Log ack latency for peer
           const ackPeerId = this.getPeerIdFromBytes(ackMessage.ackOriginPeerId);
           if (ackPeerId) {
             // Add peerId to recent peerIds
-            this._recentPeerIds.set(ackPeerId, Date.now());
+            this._recentPeerIds.set(ackPeerId.toString(), Date.now());
 
             // Compute peer and coverage metrics
             this.computePeerLatencyAndCoverageMetrics(ackMessage, ackPeerId);
@@ -188,17 +183,17 @@ export class NetworkLatencyMetricsRecorder {
   private computePeerMessageMetrics(gossipMessage: GossipMessage) {
     const peerId = this.getPeerIdFromBytes(gossipMessage.peerId);
     if (peerId) {
-      const currentMessageMetrics = this._peerMessageMetrics.get(peerId);
+      const currentMessageMetrics = this._peerMessageMetrics.get(peerId.toString());
       const updatedMessageMetrics = {
         messageCount: (currentMessageMetrics?.messageCount ?? 0) + 1,
       };
-      this._peerMessageMetrics.set(peerId, updatedMessageMetrics);
+      this._peerMessageMetrics.set(peerId.toString(), updatedMessageMetrics);
     }
   }
 
   private computePeerLatencyAndCoverageMetrics(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
     // Compute peer-level latency metrics
-    const key = { peerId: ackOriginPeerId, pingTimestamp: ackMessage.pingTimestamp };
+    const key = `${ackOriginPeerId.toString()}_${ackMessage.pingTimestamp}`;
     const currentLatencyMetrics = this._peerLatencyMetrics.get(key);
     const updatedLatencyMetrics: PeerLatencyMetrics = {
       numAcks: (currentLatencyMetrics?.numAcks ?? 0) + 1,
@@ -249,10 +244,13 @@ export class NetworkLatencyMetricsRecorder {
   private logMetrics() {
     // Log peer-level latency metrics
     [...this._peerLatencyMetrics].forEach(([key, metrics]) => {
+      const keyFragments = key.split('_');
+      const peerId = keyFragments[0];
+      const pingTimestamp = Number(keyFragments[1]);
       log.info(
         {
-          peerId: key.peerId.toString(),
-          latencyMilliseconds: metrics.lastAckTimestamp - key.pingTimestamp,
+          peerId: peerId,
+          latencyMilliseconds: metrics.lastAckTimestamp - pingTimestamp,
         },
         'GossipPeerLatencyMetrics'
       );

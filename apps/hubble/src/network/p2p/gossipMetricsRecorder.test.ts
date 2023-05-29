@@ -1,5 +1,5 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { NetworkLatencyMetricsRecorder } from './networkLatencyMetricsRecorder.js';
+import { GossipMetricsRecorder } from './gossipMetricsRecorder.js';
 import {
   AckMessageBody,
   PingMessageBody,
@@ -36,7 +36,7 @@ describe('NetworkLatencyMetrics', () => {
   test('recordMessageReceipt updates metrics state', async () => {
     const nodePeerId = await createEd25519PeerId();
     const node = new MockGossipNode(nodePeerId);
-    const recorder = new NetworkLatencyMetricsRecorder(node);
+    const recorder = new GossipMetricsRecorder(node);
     const otherPeerId = await createEd25519PeerId();
     let ackPeerId = await createEd25519PeerId();
     const pingTimestamp = Date.now();
@@ -58,7 +58,6 @@ describe('NetworkLatencyMetrics', () => {
       version: GOSSIP_PROTOCOL_VERSION,
     });
     recorder.recordMessageReceipt(gossipMessage);
-    const peerMetricsKey = { peerId: ackPeerId, pingTimestamp: pingTimestamp };
 
     // Recent peers set should now have ack sender peerId
     expect(recorder.recentPeerIds.size).toEqual(0);
@@ -68,7 +67,7 @@ describe('NetworkLatencyMetrics', () => {
 
     // Message count should be incremented
     expect(recorder.peerMessageMetrics.size).toEqual(1);
-    expect(recorder.peerMessageMetrics.get(nodePeerId)?.messageCount).toEqual(1);
+    expect(recorder.peerMessageMetrics.get(nodePeerId.toString())?.messageCount).toEqual(1);
 
     ackPeerId = await createEd25519PeerId();
     const timeTaken2 = 7200 * 1000;
@@ -84,24 +83,32 @@ describe('NetworkLatencyMetrics', () => {
     gossipMessage = GossipMessage.create({
       networkLatencyMessage,
       topics: [node.primaryTopic()],
-      peerId: node.peerId?.toBytes() ?? new Uint8Array(),
+      peerId: nodePeerId.toBytes(),
       version: GOSSIP_PROTOCOL_VERSION,
     });
     recorder.recordMessageReceipt(gossipMessage);
 
     // Recent peers set should have peerId from second ack
     expect(recorder.recentPeerIds.size).toEqual(1);
-    expect(recorder.recentPeerIds.get(ackPeerId)).toBeTruthy();
+    expect(recorder.recentPeerIds.get(ackPeerId.toString())).toBeTruthy();
 
     // Metrics map should have ack with updates coverage
+    const peerMetricsKey = `${ackPeerId.toString()}_${pingTimestamp}`;
     const updatedPeerLatencyMetrics = recorder.peerLatencyMetrics.get(peerMetricsKey);
     const updatedGlobalMetrics = recorder.globalMetrics;
-    const updatedPeerMessageMetrics = recorder.peerMessageMetrics.get(nodePeerId);
+    const updatedPeerMessageMetrics = recorder.peerMessageMetrics.get(nodePeerId.toString());
     expect(recorder.peerLatencyMetrics.size).toEqual(1);
+
     expect(updatedPeerLatencyMetrics?.numAcks).toEqual(1);
     expect(updatedPeerLatencyMetrics?.lastAckTimestamp).toEqual(pingTimestamp + timeTaken2);
-    expect(updatedPeerMessageMetrics?.messageCount).toEqual(1);
-    expect(updatedGlobalMetrics?.networkCoverage.get(pingTimestamp)?.getLoggableObject()).toEqual({
+    expect(recorder.peerMessageMetrics.size).toEqual(1);
+    expect(updatedPeerMessageMetrics?.messageCount).toEqual(2);
+    expect(updatedGlobalMetrics.networkCoverage.size).toEqual(1);
+    /* eslint-disable no-console */
+    console.log(recorder.globalMetrics);
+    console.log(pingTimestamp);
+    /* eslint-enable no-console */
+    expect(updatedGlobalMetrics.networkCoverage.get(pingTimestamp)?.getLoggableObject()).toEqual({
       '0.5': timeTaken2,
       '0.75': timeTaken2,
       '0.9': timeTaken2,
@@ -112,7 +119,7 @@ describe('NetworkLatencyMetrics', () => {
   test('Network latency acks are sent on ping receipt', async () => {
     const nodePeerId = await createEd25519PeerId();
     const node = new MockGossipNode(nodePeerId);
-    const recorder = new NetworkLatencyMetricsRecorder(node);
+    const recorder = new GossipMetricsRecorder(node);
     // Ping message should be responded to with an ack message
     const pingMessage = PingMessageBody.create({
       pingOriginPeerId: nodePeerId.toBytes(),
@@ -134,7 +141,7 @@ describe('NetworkLatencyMetrics', () => {
   test('Network latency metrics are logged on ack receipt', async () => {
     const nodePeerId = await createEd25519PeerId();
     const node = new MockGossipNode(nodePeerId);
-    const recorder = new NetworkLatencyMetricsRecorder(node);
+    const recorder = new GossipMetricsRecorder(node);
     const senderPeerId = await createEd25519PeerId();
 
     // Metrics should not be logged if ping origin peerId does not match node's peerId

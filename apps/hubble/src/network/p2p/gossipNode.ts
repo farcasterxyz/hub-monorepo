@@ -26,7 +26,7 @@ import { logger } from '../../utils/logger.js';
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from '../../utils/p2p.js';
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck.js';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol.js';
-import { NetworkLatencyMetricsRecorder } from './networkLatencyMetricsRecorder.js';
+import { GossipMetricsRecorder } from './gossipMetricsRecorder.js';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -70,13 +70,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
-  private _networkLatencyMetricsRecorder?: NetworkLatencyMetricsRecorder;
+  private _networkLatencyMetricsRecorder?: GossipMetricsRecorder;
 
   constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
     if (networkLatencyMessagesEnabled) {
-      this._networkLatencyMetricsRecorder = new NetworkLatencyMetricsRecorder(this);
+      this._networkLatencyMetricsRecorder = new GossipMetricsRecorder(this);
     }
   }
 
