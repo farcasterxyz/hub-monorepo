@@ -27,6 +27,7 @@ import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } f
 import { PeriodicPeerCheckScheduler } from './periodicPeerCheck.js';
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from './protocol.js';
 import { GossipMetricsRecorder } from './gossipMetricsRecorder.js';
+import RocksDB from 'storage/db/rocksdb.js';
 
 const MultiaddrLocalHost = '/ip4/127.0.0.1';
 
@@ -72,11 +73,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _network: FarcasterNetwork;
   private _networkLatencyMetricsRecorder?: GossipMetricsRecorder;
 
-  constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
+  constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean, db?: RocksDB) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
     if (networkLatencyMessagesEnabled) {
-      this._networkLatencyMetricsRecorder = new GossipMetricsRecorder(this);
+      this._networkLatencyMetricsRecorder = new GossipMetricsRecorder(this, db);
     }
   }
 
@@ -174,7 +175,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
 
     // Start sending network latency pings if enabled
-    this._networkLatencyMetricsRecorder?.start();
+    await this._networkLatencyMetricsRecorder?.start();
 
     return ok(undefined);
   }
@@ -187,7 +188,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async stop() {
     await this._node?.stop();
     this._periodicPeerCheckJob?.stop();
-    this._networkLatencyMetricsRecorder?.stop();
+    await this._networkLatencyMetricsRecorder?.stop();
 
     log.info({ identity: this.identity }, 'Stopped libp2p...');
   }

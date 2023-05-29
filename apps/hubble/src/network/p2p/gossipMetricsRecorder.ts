@@ -6,12 +6,14 @@ import { Result } from 'neverthrow';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import cron from 'node-cron';
 import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
+import RocksDB from 'storage/db/rocksdb.js';
 
 const RECENT_PEER_TTL_MILLISECONDS = 3600 * 1000; // Expire recent peers every 1 hour
 const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
 const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
+const METRICS_DB_KEY = 'GossipMetrics';
 
 type SchedulerStatus = 'started' | 'stopped';
 
@@ -80,19 +82,24 @@ interface GlobalMetrics {
   messageMergeTime: Average;
 }
 
-export class GossipMetricsRecorder {
-  private _recentPeerIds: Map<string, number>;
-  private _peerLatencyMetrics: Map<string, PeerLatencyMetrics>;
-  private _peerMessageMetrics: Map<string, PeerMessageMetrics>;
-  private _globalMetrics: GlobalMetrics;
-  private _gossipNode: GossipNode;
-  private _cronTask?: cron.ScheduledTask;
+interface StorageMetrics {
+  recentPeerIds: Map<string, number>;
+  globalMetrics: GlobalMetrics;
+  peerLatencyMetrics: Map<string, PeerLatencyMetrics>;
+  peerMessageMetrics: Map<string, PeerMessageMetrics>;
+}
 
-  constructor(gossipNode: GossipNode) {
-    this._recentPeerIds = new Map();
-    this._peerLatencyMetrics = new Map();
-    this._peerMessageMetrics = new Map();
-    this._globalMetrics = { networkCoverage: new Map(), messageMergeTime: new Average() };
+export class GossipMetricsRecorder {
+  private _recentPeerIds!: Map<string, number>;
+  private _peerLatencyMetrics!: Map<string, PeerLatencyMetrics>;
+  private _peerMessageMetrics!: Map<string, PeerMessageMetrics>;
+  private _globalMetrics!: GlobalMetrics;
+  private _gossipNode: GossipNode;
+  private _cronTask: cron.ScheduledTask | undefined;
+  private _db: RocksDB | undefined;
+
+  constructor(gossipNode: GossipNode, db?: RocksDB) {
+    this._db = db;
     this._gossipNode = gossipNode;
   }
 
@@ -112,15 +119,24 @@ export class GossipMetricsRecorder {
     return this._globalMetrics;
   }
 
-  start() {
+  async start() {
+    const metricsFromDB = await this.readMetricsFromDb();
+    this._recentPeerIds = metricsFromDB?.recentPeerIds ?? new Map();
+    this._peerLatencyMetrics = metricsFromDB?.peerLatencyMetrics ?? new Map();
+    this._peerMessageMetrics = metricsFromDB?.peerMessageMetrics ?? new Map();
+    this._globalMetrics = metricsFromDB?.globalMetrics ?? {
+      networkCoverage: new Map(),
+      messageMergeTime: new Average(),
+    };
     this._cronTask = cron.schedule(DEFAULT_PERIODIC_LATENCY_PING_CRON, () => {
       return this.sendPingAndLogMetrics();
     });
   }
 
-  stop() {
+  async stop() {
+    await this.writeMetricsToDB();
     if (this._cronTask) {
-      return this._cronTask.stop();
+      return this._cronTask?.stop();
     }
   }
 
@@ -306,5 +322,26 @@ export class GossipMetricsRecorder {
         return undefined;
       }
     }
+  }
+
+  private async readMetricsFromDb(): Promise<StorageMetrics | undefined> {
+    const key = Buffer.from(METRICS_DB_KEY);
+    const value = await this._db?.get(key);
+    if (value) {
+      return JSON.parse(value?.toString());
+    }
+    return undefined;
+  }
+
+  private async writeMetricsToDB() {
+    const key = Buffer.from(METRICS_DB_KEY);
+    const storageMetrics = {
+      recentPeerIds: this._recentPeerIds,
+      globalMetrics: this._globalMetrics,
+      peerLatencyMetrics: this._peerLatencyMetrics,
+      peerMessageMetrics: this._peerMessageMetrics,
+    };
+    const value = Buffer.from(JSON.stringify(storageMetrics));
+    await this._db?.put(key, value);
   }
 }

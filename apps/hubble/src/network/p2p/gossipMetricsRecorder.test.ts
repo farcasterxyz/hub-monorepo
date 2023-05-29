@@ -37,6 +37,7 @@ describe('NetworkLatencyMetrics', () => {
     const nodePeerId = await createEd25519PeerId();
     const node = new MockGossipNode(nodePeerId);
     const recorder = new GossipMetricsRecorder(node);
+    await recorder.start();
     const otherPeerId = await createEd25519PeerId();
     let ackPeerId = await createEd25519PeerId();
     const pingTimestamp = Date.now();
@@ -104,10 +105,6 @@ describe('NetworkLatencyMetrics', () => {
     expect(recorder.peerMessageMetrics.size).toEqual(1);
     expect(updatedPeerMessageMetrics?.messageCount).toEqual(2);
     expect(updatedGlobalMetrics.networkCoverage.size).toEqual(1);
-    /* eslint-disable no-console */
-    console.log(recorder.globalMetrics);
-    console.log(pingTimestamp);
-    /* eslint-enable no-console */
     expect(updatedGlobalMetrics.networkCoverage.get(pingTimestamp)?.getLoggableObject()).toEqual({
       '0.5': timeTaken2,
       '0.75': timeTaken2,
@@ -120,6 +117,7 @@ describe('NetworkLatencyMetrics', () => {
     const nodePeerId = await createEd25519PeerId();
     const node = new MockGossipNode(nodePeerId);
     const recorder = new GossipMetricsRecorder(node);
+    await recorder.start();
     // Ping message should be responded to with an ack message
     const pingMessage = PingMessageBody.create({
       pingOriginPeerId: nodePeerId.toBytes(),
