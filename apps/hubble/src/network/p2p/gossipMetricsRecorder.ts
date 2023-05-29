@@ -42,14 +42,14 @@ class Average {
   }
 }
 
-interface PeerLatencyMetrics {
+type PeerLatencyMetrics = {
   numAcks: number;
   lastAckTimestamp: number;
-}
+};
 
-interface PeerMessageMetrics {
+type PeerMessageMetrics = {
   messageCount: number;
-}
+};
 
 class NetworkCoverageTimes {
   private _coverageMap = new Map<number, number>();
@@ -77,17 +77,17 @@ class NetworkCoverageTimes {
   }
 }
 
-interface GlobalMetrics {
+type GlobalMetrics = {
   networkCoverage: Map<number, NetworkCoverageTimes>;
   messageMergeTime: Average;
-}
+};
 
-interface StorageMetrics {
+type StorageMetrics = {
   recentPeerIds: Map<string, number>;
   globalMetrics: GlobalMetrics;
   peerLatencyMetrics: Map<string, PeerLatencyMetrics>;
   peerMessageMetrics: Map<string, PeerMessageMetrics>;
-}
+};
 
 export class GossipMetricsRecorder {
   private _recentPeerIds!: Map<string, number>;
