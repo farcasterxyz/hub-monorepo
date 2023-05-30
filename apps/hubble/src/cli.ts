@@ -420,16 +420,25 @@ app
     if (!rocksDBName) throw new Error('No RocksDB name provided.');
 
     const rocksDB = new RocksDB(rocksDBName);
+    const fallback = () => {
+      fs.rmSync(rocksDB.location, { recursive: true, force: true });
+    };
+
     const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
     if (dbResult.isErr()) {
-      logger.error({ rocksDBName }, 'Failed to open RocksDB');
-      exit(1);
+      logger.warn({ rocksDBName }, 'Failed to open RocksDB, falling back to rm');
+      fallback();
+    } else {
+      const clearResult = await ResultAsync.fromPromise(rocksDB.clear(), (e) => e as Error);
+      if (clearResult.isErr()) {
+        logger.warn({ rocksDBName }, 'Failed to open RocksDB, falling back to rm');
+        fallback();
+      }
+
+      await rocksDB.close();
     }
-    await rocksDB.clear();
 
-    await rocksDB.close();
     logger.info({ rocksDBName }, 'Database cleared.');
-
     exit(0);
   });
 
