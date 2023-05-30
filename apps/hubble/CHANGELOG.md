@@ -1,5 +1,20 @@
 # @farcaster/hubble
 
+## 1.3.0
+
+### Minor Changes
+
+- 2bc598a: Added support for Links
+
+### Patch Changes
+
+- 37f515f: Add app version to contactInfo message
+- 7f050d2: Correctly error when sequence ID exceeds max allowed value
+- 27181c6: added fallback to dbreset
+- 16ea9b4: Validate the eth network in ethEventsProvider
+- Updated dependencies [2bc598a]
+  - @farcaster/hub-nodejs@0.8.0
+
 ## 1.2.4
 
 ### Patch Changes

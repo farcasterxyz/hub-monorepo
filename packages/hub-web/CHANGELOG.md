@@ -1,5 +1,14 @@
 # @farcaster/hub-web
 
+## 0.3.5
+
+### Patch Changes
+
+- 37f515f: Add app version to contactInfo message
+- Updated dependencies [37f515f]
+- Updated dependencies [2bc598a]
+  - @farcaster/core@0.9.0
+
 ## 0.3.4
 
 ### Patch Changes
