@@ -140,6 +140,7 @@ describe('NetworkLatencyMetrics', () => {
     const nodePeerId = await createEd25519PeerId();
     const node = new MockGossipNode(nodePeerId);
     const recorder = new GossipMetricsRecorder(node);
+    await recorder.start();
     const senderPeerId = await createEd25519PeerId();
 
     // Metrics should not be logged if ping origin peerId does not match node's peerId
