@@ -1,5 +1,5 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { GossipMetricsRecorder } from './gossipMetricsRecorder.js';
+import { GossipMetricsRecorder, GossipMetrics, Average } from './gossipMetricsRecorder.js';
 import {
   AckMessageBody,
   PingMessageBody,
@@ -181,5 +181,19 @@ describe('NetworkLatencyMetrics', () => {
     await recorder.recordMessageReceipt(gossipMessage);
     expect(recorder.recentPeerIds.size).toEqual(1);
     expect(node.publishCount).toEqual(0);
+  });
+
+  test('GossipMetrics serde works correctly', async () => {
+    const recentPeerIds = new Map([['testPeerId', 1]]);
+    const peerLatencyMetrics = new Map([['testPeerId_123', { numAcks: 1, lastAckTimestamp: 12345 }]]);
+    const peerMessageMetrics = new Map([['testPeerId', { messageCount: 11 }]]);
+    const messageMergeTime = new Average();
+    messageMergeTime.addValue(112);
+    const globalMetrics = { networkCoverage: new Map(), messageMergeTime: messageMergeTime };
+
+    const metrics = new GossipMetrics(recentPeerIds, peerLatencyMetrics, peerMessageMetrics, globalMetrics);
+    const buffer = metrics.toBuffer();
+    const deserializedMetrics = GossipMetrics.fromBuffer(buffer);
+    expect(deserializedMetrics).toEqual(metrics);
   });
 });
