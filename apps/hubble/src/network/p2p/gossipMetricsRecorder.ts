@@ -257,7 +257,7 @@ export class GossipMetricsRecorder {
 
     // Log global metrics
     Object.entries(this._metrics.globalMetrics.networkCoverage).forEach(([_, coverage]) => {
-      log.info(coverage, 'GossipNetworkCoverage');
+      log.info(coverage.coverageMap, 'GossipNetworkCoverage');
     });
     const messageMergeTime = this._metrics.globalMetrics.messageMergeTime;
     log.info(
