@@ -1,5 +1,15 @@
 # @farcaster/core
 
+## 0.9.0
+
+### Minor Changes
+
+- 2bc598a: Added support for Links
+
+### Patch Changes
+
+- 37f515f: Add app version to contactInfo message
+
 ## 0.8.1
 
 ### Patch Changes
