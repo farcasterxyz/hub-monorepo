@@ -190,19 +190,19 @@ export class GossipMetricsRecorder {
   private computePeerLatencyAndCoverageMetrics(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
     // Compute peer-level latency metrics
     const key = `${ackOriginPeerId.toString()}_${ackMessage.pingTimestamp}`;
-    const currentLatencyMetrics = this._metrics.peerLatencyMetrics[key];
+    const currentLatencyMetrics = this._metrics.peerLatencyMetrics[key.toString()];
     const updatedLatencyMetrics: PeerLatencyMetrics = {
       numAcks: (currentLatencyMetrics?.numAcks ?? 0) + 1,
       lastAckTimestamp: currentLatencyMetrics?.lastAckTimestamp ?? ackMessage.ackTimestamp,
     };
-    this._metrics.peerLatencyMetrics[key] = updatedLatencyMetrics;
+    this._metrics.peerLatencyMetrics[key.toString()] = updatedLatencyMetrics;
 
     // Compute coverage metrics
     const coverageKey = ackMessage.pingTimestamp;
     const timeTaken = ackMessage.ackTimestamp - ackMessage.pingTimestamp;
-    const currentCoverage = this._metrics.globalMetrics.networkCoverage[coverageKey];
+    const currentCoverage = this._metrics.globalMetrics.networkCoverage[coverageKey.toString()];
     const updatedCoverage = this.getUpdatedCoverage(ackOriginPeerId, timeTaken, currentCoverage);
-    this._metrics.globalMetrics.networkCoverage[coverageKey] = updatedCoverage;
+    this._metrics.globalMetrics.networkCoverage[coverageKey.toString()] = updatedCoverage;
   }
 
   private async sendPingAndLogMetrics() {

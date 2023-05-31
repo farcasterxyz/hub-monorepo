@@ -105,8 +105,7 @@ describe('NetworkLatencyMetrics', () => {
     expect(Object.keys(recorder.peerMessageMetrics)).toHaveLength(1);
     expect(updatedPeerMessageMetrics?.messageCount).toEqual(2);
     expect(Object.keys(updatedGlobalMetrics.networkCoverage)).toHaveLength(1);
-    // eslint-disable-next-line security/detect-object-injection
-    expect(updatedGlobalMetrics.networkCoverage[pingTimestamp]).toEqual({
+    expect(updatedGlobalMetrics.networkCoverage[pingTimestamp.toString()]).toEqual({
       seenPeerIds: {
         [ackPeerId.toString()]: timeTaken2,
       },
