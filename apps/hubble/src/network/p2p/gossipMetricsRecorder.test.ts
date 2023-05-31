@@ -1,5 +1,5 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { GossipMetricsRecorder } from './gossipMetricsRecorder.js';
+import { GossipMetricsRecorder, GossipMetrics } from './gossipMetricsRecorder.js';
 import {
   AckMessageBody,
   PingMessageBody,
@@ -189,17 +189,16 @@ describe('NetworkLatencyMetrics', () => {
     expect(node.publishCount).toEqual(0);
   });
 
-  // test('GossipMetrics serde works correctly', async () => {
-  //   const recentPeerIds = new Map([['testPeerId', 1]]);
-  //   const peerLatencyMetrics = new Map([['testPeerId_123', { numAcks: 1, lastAckTimestamp: 12345 }]]);
-  //   const peerMessageMetrics = new Map([['testPeerId', { messageCount: 11 }]]);
-  //   const messageMergeTime = {};
-  //   messageMergeTime.addValue(112);
-  //   const globalMetrics = { networkCoverage: new Map(), messageMergeTime: messageMergeTime };
+  test('GossipMetrics serde works correctly', async () => {
+    const recentPeerIds = { testPeerId: 1 };
+    const peerLatencyMetrics = { testPeerId_123: { numAcks: 1, lastAckTimestamp: 12345 } };
+    const peerMessageMetrics = { testPeerId: { messageCount: 11 } };
+    const messageMergeTime = { sum: 112, numElements: 1 };
+    const globalMetrics = { networkCoverage: {}, messageMergeTime: messageMergeTime };
 
-  //   const metrics = new GossipMetrics(recentPeerIds, peerLatencyMetrics, peerMessageMetrics, globalMetrics);
-  //   const buffer = metrics.toBuffer();
-  //   const deserializedMetrics = GossipMetrics.fromBuffer(buffer);
-  //   expect(deserializedMetrics).toEqual(metrics);
-  // });
+    const metrics = new GossipMetrics(recentPeerIds, peerLatencyMetrics, peerMessageMetrics, globalMetrics);
+    const buffer = metrics.toBuffer();
+    const deserializedMetrics = GossipMetrics.fromBuffer(buffer);
+    expect(deserializedMetrics).toEqual(metrics);
+  });
 });
