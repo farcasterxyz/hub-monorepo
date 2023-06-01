@@ -2,6 +2,7 @@ import { ServerWritableStream, HubEvent, SubscribeRequest, HubError, HubResult }
 import { err, ok } from 'neverthrow';
 
 export const STREAM_DRAIN_TIMEOUT_MS = 10_000;
+export const SLOW_CLIENT_GRACE_PERIOD_MS = 60_000;
 export const STREAM_MESSAGE_BUFFER_SIZE = 1000;
 
 /**
@@ -59,14 +60,10 @@ export class BufferedStreamWriter {
 
   // Send all the data that was waiting for the stream to drain.
   private sendWaitingData() {
-    while (this.dataWaitingForDrain.length > 0) {
+    while (this.dataWaitingForDrain.length > 0 && !this.streamIsBackedUp) {
       const message = this.dataWaitingForDrain.shift();
 
-      const res = this.writeToStream(message);
-      // If the write fails, break out of the loop, otherwise we'll end up in an infinite loop
-      if (res.isErr() || res.value === false) {
-        break;
-      }
+      this.writeToStream(message);
     }
   }
 

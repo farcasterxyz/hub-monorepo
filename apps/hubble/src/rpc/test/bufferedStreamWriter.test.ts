@@ -1,15 +1,20 @@
 import { BufferedStreamWriter, STREAM_MESSAGE_BUFFER_SIZE } from '../bufferedStreamWriter.js';
 import { HubEvent, SubscribeRequest, ServerWritableStream } from '@farcaster/hub-nodejs';
 
+type StreamMessage = { data: number };
+
 class MockStream {
   isFull = false;
   isDestroyed = false;
   totalMessages = 0;
+  previousMessage = { data: 0 };
 
   callback?: () => void;
 
-  write(_msg: any): boolean {
+  write(_msg: StreamMessage): boolean {
     this.totalMessages++;
+    expect(_msg.data).toEqual(this.previousMessage.data + 1); // Ensure message order is correct
+    this.previousMessage = _msg;
     return !this.isFull;
   }
 
@@ -27,6 +32,10 @@ class MockStream {
   destroy() {
     this.isDestroyed = true;
   }
+
+  reset() {
+    this.previousMessage = { data: 0 };
+  }
 }
 
 describe('Writing to a stream', () => {
@@ -40,6 +49,7 @@ describe('Writing to a stream', () => {
 
   afterEach(() => {
     mockStream.finishDrain();
+    mockStream.reset();
   });
 
   test('should write to a stream', () => {
@@ -95,8 +105,9 @@ describe('Writing to a stream', () => {
     // Make the stream full, so all writes will be buffered
     mockStream.isFull = true;
     expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
-    expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
-    expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
+    expect(stream.writeToStream({ data: 2 }).isOk()).toBe(true);
+    expect(stream.writeToStream({ data: 3 }).isOk()).toBe(true);
+    expect(stream.writeToStream({ data: 4 }).isOk()).toBe(true);
 
     // Drain the stream but don't reset full state. Simulates a write failing while draining
     mockStream.finishDrain(false);
