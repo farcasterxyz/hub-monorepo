@@ -1,5 +1,17 @@
 # @farcaster/hub-nodejs
 
+## 0.8.0
+
+### Minor Changes
+
+- 2bc598a: Added support for Links
+
+### Patch Changes
+
+- Updated dependencies [37f515f]
+- Updated dependencies [2bc598a]
+  - @farcaster/core@0.9.0
+
 ## 0.7.4
 
 ### Patch Changes
