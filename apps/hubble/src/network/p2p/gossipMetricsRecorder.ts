@@ -9,7 +9,7 @@ import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
 import RocksDB from 'storage/db/rocksdb.js';
 
 const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
-const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/1 * * * *';
+const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
 const METRICS_DB_KEY = 'GossipMetrics';
@@ -239,8 +239,14 @@ export class GossipMetricsRecorder {
     });
 
     // Log global metrics
-    Object.entries(this._metrics.globalMetrics.networkCoverage).forEach(([_, coverage]) => {
-      log.info(coverage.coverageMap, 'GossipNetworkCoverageMetrics');
+    Object.entries(this._metrics.globalMetrics.networkCoverage).forEach(([pingTimestamp, coverage]) => {
+      log.info(
+        {
+          pingTimestamp: Number(pingTimestamp),
+          coverage: coverage.coverageMap,
+        },
+        'GossipNetworkCoverageMetrics'
+      );
     });
     const messageMergeTime = this._metrics.globalMetrics.messageMergeTime;
     log.info(
