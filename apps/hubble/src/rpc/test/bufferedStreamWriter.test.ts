@@ -17,8 +17,8 @@ class MockStream {
     this.callback = callback;
   }
 
-  finishDrain() {
-    this.isFull = false;
+  finishDrain(resetFull = true) {
+    this.isFull = !resetFull;
     if (this.callback) {
       this.callback();
     }
@@ -89,5 +89,24 @@ describe('Writing to a stream', () => {
 
     expect(stream.getCacheSize()).toBe(0);
     expect(mockStream.isDestroyed).toBe(true);
+  });
+
+  test('handles write failing when draining', () => {
+    // Make the stream full, so all writes will be buffered
+    mockStream.isFull = true;
+    expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
+    expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
+    expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
+
+    // Drain the stream but don't reset full state. Simulates a write failing while draining
+    mockStream.finishDrain(false);
+
+    // Stream is still backed up
+    expect(stream.isStreamBackedUp()).toBe(true);
+
+    mockStream.finishDrain(true);
+
+    // It's now cleared
+    expect(stream.isStreamBackedUp()).toBe(false);
   });
 });

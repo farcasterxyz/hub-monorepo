@@ -2,6 +2,9 @@
 yarn-debug.log*
 yarn-error.log*
 
+.DS_Store
+**/.DS_Store
+
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 build

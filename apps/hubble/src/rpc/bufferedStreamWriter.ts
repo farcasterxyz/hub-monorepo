@@ -62,7 +62,11 @@ export class BufferedStreamWriter {
     while (this.dataWaitingForDrain.length > 0) {
       const message = this.dataWaitingForDrain.shift();
 
-      this.writeToStream(message);
+      const res = this.writeToStream(message);
+      // If the write fails, break out of the loop, otherwise we'll end up in an infinite loop
+      if (res.isErr() || res.value === false) {
+        break;
+      }
     }
   }
 
