@@ -101,6 +101,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._metricsRecorder;
   }
 
+  /** Returs the node's network */
+  get network() {
+    return this._network;
+  }
+
   async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {
     if (!this.addressBook) {
       log.error({}, 'address book missing for gossipNode');

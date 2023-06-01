@@ -222,6 +222,7 @@ export class GossipMetricsRecorder {
         {
           peerId: peerId,
           latencyMilliseconds: metrics.lastAckTimestamp - pingTimestamp,
+          peerNetwork: this._gossipNode.network,
         },
         'GossipPeerLatencyMetrics'
       );
@@ -233,6 +234,7 @@ export class GossipMetricsRecorder {
         {
           peerId: peerId.toString(),
           messageCount: metrics.messageCount,
+          peerNetwork: this._gossipNode.network,
         },
         'GossipPeerMessageMetrics'
       );
@@ -244,6 +246,7 @@ export class GossipMetricsRecorder {
         {
           pingTimestamp: Number(pingTimestamp),
           coverage: coverage.coverageMap,
+          peerNetwork: this._gossipNode.network,
         },
         'GossipNetworkCoverageMetrics'
       );
@@ -252,6 +255,7 @@ export class GossipMetricsRecorder {
     log.info(
       {
         messageMergeTime: messageMergeTime.numElements == 0 ? 0 : messageMergeTime.sum / messageMergeTime.numElements,
+        peerNetwork: this._gossipNode.network,
       },
       'GossipGlobalMetrics'
     );
