@@ -8,7 +8,6 @@ import cron from 'node-cron';
 import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
 import RocksDB from 'storage/db/rocksdb.js';
 
-const RECENT_PEER_TTL_MILLISECONDS = 3600 * 1000; // Expire recent peers every 1 hour
 const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
 const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/1 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
@@ -169,7 +168,6 @@ export class GossipMetricsRecorder {
   }
 
   private computePeerLatencyAndCoverageMetrics(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
-    log.info('ComputerPeerLatencyAndCoverage');
     // Compute peer-level latency metrics
     const key = `${ackOriginPeerId.toString()}_${ackMessage.pingTimestamp}`;
     const currentLatencyMetrics = this._metrics.peerLatencyMetrics[key.toString()];
@@ -256,7 +254,7 @@ export class GossipMetricsRecorder {
   expireMetrics() {
     const currTime = Date.now();
     this._metrics.recentPeerIds = Object.fromEntries(
-      Object.entries(this._metrics.recentPeerIds).filter(([_, v]) => currTime - v < RECENT_PEER_TTL_MILLISECONDS)
+      Object.entries(this._metrics.recentPeerIds).filter(([_, v]) => currTime - v < METRICS_TTL_MILLISECONDS)
     );
     this._metrics.globalMetrics.networkCoverage = Object.fromEntries(
       Object.entries(this._metrics.globalMetrics.networkCoverage).filter(
@@ -264,6 +262,7 @@ export class GossipMetricsRecorder {
       )
     );
     this._metrics.globalMetrics.messageMergeTime = { sum: 0, numElements: 0 };
+
     this._metrics.peerLatencyMetrics = Object.fromEntries(
       Object.entries(this._metrics.peerLatencyMetrics).filter(
         ([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS

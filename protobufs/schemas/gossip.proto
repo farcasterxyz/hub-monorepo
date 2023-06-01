@@ -27,14 +27,14 @@ message ContactInfoContent {
 
 message PingMessageBody {
     bytes ping_origin_peer_id = 1;
-    uint32 ping_timestamp = 2;
+    uint64 ping_timestamp = 2;
 }
 
 message AckMessageBody {
     bytes ping_origin_peer_id = 1;
     bytes ack_origin_peer_id = 2;
-    uint32 ping_timestamp = 3;
-    uint32 ack_timestamp = 4;
+    uint64 ping_timestamp = 3;
+    uint64 ack_timestamp = 4;
 }
 
 message NetworkLatencyMessage {

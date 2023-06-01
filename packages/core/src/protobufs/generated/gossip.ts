@@ -1,4 +1,5 @@
 /* eslint-disable */
+import Long from 'long';
 import _m0 from 'protobufjs/minimal';
 import { IdRegistryEvent } from './id_registry_event';
 import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON, Message } from './message';
@@ -339,7 +340,7 @@ export const PingMessageBody = {
       writer.uint32(10).bytes(message.pingOriginPeerId);
     }
     if (message.pingTimestamp !== 0) {
-      writer.uint32(16).uint32(message.pingTimestamp);
+      writer.uint32(16).uint64(message.pingTimestamp);
     }
     return writer;
   },
@@ -363,7 +364,7 @@ export const PingMessageBody = {
             break;
           }
 
-          message.pingTimestamp = reader.uint32();
+          message.pingTimestamp = longToNumber(reader.uint64() as Long);
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -416,10 +417,10 @@ export const AckMessageBody = {
       writer.uint32(18).bytes(message.ackOriginPeerId);
     }
     if (message.pingTimestamp !== 0) {
-      writer.uint32(24).uint32(message.pingTimestamp);
+      writer.uint32(24).uint64(message.pingTimestamp);
     }
     if (message.ackTimestamp !== 0) {
-      writer.uint32(32).uint32(message.ackTimestamp);
+      writer.uint32(32).uint64(message.ackTimestamp);
     }
     return writer;
   },
@@ -450,14 +451,14 @@ export const AckMessageBody = {
             break;
           }
 
-          message.pingTimestamp = reader.uint32();
+          message.pingTimestamp = longToNumber(reader.uint64() as Long);
           continue;
         case 4:
           if (tag != 32) {
             break;
           }
 
-          message.ackTimestamp = reader.uint32();
+          message.ackTimestamp = longToNumber(reader.uint64() as Long);
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -815,6 +816,18 @@ type KeysOfUnion<T> = T extends T ? keyof T : never;
 type Exact<P, I extends P> = P extends Builtin
   ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function longToNumber(long: Long): number {
+  if (long.gt(Number.MAX_SAFE_INTEGER)) {
+    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
+  }
+  return long.toNumber();
+}
+
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;
