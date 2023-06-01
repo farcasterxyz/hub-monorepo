@@ -200,4 +200,16 @@ describe('NetworkLatencyMetrics', () => {
     const deserializedMetrics = GossipMetrics.fromBuffer(buffer);
     expect(deserializedMetrics).toEqual(metrics);
   });
+
+  test('Message merge times are updated correctly', async () => {
+    const nodePeerId = await createEd25519PeerId();
+    const node = new MockGossipNode(nodePeerId);
+    const recorder = new GossipMetricsRecorder(node);
+    await recorder.start();
+    expect(recorder.globalMetrics.messageMergeTime).toEqual({ numElements: 0, sum: 0 });
+    recorder.recordMessageMerge(10);
+    expect(recorder.globalMetrics.messageMergeTime).toEqual({ numElements: 1, sum: 10 });
+    recorder.recordMessageMerge(100);
+    expect(recorder.globalMetrics.messageMergeTime).toEqual({ numElements: 2, sum: 110 });
+  });
 });
