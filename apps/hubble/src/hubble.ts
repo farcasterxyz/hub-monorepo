@@ -15,6 +15,8 @@ import {
   HubRpcClient,
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
+  NetworkLatencyMessage,
+  AckMessageBody,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
@@ -61,6 +63,7 @@ import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet.js';
 import StoreEventHandler from './storage/stores/storeEventHandler.js';
 import { RetryProvider } from './eth/retryProvider.js';
 import { JsonRpcProvider } from 'ethers';
+import { GOSSIP_PROTOCOL_VERSION } from './network/p2p/protocol.js';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync';
 
@@ -556,6 +559,9 @@ export class Hub implements HubInterface {
       }
       return ok(undefined);
     } else if (gossipMessage.networkLatencyMessage) {
+      if (peerIdResult.isOk()) {
+        await this.handleNetworkLatencyMessage(peerIdResult.value, gossipMessage.networkLatencyMessage);
+      }
       return ok(undefined);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid message type'));
@@ -623,6 +629,29 @@ export class Hub implements HubInterface {
       if (syncResult.isErr()) {
         log.error({ error: syncResult.error, peerId }, 'failed to sync with new peer');
       }
+    }
+  }
+
+  private async handleNetworkLatencyMessage(peerId: PeerId, message: NetworkLatencyMessage) {
+    // Respond to ping message with an ack message
+    if (message.pingMessage) {
+      const pingMessage = message.pingMessage;
+      const ackMessage = AckMessageBody.create({
+        pingOriginPeerId: pingMessage.pingOriginPeerId,
+        ackOriginPeerId: this.gossipNode.peerId!.toBytes(),
+        pingTimestamp: pingMessage.pingTimestamp,
+        ackTimestamp: Date.now(),
+      });
+      const networkLatencyMessage = NetworkLatencyMessage.create({
+        ackMessage,
+      });
+      const ackGossipMessage = GossipMessage.create({
+        networkLatencyMessage,
+        topics: [this.gossipNode.primaryTopic()],
+        peerId: peerId.toBytes() ?? new Uint8Array(),
+        version: GOSSIP_PROTOCOL_VERSION,
+      });
+      await this.gossipNode.publish(ackGossipMessage);
     }
   }
 

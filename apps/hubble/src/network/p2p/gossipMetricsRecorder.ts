@@ -10,7 +10,7 @@ import RocksDB from 'storage/db/rocksdb.js';
 
 const RECENT_PEER_TTL_MILLISECONDS = 3600 * 1000; // Expire recent peers every 1 hour
 const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
-const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
+const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/1 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
 const METRICS_DB_KEY = 'GossipMetrics';
@@ -134,25 +134,6 @@ export class GossipMetricsRecorder {
 
     if (!gossipMessage.networkLatencyMessage) {
       return;
-    } else if (gossipMessage.networkLatencyMessage.pingMessage) {
-      // Respond to ping message with an ack message
-      const pingMessage = gossipMessage.networkLatencyMessage.pingMessage;
-      const ackMessage = AckMessageBody.create({
-        pingOriginPeerId: pingMessage.pingOriginPeerId,
-        ackOriginPeerId: this._gossipNode.peerId!.toBytes(),
-        pingTimestamp: pingMessage.pingTimestamp,
-        ackTimestamp: Date.now(),
-      });
-      const networkLatencyMessage = NetworkLatencyMessage.create({
-        ackMessage,
-      });
-      const ackGossipMessage = GossipMessage.create({
-        networkLatencyMessage,
-        topics: [this._gossipNode.primaryTopic()],
-        peerId: this._gossipNode.peerId?.toBytes() ?? new Uint8Array(),
-        version: GOSSIP_PROTOCOL_VERSION,
-      });
-      await this._gossipNode.publish(ackGossipMessage);
     } else if (gossipMessage.networkLatencyMessage.ackMessage) {
       const ackMessage = gossipMessage.networkLatencyMessage.ackMessage;
       const pingOriginPeerId = this.getPeerIdFromBytes(ackMessage.pingOriginPeerId);
@@ -188,6 +169,7 @@ export class GossipMetricsRecorder {
   }
 
   private computePeerLatencyAndCoverageMetrics(ackMessage: AckMessageBody, ackOriginPeerId: PeerId) {
+    log.info('ComputerPeerLatencyAndCoverage');
     // Compute peer-level latency metrics
     const key = `${ackOriginPeerId.toString()}_${ackMessage.pingTimestamp}`;
     const currentLatencyMetrics = this._metrics.peerLatencyMetrics[key.toString()];
@@ -248,23 +230,26 @@ export class GossipMetricsRecorder {
     });
 
     // Log peer-level message metrics
-    Object.entries(this.peerMessageMetrics).forEach(([peerId, metrics]) => {
-      log.info({
-        peerId: peerId.toString(),
-        messageCount: metrics.messageCount,
-      });
+    Object.entries(this._metrics.peerMessageMetrics).forEach(([peerId, metrics]) => {
+      log.info(
+        {
+          peerId: peerId.toString(),
+          messageCount: metrics.messageCount,
+        },
+        'GossipPeerMessageMetrics'
+      );
     });
 
     // Log global metrics
     Object.entries(this._metrics.globalMetrics.networkCoverage).forEach(([_, coverage]) => {
-      log.info(coverage.coverageMap, 'GossipNetworkCoverage');
+      log.info(coverage.coverageMap, 'GossipNetworkCoverageMetrics');
     });
     const messageMergeTime = this._metrics.globalMetrics.messageMergeTime;
     log.info(
       {
         messageMergeTime: messageMergeTime.numElements == 0 ? 0 : messageMergeTime.sum / messageMergeTime.numElements,
       },
-      'GossipMergeMetrics'
+      'GossipGlobalMetrics'
     );
   }
 

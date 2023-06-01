@@ -71,13 +71,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
-  private _networkLatencyMetricsRecorder?: GossipMetricsRecorder;
+  private _metricsRecorder?: GossipMetricsRecorder;
 
   constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean, db?: RocksDB) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
     if (networkLatencyMessagesEnabled) {
-      this._networkLatencyMetricsRecorder = new GossipMetricsRecorder(this, db);
+      this._metricsRecorder = new GossipMetricsRecorder(this, db);
     }
   }
 
@@ -94,6 +94,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /** Returns the node's libp2p AddressBook */
   get addressBook() {
     return this._node?.peerStore.addressBook;
+  }
+
+  /** Returns the node's metrics recorder object */
+  get metricsRecorder() {
+    return this._metricsRecorder;
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {
@@ -175,7 +180,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
 
     // Start sending network latency pings if enabled
-    await this._networkLatencyMetricsRecorder?.start();
+    await this._metricsRecorder?.start();
 
     return ok(undefined);
   }
@@ -188,7 +193,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async stop() {
     await this._node?.stop();
     this._periodicPeerCheckJob?.stop();
-    await this._networkLatencyMetricsRecorder?.stop();
+    await this._metricsRecorder?.stop();
 
     log.info({ identity: this.identity }, 'Stopped libp2p...');
   }
@@ -220,11 +225,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   async recordMessageReceipt(gossipMessage: GossipMessage) {
-    this._networkLatencyMetricsRecorder?.recordMessageReceipt(gossipMessage);
+    this._metricsRecorder?.recordMessageReceipt(gossipMessage);
   }
 
   async recordMessageMerge(mergeTime: number) {
-    this._networkLatencyMetricsRecorder?.recordMessageMerge(mergeTime);
+    this._metricsRecorder?.recordMessageMerge(mergeTime);
   }
 
   /** Publishes a Gossip Message to the network */

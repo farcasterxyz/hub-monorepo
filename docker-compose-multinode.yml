@@ -21,7 +21,7 @@ services:
     command:
       [
 	"node", 
-	"apps/hubble/build/cli.js", 
+	"build/cli.js", 
 	"start",
         "--gossip-port",
         "2282",
@@ -52,7 +52,7 @@ services:
     command:
       [
 	"node", 
-	"apps/hubble/build/cli.js", 
+	"build/cli.js", 
         "start",
         "--gossip-port",
         "2284",

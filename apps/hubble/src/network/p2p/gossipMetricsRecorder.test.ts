@@ -1,46 +1,18 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 import { GossipMetricsRecorder, GossipMetrics } from './gossipMetricsRecorder.js';
-import {
-  AckMessageBody,
-  PingMessageBody,
-  NetworkLatencyMessage,
-  GossipMessage,
-  HubResult,
-} from '@farcaster/hub-nodejs';
+import { AckMessageBody, NetworkLatencyMessage, GossipMessage } from '@farcaster/hub-nodejs';
 import { GossipNode } from './gossipNode.js';
 import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
-import { PublishResult } from '@libp2p/interface-pubsub';
-import { ok } from 'neverthrow';
-import { PeerId } from '@libp2p/interface-peer-id';
-
-class MockGossipNode extends GossipNode {
-  publishCount = 0;
-  _peerId: PeerId;
-
-  constructor(peerId: PeerId) {
-    super();
-    this._peerId = peerId;
-  }
-
-  override async publish(_: GossipMessage): Promise<HubResult<PublishResult>[]> {
-    this.publishCount += 1;
-    return [ok({ recipients: [] })];
-  }
-
-  override get peerId(): PeerId {
-    return this._peerId;
-  }
-}
 
 describe('NetworkLatencyMetrics', () => {
   test('recordMessageReceipt updates metrics state', async () => {
-    const nodePeerId = await createEd25519PeerId();
-    const node = new MockGossipNode(nodePeerId);
-    const recorder = new GossipMetricsRecorder(node);
-    await recorder.start();
+    const node = new GossipNode(undefined, true, undefined);
+    await node.start([]);
+    const nodePeerId = node.peerId ?? (await createEd25519PeerId());
     const otherPeerId = await createEd25519PeerId();
     let ackPeerId = await createEd25519PeerId();
     const pingTimestamp = Date.now();
+    const recorder = node.metricsRecorder ?? new GossipMetricsRecorder(node);
 
     const timeTaken1 = 3600 * 1000;
     let ackMessage = AckMessageBody.create({
@@ -58,7 +30,7 @@ describe('NetworkLatencyMetrics', () => {
       peerId: node.peerId?.toBytes() ?? new Uint8Array(),
       version: GOSSIP_PROTOCOL_VERSION,
     });
-    recorder.recordMessageReceipt(gossipMessage);
+    recorder?.recordMessageReceipt(gossipMessage);
 
     // Recent peers set should now have ack sender peerId
     expect(Object.keys(recorder.recentPeerIds)).toHaveLength(0);
@@ -95,7 +67,7 @@ describe('NetworkLatencyMetrics', () => {
 
     // Metrics map should have ack with updates coverage
     const peerMetricsKey = `${ackPeerId.toString()}_${pingTimestamp}`;
-    const updatedPeerLatencyMetrics = recorder.peerLatencyMetrics[peerMetricsKey];
+    const updatedPeerLatencyMetrics = recorder.peerLatencyMetrics[peerMetricsKey.toString()];
     const updatedGlobalMetrics = recorder.globalMetrics;
     const updatedPeerMessageMetrics = recorder.peerMessageMetrics[nodePeerId.toString()];
     expect(Object.keys(recorder.peerLatencyMetrics)).toHaveLength(1);
@@ -118,35 +90,11 @@ describe('NetworkLatencyMetrics', () => {
     });
   });
 
-  test('Network latency acks are sent on ping receipt', async () => {
-    const nodePeerId = await createEd25519PeerId();
-    const node = new MockGossipNode(nodePeerId);
-    const recorder = new GossipMetricsRecorder(node);
-    await recorder.start();
-    // Ping message should be responded to with an ack message
-    const pingMessage = PingMessageBody.create({
-      pingOriginPeerId: nodePeerId.toBytes(),
-      pingTimestamp: Date.now(),
-    });
-    const networkLatencyMessage = NetworkLatencyMessage.create({
-      pingMessage,
-    });
-    const gossipMessage = GossipMessage.create({
-      networkLatencyMessage,
-      topics: [node.primaryTopic()],
-      peerId: node.peerId?.toBytes() ?? new Uint8Array(),
-      version: GOSSIP_PROTOCOL_VERSION,
-    });
-    await recorder.recordMessageReceipt(gossipMessage);
-    expect(node.publishCount).toEqual(1);
-  });
-
   test('Network latency metrics are logged on ack receipt', async () => {
-    const nodePeerId = await createEd25519PeerId();
-    const node = new MockGossipNode(nodePeerId);
-    const recorder = new GossipMetricsRecorder(node);
-    await recorder.start();
+    const node = new GossipNode(undefined, true, undefined);
+    await node.start([]);
     const senderPeerId = await createEd25519PeerId();
+    const recorder = node.metricsRecorder ?? new GossipMetricsRecorder(node);
 
     // Metrics should not be logged if ping origin peerId does not match node's peerId
     const ackPeerId = await createEd25519PeerId();
@@ -166,7 +114,6 @@ describe('NetworkLatencyMetrics', () => {
     });
     await recorder.recordMessageReceipt(gossipMessage);
     expect(Object.keys(recorder.recentPeerIds)).toHaveLength(0);
-    expect(node.publishCount).toEqual(0);
 
     // Metrics should be logged if ping origin peerId matches node's peerId
     ackMessage = AckMessageBody.create({
@@ -185,7 +132,6 @@ describe('NetworkLatencyMetrics', () => {
     });
     await recorder.recordMessageReceipt(gossipMessage);
     expect(Object.keys(recorder.recentPeerIds)).toHaveLength(1);
-    expect(node.publishCount).toEqual(0);
   });
 
   test('GossipMetrics serde works correctly', async () => {
@@ -202,9 +148,9 @@ describe('NetworkLatencyMetrics', () => {
   });
 
   test('Message merge times are updated correctly', async () => {
-    const nodePeerId = await createEd25519PeerId();
-    const node = new MockGossipNode(nodePeerId);
-    const recorder = new GossipMetricsRecorder(node);
+    const node = new GossipNode(undefined, true, undefined);
+    node.start([]);
+    const recorder = node.metricsRecorder ?? new GossipMetricsRecorder(node);
     await recorder.start();
     expect(recorder.globalMetrics.messageMergeTime).toEqual({ numElements: 0, sum: 0 });
     recorder.recordMessageMerge(10);
