@@ -10,6 +10,7 @@ import StoreEventHandler from './storeEventHandler.js';
 import { jestRocksDB } from '../db/jestUtils.js';
 import { ResultAsync, ok } from 'neverthrow';
 import { HubError } from '@farcaster/hub-nodejs';
+import { Transaction } from '../db/rocksdb.js';
 
 const db = jestRocksDB('protobufs.generalStore.test');
 const eventHandler = new StoreEventHandler(db);
@@ -51,10 +52,10 @@ class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
   override validateRemove(_remove: CastRemoveMessage): HubAsyncResult<void> {
     throw new Error('Method not implemented.');
   }
-  override async buildSecondaryIndices(_add: CastAddMessage): HubAsyncResult<void> {
+  override async buildSecondaryIndices(_txn: Transaction, _add: CastAddMessage): HubAsyncResult<void> {
     return ok(undefined);
   }
-  override async deleteSecondaryIndices(_add: CastAddMessage): HubAsyncResult<void> {
+  override async deleteSecondaryIndices(_txn: Transaction, _add: CastAddMessage): HubAsyncResult<void> {
     return ok(undefined);
   }
 }

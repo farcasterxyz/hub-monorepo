@@ -70,8 +70,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
   abstract validateAdd(add: TAdd): HubAsyncResult<void>;
   abstract validateRemove(remove: TRemove): HubAsyncResult<void>;
-  abstract buildSecondaryIndices(add: TAdd): HubAsyncResult<void>;
-  abstract deleteSecondaryIndices(add: TAdd): HubAsyncResult<void>;
+  abstract buildSecondaryIndices(txn: Transaction, add: TAdd): HubAsyncResult<void>;
+  abstract deleteSecondaryIndices(txn: Transaction, add: TAdd): HubAsyncResult<void>;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
@@ -459,7 +459,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     const addsKey = this._makeAddKey(message as any);
     txn = txn.put(addsKey, Buffer.from(tsHash.value));
 
-    const build = await this.buildSecondaryIndices(message);
+    const build = await this.buildSecondaryIndices(txn, message);
     if (build.isErr()) {
       return err(build.error);
     }
@@ -479,7 +479,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       return err(result.error);
     }
 
-    const build = await this.deleteSecondaryIndices(message);
+    const build = await this.deleteSecondaryIndices(txn, message);
     if (build.isErr()) {
       return err(build.error);
     }
