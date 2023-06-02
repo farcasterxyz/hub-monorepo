@@ -46,7 +46,11 @@ import { MessagesPage } from '../storage/stores/types.js';
 import { logger } from '../utils/logger.js';
 import { addressInfoFromParts } from '../utils/p2p.js';
 import { RateLimiterAbstract, RateLimiterMemory } from 'rate-limiter-flexible';
-import { BufferedStreamWriter } from './bufferedStreamWriter.js';
+import {
+  BufferedStreamWriter,
+  STREAM_MESSAGE_BUFFER_SIZE,
+  SLOW_CLIENT_GRACE_PERIOD_MS,
+} from './bufferedStreamWriter.js';
 import { sleep } from '../utils/crypto.js';
 
 export type RpcUsers = Map<string, string[]>;
@@ -940,11 +944,12 @@ export default class Server {
 
                 return;
               } else {
-                if (writeResult._unsafeUnwrap() === false) {
+                if (writeResult.value === false) {
                   // If the stream was buffered, we can wait for a bit before continuing
                   // to allow the client to read the data. If this happens too much, the bufferedStreamWriter
                   // will timeout and destroy the stream.
-                  await sleep(10);
+                  // The buffered writer is not async to make it easier to preserve ordering guarantees. So, we sleep here
+                  await sleep(SLOW_CLIENT_GRACE_PERIOD_MS / STREAM_MESSAGE_BUFFER_SIZE);
                 }
 
                 // Write was successful, check the RSS usage
