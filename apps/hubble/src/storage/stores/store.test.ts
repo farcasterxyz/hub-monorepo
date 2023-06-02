@@ -1,29 +1,61 @@
 import { CastAddMessage, CastRemoveMessage, NobleEd25519Signer, makeCastAdd } from '@farcaster/hub-nodejs';
 import * as ed from '@noble/ed25519';
-import { Store } from './store.js';
+import { DeepPartial, Store } from './store.js';
 import { MessageType, HubAsyncResult } from '@farcaster/hub-nodejs';
-import { UserMessagePostfix, UserPostfix } from 'storage/db/types.js';
+import { UserMessagePostfix, UserPostfix } from '../db/types.js';
+import { Message } from '@farcaster/hub-nodejs';
+import { isCastAddMessage } from '@farcaster/hub-nodejs';
+import { isCastRemoveMessage } from '@farcaster/hub-nodejs';
+import StoreEventHandler from './storeEventHandler.js';
+import { jestRocksDB } from '../db/jestUtils.js';
+import { ResultAsync, ok } from 'neverthrow';
+import { HubError } from '@farcaster/hub-nodejs';
 
-// beforeEach(() => {
-// });
+const db = jestRocksDB('protobufs.generalStore.test');
+const eventHandler = new StoreEventHandler(db);
 
 class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
+  override _makeAddKey = (data: DeepPartial<CastAddMessage>) => {
+    return data.hash as Uint8Array as Buffer;
+  };
+  override _makeRemoveKey = (data: DeepPartial<CastRemoveMessage>) => {
+    return data.hash as Uint8Array as Buffer;
+  };
+  override _isAddType: (message: Message) => message is CastAddMessage = isCastAddMessage;
+  override _isRemoveType: ((message: Message) => message is CastRemoveMessage) | undefined = isCastRemoveMessage;
   override _postfix: UserMessagePostfix = UserPostfix.CastMessage;
-  override _addType: CastAddMessage;
-  override _removeType: any;
-  override _addMessageType: MessageType;
-  override _removeMessageType: MessageType | undefined;
-  override validateAdd(_add: CastAddMessage): HubAsyncResult<void> {
-    throw new Error('Method not implemented.');
+  override _addMessageType: MessageType = MessageType.CAST_ADD;
+  override _removeMessageType: MessageType | undefined = MessageType.CAST_REMOVE;
+  override async validateAdd(message: CastAddMessage): HubAsyncResult<void> {
+    // Look up the remove tsHash for this cast
+    const castRemoveTsHash = await ResultAsync.fromPromise(
+      this._db.get(this._makeRemoveKey(message as unknown as CastRemoveMessage)),
+      () => undefined
+    );
+
+    // If remove tsHash exists, fail because this cast has already been removed
+    if (castRemoveTsHash.isOk()) {
+      throw new HubError('bad_request.conflict', 'message conflicts with a CastRemove');
+    }
+
+    // Look up the add tsHash for this cast
+    const castAddTsHash = await ResultAsync.fromPromise(this._db.get(this._makeAddKey(message)), () => undefined);
+
+    // If add tsHash exists, no-op because this cast has already been added
+    if (castAddTsHash.isOk()) {
+      throw new HubError('bad_request.duplicate', 'message has already been merged');
+    }
+
+    return ok(undefined);
   }
   override validateRemove(_remove: CastRemoveMessage): HubAsyncResult<void> {
     throw new Error('Method not implemented.');
   }
-  override buildSecondaryIndices(_add: CastAddMessage): HubAsyncResult<void> {
-    throw new Error('Method not implemented.');
+  override async buildSecondaryIndices(_add: CastAddMessage): HubAsyncResult<void> {
+    return ok(undefined);
   }
-  override deleteSecondaryIndices(_add: CastAddMessage): HubAsyncResult<void> {
-    throw new Error('Method not implemented.');
+  override async deleteSecondaryIndices(_add: CastAddMessage): HubAsyncResult<void> {
+    return ok(undefined);
   }
 }
 
@@ -43,10 +75,13 @@ describe('store', () => {
       ed25519Signer
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await new TestStore(null!, null!, {
+    const store = new TestStore(db, eventHandler, {
       pruneSizeLimit: 100,
       pruneTimeLimit: 100,
-    }).getAdd(castAdd._unsafeUnwrap());
+    });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await store.merge(castAdd._unsafeUnwrap());
+
+    await store.getAdd({ hash: castAdd._unsafeUnwrap().hash, data: { fid: castAdd._unsafeUnwrap().data.fid } });
   });
 });

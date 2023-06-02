@@ -1,12 +1,9 @@
 import {
-  HashScheme,
   HubAsyncResult,
   HubError,
   HubEventType,
   Message,
-  MessageData,
   MessageType,
-  SignatureScheme,
   bytesCompare,
   getFarcasterTime,
   isHubError,
@@ -20,61 +17,40 @@ import {
   makeMessagePrimaryKey,
   makeTsHash,
   putMessageTransaction,
-} from 'storage/db/message.js';
+} from '../db/message.js';
 import RocksDB, { Transaction } from '../db/rocksdb.js';
 import StoreEventHandler, { HubEventArgs } from './storeEventHandler.js';
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from './types.js';
 import AsyncLock from 'async-lock';
-import { UserMessagePostfix } from 'storage/db/types.js';
+import { UserMessagePostfix } from '../db/types.js';
 import { ResultAsync, err, ok } from 'neverthrow';
-import { logger } from 'utils/logger.js';
+import { logger } from '../../utils/logger.js';
 
-interface ExtractibleHashKey<TData extends Message> {
-  data: MessageData | undefined;
-  hash: Uint8Array;
-  hashScheme: HashScheme;
-  signature: Uint8Array;
-  signatureScheme: SignatureScheme;
-  signer: Uint8Array;
-  fid: number;
-  makeKey: (data: ExtractibleHashKey<TData>) => Buffer;
-  isType: (data: Message) => data is TData;
-}
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
 
-interface ExtractibleBufferKey<TData extends Message> {
-  data: MessageData | undefined;
-  hash: Uint8Array;
-  hashScheme: HashScheme;
-  signature: Uint8Array;
-  signatureScheme: SignatureScheme;
-  signer: Uint8Array;
-  fid: number;
-  buffer: Uint8Array;
-  makeKey: (data: ExtractibleBufferKey<TData>) => Buffer;
-  isType: (data: Message) => data is TData;
-}
+const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
+  if (typeof partial === 'object') {
+    for (const key in partial) {
+      // eslint-disable-next-line security/detect-object-injection
+      if (partial[key] !== undefined) {
+        if (!deepPartialEquals(partial[key] as any, whole[key as keyof T] as any)) {
+          return false;
+        }
+      }
+    }
+  } else {
+    return partial === whole;
+  }
 
-interface ExtractibleTypedTargetKey<TData extends Message> {
-  data: MessageData | undefined;
-  hash: Uint8Array;
-  hashScheme: HashScheme;
-  signature: Uint8Array;
-  signatureScheme: SignatureScheme;
-  signer: Uint8Array;
-  fid: number;
-  type: string;
-  target: any;
-  makeKey: (data: ExtractibleTypedTargetKey<TData>) => Buffer;
-  isType: (data: Message) => data is TData;
-}
+  return true;
+};
 
-type ExtractibleKey<TData extends Message> =
-  | ExtractibleHashKey<TData>
-  | ExtractibleBufferKey<TData>
-  | ExtractibleTypedTargetKey<TData>;
-
-export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends ExtractibleKey<TRemove>> {
-  private _db: RocksDB;
+export abstract class Store<TAdd extends Message, TRemove extends Message> {
+  protected _db: RocksDB;
   private _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number | undefined;
   private _pruneTimeLimit: number | undefined;
@@ -85,10 +61,10 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
   abstract _postfix: UserMessagePostfix;
 
-  // A very sad typehack required because javascript knows nothing about
-  // generic types.
-  abstract _addType: TAdd;
-  abstract _removeType: TRemove | undefined;
+  abstract _makeAddKey: (data: DeepPartial<TAdd>) => Buffer;
+  abstract _makeRemoveKey: ((data: DeepPartial<TRemove>) => Buffer) | undefined;
+  abstract _isAddType: (message: Message) => message is TAdd;
+  abstract _isRemoveType: ((message: Message) => message is TRemove) | undefined;
   abstract _addMessageType: MessageType;
   abstract _removeMessageType: MessageType | undefined;
 
@@ -106,60 +82,42 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
   }
 
   /** Looks up TAdd message by tsHash */
-  async getAdd(data: Partial<ExtractibleKey<TAdd>>): Promise<TAdd> {
-    const addsKey = this._addType.makeKey(data as any);
+  async getAdd(extractible: DeepPartial<TAdd>): Promise<TAdd> {
+    const addsKey = this._makeAddKey(extractible);
     const messageTsHash = await this._db.get(addsKey);
-    return getMessage(this._db, data.fid!, this._postfix, messageTsHash);
+    return getMessage(this._db, extractible.data!.fid!, this._postfix, messageTsHash);
   }
 
   /** Looks up TRemove message by cast tsHash */
-  async getRemove(data: Partial<ExtractibleKey<TRemove>>): Promise<TRemove> {
-    if (!this._removeType) {
+  async getRemove(extractible: DeepPartial<TRemove>): Promise<TRemove> {
+    if (!this._makeRemoveKey) {
       throw new Error('remove type is unsupported for this store');
     }
-    const removesKey = this._removeType.makeKey(data as any);
+    const removesKey = this._makeRemoveKey(extractible);
     const messageTsHash = await this._db.get(removesKey);
-    return getMessage(this._db, data.fid!, this._postfix, messageTsHash);
+    return getMessage(this._db, extractible.data!.fid!, this._postfix, messageTsHash);
   }
 
   /** Gets all TAdd messages for an fid */
-  async getAddsByFid(data: Partial<ExtractibleKey<TAdd>>, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {
-    const castMessagesPrefix = makeMessagePrimaryKey(data.fid!, this._postfix);
+  async getAddsByFid(extractible: DeepPartial<TAdd>, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {
+    const castMessagesPrefix = makeMessagePrimaryKey(extractible.data!.fid!, this._postfix);
     const filter = (message: Message): message is TAdd => {
-      let match = this._addType.isType(message);
-      for (const key in Object.keys(data)) {
-        // eslint-disable-next-line security/detect-object-injection
-        const value = data[key as keyof Partial<ExtractibleKey<TAdd>>];
-        if (value) {
-          match = match && value === message.data![key as keyof MessageData];
-        }
-      }
-
-      return true;
+      return this._isAddType(message) && deepPartialEquals(extractible, message);
     };
     return getMessagesPageByPrefix(this._db, castMessagesPrefix, filter, pageOptions);
   }
 
   /** Gets all TRemove messages for an fid */
   async getRemovesByFid(
-    data: Partial<ExtractibleKey<TAdd>>,
+    extractible: DeepPartial<TRemove>,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<TRemove>> {
-    if (!this._removeType) {
+    if (!this._makeRemoveKey) {
       throw new Error('remove type is unsupported for this store');
     }
-    const castMessagesPrefix = makeMessagePrimaryKey(data.fid!, this._postfix);
+    const castMessagesPrefix = makeMessagePrimaryKey(extractible.data!.fid!, this._postfix);
     const filter = (message: Message): message is TRemove => {
-      let match = this._removeType!.isType(message);
-      for (const key in Object.keys(data)) {
-        // eslint-disable-next-line security/detect-object-injection
-        const value = data[key as keyof Partial<ExtractibleKey<TRemove>>];
-        if (value) {
-          match = match && value === message.data![key as keyof MessageData];
-        }
-      }
-
-      return true;
+      return this._isRemoveType!(message) && deepPartialEquals(extractible, message);
     };
     return getMessagesPageByPrefix(this._db, castMessagesPrefix, filter, pageOptions);
   }
@@ -167,14 +125,14 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
   async getAllMessagesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd | TRemove>> {
     const prefix = makeMessagePrimaryKey(fid, this._postfix);
     const filter = (message: Message): message is TAdd | TRemove => {
-      return this._addType.isType(message) || (!!this._removeType && this._removeType.isType(message));
+      return this._isAddType(message) || (!!this._isRemoveType && this._isRemoveType(message));
     };
     return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
   }
 
-  /** Merges a LinkAdd or LinkRemove message into the LinkStore */
+  /** Merges a TAdd or TRemove message into the Store */
   async merge(message: Message): Promise<number> {
-    if (!this._addType.isType(message) && (!this._removeType || !this._removeType.isType(message))) {
+    if (!this._isAddType(message) && (!this._isRemoveType || !this._isRemoveType(message))) {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
@@ -183,7 +141,11 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
         message.data!.fid.toString(),
         async () => {
           if (this._pruneSizeLimit) {
-            const prunableResult = await this._eventHandler.isPrunable(message, this._postfix, this._pruneSizeLimit);
+            const prunableResult = await this._eventHandler.isPrunable(
+              message as any,
+              this._postfix,
+              this._pruneSizeLimit
+            );
             if (prunableResult.isErr()) {
               throw prunableResult.error;
             } else if (prunableResult.value) {
@@ -191,9 +153,9 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
             }
           }
 
-          if (this._addType.isType(message)) {
+          if (this._isAddType(message)) {
             return this.mergeAdd(message);
-          } else if (this._removeType && this._removeType.isType(message)) {
+          } else if (this._isRemoveType && this._isRemoveType(message)) {
             return this.mergeRemove(message);
           } else {
             throw new HubError('bad_request.validation_failure', 'invalid message type');
@@ -208,11 +170,11 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
   async revoke(message: Message): HubAsyncResult<number> {
     let txn = this._db.transaction();
-    if (this._addType.isType(message)) {
+    if (this._isAddType(message)) {
       const txnMaybe = await this.deleteAddTransaction(txn, message);
       if (txnMaybe.isErr()) throw txnMaybe.error;
       txn = txnMaybe.value;
-    } else if (this._removeType && this._removeType.isType(message)) {
+    } else if (this._isRemoveType && this._isRemoveType(message)) {
       const txnMaybe = await this.deleteRemoveTransaction(txn, message);
       if (txnMaybe.isErr()) throw txnMaybe.error;
       txn = txnMaybe.value;
@@ -267,11 +229,11 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
       let txn = this._db.transaction();
 
-      if (this._addType.isType(nextMessage.value)) {
+      if (this._isAddType(nextMessage.value)) {
         const txnMaybe = await this.deleteAddTransaction(txn, nextMessage.value);
         if (txnMaybe.isErr()) throw txnMaybe.error;
         txn = txnMaybe.value;
-      } else if (this._removeType && this._removeType.isType(nextMessage.value)) {
+      } else if (this._isRemoveType && this._isRemoveType(nextMessage.value)) {
         const txnMaybe = await this.deleteRemoveTransaction(txn, nextMessage.value);
         if (txnMaybe.isErr()) throw txnMaybe.error;
         txn = txnMaybe.value;
@@ -294,7 +256,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
           }
         },
         (e) => {
-          logger.error({ errCode: e.errCode }, `error pruning link message for fid ${fid}: ${e.message}`);
+          logger.error({ errCode: e.errCode }, `error pruning message for fid ${fid}: ${e.message}`);
         }
       );
 
@@ -381,7 +343,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
     // Compare message types to enforce that RemoveWins in case of LWW ties.
     if (aType === this._removeMessageType && bType === this._addMessageType) {
       return 1;
-    } else if (aType === this._addMessageType && bType === MessageType.LINK_REMOVE) {
+    } else if (aType === this._addMessageType && bType === this._removeMessageType) {
       return -1;
     }
 
@@ -391,17 +353,16 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
   /**
    * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of
-   * adding a Link to the Store.
+   * adding a Message to the Store.
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
   private async getMergeConflicts(message: TAdd | TRemove): HubAsyncResult<(TAdd | TRemove)[]> {
-    const result = await (this._addType.isType(message) ? this.validateAdd(message) : this.validateRemove(message));
+    const result = await (this._isAddType(message) ? this.validateAdd(message) : this.validateRemove(message));
 
     if (result.isErr()) {
       return err(result.error);
     }
-
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -409,9 +370,9 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
     const conflicts: (TAdd | TRemove)[] = [];
 
-    if (this._removeType) {
-      // Checks if there is a remove timestamp hash for this link
-      const removeKey = this._removeType.makeKey(message as any);
+    if (this._makeRemoveKey) {
+      // Checks if there is a remove timestamp hash for this
+      const removeKey = this._makeRemoveKey(message as any);
       const removeTsHash = await ResultAsync.fromPromise(this._db.get(removeKey), () => undefined);
 
       if (removeTsHash.isOk()) {
@@ -438,9 +399,8 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
         }
       }
     }
-
-    // Checks if there is an add timestamp hash for this link
-    const addKey = this._addType.makeKey(message as any);
+    // Checks if there is an add timestamp hash for this
+    const addKey = this._makeAddKey(message as any);
     const addTsHash = await ResultAsync.fromPromise(this._db.get(addKey), () => undefined);
 
     if (addTsHash.isOk()) {
@@ -467,11 +427,11 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
   private async deleteManyTransaction(txn: Transaction, messages: (TAdd | TRemove)[]): Promise<Transaction> {
     for (const message of messages) {
-      if (this._addType.isType(message)) {
+      if (this._isAddType(message)) {
         const txnMaybe = await this.deleteAddTransaction(txn, message);
         if (txnMaybe.isErr()) throw txnMaybe.error;
         txn = txnMaybe.value;
-      } else if (this._removeType?.isType(message)) {
+      } else if (this._isRemoveType && this._isRemoveType(message)) {
         const txnMaybe = await this.deleteRemoveTransaction(txn, message);
         if (txnMaybe.isErr()) throw txnMaybe.error;
         txn = txnMaybe.value;
@@ -496,7 +456,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
     txn = putMessageTransaction(txn, message);
 
     // Puts the message into the TAdds Set index
-    const addsKey = this._addType.makeKey(message as any);
+    const addsKey = this._makeAddKey(message as any);
     txn = txn.put(addsKey, Buffer.from(tsHash.value));
 
     const build = await this.buildSecondaryIndices(message);
@@ -525,7 +485,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
     }
 
     // Delete the message key from TAdds Set index
-    const addsKey = this._addType.makeKey(message as any);
+    const addsKey = this._makeAddKey(message as any);
     txn = txn.del(addsKey);
 
     // Delete the message
@@ -534,7 +494,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
   /* Builds a RocksDB transaction to insert a TRemove message and construct its indices */
   private async putRemoveTransaction(txn: Transaction, message: TRemove): HubAsyncResult<Transaction> {
-    if (!this._removeType) {
+    if (!this._makeRemoveKey) {
       throw new Error('remove type is unsupported for this store');
     }
 
@@ -552,7 +512,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
     txn = putMessageTransaction(txn, message);
 
     // Puts message key into the TRemoves Set index
-    const removesKey = this._removeType.makeKey(message as any);
+    const removesKey = this._makeRemoveKey(message as any);
     txn = txn.put(removesKey, Buffer.from(tsHash.value));
 
     return ok(txn);
@@ -560,7 +520,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
 
   /* Builds a RocksDB transaction to remove a TRemove message and delete its indices */
   private async deleteRemoveTransaction(txn: Transaction, message: TRemove): HubAsyncResult<Transaction> {
-    if (!this._removeType) {
+    if (!this._makeRemoveKey) {
       throw new Error('remove type is unsupported for this store');
     }
 
@@ -575,7 +535,7 @@ export abstract class Store<TAdd extends ExtractibleKey<TAdd>, TRemove extends E
     }
 
     // Delete message key from TRemoves Set index
-    const removesKey = this._removeType.makeKey(message as any);
+    const removesKey = this._makeRemoveKey(message as any);
     txn = txn.del(removesKey);
 
     // Delete the message
