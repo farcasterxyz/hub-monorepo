@@ -147,9 +147,6 @@ export class GossipMetricsRecorder {
 
             // Compute peer and coverage metrics
             this.computePeerLatencyAndCoverageMetrics(ackMessage, ackPeerId);
-
-            // Expire peerIds that are past the TTL
-            this.expireMetrics();
           }
         }
       }
@@ -210,6 +207,9 @@ export class GossipMetricsRecorder {
     // Since logging message counts on each message might make logs too noisy,
     // we log message count metrics here instead
     this.logMetrics();
+
+    // Expire peerIds that are past the TTL
+    this.expireMetrics();
   }
 
   private logMetrics() {
