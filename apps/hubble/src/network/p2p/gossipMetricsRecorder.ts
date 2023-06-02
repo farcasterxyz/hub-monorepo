@@ -259,6 +259,9 @@ export class GossipMetricsRecorder {
       },
       'GossipGlobalMetrics'
     );
+    // Clear the merge time metric so that we start a new average for
+    // the next time window
+    this._metrics.globalMetrics.messageMergeTime = { sum: 0, numElements: 0 };
   }
 
   expireMetrics() {
@@ -271,8 +274,6 @@ export class GossipMetricsRecorder {
         ([timestamp, _]) => currTime - Number(timestamp) < METRICS_TTL_MILLISECONDS
       )
     );
-    this._metrics.globalMetrics.messageMergeTime = { sum: 0, numElements: 0 };
-
     this._metrics.peerLatencyMetrics = Object.fromEntries(
       Object.entries(this._metrics.peerLatencyMetrics).filter(
         ([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS
