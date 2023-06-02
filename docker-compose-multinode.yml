@@ -37,7 +37,7 @@ services:
         "hubble1",
         "--id",
         "$TEST_HUB1_ID",
-        "--gossip-latency-check-enabled"
+        "--gossip-metrics-enabled"
       ]
     volumes:
       - ./apps/hubble/.hub:/home/node/app/apps/hubble/.hub

@@ -180,8 +180,8 @@ export interface HubOptions {
   /** Cron schedule for prune events job */
   pruneEventsJobCron?: string;
 
-  /** Periodically send network latency ping messages to the gossip network */
-  networkLatencyMessagesEnabled?: boolean;
+  /** Periodically send network latency ping messages to the gossip network and log metrics */
+  gossipMetricsEnabled?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -219,7 +219,7 @@ export class Hub implements HubInterface {
   constructor(options: HubOptions) {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.options.network, this.options.networkLatencyMessagesEnabled);
+    this.gossipNode = new GossipNode(this.options.network, this.options.gossipMetricsEnabled);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
