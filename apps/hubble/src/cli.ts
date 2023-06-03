@@ -9,7 +9,7 @@ import {
 import { PeerId } from '@libp2p/interface-peer-id';
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from '@libp2p/peer-id-factory';
 import { Command } from 'commander';
-import fs, { existsSync } from 'fs';
+import fs, { existsSync, readdirSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Result, ResultAsync } from 'neverthrow';
 import { dirname, resolve } from 'path';
@@ -539,6 +539,38 @@ app
   .action(async (cliOptions) => {
     startConsole(cliOptions.server, cliOptions.insecure);
   });
+
+app
+  .command('dbtest')
+  .description('RocksDB test')
+  .option('--db <string>', 'DB', 'test-db')
+  .action(async (cliArgs) => {
+    logger.info(`RUNNING DBTEST ${cliArgs.db}`);
+    // Setup DB
+    const db = new RocksDB(cliArgs.db);
+    const dbResult = await ResultAsync.fromPromise(db.open(), (e) => e as Error);
+    if (dbResult.isErr()) {
+      logger.warn({ db: cliArgs.db }, 'Failed to open RocksDB');
+      exit(1);
+    }
+
+    for (let x = 0; x < 5; x++) {
+      listSSTFiles(cliArgs.db);
+      for (let i = x * 100000; i < (x + 1) * 100000; i++) {
+        const element = Buffer.from(i.toString());
+        await db.put(element, element);
+      }
+      db.compact();
+      listSSTFiles(cliArgs.db);
+      logger.info('\n');
+    }
+  });
+
+const listSSTFiles = (dbName: string) => {
+  /* eslint-disable security/detect-non-literal-fs-filename */
+  const files = readdirSync(`${DB_DIRECTORY}/${dbName}`).filter((x) => x.endsWith('sst'));
+  logger.info({ sstFiles: files }, 'SST FILES');
+};
 
 const readPeerId = async (filePath: string) => {
   /* eslint-disable security/detect-non-literal-fs-filename */
