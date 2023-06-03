@@ -10,19 +10,21 @@ import {
 } from '@farcaster/hub-nodejs';
 import {
   deleteMessageTransaction,
+  getManyMessages,
   getMessage,
   getMessagesPageByPrefix,
   getMessagesPruneIterator,
   getNextMessageFromIterator,
+  getPageIteratorByPrefix,
   makeMessagePrimaryKey,
   makeTsHash,
   putMessageTransaction,
 } from '../db/message.js';
-import RocksDB, { Transaction } from '../db/rocksdb.js';
+import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
 import StoreEventHandler, { HubEventArgs } from './storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from './types.js';
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from './types.js';
 import AsyncLock from 'async-lock';
-import { UserMessagePostfix } from '../db/types.js';
+import { TSHASH_LENGTH, UserMessagePostfix } from '../db/types.js';
 import { ResultAsync, err, ok } from 'neverthrow';
 import { logger } from '../../utils/logger.js';
 
@@ -52,48 +54,70 @@ const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
 export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _db: RocksDB;
   private _eventHandler: StoreEventHandler;
-  private _pruneSizeLimit: number | undefined;
-  private _pruneTimeLimit: number | undefined;
+  private _pruneSizeLimit: number;
+  protected _pruneTimeLimit: number | undefined;
   private _mergeLock: AsyncLock;
 
-  protected PRUNE_SIZE_LIMIT_DEFAULT: number | undefined;
+  protected PRUNE_SIZE_LIMIT_DEFAULT = 10000;
   protected PRUNE_TIME_LIMIT_DEFAULT: number | undefined;
 
   abstract _postfix: UserMessagePostfix;
 
-  abstract _makeAddKey: (data: DeepPartial<TAdd>) => Buffer;
-  abstract _makeRemoveKey: ((data: DeepPartial<TRemove>) => Buffer) | undefined;
+  abstract makeAddKey(data: DeepPartial<TAdd>): Buffer;
+  abstract makeRemoveKey(data: DeepPartial<TRemove>): Buffer;
   abstract _isAddType: (message: Message) => message is TAdd;
   abstract _isRemoveType: ((message: Message) => message is TRemove) | undefined;
   abstract _addMessageType: MessageType;
   abstract _removeMessageType: MessageType | undefined;
+  abstract findMergeAddConflicts(message: TAdd): HubAsyncResult<void>;
+  abstract findMergeRemoveConflicts(message: TRemove): HubAsyncResult<void>;
 
-  abstract validateAdd(add: TAdd): HubAsyncResult<void>;
-  abstract validateRemove(remove: TRemove): HubAsyncResult<void>;
-  abstract buildSecondaryIndices(txn: Transaction, add: TAdd): HubAsyncResult<void>;
-  abstract deleteSecondaryIndices(txn: Transaction, add: TAdd): HubAsyncResult<void>;
+  async validateAdd(add: TAdd): HubAsyncResult<void> {
+    const tsHash = makeTsHash(add.data!.timestamp, add.hash);
+    if (tsHash.isErr()) {
+      throw tsHash.error;
+    }
+
+    return ok(undefined);
+  }
+
+  async validateRemove(remove: TRemove): HubAsyncResult<void> {
+    const tsHash = makeTsHash(remove.data!.timestamp, remove.hash);
+    if (tsHash.isErr()) {
+      throw tsHash.error;
+    }
+
+    return ok(undefined);
+  }
+
+  async buildSecondaryIndices(_txn: Transaction, _add: TAdd): HubAsyncResult<void> {
+    return ok(undefined);
+  }
+  async deleteSecondaryIndices(_txn: Transaction, _add: TAdd): HubAsyncResult<void> {
+    return ok(undefined);
+  }
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneSizeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
+    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
     this._mergeLock = new AsyncLock();
   }
 
   /** Looks up TAdd message by tsHash */
   async getAdd(extractible: DeepPartial<TAdd>): Promise<TAdd> {
-    const addsKey = this._makeAddKey(extractible);
+    const addsKey = this.makeAddKey(extractible);
     const messageTsHash = await this._db.get(addsKey);
     return getMessage(this._db, extractible.data!.fid!, this._postfix, messageTsHash);
   }
 
   /** Looks up TRemove message by cast tsHash */
   async getRemove(extractible: DeepPartial<TRemove>): Promise<TRemove> {
-    if (!this._makeRemoveKey) {
+    if (!this._isRemoveType) {
       throw new Error('remove type is unsupported for this store');
     }
-    const removesKey = this._makeRemoveKey(extractible);
+    const removesKey = this.makeRemoveKey(extractible);
     const messageTsHash = await this._db.get(removesKey);
     return getMessage(this._db, extractible.data!.fid!, this._postfix, messageTsHash);
   }
@@ -112,7 +136,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     extractible: DeepPartial<TRemove>,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<TRemove>> {
-    if (!this._makeRemoveKey) {
+    if (!this._isRemoveType) {
       throw new Error('remove type is unsupported for this store');
     }
     const castMessagesPrefix = makeMessagePrimaryKey(extractible.data!.fid!, this._postfix);
@@ -140,17 +164,16 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       .acquire(
         message.data!.fid.toString(),
         async () => {
-          if (this._pruneSizeLimit) {
-            const prunableResult = await this._eventHandler.isPrunable(
-              message as any,
-              this._postfix,
-              this._pruneSizeLimit
-            );
-            if (prunableResult.isErr()) {
-              throw prunableResult.error;
-            } else if (prunableResult.value) {
-              throw new HubError('bad_request.prunable', 'message would be pruned');
-            }
+          const prunableResult = await this._eventHandler.isPrunable(
+            message as any,
+            this._postfix,
+            this._pruneSizeLimit,
+            this._pruneTimeLimit
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError('bad_request.prunable', 'message would be pruned');
           }
 
           if (this._isAddType(message)) {
@@ -189,7 +212,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    if (!this._pruneSizeLimit && !this._pruneTimeLimit) return ok([]);
     const commits: number[] = [];
 
     const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
@@ -209,6 +231,10 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       return err(farcasterTime.error);
     }
 
+    // Calculate the timestamp cut-off to prune
+    const timestampToPrune =
+      this._pruneTimeLimit === undefined ? undefined : farcasterTime.value - this._pruneTimeLimit;
+
     // Create a rocksdb iterator for all messages with the given prefix
     const pruneIterator = getMessagesPruneIterator(this._db, fid, this._postfix);
 
@@ -223,7 +249,11 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         return err(count.error);
       }
 
-      if (this._pruneSizeLimit && count.value <= this._pruneSizeLimit) {
+      if (
+        count.value <= this._pruneSizeLimit &&
+        (timestampToPrune === undefined ||
+          (nextMessage.value.data && nextMessage.value.data.timestamp >= timestampToPrune))
+      ) {
         return ok(undefined);
       }
 
@@ -266,6 +296,46 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     await pruneIterator.end();
 
     return ok(commits);
+  }
+
+  protected async getBySecondaryIndex(prefix: Buffer, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {
+    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
+
+    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
+
+    const messageKeys: Buffer[] = [];
+
+    // Custom method to retrieve message key from key
+    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
+      const [key] = await iterator.next();
+      const fid = Number((key as Buffer).readUint32BE(prefix.length + TSHASH_LENGTH));
+      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length, prefix.length + TSHASH_LENGTH);
+      const messagePrimaryKey = makeMessagePrimaryKey(fid, this._postfix, tsHash);
+      return [key as Buffer, messagePrimaryKey];
+    };
+
+    let iteratorFinished = false;
+    let lastPageToken: Uint8Array | undefined;
+    do {
+      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+      if (result.isErr()) {
+        iteratorFinished = true;
+        break;
+      }
+
+      const [key, messageKey] = result.value;
+      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+      messageKeys.push(messageKey);
+    } while (messageKeys.length < limit);
+
+    const messages = await getManyMessages<TAdd>(this._db, messageKeys);
+
+    if (!iteratorFinished) {
+      await iterator.end(); // clear iterator if it has not finished
+      return { messages, nextPageToken: lastPageToken };
+    } else {
+      return { messages, nextPageToken: undefined };
+    }
   }
 
   /* -------------------------------------------------------------------------- */
@@ -333,7 +403,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     return result.value;
   }
 
-  private messageCompare(aType: MessageType, aTsHash: Uint8Array, bType: MessageType, bTsHash: Uint8Array): number {
+  protected messageCompare(aType: MessageType, aTsHash: Uint8Array, bType: MessageType, bTsHash: Uint8Array): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
     const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
     if (timestampOrder !== 0) {
@@ -358,11 +428,20 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
   private async getMergeConflicts(message: TAdd | TRemove): HubAsyncResult<(TAdd | TRemove)[]> {
-    const result = await (this._isAddType(message) ? this.validateAdd(message) : this.validateRemove(message));
+    const validateResult = await (this._isAddType(message) ? this.validateAdd(message) : this.validateRemove(message));
 
-    if (result.isErr()) {
-      return err(result.error);
+    if (validateResult.isErr()) {
+      return err(validateResult.error);
     }
+
+    const checkResult = await (this._isAddType(message)
+      ? this.findMergeAddConflicts(message)
+      : this.findMergeRemoveConflicts(message));
+
+    if (checkResult.isErr()) {
+      return err(checkResult.error);
+    }
+
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -370,9 +449,9 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     const conflicts: (TAdd | TRemove)[] = [];
 
-    if (this._makeRemoveKey) {
+    if (this._isRemoveType) {
       // Checks if there is a remove timestamp hash for this
-      const removeKey = this._makeRemoveKey(message as any);
+      const removeKey = this.makeRemoveKey(message as any);
       const removeTsHash = await ResultAsync.fromPromise(this._db.get(removeKey), () => undefined);
 
       if (removeTsHash.isOk()) {
@@ -400,7 +479,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       }
     }
     // Checks if there is an add timestamp hash for this
-    const addKey = this._makeAddKey(message as any);
+    const addKey = this.makeAddKey(message as any);
     const addTsHash = await ResultAsync.fromPromise(this._db.get(addKey), () => undefined);
 
     if (addTsHash.isOk()) {
@@ -447,16 +526,11 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw tsHash.error;
     }
 
-    const result = await this.validateAdd(message);
-    if (result.isErr()) {
-      return err(result.error);
-    }
-
     // Puts the message into the database
     txn = putMessageTransaction(txn, message);
 
     // Puts the message into the TAdds Set index
-    const addsKey = this._makeAddKey(message as any);
+    const addsKey = this.makeAddKey(message as any);
     txn = txn.put(addsKey, Buffer.from(tsHash.value));
 
     const build = await this.buildSecondaryIndices(txn, message);
@@ -474,18 +548,13 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw tsHash.error;
     }
 
-    const result = await this.validateAdd(message);
-    if (result.isErr()) {
-      return err(result.error);
-    }
-
     const build = await this.deleteSecondaryIndices(txn, message);
     if (build.isErr()) {
       return err(build.error);
     }
 
     // Delete the message key from TAdds Set index
-    const addsKey = this._makeAddKey(message as any);
+    const addsKey = this.makeAddKey(message as any);
     txn = txn.del(addsKey);
 
     // Delete the message
@@ -494,7 +563,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
   /* Builds a RocksDB transaction to insert a TRemove message and construct its indices */
   private async putRemoveTransaction(txn: Transaction, message: TRemove): HubAsyncResult<Transaction> {
-    if (!this._makeRemoveKey) {
+    if (!this._isRemoveType) {
       throw new Error('remove type is unsupported for this store');
     }
 
@@ -503,16 +572,11 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw tsHash.error;
     }
 
-    const result = await this.validateRemove(message);
-    if (result.isErr()) {
-      return err(result.error);
-    }
-
     // Puts the message
     txn = putMessageTransaction(txn, message);
 
     // Puts message key into the TRemoves Set index
-    const removesKey = this._makeRemoveKey(message as any);
+    const removesKey = this.makeRemoveKey(message as any);
     txn = txn.put(removesKey, Buffer.from(tsHash.value));
 
     return ok(txn);
@@ -520,7 +584,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
   /* Builds a RocksDB transaction to remove a TRemove message and delete its indices */
   private async deleteRemoveTransaction(txn: Transaction, message: TRemove): HubAsyncResult<Transaction> {
-    if (!this._makeRemoveKey) {
+    if (!this._isRemoveType) {
       throw new Error('remove type is unsupported for this store');
     }
 
@@ -529,13 +593,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw tsHash.error;
     }
 
-    const result = await this.validateRemove(message);
-    if (result.isErr()) {
-      return err(result.error);
-    }
-
     // Delete message key from TRemoves Set index
-    const removesKey = this._makeRemoveKey(message as any);
+    const removesKey = this.makeRemoveKey(message as any);
     txn = txn.del(removesKey);
 
     // Delete the message

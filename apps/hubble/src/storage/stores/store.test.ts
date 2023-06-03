@@ -16,21 +16,21 @@ const db = jestRocksDB('protobufs.generalStore.test');
 const eventHandler = new StoreEventHandler(db);
 
 class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
-  override _makeAddKey = (data: DeepPartial<CastAddMessage>) => {
+  override makeAddKey(data: DeepPartial<CastAddMessage>) {
     return data.hash as Uint8Array as Buffer;
-  };
-  override _makeRemoveKey = (data: DeepPartial<CastRemoveMessage>) => {
+  }
+  override makeRemoveKey(data: DeepPartial<CastRemoveMessage>) {
     return data.hash as Uint8Array as Buffer;
-  };
+  }
   override _isAddType: (message: Message) => message is CastAddMessage = isCastAddMessage;
   override _isRemoveType: ((message: Message) => message is CastRemoveMessage) | undefined = isCastRemoveMessage;
   override _postfix: UserMessagePostfix = UserPostfix.CastMessage;
   override _addMessageType: MessageType = MessageType.CAST_ADD;
   override _removeMessageType: MessageType | undefined = MessageType.CAST_REMOVE;
-  override async validateAdd(message: CastAddMessage): HubAsyncResult<void> {
+  override async findMergeAddConflicts(message: CastAddMessage): HubAsyncResult<void> {
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(this._makeRemoveKey(message as unknown as CastRemoveMessage)),
+      this._db.get(this.makeRemoveKey(message as unknown as CastRemoveMessage)),
       () => undefined
     );
 
@@ -40,7 +40,43 @@ class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
     }
 
     // Look up the add tsHash for this cast
-    const castAddTsHash = await ResultAsync.fromPromise(this._db.get(this._makeAddKey(message)), () => undefined);
+    const castAddTsHash = await ResultAsync.fromPromise(this._db.get(this.makeAddKey(message)), () => undefined);
+
+    // If add tsHash exists, no-op because this cast has already been added
+    if (castAddTsHash.isOk()) {
+      throw new HubError('bad_request.duplicate', 'message has already been merged');
+    }
+
+    return ok(undefined);
+  }
+  override async findMergeRemoveConflicts(message: CastRemoveMessage): HubAsyncResult<void> {
+    // Look up the remove tsHash for this cast
+    const castRemoveTsHash = await ResultAsync.fromPromise(
+      this._db.get(this.makeRemoveKey(message as unknown as CastRemoveMessage)),
+      () => undefined
+    );
+
+    // If remove tsHash exists, fail because this cast has already been removed
+    if (castRemoveTsHash.isOk()) {
+      throw new HubError('bad_request.conflict', 'message conflicts with a CastRemove');
+    }
+
+    return ok(undefined);
+  }
+  override async validateAdd(message: CastAddMessage): HubAsyncResult<void> {
+    // Look up the remove tsHash for this cast
+    const castRemoveTsHash = await ResultAsync.fromPromise(
+      this._db.get(this.makeRemoveKey(message as unknown as CastRemoveMessage)),
+      () => undefined
+    );
+
+    // If remove tsHash exists, fail because this cast has already been removed
+    if (castRemoveTsHash.isOk()) {
+      throw new HubError('bad_request.conflict', 'message conflicts with a CastRemove');
+    }
+
+    // Look up the add tsHash for this cast
+    const castAddTsHash = await ResultAsync.fromPromise(this._db.get(this.makeAddKey(message)), () => undefined);
 
     // If add tsHash exists, no-op because this cast has already been added
     if (castAddTsHash.isOk()) {
