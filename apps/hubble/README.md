@@ -150,6 +150,7 @@ Fetching data from Hubble requires communicating with its [gRPC](https://grpc.io
 1. Go to `apps/hubble` in this repo
 2. Pull the latest image: `docker pull farcasterxyz/hubble:latest`
 3. Run `docker compose stop && docker compose up -d --force-recreate`
+4. If you are upgrading from a non-docker deployment to docker, make sure the `.hub` and `.rocks` directories are writable for all users. 
 
 Check the logs to ensure your hub is running successfully:
 ```sh
