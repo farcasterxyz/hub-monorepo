@@ -169,12 +169,14 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
       return err(tsHash.error);
     }
 
+    const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
+
+    if (!target) {
+      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+    }
+
     // Puts message key into the byTarget index
-    const byTargetKey = makeReactionsByTargetKey(
-      message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl!,
-      message.data.fid,
-      tsHash.value
-    );
+    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
     txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
 
     return ok(undefined);
@@ -187,12 +189,14 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
       return err(tsHash.error);
     }
 
+    const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
+
+    if (!target) {
+      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+    }
+
     // Delete the message key from byTarget index
-    const byTargetKey = makeReactionsByTargetKey(
-      message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl!,
-      message.data.fid,
-      tsHash.value
-    );
+    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
     txn = txn.del(byTargetKey);
 
     return ok(undefined);

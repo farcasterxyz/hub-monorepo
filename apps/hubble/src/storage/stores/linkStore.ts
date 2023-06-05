@@ -159,8 +159,12 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
       return err(tsHash.error);
     }
 
+    if (!message.data.linkBody.targetFid) {
+      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+    }
+
     // Puts message key into the byTarget index
-    const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid!, message.data.fid, tsHash.value);
+    const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
     txn = txn.put(byTargetKey, Buffer.from(message.data.linkBody.type));
 
     return ok(undefined);
@@ -173,8 +177,12 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
       return err(tsHash.error);
     }
 
+    if (!message.data.linkBody.targetFid) {
+      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+    }
+
     // Delete the message key from byTarget index
-    const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid!, message.data.fid, tsHash.value);
+    const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
     txn = txn.del(byTargetKey);
 
     return ok(undefined);

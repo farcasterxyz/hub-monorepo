@@ -581,7 +581,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(signerAddLater);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertSignerDoesNotExist(signerAdd);
@@ -619,7 +619,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(signerAddLater);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertSignerDoesNotExist(signerAdd);
@@ -651,7 +651,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertSignerRemoveWins(signerRemove);
@@ -671,7 +671,7 @@ describe('merge', () => {
 
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertSignerRemoveWins(signerRemoveLater);
@@ -687,7 +687,7 @@ describe('merge', () => {
 
         await set.merge(signerRemoveEarlier);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertSignerDoesNotExist(signerAdd);
@@ -742,7 +742,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertSignerDoesNotExist(signerRemove);
@@ -779,7 +779,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertSignerDoesNotExist(signerRemove);
@@ -811,7 +811,7 @@ describe('merge', () => {
 
         await set.merge(signerAddLater);
         await expect(set.merge(signerRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertSignerAddWins(signerAddLater);

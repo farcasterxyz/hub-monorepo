@@ -39,6 +39,7 @@ const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
     for (const key in partial) {
       // eslint-disable-next-line security/detect-object-injection
       if (partial[key] !== undefined) {
+        // eslint-disable-next-line security/detect-object-injection
         if (!deepPartialEquals(partial[key] as any, whole[key as keyof T] as any)) {
           return false;
         }
@@ -53,7 +54,7 @@ const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
 
 export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _db: RocksDB;
-  private _eventHandler: StoreEventHandler;
+  protected _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
   protected _pruneTimeLimit: number | undefined;
   private _mergeLock: AsyncLock;
@@ -73,18 +74,26 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   abstract findMergeRemoveConflicts(message: TRemove): HubAsyncResult<void>;
 
   async validateAdd(add: TAdd): HubAsyncResult<void> {
-    const tsHash = makeTsHash(add.data!.timestamp, add.hash);
+    if (!add.data) {
+      return err(new HubError('bad_request.invalid_param', 'data null'));
+    }
+
+    const tsHash = makeTsHash(add.data.timestamp, add.hash);
     if (tsHash.isErr()) {
-      throw tsHash.error;
+      return err(tsHash.error);
     }
 
     return ok(undefined);
   }
 
   async validateRemove(remove: TRemove): HubAsyncResult<void> {
-    const tsHash = makeTsHash(remove.data!.timestamp, remove.hash);
+    if (!remove.data) {
+      return err(new HubError('bad_request.invalid_param', 'data null'));
+    }
+
+    const tsHash = makeTsHash(remove.data.timestamp, remove.hash);
     if (tsHash.isErr()) {
-      throw tsHash.error;
+      return err(tsHash.error);
     }
 
     return ok(undefined);
@@ -107,9 +116,13 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
   /** Looks up TAdd message by tsHash */
   async getAdd(extractible: DeepPartial<TAdd>): Promise<TAdd> {
+    if (!extractible.data?.fid) {
+      throw new HubError('bad_request.invalid_param', 'fid null');
+    }
+
     const addsKey = this.makeAddKey(extractible);
     const messageTsHash = await this._db.get(addsKey);
-    return getMessage(this._db, extractible.data!.fid!, this._postfix, messageTsHash);
+    return getMessage(this._db, extractible.data.fid, this._postfix, messageTsHash);
   }
 
   /** Looks up TRemove message by cast tsHash */
@@ -117,14 +130,23 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     if (!this._isRemoveType) {
       throw new Error('remove type is unsupported for this store');
     }
+
+    if (!extractible.data?.fid) {
+      throw new HubError('bad_request.invalid_param', 'fid null');
+    }
+
     const removesKey = this.makeRemoveKey(extractible);
     const messageTsHash = await this._db.get(removesKey);
-    return getMessage(this._db, extractible.data!.fid!, this._postfix, messageTsHash);
+    return getMessage(this._db, extractible.data.fid, this._postfix, messageTsHash);
   }
 
   /** Gets all TAdd messages for an fid */
   async getAddsByFid(extractible: DeepPartial<TAdd>, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {
-    const castMessagesPrefix = makeMessagePrimaryKey(extractible.data!.fid!, this._postfix);
+    if (!extractible.data?.fid) {
+      throw new HubError('bad_request.invalid_param', 'fid null');
+    }
+
+    const castMessagesPrefix = makeMessagePrimaryKey(extractible.data.fid, this._postfix);
     const filter = (message: Message): message is TAdd => {
       return this._isAddType(message) && deepPartialEquals(extractible, message);
     };
@@ -139,8 +161,14 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     if (!this._isRemoveType) {
       throw new Error('remove type is unsupported for this store');
     }
-    const castMessagesPrefix = makeMessagePrimaryKey(extractible.data!.fid!, this._postfix);
+
+    if (!extractible.data?.fid) {
+      throw new HubError('bad_request.invalid_param', 'fid null');
+    }
+
+    const castMessagesPrefix = makeMessagePrimaryKey(extractible.data.fid, this._postfix);
     const filter = (message: Message): message is TRemove => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return this._isRemoveType!(message) && deepPartialEquals(extractible, message);
     };
     return getMessagesPageByPrefix(this._db, castMessagesPrefix, filter, pageOptions);
@@ -160,9 +188,13 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw new HubError('bad_request.validation_failure', 'invalid message type');
     }
 
+    if (!message.data) {
+      throw new HubError('bad_request.invalid_param', 'data null');
+    }
+
     return this._mergeLock
       .acquire(
-        message.data!.fid.toString(),
+        message.data.fid.toString(),
         async () => {
           const prunableResult = await this._eventHandler.isPrunable(
             message as any,
@@ -442,6 +474,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       return err(checkResult.error);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -456,8 +489,10 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
       if (removeTsHash.isOk()) {
         const removeCompare = this.messageCompare(
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           this._removeMessageType!,
           new Uint8Array(removeTsHash.value),
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           message.data!.type,
           tsHash.value
         );
@@ -470,6 +505,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
           // TRemove message and delete it as part of the RocksDB transaction
           const existingRemove = await getMessage<TRemove>(
             this._db,
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             message.data!.fid,
             this._postfix,
             removeTsHash.value
@@ -486,6 +522,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       const addCompare = this.messageCompare(
         this._addMessageType,
         new Uint8Array(addTsHash.value),
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         message.data!.type,
         tsHash.value
       );
@@ -496,6 +533,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // TAdd message and delete it as part of the RocksDB transaction
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const existingAdd = await getMessage<TAdd>(this._db, message.data!.fid, this._postfix, addTsHash.value);
         conflicts.push(existingAdd);
       }
@@ -521,6 +559,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
   /* Builds a RocksDB transaction to insert a TAdd message and construct its indices */
   private async putAddTransaction(txn: Transaction, message: TAdd): HubAsyncResult<Transaction> {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -543,6 +582,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
   /* Builds a RocksDB transaction to remove a TAdd message and delete its indices */
   private async deleteAddTransaction(txn: Transaction, message: TAdd): HubAsyncResult<Transaction> {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -567,6 +607,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw new Error('remove type is unsupported for this store');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -588,6 +629,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw new Error('remove type is unsupported for this store');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
