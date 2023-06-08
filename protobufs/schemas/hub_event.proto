@@ -3,6 +3,7 @@ syntax = "proto3";
 import "message.proto";
 import "id_registry_event.proto";
 import "name_registry_event.proto";
+import "username_proof.proto";
 
 enum HubEventType {
   HUB_EVENT_TYPE_NONE = 0;
@@ -11,6 +12,7 @@ enum HubEventType {
   HUB_EVENT_TYPE_REVOKE_MESSAGE = 3;
   HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4;
   HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5;
+  HUB_EVENT_TYPE_MERGE_USERNAME_PROOF = 6;
 }
 
 message MergeMessageBody {
@@ -34,6 +36,10 @@ message MergeNameRegistryEventBody {
   NameRegistryEvent name_registry_event = 1;
 }
 
+message MergeUserNameProofBody {
+  UserNameProof username_proof = 1;
+}
+
 message HubEvent {
   HubEventType type = 1;
   uint64 id = 2;
@@ -43,5 +49,6 @@ message HubEvent {
     RevokeMessageBody revoke_message_body = 5;
     MergeIdRegistryEventBody merge_id_registry_event_body = 6;
     MergeNameRegistryEventBody merge_name_registry_event_body = 7;
+    MergeUserNameProofBody merge_username_proof_body = 8;
   };
 }

@@ -15,6 +15,7 @@ import {
   HubRpcClient,
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
@@ -44,6 +45,7 @@ import {
   messageToLog,
   messageTypeToName,
   nameRegistryEventToLog,
+  usernameProofToLog,
 } from './utils/logger.js';
 import {
   addressInfoFromGossip,
@@ -62,7 +64,7 @@ import StoreEventHandler from './storage/stores/storeEventHandler.js';
 import { RetryProvider } from './eth/retryProvider.js';
 import { JsonRpcProvider } from 'ethers';
 
-export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync';
+export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync' | 'fname-registry';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = process.env['HUBBLE_NAME'] ?? 'Farcaster Hub';
@@ -79,6 +81,7 @@ export interface HubInterface {
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
   submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
@@ -804,6 +807,29 @@ export class Hub implements HubInterface {
       const payload = UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
       await this.updateNameRegistryEventExpiryJobQueue.enqueueJob(payload);
     }
+
+    return mergeResult;
+  }
+
+  async submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number> {
+    const logEvent = log.child({ event: usernameProofToLog(usernameProof), source });
+
+    const mergeResult = await this.engine.mergeUserNameProof(usernameProof);
+
+    mergeResult.match(
+      (eventId) => {
+        logEvent.info(
+          `submitUserNameProof success ${eventId}: fname ${bytesToUtf8String(
+            usernameProof.name
+          )._unsafeUnwrap()} assigned to ${bytesToHexString(usernameProof.owner)._unsafeUnwrap()} at timestamp ${
+            usernameProof.timestamp
+          }`
+        );
+      },
+      (e) => {
+        logEvent.warn({ errCode: e.errCode }, `submitUserNameProof error: ${e.message}`);
+      }
+    );
 
     return mergeResult;
   }

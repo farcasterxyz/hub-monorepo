@@ -7,6 +7,7 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
 import { err, ok } from 'neverthrow';
 import { HubInterface, HubSubmitSource } from '../hubble.js';
@@ -45,6 +46,10 @@ export class MockHub implements HubInterface {
 
   async submitNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
     return this.engine.mergeNameRegistryEvent(event);
+  }
+
+  async submitUserNameProof(proof: UserNameProof): HubAsyncResult<number> {
+    return this.engine.mergeUserNameProof(proof);
   }
 
   async getHubState(): HubAsyncResult<HubState> {

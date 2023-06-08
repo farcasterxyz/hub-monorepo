@@ -446,7 +446,7 @@ export interface VerificationRemoveBody {
 export interface LinkBody {
   /** Type of link, <= 8 characters */
   type: string;
-  /** User-defined timestamp to preserve original time */
+  /** User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction */
   displayTimestamp?: number | undefined;
   /** The fid the link relates to */
   targetFid?: number | undefined;

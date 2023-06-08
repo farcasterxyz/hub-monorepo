@@ -21,6 +21,7 @@ import {
   MergeNameRegistryEventHubEvent,
   Message,
   NameRegistryEvent,
+  UserNameProof,
   NameRegistryEventType,
   PruneMessageHubEvent,
   ReactionAddMessage,
@@ -223,6 +224,10 @@ class Engine {
     }
 
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
+  }
+
+  async mergeUserNameProof(usernameProof: UserNameProof): HubAsyncResult<number> {
+    return ResultAsync.fromPromise(this._userDataStore.mergeUserNameProof(usernameProof), (e) => e as HubError);
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
