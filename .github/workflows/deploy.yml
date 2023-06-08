@@ -45,8 +45,8 @@ jobs:
             EXCLUDE: ""
             SCRIPT_AFTER: |
               cd /home/ubuntu/hub-monorepo &&
-            git checkout main &&
-            git fetch --all &&
-            git reset --hard origin/main &&
-            git pull origin main &&
-            docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --network 3 --allowed-peers none'
+              git checkout main &&
+              git fetch --all &&
+              git reset --hard origin/main &&
+              git pull origin main &&
+              docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --network 3 --allowed-peers none'
