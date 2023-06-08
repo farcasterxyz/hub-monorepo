@@ -28,7 +28,6 @@ jobs:
         cache-to: type=gha,type=inline
         context: .
         file: Dockerfile.hubble
-        load: true
         tags: kyranstar/hubble:test
 
   deploy:
