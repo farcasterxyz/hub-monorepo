@@ -498,6 +498,9 @@ app
       let isSyncing = false;
       const msgPercents: number[] = [];
       for (const peerStatus of syncResult.value.syncStatus) {
+        if (peerStatus.theirMessages === 0) {
+          continue;
+        }
         const messagePercent = (peerStatus.ourMessages / peerStatus.theirMessages) * 100;
         msgPercents.push(messagePercent);
         if (syncResult.value.isSyncing) {
