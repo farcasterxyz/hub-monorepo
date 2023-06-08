@@ -2,6 +2,7 @@ import { gossipsub, GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Message as GossipSubMessage, PublishResult } from '@libp2p/interface-pubsub';
 import { noise } from '@chainsafe/libp2p-noise';
 import {
+  AckMessageBody,
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
@@ -73,7 +74,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _network: FarcasterNetwork;
   private _metricsRecorder?: GossipMetricsRecorder;
 
-  constructor(network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean, db?: RocksDB) {
+  constructor(db: RocksDB, network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
     if (networkLatencyMessagesEnabled) {
@@ -235,6 +236,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   async recordMessageMerge(mergeTime: number) {
     this._metricsRecorder?.recordMessageMerge(mergeTime);
+  }
+
+  async recordLatencyAckMessageReceipt(ackMessage: AckMessageBody) {
+    this._metricsRecorder?.recordLatencyAckMessageReceipt(ackMessage);
   }
 
   /** Publishes a Gossip Message to the network */

@@ -21,10 +21,11 @@ import { sleep } from '../../utils/crypto.js';
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
+const db = jestRocksDB('network.p2p.gossipNode.test');
 
 describe('GossipNode', () => {
   test('start fails if IpMultiAddr has port or transport addrs', async () => {
-    const node = new GossipNode();
+    const node = new GossipNode(db);
     const options = { ipMultiAddr: '/ip4/127.0.0.1/tcp/8080' };
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
@@ -35,7 +36,7 @@ describe('GossipNode', () => {
   });
 
   test('start fails if multiaddr format is invalid', async () => {
-    const node = new GossipNode();
+    const node = new GossipNode(db);
     // an IPv6 being supplied as an IPv4
     const options = { ipMultiAddr: '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a' };
     expect((await node.start([], options))._unsafeUnwrapErr().errCode).toEqual('unavailable');
@@ -48,13 +49,13 @@ describe('GossipNode', () => {
   });
 
   test('connect fails with a node that has not started', async () => {
-    const node = new GossipNode();
+    const node = new GossipNode(db);
     await node.start([]);
 
     let result = await node.connectAddress(multiaddr());
     expect(result.isErr()).toBeTruthy();
 
-    const offlineNode = new GossipNode();
+    const offlineNode = new GossipNode(db);
     result = await node.connect(offlineNode);
     expect(result.isErr()).toBeTruthy();
 
@@ -64,14 +65,14 @@ describe('GossipNode', () => {
   test(
     'connect fails with a node that is not in the allow list',
     async () => {
-      const node1 = new GossipNode();
+      const node1 = new GossipNode(db);
       await node1.start([]);
 
-      const node2 = new GossipNode();
+      const node2 = new GossipNode(db);
       await node2.start([]);
 
       // node 3 has node 1 in its allow list, but not node 2
-      const node3 = new GossipNode();
+      const node3 = new GossipNode(db);
 
       if (node1.peerId) {
         await node3.start([], { allowedPeerIdStrs: [node1.peerId.toString()] });
@@ -98,10 +99,10 @@ describe('GossipNode', () => {
   );
 
   test('removing from addressbook hangs up connection', async () => {
-    const node1 = new GossipNode();
+    const node1 = new GossipNode(db);
     await node1.start([]);
 
-    const node2 = new GossipNode();
+    const node2 = new GossipNode(db);
     await node2.start([]);
 
     try {
@@ -129,7 +130,6 @@ describe('GossipNode', () => {
   });
 
   describe('gossip messages', () => {
-    const db = jestRocksDB('protobufs.rpc.gossipMessageTest.test');
     const network = FarcasterNetwork.TESTNET;
     const fid = Factories.Fid.build();
     const signer = Factories.Ed25519Signer.build();
@@ -190,7 +190,7 @@ describe('GossipNode', () => {
     });
 
     test('Gossip Ids match for farcaster protocol messages', async () => {
-      const node = new GossipNode();
+      const node = new GossipNode(db);
       await node.start([]);
       await node.gossipMessage(castAdd);
       // should be detected as a duplicate
@@ -218,7 +218,7 @@ describe('GossipNode', () => {
     });
 
     test('Gossip Ids do not match for gossip internal messages', async () => {
-      const node = new GossipNode();
+      const node = new GossipNode(db);
       await node.start([]);
 
       const contactInfo = ContactInfoContent.create();
@@ -230,7 +230,7 @@ describe('GossipNode', () => {
     });
 
     test('Gossip Ids do not match for gossip V1 messages', async () => {
-      const node = new GossipNode();
+      const node = new GossipNode(db);
       await node.start([]);
       const v1Message = GossipMessage.create({
         message: castAdd,

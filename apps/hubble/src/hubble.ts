@@ -219,7 +219,7 @@ export class Hub implements HubInterface {
   constructor(options: HubOptions) {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.options.network, this.options.gossipMetricsEnabled);
+    this.gossipNode = new GossipNode(this.rocksDB, this.options.network, this.options.gossipMetricsEnabled);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
@@ -634,7 +634,9 @@ export class Hub implements HubInterface {
 
   private async handleNetworkLatencyMessage(peerId: PeerId, message: NetworkLatencyMessage) {
     // Respond to ping message with an ack message
-    if (message.pingMessage) {
+    if (message.ackMessage) {
+      this.gossipNode.recordLatencyAckMessageReceipt(message.ackMessage);
+    } else if (message.pingMessage) {
       const pingMessage = message.pingMessage;
       const ackMessage = AckMessageBody.create({
         pingOriginPeerId: pingMessage.pingOriginPeerId,

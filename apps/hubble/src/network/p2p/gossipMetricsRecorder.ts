@@ -2,17 +2,17 @@ import { PeerId } from '@libp2p/interface-peer-id';
 import { AckMessageBody, PingMessageBody, HubError, NetworkLatencyMessage, GossipMessage } from '@farcaster/hub-nodejs';
 import { logger } from '../../utils/logger.js';
 import { GossipNode } from './gossipNode.js';
-import { Result } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 import { peerIdFromBytes } from '@libp2p/peer-id';
 import cron from 'node-cron';
 import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
-import RocksDB from 'storage/db/rocksdb.js';
+import RocksDB from '../../storage/db/rocksdb.js';
+import { RootPrefix } from '../../storage/db/types.js';
 
 const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
 const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
-const METRICS_DB_KEY = 'GossipMetrics';
 
 type SchedulerStatus = 'started' | 'stopped';
 
@@ -32,6 +32,10 @@ type PeerMessageMetrics = {
   messageCount: number;
 };
 
+/** StringMap is used in place of Map<string, number> in the GossipMetrics
+ *  type so that metrics can be JSON-serialized easily when reading / writing from
+ *  RocksDB. Using Maps requires explicit coercion of deserialized objects to Maps
+ */
 interface StringMap {
   [key: string]: number;
 }
@@ -65,8 +69,13 @@ export class GossipMetrics {
   }
 
   static fromBuffer(buffer: Buffer): GossipMetrics {
-    const obj = JSON.parse(buffer.toString());
-    return new GossipMetrics(obj.recentPeerIds, obj.peerLatencyMetrics, obj.peerMessageMetrics, obj.globalMetrics);
+    try {
+      const obj = JSON.parse(buffer.toString());
+      return new GossipMetrics(obj.recentPeerIds, obj.peerLatencyMetrics, obj.peerMessageMetrics, obj.globalMetrics);
+    } catch (e) {
+      logger.error('Error parsing GossipMetrics from DB');
+      return new GossipMetrics();
+    }
   }
 
   toBuffer(): Buffer {
@@ -77,10 +86,10 @@ export class GossipMetrics {
 export class GossipMetricsRecorder {
   private _gossipNode: GossipNode;
   private _cronTask: cron.ScheduledTask | undefined;
-  private _db: RocksDB | undefined;
+  private _db: RocksDB;
   private _metrics!: GossipMetrics;
 
-  constructor(gossipNode: GossipNode, db?: RocksDB) {
+  constructor(gossipNode: GossipNode, db: RocksDB) {
     this._db = db;
     this._gossipNode = gossipNode;
   }
@@ -103,6 +112,8 @@ export class GossipMetricsRecorder {
 
   async start() {
     this._metrics = (await this.readMetricsFromDb()) ?? new GossipMetrics();
+    // Expire metrics after loading in case hub has been offline for a long period
+    this.expireMetrics();
     this._cronTask = cron.schedule(DEFAULT_PERIODIC_LATENCY_PING_CRON, () => {
       return this.sendPingAndLogMetrics();
     });
@@ -130,24 +141,21 @@ export class GossipMetricsRecorder {
   async recordMessageReceipt(gossipMessage: GossipMessage) {
     // Update peer-level message metrics
     this.computePeerMessageMetrics(gossipMessage);
+  }
 
-    if (!gossipMessage.networkLatencyMessage) {
-      return;
-    } else if (gossipMessage.networkLatencyMessage.ackMessage) {
-      const ackMessage = gossipMessage.networkLatencyMessage.ackMessage;
-      const pingOriginPeerId = this.getPeerIdFromBytes(ackMessage.pingOriginPeerId);
-      if (pingOriginPeerId) {
-        const peerIdMatchesOrigin = this._gossipNode.peerId?.toString() == pingOriginPeerId.toString() ?? false;
-        if (peerIdMatchesOrigin) {
-          // Log ack latency for peer
-          const ackPeerId = this.getPeerIdFromBytes(ackMessage.ackOriginPeerId);
-          if (ackPeerId) {
-            // Add peerId to recent peerIds
-            this._metrics.recentPeerIds[ackPeerId.toString()] = Date.now();
+  async recordLatencyAckMessageReceipt(ackMessage: AckMessageBody) {
+    const pingOriginPeerId = this.getPeerIdFromBytes(ackMessage.pingOriginPeerId);
+    if (pingOriginPeerId) {
+      const peerIdMatchesOrigin = this._gossipNode.peerId?.toString() == pingOriginPeerId.toString() ?? false;
+      if (peerIdMatchesOrigin) {
+        // Log ack latency for peer
+        const ackPeerId = this.getPeerIdFromBytes(ackMessage.ackOriginPeerId);
+        if (ackPeerId) {
+          // Add peerId to recent peerIds
+          this._metrics.recentPeerIds[ackPeerId.toString()] = Date.now();
 
-            // Compute peer and coverage metrics
-            this.computePeerLatencyAndCoverageMetrics(ackMessage, ackPeerId);
-          }
+          // Compute peer and coverage metrics
+          this.computePeerLatencyAndCoverageMetrics(ackMessage, ackPeerId);
         }
       }
     }
@@ -301,11 +309,11 @@ export class GossipMetricsRecorder {
     time: number,
     currentCoverage?: NetworkCoverageTimes
   ): NetworkCoverageTimes {
-    const seenPeerIds: StringMap = Object.assign({}, currentCoverage?.seenPeerIds ?? {});
-    const coverageMap: StringMap = Object.assign({}, currentCoverage?.coverageMap ?? {});
-    if (seenPeerIds[peerId.toString()]) {
-      return { seenPeerIds: seenPeerIds, coverageMap: coverageMap };
+    if (currentCoverage && currentCoverage.seenPeerIds[peerId.toString()]) {
+      return currentCoverage;
     } else {
+      const seenPeerIds: StringMap = Object.assign({}, currentCoverage?.seenPeerIds ?? {});
+      const coverageMap: StringMap = Object.assign({}, currentCoverage?.coverageMap ?? {});
       seenPeerIds[peerId.toString()] = time;
       const numSeenPeerIds = Object.keys(seenPeerIds).length;
       const coverage = numSeenPeerIds / Object.keys(this._metrics.recentPeerIds ?? {}).length;
@@ -324,17 +332,21 @@ export class GossipMetricsRecorder {
   }
 
   private async readMetricsFromDb(): Promise<GossipMetrics | undefined> {
-    const key = Buffer.from(METRICS_DB_KEY);
-    const value = await this._db?.get(key);
-    if (value) {
-      return GossipMetrics.fromBuffer(value);
+    const key = this.makeMetricsKey();
+    const result = await ResultAsync.fromPromise(this._db.get(Buffer.from(key)), (e) => e as HubError);
+    if (result.isOk()) {
+      return GossipMetrics.fromBuffer(result.value);
     }
     return undefined;
   }
 
   private async writeMetricsToDB() {
-    const key = Buffer.from(METRICS_DB_KEY);
+    const key = this.makeMetricsKey();
     const value = this._metrics.toBuffer();
     await this._db?.put(key, value);
+  }
+
+  private makeMetricsKey(): Buffer {
+    return Buffer.from([RootPrefix.GossipMetrics]);
   }
 }

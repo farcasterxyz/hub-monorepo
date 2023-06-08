@@ -2,11 +2,13 @@ import { GossipNode } from '../../network/p2p/gossipNode.js';
 import { sleep } from '../../utils/crypto.js';
 import { NetworkFactories } from '../../network/utils/factories.js';
 import { GossipMessage } from '@farcaster/hub-nodejs';
+import { jestRocksDB } from '../../storage/db/jestUtils.js';
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 const TEST_TIMEOUT_SHORT = 10 * 1000;
+const db = jestRocksDB('GossipNetworkTest');
 
 describe('gossip network tests', () => {
   /**
@@ -17,7 +19,7 @@ describe('gossip network tests', () => {
   let nodes: GossipNode[];
 
   beforeAll(async () => {
-    nodes = [...Array(NUM_NODES)].map(() => new GossipNode());
+    nodes = [...Array(NUM_NODES)].map(() => new GossipNode(db));
     messageStore = new Map();
   });
 
