@@ -44,7 +44,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
           
             #Now we have got the access of EC2 and we will start the deploy .
-            mkdir /home/ubuntu/FarcasterHub
+            mkdir /home/ubuntu/FarcasterHub &&
             cd /home/ubuntu/FarcasterHub &&
             git checkout main &&
             git fetch --all &&
