@@ -1,5 +1,5 @@
 
-name: CI/CD counter app
+name: Deployment Pipeline
 
 on:
   push:
@@ -11,20 +11,28 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     
-    - name: Build the docker_compose
-      run: docker-compose up -d --build
-      
-    - name: Buid the application
-      run: docker-compose exec -T counter_app npm run build
+    - name: Install Docker buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker image
+      id: docker-image
+      uses: docker/build-push-action@v4
+      with:
+        cache-from: type=gha
+        cache-to: type=gha,type=inline
+        context: .
+        file: Dockerfile.hubble
+        load: true
+        tags: farcasterxyz/hubble:test
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v2 
+      - uses: actions/checkout@v3 
       - name: Deploy in EC2
         env:
             PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_KEY  }}
@@ -36,9 +44,10 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
           
             #Now we have got the access of EC2 and we will start the deploy .
-            cd /home/ubuntu/CounterApp &&
-            git checkout master &&
+            mkdir /home/ubuntu/FarcasterHub
+            cd /home/ubuntu/FarcasterHub &&
+            git checkout main &&
             git fetch --all &&
-            git reset --hard origin/master &&
-            git pull origin master &&
-            docker-compose -f docker-compose.prod.yml up -d --build 
+            git reset --hard origin/main &&
+            git pull origin main &&
+            docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --network 3 --allowed-peers none'
