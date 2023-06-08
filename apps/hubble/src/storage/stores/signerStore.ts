@@ -211,8 +211,8 @@ class SignerStore {
       fids.push(fid);
     } while (fids.length < limit);
 
+    await iterator.end();
     if (!iteratorFinished) {
-      await iterator.end(); // clear iterator if it has not finished
       return { fids, nextPageToken: lastPageToken };
     } else {
       return { fids, nextPageToken: undefined };
