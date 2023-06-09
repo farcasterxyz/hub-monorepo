@@ -28,6 +28,7 @@ jobs:
         cache-to: type=gha,type=inline
         context: .
         file: Dockerfile.hubble
+
         tags: kyranstar/hubble:test
 
   deploy:
@@ -41,6 +42,7 @@ jobs:
             DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
             DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
             SSH_PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_KEY }}
+            ALCHEMY_HTTPS_KEY: ${{ secrets.ALCHEMY_HTTPS_KEY }}
             ARGS: ""
             SOURCE: "./"
             REMOTE_HOST: ${{ secrets.HOSTNAME  }}
@@ -54,4 +56,4 @@ jobs:
               git reset --hard origin/main &&
               git pull origin main &&
               sudo docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-              sudo docker run --name hub --detach -p2282:2282 -p2283:2283 kyranstar/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --network 3 --allowed-peers none'
+              sudo docker run --name hub --detach -p2282:2282 -p2283:2283 kyranstar/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url $ALCHEMY_HTTPS_KEY --network 3 --allowed-peers none'
