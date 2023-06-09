@@ -50,10 +50,12 @@ jobs:
             TARGET: "/home/ubuntu/hub-monorepo"
             EXCLUDE: ""
             SCRIPT_AFTER: |
-              cd /home/ubuntu/hub-monorepo &&
-              git checkout main &&
-              git fetch --all &&
-              git reset --hard origin/main &&
-              git pull origin main &&
-              sudo docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+              cd /home/ubuntu/hub-monorepo
+              git checkout main
+              git fetch --all
+              git reset --hard origin/main
+              git pull origin main
+              sudo docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD 
+              sudo docker stop hub
+              sudo docker rm hub
               sudo docker run --name hub --detach -p2282:2282 -p2283:2283 kyranstar/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url $ALCHEMY_HTTPS_KEY --network 3 --allowed-peers none'
