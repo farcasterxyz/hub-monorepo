@@ -3,7 +3,6 @@ import {
   FarcasterNetwork,
   getInsecureHubRpcClient,
   getSSLHubRpcClient,
-  HubError,
   HubInfoRequest,
   SyncStatusRequest,
 } from '@farcaster/hub-nodejs';
@@ -19,7 +18,7 @@ import { APP_VERSION, Hub, HubOptions } from './hubble.js';
 import { logger } from './utils/logger.js';
 import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from './utils/p2p.js';
 import { DEFAULT_RPC_CONSOLE, startConsole } from './console/console.js';
-import RocksDB, { DB_DIRECTORY, Iterator } from './storage/db/rocksdb.js';
+import RocksDB, { DB_DIRECTORY } from './storage/db/rocksdb.js';
 import { parseNetwork } from './utils/command.js';
 import { sleep } from './utils/crypto.js';
 import { Config as DefaultConfig } from './defaultConfig.js';
@@ -543,71 +542,6 @@ app
   .action(async (cliOptions) => {
     startConsole(cliOptions.server, cliOptions.insecure);
   });
-
-app
-  .command('dbtest')
-  .description('RocksDB test')
-  .option('--db <string>', 'DB', 'test-db')
-  .option('--open-only', 'OPen only')
-  .action(async (cliArgs) => {
-    logger.info(`RUNNING DBTEST ${cliArgs.db}`);
-    // Setup DB
-    const db = new RocksDB(cliArgs.db);
-    const dbResult = await ResultAsync.fromPromise(db.open(), (e) => e as Error);
-    if (dbResult.isErr()) {
-      logger.warn({ db: cliArgs.db }, 'Failed to open RocksDB');
-      exit(1);
-    }
-
-    const test1 = true;
-    if (cliArgs.openOnly) {
-      while (test1);
-    }
-
-    // Populate DB
-    for (let i = 0; i < 1000000; i++) {
-      const element = Buffer.from(i.toString());
-      await db.put(element, element);
-    }
-    logger.info('POPULATED DB');
-    const test = true;
-    const prefixNumber = 1;
-
-    // Run tests
-    let deleted = false;
-    while (test) {
-      const it = db.iteratorByPrefix(Buffer.from(prefixNumber.toString()));
-      traverseIteratorToEnd(it);
-      await new Promise((r) => setTimeout(r, 20));
-      if (!deleted) {
-        for (let i = 0; i < 1000000; i++) {
-          const element = Buffer.from(i.toString());
-          await db.del(element);
-        }
-        deleted = true;
-      }
-      await db.compact();
-    }
-  });
-
-// const listSSTFiles = (dbName: string) => {
-//   /* eslint-disable security/detect-non-literal-fs-filename */
-//   const files = readdirSync(`${DB_DIRECTORY}/${dbName}`).filter((x) => x.endsWith('sst'));
-//   logger.info({ sstFiles: files }, 'SST FILES');
-// };
-
-const traverseIteratorToEnd = async (it: Iterator) => {
-  let result = undefined;
-  const vals: any[] = [];
-  while (!result || result.isOk()) {
-    result = await ResultAsync.fromPromise(it.next(), (e) => e as HubError);
-    if (result.isOk()) {
-      vals.push(result.value[0]?.toString());
-    }
-  }
-  it.end();
-  logger.info({ vals: vals.length }, 'IT ENDED');
-};
 
 const readPeerId = async (filePath: string) => {
   /* eslint-disable security/detect-non-literal-fs-filename */

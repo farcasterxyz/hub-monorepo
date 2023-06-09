@@ -24,7 +24,6 @@
     "start": "node build/cli.js start",
     "identity": "node build/cli.js identity",
     "dbreset": "node build/cli.js dbreset",
-    "testdb": "yarn build && node build/cli.js dbtest",
     "console": "node build/cli.js console",
     "status": "node build/cli.js status",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
