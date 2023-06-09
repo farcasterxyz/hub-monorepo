@@ -213,8 +213,8 @@ export const getMessagesPageByPrefix = async <T extends Message>(
     }
   } while (messages.length < limit);
 
+  await iterator.end();
   if (!iteratorFinished) {
-    await iterator.end(); // clear iterator if it has not finished
     return { messages, nextPageToken: lastPageToken };
   } else {
     return { messages, nextPageToken: undefined };
