@@ -59,9 +59,9 @@ jobs:
               git fetch --all
               git reset --hard origin/main
               git pull origin main
-              echo $DOCKER_USERNAME
-              echo "HELLO"
-              echo $DOCKER_PASSWORD | sudo docker login -u $DOCKER_USERNAME --password-stdin
+              echo ${{ secrets.DOCKERHUB_USERNAME }}
+              echo "Hello"
+              sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
               sudo docker stop hub
               sudo docker rm hub
-              sudo docker run --name hub --detach -p2282:2282 -p2283:2283 kyranstar/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url $ALCHEMY_HTTPS_KEY --network 3 --allowed-peers none'
+              sudo docker run --name hub --detach -p2282:2282 -p2283:2283 kyranstar/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url ${{ secrets.ALCHEMY_HTTPS_KEY }} --network 3 --allowed-peers none'
