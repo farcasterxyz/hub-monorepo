@@ -59,6 +59,8 @@ jobs:
               git fetch --all
               git reset --hard origin/main
               git pull origin main
+              echo $DOCKER_USERNAME
+              echo "HELLO"
               echo $DOCKER_PASSWORD | sudo docker login -u $DOCKER_USERNAME --password-stdin
               sudo docker stop hub
               sudo docker rm hub
