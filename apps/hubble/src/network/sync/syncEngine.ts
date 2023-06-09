@@ -698,6 +698,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   public async getDbStats(): Promise<DbStats> {
     let numFids = 0,
       numFnames = 0;
+
     for await (const [,] of this._db.iteratorByPrefix(Buffer.from([RootPrefix.IdRegistryEvent]), {
       keys: false,
       values: false,
