@@ -19,6 +19,11 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+#    - name: Extract metadata (tags, labels) for Docker
+#      id: meta
+#      uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+#      with:
+#        images: kyranstar/hubble
     - name: Build Docker image
       id: docker-image
       uses: docker/build-push-action@v4
@@ -28,7 +33,6 @@ jobs:
         cache-to: type=gha,type=inline
         context: .
         file: Dockerfile.hubble
-
         tags: kyranstar/hubble:test
 
   deploy:
@@ -55,7 +59,7 @@ jobs:
               git fetch --all
               git reset --hard origin/main
               git pull origin main
-              sudo docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD 
+              echo $DOCKER_PASSWORD | sudo docker login -u $DOCKER_USERNAME --password-stdin
               sudo docker stop hub
               sudo docker rm hub
               sudo docker run --name hub --detach -p2282:2282 -p2283:2283 kyranstar/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url $ALCHEMY_HTTPS_KEY --network 3 --allowed-peers none'
