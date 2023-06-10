@@ -89,7 +89,11 @@ class RocksDB {
   /** This set and cron are used to check whether iterators are open
    * (i.e. iterator.end) has not been called for MAX_DB_ITERATOR_OPEN_MILLISECONDS
    */
-  private _openIterators: Set<{ iterator: Iterator; openTimestamp: number }>;
+  private _openIterators: Set<{
+    iterator: Iterator;
+    openTimestamp: number;
+    options: AbstractRocksDB.IteratorOptions | undefined;
+  }>;
   private _iteratorCheckTimer?: NodeJS.Timer;
 
   constructor(name?: string) {
@@ -103,7 +107,8 @@ class RocksDB {
         } else {
           if (now - entry.openTimestamp >= MAX_DB_ITERATOR_OPEN_MILLISECONDS) {
             log.warn(
-              `RocksDB iterator is open (.end was not called) for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`
+              `RocksDB iterator with options ${entry.options} open (.end was not called)
+                for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`
             );
           }
           return [entry];
@@ -222,7 +227,7 @@ class RocksDB {
 
   iterator(options?: AbstractRocksDB.IteratorOptions): Iterator {
     const iterator = new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
-    this._openIterators.add({ iterator: iterator, openTimestamp: Date.now() });
+    this._openIterators.add({ iterator: iterator, openTimestamp: Date.now(), options: options });
     return iterator;
   }
 
