@@ -248,7 +248,6 @@ describe('open iterator check', () => {
     expect(db.status).toEqual('open');
     await db.destroy();
     jest.useRealTimers();
-    jest.resetAllMocks();
   });
 
   test('warns on open iterators', async () => {
