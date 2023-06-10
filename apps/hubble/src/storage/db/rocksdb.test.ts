@@ -240,6 +240,8 @@ describe('open iterator check', () => {
 
   beforeAll(async () => {
     jest.useFakeTimers();
+    // Creating a separate db here so that jest.useFakeTimers takes effect
+    // when setInterval is called in the RocksDB constructor
     db = new RocksDB(randomDbName());
     await expect(db.open()).resolves.toEqual(undefined);
   });
@@ -251,8 +253,6 @@ describe('open iterator check', () => {
   });
 
   test('warns on open iterators', async () => {
-    // Creating a separate db here so that jest.useFakeTimers takes effect
-    // when setInterval is called in the RocksDB constructor
     Date.now = jest.fn(() => 0);
     const closedIterator = db.iterator();
     await closedIterator.end();
