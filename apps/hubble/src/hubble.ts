@@ -63,6 +63,7 @@ import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet.js';
 import StoreEventHandler from './storage/stores/storeEventHandler.js';
 import { RetryProvider } from './eth/retryProvider.js';
 import { JsonRpcProvider } from 'ethers';
+import { FNameRegistryClient, FNameRegistryEventsProvider } from './eth/fnameRegistryEventsProvider.js';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync' | 'fname-registry';
 
@@ -128,6 +129,9 @@ export interface HubOptions {
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
+  /** FName Registry Server URL */
+  fnameServerUrl?: string;
+
   /** Address of the IdRegistry contract  */
   idRegistryAddress?: string;
 
@@ -140,8 +144,11 @@ export interface HubOptions {
   /** Number of blocks to batch when syncing historical events  */
   chunkSize?: number;
 
-  /** Resync events */
+  /** Resync eth events */
   resyncEthEvents?: boolean;
+
+  /** Resync fname events */
+  resyncFNameEvents?: boolean;
 
   /** Name of the RocksDB instance */
   rocksDBName?: string;
@@ -212,6 +219,7 @@ export class Hub implements HubInterface {
 
   engine: Engine;
   ethRegistryProvider?: EthEventsProvider;
+  fNameRegistryEventsProvider?: FNameRegistryEventsProvider;
 
   constructor(options: HubOptions) {
     this.options = options;
@@ -235,6 +243,16 @@ export class Hub implements HubInterface {
       );
     } else {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
+    }
+
+    if (options.fnameServerUrl) {
+      this.fNameRegistryEventsProvider = new FNameRegistryEventsProvider(
+        new FNameRegistryClient(options.fnameServerUrl),
+        this,
+        options.resyncFNameEvents ?? false
+      );
+    } else {
+      log.warn('No FName Registry URL provided, not syncing with fname events');
     }
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
@@ -376,6 +394,8 @@ export class Hub implements HubInterface {
       await this.ethRegistryProvider.start();
     }
 
+    await this.fNameRegistryEventsProvider?.start();
+
     // Start the sync engine
     await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
 
@@ -474,6 +494,8 @@ export class Hub implements HubInterface {
       await this.ethRegistryProvider.stop();
     }
 
+    await this.fNameRegistryEventsProvider?.stop();
+
     // Stop the engine
     await this.engine.stop();
 
@@ -486,7 +508,14 @@ export class Hub implements HubInterface {
   }
 
   async getHubState(): HubAsyncResult<HubState> {
-    return ResultAsync.fromPromise(getHubState(this.rocksDB), (e) => e as HubError);
+    const result = await ResultAsync.fromPromise(getHubState(this.rocksDB), (e) => e as HubError);
+    if (result.isErr() && result.error.errCode === 'not_found') {
+      log.info('hub state not found, resetting state');
+      const hubState = HubState.create({ lastEthBlock: 0, lastFnameProof: 0 });
+      await putHubState(this.rocksDB, hubState);
+      return ok(hubState);
+    }
+    return result;
   }
 
   async putHubState(hubState: HubState): HubAsyncResult<void> {

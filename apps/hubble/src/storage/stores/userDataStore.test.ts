@@ -58,6 +58,78 @@ describe('getUserDataAdd', () => {
   });
 });
 
+describe('mergeUserNameProof', () => {
+  test('succeeds', async () => {
+    const proof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(proof);
+    await expect(set.getUserNameProof(proof.name)).resolves.toEqual(proof);
+  });
+
+  test('replaces existing proof with proof of greater timestamp', async () => {
+    const existingProof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(existingProof);
+    const newProof = await Factories.UserNameProof.build({
+      timestamp: existingProof.timestamp + 10,
+      name: existingProof.name,
+      fid: Factories.Fid.build(),
+    });
+    await set.mergeUserNameProof(newProof);
+    await expect(set.getUserNameProof(existingProof.name)).resolves.toEqual(newProof);
+  });
+
+  test('does not merge if existing timestamp is greater', async () => {
+    const existingProof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(existingProof);
+    const newProof = await Factories.UserNameProof.build({
+      timestamp: existingProof.timestamp - 10,
+      name: existingProof.name,
+      fid: Factories.Fid.build(),
+    });
+    await expect(set.mergeUserNameProof(newProof)).rejects.toThrowError(
+      'event conflicts with a more recent UserNameProof'
+    );
+    await expect(set.getUserNameProof(existingProof.name)).resolves.toEqual(existingProof);
+  });
+
+  test('deletes existing proof if fid is 0', async () => {
+    const existingProof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(existingProof);
+    const newProof = await Factories.UserNameProof.build({
+      timestamp: existingProof.timestamp + 10,
+      name: existingProof.name,
+      fid: 0,
+    });
+    await set.mergeUserNameProof(newProof);
+    await expect(set.getUserNameProof(existingProof.name)).rejects.toThrowError('NotFound');
+  });
+
+  test('does not delete existing proof if fid is 0 and timestamp is less than existing', async () => {
+    const existingProof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(existingProof);
+    const newProof = await Factories.UserNameProof.build({
+      timestamp: existingProof.timestamp - 10,
+      name: existingProof.name,
+      fid: 0,
+    });
+    await expect(set.mergeUserNameProof(newProof)).rejects.toThrowError(
+      'event conflicts with a more recent UserNameProof'
+    );
+    await expect(set.getUserNameProof(existingProof.name)).resolves.toEqual(existingProof);
+  });
+
+  test('deletion does not fail if no existing proof', async () => {
+    const existingProof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(existingProof);
+    const newProof = await Factories.UserNameProof.build({
+      timestamp: existingProof.timestamp + 10,
+      name: existingProof.name,
+      fid: 0,
+    });
+    await set.mergeUserNameProof(newProof);
+    await expect(set.getUserNameProof(existingProof.name)).rejects.toThrowError('NotFound');
+  });
+});
+
 describe('getUserDataAddsByFid', () => {
   test('returns user data adds for an fid in chronological order', async () => {
     await set.merge(addPfp);

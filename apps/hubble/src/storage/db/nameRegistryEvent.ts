@@ -69,10 +69,17 @@ export const putNameRegistryEventTransaction = (txn: Transaction, event: NameReg
 };
 
 export const putUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
-  const eventBuffer = Buffer.from(UserNameProof.encode(usernameProof).finish());
+  const proofBuffer = Buffer.from(UserNameProof.encode(usernameProof).finish());
 
   const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
-  txn = txn.put(primaryKey, eventBuffer);
+  txn = txn.put(primaryKey, proofBuffer);
+
+  return txn;
+};
+
+export const deleteUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
+  const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
+  txn = txn.del(primaryKey);
 
   return txn;
 };

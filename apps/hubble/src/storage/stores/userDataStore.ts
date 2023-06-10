@@ -16,11 +16,13 @@ import {
   putNameRegistryEventTransaction,
   getUserNameProof,
   putUserNameProofTransaction,
+  deleteUserNameProofTransaction,
 } from '../db/nameRegistryEvent.js';
 import { UserMessagePostfix, UserPostfix } from '../db/types.js';
 import { MessagesPage, PageOptions } from '../stores/types.js';
 import { eventCompare, usernameProofCompare } from '../stores/utils.js';
 import { Store } from './store.js';
+import { Transaction } from '../db/rocksdb.js';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -135,10 +137,15 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   async mergeUserNameProof(usernameProof: UserNameProof): Promise<number> {
     const existingProof = await ResultAsync.fromPromise(this.getUserNameProof(usernameProof.name), () => undefined);
     if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) >= 0) {
-      throw new HubError('bad_request.conflict', 'event conflicts with a more recent NameRegistryEvent');
+      throw new HubError('bad_request.conflict', 'event conflicts with a more recent UserNameProof');
     }
 
-    const txn = putUserNameProofTransaction(this._db.transaction(), usernameProof);
+    let txn: Transaction;
+    if (usernameProof.fid === 0) {
+      txn = deleteUserNameProofTransaction(this._db.transaction(), usernameProof);
+    } else {
+      txn = putUserNameProofTransaction(this._db.transaction(), usernameProof);
+    }
 
     const result = await this._eventHandler.commitTransaction(txn, {
       type: HubEventType.MERGE_USERNAME_PROOF,

@@ -1,4 +1,5 @@
 /* eslint-disable */
+import Long from 'long';
 import _m0 from 'protobufjs/minimal';
 
 export enum UserNameType {
@@ -35,17 +36,25 @@ export interface UserNameProof {
   name: Uint8Array;
   owner: Uint8Array;
   signature: Uint8Array;
+  fid: number;
   type: UserNameType;
 }
 
 function createBaseUserNameProof(): UserNameProof {
-  return { timestamp: 0, name: new Uint8Array(), owner: new Uint8Array(), signature: new Uint8Array(), type: 0 };
+  return {
+    timestamp: 0,
+    name: new Uint8Array(),
+    owner: new Uint8Array(),
+    signature: new Uint8Array(),
+    fid: 0,
+    type: 0,
+  };
 }
 
 export const UserNameProof = {
   encode(message: UserNameProof, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.timestamp !== 0) {
-      writer.uint32(8).uint32(message.timestamp);
+      writer.uint32(8).uint64(message.timestamp);
     }
     if (message.name.length !== 0) {
       writer.uint32(18).bytes(message.name);
@@ -56,8 +65,11 @@ export const UserNameProof = {
     if (message.signature.length !== 0) {
       writer.uint32(34).bytes(message.signature);
     }
+    if (message.fid !== 0) {
+      writer.uint32(40).uint64(message.fid);
+    }
     if (message.type !== 0) {
-      writer.uint32(40).int32(message.type);
+      writer.uint32(48).int32(message.type);
     }
     return writer;
   },
@@ -74,7 +86,7 @@ export const UserNameProof = {
             break;
           }
 
-          message.timestamp = reader.uint32();
+          message.timestamp = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
           if (tag != 18) {
@@ -102,6 +114,13 @@ export const UserNameProof = {
             break;
           }
 
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
           message.type = reader.int32() as any;
           continue;
       }
@@ -119,6 +138,7 @@ export const UserNameProof = {
       name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array(),
       owner: isSet(object.owner) ? bytesFromBase64(object.owner) : new Uint8Array(),
       signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
       type: isSet(object.type) ? userNameTypeFromJSON(object.type) : 0,
     };
   },
@@ -132,6 +152,7 @@ export const UserNameProof = {
       (obj.owner = base64FromBytes(message.owner !== undefined ? message.owner : new Uint8Array()));
     message.signature !== undefined &&
       (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.type !== undefined && (obj.type = userNameTypeToJSON(message.type));
     return obj;
   },
@@ -146,6 +167,7 @@ export const UserNameProof = {
     message.name = object.name ?? new Uint8Array();
     message.owner = object.owner ?? new Uint8Array();
     message.signature = object.signature ?? new Uint8Array();
+    message.fid = object.fid ?? 0;
     message.type = object.type ?? 0;
     return message;
   },
@@ -211,6 +233,18 @@ type KeysOfUnion<T> = T extends T ? keyof T : never;
 type Exact<P, I extends P> = P extends Builtin
   ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function longToNumber(long: Long): number {
+  if (long.gt(Number.MAX_SAFE_INTEGER)) {
+    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
+  }
+  return long.toNumber();
+}
+
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

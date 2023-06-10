@@ -56,6 +56,7 @@ app
   .option('--fir-address <address>', 'The address of the Farcaster ID Registry contract')
   .option('--fnr-address <address>', 'The address of the Farcaster Name Registry contract')
   .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts', parseNumber)
+  .option('--fname-server-url <url>', 'The URL for the FName registry server')
   .option(
     '--chunk-size <number>',
     'The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)',
@@ -87,6 +88,7 @@ app
   .option('--db-name <name>', 'The name of the RocksDB instance')
   .option('--rebuild-sync-trie', 'Rebuilds the sync trie before starting')
   .option('--resync-eth-events', 'Resyncs events from the Farcaster contracts before starting')
+  .option('--resync-fname-events', 'Resyncs events from the FName registry server before starting')
   .option('--commit-lock-timeout <number>', 'Commit lock timeout in milliseconds (default: 500)', parseNumber)
   .option('--commit-lock-max-pending <number>', 'Commit lock max pending jobs (default: 1000)', parseNumber)
   .option('-i, --id <filepath>', 'Path to the PeerId file')
@@ -293,6 +295,7 @@ app
       gossipPort: hubAddressInfo.value.port,
       network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
+      fnameServerUrl: cliOptions.fnameServerUrl ?? hubConfig.fnameServerUrl,
       idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
       firstBlock: cliOptions.firstBlock ?? hubConfig.firstBlock,
@@ -305,6 +308,7 @@ app
       resetDB,
       rebuildSyncTrie,
       resyncEthEvents: cliOptions.resyncEthEvents ?? hubConfig.resyncEthEvents ?? false,
+      resyncFNameEvents: cliOptions.resyncFNameEvents ?? hubConfig.resyncFNameEvents ?? false,
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
       commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,

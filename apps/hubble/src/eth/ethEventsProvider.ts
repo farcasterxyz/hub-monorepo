@@ -3,7 +3,6 @@ import {
   hexStringToBytes,
   HubAsyncResult,
   HubError,
-  HubState,
   IdRegistryEvent,
   IdRegistryEventType,
   NameRegistryEvent,
@@ -476,8 +475,13 @@ export class EthEventsProvider {
 
     // Update the last synced block if all the historical events have been synced
     if (this._isHistoricalSyncDone) {
-      const hubState = HubState.create({ lastEthBlock: blockNumber });
-      await this._hub.putHubState(hubState);
+      const hubState = await this._hub.getHubState();
+      if (hubState.isOk()) {
+        hubState.value.lastEthBlock = blockNumber;
+        await this._hub.putHubState(hubState.value);
+      } else {
+        log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
+      }
     }
 
     this._lastBlockNumber = blockNumber;
