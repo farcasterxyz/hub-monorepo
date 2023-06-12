@@ -1,7 +1,7 @@
-import { eip712 } from '../crypto';
-import { HubAsyncResult } from '../errors';
-import { VerificationEthAddressClaim } from '../verifications';
-import { Eip712Signer } from './eip712Signer';
+import { eip712 } from "../crypto";
+import { HubAsyncResult } from "../errors";
+import { VerificationEthAddressClaim } from "../verifications";
+import { Eip712Signer } from "./eip712Signer";
 
 export class EthersEip712Signer extends Eip712Signer {
   private readonly _ethersSigner: eip712.MinimalEthersSigner;
