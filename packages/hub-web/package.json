@@ -19,13 +19,11 @@
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto  --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputClientImpl=grpc-web,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true,lowerCaseServiceMethods=true --proto_path=../../protobufs//schemas ../../protobufs/schemas/rpc.proto",
-    "lint": "eslint  src/ --color --ext .ts",
-    "lint:fix": "yarn run lint -- --fix",
+    "lint": "rome ci src/",
     "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
-    "eslint-config-custom": "*",
-    "prettier-config-custom": "*",
+    "rome-config-custom": "*",
     "ts-proto": "^1.146.0"
   },
   "dependencies": {
