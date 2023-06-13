@@ -26,7 +26,7 @@
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto  --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=../../protobufs/schemas ../../protobufs/schemas/rpc.proto",
-    "lint": "rome ci src/",
+    "lint": "rome ci src/ examples/",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
     "prepublishOnly": "yarn run build"

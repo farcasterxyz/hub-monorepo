@@ -1,12 +1,12 @@
-import { Kysely, CamelCasePlugin, Generated, GeneratedAlways, Migrator, FileMigrationProvider } from 'kysely';
-import { PostgresJSDialect } from 'kysely-postgres-js';
-import postgres from 'postgres';
-import { MessageType, ReactionType, UserDataType, HashScheme, SignatureScheme } from '@farcaster/hub-nodejs';
-import * as path from 'path';
-import { promises as fs } from 'fs';
-import { fileURLToPath } from 'url';
-import { Logger } from './log';
-import { err, ok, Result } from 'neverthrow';
+import { Kysely, CamelCasePlugin, Generated, GeneratedAlways, Migrator, FileMigrationProvider } from "kysely";
+import { PostgresJSDialect } from "kysely-postgres-js";
+import postgres from "postgres";
+import { MessageType, ReactionType, UserDataType, HashScheme, SignatureScheme } from "@farcaster/hub-nodejs";
+import * as path from "path";
+import { promises as fs } from "fs";
+import { fileURLToPath } from "url";
+import { Logger } from "./log";
+import { err, ok, Result } from "neverthrow";
 
 export interface Database {
   hubSubscriptions: {
@@ -131,7 +131,9 @@ export const getDbClient = (connectionString: string) => {
           bigint: {
             to: 20,
             from: 20,
+            // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
             parse: (x: any) => Number(x),
+            // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
             serialize: (x: any) => x.toString(),
           },
         },
@@ -142,28 +144,29 @@ export const getDbClient = (connectionString: string) => {
   });
 };
 
+// rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
 export const migrateToLatest = async (db: Kysely<any>, log: Logger): Promise<Result<void, unknown>> => {
   const migrator = new Migrator({
     db,
     provider: new FileMigrationProvider({
       fs,
       path,
-      migrationFolder: path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations'),
+      migrationFolder: path.join(path.dirname(fileURLToPath(import.meta.url)), "migrations"),
     }),
   });
 
   const { error, results } = await migrator.migrateToLatest();
 
   results?.forEach((it) => {
-    if (it.status === 'Success') {
+    if (it.status === "Success") {
       log.info(`migration "${it.migrationName}" was executed successfully`);
-    } else if (it.status === 'Error') {
+    } else if (it.status === "Error") {
       log.error(`failed to execute migration "${it.migrationName}"`);
     }
   });
 
   if (error) {
-    log.error('failed to migrate');
+    log.error("failed to migrate");
     log.error(error);
     return err(error);
   }
