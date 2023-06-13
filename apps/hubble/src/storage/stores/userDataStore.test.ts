@@ -168,7 +168,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(addPfpLater);
         await expect(set.merge(addPfp)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent UserDataAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertUserDataDoesNotExist(addPfp);
@@ -202,7 +202,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(addPfpLater);
         await expect(set.merge(addPfp)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent UserDataAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertUserDataDoesNotExist(addPfp);
