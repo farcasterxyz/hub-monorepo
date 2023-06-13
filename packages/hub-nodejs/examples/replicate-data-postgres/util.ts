@@ -1,5 +1,3 @@
-/* eslint-disable prefer-arrow-functions/prefer-arrow-functions */
-
 import { fromFarcasterTime } from '@farcaster/hub-nodejs';
 
 export function farcasterTimeToDate(time: undefined): undefined;

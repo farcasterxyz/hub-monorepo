@@ -1,4 +1,3 @@
-/* eslint-disable */
 import _m0 from 'protobufjs/minimal';
 
 export interface HubState {

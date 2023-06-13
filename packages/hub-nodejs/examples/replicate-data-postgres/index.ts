@@ -35,7 +35,6 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
   process.once(signal, (signalName: string) => {
     log.info(`Process received ${signalName}`);
     process.exitCode =
-      // eslint-disable-next-line security/detect-object-injection
       {
         SIGINT: 130,
         SIGTERM: 143,
