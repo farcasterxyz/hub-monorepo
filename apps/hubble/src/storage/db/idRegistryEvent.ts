@@ -1,6 +1,6 @@
-import { IdRegistryEvent } from '@farcaster/hub-nodejs';
-import RocksDB, { Transaction } from './rocksdb.js';
-import { FID_BYTES, RootPrefix } from './types.js';
+import { IdRegistryEvent } from "@farcaster/hub-nodejs";
+import RocksDB, { Transaction } from "./rocksdb.js";
+import { FID_BYTES, RootPrefix } from "./types.js";
 
 /** <ID Registry root prefix byte, fid> */
 export const makeIdRegistryEventPrimaryKey = (fid: number): Buffer => {
@@ -29,7 +29,7 @@ export const getIdRegistryEvent = async (db: RocksDB, fid: number): Promise<IdRe
 
 export const getIdRegistryEventByCustodyAddress = async (
   db: RocksDB,
-  custodyAddress: Uint8Array
+  custodyAddress: Uint8Array,
 ): Promise<IdRegistryEvent> => {
   const key = makeIdRegistryEventByCustodyAddressKey(custodyAddress);
   const buffer = await db.get(key);

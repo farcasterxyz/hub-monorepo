@@ -9,9 +9,9 @@ import {
   NameRegistryEvent,
   UserDataAddMessage,
   UserDataType,
-} from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { err, ok, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import AsyncLock from "async-lock";
+import { err, ok, ResultAsync } from "neverthrow";
 import {
   deleteMessageTransaction,
   getMessage,
@@ -22,14 +22,14 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../db/message.js';
-import { getNameRegistryEvent, putNameRegistryEventTransaction } from '../db/nameRegistryEvent.js';
-import RocksDB, { Transaction } from '../db/rocksdb.js';
-import { UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '../stores/types.js';
-import { eventCompare } from '../stores/utils.js';
-import { logger } from '../../utils/logger.js';
+} from "../db/message.js";
+import { getNameRegistryEvent, putNameRegistryEventTransaction } from "../db/nameRegistryEvent.js";
+import RocksDB, { Transaction } from "../db/rocksdb.js";
+import { UserPostfix } from "../db/types.js";
+import StoreEventHandler, { HubEventArgs } from "../stores/storeEventHandler.js";
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from "../stores/types.js";
+import { eventCompare } from "../stores/utils.js";
+import { logger } from "../../utils/logger.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -44,7 +44,7 @@ const makeUserDataAddsKey = (fid: number, dataType?: UserDataType): Buffer => {
   return Buffer.concat([
     makeUserKey(fid),
     Buffer.from([UserPostfix.UserDataAdds]),
-    dataType ? Buffer.from([dataType]) : Buffer.from(''),
+    dataType ? Buffer.from([dataType]) : Buffer.from(""),
   ]);
 };
 
@@ -111,7 +111,7 @@ class UserDataStore {
   async mergeNameRegistryEvent(event: NameRegistryEvent): Promise<number> {
     const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fname), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
-      throw new HubError('bad_request.conflict', 'event conflicts with a more recent NameRegistryEvent');
+      throw new HubError("bad_request.conflict", "event conflicts with a more recent NameRegistryEvent");
     }
 
     const txn = putNameRegistryEventTransaction(this._db.transaction(), event);
@@ -131,30 +131,33 @@ class UserDataStore {
   /** Merges a UserDataAdd message into the set */
   async merge(message: Message): Promise<number> {
     if (!isUserDataAddMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
+      throw new HubError("bad_request.validation_failure", "invalid message type");
     }
 
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message,
-            UserPostfix.UserDataMessage,
-            this._pruneSizeLimit
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
-          }
-          return this.mergeDataAdd(message);
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
-      });
+    return (
+      this._mergeLock
+        .acquire(
+          message.data.fid.toString(),
+          async () => {
+            const prunableResult = await this._eventHandler.isPrunable(
+              message,
+              UserPostfix.UserDataMessage,
+              this._pruneSizeLimit,
+            );
+            if (prunableResult.isErr()) {
+              throw prunableResult.error;
+            } else if (prunableResult.value) {
+              throw new HubError("bad_request.prunable", "message would be pruned");
+            }
+            return this.mergeDataAdd(message);
+          },
+          { timeout: MERGE_TIMEOUT_DEFAULT },
+        )
+        // rome-ignore lint/suspicious/noExplicitAny: error catching
+        .catch((e: any) => {
+          throw isHubError(e) ? e : new HubError("unavailable.storage_failure", "merge timed out");
+        })
+    );
   }
 
   async revoke(message: Message): HubAsyncResult<number> {
@@ -162,7 +165,7 @@ class UserDataStore {
     if (isUserDataAddMessage(message)) {
       txn = this.deleteUserDataAddTransaction(txn, message);
     } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+      return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
 
     return this._eventHandler.commitTransaction(txn, {
@@ -209,7 +212,7 @@ class UserDataStore {
       if (isUserDataAddMessage(nextMessage.value)) {
         txn = this.deleteUserDataAddTransaction(txn, nextMessage.value);
       } else {
-        return err(new HubError('unknown', 'invalid message type'));
+        return err(new HubError("unknown", "invalid message type"));
       }
 
       return this._eventHandler.commitTransaction(txn, {
@@ -228,7 +231,7 @@ class UserDataStore {
         },
         (e) => {
           logger.error({ errCode: e.errCode }, `error pruning user data message for fid ${fid}: ${e.message}`);
-        }
+        },
       );
 
       pruneResult = await pruneNextMessage();
@@ -283,15 +286,15 @@ class UserDataStore {
     // Look up the current add timestampHash for this dataType
     const addTimestampHash = await ResultAsync.fromPromise(
       this._db.get(makeUserDataAddsKey(message.data.fid, message.data.userDataBody.type)),
-      () => undefined
+      () => undefined,
     );
 
     if (addTimestampHash.isOk()) {
       const addCompare = this.userDataMessageCompare(addTimestampHash.value, tsHash.value);
       if (addCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent UserDataAdd'));
+        return err(new HubError("bad_request.conflict", "message conflicts with a more recent UserDataAdd"));
       } else if (addCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
+        return err(new HubError("bad_request.duplicate", "message has already been merged"));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // UserDataAdd message and delete it as part of the RocksDB transaction
@@ -299,7 +302,7 @@ class UserDataStore {
           this._db,
           message.data.fid,
           UserPostfix.UserDataMessage,
-          addTimestampHash.value
+          addTimestampHash.value,
         );
         conflicts.push(existingAdd);
       }

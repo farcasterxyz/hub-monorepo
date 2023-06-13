@@ -1,5 +1,5 @@
-import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from './jestUtils.js';
+import { bytesToUtf8String, Factories, HubError, utf8StringToBytes } from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "./jestUtils.js";
 import {
   deleteNameRegistryEvent,
   getNameRegistryEvent,
@@ -8,16 +8,16 @@ import {
   makeNameRegistryEventByExpiryKey,
   makeNameRegistryEventPrimaryKey,
   putNameRegistryEvent,
-} from './nameRegistryEvent.js';
+} from "./nameRegistryEvent.js";
 
-const db = jestRocksDB('storage.db.nameRegistryEvent.test');
+const db = jestRocksDB("storage.db.nameRegistryEvent.test");
 
 const fname = Factories.Fname.build();
 const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname });
 
-describe('makeNameRegistryEventPrimaryKey', () => {
-  test('orders keys by fname', async () => {
-    const names = ['ab', 'abcde', 'ccc', 'z'];
+describe("makeNameRegistryEventPrimaryKey", () => {
+  test("orders keys by fname", async () => {
+    const names = ["ab", "abcde", "ccc", "z"];
     for (const name of names) {
       const bytes = utf8StringToBytes(name)._unsafeUnwrap();
       const key = makeNameRegistryEventPrimaryKey(bytes);
@@ -31,14 +31,14 @@ describe('makeNameRegistryEventPrimaryKey', () => {
   });
 });
 
-describe('makeNameRegistryEventByExpiryKey', () => {
-  test('orders keys by expiry', async () => {
+describe("makeNameRegistryEventByExpiryKey", () => {
+  test("orders keys by expiry", async () => {
     const testData: [number, string][] = [
-      [100, 'a'],
-      [99, 'b'],
-      [255, 'c'],
-      [256, 'd'],
-      [1_000_000, 'e'],
+      [100, "a"],
+      [99, "b"],
+      [255, "c"],
+      [256, "d"],
+      [1_000_000, "e"],
     ];
     for (const [expiry, name] of testData) {
       const bytes = utf8StringToBytes(name)._unsafeUnwrap();
@@ -49,12 +49,12 @@ describe('makeNameRegistryEventByExpiryKey', () => {
     for await (const [, value] of db.iterator({ keys: false })) {
       orderedValues.push(bytesToUtf8String(Uint8Array.from(value as Buffer))._unsafeUnwrap());
     }
-    expect(orderedValues).toEqual(['b', 'a', 'c', 'd', 'e']);
+    expect(orderedValues).toEqual(["b", "a", "c", "d", "e"]);
   });
 });
 
-describe('putNameRegistryEvent', () => {
-  test('succeeds', async () => {
+describe("putNameRegistryEvent", () => {
+  test("succeeds", async () => {
     await expect(putNameRegistryEvent(db, nameRegistryEvent)).resolves.toEqual(undefined);
     await expect(getNameRegistryEvent(db, nameRegistryEvent.fname)).resolves.toEqual(nameRegistryEvent);
 
@@ -65,8 +65,8 @@ describe('putNameRegistryEvent', () => {
   });
 });
 
-describe('deleteNameRegistryEvent', () => {
-  test('succeeds', async () => {
+describe("deleteNameRegistryEvent", () => {
+  test("succeeds", async () => {
     await expect(putNameRegistryEvent(db, nameRegistryEvent)).resolves.toEqual(undefined);
     await expect(getNameRegistryEvent(db, nameRegistryEvent.fname)).resolves.toEqual(nameRegistryEvent);
 
@@ -79,13 +79,13 @@ describe('deleteNameRegistryEvent', () => {
   });
 });
 
-describe('getNameRegistryEvent', () => {
-  test('succeeds when event exists', async () => {
+describe("getNameRegistryEvent", () => {
+  test("succeeds when event exists", async () => {
     await putNameRegistryEvent(db, nameRegistryEvent);
     await expect(getNameRegistryEvent(db, nameRegistryEvent.fname)).resolves.toEqual(nameRegistryEvent);
   });
 
-  test('fails when event not found', async () => {
+  test("fails when event not found", async () => {
     await expect(getNameRegistryEvent(db, nameRegistryEvent.fname)).rejects.toThrow(HubError);
   });
 });

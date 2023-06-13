@@ -1,12 +1,12 @@
-import { Ed25519Signer, Factories, FarcasterNetwork, Message, PruneMessageHubEvent } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils.js';
-import Engine from '../engine/index.js';
-import { seedSigner } from '../engine/seed.js';
-import { PruneMessagesJobScheduler } from './pruneMessagesJob.js';
-import { FARCASTER_EPOCH, getFarcasterTime } from '@farcaster/core';
-import { setReferenceDateForTest } from '../../utils/versions.js';
+import { Ed25519Signer, Factories, FarcasterNetwork, Message, PruneMessageHubEvent } from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "../db/jestUtils.js";
+import Engine from "../engine/index.js";
+import { seedSigner } from "../engine/seed.js";
+import { PruneMessagesJobScheduler } from "./pruneMessagesJob.js";
+import { FARCASTER_EPOCH, getFarcasterTime } from "@farcaster/core";
+import { setReferenceDateForTest } from "../../utils/versions.js";
 
-const db = jestRocksDB('jobs.pruneMessagesJob.test');
+const db = jestRocksDB("jobs.pruneMessagesJob.test");
 
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const scheduler = new PruneMessagesJobScheduler(engine);
@@ -16,7 +16,7 @@ const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed
   const castAdd = await Factories.CastAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
   const reactionAdd = await Factories.ReactionAddMessage.create(
     { data: { fid, timestamp } },
-    { transient: { signer } }
+    { transient: { signer } },
   );
   const linkAdd = await Factories.LinkAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
   return engine.mergeMessages([castAdd, reactionAdd, linkAdd]);
@@ -31,7 +31,7 @@ const pruneMessageListener = (event: PruneMessageHubEvent) => {
 beforeAll(async () => {
   await engine.start();
   setReferenceDateForTest(100000000000000000000000);
-  engine.eventHandler.on('pruneMessage', pruneMessageListener);
+  engine.eventHandler.on("pruneMessage", pruneMessageListener);
 });
 
 beforeEach(() => {
@@ -39,18 +39,18 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
-  engine.eventHandler.off('pruneMessage', pruneMessageListener);
+  engine.eventHandler.off("pruneMessage", pruneMessageListener);
   await engine.stop();
 });
 
-describe('doJobs', () => {
-  test('succeeds without fids', async () => {
+describe("doJobs", () => {
+  test("succeeds without fids", async () => {
     const result = await scheduler.doJobs();
     expect(result._unsafeUnwrap()).toEqual(undefined);
   });
 
   test(
-    'prunes messages for all fids',
+    "prunes messages for all fids",
     async () => {
       const currentTime = getFarcasterTime()._unsafeUnwrap();
 
@@ -102,6 +102,6 @@ describe('doJobs', () => {
 
       expect(prunedMessages.length).toEqual(4);
     },
-    15 * 1000
+    15 * 1000,
   );
 });

@@ -11,14 +11,14 @@ import {
   MessageType,
   SignerAddMessage,
   SignerRemoveMessage,
-} from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { err, ok, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import AsyncLock from "async-lock";
+import { err, ok, ResultAsync } from "neverthrow";
 import {
   getIdRegistryEvent,
   getIdRegistryEventByCustodyAddress,
   putIdRegistryEventTransaction,
-} from '../db/idRegistryEvent.js';
+} from "../db/idRegistryEvent.js";
 import {
   deleteMessageTransaction,
   getMessage,
@@ -30,13 +30,13 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../db/message.js';
-import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
-import { RootPrefix, UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from './storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from './types.js';
-import { eventCompare } from './utils.js';
-import { logger } from '../../utils/logger.js';
+} from "../db/message.js";
+import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import { RootPrefix, UserPostfix } from "../db/types.js";
+import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
+import { eventCompare } from "./utils.js";
+import { logger } from "../../utils/logger.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -170,7 +170,7 @@ class SignerStore {
 
   async getAllSignerMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<SignerAddMessage | SignerRemoveMessage>> {
     const signerMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.SignerMessage);
     const filter = (message: Message): message is SignerAddMessage | SignerRemoveMessage => {
@@ -226,7 +226,7 @@ class SignerStore {
   async mergeIdRegistryEvent(event: IdRegistryEvent): Promise<number> {
     const existingEvent = await ResultAsync.fromPromise(this.getIdRegistryEvent(event.fid), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
-      throw new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent');
+      throw new HubError("bad_request.conflict", "event conflicts with a more recent IdRegistryEvent");
     }
 
     const txn = putIdRegistryEventTransaction(this._db.transaction(), event);
@@ -244,7 +244,7 @@ class SignerStore {
   /** Merges a SignerAdd or SignerRemove message into the SignerStore */
   async merge(message: Message): Promise<number> {
     if (!isSignerAddMessage(message) && !isSignerRemoveMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
+      throw new HubError("bad_request.validation_failure", "invalid message type");
     }
 
     return this._mergeLock
@@ -254,12 +254,12 @@ class SignerStore {
           const prunableResult = await this._eventHandler.isPrunable(
             message,
             UserPostfix.SignerMessage,
-            this._pruneSizeLimit
+            this._pruneSizeLimit,
           );
           if (prunableResult.isErr()) {
             throw prunableResult.error;
           } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
+            throw new HubError("bad_request.prunable", "message would be pruned");
           }
 
           if (isSignerAddMessage(message)) {
@@ -267,13 +267,13 @@ class SignerStore {
           } else if (isSignerRemoveMessage(message)) {
             return this.mergeRemove(message);
           } else {
-            throw new HubError('bad_request.validation_failure', 'invalid message type');
+            throw new HubError("bad_request.validation_failure", "invalid message type");
           }
         },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
+        { timeout: MERGE_TIMEOUT_DEFAULT },
       )
       .catch((e: Error) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message);
+        throw isHubError(e) ? e : new HubError("unavailable.storage_failure", e.message);
       });
   }
 
@@ -284,7 +284,7 @@ class SignerStore {
     } else if (isSignerRemoveMessage(message)) {
       txn = this.deleteSignerRemoveTransaction(txn, message);
     } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+      return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
 
     return this._eventHandler.commitTransaction(txn, {
@@ -333,7 +333,7 @@ class SignerStore {
       } else if (isSignerRemoveMessage(nextMessage.value)) {
         txn = this.deleteSignerRemoveTransaction(txn, nextMessage.value);
       } else {
-        return err(new HubError('unknown', 'invalid message type'));
+        return err(new HubError("unknown", "invalid message type"));
       }
 
       return this._eventHandler.commitTransaction(txn, {
@@ -352,7 +352,7 @@ class SignerStore {
         },
         (e) => {
           logger.error({ errCode: e.errCode }, `error pruning signer message for fid ${fid}: ${e.message}`);
-        }
+        },
       );
 
       pruneResult = await pruneNextMessage();
@@ -423,7 +423,7 @@ class SignerStore {
     aType: MessageType.SIGNER_ADD | MessageType.SIGNER_REMOVE,
     aTsHash: Uint8Array,
     bType: MessageType.SIGNER_ADD | MessageType.SIGNER_REMOVE,
-    bTsHash: Uint8Array
+    bTsHash: Uint8Array,
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
     const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
@@ -447,13 +447,13 @@ class SignerStore {
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
   private async getMergeConflicts(
-    message: SignerAddMessage | SignerRemoveMessage
+    message: SignerAddMessage | SignerRemoveMessage,
   ): HubAsyncResult<(SignerAddMessage | SignerRemoveMessage)[]> {
     const conflicts: (SignerAddMessage | SignerRemoveMessage)[] = [];
 
     const signer = (message.data.signerAddBody ?? message.data.signerRemoveBody)?.signer;
     if (!signer) {
-      return err(new HubError('bad_request.validation_failure', 'signer is missing'));
+      return err(new HubError("bad_request.validation_failure", "signer is missing"));
     }
 
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
@@ -464,7 +464,7 @@ class SignerStore {
     // Look up the remove tsHash for this signer
     const removeTsHash = await ResultAsync.fromPromise(
       this._db.get(makeSignerRemovesKey(message.data.fid, signer)),
-      () => undefined
+      () => undefined,
     );
 
     if (removeTsHash.isOk()) {
@@ -472,12 +472,12 @@ class SignerStore {
         MessageType.SIGNER_REMOVE,
         removeTsHash.value,
         message.data.type,
-        tsHash.value
+        tsHash.value,
       );
       if (removeCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent SignerRemove'));
+        return err(new HubError("bad_request.conflict", "message conflicts with a more recent SignerRemove"));
       } else if (removeCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
+        return err(new HubError("bad_request.duplicate", "message has already been merged"));
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // SignerRemove message and delete it as part of the RocksDB transaction
@@ -485,7 +485,7 @@ class SignerStore {
           this._db,
           message.data.fid,
           UserPostfix.SignerMessage,
-          removeTsHash.value
+          removeTsHash.value,
         );
         conflicts.push(existingRemove);
       }
@@ -494,7 +494,7 @@ class SignerStore {
     // Look up the add tsHash for this custody address and signer
     const addTsHash = await ResultAsync.fromPromise(
       this._db.get(makeSignerAddsKey(message.data.fid, signer)),
-      () => undefined
+      () => undefined,
     );
 
     if (addTsHash.isOk()) {
@@ -502,12 +502,12 @@ class SignerStore {
         MessageType.SIGNER_ADD,
         addTsHash.value,
         message.data.type,
-        tsHash.value
+        tsHash.value,
       );
       if (addCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent SignerAdd'));
+        return err(new HubError("bad_request.conflict", "message conflicts with a more recent SignerAdd"));
       } else if (addCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
+        return err(new HubError("bad_request.duplicate", "message has already been merged"));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // SignerAdd message and delete it as part of the RocksDB transaction
@@ -515,7 +515,7 @@ class SignerStore {
           this._db,
           message.data.fid,
           UserPostfix.SignerMessage,
-          addTsHash.value
+          addTsHash.value,
         );
         conflicts.push(existingAdd);
       }
@@ -573,7 +573,7 @@ class SignerStore {
     // Put signerRemoves index
     txn = txn.put(
       makeSignerRemovesKey(message.data.fid, message.data.signerRemoveBody.signer),
-      Buffer.from(tsHash.value)
+      Buffer.from(tsHash.value),
     );
 
     return txn;

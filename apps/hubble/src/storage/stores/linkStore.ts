@@ -11,9 +11,9 @@ import {
   LinkRemoveMessage,
   Message,
   MessageType,
-} from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { err, ok, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import AsyncLock from "async-lock";
+import { err, ok, ResultAsync } from "neverthrow";
 import {
   deleteMessageTransaction,
   getManyMessages,
@@ -27,12 +27,12 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../../storage/db/message.js';
-import RocksDB, { Transaction } from '../db/rocksdb.js';
-import { RootPrefix, TSHASH_LENGTH, UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from './storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from './types.js';
-import { logger } from '../../utils/logger.js';
+} from "../../storage/db/message.js";
+import RocksDB, { Transaction } from "../db/rocksdb.js";
+import { RootPrefix, TSHASH_LENGTH, UserPostfix } from "../db/types.js";
+import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
+import { logger } from "../../utils/logger.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 2_500;
 
@@ -51,18 +51,18 @@ const makeTargetKey = (target: number): Buffer => {
  */
 const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
-  if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
-    throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+  if (type && (Buffer.from(type).length > 8 || type.length === 0)) {
+    throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.LinkAdds]), // -------------- link_adds key, 1 byte
-    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(''), //-------- type, 8 bytes
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 4 bytes
+    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(""), //-------- type, 8 bytes
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 4 bytes
   ]);
 };
 
@@ -77,18 +77,18 @@ const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer =>
  */
 const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
-  if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
-    throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+  if (type && (Buffer.from(type).length > 8 || type.length === 0)) {
+    throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.LinkRemoves]), // ----------- link_adds key, 1 byte
-    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(''), //-------- type, 8 bytes
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 4 bytes
+    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(""), //-------- type, 8 bytes
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 4 bytes
   ]);
 };
 
@@ -103,18 +103,18 @@ const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer
  */
 const makeLinksByTargetKey = (target: number, fid?: number, tsHash?: Uint8Array): Buffer => {
   if (fid && !tsHash) {
-    throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
+    throw new HubError("bad_request.validation_failure", "fid provided without tsHash");
   }
 
   if (tsHash && !fid) {
-    throw new HubError('bad_request.validation_failure', 'tsHash provided without fid');
+    throw new HubError("bad_request.validation_failure", "tsHash provided without fid");
   }
 
   return Buffer.concat([
     Buffer.from([RootPrefix.LinksByTarget]),
     makeTargetKey(target),
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -192,7 +192,7 @@ class LinkStore {
   async getLinkAddsByFid(
     fid: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.LinkMessage);
     const filter = (message: Message): message is LinkAddMessage => {
@@ -205,7 +205,7 @@ class LinkStore {
   async getLinkRemovesByFid(
     fid: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkRemoveMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.LinkMessage);
     const filter = (message: Message): message is LinkRemoveMessage => {
@@ -216,7 +216,7 @@ class LinkStore {
 
   async getAllLinkMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.LinkMessage);
     const filter = (message: Message): message is LinkAddMessage | LinkRemoveMessage => {
@@ -229,7 +229,7 @@ class LinkStore {
   async getLinksByTarget(
     target: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage>> {
     const prefix = makeLinksByTargetKey(target);
 
@@ -252,7 +252,7 @@ class LinkStore {
 
       lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
 
-      if (type === undefined || (value !== undefined && value.equals(Buffer.from(type)))) {
+      if (type === undefined || value?.equals(Buffer.from(type))) {
         // Calculates the positions in the key where the fid and tsHash begin
         const tsHashOffset = prefix.length;
         const fidOffset = tsHashOffset + TSHASH_LENGTH;
@@ -278,37 +278,40 @@ class LinkStore {
   /** Merges a LinkAdd or LinkRemove message into the LinkStore */
   async merge(message: Message): Promise<number> {
     if (!isLinkAddMessage(message) && !isLinkRemoveMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
+      throw new HubError("bad_request.validation_failure", "invalid message type");
     }
 
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message,
-            UserPostfix.LinkMessage,
-            this._pruneSizeLimit
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
-          }
+    return (
+      this._mergeLock
+        .acquire(
+          message.data.fid.toString(),
+          async () => {
+            const prunableResult = await this._eventHandler.isPrunable(
+              message,
+              UserPostfix.LinkMessage,
+              this._pruneSizeLimit,
+            );
+            if (prunableResult.isErr()) {
+              throw prunableResult.error;
+            } else if (prunableResult.value) {
+              throw new HubError("bad_request.prunable", "message would be pruned");
+            }
 
-          if (isLinkAddMessage(message)) {
-            return this.mergeAdd(message);
-          } else if (isLinkRemoveMessage(message)) {
-            return this.mergeRemove(message);
-          } else {
-            throw new HubError('bad_request.validation_failure', 'invalid message type');
-          }
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
-      });
+            if (isLinkAddMessage(message)) {
+              return this.mergeAdd(message);
+            } else if (isLinkRemoveMessage(message)) {
+              return this.mergeRemove(message);
+            } else {
+              throw new HubError("bad_request.validation_failure", "invalid message type");
+            }
+          },
+          { timeout: MERGE_TIMEOUT_DEFAULT },
+        )
+        // rome-ignore lint/suspicious/noExplicitAny: error catching
+        .catch((e: any) => {
+          throw isHubError(e) ? e : new HubError("unavailable.storage_failure", "merge timed out");
+        })
+    );
   }
 
   async revoke(message: Message): HubAsyncResult<number> {
@@ -318,7 +321,7 @@ class LinkStore {
     } else if (isLinkRemoveMessage(message)) {
       txn = this.deleteLinkRemoveTransaction(txn, message);
     } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+      return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
 
     return this._eventHandler.commitTransaction(txn, {
@@ -372,7 +375,7 @@ class LinkStore {
       } else if (isLinkRemoveMessage(nextMessage.value)) {
         txn = this.deleteLinkRemoveTransaction(txn, nextMessage.value);
       } else {
-        return err(new HubError('unknown', 'invalid message type'));
+        return err(new HubError("unknown", "invalid message type"));
       }
 
       return this._eventHandler.commitTransaction(txn, {
@@ -391,7 +394,7 @@ class LinkStore {
         },
         (e) => {
           logger.error({ errCode: e.errCode }, `error pruning link message for fid ${fid}: ${e.message}`);
-        }
+        },
       );
 
       pruneResult = await pruneNextMessage();
@@ -461,7 +464,7 @@ class LinkStore {
     aType: MessageType.LINK_ADD | MessageType.LINK_REMOVE,
     aTsHash: Uint8Array,
     bType: MessageType.LINK_ADD | MessageType.LINK_REMOVE,
-    bTsHash: Uint8Array
+    bTsHash: Uint8Array,
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
     const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
@@ -487,11 +490,11 @@ class LinkStore {
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
   private async getMergeConflicts(
-    message: LinkAddMessage | LinkRemoveMessage
+    message: LinkAddMessage | LinkRemoveMessage,
   ): HubAsyncResult<(LinkAddMessage | LinkRemoveMessage)[]> {
     const target = message.data.linkBody.targetFid;
     if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
+      throw new HubError("bad_request.validation_failure", "target is missing");
     }
 
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
@@ -510,12 +513,12 @@ class LinkStore {
         MessageType.LINK_REMOVE,
         new Uint8Array(linkRemoveTsHash.value),
         message.data.type,
-        tsHash.value
+        tsHash.value,
       );
       if (removeCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent LinkRemove'));
+        return err(new HubError("bad_request.conflict", "message conflicts with a more recent LinkRemove"));
       } else if (removeCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
+        return err(new HubError("bad_request.duplicate", "message has already been merged"));
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // LinkRemove message and delete it as part of the RocksDB transaction
@@ -523,7 +526,7 @@ class LinkStore {
           this._db,
           message.data.fid,
           UserPostfix.LinkMessage,
-          linkRemoveTsHash.value
+          linkRemoveTsHash.value,
         );
         conflicts.push(existingRemove);
       }
@@ -538,12 +541,12 @@ class LinkStore {
         MessageType.LINK_ADD,
         new Uint8Array(linkAddTsHash.value),
         message.data.type,
-        tsHash.value
+        tsHash.value,
       );
       if (addCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent LinkAdd'));
+        return err(new HubError("bad_request.conflict", "message conflicts with a more recent LinkAdd"));
       } else if (addCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
+        return err(new HubError("bad_request.duplicate", "message has already been merged"));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // LinkAdd message and delete it as part of the RocksDB transaction
@@ -551,7 +554,7 @@ class LinkStore {
           this._db,
           message.data.fid,
           UserPostfix.LinkMessage,
-          linkAddTsHash.value
+          linkAddTsHash.value,
         );
         conflicts.push(existingAdd);
       }
@@ -580,16 +583,16 @@ class LinkStore {
 
     const target = message.data.linkBody.targetFid;
     if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
+      throw new HubError("bad_request.validation_failure", "target is missing");
     }
 
     const type = message.data.linkBody.type;
     if (!type) {
-      throw new HubError('bad_request.validation_failure', 'type is missing');
+      throw new HubError("bad_request.validation_failure", "type is missing");
     } else {
       const typeBuffer = Buffer.from(type);
       if (type.length === 0 || typeBuffer.length > 8) {
-        throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+        throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
       }
     }
 
@@ -616,16 +619,16 @@ class LinkStore {
 
     const target = message.data.linkBody.targetFid;
     if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
+      throw new HubError("bad_request.validation_failure", "target is missing");
     }
 
     const type = message.data.linkBody.type;
     if (!type) {
-      throw new HubError('bad_request.validation_failure', 'type is missing');
+      throw new HubError("bad_request.validation_failure", "type is missing");
     } else {
       const typeBuffer = Buffer.from(type);
       if (type.length === 0 || typeBuffer.length > 8) {
-        throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+        throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
       }
     }
 
@@ -650,16 +653,16 @@ class LinkStore {
 
     const target = message.data.linkBody.targetFid;
     if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
+      throw new HubError("bad_request.validation_failure", "target is missing");
     }
 
     const type = message.data.linkBody.type;
     if (!type) {
-      throw new HubError('bad_request.validation_failure', 'type is missing');
+      throw new HubError("bad_request.validation_failure", "type is missing");
     } else {
       const typeBuffer = Buffer.from(type);
       if (type.length === 0 || typeBuffer.length > 8) {
-        throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+        throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
       }
     }
 
@@ -682,16 +685,16 @@ class LinkStore {
 
     const target = message.data.linkBody.targetFid;
     if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
+      throw new HubError("bad_request.validation_failure", "target is missing");
     }
 
     const type = message.data.linkBody.type;
     if (!type) {
-      throw new HubError('bad_request.validation_failure', 'type is missing');
+      throw new HubError("bad_request.validation_failure", "type is missing");
     } else {
       const typeBuffer = Buffer.from(type);
       if (type.length === 0 || typeBuffer.length > 8) {
-        throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+        throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
       }
     }
 

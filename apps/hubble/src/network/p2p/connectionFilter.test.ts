@@ -1,8 +1,8 @@
-import { mockMultiaddrConnPair } from '@libp2p/interface-mocks';
-import { PeerId } from '@libp2p/interface-peer-id';
-import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { multiaddr } from '@multiformats/multiaddr';
-import { ConnectionFilter } from './connectionFilter.js';
+import { mockMultiaddrConnPair } from "@libp2p/interface-mocks";
+import { PeerId } from "@libp2p/interface-peer-id";
+import { createEd25519PeerId } from "@libp2p/peer-id-factory";
+import { multiaddr } from "@multiformats/multiaddr";
+import { ConnectionFilter } from "./connectionFilter.js";
 
 let allowedPeerId: PeerId;
 let blockedPeerId: PeerId;
@@ -10,7 +10,7 @@ let localMultiAddrStr: string;
 let allowedMultiAddrStr: string;
 let filteredMultiAddrStr: string;
 
-describe('connectionFilter tests', () => {
+describe("connectionFilter tests", () => {
   beforeAll(async () => {
     allowedPeerId = await createEd25519PeerId();
     blockedPeerId = await createEd25519PeerId();
@@ -18,10 +18,10 @@ describe('connectionFilter tests', () => {
     expect(multiaddr(allowedMultiAddrStr)).toBeDefined();
     filteredMultiAddrStr = `/ip4/127.0.0.1/tcp/64455/p2p/${blockedPeerId.toString()}`;
     expect(multiaddr(filteredMultiAddrStr)).toBeDefined();
-    localMultiAddrStr = `/ip4/127.0.0.1/tcp/64456/`;
+    localMultiAddrStr = "/ip4/127.0.0.1/tcp/64456/";
   });
 
-  test('denies all connections by default', async () => {
+  test("denies all connections by default", async () => {
     const filter = new ConnectionFilter([]);
     const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
@@ -39,7 +39,7 @@ describe('connectionFilter tests', () => {
     await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeFalsy();
   });
 
-  test('allows selected peers', async () => {
+  test("allows selected peers", async () => {
     const filter = new ConnectionFilter([allowedPeerId.toString()]);
     const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
@@ -57,7 +57,7 @@ describe('connectionFilter tests', () => {
     await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeTruthy();
   });
 
-  test('filters unknown peers', async () => {
+  test("filters unknown peers", async () => {
     const filter = new ConnectionFilter([allowedPeerId.toString()]);
     const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(filteredMultiAddrStr)],

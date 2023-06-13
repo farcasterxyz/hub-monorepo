@@ -11,9 +11,9 @@ import {
   isCastRemoveMessage,
   isHubError,
   Message,
-} from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { ok, err, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import AsyncLock from "async-lock";
+import { ok, err, ResultAsync } from "neverthrow";
 import {
   deleteMessageTransaction,
   getManyMessages,
@@ -28,12 +28,12 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../db/message.js';
-import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
-import { RootPrefix, TRUE_VALUE, TSHASH_LENGTH, UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types.js';
-import { logger } from '../../utils/logger.js';
+} from "../db/message.js";
+import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import { RootPrefix, TRUE_VALUE, TSHASH_LENGTH, UserPostfix } from "../db/types.js";
+import StoreEventHandler, { HubEventArgs } from "../stores/storeEventHandler.js";
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "../stores/types.js";
+import { logger } from "../../utils/logger.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
@@ -46,7 +46,7 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
  * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
  */
 const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastAdds]), Buffer.from(hash ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastAdds]), Buffer.from(hash ?? "")]);
 };
 
 /**
@@ -57,7 +57,7 @@ const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
  * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
  */
 const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastRemoves]), Buffer.from(hash ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastRemoves]), Buffer.from(hash ?? "")]);
 };
 
 // TODO: make parentFid and parentHash fixed size
@@ -71,12 +71,12 @@ const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
  * @returns RocksDB index key of the form <root_prefix>:<parentFid>:<parentTsHash>:<tsHash?>:<fid?>
  */
 const makeCastsByParentKey = (parent: CastId | string, fid?: number, tsHash?: Uint8Array): Buffer => {
-  const parentKey = typeof parent === 'string' ? Buffer.from(parent) : makeCastIdKey(parent);
+  const parentKey = typeof parent === "string" ? Buffer.from(parent) : makeCastIdKey(parent);
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByParent]),
     parentKey,
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -92,8 +92,8 @@ const makeCastsByMentionKey = (mentionFid: number, fid?: number, tsHash?: Uint8A
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByMention]),
     makeFidKey(mentionFid),
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -168,7 +168,7 @@ class CastStore {
 
   async getAllCastMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<CastAddMessage | CastRemoveMessage>> {
     const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
     const isCastMessage = (message: Message): message is CastAddMessage | CastRemoveMessage => {
@@ -180,7 +180,7 @@ class CastStore {
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
   async getCastsByParent(
     parent: CastId | string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<CastAddMessage>> {
     const prefix = makeCastsByParentKey(parent);
 
@@ -269,38 +269,41 @@ class CastStore {
   /** Merges a CastAdd or CastRemove message into the set */
   async merge(message: Message): Promise<number> {
     if (!isCastAddMessage(message) && !isCastRemoveMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
+      throw new HubError("bad_request.validation_failure", "invalid message type");
     }
 
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message,
-            UserPostfix.CastMessage,
-            this._pruneSizeLimit,
-            this._pruneTimeLimit
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
-          }
+    return (
+      this._mergeLock
+        .acquire(
+          message.data.fid.toString(),
+          async () => {
+            const prunableResult = await this._eventHandler.isPrunable(
+              message,
+              UserPostfix.CastMessage,
+              this._pruneSizeLimit,
+              this._pruneTimeLimit,
+            );
+            if (prunableResult.isErr()) {
+              throw prunableResult.error;
+            } else if (prunableResult.value) {
+              throw new HubError("bad_request.prunable", "message would be pruned");
+            }
 
-          if (isCastAddMessage(message)) {
-            return this.mergeAdd(message);
-          } else if (isCastRemoveMessage(message)) {
-            return this.mergeRemove(message);
-          } else {
-            throw new HubError('bad_request.validation_failure', 'invalid message type');
-          }
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
-      });
+            if (isCastAddMessage(message)) {
+              return this.mergeAdd(message);
+            } else if (isCastRemoveMessage(message)) {
+              return this.mergeRemove(message);
+            } else {
+              throw new HubError("bad_request.validation_failure", "invalid message type");
+            }
+          },
+          { timeout: MERGE_TIMEOUT_DEFAULT },
+        )
+        // rome-ignore lint/suspicious/noExplicitAny: error catching
+        .catch((e: any) => {
+          throw isHubError(e) ? e : new HubError("unavailable.storage_failure", "merge timed out");
+        })
+    );
   }
 
   async revoke(message: Message): HubAsyncResult<number> {
@@ -310,7 +313,7 @@ class CastStore {
     } else if (isCastRemoveMessage(message)) {
       txn = this.deleteCastRemoveTransaction(txn, message);
     } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+      return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
 
     return this._eventHandler.commitTransaction(txn, {
@@ -371,7 +374,7 @@ class CastStore {
       } else if (isCastRemoveMessage(nextMessage.value)) {
         txn = this.deleteCastRemoveTransaction(txn, nextMessage.value);
       } else {
-        return err(new HubError('unknown', 'invalid message type'));
+        return err(new HubError("unknown", "invalid message type"));
       }
 
       return this._eventHandler.commitTransaction(txn, {
@@ -390,7 +393,7 @@ class CastStore {
         },
         (e) => {
           logger.error({ errCode: e.errCode }, `error pruning cast message for fid ${fid}: ${e.message}`);
-        }
+        },
       );
 
       pruneResult = await pruneNextMessage();
@@ -412,23 +415,23 @@ class CastStore {
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(makeCastRemovesKey(message.data.fid, message.hash)),
-      () => undefined
+      () => undefined,
     );
 
     // If remove tsHash exists, fail because this cast has already been removed
     if (castRemoveTsHash.isOk()) {
-      throw new HubError('bad_request.conflict', 'message conflicts with a CastRemove');
+      throw new HubError("bad_request.conflict", "message conflicts with a CastRemove");
     }
 
     // Look up the add tsHash for this cast
     const castAddTsHash = await ResultAsync.fromPromise(
       this._db.get(makeCastAddsKey(message.data.fid, message.hash)),
-      () => undefined
+      () => undefined,
     );
 
     // If add tsHash exists, no-op because this cast has already been added
     if (castAddTsHash.isOk()) {
-      throw new HubError('bad_request.duplicate', 'message has already been merged');
+      throw new HubError("bad_request.duplicate", "message has already been merged");
     }
 
     // Add putCastAdd operations to the RocksDB transaction
@@ -464,16 +467,16 @@ class CastStore {
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(makeCastRemovesKey(message.data.fid, removeTargetHash)),
-      () => undefined
+      () => undefined,
     );
 
     if (castRemoveTsHash.isOk()) {
       const removeCompare = bytesCompare(castRemoveTsHash.value, tsHash.value);
 
       if (removeCompare > 0) {
-        throw new HubError('bad_request.conflict', 'message conflicts with a more recent CastRemove');
+        throw new HubError("bad_request.conflict", "message conflicts with a more recent CastRemove");
       } else if (removeCompare === 0) {
-        throw new HubError('bad_request.duplicate', 'message has already been merged');
+        throw new HubError("bad_request.duplicate", "message has already been merged");
       } else {
         // If the remove tsHash exists but with a lower order than the new CastRemove
         // tsHash, retrieve the full CastRemove message and delete it as part of the
@@ -482,7 +485,7 @@ class CastStore {
           this._db,
           message.data.fid,
           UserPostfix.CastMessage,
-          castRemoveTsHash.value
+          castRemoveTsHash.value,
         );
         txn = this.deleteCastRemoveTransaction(txn, existingRemove);
         mergeConflicts.push(existingRemove);
@@ -492,7 +495,7 @@ class CastStore {
     // Look up the add tsHash for this cast
     const castAddTsHash = await ResultAsync.fromPromise(
       this._db.get(makeCastAddsKey(message.data.fid, removeTargetHash)),
-      () => undefined
+      () => undefined,
     );
 
     // If the add tsHash exists, retrieve the full CastAdd message and delete it as
@@ -502,7 +505,7 @@ class CastStore {
         this._db,
         message.data.fid,
         UserPostfix.CastMessage,
-        castAddTsHash.value
+        castAddTsHash.value,
       );
       txn = this.deleteCastAddTransaction(txn, existingAdd);
       mergeConflicts.push(existingAdd);

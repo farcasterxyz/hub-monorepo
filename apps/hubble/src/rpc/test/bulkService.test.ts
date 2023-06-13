@@ -18,14 +18,14 @@ import {
   HubResult,
   getInsecureHubRpcClient,
   HubRpcClient,
-} from '@farcaster/hub-nodejs';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import Server from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
+} from "@farcaster/hub-nodejs";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import Server from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
 
-const db = jestRocksDB('protobufs.rpc.bulkService.test');
+const db = jestRocksDB("protobufs.rpc.bulkService.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
@@ -59,7 +59,7 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 });
 
@@ -67,7 +67,7 @@ const assertMessagesMatchResult = (result: HubResult<MessagesResponse>, messages
   expect(result._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(messages.map((m) => Message.toJSON(m)));
 };
 
-describe('getAllCastMessagesByFid', () => {
+describe("getAllCastMessagesByFid", () => {
   let castAdd: CastAddMessage;
   let castRemove: CastRemoveMessage;
 
@@ -76,7 +76,7 @@ describe('getAllCastMessagesByFid', () => {
 
     castRemove = await Factories.CastRemoveMessage.create(
       { data: { fid, network, timestamp: castAdd.data.timestamp + 1 } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
   });
 
@@ -85,20 +85,20 @@ describe('getAllCastMessagesByFid', () => {
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     await engine.mergeMessage(castAdd);
     await engine.mergeMessage(castRemove);
     const result = await client.getAllCastMessagesByFid(FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [castAdd, castRemove]);
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     const result = await client.getAllCastMessagesByFid(FidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 });
 
-describe('getAllReactionMessagesByFid', () => {
+describe("getAllReactionMessagesByFid", () => {
   let reactionAdd: ReactionAddMessage;
   let reactionRemove: ReactionRemoveMessage;
 
@@ -107,7 +107,7 @@ describe('getAllReactionMessagesByFid', () => {
 
     reactionRemove = await Factories.ReactionRemoveMessage.create(
       { data: { fid, network, timestamp: reactionAdd.data.timestamp + 1 } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
   });
 
@@ -116,32 +116,32 @@ describe('getAllReactionMessagesByFid', () => {
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     await engine.mergeMessage(reactionAdd);
     await engine.mergeMessage(reactionRemove);
     const result = await client.getAllReactionMessagesByFid(FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [reactionAdd, reactionRemove]);
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     const result = await client.getAllReactionMessagesByFid(FidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 });
 
-describe('getAllVerificationMessagesByFid', () => {
+describe("getAllVerificationMessagesByFid", () => {
   let verificationAdd: VerificationAddEthAddressMessage;
   let verificationRemove: VerificationRemoveMessage;
 
   beforeAll(async () => {
     verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
       { data: { fid, network } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
 
     verificationRemove = await Factories.VerificationRemoveMessage.create(
       { data: { fid, network, timestamp: verificationAdd.data.timestamp + 1 } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
   });
 
@@ -150,26 +150,26 @@ describe('getAllVerificationMessagesByFid', () => {
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     await engine.mergeMessage(verificationAdd);
     await engine.mergeMessage(verificationRemove);
     const result = await client.getAllVerificationMessagesByFid(FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [verificationAdd, verificationRemove]);
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     const result = await client.getAllVerificationMessagesByFid(FidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 });
 
-describe('getAllSignerMessagesByFid', () => {
+describe("getAllSignerMessagesByFid", () => {
   let signerRemove: SignerRemoveMessage;
 
   beforeAll(async () => {
     signerRemove = await Factories.SignerRemoveMessage.create(
       { data: { fid, network, timestamp: signerAdd.data.timestamp + 1 } },
-      { transient: { signer: custodySigner } }
+      { transient: { signer: custodySigner } },
     );
   });
 
@@ -177,50 +177,50 @@ describe('getAllSignerMessagesByFid', () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerRemove);
     const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [signerAdd, signerRemove]);
   });
 
-  test('returns pageSize results', async () => {
+  test("returns pageSize results", async () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerRemove);
     const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid, pageSize: 1 }));
     assertMessagesMatchResult(result, [signerAdd]);
   });
 
-  test('returns all signer messages when pageSize > events', async () => {
+  test("returns all signer messages when pageSize > events", async () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerRemove);
     const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid, pageSize: 3 }));
     assertMessagesMatchResult(result, [signerAdd, signerRemove]);
   });
 
-  test('returns results after pageToken', async () => {
+  test("returns results after pageToken", async () => {
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(signerRemove);
     const page1Result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid, pageSize: 1 }));
     const page2Result = await client.getAllSignerMessagesByFid(
-      FidRequest.create({ fid, pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken })
+      FidRequest.create({ fid, pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken }),
     );
     assertMessagesMatchResult(page2Result, [signerRemove]);
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid }));
     assertMessagesMatchResult(result, []);
   });
 });
 
-describe('getAllUserDataMessagesByFid', () => {
+describe("getAllUserDataMessagesByFid", () => {
   let userDataAdd: UserDataAddMessage;
 
   beforeAll(async () => {
     userDataAdd = await Factories.UserDataAddMessage.create(
       { data: { fid, network, userDataBody: { type: UserDataType.BIO } } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
   });
 
@@ -229,13 +229,13 @@ describe('getAllUserDataMessagesByFid', () => {
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     await engine.mergeMessage(userDataAdd);
     const result = await client.getAllUserDataMessagesByFid(FidRequest.create({ fid }));
     assertMessagesMatchResult(result, [userDataAdd]);
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     const result = await client.getAllUserDataMessagesByFid(FidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });

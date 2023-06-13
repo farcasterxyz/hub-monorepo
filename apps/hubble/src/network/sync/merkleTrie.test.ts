@@ -1,28 +1,26 @@
-// eslint-disable-file security/detect-non-literal-fs-filename
-
-import { blake3 } from '@noble/hashes/blake3';
-import { DbTrieNode } from '@farcaster/hub-nodejs';
-import { MerkleTrie } from '../sync/merkleTrie.js';
-import { NetworkFactories } from '../utils/factories.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import RocksDB from '../../storage/db/rocksdb.js';
-import { RootPrefix } from '../../storage/db/types.js';
-import { TIMESTAMP_LENGTH } from './syncId.js';
-import { EMPTY_HASH } from './trieNode.js';
+import { blake3 } from "@noble/hashes/blake3";
+import { DbTrieNode } from "@farcaster/hub-nodejs";
+import { MerkleTrie } from "../sync/merkleTrie.js";
+import { NetworkFactories } from "../utils/factories.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import RocksDB from "../../storage/db/rocksdb.js";
+import { RootPrefix } from "../../storage/db/types.js";
+import { TIMESTAMP_LENGTH } from "./syncId.js";
+import { EMPTY_HASH } from "./trieNode.js";
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
-const db = jestRocksDB('protobufs.network.merkleTrie.test');
-const db2 = jestRocksDB('protobufs.network.merkleTrie2.test');
+const db = jestRocksDB("protobufs.network.merkleTrie.test");
+const db2 = jestRocksDB("protobufs.network.merkleTrie2.test");
 
 let trie: MerkleTrie;
 
-describe('MerkleTrie', () => {
+describe("MerkleTrie", () => {
   const trieWithIds = async (timestamps: number[]) => {
     const syncIds = await Promise.all(
       timestamps.map(async (t) => {
         return await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(t * 1000) } });
-      })
+      }),
     );
     const trie = new MerkleTrie(db);
     await Promise.all(syncIds.map((id) => trie.insert(id)));
@@ -32,7 +30,7 @@ describe('MerkleTrie', () => {
 
   const forEachDbItem = async (
     db: RocksDB,
-    callback?: (i: number, key: Buffer, value: Buffer) => Promise<void>
+    callback?: (i: number, key: Buffer, value: Buffer) => Promise<void>,
   ): Promise<number> => {
     let count = 0;
     for await (const [key, value] of db.iteratorByPrefix(Buffer.from([RootPrefix.SyncMerkleTrieNode]))) {
@@ -45,17 +43,17 @@ describe('MerkleTrie', () => {
     return count;
   };
 
-  describe('insert', () => {
+  describe("insert", () => {
     beforeEach(async () => {
       trie = new MerkleTrie(db);
       await trie.initialize();
     });
 
-    test('succeeds inserting a single item', async () => {
+    test("succeeds inserting a single item", async () => {
       const syncId = await NetworkFactories.SyncId.create();
 
       expect(await trie.items()).toEqual(0);
-      expect(await trie.rootHash()).toEqual('');
+      expect(await trie.rootHash()).toEqual("");
 
       await trie.insert(syncId);
 
@@ -63,7 +61,7 @@ describe('MerkleTrie', () => {
       expect(await trie.rootHash()).toBeTruthy();
     });
 
-    test('inserts are idempotent', async () => {
+    test("inserts are idempotent", async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -90,7 +88,7 @@ describe('MerkleTrie', () => {
     });
 
     test(
-      'insert multiple items out of order results in the same root hash',
+      "insert multiple items out of order results in the same root hash",
       async () => {
         const syncIds = await NetworkFactories.SyncId.createList(25);
 
@@ -106,11 +104,11 @@ describe('MerkleTrie', () => {
         expect(await firstTrie.items()).toEqual(await secondTrie.items());
         expect(await firstTrie.items()).toEqual(25);
       },
-      TEST_TIMEOUT_LONG
+      TEST_TIMEOUT_LONG,
     );
 
     test(
-      'inserting multiple doesnt cause unload conflict',
+      "inserting multiple doesnt cause unload conflict",
       async () => {
         const syncIds = await NetworkFactories.SyncId.createList(500);
 
@@ -124,13 +122,13 @@ describe('MerkleTrie', () => {
 
         expect(await trie.items()).toEqual(500);
       },
-      TEST_TIMEOUT_LONG
+      TEST_TIMEOUT_LONG,
     );
 
-    test('insert also inserts into the db', async () => {
+    test("insert also inserts into the db", async () => {
       const dt = new Date();
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: dt } });
-      const syncIdStr = Buffer.from(syncId.syncId()).toString('hex');
+      const syncIdStr = Buffer.from(syncId.syncId()).toString("hex");
 
       await trie.insert(syncId);
       await trie.commitToDb();
@@ -139,14 +137,14 @@ describe('MerkleTrie', () => {
 
       let leafs = 0;
       let count = await forEachDbItem(db, async (i, key, value) => {
-        expect(key.slice(1).toString('hex')).toEqual(syncIdStr.slice(0, i * 2));
+        expect(key.slice(1).toString("hex")).toEqual(syncIdStr.slice(0, i * 2));
 
         // Parse the value as a DbTriNode
         const node = DbTrieNode.decode(value);
 
         // The last key should be the leaf node, so it's value should match the entire syncID
         if (i === TIMESTAMP_LENGTH) {
-          expect(Buffer.from(node.key).toString('hex')).toEqual(syncIdStr);
+          expect(Buffer.from(node.key).toString("hex")).toEqual(syncIdStr);
         }
 
         if (node.key.length > 0) {
@@ -166,7 +164,6 @@ describe('MerkleTrie', () => {
       await trie.commitToDb();
 
       leafs = 0;
-      //eslint-disable-next-line @typescript-eslint/no-unused-vars
       count = await forEachDbItem(db, async (i, key, value) => {
         // Parse the value as a DbTriNode
         const node = DbTrieNode.decode(value);
@@ -188,7 +185,7 @@ describe('MerkleTrie', () => {
     });
 
     test(
-      'Load trie from DB',
+      "Load trie from DB",
       async () => {
         const syncIds = await NetworkFactories.SyncId.createList(20);
         await Promise.all(syncIds.map(async (syncId) => await trie.insert(syncId)));
@@ -219,25 +216,25 @@ describe('MerkleTrie', () => {
 
         // Expect that the deleted items are not present
         await Promise.all(
-          syncIds.slice(0, syncIds.length / 2).map(async (syncId) => expect(await trie3.exists(syncId)).toBeFalsy())
+          syncIds.slice(0, syncIds.length / 2).map(async (syncId) => expect(await trie3.exists(syncId)).toBeFalsy()),
         );
 
         // expect all the items to be in the trie
         await Promise.all(
-          syncIds.slice(syncIds.length / 2).map(async (syncId) => expect(await trie3.exists(syncId)).toBeTruthy())
+          syncIds.slice(syncIds.length / 2).map(async (syncId) => expect(await trie3.exists(syncId)).toBeTruthy()),
         );
       },
-      TEST_TIMEOUT_LONG
+      TEST_TIMEOUT_LONG,
     );
   });
 
-  describe('delete', () => {
+  describe("delete", () => {
     beforeEach(async () => {
       trie = new MerkleTrie(db);
       await trie.initialize();
     });
 
-    test('deletes an item', async () => {
+    test("deletes an item", async () => {
       const syncId = await NetworkFactories.SyncId.create();
 
       await trie.insert(syncId);
@@ -253,7 +250,7 @@ describe('MerkleTrie', () => {
       expect(await trie.exists(syncId)).toBeFalsy();
     });
 
-    test('deleting an item that does not exist does not change the trie', async () => {
+    test("deleting an item that does not exist does not change the trie", async () => {
       const syncId = await NetworkFactories.SyncId.create();
       expect(await trie.insert(syncId)).toBeTruthy();
 
@@ -266,7 +263,7 @@ describe('MerkleTrie', () => {
       expect(await trie.items()).toEqual(1);
     });
 
-    test('delete is an exact inverse of insert', async () => {
+    test("delete is an exact inverse of insert", async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -278,7 +275,7 @@ describe('MerkleTrie', () => {
       expect(await trie.rootHash()).toEqual(rootHashBeforeDelete);
     });
 
-    test('trie with a deleted item is the same as a trie with the item never added', async () => {
+    test("trie with a deleted item is the same as a trie with the item never added", async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -297,7 +294,7 @@ describe('MerkleTrie', () => {
       expect(await firstTrie.items()).toEqual(1);
     });
 
-    test('Deleting single node deletes all nodes from the DB', async () => {
+    test("Deleting single node deletes all nodes from the DB", async () => {
       const id = await NetworkFactories.SyncId.create();
 
       await trie.insert(id);
@@ -316,7 +313,7 @@ describe('MerkleTrie', () => {
       expect(count).toEqual(0);
     });
 
-    test('Deleting one of two nodes leaves only 1 item in the DB', async () => {
+    test("Deleting one of two nodes leaves only 1 item in the DB", async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -335,7 +332,7 @@ describe('MerkleTrie', () => {
       expect(count).toEqual(1 + TIMESTAMP_LENGTH);
     });
 
-    test('succeeds with single item', async () => {
+    test("succeeds with single item", async () => {
       const syncId = await NetworkFactories.SyncId.create();
 
       expect(await trie.exists(syncId)).toBeFalsy();
@@ -349,7 +346,7 @@ describe('MerkleTrie', () => {
       expect(await trie.exists(nonExistingSyncId)).toBeFalsy();
     });
 
-    test('test multiple items with delete', async () => {
+    test("test multiple items with delete", async () => {
       const syncIds = await NetworkFactories.SyncId.createList(20);
 
       await Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
@@ -359,17 +356,17 @@ describe('MerkleTrie', () => {
 
       // Check that the items are still there
       await Promise.all(
-        syncIds.slice(0, syncIds.length / 2).map(async (syncId) => expect(await trie.exists(syncId)).toBeFalsy())
+        syncIds.slice(0, syncIds.length / 2).map(async (syncId) => expect(await trie.exists(syncId)).toBeFalsy()),
       );
       await Promise.all(
         syncIds.slice(syncIds.length / 2).map(async (syncId) => {
           expect(await trie.exists(syncId)).toBeTruthy();
-        })
+        }),
       );
     });
 
     test(
-      'test multiple insert + delete',
+      "test multiple insert + delete",
       async () => {
         const syncIds1 = await NetworkFactories.SyncId.createList(100);
         const syncIds2 = await NetworkFactories.SyncId.createList(100);
@@ -378,37 +375,37 @@ describe('MerkleTrie', () => {
 
         // Delete half of the items
         const deletePromise = Promise.all(
-          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId))
+          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)),
         );
         const insert2Promise = Promise.all(syncIds2.map(async (syncId) => trie.insert(syncId)));
         const existPromise = await Promise.all(
           syncIds1.slice(syncIds1.length / 2).map(async (syncId) => {
             expect(await trie.exists(syncId)).toBeTruthy();
-          })
+          }),
         );
         await Promise.all([deletePromise, insert2Promise, existPromise]);
 
         // Check that the items are still there
         const exist1 = Promise.all(
-          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => expect(await trie.exists(syncId)).toBeFalsy())
+          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => expect(await trie.exists(syncId)).toBeFalsy()),
         );
         const exist2 = await Promise.all(
           syncIds1.slice(syncIds1.length / 2).map(async (syncId) => {
             expect(await trie.exists(syncId)).toBeTruthy();
-          })
+          }),
         );
         const exist3 = await Promise.all(
           syncIds2.map(async (syncId) => {
             expect(await trie.exists(syncId)).toBeTruthy();
-          })
+          }),
         );
 
         await Promise.all([exist1, exist2, exist3]);
       },
-      TEST_TIMEOUT_LONG
+      TEST_TIMEOUT_LONG,
     );
 
-    test('delete after loading from DB', async () => {
+    test("delete after loading from DB", async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -431,7 +428,7 @@ describe('MerkleTrie', () => {
       expect(await trie2.exists(syncId2)).toBeTruthy();
     });
 
-    test('delete after unloading some nodes', async () => {
+    test("delete after unloading some nodes", async () => {
       const syncId1 = await NetworkFactories.SyncId.create();
       const syncId2 = await NetworkFactories.SyncId.create();
 
@@ -457,21 +454,21 @@ describe('MerkleTrie', () => {
     });
   });
 
-  describe('getNodeMetadata', () => {
+  describe("getNodeMetadata", () => {
     beforeEach(async () => {
       trie = new MerkleTrie(db);
       await trie.initialize();
     });
 
-    test('returns undefined if prefix is not present', async () => {
+    test("returns undefined if prefix is not present", async () => {
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
 
       await trie.insert(syncId);
 
-      expect(await trie.getTrieNodeMetadata(Buffer.from('166518234'))).toBeUndefined();
+      expect(await trie.getTrieNodeMetadata(Buffer.from("166518234"))).toBeUndefined();
     });
 
-    test('returns the root metadata if the prefix is empty', async () => {
+    test("returns the root metadata if the prefix is empty", async () => {
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
 
       await trie.insert(syncId);
@@ -484,66 +481,66 @@ describe('MerkleTrie', () => {
       expect(nodeMetadata?.children?.get(syncId.syncId()[0] as number)).toBeDefined();
     });
 
-    test('returns the correct metadata if prefix is present', async () => {
+    test("returns the correct metadata if prefix is present", async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
-      const nodeMetadata = await trie.getTrieNodeMetadata(Buffer.from('16651823'));
+      const nodeMetadata = await trie.getTrieNodeMetadata(Buffer.from("16651823"));
 
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(2);
-      expect(nodeMetadata?.prefix).toEqual(Buffer.from('16651823'));
+      expect(nodeMetadata?.prefix).toEqual(Buffer.from("16651823"));
       expect(nodeMetadata?.children?.size).toEqual(2);
-      expect(nodeMetadata?.children?.get(Buffer.from('3')[0] as number)).toBeDefined();
-      expect(nodeMetadata?.children?.get(Buffer.from('4')[0] as number)).toBeDefined();
+      expect(nodeMetadata?.children?.get(Buffer.from("3")[0] as number)).toBeDefined();
+      expect(nodeMetadata?.children?.get(Buffer.from("4")[0] as number)).toBeDefined();
     });
   });
 
-  describe('getSnapshot', () => {
-    test('returns basic information', async () => {
+  describe("getSnapshot", () => {
+    test("returns basic information", async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
 
-      const snapshot = await trie.getSnapshot(Buffer.from('1665182343'));
-      expect(snapshot.prefix).toEqual(Buffer.from('1665182343'));
+      const snapshot = await trie.getSnapshot(Buffer.from("1665182343"));
+      expect(snapshot.prefix).toEqual(Buffer.from("1665182343"));
       expect(snapshot.numMessages).toEqual(1);
-      expect(snapshot.excludedHashes.length).toEqual('1665182343'.length + 1);
+      expect(snapshot.excludedHashes.length).toEqual("1665182343".length + 1);
     });
 
-    test('returns early when prefix is only partially present', async () => {
+    test("returns early when prefix is only partially present", async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
 
-      const snapshot = await trie.getSnapshot(Buffer.from('1677123'));
-      expect(snapshot.prefix).toEqual(Buffer.from('16'));
+      const snapshot = await trie.getSnapshot(Buffer.from("1677123"));
+      expect(snapshot.prefix).toEqual(Buffer.from("16"));
       expect(snapshot.numMessages).toEqual(2);
-      expect(snapshot.excludedHashes.length).toEqual('16'.length + 1);
+      expect(snapshot.excludedHashes.length).toEqual("16".length + 1);
 
-      const snapshot2 = await trie.getSnapshot(Buffer.from('167'));
-      expect(snapshot2.prefix).toEqual(Buffer.from('16'));
+      const snapshot2 = await trie.getSnapshot(Buffer.from("167"));
+      expect(snapshot2.prefix).toEqual(Buffer.from("16"));
       expect(snapshot2.numMessages).toEqual(2);
-      expect(snapshot2.excludedHashes.length).toEqual('16'.length + 1);
+      expect(snapshot2.excludedHashes.length).toEqual("16".length + 1);
 
-      const snapshot3 = await trie.getSnapshot(Buffer.from('16'));
-      expect(snapshot3.prefix).toEqual(Buffer.from('16'));
+      const snapshot3 = await trie.getSnapshot(Buffer.from("16"));
+      expect(snapshot3.prefix).toEqual(Buffer.from("16"));
       expect(snapshot3.numMessages).toEqual(0);
-      expect(snapshot3.excludedHashes.length).toEqual('16'.length + 1);
+      expect(snapshot3.excludedHashes.length).toEqual("16".length + 1);
 
-      const snapshot4 = await trie.getSnapshot(Buffer.from('222'));
-      expect(snapshot4.prefix).toEqual(Buffer.from(''));
+      const snapshot4 = await trie.getSnapshot(Buffer.from("222"));
+      expect(snapshot4.prefix).toEqual(Buffer.from(""));
       expect(snapshot4.numMessages).toEqual(2);
-      expect(snapshot4.excludedHashes.length).toEqual(''.length + 1);
+      expect(snapshot4.excludedHashes.length).toEqual("".length + 1);
     });
 
-    test('excluded hashes excludes the prefix char at every level', async () => {
+    test("excluded hashes excludes the prefix char at every level", async () => {
       const trie = await trieWithIds([1665182332, 1665182343, 1665182345, 1665182351]);
-      let snapshot = await trie.getSnapshot(Buffer.from('1665182351'));
-      let node = await trie.getTrieNodeMetadata(Buffer.from('16651823'));
+      let snapshot = await trie.getSnapshot(Buffer.from("1665182351"));
+      let node = await trie.getTrieNodeMetadata(Buffer.from("16651823"));
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
       const expectedHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(Buffer.from(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '', 'hex'))
-          .update(Buffer.from(node?.children?.get(Buffer.from('4')[0] as number)?.hash || '', 'hex'))
-          .digest()
-      ).toString('hex');
-      let leafHash = (await trie.getTrieNodeMetadata(Buffer.from('1665182351')))?.hash;
+          .update(Buffer.from(node?.children?.get(Buffer.from("3")[0] as number)?.hash || "", "hex"))
+          .update(Buffer.from(node?.children?.get(Buffer.from("4")[0] as number)?.hash || "", "hex"))
+          .digest(),
+      ).toString("hex");
+      let leafHash = (await trie.getTrieNodeMetadata(Buffer.from("1665182351")))?.hash;
       expect(snapshot.excludedHashes).toEqual([
         EMPTY_HASH, // 1, these are empty because there are no other children at this level
         EMPTY_HASH, // 6
@@ -558,20 +555,20 @@ describe('MerkleTrie', () => {
         leafHash,
       ]);
 
-      snapshot = await trie.getSnapshot(Buffer.from('1665182343'));
-      node = await trie.getTrieNodeMetadata(Buffer.from('166518234'));
+      snapshot = await trie.getSnapshot(Buffer.from("1665182343"));
+      node = await trie.getTrieNodeMetadata(Buffer.from("166518234"));
       const expectedLastHash = Buffer.from(
-        blake3(Buffer.from(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '', 'hex'), { dkLen: 20 })
-      ).toString('hex');
-      node = await trie.getTrieNodeMetadata(Buffer.from('16651823'));
+        blake3(Buffer.from(node?.children?.get(Buffer.from("5")[0] as number)?.hash || "", "hex"), { dkLen: 20 }),
+      ).toString("hex");
+      node = await trie.getTrieNodeMetadata(Buffer.from("16651823"));
       const expectedPenultimateHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(Buffer.from(node?.children?.get(Buffer.from('3')[0] as number)?.hash || '', 'hex'))
-          .update(Buffer.from(node?.children?.get(Buffer.from('5')[0] as number)?.hash || '', 'hex'))
-          .digest()
-      ).toString('hex');
-      leafHash = (await trie.getTrieNodeMetadata(Buffer.from('1665182343')))?.hash;
+          .update(Buffer.from(node?.children?.get(Buffer.from("3")[0] as number)?.hash || "", "hex"))
+          .update(Buffer.from(node?.children?.get(Buffer.from("5")[0] as number)?.hash || "", "hex"))
+          .digest(),
+      ).toString("hex");
+      leafHash = (await trie.getTrieNodeMetadata(Buffer.from("1665182343")))?.hash;
       expect(snapshot.excludedHashes).toEqual([
         EMPTY_HASH, // 1
         EMPTY_HASH, // 6
@@ -588,24 +585,24 @@ describe('MerkleTrie', () => {
     });
   });
 
-  test('getAllValues returns all values for child nodes', async () => {
+  test("getAllValues returns all values for child nodes", async () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
-    let values = await trie.getAllValues(Buffer.from('16651823'));
+    let values = await trie.getAllValues(Buffer.from("16651823"));
     expect(values?.length).toEqual(3);
-    values = await trie.getAllValues(Buffer.from('166518233'));
+    values = await trie.getAllValues(Buffer.from("166518233"));
     expect(values?.length).toEqual(1);
   });
 
-  test('getAllValues returns all values for child nodes after unloadChildren', async () => {
+  test("getAllValues returns all values for child nodes after unloadChildren", async () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
     // Unload all the children of the first node
     (await trie.getNode(new Uint8Array()))?.unloadChildren();
 
-    let values = await trie.getAllValues(Buffer.from('16651823'));
+    let values = await trie.getAllValues(Buffer.from("16651823"));
     expect(values?.length).toEqual(3);
-    values = await trie.getAllValues(Buffer.from('166518233'));
+    values = await trie.getAllValues(Buffer.from("166518233"));
     expect(values?.length).toEqual(1);
   });
 });

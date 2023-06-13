@@ -1,4 +1,4 @@
-import { IdRegistryEvent, NameRegistryEvent, HubError, bytesCompare, bytesIncrement } from '@farcaster/hub-nodejs';
+import { IdRegistryEvent, NameRegistryEvent, HubError, bytesCompare, bytesIncrement } from "@farcaster/hub-nodejs";
 
 type Event = IdRegistryEvent | NameRegistryEvent;
 
@@ -14,7 +14,7 @@ export const eventCompare = (a: Event, b: Event): number => {
 
   // Cannot happen unless we do not filter out uncle blocks correctly upstream
   if (bytesCompare(a.blockHash, b.blockHash) !== 0) {
-    throw new HubError('bad_request.validation_failure', 'block hash mismatch');
+    throw new HubError("bad_request.validation_failure", "block hash mismatch");
   }
 
   // Compare logIndex
@@ -26,7 +26,7 @@ export const eventCompare = (a: Event, b: Event): number => {
 
   // Cannot happen unless we pass in malformed data
   if (bytesCompare(a.transactionHash, b.transactionHash) !== 0) {
-    throw new HubError('bad_request.validation_failure', 'tx hash mismatch');
+    throw new HubError("bad_request.validation_failure", "tx hash mismatch");
   }
 
   return 0;

@@ -6,25 +6,25 @@ import {
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
   Message,
-} from '@farcaster/hub-nodejs';
-import { err, ok } from 'neverthrow';
-import RocksDB from '../db/rocksdb.js';
-import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from '../db/types.js';
-import { logger } from '../../utils/logger.js';
+} from "@farcaster/hub-nodejs";
+import { err, ok } from "neverthrow";
+import RocksDB from "../db/rocksdb.js";
+import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
+import { logger } from "../../utils/logger.js";
 import {
   getMessagesPruneIterator,
   makeFidKey,
   makeMessagePrimaryKey,
   makeTsHash,
   typeToSetPostfix,
-} from '../db/message.js';
-import { bytesCompare, HubAsyncResult } from '@farcaster/core';
+} from "../db/message.js";
+import { bytesCompare, HubAsyncResult } from "@farcaster/core";
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
-  return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString('hex');
+  return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
 };
 
-const log = logger.child({ component: 'StorageCache' });
+const log = logger.child({ component: "StorageCache" });
 
 export class StorageCache {
   private _db: RocksDB;
@@ -38,7 +38,7 @@ export class StorageCache {
   }
 
   async syncFromDb(): Promise<void> {
-    log.info('starting storage cache sync');
+    log.info("starting storage cache sync");
     const usage = new Map<string, number>();
 
     const prefix = Buffer.from([RootPrefix.User]);
@@ -48,7 +48,7 @@ export class StorageCache {
     for await (const [key] of iterator) {
       const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
       if (postfix < UserMessagePostfixMax) {
-        const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString('hex');
+        const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString("hex");
         const count = usage.get(lookupKey) ?? 0;
         if (this._earliestTsHashes.get(lookupKey) === undefined) {
           const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
@@ -60,7 +60,7 @@ export class StorageCache {
 
     this._counts = usage;
     this._earliestTsHashes = new Map();
-    log.info('storage cache synced');
+    log.info("storage cache synced");
   }
 
   async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
@@ -96,7 +96,7 @@ export class StorageCache {
       }
 
       if (firstKey && firstKey.length === 0) {
-        return err(new HubError('unavailable.storage_failure', 'could not read earliest message from db'));
+        return err(new HubError("unavailable.storage_failure", "could not read earliest message from db"));
       }
 
       const tsHash = Uint8Array.from(firstKey.subarray(1 + FID_BYTES + 1));

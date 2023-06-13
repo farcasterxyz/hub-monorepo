@@ -7,15 +7,15 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
-} from '@farcaster/hub-nodejs';
-import { err, ok } from 'neverthrow';
-import { HubInterface, HubSubmitSource } from '../hubble.js';
-import { GossipNode } from '../network/p2p/gossipNode.js';
-import RocksDB from '../storage/db/rocksdb.js';
-import Engine from '../storage/engine/index.js';
-import { AbstractProvider, Block, BlockTag, Network, Networkish, TransactionRequest } from 'ethers';
-import { PeerId } from '@libp2p/interface-peer-id';
-import { ContactInfoContent } from '@farcaster/core';
+} from "@farcaster/hub-nodejs";
+import { err, ok } from "neverthrow";
+import { HubInterface, HubSubmitSource } from "../hubble.js";
+import { GossipNode } from "../network/p2p/gossipNode.js";
+import RocksDB from "../storage/db/rocksdb.js";
+import Engine from "../storage/engine/index.js";
+import { AbstractProvider, Block, BlockTag, Network, Networkish, TransactionRequest } from "ethers";
+import { PeerId } from "@libp2p/interface-peer-id";
+import { ContactInfoContent } from "@farcaster/core";
 
 export class MockHub implements HubInterface {
   public db: RocksDB;
@@ -32,7 +32,7 @@ export class MockHub implements HubInterface {
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
     const result = await this.engine.mergeMessage(message);
 
-    if (result.isOk() && source === 'rpc' && this.gossipNode !== undefined) {
+    if (result.isOk() && source === "rpc" && this.gossipNode !== undefined) {
       void this.gossipNode.gossipMessage(message);
     }
 
@@ -49,14 +49,14 @@ export class MockHub implements HubInterface {
 
   async getHubState(): HubAsyncResult<HubState> {
     // return ResultAsync.fromPromise(HubState.get(this.db), (e) => e as HubError);
-    return err(new HubError('unavailable', 'Not implemented'));
+    return err(new HubError("unavailable", "Not implemented"));
   }
 
   async putHubState(_hubState: HubState): HubAsyncResult<void> {
     // const txn = this.db.transaction();
     // HubStateModel.putTransaction(txn, hubState);
     // return await ResultAsync.fromPromise(this.db.commit(txn), (e) => e as HubError);
-    return err(new HubError('unavailable', 'Not implemented'));
+    return err(new HubError("unavailable", "Not implemented"));
   }
 
   async gossipContactInfo(): HubAsyncResult<void> {
@@ -88,11 +88,11 @@ export class MockRPCProvider extends AbstractProvider {
   }
 
   override async _detectNetwork() {
-    return Network.from('goerli');
+    return Network.from("goerli");
   }
 
   override async resolveName(_: string) {
-    return '0x0000000000000000000000000000000000000000';
+    return "0x0000000000000000000000000000000000000000";
   }
 
   override async getBlock(_block: BlockTag, _prefetchTx?: boolean | undefined) {
@@ -102,11 +102,11 @@ export class MockRPCProvider extends AbstractProvider {
   }
 
   override async call(_tx: TransactionRequest) {
-    return '0x0000000000000000000000000000000000000000';
+    return "0x0000000000000000000000000000000000000000";
   }
 
   override async getNetwork() {
-    return Network.from('goerli');
+    return Network.from("goerli");
   }
 }
 
@@ -114,10 +114,6 @@ export class MockRPCProvider extends AbstractProvider {
 // the tests down, so keep it reasonable.
 export class MockFaultyRPCProvider extends MockRPCProvider {
   private isWorking = 0;
-
-  constructor() {
-    super();
-  }
 
   override async getLogs() {
     return await this.faultyCall(async () => await super.getLogs());
@@ -157,12 +153,12 @@ export class MockFaultyRPCProvider extends MockRPCProvider {
     return await new Promise<T>((_, reject) =>
       reject({
         statusCode: 429,
-        code: 'UNKNOWN_ERROR',
+        code: "UNKNOWN_ERROR",
         error: {
-          name: 'UNKNOWN_ERROR',
-          message: 'mock decided to say no today',
+          name: "UNKNOWN_ERROR",
+          message: "mock decided to say no today",
         },
-      })
+      }),
     );
   }
 }

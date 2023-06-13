@@ -11,7 +11,7 @@
 // If we ever start using the upstream rocksdb package again, remove this
 // wrapper `module` declaration. It's only needed because our forked package is
 // scoped to @farcaster.
-declare module '@farcaster/rocksdb' {
+declare module "@farcaster/rocksdb" {
   import {
     AbstractBatch,
     AbstractChainedBatch,
@@ -23,7 +23,7 @@ declare module '@farcaster/rocksdb' {
     AbstractOptions,
     ErrorCallback,
     ErrorValueCallback,
-  } from 'abstract-leveldown';
+  } from "abstract-leveldown";
 
   interface RocksDB extends AbstractLevelDOWN<RocksDB.Bytes, RocksDB.Bytes> {
     open(cb: ErrorCallback): void;
@@ -43,7 +43,7 @@ declare module '@farcaster/rocksdb' {
     batch(
       array: AbstractBatch[],
       options: RocksDB.BatchOptions,
-      cb: ErrorCallback
+      cb: ErrorCallback,
     ): AbstractChainedBatch<RocksDB.Bytes, RocksDB.Bytes>;
 
     approximateSize(start: RocksDB.Bytes, end: RocksDB.Bytes, cb: RocksDB.ErrorSizeCallback): void;
@@ -55,8 +55,7 @@ declare module '@farcaster/rocksdb' {
   declare namespace RocksDB {
     type Bytes = string | Buffer;
     type ErrorSizeCallback = (err: Error | undefined, size: number) => void;
-    // eslint-disable-next-line @typescript-eslint/no-empty-interface
-    interface OpenOptions extends AbstractOpenOptions {}
+    type OpenOptions = AbstractOpenOptions;
 
     interface GetOptions extends AbstractGetOptions {
       fillCache?: boolean | undefined;

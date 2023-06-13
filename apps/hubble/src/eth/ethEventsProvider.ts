@@ -9,27 +9,27 @@ import {
   NameRegistryEvent,
   NameRegistryEventType,
   toFarcasterTime,
-} from '@farcaster/hub-nodejs';
-import { AbstractProvider, BaseContractMethod, Contract, ContractEventPayload, EthersError, EventLog } from 'ethers';
-import { Err, err, Ok, ok, Result, ResultAsync } from 'neverthrow';
-import { IdRegistry, NameRegistry } from './abis.js';
-import { bytes32ToBytes, bytesToBytes32 } from './utils.js';
-import { HubInterface } from '../hubble.js';
-import { logger } from '../utils/logger.js';
+} from "@farcaster/hub-nodejs";
+import { AbstractProvider, BaseContractMethod, Contract, ContractEventPayload, EthersError, EventLog } from "ethers";
+import { Err, err, Ok, ok, Result, ResultAsync } from "neverthrow";
+import { IdRegistry, NameRegistry } from "./abis.js";
+import { bytes32ToBytes, bytesToBytes32 } from "./utils.js";
+import { HubInterface } from "../hubble.js";
+import { logger } from "../utils/logger.js";
 
 const log = logger.child({
-  component: 'EthEventsProvider',
+  component: "EthEventsProvider",
 });
 
 export class GoerliEthConstants {
-  public static IdRegistryAddress = '0xda107a1caf36d198b12c16c7b6a1d1c795978c42';
-  public static NameRegistryAddress = '0xe3be01d99baa8db9905b33a3ca391238234b79d1';
+  public static IdRegistryAddress = "0xda107a1caf36d198b12c16c7b6a1d1c795978c42";
+  public static NameRegistryAddress = "0xe3be01d99baa8db9905b33a3ca391238234b79d1";
   public static FirstBlock = 7648795;
   public static ChunkSize = 10000;
   public static chainId = BigInt(5);
 }
 
-type NameRegistryRenewEvent = Omit<NameRegistryEvent, 'to' | 'from'>;
+type NameRegistryRenewEvent = Omit<NameRegistryEvent, "to" | "from">;
 
 /**
  * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
@@ -65,7 +65,7 @@ export class EthEventsProvider {
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
-    ethersPromiseCacheDelayMS = 250
+    ethersPromiseCacheDelayMS = 250,
   ) {
     this._hub = hub;
     this._jsonRpcProvider = jsonRpcProvider;
@@ -91,27 +91,27 @@ export class EthEventsProvider {
     this._retryDedupMap = new Map();
 
     // Setup IdRegistry contract
-    this._idRegistryContract.on('Register', (to: string, id: bigint, _recovery, _url, event: ContractEventPayload) => {
+    this._idRegistryContract.on("Register", (to: string, id: bigint, _recovery, _url, event: ContractEventPayload) => {
       this.cacheIdRegistryEvent(null, to, id, IdRegistryEventType.REGISTER, event.log);
     });
-    this._idRegistryContract.on('Transfer', (from: string, to: string, id: bigint, event: ContractEventPayload) => {
+    this._idRegistryContract.on("Transfer", (from: string, to: string, id: bigint, event: ContractEventPayload) => {
       this.cacheIdRegistryEvent(from, to, id, IdRegistryEventType.TRANSFER, event.log);
     });
 
     // Setup NameRegistry contract
     this._nameRegistryContract.on(
-      'Transfer',
+      "Transfer",
       (from: string, to: string, tokenId: bigint, event: ContractEventPayload) => {
         this.cacheNameRegistryEvent(from, to, tokenId, event.log);
-      }
+      },
     );
 
-    this._nameRegistryContract.on('Renew', (tokenId: bigint, expiry: bigint, event: ContractEventPayload) => {
+    this._nameRegistryContract.on("Renew", (tokenId: bigint, expiry: bigint, event: ContractEventPayload) => {
       this.cacheRenewEvent(tokenId, expiry, event.log);
     });
 
     // Set up block listener to confirm blocks
-    this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
+    this._jsonRpcProvider.on("block", (blockNumber: number) => this.handleNewBlock(blockNumber));
   }
 
   /**
@@ -126,7 +126,7 @@ export class EthEventsProvider {
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
-    ethersPromiseCacheDelayMS = 250
+    ethersPromiseCacheDelayMS = 250,
   ): EthEventsProvider {
     const idRegistryContract = (idRegistry as Contract).target
       ? (idRegistry as Contract)
@@ -143,7 +143,7 @@ export class EthEventsProvider {
       firstBlock,
       chunkSize,
       resyncEvents,
-      ethersPromiseCacheDelayMS
+      ethersPromiseCacheDelayMS,
     );
 
     return provider;
@@ -178,11 +178,11 @@ export class EthEventsProvider {
 
     // Safety: expiryOf exists on the contract's abi, but ethers won't infer it from the ABI though
     // it is supposed to  in v6 https://github.com/ethers-io/ethers.js/issues/1138
-    const expiryOfMethod = this._nameRegistryContract['expiryOf'] as BaseContractMethod;
+    const expiryOfMethod = this._nameRegistryContract["expiryOf"] as BaseContractMethod;
 
     const expiryResult: Result<bigint, HubError> = await this.executeCallAsPromiseWithRetry(
       () => expiryOfMethod(encodedFnameResult.value),
-      (err) => new HubError('unavailable.network_failure', err as Error)
+      (err) => new HubError("unavailable.network_failure", err as Error),
     );
 
     return expiryResult.map((expiry) => Number(expiry) * 1000);
@@ -195,35 +195,35 @@ export class EthEventsProvider {
   /** Connect to Ethereum RPC */
   private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await this.executeCallAsPromiseWithRetry(
-      () => this._jsonRpcProvider.getBlock('latest'),
-      (err) => err
+      () => this._jsonRpcProvider.getBlock("latest"),
+      (err) => err,
     );
     if (latestBlockResult.isErr()) {
       log.error(
         { err: latestBlockResult.error },
-        'failed to connect to ethereum node. Check your eth RPC URL (e.g. --eth-rpc-url)'
+        "failed to connect to ethereum node. Check your eth RPC URL (e.g. --eth-rpc-url)",
       );
       return;
     }
 
     const network = await this.executeCallAsPromiseWithRetry(
       () => this._jsonRpcProvider.getNetwork(),
-      (err) => err
+      (err) => err,
     );
 
     if (network.isErr() || network.value.chainId !== GoerliEthConstants.chainId) {
-      log.error({ err: network.isErr() ? network.error : `Wrong network ${network.value.chainId}` }, 'Bad network');
+      log.error({ err: network.isErr() ? network.error : `Wrong network ${network.value.chainId}` }, "Bad network");
       return;
     }
 
     const latestBlock = latestBlockResult.value;
 
     if (!latestBlock) {
-      log.error('failed to get the latest block from the RPC provider');
+      log.error("failed to get the latest block from the RPC provider");
       return;
     }
 
-    log.info({ latestBlock: latestBlock.number, network: network.value.chainId }, 'connected to ethereum node');
+    log.info({ latestBlock: latestBlock.number, network: network.value.chainId }, "connected to ethereum node");
 
     // Find how how much we need to sync
     let lastSyncedBlock = this._firstBlock;
@@ -238,7 +238,7 @@ export class EthEventsProvider {
       lastSyncedBlock = this._firstBlock;
     }
 
-    log.info({ lastSyncedBlock }, 'last synced block');
+    log.info({ lastSyncedBlock }, "last synced block");
     const toBlock = latestBlock.number;
 
     // Sync old Id events
@@ -279,9 +279,9 @@ export class EthEventsProvider {
     type: IdRegistryEventType,
     fromBlock: number,
     toBlock: number,
-    batchSize: number
+    batchSize: number,
   ) {
-    const typeString = type === IdRegistryEventType.REGISTER ? 'Register' : 'Transfer';
+    const typeString = type === IdRegistryEventType.REGISTER ? "Register" : "Transfer";
 
     /*
      * How querying blocks in batches works
@@ -311,13 +311,13 @@ export class EthEventsProvider {
           this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
             EventLog[]
           >,
-        (e) => e
+        (e) => e,
       );
 
       // Make sure the batch didn't error, and if it did, retry.
       if (batchIdEvents.isErr()) {
         // If we still hit an error, just log the error and return
-        log.error({ err: batchIdEvents.error }, 'failed to get a batch of old ID events');
+        log.error({ err: batchIdEvents.error }, "failed to get a batch of old ID events");
         return;
       }
 
@@ -334,7 +334,7 @@ export class EthEventsProvider {
 
           await this.cacheIdRegistryEvent(from, to, id, type, event);
         } catch (e) {
-          log.error({ event }, 'failed to parse event args');
+          log.error({ event }, "failed to parse event args");
         }
       }
     }
@@ -348,9 +348,9 @@ export class EthEventsProvider {
     type: NameRegistryEventType,
     fromBlock: number,
     toBlock: number,
-    batchSize: number
+    batchSize: number,
   ) {
-    const typeString = type === NameRegistryEventType.TRANSFER ? 'Transfer' : 'Renew';
+    const typeString = type === NameRegistryEventType.TRANSFER ? "Transfer" : "Renew";
 
     /*
      * Querying Blocks in Batches
@@ -387,12 +387,12 @@ export class EthEventsProvider {
           this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
             EventLog[]
           >,
-        (e) => e
+        (e) => e,
       );
 
       if (oldNameBatchEvents.isErr()) {
         // If we still hit an error, just log the error and return
-        log.error({ err: oldNameBatchEvents.error }, 'failed to get old Name events');
+        log.error({ err: oldNameBatchEvents.error }, "failed to get old Name events");
         return;
       }
 
@@ -405,7 +405,7 @@ export class EthEventsProvider {
             const tokenId = BigInt(event.args.at(2));
             await this.cacheNameRegistryEvent(from, to, tokenId, event);
           } catch (e) {
-            log.error({ event }, 'failed to parse event args');
+            log.error({ event }, "failed to parse event args");
           }
         }
       }
@@ -432,7 +432,7 @@ export class EthEventsProvider {
 
         if (idEvents) {
           for (const idEvent of idEvents) {
-            await this._hub.submitIdRegistryEvent(idEvent, 'eth-provider');
+            await this._hub.submitIdRegistryEvent(idEvent, "eth-provider");
           }
         }
 
@@ -441,7 +441,7 @@ export class EthEventsProvider {
 
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
-            await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
+            await this._hub.submitNameRegistryEvent(nameEvent, "eth-provider");
           }
         }
 
@@ -450,13 +450,13 @@ export class EthEventsProvider {
 
         if (renewEvents) {
           for (const renewEvent of renewEvents) {
-            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent['fname']);
+            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent["fname"]);
             if (nameRegistryEvent.isErr()) {
               log.error(
                 { blockNumber, errCode: nameRegistryEvent.error.errCode },
                 `failed to get event for fname ${bytesToUtf8String(
-                  renewEvent['fname']
-                )._unsafeUnwrap()} from renew event: ${nameRegistryEvent.error.message}`
+                  renewEvent["fname"],
+                )._unsafeUnwrap()} from renew event: ${nameRegistryEvent.error.message}`,
               );
               continue;
             }
@@ -488,7 +488,7 @@ export class EthEventsProvider {
     to: string,
     id: bigint,
     type: IdRegistryEventType,
-    eventLog: EventLog
+    eventLog: EventLog,
   ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, index } = eventLog;
 
@@ -530,7 +530,7 @@ export class EthEventsProvider {
 
     log.info(
       { event: { to, id: id.toString(), blockNumber } },
-      `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`
+      `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`,
     );
 
     return ok(undefined);
@@ -540,7 +540,7 @@ export class EthEventsProvider {
     from: string,
     to: string,
     tokenId: bigint,
-    eventLog: EventLog
+    eventLog: EventLog,
   ): HubAsyncResult<void> {
     const { blockNumber, blockHash, transactionHash, index } = eventLog;
 
@@ -557,7 +557,7 @@ export class EthEventsProvider {
     if (serialized.isErr()) {
       logEvent.error(
         { errCode: serialized.error.errCode },
-        `cacheNameRegistryEvent error: ${serialized.error.message}`
+        `cacheNameRegistryEvent error: ${serialized.error.message}`,
       );
       return err(serialized.error);
     }
@@ -633,21 +633,21 @@ export class EthEventsProvider {
   private async executeCallAsPromiseWithRetry<T, E>(
     call: () => Promise<T>,
     errorFn: (e: unknown) => E,
-    attempt = 1
+    attempt = 1,
   ): Promise<Result<T, E>> {
     const result = await ResultAsync.fromPromise(call(), (err) => err);
 
     if (result.isErr()) {
       const err = result.error as EthersError;
-      if (err && err.code)
+      if (err?.code)
         switch (err.code) {
           // non-request-specific ethers errors:
-          case 'UNKNOWN_ERROR':
-          case 'BAD_DATA':
-          case 'SERVER_ERROR':
-          case 'NETWORK_ERROR':
-          case 'TIMEOUT':
-          case 'OFFCHAIN_FAULT':
+          case "UNKNOWN_ERROR":
+          case "BAD_DATA":
+          case "SERVER_ERROR":
+          case "NETWORK_ERROR":
+          case "TIMEOUT":
+          case "OFFCHAIN_FAULT":
             if (attempt !== 3) {
               const logger = log.child({ event: { rpcError: err.code } });
               logger.warn(`ethRPCError: RPC returned response ${err.message}, retrying (attempt ${attempt}).`);
@@ -656,7 +656,7 @@ export class EthEventsProvider {
               await new Promise<void>((resolve) =>
                 setTimeout(() => {
                   resolve();
-                }, this._ethersPromiseCacheDelayMS * Math.pow(attempt, attempt) + 1)
+                }, this._ethersPromiseCacheDelayMS * Math.pow(attempt, attempt) + 1),
               );
 
               return await this.executeCallAsPromiseWithRetry(call, errorFn, attempt + 1);

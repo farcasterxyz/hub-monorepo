@@ -5,7 +5,7 @@ import {
   FarcasterNetwork,
   IdRegistryEventType,
   NameRegistryEventType,
-} from '@farcaster/hub-nodejs';
+} from "@farcaster/hub-nodejs";
 import {
   OrphanFilter,
   AbstractProvider,
@@ -15,16 +15,16 @@ import {
   Provider,
   TransactionReceipt,
   TransactionResponse,
-} from 'ethers';
-import { IdRegistry, NameRegistry } from './abis.js';
-import { EthEventsProvider } from './ethEventsProvider.js';
-import { bytesToBytes32 } from './utils.js';
-import { getIdRegistryEvent } from '../storage/db/idRegistryEvent.js';
-import { jestRocksDB } from '../storage/db/jestUtils.js';
-import { getNameRegistryEvent } from '../storage/db/nameRegistryEvent.js';
-import Engine from '../storage/engine/index.js';
-import { MockFaultyRPCProvider, MockHub, MockRPCProvider } from '../test/mocks.js';
-import { RetryProvider } from './retryProvider.js';
+} from "ethers";
+import { IdRegistry, NameRegistry } from "./abis.js";
+import { EthEventsProvider } from "./ethEventsProvider.js";
+import { bytesToBytes32 } from "./utils.js";
+import { getIdRegistryEvent } from "../storage/db/idRegistryEvent.js";
+import { jestRocksDB } from "../storage/db/jestUtils.js";
+import { getNameRegistryEvent } from "../storage/db/nameRegistryEvent.js";
+import Engine from "../storage/engine/index.js";
+import { MockFaultyRPCProvider, MockHub, MockRPCProvider } from "../test/mocks.js";
+import { RetryProvider } from "./retryProvider.js";
 
 const generateEthAddressHex = () => {
   return bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
@@ -44,7 +44,6 @@ class MockEvent implements Log {
   transactionIndex: number;
 
   // Allow no-op functions in the mock
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   removeListener: () => void = () => {};
   getBlock: () => Promise<Block> = () => Promise.resolve({} as Block);
   getTransaction: () => Promise<TransactionResponse> = () => Promise.resolve({} as TransactionResponse);
@@ -55,7 +54,7 @@ class MockEvent implements Log {
     blockHash: string,
     transactionHash: string,
     index: number,
-    provider: AbstractProvider
+    provider: AbstractProvider,
   ) {
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;
@@ -65,28 +64,28 @@ class MockEvent implements Log {
 
     this.transactionIndex = 0;
     this.removed = false;
-    this.address = '';
-    this.data = '';
+    this.address = "";
+    this.data = "";
     this.topics = [];
   }
 
   get eventName(): string {
-    throw new Error('Method not implemented.');
+    throw new Error("Method not implemented.");
   }
   get eventSignature(): string {
-    throw new Error('Method not implemented.');
+    throw new Error("Method not implemented.");
   }
 
   toJSON() {
-    throw new Error('Method not implemented.');
+    throw new Error("Method not implemented.");
   }
   removedEvent(): OrphanFilter {
-    throw new Error('Method not implemented.');
+    throw new Error("Method not implemented.");
   }
 }
 
-describe('process events', () => {
-  const db = jestRocksDB('protobufs.ethEventsProvider.test');
+describe("process events", () => {
+  const db = jestRocksDB("protobufs.ethEventsProvider.test");
   const engine = new Engine(db, FarcasterNetwork.TESTNET);
   const hub = new MockHub(db, engine);
 
@@ -100,8 +99,8 @@ describe('process events', () => {
 
   beforeAll(async () => {
     mockRPCProvider = new MockRPCProvider();
-    mockIdRegistry = new Contract('0x0000000000000000000000000000000000000001', IdRegistry.abi, mockRPCProvider);
-    mockNameRegistry = new Contract('0x0000000000000000000000000000000000000002', NameRegistry.abi, mockRPCProvider);
+    mockIdRegistry = new Contract("0x0000000000000000000000000000000000000001", IdRegistry.abi, mockRPCProvider);
+    mockNameRegistry = new Contract("0x0000000000000000000000000000000000000002", NameRegistry.abi, mockRPCProvider);
   });
 
   afterAll(async () => {
@@ -116,7 +115,7 @@ describe('process events', () => {
       mockNameRegistry,
       1,
       10000,
-      false
+      false,
     );
     mockRPCProvider._forEachSubscriber((s) => s.start());
     await ethEventsProvider.start();
@@ -135,27 +134,27 @@ describe('process events', () => {
 
   const addBlocks = async (startAt: number, n: number): Promise<number> => {
     for (let i = 0; i < n; i++) {
-      expect(await mockRPCProvider.emit('block', startAt + i)).toBeTruthy();
+      expect(await mockRPCProvider.emit("block", startAt + i)).toBeTruthy();
       await waitForBlock(startAt + i);
     }
 
     return startAt + n;
   };
 
-  test('processes IdRegistry events', async () => {
+  test("processes IdRegistry events", async () => {
     let blockNumber = 1;
 
     const address1 = generateEthAddressHex();
     const address2 = generateEthAddressHex();
 
     // Emit a "Register event"
-    const rRegister = await mockIdRegistry.emit('Register', address1, BigInt(fid), '', '', {
+    const rRegister = await mockIdRegistry.emit("Register", address1, BigInt(fid), "", "", {
       log: new MockEvent(
         blockNumber++,
-        '0xb000000000000000000000000000000000000001',
-        '0x4000000000000000000000000000000000000001',
+        "0xb000000000000000000000000000000000000001",
+        "0x4000000000000000000000000000000000000001",
         0,
-        mockRPCProvider
+        mockRPCProvider,
       ),
     });
     expect(rRegister).toBeTruthy();
@@ -171,13 +170,13 @@ describe('process events', () => {
     expect(idRegistryEvent.fid).toEqual(fid);
 
     // Transfer the ID to another address
-    await mockIdRegistry.emit('Transfer', address1, address2, BigInt(fid), {
+    await mockIdRegistry.emit("Transfer", address1, address2, BigInt(fid), {
       log: new MockEvent(
         blockNumber++,
-        '0xb000000000000000000000000000000000000002',
-        '0x4000000000000000000000000000000000000002',
+        "0xb000000000000000000000000000000000000002",
+        "0x4000000000000000000000000000000000000002",
         0,
-        mockRPCProvider
+        mockRPCProvider,
       ),
     });
 
@@ -198,24 +197,24 @@ describe('process events', () => {
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 5000));
   }, 10000);
 
-  test('processes transfer name', async () => {
+  test("processes transfer name", async () => {
     let blockNumber = 1;
 
     // Emit a "Transfer event"
     const rTransfer = await mockNameRegistry.emit(
-      'Transfer',
-      '0x0000000000000000000000000000000000000001',
-      '0x0000000000000000000000000000000000000002',
+      "Transfer",
+      "0x0000000000000000000000000000000000000001",
+      "0x0000000000000000000000000000000000000002",
       bytesToBytes32(fname)._unsafeUnwrap(),
       {
         log: new MockEvent(
           blockNumber++,
-          '0xb000000000000000000000000000000000000001',
-          '0x4000000000000000000000000000000000000001',
+          "0xb000000000000000000000000000000000000001",
+          "0x4000000000000000000000000000000000000001",
           0,
-          mockRPCProvider
+          mockRPCProvider,
         ),
-      }
+      },
     );
     expect(rTransfer).toBeTruthy();
 
@@ -229,13 +228,13 @@ describe('process events', () => {
     expect((await getNameRegistryEvent(db, fname)).fname).toEqual(fname);
 
     // Renew the fname
-    await mockNameRegistry.emit('Renew', bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
+    await mockNameRegistry.emit("Renew", bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
       log: new MockEvent(
         blockNumber++,
-        '0xb000000000000000000000000000000000000002',
-        '0x4000000000000000000000000000000000000002',
+        "0xb000000000000000000000000000000000000002",
+        "0x4000000000000000000000000000000000000002",
         0,
-        mockRPCProvider
+        mockRPCProvider,
       ),
     });
     // The event is not immediately available, since it has to wait for confirmations. We should still get the Transfer event
@@ -256,8 +255,8 @@ describe('process events', () => {
   }, 10000);
 });
 
-describe('process events with faulty rpc', () => {
-  const db = jestRocksDB('protobufs.ethEventsProvider.test');
+describe("process events with faulty rpc", () => {
+  const db = jestRocksDB("protobufs.ethEventsProvider.test");
   const engine = new Engine(db, FarcasterNetwork.TESTNET);
   const hub = new MockHub(db, engine);
 
@@ -274,14 +273,14 @@ describe('process events with faulty rpc', () => {
     mockFaultyRPCProvider = new RetryingProvider();
 
     mockFaultyIdRegistry = new Contract(
-      '0x0000000000000000000000000000000000000001',
+      "0x0000000000000000000000000000000000000001",
       IdRegistry.abi,
-      mockFaultyRPCProvider
+      mockFaultyRPCProvider,
     );
     mockFaultyNameRegistry = new Contract(
-      '0x0000000000000000000000000000000000000002',
+      "0x0000000000000000000000000000000000000002",
       NameRegistry.abi,
-      mockFaultyRPCProvider
+      mockFaultyRPCProvider,
     );
   });
 
@@ -294,7 +293,7 @@ describe('process events with faulty rpc', () => {
       1,
       10000,
       false,
-      1
+      1,
     );
     mockFaultyRPCProvider._forEachSubscriber((s) => s.start());
     await ethEventsProvider.start();
@@ -317,27 +316,27 @@ describe('process events with faulty rpc', () => {
 
   const addBlocks = async (startAt: number, n: number): Promise<number> => {
     for (let i = 0; i < n; i++) {
-      expect(await mockFaultyRPCProvider.emit('block', startAt + i)).toBeTruthy();
+      expect(await mockFaultyRPCProvider.emit("block", startAt + i)).toBeTruthy();
       await waitForBlock(startAt + i);
     }
 
     return startAt + n;
   };
 
-  test('processes IdRegistry events', async () => {
+  test("processes IdRegistry events", async () => {
     let blockNumber = 1;
 
     const address1 = generateEthAddressHex();
     const address2 = generateEthAddressHex();
 
     // Emit a "Register event"
-    const rRegister = await mockFaultyIdRegistry.emit('Register', address1, BigInt(fid), '', '', {
+    const rRegister = await mockFaultyIdRegistry.emit("Register", address1, BigInt(fid), "", "", {
       log: new MockEvent(
         blockNumber++,
-        '0xb000000000000000000000000000000000000001',
-        '0x4000000000000000000000000000000000000001',
+        "0xb000000000000000000000000000000000000001",
+        "0x4000000000000000000000000000000000000001",
         0,
-        mockFaultyRPCProvider
+        mockFaultyRPCProvider,
       ),
     });
     expect(rRegister).toBeTruthy();
@@ -353,13 +352,13 @@ describe('process events with faulty rpc', () => {
     expect(idRegistryEvent.fid).toEqual(fid);
 
     // Transfer the ID to another address
-    await mockFaultyIdRegistry.emit('Transfer', address1, address2, BigInt(fid), {
+    await mockFaultyIdRegistry.emit("Transfer", address1, address2, BigInt(fid), {
       log: new MockEvent(
         blockNumber++,
-        '0xb000000000000000000000000000000000000002',
-        '0x4000000000000000000000000000000000000002',
+        "0xb000000000000000000000000000000000000002",
+        "0x4000000000000000000000000000000000000002",
         0,
-        mockFaultyRPCProvider
+        mockFaultyRPCProvider,
       ),
     });
 
@@ -382,24 +381,24 @@ describe('process events with faulty rpc', () => {
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 6000));
   }, 35000);
 
-  test('processes transfer name', async () => {
+  test("processes transfer name", async () => {
     let blockNumber = 1;
 
     // Emit a "Transfer event"
     const rTransfer = await mockFaultyNameRegistry.emit(
-      'Transfer',
-      '0x0000000000000000000000000000000000000001',
-      '0x0000000000000000000000000000000000000002',
+      "Transfer",
+      "0x0000000000000000000000000000000000000001",
+      "0x0000000000000000000000000000000000000002",
       bytesToBytes32(fname)._unsafeUnwrap(),
       {
         log: new MockEvent(
           blockNumber++,
-          '0xb000000000000000000000000000000000000001',
-          '0x4000000000000000000000000000000000000001',
+          "0xb000000000000000000000000000000000000001",
+          "0x4000000000000000000000000000000000000001",
           0,
-          mockFaultyRPCProvider
+          mockFaultyRPCProvider,
         ),
-      }
+      },
     );
     expect(rTransfer).toBeTruthy();
 
@@ -413,13 +412,13 @@ describe('process events with faulty rpc', () => {
     expect((await getNameRegistryEvent(db, fname)).fname).toEqual(fname);
 
     // Renew the fname
-    await mockFaultyNameRegistry.emit('Renew', bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
+    await mockFaultyNameRegistry.emit("Renew", bytesToBytes32(fname)._unsafeUnwrap(), BigInt(Date.now() + 1000), {
       log: new MockEvent(
         blockNumber++,
-        '0xb000000000000000000000000000000000000002',
-        '0x4000000000000000000000000000000000000002',
+        "0xb000000000000000000000000000000000000002",
+        "0x4000000000000000000000000000000000000002",
         0,
-        mockFaultyRPCProvider
+        mockFaultyRPCProvider,
       ),
     });
 
@@ -442,8 +441,8 @@ describe('process events with faulty rpc', () => {
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 6000));
   }, 35000);
 
-  test('fname expiry handles retry', async () => {
-    expect(await ethEventsProvider.getFnameExpiry(Buffer.from('test', 'utf-8'))).resolves;
+  test("fname expiry handles retry", async () => {
+    expect(await ethEventsProvider.getFnameExpiry(Buffer.from("test", "utf-8"))).resolves;
     mockFaultyRPCProvider._forEachSubscriber((s) => s.stop());
     // Because we have no control over ethers' polling (i.e. stop doesn't stop until the next delay), we have to wait it
     // out.

@@ -12,15 +12,15 @@ import {
   HubError,
   getInsecureHubRpcClient,
   HubRpcClient,
-} from '@farcaster/hub-nodejs';
-import { Ok } from 'neverthrow';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import Server from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
+} from "@farcaster/hub-nodejs";
+import { Ok } from "neverthrow";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import Server from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
 
-const db = jestRocksDB('protobufs.rpc.userdataservice.test');
+const db = jestRocksDB("protobufs.rpc.userdataservice.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
@@ -60,17 +60,17 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 
   pfpAdd = await Factories.UserDataAddMessage.create(
     { data: { fid, userDataBody: { type: UserDataType.PFP } } },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 
   displayAdd = await Factories.UserDataAddMessage.create(
     { data: { fid, userDataBody: { type: UserDataType.DISPLAY }, timestamp: pfpAdd.data.timestamp + 1 } },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 
   addFname = await Factories.UserDataAddMessage.create(
@@ -84,17 +84,17 @@ beforeAll(async () => {
         timestamp: pfpAdd.data.timestamp + 2,
       },
     },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 });
 
-describe('getUserData', () => {
+describe("getUserData", () => {
   beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     expect(await engine.mergeMessage(pfpAdd)).toBeInstanceOf(Ok);
     expect(await engine.mergeMessage(displayAdd)).toBeInstanceOf(Ok);
 
@@ -112,35 +112,35 @@ describe('getUserData', () => {
     expect(Message.toJSON(fnameData._unsafeUnwrap())).toEqual(Message.toJSON(addFname));
   });
 
-  test('fails when user data is missing', async () => {
+  test("fails when user data is missing", async () => {
     const pfp = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.PFP }));
-    expect(pfp._unsafeUnwrapErr().errCode).toEqual('not_found');
+    expect(pfp._unsafeUnwrapErr().errCode).toEqual("not_found");
     const fname = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
-    expect(fname._unsafeUnwrapErr().errCode).toEqual('not_found');
+    expect(fname._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
 
-  test('fails without fid', async () => {
+  test("fails without fid", async () => {
     const result = await client.getUserData(UserDataRequest.create({ fid: 0, userDataType: UserDataType.PFP }));
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
   });
 });
 
-describe('getUserDataByFid', () => {
+describe("getUserDataByFid", () => {
   beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     await engine.mergeMessage(pfpAdd);
     await engine.mergeMessage(displayAdd);
     const result = await client.getUserDataByFid(FidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-      [pfpAdd, displayAdd].map((m) => Message.toJSON(m))
+      [pfpAdd, displayAdd].map((m) => Message.toJSON(m)),
     );
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     const result = await client.getUserDataByFid(FidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });

@@ -1,18 +1,18 @@
-import { bytesIncrement, HubError, isHubError } from '@farcaster/hub-nodejs';
-import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from 'abstract-leveldown';
-import { mkdir } from 'fs';
-import AbstractRocksDB from '@farcaster/rocksdb';
+import { bytesIncrement, HubError, isHubError } from "@farcaster/hub-nodejs";
+import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from "abstract-leveldown";
+import { mkdir } from "fs";
+import AbstractRocksDB from "@farcaster/rocksdb";
 
-export const DB_DIRECTORY = '.rocks';
-const DB_NAME_DEFAULT = 'farcaster';
+export const DB_DIRECTORY = ".rocks";
+const DB_NAME_DEFAULT = "farcaster";
 
 export type Transaction = AbstractChainedBatch<Buffer, Buffer>;
 
 const parseError = (e: Error): HubError => {
   if (/NotFound/i.test(e.message)) {
-    return new HubError('not_found', e);
+    return new HubError("not_found", e);
   }
-  return new HubError('unavailable.storage_failure', e);
+  return new HubError("unavailable.storage_failure", e);
 };
 
 export class Iterator {
@@ -25,11 +25,12 @@ export class Iterator {
   async *[Symbol.asyncIterator]() {
     try {
       let kv: [Buffer | undefined, Buffer | undefined] | undefined;
+      // rome-ignore lint/suspicious/noAssignInExpressions: legacy eslint migration, to fix
       while ((kv = await this.next())) {
         yield kv;
       }
     } catch (e) {
-      if (!(isHubError(e) && e.errCode === 'not_found')) {
+      if (!(isHubError(e) && e.errCode === "not_found")) {
         throw e;
       }
     } finally {
@@ -43,7 +44,7 @@ export class Iterator {
         if (err) {
           reject(err);
         } else if (key === undefined && value === undefined) {
-          reject(new HubError('not_found', 'record not found'));
+          reject(new HubError("not_found", "record not found"));
         } else {
           resolve([key as Buffer | undefined, value as Buffer | undefined]);
         }
@@ -52,7 +53,7 @@ export class Iterator {
   }
 
   async end(): Promise<void> {
-    if (this._iterator['_ended']) return Promise.resolve(undefined);
+    if (this._iterator["_ended"]) return Promise.resolve(undefined);
 
     return new Promise((resolve, reject) => {
       this._iterator.end((err: Error | undefined) => {
@@ -76,7 +77,7 @@ class RocksDB {
   }
 
   get location() {
-    return this._db['location'];
+    return this._db["location"];
   }
 
   get status() {
@@ -125,16 +126,14 @@ class RocksDB {
 
   open(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this._db.status === 'opening') {
-        reject(new Error('db is opening'));
-      } else if (this._db.status === 'closing') {
-        reject(new Error('db is closing'));
-      } else if (this._db.status === 'open') {
+      if (this._db.status === "opening") {
+        reject(new Error("db is opening"));
+      } else if (this._db.status === "closing") {
+        reject(new Error("db is closing"));
+      } else if (this._db.status === "open") {
         resolve(undefined);
       } else {
-        // NOTE: eslint falsely identifies `open(...)` as `fs.open`.
-        // eslint-disable-next-line security/detect-non-literal-fs-filename
-        mkdir(this._db['location'], { recursive: true }, (fsErr: Error | null) => {
+        mkdir(this._db["location"], { recursive: true }, (fsErr: Error | null) => {
           if (fsErr) reject(parseError(fsErr));
           this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: Error) => {
             if (!e) {
@@ -157,21 +156,21 @@ class RocksDB {
 
   clear(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this._db['clear']((e?: Error) => {
+      this._db["clear"]((e?: Error) => {
         e ? reject(parseError(e)) : resolve(undefined);
       });
     });
   }
 
   async destroy(): Promise<void> {
-    if (this._db.status === 'open') {
+    if (this._db.status === "open") {
       await this.close();
     }
     return new Promise((resolve, reject) => {
       if (!this._hasOpened) {
-        reject(new Error('db never opened'));
+        reject(new Error("db never opened"));
       } else {
-        AbstractRocksDB.destroy(this._db['location'], (e?: Error) => {
+        AbstractRocksDB.destroy(this._db["location"], (e?: Error) => {
           e ? reject(parseError(e)) : resolve(undefined);
         });
       }

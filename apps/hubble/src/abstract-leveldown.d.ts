@@ -47,12 +47,12 @@ export interface AbstractLevelDOWN<K = any, V = any> extends AbstractOptions {
   batch(
     array: ReadonlyArray<AbstractBatch<K, V>>,
     options: AbstractOptions,
-    cb: ErrorCallback
+    cb: ErrorCallback,
   ): AbstractChainedBatch<K, V>;
 
   iterator(options?: AbstractIteratorOptions<K>): AbstractIterator<K, V>;
 
-  readonly status: 'new' | 'opening' | 'open' | 'closing' | 'closed';
+  readonly status: "new" | "opening" | "open" | "closing" | "closed";
   readonly location: string;
   isOperational(): boolean;
 }
@@ -78,13 +78,13 @@ export interface AbstractIteratorOptions<K = any> extends AbstractOptions {
 export type AbstractBatch<K = any, V = any> = PutBatch<K, V> | DelBatch<K, V>;
 
 export interface PutBatch<K = any, V = any> {
-  readonly type: 'put';
+  readonly type: "put";
   readonly key: K;
   readonly value: V;
 }
 
 export interface DelBatch<K = any> {
-  readonly type: 'del';
+  readonly type: "del";
   readonly key: K;
 }
 

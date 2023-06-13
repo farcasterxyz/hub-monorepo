@@ -10,9 +10,9 @@ import {
   MessageType,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-} from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { err, ok, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import AsyncLock from "async-lock";
+import { err, ok, ResultAsync } from "neverthrow";
 import {
   deleteMessageTransaction,
   getMessage,
@@ -23,12 +23,12 @@ import {
   makeTsHash,
   makeUserKey,
   putMessageTransaction,
-} from '../db/message.js';
-import RocksDB, { Transaction } from '../db/rocksdb.js';
-import { UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from './storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from './types.js';
-import { logger } from '../../utils/logger.js';
+} from "../db/message.js";
+import RocksDB, { Transaction } from "../db/rocksdb.js";
+import { UserPostfix } from "../db/types.js";
+import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
+import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
+import { logger } from "../../utils/logger.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
@@ -42,7 +42,7 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 50;
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<address?>
  */
 const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationAdds]), Buffer.from(address ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationAdds]), Buffer.from(address ?? "")]);
 };
 
 /**
@@ -55,7 +55,7 @@ const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
 const makeVerificationRemovesKey = (fid: number, address?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationRemoves]), Buffer.from(address ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationRemoves]), Buffer.from(address ?? "")]);
 };
 
 /**
@@ -129,7 +129,7 @@ class VerificationStore {
    */
   async getVerificationAddsByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<VerificationAddEthAddressMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
     return getMessagesPageByPrefix(this._db, prefix, isVerificationAddEthAddressMessage, pageOptions);
@@ -143,7 +143,7 @@ class VerificationStore {
    */
   async getVerificationRemovesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<VerificationRemoveMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
     return getMessagesPageByPrefix(this._db, prefix, isVerificationRemoveMessage, pageOptions);
@@ -151,7 +151,7 @@ class VerificationStore {
 
   async getAllVerificationMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>> {
     const prefix = makeMessagePrimaryKey(fid, UserPostfix.VerificationMessage);
     const filter = (message: Message): message is VerificationAddEthAddressMessage | VerificationRemoveMessage => {
@@ -163,36 +163,39 @@ class VerificationStore {
   /** Merge a VerificationAdd or VerificationRemove message into the VerificationStore */
   async merge(message: Message): Promise<number> {
     if (!isVerificationRemoveMessage(message) && !isVerificationAddEthAddressMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
+      throw new HubError("bad_request.validation_failure", "invalid message type");
     }
 
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message,
-            UserPostfix.VerificationMessage,
-            this._pruneSizeLimit
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
-          }
-          if (isVerificationAddEthAddressMessage(message)) {
-            return this.mergeAdd(message);
-          } else if (isVerificationRemoveMessage(message)) {
-            return this.mergeRemove(message);
-          } else {
-            throw new HubError('bad_request.validation_failure', 'invalid message type');
-          }
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
-      });
+    return (
+      this._mergeLock
+        .acquire(
+          message.data.fid.toString(),
+          async () => {
+            const prunableResult = await this._eventHandler.isPrunable(
+              message,
+              UserPostfix.VerificationMessage,
+              this._pruneSizeLimit,
+            );
+            if (prunableResult.isErr()) {
+              throw prunableResult.error;
+            } else if (prunableResult.value) {
+              throw new HubError("bad_request.prunable", "message would be pruned");
+            }
+            if (isVerificationAddEthAddressMessage(message)) {
+              return this.mergeAdd(message);
+            } else if (isVerificationRemoveMessage(message)) {
+              return this.mergeRemove(message);
+            } else {
+              throw new HubError("bad_request.validation_failure", "invalid message type");
+            }
+          },
+          { timeout: MERGE_TIMEOUT_DEFAULT },
+        )
+        // rome-ignore lint/suspicious/noExplicitAny: error catching
+        .catch((e: any) => {
+          throw isHubError(e) ? e : new HubError("unavailable.storage_failure", "merge timed out");
+        })
+    );
   }
 
   async revoke(message: Message): HubAsyncResult<number> {
@@ -202,7 +205,7 @@ class VerificationStore {
     } else if (isVerificationRemoveMessage(message)) {
       txn = this.deleteVerificationRemoveTransaction(txn, message);
     } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+      return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
 
     return this._eventHandler.commitTransaction(txn, {
@@ -251,7 +254,7 @@ class VerificationStore {
       } else if (isVerificationRemoveMessage(nextMessage.value)) {
         txn = this.deleteVerificationRemoveTransaction(txn, nextMessage.value);
       } else {
-        return err(new HubError('unknown', 'invalid message type'));
+        return err(new HubError("unknown", "invalid message type"));
       }
 
       return this._eventHandler.commitTransaction(txn, {
@@ -270,7 +273,7 @@ class VerificationStore {
         },
         (e) => {
           logger.error({ errCode: e.errCode }, `error pruning verification message for fid ${fid}: ${e.message}`);
-        }
+        },
       );
 
       pruneResult = await pruneNextMessage();
@@ -289,7 +292,7 @@ class VerificationStore {
     // Define address for lookups
     const address = message.data.verificationAddEthAddressBody.address;
     if (!address) {
-      throw new HubError('bad_request.validation_failure', 'address was missing');
+      throw new HubError("bad_request.validation_failure", "address was missing");
     }
 
     const mergeConflicts = await this.getMergeConflicts(address, message);
@@ -320,7 +323,7 @@ class VerificationStore {
     // Define address for lookups
     const address = message.data.verificationRemoveBody.address;
     if (!address) {
-      throw new HubError('bad_request.validation_failure', 'address was missing');
+      throw new HubError("bad_request.validation_failure", "address was missing");
     }
 
     const mergeConflicts = await this.getMergeConflicts(address, message);
@@ -351,7 +354,7 @@ class VerificationStore {
     aType: MessageType.VERIFICATION_ADD_ETH_ADDRESS | MessageType.VERIFICATION_REMOVE,
     aTsHash: Uint8Array,
     bType: MessageType.VERIFICATION_ADD_ETH_ADDRESS | MessageType.VERIFICATION_REMOVE,
-    bTsHash: Uint8Array
+    bTsHash: Uint8Array,
   ): number {
     // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
     const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
@@ -371,7 +374,7 @@ class VerificationStore {
 
   private async getMergeConflicts(
     address: Uint8Array,
-    message: VerificationAddEthAddressMessage | VerificationRemoveMessage
+    message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
   ): HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]> {
     const conflicts: (VerificationAddEthAddressMessage | VerificationRemoveMessage)[] = [];
 
@@ -383,7 +386,7 @@ class VerificationStore {
     // Look up the remove tsHash for this address
     const removeTsHash = await ResultAsync.fromPromise(
       this._db.get(makeVerificationRemovesKey(message.data.fid, address)),
-      () => undefined
+      () => undefined,
     );
 
     if (removeTsHash.isOk()) {
@@ -391,12 +394,12 @@ class VerificationStore {
         MessageType.VERIFICATION_REMOVE,
         removeTsHash.value,
         message.data.type,
-        tsHash.value
+        tsHash.value,
       );
       if (removeCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationRemove'));
+        return err(new HubError("bad_request.conflict", "message conflicts with a more recent VerificationRemove"));
       } else if (removeCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
+        return err(new HubError("bad_request.duplicate", "message has already been merged"));
       } else {
         // If the existing remove has a lower order than the new message, retrieve the full
         // VerificationRemove message and delete it as part of the RocksDB transaction
@@ -404,7 +407,7 @@ class VerificationStore {
           this._db,
           message.data.fid,
           UserPostfix.VerificationMessage,
-          removeTsHash.value
+          removeTsHash.value,
         );
         conflicts.push(existingRemove);
       }
@@ -413,7 +416,7 @@ class VerificationStore {
     // Look up the add tsHash for this address
     const addTsHash = await ResultAsync.fromPromise(
       this._db.get(makeVerificationAddsKey(message.data.fid, address)),
-      () => undefined
+      () => undefined,
     );
 
     if (addTsHash.isOk()) {
@@ -421,14 +424,14 @@ class VerificationStore {
         MessageType.VERIFICATION_ADD_ETH_ADDRESS,
         addTsHash.value,
         message.data.type,
-        tsHash.value
+        tsHash.value,
       );
       if (addCompare > 0) {
         return err(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationAddEthAddress')
+          new HubError("bad_request.conflict", "message conflicts with a more recent VerificationAddEthAddress"),
         );
       } else if (addCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
+        return err(new HubError("bad_request.duplicate", "message has already been merged"));
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // VerificationAdd* message and delete it as part of the RocksDB transaction
@@ -436,7 +439,7 @@ class VerificationStore {
           this._db,
           message.data.fid,
           UserPostfix.VerificationMessage,
-          addTsHash.value
+          addTsHash.value,
         );
         conflicts.push(existingAdd);
       }
@@ -447,7 +450,7 @@ class VerificationStore {
 
   private deleteManyTransaction(
     txn: Transaction,
-    messages: (VerificationAddEthAddressMessage | VerificationRemoveMessage)[]
+    messages: (VerificationAddEthAddressMessage | VerificationRemoveMessage)[],
   ): Transaction {
     for (const message of messages) {
       if (isVerificationAddEthAddressMessage(message)) {
@@ -471,7 +474,7 @@ class VerificationStore {
     // Put verificationAdds index
     txn = txn.put(
       makeVerificationAddsKey(message.data.fid, message.data.verificationAddEthAddressBody.address),
-      Buffer.from(tsHash.value)
+      Buffer.from(tsHash.value),
     );
 
     return txn;
@@ -497,7 +500,7 @@ class VerificationStore {
     // Add to verificationRemoves
     txn = txn.put(
       makeVerificationRemovesKey(message.data.fid, message.data.verificationRemoveBody.address),
-      Buffer.from(tsHash.value)
+      Buffer.from(tsHash.value),
     );
 
     return txn;

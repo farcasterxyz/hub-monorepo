@@ -1,5 +1,3 @@
-/* eslint-disable security/detect-non-literal-fs-filename */
-
 import {
   FarcasterNetwork,
   Factories,
@@ -11,20 +9,20 @@ import {
   Message,
   ReactionType,
   TrieNodeMetadataResponse,
-} from '@farcaster/hub-nodejs';
-import { ok } from 'neverthrow';
-import { anything, instance, mock, when } from 'ts-mockito';
-import SyncEngine from './syncEngine.js';
-import { SyncId } from './syncId.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { sleepWhile } from '../../utils/crypto.js';
-import { NetworkFactories } from '../../network/utils/factories.js';
-import { HubInterface } from '../../hubble.js';
-import { MockHub } from '../../test/mocks.js';
+} from "@farcaster/hub-nodejs";
+import { ok } from "neverthrow";
+import { anything, instance, mock, when } from "ts-mockito";
+import SyncEngine from "./syncEngine.js";
+import { SyncId } from "./syncId.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { sleepWhile } from "../../utils/crypto.js";
+import { NetworkFactories } from "../../network/utils/factories.js";
+import { HubInterface } from "../../hubble.js";
+import { MockHub } from "../../test/mocks.js";
 
-const testDb = jestRocksDB(`engine.syncEngine.test`);
-const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
+const testDb = jestRocksDB("engine.syncEngine.test");
+const testDb2 = jestRocksDB("engine2.syncEngine.test");
 
 const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();
@@ -42,13 +40,13 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
-describe('SyncEngine', () => {
+describe("SyncEngine", () => {
   let syncEngine: SyncEngine;
   let hub: HubInterface;
   let engine: Engine;
@@ -71,13 +69,13 @@ describe('SyncEngine', () => {
         const farcasterTime = getFarcasterTime()._unsafeUnwrap();
         const cast = await Factories.CastAddMessage.create(
           { data: { fid, network, timestamp: farcasterTime + t } },
-          { transient: { signer } }
+          { transient: { signer } },
         );
 
         const result = await engine.mergeMessage(cast);
         expect(result.isOk()).toBeTruthy();
         return Promise.resolve(cast);
-      })
+      }),
     );
 
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
@@ -85,7 +83,7 @@ describe('SyncEngine', () => {
     return results;
   };
 
-  test('trie is updated on successful merge', async () => {
+  test("trie is updated on successful merge", async () => {
     const existingItems = await syncEngine.trie.items();
 
     const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
@@ -105,7 +103,7 @@ describe('SyncEngine', () => {
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
   });
 
-  test('trie is not updated on merge failure', async () => {
+  test("trie is not updated on merge failure", async () => {
     expect(await syncEngine.trie.items()).toEqual(0);
 
     // Merging a message without the custody event should fail
@@ -120,7 +118,7 @@ describe('SyncEngine', () => {
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
-  test('trie is updated when a message is removed', async () => {
+  test("trie is updated when a message is removed", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     let result = await engine.mergeMessage(castAdd);
@@ -130,7 +128,7 @@ describe('SyncEngine', () => {
     // Remove this cast.
     const castRemove = await Factories.CastRemoveMessage.create(
       { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
 
     // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
@@ -154,7 +152,7 @@ describe('SyncEngine', () => {
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
-  test('getAllMessages returns empty with invalid syncId', async () => {
+  test("getAllMessages returns empty with invalid syncId", async () => {
     expect(await syncEngine.trie.items()).toEqual(0);
     const result = await syncEngine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
     expect(result.isOk()).toBeTruthy();
@@ -162,7 +160,7 @@ describe('SyncEngine', () => {
     expect(result._unsafeUnwrap()[0]?.hash.length).toEqual(0);
   });
 
-  test('trie is updated when message with higher order is merged', async () => {
+  test("trie is updated when message with higher order is merged", async () => {
     const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
     expect(rcustody.isOk()).toBeTruthy();
 
@@ -178,13 +176,13 @@ describe('SyncEngine', () => {
     };
     const reaction1 = await Factories.ReactionAddMessage.create(
       { data: { fid, network, timestamp: currentTime + 10, reactionBody } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
 
     // Same reaction, but with different timestamp
     const reaction2 = await Factories.ReactionAddMessage.create(
       { data: { fid, network, timestamp: currentTime + 15, reactionBody } },
-      { transient: { signer } }
+      { transient: { signer } },
     );
 
     // Merging the first reaction should succeed
@@ -226,19 +224,19 @@ describe('SyncEngine', () => {
     await engine2.stop();
   });
 
-  test('snapshotTimestampPrefix trims the seconds', async () => {
+  test("snapshotTimestampPrefix trims the seconds", async () => {
     const nowInSeconds = getFarcasterTime()._unsafeUnwrap();
     const snapshotTimestamp = syncEngine.snapshotTimestamp._unsafeUnwrap();
     expect(snapshotTimestamp).toBeLessThanOrEqual(nowInSeconds);
     expect(snapshotTimestamp).toEqual(Math.floor(nowInSeconds / 10) * 10);
   });
 
-  test('syncStatus.shouldSync is false when already syncing', async () => {
+  test("syncStatus.shouldSync is false when already syncing", async () => {
     const mockRPCClient = mock<HubRpcClient>();
     const rpcClient = instance(mockRPCClient);
     let called = false;
     when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything(), anything())).thenCall(async () => {
-      const shouldSync = await syncEngine.syncStatus('test', {
+      const shouldSync = await syncEngine.syncStatus("test", {
         prefix: new Uint8Array(),
         numMessages: 10,
         excludedHashes: [],
@@ -252,43 +250,44 @@ describe('SyncEngine', () => {
       const emptyMetadata = TrieNodeMetadataResponse.create({
         prefix: new Uint8Array(),
         numMessages: 1000,
-        hash: '',
+        hash: "",
         children: [],
       });
       return Promise.resolve(ok(emptyMetadata));
     });
     await syncEngine.performSync(
-      'test',
+      "test",
       {
         prefix: new Uint8Array(),
         numMessages: 10,
-        excludedHashes: ['some-divergence'],
+        excludedHashes: ["some-divergence"],
       },
-      rpcClient
+      rpcClient,
     );
     expect(called).toBeTruthy();
   });
 
-  test('syncStatus returns their snapshot and our snapshot when not syncing', async () => {
+  test("syncStatus returns their snapshot and our snapshot when not syncing", async () => {
     const theirSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
-    const syncStatus = await syncEngine.syncStatus('test', theirSnapshot);
+    const syncStatus = await syncEngine.syncStatus("test", theirSnapshot);
     expect(syncStatus.isOk()).toBeTruthy();
     expect(syncStatus._unsafeUnwrap().isSyncing).toBeFalsy();
     expect(syncStatus._unsafeUnwrap().theirSnapshot).toEqual(theirSnapshot);
     expect(syncStatus._unsafeUnwrap().ourSnapshot).toBeTruthy();
   });
 
-  test('syncStatus.shouldSync is false when excludedHashes match', async () => {
+  test("syncStatus.shouldSync is false when excludedHashes match", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
     await addMessagesWithTimestamps([167, 169, 172]);
     expect(
-      (await syncEngine.syncStatus('test', (await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap().shouldSync
+      (await syncEngine.syncStatus("test", (await syncEngine.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
+        .shouldSync,
     ).toBeFalsy();
   });
 
-  test('syncStatus.shouldSync is true when hashes dont match', async () => {
+  test("syncStatus.shouldSync is true when hashes dont match", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
@@ -296,10 +295,10 @@ describe('SyncEngine', () => {
     const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
     await addMessagesWithTimestamps([372]);
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
-    expect((await syncEngine.syncStatus('test', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+    expect((await syncEngine.syncStatus("test", oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
   });
 
-  test('syncStatus.shouldSync is false if we didnt merge any messages successfully recently', async () => {
+  test("syncStatus.shouldSync is false if we didnt merge any messages successfully recently", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     const mockRPCClient = mock<HubRpcClient>();
@@ -311,20 +310,20 @@ describe('SyncEngine', () => {
 
     // Should sync should return true becuase the excluded hashes don't match
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
-    expect((await syncEngine.syncStatus('test', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+    expect((await syncEngine.syncStatus("test", oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
     const failedResult = await syncEngine.mergeMessages([castAdd], rpcClient);
     expect(failedResult.successCount).toEqual(0);
     expect(failedResult.errCount).toEqual(1);
 
     // Should sync should return false because we failed to merge any messages
-    expect((await syncEngine.syncStatus('test', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+    expect((await syncEngine.syncStatus("test", oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
     // shouldSync should be true for the same snapshot with a different peerId
-    expect((await syncEngine.syncStatus('new_peer', oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
+    expect((await syncEngine.syncStatus("new_peer", oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
   });
 
-  test('getSyncStats is correct', async () => {
+  test("getSyncStats is correct", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
     await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
@@ -337,7 +336,7 @@ describe('SyncEngine', () => {
     expect(stats.numMessages).toEqual(3);
   });
 
-  test('initialize populates the trie with all existing messages', async () => {
+  test("initialize populates the trie with all existing messages", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
@@ -358,7 +357,7 @@ describe('SyncEngine', () => {
     await syncEngine2.stop();
   });
 
-  test('Rebuild trie from engine messages', async () => {
+  test("Rebuild trie from engine messages", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
@@ -379,7 +378,7 @@ describe('SyncEngine', () => {
     await syncEngine2.stop();
   });
 
-  test('getSnapshot should use a prefix of 10-seconds resolution timestamp', async () => {
+  test("getSnapshot should use a prefix of 10-seconds resolution timestamp", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
 
@@ -390,45 +389,45 @@ describe('SyncEngine', () => {
       Date.now = () => 1683074200000 + 167 * 1000;
       const result = await syncEngine.getSnapshot();
       const snapshot = result._unsafeUnwrap();
-      expect((snapshot.prefix as Buffer).toString('utf8')).toEqual('0073615160');
+      expect((snapshot.prefix as Buffer).toString("utf8")).toEqual("0073615160");
     } finally {
       Date.now = nowOrig;
     }
   });
 
-  describe('getDivergencePrefix', () => {
+  describe("getDivergencePrefix", () => {
     const trieWithIds = async (timestamps: number[]) => {
       const syncIds = await Promise.all(
         timestamps.map(async (t) => {
           return await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(t * 1000) } });
-        })
+        }),
       );
 
       await Promise.all(syncIds.map((id) => syncEngine.trie.insert(id)));
       await syncEngine.trie.commitToDb();
     };
 
-    test('returns the prefix with the most common excluded hashes', async () => {
+    test("returns the prefix with the most common excluded hashes", async () => {
       await trieWithIds([1665182332, 1665182343, 1665182345]);
 
       const trie = syncEngine.trie;
 
-      const prefixToTest = Buffer.from('1665182343');
+      const prefixToTest = Buffer.from("1665182343");
       const oldSnapshot = await trie.getSnapshot(prefixToTest);
       trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
 
       // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
       let divergencePrefix = await syncEngine.getDivergencePrefix(
         await trie.getSnapshot(prefixToTest),
-        oldSnapshot.excludedHashes
+        oldSnapshot.excludedHashes,
       );
-      expect(divergencePrefix).toEqual(Buffer.from('16651823'));
+      expect(divergencePrefix).toEqual(Buffer.from("16651823"));
 
       // divergence prefix should be the full prefix, if snapshots are the same
       const currentSnapshot = await trie.getSnapshot(prefixToTest);
       divergencePrefix = await syncEngine.getDivergencePrefix(
         await trie.getSnapshot(prefixToTest),
-        currentSnapshot.excludedHashes
+        currentSnapshot.excludedHashes,
       );
       expect(divergencePrefix).toEqual(prefixToTest);
 
@@ -437,23 +436,23 @@ describe('SyncEngine', () => {
       expect(divergencePrefix.length).toEqual(0);
 
       // divergence prefix should be our prefix if provided hashes are longer
-      const with5 = Buffer.concat([prefixToTest, Buffer.from('5')]);
+      const with5 = Buffer.concat([prefixToTest, Buffer.from("5")]);
       divergencePrefix = await syncEngine.getDivergencePrefix(await trie.getSnapshot(with5), [
         ...currentSnapshot.excludedHashes,
-        'different',
+        "different",
       ]);
       expect(divergencePrefix).toEqual(prefixToTest);
     });
   });
 
-  describe('compactDbIfRequired', () => {
-    test('does not compact if under the threshold', async () => {
+  describe("compactDbIfRequired", () => {
+    test("does not compact if under the threshold", async () => {
       expect(syncEngine.shouldCompactDb).toBeFalsy();
       expect(await syncEngine.compactDbIfRequired(1000)).toBeFalsy();
       expect(syncEngine.shouldCompactDb).toBeFalsy();
     });
 
-    test('compacts the db if over the threshold', async () => {
+    test("compacts the db if over the threshold", async () => {
       expect(syncEngine.shouldCompactDb).toBeFalsy();
       expect(await syncEngine.compactDbIfRequired(1_000_000)).toBeTruthy();
       expect(syncEngine.shouldCompactDb).toBeFalsy();
