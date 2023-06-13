@@ -1,42 +1,28 @@
 import {
-  bytesCompare,
   CastAddMessage,
   CastId,
   CastRemoveMessage,
-  getFarcasterTime,
   HubAsyncResult,
   HubError,
-  HubEventType,
+  MessageType,
+  bytesCompare,
   isCastAddMessage,
   isCastRemoveMessage,
-  isHubError,
-  Message,
 } from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { ok, err, ResultAsync } from 'neverthrow';
+import { err, ok, ResultAsync } from 'neverthrow';
 import {
-  deleteMessageTransaction,
-  getManyMessages,
-  getMessage,
   getMessagesPageByPrefix,
-  getMessagesPruneIterator,
-  getNextMessageFromIterator,
-  getPageIteratorByPrefix,
   makeCastIdKey,
   makeFidKey,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
-  putMessageTransaction,
 } from '../db/message.js';
-import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
-import { RootPrefix, TRUE_VALUE, TSHASH_LENGTH, UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types.js';
-import { logger } from '../../utils/logger.js';
-
-const PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
-const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
+import RocksDB, { Transaction } from '../db/rocksdb.js';
+import { RootPrefix, TRUE_VALUE, UserMessagePostfix, UserPostfix } from '../db/types.js';
+import { MessagesPage, PageOptions, StorePruneOptions } from '../stores/types.js';
+import { Store } from './store.js';
+import StoreEventHandler from './storeEventHandler.js';
 
 /**
  * Generates unique keys used to store or fetch CastAdd messages in the adds set index
@@ -125,290 +111,77 @@ const makeCastsByMentionKey = (mentionFid: number, fid?: number, tsHash?: Uint8A
  * 4. parentFid:parentTsHash:fid:tsHash -> fid:tsHash (Child Set Index)
  * 5. mentionFid:fid:tsHash -> fid:tsHash (Mentions Set Index)
  */
-class CastStore {
-  private _db: RocksDB;
-  private _eventHandler: StoreEventHandler;
-  private _pruneSizeLimit: number;
-  private _pruneTimeLimit: number;
-  private _mergeLock: AsyncLock;
+class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
+  override _postfix: UserMessagePostfix = UserPostfix.CastMessage;
+  override makeAddKey(msg: CastAddMessage) {
+    return makeCastAddsKey(
+      msg.data.fid,
+      msg.data.castAddBody || !msg.data.castRemoveBody ? msg.hash : msg.data.castRemoveBody.targetHash
+    ) as Buffer;
+  }
+
+  override makeRemoveKey(msg: CastRemoveMessage) {
+    return makeCastRemovesKey(
+      msg.data.fid,
+      msg.data.castAddBody || !msg.data.castRemoveBody ? msg.hash : msg.data.castRemoveBody.targetHash
+    );
+  }
+
+  override _isAddType = isCastAddMessage;
+  override _isRemoveType = isCastRemoveMessage;
+  override _addMessageType = MessageType.CAST_ADD;
+  override _removeMessageType = MessageType.CAST_REMOVE;
+  protected override PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
+  protected override PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    this._db = db;
-    this._eventHandler = eventHandler;
-    this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
-    this._mergeLock = new AsyncLock();
+    super(db, eventHandler, options);
+    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
   }
 
-  /** Looks up CastAdd message by cast tsHash */
-  async getCastAdd(fid: number, hash: Uint8Array): Promise<CastAddMessage> {
-    const addsKey = makeCastAddsKey(fid, hash);
-    const messageTsHash = await this._db.get(addsKey);
-    return getMessage(this._db, fid, UserPostfix.CastMessage, messageTsHash);
-  }
+  override async buildSecondaryIndices(txn: Transaction, message: CastAddMessage): HubAsyncResult<void> {
+    const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
-  /** Looks up CastRemove message by cast tsHash */
-  async getCastRemove(fid: number, hash: Uint8Array): Promise<CastRemoveMessage> {
-    const removesKey = makeCastRemovesKey(fid, hash);
-    const messageTsHash = await this._db.get(removesKey);
-    return getMessage(this._db, fid, UserPostfix.CastMessage, messageTsHash);
-  }
-
-  /** Gets all CastAdd messages for an fid */
-  async getCastAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
-    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastAddMessage, pageOptions);
-  }
-
-  /** Gets all CastRemove messages for an fid */
-  async getCastRemovesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastRemoveMessage>> {
-    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastRemoveMessage, pageOptions);
-  }
-
-  async getAllCastMessagesByFid(
-    fid: number,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<CastAddMessage | CastRemoveMessage>> {
-    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
-    const isCastMessage = (message: Message): message is CastAddMessage | CastRemoveMessage => {
-      return isCastAddMessage(message) || isCastRemoveMessage(message);
-    };
-    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastMessage, pageOptions);
-  }
-
-  /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
-  async getCastsByParent(
-    parent: CastId | string,
-    pageOptions: PageOptions = {}
-  ): Promise<MessagesPage<CastAddMessage>> {
-    const prefix = makeCastsByParentKey(parent);
-
-    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
-
-    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
-
-    const messageKeys: Buffer[] = [];
-
-    // Custom method to retrieve message key from key
-    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-      const [key] = await iterator.next();
-      const fid = Number((key as Buffer).readUint32BE(prefix.length + TSHASH_LENGTH));
-      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length, prefix.length + TSHASH_LENGTH);
-      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-      return [key as Buffer, messagePrimaryKey];
-    };
-
-    let iteratorFinished = false;
-    let lastPageToken: Uint8Array | undefined;
-    do {
-      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
-      if (result.isErr()) {
-        iteratorFinished = true;
-        break;
-      }
-
-      const [key, messageKey] = result.value;
-      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
-      messageKeys.push(messageKey);
-    } while (messageKeys.length < limit);
-
-    const messages = await getManyMessages<CastAddMessage>(this._db, messageKeys);
-
-    if (!iteratorFinished) {
-      await iterator.end(); // clear iterator if it has not finished
-      return { messages, nextPageToken: lastPageToken };
-    } else {
-      return { messages, nextPageToken: undefined };
-    }
-  }
-
-  /** Gets all CastAdd messages for a mention (fid) */
-  async getCastsByMention(mentionFid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
-    const prefix = makeCastsByMentionKey(mentionFid);
-
-    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
-
-    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
-
-    const messageKeys: Buffer[] = [];
-
-    // Custom method to retrieve message key from key
-    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-      const [key] = await iterator.next();
-      const fid = Number((key as Buffer).readUint32BE(prefix.length + TSHASH_LENGTH));
-      const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length, prefix.length + TSHASH_LENGTH);
-      const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.CastMessage, tsHash);
-      return [key as Buffer, messagePrimaryKey];
-    };
-
-    let iteratorFinished = false;
-    let lastPageToken: Uint8Array | undefined;
-    do {
-      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
-      if (result.isErr()) {
-        iteratorFinished = true;
-        break;
-      }
-
-      const [key, messageKey] = result.value;
-      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
-      messageKeys.push(messageKey);
-    } while (messageKeys.length < limit);
-
-    const messages = await getManyMessages<CastAddMessage>(this._db, messageKeys);
-
-    if (!iteratorFinished) {
-      await iterator.end(); // clear iterator if it has not finished
-      return { messages, nextPageToken: lastPageToken };
-    } else {
-      return { messages, nextPageToken: undefined };
-    }
-  }
-
-  /** Merges a CastAdd or CastRemove message into the set */
-  async merge(message: Message): Promise<number> {
-    if (!isCastAddMessage(message) && !isCastRemoveMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
+    if (tsHash.isErr()) {
+      return err(tsHash.error);
     }
 
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message,
-            UserPostfix.CastMessage,
-            this._pruneSizeLimit,
-            this._pruneTimeLimit
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
-          }
+    // Puts the message key into the ByParent index
+    const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
+    if (parent) {
+      txn = txn.put(makeCastsByParentKey(parent, message.data.fid, tsHash.value), TRUE_VALUE);
+    }
 
-          if (isCastAddMessage(message)) {
-            return this.mergeAdd(message);
-          } else if (isCastRemoveMessage(message)) {
-            return this.mergeRemove(message);
-          } else {
-            throw new HubError('bad_request.validation_failure', 'invalid message type');
-          }
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
-      });
+    // Puts the message key into the ByMentions index
+    for (const mentionFid of message.data.castAddBody.mentions) {
+      txn = txn.put(makeCastsByMentionKey(mentionFid, message.data.fid, tsHash.value), TRUE_VALUE);
+    }
+
+    return ok(undefined);
   }
 
-  async revoke(message: Message): HubAsyncResult<number> {
-    let txn = this._db.transaction();
-    if (isCastAddMessage(message)) {
-      txn = this.deleteCastAddTransaction(txn, message);
-    } else if (isCastRemoveMessage(message)) {
-      txn = this.deleteCastRemoveTransaction(txn, message);
-    } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
+  override async deleteSecondaryIndices(txn: Transaction, message: CastAddMessage): HubAsyncResult<void> {
+    const tsHash = makeTsHash(message.data.timestamp, message.hash);
+
+    if (tsHash.isErr()) {
+      return err(tsHash.error);
     }
 
-    return this._eventHandler.commitTransaction(txn, {
-      type: HubEventType.REVOKE_MESSAGE,
-      revokeMessageBody: { message },
-    });
+    // Delete the message key from the ByMentions index
+    for (const mentionFid of message.data.castAddBody.mentions) {
+      txn = txn.del(makeCastsByMentionKey(mentionFid, message.data.fid, tsHash.value));
+    }
+
+    // Delete the message key from the ByParent index
+    const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
+    if (parent) {
+      txn = txn.del(makeCastsByParentKey(parent, message.data.fid, tsHash.value));
+    }
+
+    return ok(undefined);
   }
 
-  async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    const commits: number[] = [];
-
-    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
-
-    // Require storage cache to be synced to prune
-    if (cachedCount.isErr()) {
-      return err(cachedCount.error);
-    }
-
-    // Return immediately if there are no messages to prune
-    if (cachedCount.value === 0) {
-      return ok(commits);
-    }
-
-    const farcasterTime = getFarcasterTime();
-    if (farcasterTime.isErr()) {
-      return err(farcasterTime.error);
-    }
-
-    // Calculate the timestamp cut-off to prune
-    const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
-
-    // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.CastMessage);
-
-    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
-      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-      if (nextMessage.isErr()) {
-        return ok(undefined); // Nothing left to prune
-      }
-
-      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage);
-      if (count.isErr()) {
-        return err(count.error);
-      }
-
-      if (
-        count.value <= this._pruneSizeLimit &&
-        nextMessage.value.data &&
-        nextMessage.value.data.timestamp >= timestampToPrune
-      ) {
-        return ok(undefined);
-      }
-
-      let txn = this._db.transaction();
-
-      if (isCastAddMessage(nextMessage.value)) {
-        txn = this.deleteCastAddTransaction(txn, nextMessage.value);
-      } else if (isCastRemoveMessage(nextMessage.value)) {
-        txn = this.deleteCastRemoveTransaction(txn, nextMessage.value);
-      } else {
-        return err(new HubError('unknown', 'invalid message type'));
-      }
-
-      return this._eventHandler.commitTransaction(txn, {
-        type: HubEventType.PRUNE_MESSAGE,
-        pruneMessageBody: { message: nextMessage.value },
-      });
-    };
-
-    let pruneResult = await pruneNextMessage();
-    while (!(pruneResult.isOk() && pruneResult.value === undefined)) {
-      pruneResult.match(
-        (commit) => {
-          if (commit) {
-            commits.push(commit);
-          }
-        },
-        (e) => {
-          logger.error({ errCode: e.errCode }, `error pruning cast message for fid ${fid}: ${e.message}`);
-        }
-      );
-
-      pruneResult = await pruneNextMessage();
-    }
-
-    await pruneIterator.end();
-
-    return ok(commits);
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                               Private Methods                              */
-  /* -------------------------------------------------------------------------- */
-
-  private async mergeAdd(message: CastAddMessage): Promise<number> {
-    // Start RocksDB transaction
-    let txn = this._db.transaction();
-
+  override async findMergeAddConflicts(message: CastAddMessage): HubAsyncResult<void> {
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(makeCastRemovesKey(message.data.fid, message.hash)),
@@ -431,176 +204,71 @@ class CastStore {
       throw new HubError('bad_request.duplicate', 'message has already been merged');
     }
 
-    // Add putCastAdd operations to the RocksDB transaction
-    txn = this.putCastAddTransaction(txn, message);
-
-    const hubEvent: HubEventArgs = {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: [] },
-    };
-
-    // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    return result.value;
+    return ok(undefined);
   }
 
-  private async mergeRemove(message: CastRemoveMessage): Promise<number> {
-    // Define cast hash for lookups
-    const removeTargetHash = message.data.castRemoveBody.targetHash;
-
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    const mergeConflicts: (CastAddMessage | CastRemoveMessage)[] = [];
-
-    // Start RocksDB transaction
-    let txn = this._db.transaction();
-
-    // Look up the remove tsHash for this cast
-    const castRemoveTsHash = await ResultAsync.fromPromise(
-      this._db.get(makeCastRemovesKey(message.data.fid, removeTargetHash)),
-      () => undefined
-    );
-
-    if (castRemoveTsHash.isOk()) {
-      const removeCompare = bytesCompare(castRemoveTsHash.value, tsHash.value);
-
-      if (removeCompare > 0) {
-        throw new HubError('bad_request.conflict', 'message conflicts with a more recent CastRemove');
-      } else if (removeCompare === 0) {
-        throw new HubError('bad_request.duplicate', 'message has already been merged');
-      } else {
-        // If the remove tsHash exists but with a lower order than the new CastRemove
-        // tsHash, retrieve the full CastRemove message and delete it as part of the
-        // RocksDB transaction
-        const existingRemove = await getMessage<CastRemoveMessage>(
-          this._db,
-          message.data.fid,
-          UserPostfix.CastMessage,
-          castRemoveTsHash.value
-        );
-        txn = this.deleteCastRemoveTransaction(txn, existingRemove);
-        mergeConflicts.push(existingRemove);
-      }
-    }
-
-    // Look up the add tsHash for this cast
-    const castAddTsHash = await ResultAsync.fromPromise(
-      this._db.get(makeCastAddsKey(message.data.fid, removeTargetHash)),
-      () => undefined
-    );
-
-    // If the add tsHash exists, retrieve the full CastAdd message and delete it as
-    // part of the RocksDB transaction
-    if (castAddTsHash.isOk()) {
-      const existingAdd = await getMessage<CastAddMessage>(
-        this._db,
-        message.data.fid,
-        UserPostfix.CastMessage,
-        castAddTsHash.value
-      );
-      txn = this.deleteCastAddTransaction(txn, existingAdd);
-      mergeConflicts.push(existingAdd);
-    }
-
-    // Add putCastRemove operations to the RocksDB transaction
-    txn = this.putCastRemoveTransaction(txn, message);
-
-    const hubEvent: HubEventArgs = {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: mergeConflicts },
-    };
-
-    // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    return result.value;
+  override async findMergeRemoveConflicts(_message: CastRemoveMessage): HubAsyncResult<void> {
+    return ok(undefined);
   }
 
-  /* Builds a RocksDB transaction to insert a CastAdd message and construct its indices */
-  private putCastAddTransaction(txn: Transaction, message: CastAddMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
+  // RemoveWins + LWW, instead of default
+  override messageCompare(aType: MessageType, aTsHash: Uint8Array, bType: MessageType, bTsHash: Uint8Array): number {
+    // Compare message types to enforce that RemoveWins in case of LWW ties.
+    if (aType === this._removeMessageType && bType === this._addMessageType) {
+      return 1;
+    } else if (aType === this._addMessageType && bType === this._removeMessageType) {
+      return -1;
     }
 
-    // Put message into the database
-    txn = putMessageTransaction(txn, message);
-
-    // Puts the message key into the CastAdd set index
-    txn = txn.put(makeCastAddsKey(message.data.fid, message.hash), Buffer.from(tsHash.value));
-
-    // Puts the message key into the ByParent index
-    const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
-    if (parent) {
-      txn = txn.put(makeCastsByParentKey(parent, message.data.fid, tsHash.value), TRUE_VALUE);
+    // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
+    const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
+    if (timestampOrder !== 0) {
+      return timestampOrder;
     }
 
-    // Puts the message key into the ByMentions index
-    for (const mentionFid of message.data.castAddBody.mentions) {
-      txn = txn.put(makeCastsByMentionKey(mentionFid, message.data.fid, tsHash.value), TRUE_VALUE);
-    }
-
-    return txn;
+    // Compare hashes (last 4 bytes of tsHash) to break ties between messages of the same type and timestamp
+    return bytesCompare(aTsHash.subarray(4), bTsHash.subarray(4));
   }
 
-  /* Builds a RocksDB transaction to remove a CastAdd message and delete its indices */
-  private deleteCastAddTransaction(txn: Transaction, message: CastAddMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    // Delete the message key from the ByMentions index
-    for (const mentionFid of message.data.castAddBody.mentions) {
-      txn = txn.del(makeCastsByMentionKey(mentionFid, message.data.fid, tsHash.value));
-    }
-
-    // Delete the message key from the ByParent index
-    const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
-    if (parent) {
-      txn = txn.del(makeCastsByParentKey(parent, message.data.fid, tsHash.value));
-    }
-
-    // Delete the message key from the CastAdd set index
-    txn = txn.del(makeCastAddsKey(message.data.fid, message.hash));
-
-    // Delete message
-    return deleteMessageTransaction(txn, message);
+  /** Looks up CastAdd message by cast tsHash */
+  async getCastAdd(fid: number, hash: Uint8Array): Promise<CastAddMessage> {
+    return await this.getAdd({ data: { fid }, hash });
   }
 
-  /* Builds a RocksDB transaction to insert a CastRemove message and construct its indices */
-  private putCastRemoveTransaction(txn: Transaction, message: CastRemoveMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    // Puts the message
-    txn = putMessageTransaction(txn, message);
-
-    // Puts the message key into the CastRemoves set index
-    const removesKey = makeCastRemovesKey(message.data.fid, message.data.castRemoveBody.targetHash);
-    txn = txn.put(removesKey, Buffer.from(tsHash.value));
-
-    return txn;
+  /** Looks up CastRemove message by cast tsHash */
+  async getCastRemove(fid: number, hash: Uint8Array): Promise<CastRemoveMessage> {
+    return await this.getRemove({ data: { fid }, hash });
   }
 
-  /* Builds a RocksDB transaction to remove a CastRemove message and delete its indices */
-  private deleteCastRemoveTransaction(txn: Transaction, message: CastRemoveMessage): Transaction {
-    // Deletes the message key from the CastRemoves set index
-    const removesKey = makeCastRemovesKey(message.data.fid, message.data.castRemoveBody.targetHash);
-    txn = txn.del(removesKey);
+  /** Gets all CastAdd messages for an fid */
+  async getCastAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
+    return await this.getAddsByFid({ data: { fid } }, pageOptions);
+  }
 
-    // Delete message
-    return deleteMessageTransaction(txn, message);
+  /** Gets all CastRemove messages for an fid */
+  async getCastRemovesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastRemoveMessage>> {
+    const castMessagesPrefix = makeMessagePrimaryKey(fid, UserPostfix.CastMessage);
+    return getMessagesPageByPrefix(this._db, castMessagesPrefix, isCastRemoveMessage, pageOptions);
+  }
+
+  async getAllCastMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<CastAddMessage | CastRemoveMessage>> {
+    return await this.getAllMessagesByFid(fid, pageOptions);
+  }
+
+  /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
+  async getCastsByParent(
+    parent: CastId | string,
+    pageOptions: PageOptions = {}
+  ): Promise<MessagesPage<CastAddMessage>> {
+    return await this.getBySecondaryIndex(makeCastsByParentKey(parent), pageOptions);
+  }
+
+  /** Gets all CastAdd messages for a mention (fid) */
+  async getCastsByMention(mentionFid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
+    return await this.getBySecondaryIndex(makeCastsByMentionKey(mentionFid), pageOptions);
   }
 }
 

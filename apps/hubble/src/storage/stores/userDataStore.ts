@@ -1,35 +1,20 @@
 import {
-  bytesCompare,
   HubAsyncResult,
   HubError,
   HubEventType,
-  isHubError,
   isUserDataAddMessage,
-  Message,
+  MessageType,
   NameRegistryEvent,
   UserDataAddMessage,
   UserDataType,
 } from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { err, ok, ResultAsync } from 'neverthrow';
-import {
-  deleteMessageTransaction,
-  getMessage,
-  getMessagesPageByPrefix,
-  getMessagesPruneIterator,
-  getNextMessageFromIterator,
-  makeMessagePrimaryKey,
-  makeTsHash,
-  makeUserKey,
-  putMessageTransaction,
-} from '../db/message.js';
+import { ok, ResultAsync } from 'neverthrow';
+import { makeUserKey } from '../db/message.js';
 import { getNameRegistryEvent, putNameRegistryEventTransaction } from '../db/nameRegistryEvent.js';
-import RocksDB, { Transaction } from '../db/rocksdb.js';
-import { UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PageOptions, StorePruneOptions } from '../stores/types.js';
+import { UserMessagePostfix, UserPostfix } from '../db/types.js';
+import { MessagesPage, PageOptions } from '../stores/types.js';
 import { eventCompare } from '../stores/utils.js';
-import { logger } from '../../utils/logger.js';
+import { Store } from './store.js';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -67,18 +52,30 @@ const makeUserDataAddsKey = (fid: number, dataType?: UserDataType): Buffer => {
  * 1. fid:tsHash -> cast message
  * 2. fid:set:datatype -> fid:tsHash (adds set index)
  */
-class UserDataStore {
-  private _db: RocksDB;
-  private _eventHandler: StoreEventHandler;
-  private _pruneSizeLimit: number;
-  private _mergeLock: AsyncLock;
+class UserDataStore extends Store<UserDataAddMessage, never> {
+  override _postfix: UserMessagePostfix = UserPostfix.UserDataMessage;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    this._db = db;
-    this._eventHandler = eventHandler;
-    this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
-    this._mergeLock = new AsyncLock();
+  override makeAddKey(msg: UserDataAddMessage) {
+    return makeUserDataAddsKey(msg.data.fid, msg.data.userDataBody.type) as Buffer;
   }
+
+  override makeRemoveKey(_: never): Buffer {
+    throw new Error('removes not supported');
+  }
+
+  override async findMergeAddConflicts(_message: UserDataAddMessage): HubAsyncResult<void> {
+    return ok(undefined);
+  }
+
+  override async findMergeRemoveConflicts(_message: never): HubAsyncResult<void> {
+    throw new Error('removes not supported');
+  }
+
+  override _isAddType = isUserDataAddMessage;
+  override _isRemoveType = undefined;
+  override _addMessageType = MessageType.USER_DATA_ADD;
+  override _removeMessageType = undefined;
+  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
 
   /**
    * Finds a UserDataAdd Message by checking the adds set index
@@ -88,15 +85,12 @@ class UserDataStore {
    * @returns the UserDataAdd Model if it exists, undefined otherwise
    */
   async getUserDataAdd(fid: number, dataType: UserDataType): Promise<UserDataAddMessage> {
-    const addsKey = makeUserDataAddsKey(fid, dataType);
-    const messageTsHash = await this._db.get(addsKey);
-    return getMessage(this._db, fid, UserPostfix.UserDataMessage, messageTsHash);
+    return await this.getAdd({ data: { fid, userDataBody: { type: dataType } } });
   }
 
   /** Finds all UserDataAdd messages for an fid */
   async getUserDataAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<UserDataAddMessage>> {
-    const prefix = makeMessagePrimaryKey(fid, UserPostfix.UserDataMessage);
-    return getMessagesPageByPrefix(this._db, prefix, isUserDataAddMessage, pageOptions);
+    return await this.getAddsByFid({ data: { fid } }, pageOptions);
   }
 
   /** Returns the most recent event from the NameEventRegistry contract for an fname */
@@ -126,220 +120,6 @@ class UserDataStore {
     }
 
     return result.value;
-  }
-
-  /** Merges a UserDataAdd message into the set */
-  async merge(message: Message): Promise<number> {
-    if (!isUserDataAddMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
-
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message,
-            UserPostfix.UserDataMessage,
-            this._pruneSizeLimit
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
-          }
-          return this.mergeDataAdd(message);
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
-      });
-  }
-
-  async revoke(message: Message): HubAsyncResult<number> {
-    let txn = this._db.transaction();
-    if (isUserDataAddMessage(message)) {
-      txn = this.deleteUserDataAddTransaction(txn, message);
-    } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
-    }
-
-    return this._eventHandler.commitTransaction(txn, {
-      type: HubEventType.REVOKE_MESSAGE,
-      revokeMessageBody: { message },
-    });
-  }
-
-  async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    const commits: number[] = [];
-
-    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
-
-    // Require storage cache to be synced to prune
-    if (cachedCount.isErr()) {
-      return err(cachedCount.error);
-    }
-
-    // Return immediately if there are no messages to prune
-    if (cachedCount.value === 0) {
-      return ok(commits);
-    }
-
-    // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.UserDataMessage);
-
-    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
-      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-      if (nextMessage.isErr()) {
-        return ok(undefined); // Nothing left to prune
-      }
-
-      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.UserDataMessage);
-      if (count.isErr()) {
-        return err(count.error);
-      }
-
-      if (count.value <= this._pruneSizeLimit) {
-        return ok(undefined);
-      }
-
-      let txn = this._db.transaction();
-
-      if (isUserDataAddMessage(nextMessage.value)) {
-        txn = this.deleteUserDataAddTransaction(txn, nextMessage.value);
-      } else {
-        return err(new HubError('unknown', 'invalid message type'));
-      }
-
-      return this._eventHandler.commitTransaction(txn, {
-        type: HubEventType.PRUNE_MESSAGE,
-        pruneMessageBody: { message: nextMessage.value },
-      });
-    };
-
-    let pruneResult = await pruneNextMessage();
-    while (!(pruneResult.isOk() && pruneResult.value === undefined)) {
-      pruneResult.match(
-        (commit) => {
-          if (commit) {
-            commits.push(commit);
-          }
-        },
-        (e) => {
-          logger.error({ errCode: e.errCode }, `error pruning user data message for fid ${fid}: ${e.message}`);
-        }
-      );
-
-      pruneResult = await pruneNextMessage();
-    }
-
-    await pruneIterator.end();
-
-    return ok(commits);
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                               Private Methods                              */
-  /* -------------------------------------------------------------------------- */
-
-  private async mergeDataAdd(message: UserDataAddMessage): Promise<number> {
-    const mergeConflicts = await this.getMergeConflicts(message);
-    if (mergeConflicts.isErr()) {
-      throw mergeConflicts.error;
-    }
-
-    // Create rocksdb transaction to delete the merge conflicts
-    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
-
-    // Add putUserDataAdd operations to the RocksDB transaction
-    txn = this.putUserDataAddTransaction(txn, message);
-
-    const hubEvent: HubEventArgs = {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
-    };
-
-    // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    return result.value;
-  }
-
-  private userDataMessageCompare(aTimestampHash: Uint8Array, bTimestampHash: Uint8Array): number {
-    return bytesCompare(aTimestampHash, bTimestampHash);
-  }
-
-  private async getMergeConflicts(message: UserDataAddMessage): HubAsyncResult<UserDataAddMessage[]> {
-    const conflicts: UserDataAddMessage[] = [];
-
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    // Look up the current add timestampHash for this dataType
-    const addTimestampHash = await ResultAsync.fromPromise(
-      this._db.get(makeUserDataAddsKey(message.data.fid, message.data.userDataBody.type)),
-      () => undefined
-    );
-
-    if (addTimestampHash.isOk()) {
-      const addCompare = this.userDataMessageCompare(addTimestampHash.value, tsHash.value);
-      if (addCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent UserDataAdd'));
-      } else if (addCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
-      } else {
-        // If the existing add has a lower order than the new message, retrieve the full
-        // UserDataAdd message and delete it as part of the RocksDB transaction
-        const existingAdd = await getMessage<UserDataAddMessage>(
-          this._db,
-          message.data.fid,
-          UserPostfix.UserDataMessage,
-          addTimestampHash.value
-        );
-        conflicts.push(existingAdd);
-      }
-    }
-
-    return ok(conflicts);
-  }
-
-  private deleteManyTransaction(txn: Transaction, messages: UserDataAddMessage[]): Transaction {
-    for (const message of messages) {
-      if (isUserDataAddMessage(message)) {
-        txn = this.deleteUserDataAddTransaction(txn, message);
-      }
-    }
-    return txn;
-  }
-
-  /* Builds a RocksDB transaction to insert a UserDataAdd message and construct its indices */
-  private putUserDataAddTransaction(txn: Transaction, message: UserDataAddMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    // Puts the message into the database
-    txn = putMessageTransaction(txn, message);
-
-    // Puts the message key into the adds set index
-    txn = txn.put(makeUserDataAddsKey(message.data.fid, message.data.userDataBody.type), Buffer.from(tsHash.value));
-
-    return txn;
-  }
-
-  /* Builds a RocksDB transaction to remove a UserDataAdd message and delete its indices */
-  private deleteUserDataAddTransaction(txn: Transaction, message: UserDataAddMessage): Transaction {
-    // Delete message key from userData adds set index
-    txn = txn.del(makeUserDataAddsKey(message.data.fid, message.data.userDataBody.type));
-
-    // Delete the message
-    return deleteMessageTransaction(txn, message);
   }
 }
 

@@ -406,7 +406,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(linkAddLater);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertLinkDoesNotExist(linkAdd);
@@ -440,7 +440,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(linkAddLater);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertLinkDoesNotExist(linkAdd);
@@ -469,7 +469,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(linkRemove);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertLinkRemoveWins(linkRemove);
@@ -489,7 +489,7 @@ describe('merge', () => {
 
         await set.merge(linkRemoveLater);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertLinkRemoveWins(linkRemoveLater);
@@ -507,7 +507,7 @@ describe('merge', () => {
 
         await set.merge(linkRemoveEarlier);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertLinkRemoveWins(linkRemoveEarlier);
@@ -559,7 +559,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(linkRemoveLater);
         await expect(set.merge(linkRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertLinkDoesNotExist(linkRemove);
@@ -593,7 +593,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(linkRemoveLater);
         await expect(set.merge(linkRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertLinkDoesNotExist(linkRemove);
@@ -625,7 +625,7 @@ describe('merge', () => {
 
         await set.merge(linkAddLater);
         await expect(set.merge(linkRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent LinkAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
         await assertLinkAddWins(linkAddLater);
         await assertLinkDoesNotExist(linkRemove);

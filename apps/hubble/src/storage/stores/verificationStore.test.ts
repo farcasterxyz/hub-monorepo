@@ -192,7 +192,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(verificationAddLater);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationAddEthAddress')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
@@ -224,7 +224,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(verificationAddLater);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationAddEthAddress')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
@@ -250,7 +250,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(verificationRemove);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
         await assertVerificationRemoveWins(verificationRemove);
         await assertVerificationDoesNotExist(verificationAdd);
@@ -266,7 +266,7 @@ describe('merge', () => {
 
         await set.merge(verificationRemoveLater);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
         await assertVerificationRemoveWins(verificationRemoveLater);
         await assertVerificationDoesNotExist(verificationAdd);
@@ -281,7 +281,7 @@ describe('merge', () => {
 
         await set.merge(verificationRemoveEarlier);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
         await assertVerificationRemoveWins(verificationRemoveEarlier);
         await assertVerificationDoesNotExist(verificationAdd);
@@ -329,7 +329,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(verificationRemoveLater);
         await expect(set.merge(verificationRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
@@ -361,7 +361,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(verificationRemoveLater);
         await expect(set.merge(verificationRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
@@ -388,7 +388,7 @@ describe('merge', () => {
 
         await set.merge(verificationAddLater);
         await expect(set.merge(verificationRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent VerificationAddEthAddress')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
         await assertVerificationAddWins(verificationAddLater);
         await assertVerificationDoesNotExist(verificationRemove);
