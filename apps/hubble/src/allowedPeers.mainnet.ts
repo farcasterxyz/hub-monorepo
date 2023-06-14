@@ -39,4 +39,7 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWSJj9pDSX5sEFoZum1fsdHuCJnoxwgHKhCg5rrLU7Gepe', // @pfista
   '12D3KooWDXSemEhSAidFCZT1HyRhTHayunCokg68VSuwStf8UEU5', // @98967eth
   '12D3KooWHcViME8KUZXo1wStoRF2jmg4edWidexGy5utVyoxNNnn', // @parthkohli
+  '12D3KooWJtEEh7Bcx9T2oKUpcMb9K8xuMFFk5BQNNdJ63Rsx853C', // Jam.so Hub 4
+  '12D3KooWH3FAGri9Ki4j7xBBjghav9nRTyu8jVVBsRh55odGxraM', // @kencodes
+  '12D3KooWNLshuXk4x2gacFTMEJjMGGFxPjpHg5KcV88KoqJP7dDR', // @bhgomes
 ];
