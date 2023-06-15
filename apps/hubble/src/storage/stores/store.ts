@@ -362,8 +362,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     const messages = await getManyMessages<TAdd>(this._db, messageKeys);
 
+    await iterator.end(); // clear iterator if it has not finished
     if (!iteratorFinished) {
-      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
