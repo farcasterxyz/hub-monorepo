@@ -437,7 +437,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await store.merge(castRemoveLater);
         await expect(store.merge(castRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent CastRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertMessageDoesNotExist(castRemove);
@@ -472,7 +472,7 @@ describe('merge', () => {
       test('fails with an earlier hash', async () => {
         await store.merge(castRemoveLater);
         await expect(store.merge(castRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent CastRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertMessageDoesNotExist(castRemove);
