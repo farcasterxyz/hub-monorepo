@@ -284,8 +284,8 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
     const messages = await getManyMessages<LinkAddMessage>(this._db, messageKeys);
 
+    await iterator.end();
     if (!iteratorFinished) {
-      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
