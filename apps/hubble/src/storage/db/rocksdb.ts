@@ -108,7 +108,7 @@ class RocksDB {
           if (now - entry.openTimestamp >= MAX_DB_ITERATOR_OPEN_MILLISECONDS) {
             log.warn(
               entry.options,
-              `RocksDB iterator with open
+              `RocksDB iterator open
                 for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`
             );
           }
