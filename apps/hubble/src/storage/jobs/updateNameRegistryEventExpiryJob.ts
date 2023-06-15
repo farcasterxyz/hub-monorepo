@@ -217,6 +217,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
 
     const result = await ResultAsync.fromPromise(iterator.value.next(), (e) => e as HubError);
     if (result.isErr()) {
+      await iterator.value.end();
       return err(result.error);
     }
 
