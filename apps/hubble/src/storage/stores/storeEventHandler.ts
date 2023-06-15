@@ -245,6 +245,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }
+
     if (messageCount.value < sizeLimit) {
       return ok(false);
     }

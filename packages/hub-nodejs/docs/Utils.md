@@ -227,7 +227,7 @@ import {
 } from '@farcaster/hub-nodejs';
 import { Wallet } from 'ethers';
 
-// Create a valid Eip712Signer from the Etherum Address making the claim
+// Create a valid Eip712Signer from the Ethereum Address making the claim
 const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
 const wallet = Wallet.fromPhrase(mnemonic);
 const eip712Signer = new EthersEip712Signer(wallet);
