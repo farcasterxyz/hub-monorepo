@@ -14,8 +14,6 @@ const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
 
-type SchedulerStatus = 'started' | 'stopped';
-
 const log = logger.child({ component: 'GossipMetricsRecorder' });
 
 type Average = {
@@ -124,10 +122,6 @@ export class GossipMetricsRecorder {
     if (this._cronTask) {
       return this._cronTask?.stop();
     }
-  }
-
-  status(): SchedulerStatus {
-    return this._cronTask ? 'started' : 'stopped';
   }
 
   recordMessageMerge(latestMergeTime: number) {
