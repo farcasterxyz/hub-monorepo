@@ -548,10 +548,8 @@ export class Hub implements HubInterface {
       // Merge the message
       const submitStartTimestamp = Date.now();
       const result = await this.submitMessage(message, 'gossip');
-      if (result.isOk()) {
-        const submitEndTimestamp = Date.now();
-        this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
-      }
+      const submitEndTimestamp = Date.now();
+      this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
