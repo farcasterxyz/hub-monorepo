@@ -280,6 +280,8 @@ export class GossipMetricsRecorder {
         ([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS
       )
     );
+
+    this._metrics.peerMessageMetrics = {};
   }
 
   private getPeerIdFromBytes(peerIdBytes?: Uint8Array): PeerId | undefined {

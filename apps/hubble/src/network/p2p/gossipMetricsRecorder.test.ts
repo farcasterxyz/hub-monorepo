@@ -134,7 +134,7 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
 
     expect(recorder.globalMetrics).toEqual({ networkCoverage: {}, messageMergeTime: { sum: 0, numElements: 0 } });
     expect(recorder.peerLatencyMetrics).toEqual({});
-    expect(recorder.peerMessageMetrics).toEqual({ testPeerId: { messageCount: 11 } });
+    expect(recorder.peerMessageMetrics).toEqual({});
     expect(recorder.recentPeerIds).toEqual({});
   });
 
@@ -152,5 +152,6 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
     expect(recorder.expireMetrics).toHaveBeenCalledTimes(1);
     expect(recorder.logMetrics).toHaveBeenCalledTimes(1);
     expect(node.publish).toHaveBeenCalledTimes(1);
+    expect(recorder.peerMessageMetrics).toEqual({});
   });
 });
