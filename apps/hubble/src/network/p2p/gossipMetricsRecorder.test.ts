@@ -1,9 +1,10 @@
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { GossipMetricsRecorder, GossipMetrics } from './gossipMetricsRecorder.js';
+import { GossipMetricsRecorder, GossipMetrics, METRICS_TTL_MILLISECONDS } from './gossipMetricsRecorder.js';
 import { AckMessageBody, NetworkLatencyMessage, GossipMessage } from '@farcaster/hub-nodejs';
 import { GossipNode } from './gossipNode.js';
 import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
 import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import { RootPrefix } from '../../storage/db/types.js';
 
 const db = jestRocksDB('network.p2p.gossipMetricsRecorder.test');
 
@@ -105,5 +106,29 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
     expect(recorder.globalMetrics.messageMergeTime).toEqual({ numElements: 1, sum: 10 });
     recorder.recordMessageMerge(100);
     expect(recorder.globalMetrics.messageMergeTime).toEqual({ numElements: 2, sum: 110 });
+  });
+
+  test('Metrics are expired correctly', async () => {
+    const metricTime = Date.now() - METRICS_TTL_MILLISECONDS;
+    const recentPeerIds = { testPeerId: metricTime };
+    const peerLatencyMetrics = { testPeerId_123: { numAcks: 1, lastAckTimestamp: metricTime } };
+    const peerMessageMetrics = { testPeerId: { messageCount: 11 } };
+    const messageMergeTime = { sum: 112, numElements: 1 };
+    const globalMetrics = {
+      networkCoverage: { metricTime: { coverageMap: {}, seenPeerIds: {} } },
+      messageMergeTime: messageMergeTime,
+    };
+    const metrics = new GossipMetrics(recentPeerIds, peerLatencyMetrics, peerMessageMetrics, globalMetrics);
+    db.put(Buffer.from([RootPrefix.GossipMetrics]), metrics.toBuffer());
+
+    const node = new GossipNode(db, undefined, true);
+    node.start([]);
+    const recorder = new GossipMetricsRecorder(node, db);
+    await recorder.start();
+
+    expect(recorder.globalMetrics).toEqual({ networkCoverage: {}, messageMergeTime: { sum: 0, numElements: 0 } });
+    expect(recorder.peerLatencyMetrics).toEqual({});
+    expect(recorder.peerMessageMetrics).toEqual({ testPeerId: { messageCount: 11 } });
+    expect(recorder.recentPeerIds).toEqual({});
   });
 });

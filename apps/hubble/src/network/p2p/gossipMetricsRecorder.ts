@@ -9,7 +9,7 @@ import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
 import RocksDB from '../../storage/db/rocksdb.js';
 import { RootPrefix } from '../../storage/db/types.js';
 
-const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
+export const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
 const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
