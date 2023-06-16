@@ -5,10 +5,16 @@ import { GossipNode } from './gossipNode.js';
 import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
 import { jestRocksDB } from '../../storage/db/jestUtils.js';
 import { RootPrefix } from '../../storage/db/types.js';
+import { jest } from '@jest/globals';
 
 const db = jestRocksDB('network.p2p.gossipMetricsRecorder.test');
 
 describe('Gossip metrics recorder accumulates metrics from messages', () => {
+  afterEach(async () => {
+    jest.resetAllMocks();
+    await db.del(Buffer.from([RootPrefix.GossipMetrics]));
+  });
+
   test('', async () => {
     const node = new GossipNode(db, undefined, true);
     await node.start([]);
@@ -119,7 +125,7 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
       messageMergeTime: messageMergeTime,
     };
     const metrics = new GossipMetrics(recentPeerIds, peerLatencyMetrics, peerMessageMetrics, globalMetrics);
-    db.put(Buffer.from([RootPrefix.GossipMetrics]), metrics.toBuffer());
+    await db.put(Buffer.from([RootPrefix.GossipMetrics]), metrics.toBuffer());
 
     const node = new GossipNode(db, undefined, true);
     node.start([]);
@@ -130,5 +136,21 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
     expect(recorder.peerLatencyMetrics).toEqual({});
     expect(recorder.peerMessageMetrics).toEqual({ testPeerId: { messageCount: 11 } });
     expect(recorder.recentPeerIds).toEqual({});
+  });
+
+  test('Metrics are logged and expired after ping is sent', async () => {
+    const node = new GossipNode(db, undefined, true);
+    await node.start([]);
+    const recorder = new GossipMetricsRecorder(node, db);
+    await recorder.start();
+
+    jest.spyOn(recorder, 'expireMetrics');
+    jest.spyOn(recorder, 'logMetrics');
+    jest.spyOn(node, 'publish');
+    await recorder.sendPingAndLogMetrics(0);
+
+    expect(recorder.expireMetrics).toHaveBeenCalledTimes(1);
+    expect(recorder.logMetrics).toHaveBeenCalledTimes(1);
+    expect(node.publish).toHaveBeenCalledTimes(1);
   });
 });

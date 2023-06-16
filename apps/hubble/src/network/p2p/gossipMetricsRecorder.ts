@@ -115,7 +115,7 @@ export class GossipMetricsRecorder {
     // Expire metrics after loading in case hub has been offline for a long period
     this.expireMetrics();
     this._cronTask = cron.schedule(DEFAULT_PERIODIC_LATENCY_PING_CRON, () => {
-      return this.sendPingAndLogMetrics();
+      return this.sendPingAndLogMetrics(MAX_JITTER_MILLISECONDS);
     });
   }
 
@@ -190,8 +190,8 @@ export class GossipMetricsRecorder {
     this._metrics.globalMetrics.networkCoverage[coverageKey.toString()] = updatedCoverage;
   }
 
-  private async sendPingAndLogMetrics() {
-    const jitter = Math.floor(Math.random() * MAX_JITTER_MILLISECONDS);
+  async sendPingAndLogMetrics(jitterMs: number) {
+    const jitter = Math.floor(Math.random() * jitterMs);
     await new Promise((f) => setTimeout(f, jitter));
 
     const pingMessage = PingMessageBody.create({
@@ -220,7 +220,7 @@ export class GossipMetricsRecorder {
     this.expireMetrics();
   }
 
-  private logMetrics() {
+  logMetrics() {
     // Log peer-level latency metrics
     Object.entries(this._metrics.peerLatencyMetrics).forEach(([key, metrics]) => {
       const keyFragments = key.split('_');
