@@ -68,7 +68,7 @@ export class EthEventsProvider {
   // poll at a slower interval than the default without delaying any
   // downstram effects.
   static eventPollingInterval = (EthEventsProvider.numConfirmations / 2) * 12_000;
-  static blockPollingInterval = 6_000;
+  static blockPollingInterval = 4_000;
 
   constructor(
     hub: HubInterface,
