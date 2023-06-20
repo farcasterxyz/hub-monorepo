@@ -175,9 +175,25 @@ export const up = async (db: Kysely<any>) => {
     .addColumn('custodyAddress', sql`bytea`, (col) => col.notNull())
     .addColumn('expiresAt', 'timestamp', (col) => col.notNull())
     .execute();
+
+  await db.schema
+    .createTable('links')
+    .addColumn('id', 'bigint', (col) => col.generatedAlwaysAsIdentity().primaryKey())
+    .addColumn('fid', 'bigint')
+    .addColumn('targetFid', 'bigint')
+    .addColumn('timestamp', 'timestamp', (col) => col.notNull())
+    .addColumn('createdAt', 'timestamp', (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn('updatedAt', 'timestamp', (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn('deletedAt', 'timestamp')
+    .addColumn('type', 'text')
+    .addColumn('displayTimestamp', 'timestamp')
+    .execute();
 };
 
 export const down = async (db: Kysely<any>) => {
+  await db.schema.dropTable('links').ifExists().execute();
+  await db.schema.dropTable('fnames').ifExists().execute();
+  await db.schema.dropTable('fids').ifExists().execute();
   await db.schema.dropTable('casts').ifExists().execute();
   await db.schema.dropTable('reactions').ifExists().execute();
   await db.schema.dropTable('signers').ifExists().execute();
