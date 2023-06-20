@@ -271,15 +271,19 @@ export class EthEventsProvider {
     log.info({ lastSyncedBlock }, 'last synced block');
     const toBlock = latestBlock;
 
-    // Sync old Id events
-    await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, lastSyncedBlock, toBlock, this._chunkSize);
-    await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
+    if (lastSyncedBlock < toBlock) {
+      log.info({ fromBlock: lastSyncedBlock, toBlock }, 'syncing events from missed blocks');
 
-    // Sync old Name Transfer events
-    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
+      // Sync old Id events
+      await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, lastSyncedBlock, toBlock, this._chunkSize);
+      await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
 
-    // We don't need to sync historical Renew events because the expiry
-    // is pulled when NameRegistryEvents are merged
+      // Sync old Name Transfer events
+      await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
+
+      // We don't need to sync historical Renew events because the expiry
+      // is pulled when NameRegistryEvents are merged
+    }
 
     this._isHistoricalSyncDone = true;
   }
