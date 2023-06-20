@@ -10,14 +10,19 @@ import { logger, Logger } from '../utils/logger.js';
  */
 export class WatchContractEvent<
   TAbi extends Abi | readonly unknown[] = readonly unknown[],
-  TEventName extends string = string
+  TEventName extends string = string,
+  TStrict extends boolean | undefined = undefined
 > {
   private _publicClient: PublicClient;
-  private _params: WatchContractEventParameters<TAbi, TEventName>;
+  private _params: WatchContractEventParameters<TAbi, TEventName, TStrict>;
   private _unwatch?: WatchContractEventReturnType;
   private _log: Logger;
 
-  constructor(publicClient: PublicClient, params: WatchContractEventParameters<TAbi, TEventName>, key: string) {
+  constructor(
+    publicClient: PublicClient,
+    params: WatchContractEventParameters<TAbi, TEventName, TStrict>,
+    key: string
+  ) {
     this._publicClient = publicClient;
     this._params = params;
     this._log = logger.child({
