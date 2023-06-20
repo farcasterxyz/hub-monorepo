@@ -119,6 +119,7 @@ export interface Database {
   };
 
   links: {
+    id: GeneratedAlways<string>;
     fid: number;
     targetFid: number | null;
     type: string;

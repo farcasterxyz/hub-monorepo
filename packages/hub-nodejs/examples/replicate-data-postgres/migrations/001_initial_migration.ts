@@ -178,6 +178,7 @@ export const up = async (db: Kysely<any>) => {
 
   await db.schema
     .createTable('links')
+    .addColumn('id', 'bigint', (col) => col.generatedAlwaysAsIdentity().primaryKey())
     .addColumn('fid', 'bigint')
     .addColumn('targetFid', 'bigint')
     .addColumn('timestamp', 'timestamp', (col) => col.notNull())
