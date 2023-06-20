@@ -430,9 +430,6 @@ export class EthEventsProvider {
         continue;
       }
 
-      // Remove after viem 1.0 https://github.com/wagmi-dev/viem/pull/547
-      if (!event.args.from || !event.args.to || !event.args.id) continue;
-
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         await this.cacheIdRegistryEvent(
@@ -461,9 +458,6 @@ export class EthEventsProvider {
       if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
         continue;
       }
-
-      // Remove after viem 1.0 https://github.com/wagmi-dev/viem/pull/547
-      if (!event.args.to || !event.args.id) continue;
 
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
@@ -494,9 +488,6 @@ export class EthEventsProvider {
         continue;
       }
 
-      // Remove after viem 1.0 https://github.com/wagmi-dev/viem/pull/547
-      if (!event.args.from || !event.args.to || !event.args.tokenId) continue;
-
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         await this.cacheNameRegistryEvent(
@@ -522,9 +513,6 @@ export class EthEventsProvider {
       if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
         continue;
       }
-
-      // Remove after viem 1.0 https://github.com/wagmi-dev/viem/pull/547
-      if (!event.args.tokenId || !event.args.expiry) continue;
 
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
