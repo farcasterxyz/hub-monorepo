@@ -148,7 +148,7 @@ export interface HubOptions {
   resyncEthEvents?: boolean;
 
   /** Resync fname events */
-  resyncFNameEvents?: boolean;
+  resyncNameEvents?: boolean;
 
   /** Name of the RocksDB instance */
   rocksDBName?: string;
@@ -249,7 +249,7 @@ export class Hub implements HubInterface {
       this.fNameRegistryEventsProvider = new FNameRegistryEventsProvider(
         new FNameRegistryClient(options.fnameServerUrl),
         this,
-        options.resyncFNameEvents ?? false
+        options.resyncNameEvents ?? false
       );
     } else {
       log.warn('No FName Registry URL provided, not syncing with fname events');
@@ -850,9 +850,7 @@ export class Hub implements HubInterface {
         logEvent.info(
           `submitUserNameProof success ${eventId}: fname ${bytesToUtf8String(
             usernameProof.name
-          )._unsafeUnwrap()} assigned to ${bytesToHexString(usernameProof.owner)._unsafeUnwrap()} at timestamp ${
-            usernameProof.timestamp
-          }`
+          )._unsafeUnwrap()} assigned to fid: ${usernameProof.fid} at timestamp ${usernameProof.timestamp}`
         );
       },
       (e) => {

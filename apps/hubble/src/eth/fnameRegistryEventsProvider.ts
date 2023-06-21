@@ -11,9 +11,10 @@ const log = logger.child({
 });
 
 export type FNameTransfer = {
+  id: number;
   username: string;
   owner: string;
-  signature: string;
+  server_signature: string;
   timestamp: number;
   from: number;
   to: number;
@@ -31,7 +32,7 @@ export class FNameRegistryClient implements FNameRegistryClientInterface {
 
   public async getTransfers(since = 0): Promise<FNameTransfer[]> {
     const response = await axios.get(`${this.url}/transfers?since=${since}`);
-    return response.data;
+    return response.data.transfers;
   }
 }
 
@@ -103,7 +104,7 @@ export class FNameRegistryEventsProvider {
       const serialized = Result.combine([
         utf8StringToBytes(transfer.username),
         hexStringToBytes(transfer.owner),
-        hexStringToBytes(transfer.signature),
+        hexStringToBytes(transfer.server_signature),
       ]);
       if (serialized.isErr()) {
         log.error(`Failed to serialize username proof for ${transfer.username}: ${serialized.error}`);
@@ -118,10 +119,7 @@ export class FNameRegistryEventsProvider {
         fid: transfer.to,
         type: UserNameType.USERNAME_TYPE_FNAME,
       });
-      const res = await this.hub.submitUserNameProof(usernameProof, 'fname-registry');
-      if (res.isErr()) {
-        throw new Error(`Failed to submit username proof: ${res.error}`);
-      }
+      await this.hub.submitUserNameProof(usernameProof, 'fname-registry');
     }
   }
 }

@@ -39,10 +39,10 @@ describe('fnameRegistryEventsProvider', () => {
   let provider: FNameRegistryEventsProvider;
   let mockFnameRegistryClient: MockFnameRegistryClient;
   const transferEvents: FNameTransfer[] = [
-    { username: 'test1', from: 0, to: 1, timestamp: 1686291736947, owner: '', signature: '' },
-    { username: 'test2', from: 0, to: 2, timestamp: 1686291740231, owner: '', signature: '' },
-    { username: 'test3', from: 0, to: 3, timestamp: 1686291751362, owner: '', signature: '' },
-    { username: 'test3', from: 3, to: 0, timestamp: 1686291752129, owner: '', signature: '' },
+    { id: 1, username: 'test1', from: 0, to: 1, timestamp: 1686291736947, owner: '', server_signature: '' },
+    { id: 2, username: 'test2', from: 0, to: 2, timestamp: 1686291740231, owner: '', server_signature: '' },
+    { id: 3, username: 'test3', from: 0, to: 3, timestamp: 1686291751362, owner: '', server_signature: '' },
+    { id: 4, username: 'test3', from: 3, to: 0, timestamp: 1686291752129, owner: '', server_signature: '' },
   ];
 
   beforeEach(() => {
