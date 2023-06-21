@@ -36,6 +36,7 @@ import {
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
+  RentRegistryEventRequest,
   SignerRequest,
   SubscribeRequest,
   SyncIds,
@@ -47,6 +48,7 @@ import {
   UserDataRequest,
   VerificationRequest,
 } from './request_response';
+import { RentRegistryEvent, StorageAdminRegistryEvent } from './storage_event';
 
 export type HubServiceService = typeof HubServiceService;
 export const HubServiceService = {
@@ -181,6 +183,15 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => NameRegistryEventRequest.decode(value),
     responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
+  },
+  getRentRegistryEvent: {
+    path: '/HubService/GetRentRegistryEvent',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: RentRegistryEventRequest) => Buffer.from(RentRegistryEventRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => RentRegistryEventRequest.decode(value),
+    responseSerialize: (value: RentRegistryEvent) => Buffer.from(RentRegistryEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => RentRegistryEvent.decode(value),
   },
   /** Verifications */
   getVerification: {
@@ -411,6 +422,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getUserData: handleUnaryCall<UserDataRequest, Message>;
   getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getNameRegistryEvent: handleUnaryCall<NameRegistryEventRequest, NameRegistryEvent>;
+  getRentRegistryEvent: handleUnaryCall<RentRegistryEventRequest, RentRegistryEvent>;
   /** Verifications */
   getVerification: handleUnaryCall<VerificationRequest, Message>;
   getVerificationsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -638,6 +650,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void
+  ): ClientUnaryCall;
+  getRentRegistryEvent(
+    request: RentRegistryEventRequest,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+  ): ClientUnaryCall;
+  getRentRegistryEvent(
+    request: RentRegistryEventRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+  ): ClientUnaryCall;
+  getRentRegistryEvent(
+    request: RentRegistryEventRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
   ): ClientUnaryCall;
   /** Verifications */
   getVerification(
@@ -1013,6 +1040,26 @@ export const AdminServiceService = {
     responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
   },
+  submitRentRegistryEvent: {
+    path: '/AdminService/SubmitRentRegistryEvent',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: RentRegistryEvent) => Buffer.from(RentRegistryEvent.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => RentRegistryEvent.decode(value),
+    responseSerialize: (value: RentRegistryEvent) => Buffer.from(RentRegistryEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => RentRegistryEvent.decode(value),
+  },
+  submitStorageAdminRegistryEvent: {
+    path: '/AdminService/SubmitStorageAdminRegistryEvent',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: StorageAdminRegistryEvent) =>
+      Buffer.from(StorageAdminRegistryEvent.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => StorageAdminRegistryEvent.decode(value),
+    responseSerialize: (value: StorageAdminRegistryEvent) =>
+      Buffer.from(StorageAdminRegistryEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => StorageAdminRegistryEvent.decode(value),
+  },
 } as const;
 
 export interface AdminServiceServer extends UntypedServiceImplementation {
@@ -1020,6 +1067,8 @@ export interface AdminServiceServer extends UntypedServiceImplementation {
   deleteAllMessagesFromDb: handleUnaryCall<Empty, Empty>;
   submitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
   submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
+  submitRentRegistryEvent: handleUnaryCall<RentRegistryEvent, RentRegistryEvent>;
+  submitStorageAdminRegistryEvent: handleUnaryCall<StorageAdminRegistryEvent, StorageAdminRegistryEvent>;
 }
 
 export interface AdminServiceClient extends Client {
@@ -1079,6 +1128,36 @@ export interface AdminServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void
+  ): ClientUnaryCall;
+  submitRentRegistryEvent(
+    request: RentRegistryEvent,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+  ): ClientUnaryCall;
+  submitRentRegistryEvent(
+    request: RentRegistryEvent,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+  ): ClientUnaryCall;
+  submitRentRegistryEvent(
+    request: RentRegistryEvent,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+  ): ClientUnaryCall;
+  submitStorageAdminRegistryEvent(
+    request: StorageAdminRegistryEvent,
+    callback: (error: ServiceError | null, response: StorageAdminRegistryEvent) => void
+  ): ClientUnaryCall;
+  submitStorageAdminRegistryEvent(
+    request: StorageAdminRegistryEvent,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: StorageAdminRegistryEvent) => void
+  ): ClientUnaryCall;
+  submitStorageAdminRegistryEvent(
+    request: StorageAdminRegistryEvent,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: StorageAdminRegistryEvent) => void
   ): ClientUnaryCall;
 }
 

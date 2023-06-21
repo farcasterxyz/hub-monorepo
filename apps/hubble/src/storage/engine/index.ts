@@ -26,10 +26,13 @@ import {
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
+  RentRegistryEvent,
   RevokeMessageHubEvent,
   RevokeMessagesBySignerJobPayload,
   SignerAddMessage,
   SignerRemoveMessage,
+  StorageAdminRegistryEvent,
+  StorageRegistryEventType,
   UserDataAddMessage,
   UserDataType,
   utf8StringToBytes,
@@ -220,6 +223,30 @@ class Engine {
   async mergeNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
     if (event.type === NameRegistryEventType.TRANSFER || event.type === NameRegistryEventType.RENEW) {
       return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
+    }
+
+    return err(new HubError('bad_request.validation_failure', 'invalid event type'));
+  }
+
+  async mergeRentRegistryEvent(event: RentRegistryEvent): HubAsyncResult<number> {
+    if (event.type === StorageRegistryEventType.RENT) {
+      return ResultAsync.fromPromise(this._storageDataStore.mergeRentRegistryEvent(event), (e) => e as HubError);
+    }
+
+    return err(new HubError('bad_request.validation_failure', 'invalid event type'));
+  }
+
+  async mergeStorageAdminRegistryEvent(event: StorageAdminRegistryEvent): HubAsyncResult<number> {
+    if (
+      event.type === StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP ||
+      event.type === StorageRegistryEventType.SET_GRACE_PERIOD ||
+      event.type === StorageRegistryEventType.SET_MAX_UNITS ||
+      event.type === StorageRegistryEventType.SET_PRICE
+    ) {
+      return ResultAsync.fromPromise(
+        this._storageDataStore.mergeStorageAdminRegistryEvent(event),
+        (e) => e as HubError
+      );
     }
 
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));

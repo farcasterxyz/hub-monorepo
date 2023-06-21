@@ -149,6 +149,14 @@ export interface NameRegistryEventRequest {
   name: Uint8Array;
 }
 
+export interface RentRegistryEventRequest {
+  fid: number;
+}
+
+export interface StorageAdminRegistryEventRequest {
+  transactionHash: Uint8Array;
+}
+
 export interface VerificationRequest {
   fid: number;
   address: Uint8Array;
@@ -2178,6 +2186,127 @@ export const NameRegistryEventRequest = {
   fromPartial<I extends Exact<DeepPartial<NameRegistryEventRequest>, I>>(object: I): NameRegistryEventRequest {
     const message = createBaseNameRegistryEventRequest();
     message.name = object.name ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseRentRegistryEventRequest(): RentRegistryEventRequest {
+  return { fid: 0 };
+}
+
+export const RentRegistryEventRequest = {
+  encode(message: RentRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): RentRegistryEventRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRentRegistryEventRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RentRegistryEventRequest {
+    return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
+  },
+
+  toJSON(message: RentRegistryEventRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RentRegistryEventRequest>, I>>(base?: I): RentRegistryEventRequest {
+    return RentRegistryEventRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<RentRegistryEventRequest>, I>>(object: I): RentRegistryEventRequest {
+    const message = createBaseRentRegistryEventRequest();
+    message.fid = object.fid ?? 0;
+    return message;
+  },
+};
+
+function createBaseStorageAdminRegistryEventRequest(): StorageAdminRegistryEventRequest {
+  return { transactionHash: new Uint8Array() };
+}
+
+export const StorageAdminRegistryEventRequest = {
+  encode(message: StorageAdminRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.transactionHash.length !== 0) {
+      writer.uint32(10).bytes(message.transactionHash);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StorageAdminRegistryEventRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStorageAdminRegistryEventRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.transactionHash = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StorageAdminRegistryEventRequest {
+    return {
+      transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: StorageAdminRegistryEventRequest): unknown {
+    const obj: any = {};
+    message.transactionHash !== undefined &&
+      (obj.transactionHash = base64FromBytes(
+        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array()
+      ));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StorageAdminRegistryEventRequest>, I>>(
+    base?: I
+  ): StorageAdminRegistryEventRequest {
+    return StorageAdminRegistryEventRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StorageAdminRegistryEventRequest>, I>>(
+    object: I
+  ): StorageAdminRegistryEventRequest {
+    const message = createBaseStorageAdminRegistryEventRequest();
+    message.transactionHash = object.transactionHash ?? new Uint8Array();
     return message;
   },
 };

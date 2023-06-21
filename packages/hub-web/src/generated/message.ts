@@ -82,6 +82,10 @@ export enum MessageType {
   REACTION_ADD = 3,
   /** REACTION_REMOVE - Remove a Reaction from a Cast */
   REACTION_REMOVE = 4,
+  /** LINK_ADD - Add a new Link */
+  LINK_ADD = 5,
+  /** LINK_REMOVE - Remove an existing Link */
+  LINK_REMOVE = 6,
   /** VERIFICATION_ADD_ETH_ADDRESS - Add a Verification of an Ethereum Address */
   VERIFICATION_ADD_ETH_ADDRESS = 7,
   /** VERIFICATION_REMOVE - Remove a Verification */
@@ -111,6 +115,12 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 4:
     case 'MESSAGE_TYPE_REACTION_REMOVE':
       return MessageType.REACTION_REMOVE;
+    case 5:
+    case 'MESSAGE_TYPE_LINK_ADD':
+      return MessageType.LINK_ADD;
+    case 6:
+    case 'MESSAGE_TYPE_LINK_REMOVE':
+      return MessageType.LINK_REMOVE;
     case 7:
     case 'MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS':
       return MessageType.VERIFICATION_ADD_ETH_ADDRESS;
@@ -143,6 +153,10 @@ export function messageTypeToJSON(object: MessageType): string {
       return 'MESSAGE_TYPE_REACTION_ADD';
     case MessageType.REACTION_REMOVE:
       return 'MESSAGE_TYPE_REACTION_REMOVE';
+    case MessageType.LINK_ADD:
+      return 'MESSAGE_TYPE_LINK_ADD';
+    case MessageType.LINK_REMOVE:
+      return 'MESSAGE_TYPE_LINK_REMOVE';
     case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
       return 'MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS';
     case MessageType.VERIFICATION_REMOVE:
@@ -340,6 +354,7 @@ export interface MessageData {
   signerAddBody?: SignerAddBody | undefined;
   userDataBody?: UserDataBody | undefined;
   signerRemoveBody?: SignerRemoveBody | undefined;
+  linkBody?: LinkBody | undefined;
 }
 
 /** Adds an Ed25519 key pair that signs messages for a user */
@@ -425,6 +440,16 @@ export interface VerificationAddEthAddressBody {
 export interface VerificationRemoveBody {
   /** Address of the Verification to remove */
   address: Uint8Array;
+}
+
+/** Adds or removes a Link */
+export interface LinkBody {
+  /** Type of link, <= 8 characters */
+  type: string;
+  /** User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction */
+  displayTimestamp?: number | undefined;
+  /** The fid the link relates to */
+  targetFid?: number | undefined;
 }
 
 function createBaseMessage(): Message {
@@ -574,6 +599,7 @@ function createBaseMessageData(): MessageData {
     signerAddBody: undefined,
     userDataBody: undefined,
     signerRemoveBody: undefined,
+    linkBody: undefined,
   };
 }
 
@@ -614,6 +640,9 @@ export const MessageData = {
     }
     if (message.signerRemoveBody !== undefined) {
       SignerRemoveBody.encode(message.signerRemoveBody, writer.uint32(106).fork()).ldelim();
+    }
+    if (message.linkBody !== undefined) {
+      LinkBody.encode(message.linkBody, writer.uint32(114).fork()).ldelim();
     }
     return writer;
   },
@@ -709,6 +738,13 @@ export const MessageData = {
 
           message.signerRemoveBody = SignerRemoveBody.decode(reader, reader.uint32());
           continue;
+        case 14:
+          if (tag != 114) {
+            break;
+          }
+
+          message.linkBody = LinkBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -736,6 +772,7 @@ export const MessageData = {
       signerAddBody: isSet(object.signerAddBody) ? SignerAddBody.fromJSON(object.signerAddBody) : undefined,
       userDataBody: isSet(object.userDataBody) ? UserDataBody.fromJSON(object.userDataBody) : undefined,
       signerRemoveBody: isSet(object.signerRemoveBody) ? SignerRemoveBody.fromJSON(object.signerRemoveBody) : undefined,
+      linkBody: isSet(object.linkBody) ? LinkBody.fromJSON(object.linkBody) : undefined,
     };
   },
 
@@ -765,6 +802,7 @@ export const MessageData = {
       (obj.userDataBody = message.userDataBody ? UserDataBody.toJSON(message.userDataBody) : undefined);
     message.signerRemoveBody !== undefined &&
       (obj.signerRemoveBody = message.signerRemoveBody ? SignerRemoveBody.toJSON(message.signerRemoveBody) : undefined);
+    message.linkBody !== undefined && (obj.linkBody = message.linkBody ? LinkBody.toJSON(message.linkBody) : undefined);
     return obj;
   },
 
@@ -810,6 +848,8 @@ export const MessageData = {
       object.signerRemoveBody !== undefined && object.signerRemoveBody !== null
         ? SignerRemoveBody.fromPartial(object.signerRemoveBody)
         : undefined;
+    message.linkBody =
+      object.linkBody !== undefined && object.linkBody !== null ? LinkBody.fromPartial(object.linkBody) : undefined;
     return message;
   },
 };
@@ -1637,6 +1677,90 @@ export const VerificationRemoveBody = {
   fromPartial<I extends Exact<DeepPartial<VerificationRemoveBody>, I>>(object: I): VerificationRemoveBody {
     const message = createBaseVerificationRemoveBody();
     message.address = object.address ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseLinkBody(): LinkBody {
+  return { type: '', displayTimestamp: undefined, targetFid: undefined };
+}
+
+export const LinkBody = {
+  encode(message: LinkBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.type !== '') {
+      writer.uint32(10).string(message.type);
+    }
+    if (message.displayTimestamp !== undefined) {
+      writer.uint32(16).uint32(message.displayTimestamp);
+    }
+    if (message.targetFid !== undefined) {
+      writer.uint32(24).uint64(message.targetFid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): LinkBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLinkBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.type = reader.string();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.displayTimestamp = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.targetFid = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LinkBody {
+    return {
+      type: isSet(object.type) ? String(object.type) : '',
+      displayTimestamp: isSet(object.displayTimestamp) ? Number(object.displayTimestamp) : undefined,
+      targetFid: isSet(object.targetFid) ? Number(object.targetFid) : undefined,
+    };
+  },
+
+  toJSON(message: LinkBody): unknown {
+    const obj: any = {};
+    message.type !== undefined && (obj.type = message.type);
+    message.displayTimestamp !== undefined && (obj.displayTimestamp = Math.round(message.displayTimestamp));
+    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LinkBody>, I>>(base?: I): LinkBody {
+    return LinkBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<LinkBody>, I>>(object: I): LinkBody {
+    const message = createBaseLinkBody();
+    message.type = object.type ?? '';
+    message.displayTimestamp = object.displayTimestamp ?? undefined;
+    message.targetFid = object.targetFid ?? undefined;
     return message;
   },
 };

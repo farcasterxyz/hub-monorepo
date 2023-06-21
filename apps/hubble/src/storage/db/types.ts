@@ -53,6 +53,12 @@ export enum RootPrefix {
   HubEvents = 15,
   /* The network ID that the rocksDB was created with */
   Network = 16,
+  /* Used to store rent registry events */
+  RentRegistryEvent = 17,
+  /* Index rent registry events by expiry */
+  RentRegistryEventsByExpiry = 18,
+  /* Used to store storage admin registry events */
+  StorageAdminRegistryEvent = 17,
 }
 
 /**

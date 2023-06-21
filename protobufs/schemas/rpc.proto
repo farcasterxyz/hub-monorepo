@@ -5,6 +5,7 @@ import "id_registry_event.proto";
 import "name_registry_event.proto";
 import "hub_event.proto";
 import "request_response.proto";
+import "storage_event.proto";
 
 service HubService {
   // Submit Methods
@@ -30,6 +31,7 @@ service HubService {
   rpc GetUserData(UserDataRequest) returns (Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
   rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
+  rpc GetRentRegistryEvent(RentRegistryEventRequest) returns (RentRegistryEvent);
 
   // Verifications
   rpc GetVerification(VerificationRequest) returns (Message);
@@ -70,4 +72,6 @@ service AdminService {
   
   rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
   rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
+  rpc SubmitRentRegistryEvent(RentRegistryEvent) returns (RentRegistryEvent);
+  rpc SubmitStorageAdminRegistryEvent(StorageAdminRegistryEvent) returns (StorageAdminRegistryEvent);
 }

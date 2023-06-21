@@ -15,6 +15,9 @@ import {
   HubRpcClient,
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
+  RentRegistryEvent,
+  StorageAdminRegistryEvent,
+  storageRegistryEventTypeToJSON,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
@@ -44,6 +47,8 @@ import {
   messageToLog,
   messageTypeToName,
   nameRegistryEventToLog,
+  rentRegistryEventToLog,
+  storageAdminRegistryEventToLog,
 } from './utils/logger.js';
 import {
   addressInfoFromGossip,
@@ -61,8 +66,9 @@ import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet.js';
 import StoreEventHandler from './storage/stores/storeEventHandler.js';
 import { RetryProvider } from './eth/retryProvider.js';
 import { JsonRpcProvider } from 'ethers';
+import { L2EventsProvider, OPGoerliEthConstants } from 'eth/l2EventsProvider.js';
 
-export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync';
+export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'l2-provider' | 'sync';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = process.env['HUBBLE_NAME'] ?? 'Farcaster Hub';
@@ -79,6 +85,8 @@ export interface HubInterface {
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
   submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitStorageAdminRegistryEvent(event: StorageAdminRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
@@ -125,17 +133,29 @@ export interface HubOptions {
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
+  /** Network URL of the StorageRegistry Contract */
+  l2RpcUrl?: string;
+
   /** Address of the IdRegistry contract  */
   idRegistryAddress?: string;
 
   /** Address of the NameRegistryAddress contract  */
   nameRegistryAddress?: string;
 
+  /** Address of the StorageRegistryAddress contract  */
+  storageRegistryAddress?: string;
+
   /** Block number to begin syncing events from  */
   firstBlock?: number;
 
   /** Number of blocks to batch when syncing historical events  */
   chunkSize?: number;
+
+  /** Block number to begin syncing events from for L2  */
+  l2FirstBlock?: number;
+
+  /** Number of blocks to batch when syncing historical events for L2 */
+  l2ChunkSize?: number;
 
   /** Resync events */
   resyncEthEvents?: boolean;
@@ -209,6 +229,7 @@ export class Hub implements HubInterface {
 
   engine: Engine;
   ethRegistryProvider?: EthEventsProvider;
+  l2RegistryProvider?: L2EventsProvider;
 
   constructor(options: HubOptions) {
     this.options = options;
@@ -232,6 +253,24 @@ export class Hub implements HubInterface {
       );
     } else {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
+    }
+
+    // Create the L2 registry provider, which will fetch L2 events and push them into the engine.
+    // Defaults to OP Goerli testnet, which is currently used for Production Farcaster Hubs.
+    if (options.l2RpcUrl) {
+      const RetryingJsonRPCProvider = RetryProvider(JsonRpcProvider);
+      const jsonRpcProvider = new RetryingJsonRPCProvider(options.l2RpcUrl);
+
+      this.l2RegistryProvider = L2EventsProvider.build(
+        this,
+        jsonRpcProvider,
+        options.storageRegistryAddress ?? OPGoerliEthConstants.StorageRegistryAddress,
+        options.l2FirstBlock ?? OPGoerliEthConstants.FirstBlock,
+        options.l2ChunkSize ?? OPGoerliEthConstants.ChunkSize,
+        options.resyncEthEvents ?? false
+      );
+    } else {
+      log.warn('No L2 RPC URL provided, not syncing with L2 contract events');
     }
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
@@ -804,6 +843,49 @@ export class Hub implements HubInterface {
       const payload = UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
       await this.updateNameRegistryEventExpiryJobQueue.enqueueJob(payload);
     }
+
+    return mergeResult;
+  }
+
+  async submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
+    const logEvent = log.child({ event: rentRegistryEventToLog(event), source });
+
+    const mergeResult = await this.engine.mergeRentRegistryEvent(event);
+
+    mergeResult.match(
+      (eventId) => {
+        logEvent.info(
+          `submitRentRegistryEvent success ${eventId}: fid ${event.fid} assigned ${event.units} in block ${event.blockNumber}`
+        );
+      },
+      (e) => {
+        logEvent.warn({ errCode: e.errCode }, `submitRentRegistryEvent error: ${e.message}`);
+      }
+    );
+
+    return mergeResult;
+  }
+
+  async submitStorageAdminRegistryEvent(
+    event: StorageAdminRegistryEvent,
+    source?: HubSubmitSource
+  ): HubAsyncResult<number> {
+    const logEvent = log.child({ event: storageAdminRegistryEventToLog(event), source });
+
+    const mergeResult = await this.engine.mergeStorageAdminRegistryEvent(event);
+
+    mergeResult.match(
+      (eventId) => {
+        logEvent.info(
+          `submitStorageAdminRegistryEvent success ${eventId}: address ${bytesToHexString(
+            event.from
+          )._unsafeUnwrap()} performed ${storageRegistryEventTypeToJSON(event.type)} in block ${event.blockNumber}`
+        );
+      },
+      (e) => {
+        logEvent.warn({ errCode: e.errCode }, `submitStorageAdminRegistryEvent error: ${e.message}`);
+      }
+    );
 
     return mergeResult;
   }

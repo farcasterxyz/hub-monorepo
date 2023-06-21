@@ -1,6 +1,5 @@
 /* eslint-disable */
-// This must be manually change to a default import right now
-import grpcWeb from '@improbable-eng/grpc-web';
+import { grpc } from '@improbable-eng/grpc-web';
 import { BrowserHeaders } from 'browser-headers';
 import { Observable } from 'rxjs';
 import { share } from 'rxjs/operators';
@@ -19,11 +18,15 @@ import {
   HubInfoResponse,
   IdRegistryEventByAddressRequest,
   IdRegistryEventRequest,
+  LinkRequest,
+  LinksByFidRequest,
+  LinksByTargetRequest,
   MessagesResponse,
   NameRegistryEventRequest,
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
+  RentRegistryEventRequest,
   SignerRequest,
   SubscribeRequest,
   SyncIds,
@@ -35,91 +38,80 @@ import {
   UserDataRequest,
   VerificationRequest,
 } from './request_response';
+import { RentRegistryEvent, StorageAdminRegistryEvent } from './storage_event';
 
 export interface HubService {
   /** Submit Methods */
-  submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
+  submitMessage(request: DeepPartial<Message>, metadata?: grpc.Metadata): Promise<Message>;
   /** Event Methods */
-  subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent>;
-  getEvent(request: DeepPartial<EventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubEvent>;
+  subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpc.Metadata): Observable<HubEvent>;
+  getEvent(request: DeepPartial<EventRequest>, metadata?: grpc.Metadata): Promise<HubEvent>;
   /** Casts */
-  getCast(request: DeepPartial<CastId>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
-  getCastsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  getCastsByParent(
-    request: DeepPartial<CastsByParentRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse>;
-  getCastsByMention(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  getCast(request: DeepPartial<CastId>, metadata?: grpc.Metadata): Promise<Message>;
+  getCastsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getCastsByParent(request: DeepPartial<CastsByParentRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getCastsByMention(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   /** Reactions */
-  getReaction(request: DeepPartial<ReactionRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
-  getReactionsByFid(
-    request: DeepPartial<ReactionsByFidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse>;
+  getReaction(request: DeepPartial<ReactionRequest>, metadata?: grpc.Metadata): Promise<Message>;
+  getReactionsByFid(request: DeepPartial<ReactionsByFidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   /** To be deprecated */
   getReactionsByCast(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<MessagesResponse>;
   getReactionsByTarget(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<MessagesResponse>;
   /** User Data */
-  getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
-  getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpc.Metadata): Promise<Message>;
+  getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   getNameRegistryEvent(
     request: DeepPartial<NameRegistryEventRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<NameRegistryEvent>;
+  getRentRegistryEvent(
+    request: DeepPartial<RentRegistryEventRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<RentRegistryEvent>;
   /** Verifications */
-  getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
-  getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message>;
+  getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   /** Signer */
-  getSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
-  getSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  getIdRegistryEvent(
-    request: DeepPartial<IdRegistryEventRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<IdRegistryEvent>;
+  getSigner(request: DeepPartial<SignerRequest>, metadata?: grpc.Metadata): Promise<Message>;
+  getSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getIdRegistryEvent(request: DeepPartial<IdRegistryEventRequest>, metadata?: grpc.Metadata): Promise<IdRegistryEvent>;
   getIdRegistryEventByAddress(
     request: DeepPartial<IdRegistryEventByAddressRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<IdRegistryEvent>;
-  getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse>;
+  getFids(request: DeepPartial<FidsRequest>, metadata?: grpc.Metadata): Promise<FidsResponse>;
+  /** Links */
+  getLink(request: DeepPartial<LinkRequest>, metadata?: grpc.Metadata): Promise<Message>;
+  getLinksByFid(request: DeepPartial<LinksByFidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getLinksByTarget(request: DeepPartial<LinksByTargetRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   /** Bulk Methods */
-  getAllCastMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse>;
-  getAllReactionMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse>;
+  getAllCastMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getAllReactionMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   getAllVerificationMessagesByFid(
     request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<MessagesResponse>;
-  getAllSignerMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse>;
-  getAllUserDataMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse>;
+  getAllSignerMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getAllUserDataMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getAllLinkMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   /** Sync Methods */
-  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
-  getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
-  getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds>;
-  getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpc.Metadata): Promise<HubInfoResponse>;
+  getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpc.Metadata): Promise<SyncStatusResponse>;
+  getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpc.Metadata): Promise<SyncIds>;
+  getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   getSyncMetadataByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<TrieNodeMetadataResponse>;
   getSyncSnapshotByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<TrieNodeSnapshotResponse>;
 }
 
@@ -142,6 +134,7 @@ export class HubServiceClientImpl implements HubService {
     this.getUserData = this.getUserData.bind(this);
     this.getUserDataByFid = this.getUserDataByFid.bind(this);
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
+    this.getRentRegistryEvent = this.getRentRegistryEvent.bind(this);
     this.getVerification = this.getVerification.bind(this);
     this.getVerificationsByFid = this.getVerificationsByFid.bind(this);
     this.getSigner = this.getSigner.bind(this);
@@ -149,11 +142,15 @@ export class HubServiceClientImpl implements HubService {
     this.getIdRegistryEvent = this.getIdRegistryEvent.bind(this);
     this.getIdRegistryEventByAddress = this.getIdRegistryEventByAddress.bind(this);
     this.getFids = this.getFids.bind(this);
+    this.getLink = this.getLink.bind(this);
+    this.getLinksByFid = this.getLinksByFid.bind(this);
+    this.getLinksByTarget = this.getLinksByTarget.bind(this);
     this.getAllCastMessagesByFid = this.getAllCastMessagesByFid.bind(this);
     this.getAllReactionMessagesByFid = this.getAllReactionMessagesByFid.bind(this);
     this.getAllVerificationMessagesByFid = this.getAllVerificationMessagesByFid.bind(this);
     this.getAllSignerMessagesByFid = this.getAllSignerMessagesByFid.bind(this);
     this.getAllUserDataMessagesByFid = this.getAllUserDataMessagesByFid.bind(this);
+    this.getAllLinkMessagesByFid = this.getAllLinkMessagesByFid.bind(this);
     this.getInfo = this.getInfo.bind(this);
     this.getSyncStatus = this.getSyncStatus.bind(this);
     this.getAllSyncIdsByPrefix = this.getAllSyncIdsByPrefix.bind(this);
@@ -162,103 +159,101 @@ export class HubServiceClientImpl implements HubService {
     this.getSyncSnapshotByPrefix = this.getSyncSnapshotByPrefix.bind(this);
   }
 
-  submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
+  submitMessage(request: DeepPartial<Message>, metadata?: grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceSubmitMessageDesc, Message.fromPartial(request), metadata);
   }
 
-  subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent> {
+  subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpc.Metadata): Observable<HubEvent> {
     return this.rpc.invoke(HubServiceSubscribeDesc, SubscribeRequest.fromPartial(request), metadata);
   }
 
-  getEvent(request: DeepPartial<EventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubEvent> {
+  getEvent(request: DeepPartial<EventRequest>, metadata?: grpc.Metadata): Promise<HubEvent> {
     return this.rpc.unary(HubServiceGetEventDesc, EventRequest.fromPartial(request), metadata);
   }
 
-  getCast(request: DeepPartial<CastId>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
+  getCast(request: DeepPartial<CastId>, metadata?: grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceGetCastDesc, CastId.fromPartial(request), metadata);
   }
 
-  getCastsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
+  getCastsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetCastsByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getCastsByParent(
-    request: DeepPartial<CastsByParentRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse> {
+  getCastsByParent(request: DeepPartial<CastsByParentRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetCastsByParentDesc, CastsByParentRequest.fromPartial(request), metadata);
   }
 
-  getCastsByMention(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
+  getCastsByMention(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetCastsByMentionDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getReaction(request: DeepPartial<ReactionRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
+  getReaction(request: DeepPartial<ReactionRequest>, metadata?: grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceGetReactionDesc, ReactionRequest.fromPartial(request), metadata);
   }
 
-  getReactionsByFid(
-    request: DeepPartial<ReactionsByFidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse> {
+  getReactionsByFid(request: DeepPartial<ReactionsByFidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetReactionsByFidDesc, ReactionsByFidRequest.fromPartial(request), metadata);
   }
 
   getReactionsByCast(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetReactionsByCastDesc, ReactionsByTargetRequest.fromPartial(request), metadata);
   }
 
   getReactionsByTarget(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetReactionsByTargetDesc, ReactionsByTargetRequest.fromPartial(request), metadata);
   }
 
-  getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
+  getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceGetUserDataDesc, UserDataRequest.fromPartial(request), metadata);
   }
 
-  getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
+  getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetUserDataByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getNameRegistryEvent(
     request: DeepPartial<NameRegistryEventRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<NameRegistryEvent> {
     return this.rpc.unary(HubServiceGetNameRegistryEventDesc, NameRegistryEventRequest.fromPartial(request), metadata);
   }
 
-  getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
+  getRentRegistryEvent(
+    request: DeepPartial<RentRegistryEventRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<RentRegistryEvent> {
+    return this.rpc.unary(HubServiceGetRentRegistryEventDesc, RentRegistryEventRequest.fromPartial(request), metadata);
+  }
+
+  getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceGetVerificationDesc, VerificationRequest.fromPartial(request), metadata);
   }
 
-  getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
+  getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetVerificationsByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
+  getSigner(request: DeepPartial<SignerRequest>, metadata?: grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceGetSignerDesc, SignerRequest.fromPartial(request), metadata);
   }
 
-  getSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
+  getSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetSignersByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getIdRegistryEvent(
-    request: DeepPartial<IdRegistryEventRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<IdRegistryEvent> {
+  getIdRegistryEvent(request: DeepPartial<IdRegistryEventRequest>, metadata?: grpc.Metadata): Promise<IdRegistryEvent> {
     return this.rpc.unary(HubServiceGetIdRegistryEventDesc, IdRegistryEventRequest.fromPartial(request), metadata);
   }
 
   getIdRegistryEventByAddress(
     request: DeepPartial<IdRegistryEventByAddressRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<IdRegistryEvent> {
     return this.rpc.unary(
       HubServiceGetIdRegistryEventByAddressDesc,
@@ -267,74 +262,75 @@ export class HubServiceClientImpl implements HubService {
     );
   }
 
-  getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse> {
+  getFids(request: DeepPartial<FidsRequest>, metadata?: grpc.Metadata): Promise<FidsResponse> {
     return this.rpc.unary(HubServiceGetFidsDesc, FidsRequest.fromPartial(request), metadata);
   }
 
-  getAllCastMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse> {
+  getLink(request: DeepPartial<LinkRequest>, metadata?: grpc.Metadata): Promise<Message> {
+    return this.rpc.unary(HubServiceGetLinkDesc, LinkRequest.fromPartial(request), metadata);
+  }
+
+  getLinksByFid(request: DeepPartial<LinksByFidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetLinksByFidDesc, LinksByFidRequest.fromPartial(request), metadata);
+  }
+
+  getLinksByTarget(request: DeepPartial<LinksByTargetRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetLinksByTargetDesc, LinksByTargetRequest.fromPartial(request), metadata);
+  }
+
+  getAllCastMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllCastMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getAllReactionMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse> {
+  getAllReactionMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllReactionMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getAllVerificationMessagesByFid(
     request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllVerificationMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getAllSignerMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse> {
+  getAllSignerMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllSignerMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getAllUserDataMessagesByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<MessagesResponse> {
+  getAllUserDataMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllUserDataMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
+  getAllLinkMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetAllLinkMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+  }
+
+  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpc.Metadata): Promise<HubInfoResponse> {
     return this.rpc.unary(HubServiceGetInfoDesc, HubInfoRequest.fromPartial(request), metadata);
   }
 
-  getSyncStatus(
-    request: DeepPartial<SyncStatusRequest>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<SyncStatusResponse> {
+  getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpc.Metadata): Promise<SyncStatusResponse> {
     return this.rpc.unary(HubServiceGetSyncStatusDesc, SyncStatusRequest.fromPartial(request), metadata);
   }
 
-  getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds> {
+  getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpc.Metadata): Promise<SyncIds> {
     return this.rpc.unary(HubServiceGetAllSyncIdsByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
   }
 
-  getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
+  getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllMessagesBySyncIdsDesc, SyncIds.fromPartial(request), metadata);
   }
 
   getSyncMetadataByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<TrieNodeMetadataResponse> {
     return this.rpc.unary(HubServiceGetSyncMetadataByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
   }
 
   getSyncSnapshotByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<TrieNodeSnapshotResponse> {
     return this.rpc.unary(HubServiceGetSyncSnapshotByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
   }
@@ -664,6 +660,29 @@ export const HubServiceGetNameRegistryEventDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
+export const HubServiceGetRentRegistryEventDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetRentRegistryEvent',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return RentRegistryEventRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = RentRegistryEvent.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
 export const HubServiceGetVerificationDesc: UnaryMethodDefinitionish = {
   methodName: 'GetVerification',
   service: HubServiceDesc,
@@ -825,6 +844,75 @@ export const HubServiceGetFidsDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
+export const HubServiceGetLinkDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetLink',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return LinkRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = Message.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetLinksByFidDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetLinksByFid',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return LinksByFidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetLinksByTargetDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetLinksByTarget',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return LinksByTargetRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
 export const HubServiceGetAllCastMessagesByFidDesc: UnaryMethodDefinitionish = {
   methodName: 'GetAllCastMessagesByFid',
   service: HubServiceDesc,
@@ -919,6 +1007,29 @@ export const HubServiceGetAllSignerMessagesByFidDesc: UnaryMethodDefinitionish =
 
 export const HubServiceGetAllUserDataMessagesByFidDesc: UnaryMethodDefinitionish = {
   methodName: 'GetAllUserDataMessagesByFid',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetAllLinkMessagesByFid',
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1079,16 +1190,21 @@ export const HubServiceGetSyncSnapshotByPrefixDesc: UnaryMethodDefinitionish = {
 };
 
 export interface AdminService {
-  rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
-  deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
-  submitIdRegistryEvent(
-    request: DeepPartial<IdRegistryEvent>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<IdRegistryEvent>;
+  rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpc.Metadata): Promise<Empty>;
+  deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpc.Metadata): Promise<Empty>;
+  submitIdRegistryEvent(request: DeepPartial<IdRegistryEvent>, metadata?: grpc.Metadata): Promise<IdRegistryEvent>;
   submitNameRegistryEvent(
     request: DeepPartial<NameRegistryEvent>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<NameRegistryEvent>;
+  submitRentRegistryEvent(
+    request: DeepPartial<RentRegistryEvent>,
+    metadata?: grpc.Metadata
+  ): Promise<RentRegistryEvent>;
+  submitStorageAdminRegistryEvent(
+    request: DeepPartial<StorageAdminRegistryEvent>,
+    metadata?: grpc.Metadata
+  ): Promise<StorageAdminRegistryEvent>;
 }
 
 export class AdminServiceClientImpl implements AdminService {
@@ -1100,28 +1216,45 @@ export class AdminServiceClientImpl implements AdminService {
     this.deleteAllMessagesFromDb = this.deleteAllMessagesFromDb.bind(this);
     this.submitIdRegistryEvent = this.submitIdRegistryEvent.bind(this);
     this.submitNameRegistryEvent = this.submitNameRegistryEvent.bind(this);
+    this.submitRentRegistryEvent = this.submitRentRegistryEvent.bind(this);
+    this.submitStorageAdminRegistryEvent = this.submitStorageAdminRegistryEvent.bind(this);
   }
 
-  rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
+  rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpc.Metadata): Promise<Empty> {
     return this.rpc.unary(AdminServiceRebuildSyncTrieDesc, Empty.fromPartial(request), metadata);
   }
 
-  deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
+  deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpc.Metadata): Promise<Empty> {
     return this.rpc.unary(AdminServiceDeleteAllMessagesFromDbDesc, Empty.fromPartial(request), metadata);
   }
 
-  submitIdRegistryEvent(
-    request: DeepPartial<IdRegistryEvent>,
-    metadata?: grpcWeb.grpc.Metadata
-  ): Promise<IdRegistryEvent> {
+  submitIdRegistryEvent(request: DeepPartial<IdRegistryEvent>, metadata?: grpc.Metadata): Promise<IdRegistryEvent> {
     return this.rpc.unary(AdminServiceSubmitIdRegistryEventDesc, IdRegistryEvent.fromPartial(request), metadata);
   }
 
   submitNameRegistryEvent(
     request: DeepPartial<NameRegistryEvent>,
-    metadata?: grpcWeb.grpc.Metadata
+    metadata?: grpc.Metadata
   ): Promise<NameRegistryEvent> {
     return this.rpc.unary(AdminServiceSubmitNameRegistryEventDesc, NameRegistryEvent.fromPartial(request), metadata);
+  }
+
+  submitRentRegistryEvent(
+    request: DeepPartial<RentRegistryEvent>,
+    metadata?: grpc.Metadata
+  ): Promise<RentRegistryEvent> {
+    return this.rpc.unary(AdminServiceSubmitRentRegistryEventDesc, RentRegistryEvent.fromPartial(request), metadata);
+  }
+
+  submitStorageAdminRegistryEvent(
+    request: DeepPartial<StorageAdminRegistryEvent>,
+    metadata?: grpc.Metadata
+  ): Promise<StorageAdminRegistryEvent> {
+    return this.rpc.unary(
+      AdminServiceSubmitStorageAdminRegistryEventDesc,
+      StorageAdminRegistryEvent.fromPartial(request),
+      metadata
+    );
   }
 }
 
@@ -1219,7 +1352,53 @@ export const AdminServiceSubmitNameRegistryEventDesc: UnaryMethodDefinitionish =
   } as any,
 };
 
-interface UnaryMethodDefinitionishR extends grpcWeb.grpc.UnaryMethodDefinition<any, any> {
+export const AdminServiceSubmitRentRegistryEventDesc: UnaryMethodDefinitionish = {
+  methodName: 'SubmitRentRegistryEvent',
+  service: AdminServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return RentRegistryEvent.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = RentRegistryEvent.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AdminServiceSubmitStorageAdminRegistryEventDesc: UnaryMethodDefinitionish = {
+  methodName: 'SubmitStorageAdminRegistryEvent',
+  service: AdminServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return StorageAdminRegistryEvent.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = StorageAdminRegistryEvent.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+interface UnaryMethodDefinitionishR extends grpc.UnaryMethodDefinition<any, any> {
   requestStream: any;
   responseStream: any;
 }
@@ -1230,32 +1409,32 @@ interface Rpc {
   unary<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     request: any,
-    metadata: grpcWeb.grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined
   ): Promise<any>;
   invoke<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     request: any,
-    metadata: grpcWeb.grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined
   ): Observable<any>;
 }
 
 export class GrpcWebImpl {
   private host: string;
   private options: {
-    transport?: grpcWeb.grpc.TransportFactory;
-    streamingTransport?: grpcWeb.grpc.TransportFactory;
+    transport?: grpc.TransportFactory;
+    streamingTransport?: grpc.TransportFactory;
     debug?: boolean;
-    metadata?: grpcWeb.grpc.Metadata;
+    metadata?: grpc.Metadata;
     upStreamRetryCodes?: number[];
   };
 
   constructor(
     host: string,
     options: {
-      transport?: grpcWeb.grpc.TransportFactory;
-      streamingTransport?: grpcWeb.grpc.TransportFactory;
+      transport?: grpc.TransportFactory;
+      streamingTransport?: grpc.TransportFactory;
       debug?: boolean;
-      metadata?: grpcWeb.grpc.Metadata;
+      metadata?: grpc.Metadata;
       upStreamRetryCodes?: number[];
     }
   ) {
@@ -1266,7 +1445,7 @@ export class GrpcWebImpl {
   unary<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     _request: any,
-    metadata: grpcWeb.grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined
   ): Promise<any> {
     const request = { ..._request, ...methodDesc.requestType };
     const maybeCombinedMetadata =
@@ -1274,14 +1453,14 @@ export class GrpcWebImpl {
         ? new BrowserHeaders({ ...this.options?.metadata.headersMap, ...metadata?.headersMap })
         : metadata || this.options.metadata;
     return new Promise((resolve, reject) => {
-      grpcWeb.grpc.unary(methodDesc, {
+      grpc.unary(methodDesc, {
         request,
         host: this.host,
         metadata: maybeCombinedMetadata,
         transport: this.options.transport,
         debug: this.options.debug,
         onEnd: function (response) {
-          if (response.status === grpcWeb.grpc.Code.OK) {
+          if (response.status === grpc.Code.OK) {
             resolve(response.message!.toObject());
           } else {
             const err = new GrpcWebError(response.statusMessage, response.status, response.trailers);
@@ -1295,7 +1474,7 @@ export class GrpcWebImpl {
   invoke<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     _request: any,
-    metadata: grpcWeb.grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined
   ): Observable<any> {
     const upStreamCodes = this.options.upStreamRetryCodes || [];
     const DEFAULT_TIMEOUT_TIME: number = 3_000;
@@ -1306,14 +1485,14 @@ export class GrpcWebImpl {
         : metadata || this.options.metadata;
     return new Observable((observer) => {
       const upStream = () => {
-        const client = grpcWeb.grpc.invoke(methodDesc, {
+        const client = grpc.invoke(methodDesc, {
           host: this.host,
           request,
           transport: this.options.streamingTransport || this.options.transport,
           metadata: maybeCombinedMetadata,
           debug: this.options.debug,
           onMessage: (next) => observer.next(next),
-          onEnd: (code: grpcWeb.grpc.Code, message: string, trailers: grpcWeb.grpc.Metadata) => {
+          onEnd: (code: grpc.Code, message: string, trailers: grpc.Metadata) => {
             if (code === 0) {
               observer.complete();
             } else if (upStreamCodes.includes(code)) {
@@ -1369,7 +1548,7 @@ type DeepPartial<T> = T extends Builtin
   : Partial<T>;
 
 export class GrpcWebError extends tsProtoGlobalThis.Error {
-  constructor(message: string, public code: grpcWeb.grpc.Code, public metadata: grpcWeb.grpc.Metadata) {
+  constructor(message: string, public code: grpc.Code, public metadata: grpc.Metadata) {
     super(message);
   }
 }
