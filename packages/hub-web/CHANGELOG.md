@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.3.6
+
+### Patch Changes
+
+- f1c6b25: Fetch, validate and store username proofs from fname registry
+- Updated dependencies [f1c6b25]
+  - @farcaster/core@0.9.1
+
 ## 0.3.5
 
 ### Patch Changes
