@@ -245,7 +245,7 @@ export class Hub implements HubInterface {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
     }
 
-    if (options.fnameServerUrl) {
+    if (options.fnameServerUrl && options.fnameServerUrl !== '') {
       this.fNameRegistryEventsProvider = new FNameRegistryEventsProvider(
         new FNameRegistryClient(options.fnameServerUrl),
         this,
