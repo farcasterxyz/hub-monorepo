@@ -4,7 +4,8 @@ import { HubInterface } from '../hubble.js';
 import { hexStringToBytes, UserNameProof, UserNameType, utf8StringToBytes } from '@farcaster/hub-nodejs';
 import { Result } from 'neverthrow';
 
-const DEFAULT_POLL_TIMEOUT_IN_MS = 10_000;
+const DEFAULT_POLL_TIMEOUT_IN_MS = 30_000;
+const DEFAULT_READ_TIMEOUT_IN_MS = 10_000;
 
 const log = logger.child({
   component: 'FNameRegistryEventsProvider',
@@ -21,7 +22,7 @@ export type FNameTransfer = {
 };
 
 export interface FNameRegistryClientInterface {
-  getTransfers(since: number): Promise<FNameTransfer[]>;
+  getTransfers(fromId: number): Promise<FNameTransfer[]>;
 }
 
 export class FNameRegistryClient implements FNameRegistryClientInterface {
@@ -30,8 +31,10 @@ export class FNameRegistryClient implements FNameRegistryClientInterface {
     this.url = url;
   }
 
-  public async getTransfers(since = 0): Promise<FNameTransfer[]> {
-    const response = await axios.get(`${this.url}/transfers?since=${since}`);
+  public async getTransfers(fromId = 0): Promise<FNameTransfer[]> {
+    const response = await axios.get(`${this.url}/transfers?from_id=${fromId}`, {
+      timeout: DEFAULT_READ_TIMEOUT_IN_MS,
+    });
     return response.data.transfers;
   }
 }
@@ -39,7 +42,7 @@ export class FNameRegistryClient implements FNameRegistryClientInterface {
 export class FNameRegistryEventsProvider {
   private client: FNameRegistryClientInterface;
   private hub: HubInterface;
-  private lastTransferTimestamp = 0;
+  private lastTransferId = 0;
   private resyncEvents: boolean;
   private pollTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -53,15 +56,15 @@ export class FNameRegistryEventsProvider {
     const result = await this.hub.getHubState();
     if (result.isErr()) {
       log.error(`Failed to get hub state: ${result.error}, defaulting to the beginning`);
-      this.lastTransferTimestamp = 0;
+      this.lastTransferId = 0;
     } else {
-      this.lastTransferTimestamp = result.value.lastFnameProof;
+      this.lastTransferId = result.value.lastFnameProof;
     }
     if (this.resyncEvents) {
       log.error(`Resyncing fname events from the beginning`);
-      this.lastTransferTimestamp = 0;
+      this.lastTransferId = 0;
     }
-    log.info(`Starting fname events provider from ${this.lastTransferTimestamp}`);
+    log.info(`Starting fname events provider from ${this.lastTransferId}`);
     return this.pollForNewEvents();
   }
 
@@ -72,12 +75,13 @@ export class FNameRegistryEventsProvider {
   }
 
   private async pollForNewEvents() {
-    await this.fetchAndMergeTransfers(this.lastTransferTimestamp);
+    await this.fetchAndMergeTransfers(this.lastTransferId);
     this.pollTimeoutId = setTimeout(this.pollForNewEvents.bind(this), DEFAULT_POLL_TIMEOUT_IN_MS);
   }
 
-  private async fetchAndMergeTransfers(since: number) {
-    let transfers = await this.client.getTransfers(since);
+  private async fetchAndMergeTransfers(fromId: number) {
+    this.lastTransferId = fromId;
+    let transfers = await this.safeGetTransfers(fromId);
     let transfersCount = 0;
     while (transfers.length > 0) {
       transfersCount += transfers.length;
@@ -86,16 +90,25 @@ export class FNameRegistryEventsProvider {
       if (!lastTransfer) {
         break;
       }
-      this.lastTransferTimestamp = lastTransfer.timestamp;
-      transfers = await this.client.getTransfers(lastTransfer.timestamp);
+      this.lastTransferId = lastTransfer.timestamp;
+      transfers = await this.safeGetTransfers(lastTransfer.timestamp);
     }
-    log.info(`Fetch ${transfersCount} upto ${this.lastTransferTimestamp}`);
+    log.info(`Fetched ${transfersCount} fname events upto ${this.lastTransferId}`);
     const result = await this.hub.getHubState();
     if (result.isOk()) {
-      result.value.lastFnameProof = this.lastTransferTimestamp;
+      result.value.lastFnameProof = this.lastTransferId;
       await this.hub.putHubState(result.value);
     } else {
       log.error({ errCode: result.error.errCode }, `failed to get hub state: ${result.error.message}`);
+    }
+  }
+
+  private async safeGetTransfers(fromId: number) {
+    try {
+      return await this.client.getTransfers(fromId);
+    } catch (err) {
+      log.error(err, `Failed to get transfers from ${fromId}`);
+      return [];
     }
   }
 

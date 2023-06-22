@@ -13,6 +13,7 @@ import { utf8ToBytes } from '@noble/curves/abstract/utils';
 class MockFnameRegistryClient implements FNameRegistryClientInterface {
   private transfersToReturn: FNameTransfer[][] = [];
   private minimumSince = 0;
+  private timesToThrow = 0;
 
   setTransfersToReturn(transfers: FNameTransfer[][]) {
     this.transfersToReturn = transfers;
@@ -22,7 +23,15 @@ class MockFnameRegistryClient implements FNameRegistryClientInterface {
     this.minimumSince = minimumSince;
   }
 
+  throwOnce() {
+    this.timesToThrow = 1;
+  }
+
   async getTransfers(since: 0): Promise<FNameTransfer[]> {
+    if (this.timesToThrow > 0) {
+      this.timesToThrow--;
+      throw new Error('connection failed');
+    }
     expect(since).toBeGreaterThanOrEqual(this.minimumSince);
     const transfers = this.transfersToReturn.shift();
     if (!transfers) {
@@ -75,12 +84,23 @@ describe('fnameRegistryEventsProvider', () => {
       expect(await getUserNameProof(db, utf8ToBytes('test2'))).toBeTruthy();
       expect((await hub.getHubState())._unsafeUnwrap().lastFnameProof).toEqual(transferEvents[3]!.timestamp);
     });
+
+    it('does not fail on errors', async () => {
+      mockFnameRegistryClient.throwOnce();
+      await provider.start();
+    });
   });
 
-  describe('handles events', () => {
+  describe('merges events', () => {
     it('deletes a proof from the db when a username is unregistered', async () => {
       await provider.start();
       await expect(getUserNameProof(db, utf8ToBytes('test3'))).rejects.toThrowError('NotFound');
+    });
+
+    it('does not fail if there are errors merging events', async () => {
+      // Return duplicate events
+      mockFnameRegistryClient.setTransfersToReturn([transferEvents, transferEvents]);
+      await provider.start();
     });
   });
 });
