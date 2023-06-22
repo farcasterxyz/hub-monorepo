@@ -1,4 +1,4 @@
-import { NameRegistryEvent } from '@farcaster/hub-nodejs';
+import { NameRegistryEvent, UserNameProof } from '@farcaster/hub-nodejs';
 import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
 import { RootPrefix } from '../db/types.js';
 
@@ -6,6 +6,10 @@ const EXPIRY_BYTES = 4;
 
 export const makeNameRegistryEventPrimaryKey = (fname: Uint8Array): Buffer => {
   return Buffer.concat([Buffer.from([RootPrefix.NameRegistryEvent]), Buffer.from(fname)]);
+};
+
+export const makeUserNameProofPrimaryKey = (name: Uint8Array): Buffer => {
+  return Buffer.concat([Buffer.from([RootPrefix.UserNameProof]), Buffer.from(name)]);
 };
 
 export const makeNameRegistryEventByExpiryKey = (expiry: number, fname?: Uint8Array): Buffer => {
@@ -22,6 +26,12 @@ export const getNameRegistryEvent = async (db: RocksDB, fname: Uint8Array): Prom
   const primaryKey = makeNameRegistryEventPrimaryKey(fname);
   const buffer = await db.get(primaryKey);
   return NameRegistryEvent.decode(new Uint8Array(buffer));
+};
+
+export const getUserNameProof = async (db: RocksDB, name: Uint8Array): Promise<UserNameProof> => {
+  const primaryKey = makeUserNameProofPrimaryKey(name);
+  const buffer = await db.get(primaryKey);
+  return UserNameProof.decode(new Uint8Array(buffer));
 };
 
 export const getNameRegistryEventsByExpiryIterator = (db: RocksDB): Iterator => {
@@ -54,6 +64,22 @@ export const putNameRegistryEventTransaction = (txn: Transaction, event: NameReg
     const byExpiryKey = makeNameRegistryEventByExpiryKey(event.expiry, event.fname);
     txn = txn.put(byExpiryKey, eventBuffer);
   }
+
+  return txn;
+};
+
+export const putUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
+  const proofBuffer = Buffer.from(UserNameProof.encode(usernameProof).finish());
+
+  const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
+  txn = txn.put(primaryKey, proofBuffer);
+
+  return txn;
+};
+
+export const deleteUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
+  const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
+  txn = txn.del(primaryKey);
 
   return txn;
 };

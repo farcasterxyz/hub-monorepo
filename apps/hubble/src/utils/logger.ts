@@ -5,6 +5,7 @@ import {
   Message,
   MessageType,
   NameRegistryEvent,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
 import pino from 'pino';
 
@@ -75,5 +76,13 @@ export const nameRegistryEventToLog = (event: NameRegistryEvent) => {
     blockNumber: event.blockNumber,
     fname: Buffer.from(event.fname).toString('utf-8').replace(/\0/g, ''),
     to: bytesToHexString(event.to)._unsafeUnwrap(),
+  };
+};
+
+export const usernameProofToLog = (usernameProof: UserNameProof) => {
+  return {
+    timestamp: usernameProof.timestamp,
+    name: Buffer.from(usernameProof.name).toString('utf-8').replace(/\0/g, ''),
+    owner: bytesToHexString(usernameProof.owner)._unsafeUnwrap(),
   };
 };

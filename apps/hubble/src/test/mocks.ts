@@ -7,8 +7,9 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
-import { err, ok } from 'neverthrow';
+import { ok, ResultAsync } from 'neverthrow';
 import { HubInterface, HubSubmitSource } from '../hubble.js';
 import { GossipNode } from '../network/p2p/gossipNode.js';
 import RocksDB from '../storage/db/rocksdb.js';
@@ -16,6 +17,7 @@ import Engine from '../storage/engine/index.js';
 import { AbstractProvider, Block, BlockTag, Network, Networkish, TransactionRequest } from 'ethers';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { ContactInfoContent } from '@farcaster/core';
+import { getHubState, putHubState } from '../storage/db/hubState.js';
 
 export class MockHub implements HubInterface {
   public db: RocksDB;
@@ -47,16 +49,22 @@ export class MockHub implements HubInterface {
     return this.engine.mergeNameRegistryEvent(event);
   }
 
-  async getHubState(): HubAsyncResult<HubState> {
-    // return ResultAsync.fromPromise(HubState.get(this.db), (e) => e as HubError);
-    return err(new HubError('unavailable', 'Not implemented'));
+  async submitUserNameProof(proof: UserNameProof): HubAsyncResult<number> {
+    return this.engine.mergeUserNameProof(proof);
   }
 
-  async putHubState(_hubState: HubState): HubAsyncResult<void> {
-    // const txn = this.db.transaction();
-    // HubStateModel.putTransaction(txn, hubState);
-    // return await ResultAsync.fromPromise(this.db.commit(txn), (e) => e as HubError);
-    return err(new HubError('unavailable', 'Not implemented'));
+  async getHubState(): HubAsyncResult<HubState> {
+    const result = await ResultAsync.fromPromise(getHubState(this.db), (e) => e as HubError);
+    if (result.isErr() && result.error.errCode === 'not_found') {
+      const hubState = HubState.create({ lastEthBlock: 0, lastFnameProof: 0 });
+      await putHubState(this.db, hubState);
+      return ok(hubState);
+    }
+    return result;
+  }
+
+  async putHubState(hubState: HubState): HubAsyncResult<void> {
+    return await ResultAsync.fromPromise(putHubState(this.db, hubState), (e) => e as HubError);
   }
 
   async gossipContactInfo(): HubAsyncResult<void> {

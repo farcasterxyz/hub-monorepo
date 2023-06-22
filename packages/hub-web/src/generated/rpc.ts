@@ -19,6 +19,9 @@ import {
   HubInfoResponse,
   IdRegistryEventByAddressRequest,
   IdRegistryEventRequest,
+  LinkRequest,
+  LinksByFidRequest,
+  LinksByTargetRequest,
   MessagesResponse,
   NameRegistryEventRequest,
   ReactionRequest,
@@ -87,6 +90,13 @@ export interface HubService {
     metadata?: grpcWeb.grpc.Metadata
   ): Promise<IdRegistryEvent>;
   getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse>;
+  /** Links */
+  getLink(request: DeepPartial<LinkRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
+  getLinksByFid(request: DeepPartial<LinksByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  getLinksByTarget(
+    request: DeepPartial<LinksByTargetRequest>,
+    metadata?: grpcWeb.grpc.Metadata
+  ): Promise<MessagesResponse>;
   /** Bulk Methods */
   getAllCastMessagesByFid(
     request: DeepPartial<FidRequest>,
@@ -105,6 +115,10 @@ export interface HubService {
     metadata?: grpcWeb.grpc.Metadata
   ): Promise<MessagesResponse>;
   getAllUserDataMessagesByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpcWeb.grpc.Metadata
+  ): Promise<MessagesResponse>;
+  getAllLinkMessagesByFid(
     request: DeepPartial<FidRequest>,
     metadata?: grpcWeb.grpc.Metadata
   ): Promise<MessagesResponse>;
@@ -149,11 +163,15 @@ export class HubServiceClientImpl implements HubService {
     this.getIdRegistryEvent = this.getIdRegistryEvent.bind(this);
     this.getIdRegistryEventByAddress = this.getIdRegistryEventByAddress.bind(this);
     this.getFids = this.getFids.bind(this);
+    this.getLink = this.getLink.bind(this);
+    this.getLinksByFid = this.getLinksByFid.bind(this);
+    this.getLinksByTarget = this.getLinksByTarget.bind(this);
     this.getAllCastMessagesByFid = this.getAllCastMessagesByFid.bind(this);
     this.getAllReactionMessagesByFid = this.getAllReactionMessagesByFid.bind(this);
     this.getAllVerificationMessagesByFid = this.getAllVerificationMessagesByFid.bind(this);
     this.getAllSignerMessagesByFid = this.getAllSignerMessagesByFid.bind(this);
     this.getAllUserDataMessagesByFid = this.getAllUserDataMessagesByFid.bind(this);
+    this.getAllLinkMessagesByFid = this.getAllLinkMessagesByFid.bind(this);
     this.getInfo = this.getInfo.bind(this);
     this.getSyncStatus = this.getSyncStatus.bind(this);
     this.getAllSyncIdsByPrefix = this.getAllSyncIdsByPrefix.bind(this);
@@ -271,6 +289,21 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceGetFidsDesc, FidsRequest.fromPartial(request), metadata);
   }
 
+  getLink(request: DeepPartial<LinkRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
+    return this.rpc.unary(HubServiceGetLinkDesc, LinkRequest.fromPartial(request), metadata);
+  }
+
+  getLinksByFid(request: DeepPartial<LinksByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetLinksByFidDesc, LinksByFidRequest.fromPartial(request), metadata);
+  }
+
+  getLinksByTarget(
+    request: DeepPartial<LinksByTargetRequest>,
+    metadata?: grpcWeb.grpc.Metadata
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetLinksByTargetDesc, LinksByTargetRequest.fromPartial(request), metadata);
+  }
+
   getAllCastMessagesByFid(
     request: DeepPartial<FidRequest>,
     metadata?: grpcWeb.grpc.Metadata
@@ -304,6 +337,13 @@ export class HubServiceClientImpl implements HubService {
     metadata?: grpcWeb.grpc.Metadata
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllUserDataMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+  }
+
+  getAllLinkMessagesByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpcWeb.grpc.Metadata
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetAllLinkMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
@@ -825,6 +865,75 @@ export const HubServiceGetFidsDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
+export const HubServiceGetLinkDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetLink',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return LinkRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = Message.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetLinksByFidDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetLinksByFid',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return LinksByFidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetLinksByTargetDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetLinksByTarget',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return LinksByTargetRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
 export const HubServiceGetAllCastMessagesByFidDesc: UnaryMethodDefinitionish = {
   methodName: 'GetAllCastMessagesByFid',
   service: HubServiceDesc,
@@ -919,6 +1028,29 @@ export const HubServiceGetAllSignerMessagesByFidDesc: UnaryMethodDefinitionish =
 
 export const HubServiceGetAllUserDataMessagesByFidDesc: UnaryMethodDefinitionish = {
   methodName: 'GetAllUserDataMessagesByFid',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetAllLinkMessagesByFid',
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
