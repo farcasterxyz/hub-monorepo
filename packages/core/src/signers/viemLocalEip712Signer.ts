@@ -6,6 +6,9 @@ import {
   EIP_712_FARCASTER_MESSAGE_DATA,
   EIP_712_FARCASTER_VERIFICATION_CLAIM,
   EIP_712_FARCASTER_DOMAIN,
+  UserNameProofClaim,
+  EIP_712_USERNAME_DOMAIN,
+  EIP_712_USERNAME_PROOF,
 } from '../crypto/eip712';
 import { HubAsyncResult, HubError } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
@@ -47,9 +50,20 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         domain: EIP_712_FARCASTER_DOMAIN,
         types: { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
         primaryType: 'VerificationClaim',
-        message: {
-          ...claim,
-        },
+        message: claim,
+      }),
+      (e) => new HubError('bad_request.invalid_param', e as Error)
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signUserNameProof(userNameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._viemLocalAccount.signTypedData({
+        domain: EIP_712_USERNAME_DOMAIN,
+        types: { UserNameProof: EIP_712_USERNAME_PROOF },
+        primaryType: 'UserNameProof',
+        message: userNameProof,
       }),
       (e) => new HubError('bad_request.invalid_param', e as Error)
     );

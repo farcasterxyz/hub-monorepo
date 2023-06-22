@@ -91,21 +91,21 @@ describe('validateCastId', () => {
   });
 
   test('fails when fid is invalid', async () => {
-    const castId = await Factories.CastId.build({ fid: 0 });
+    const castId = Factories.CastId.build({ fid: 0 });
     expect(validations.validateCastId(castId)).toEqual(
       err(new HubError('bad_request.validation_failure', 'fid is missing'))
     );
   });
 
   test('fails when hash is invalid', async () => {
-    const castId = await Factories.CastId.build({ hash: new Uint8Array() });
+    const castId = Factories.CastId.build({ hash: new Uint8Array() });
     expect(validations.validateCastId(castId)).toEqual(
       err(new HubError('bad_request.validation_failure', 'hash is missing'))
     );
   });
 
   test('fails when both fid and tsHash are invalid', async () => {
-    const castId = await Factories.CastId.build({ fid: undefined, hash: undefined });
+    const castId = Factories.CastId.build({ fid: undefined, hash: undefined });
     expect(validations.validateCastId(castId)).toEqual(
       err(new HubError('bad_request.validation_failure', 'fid is missing, hash is missing'))
     );
@@ -451,12 +451,12 @@ describe('validateCastAddBody', () => {
 
 describe('validateCastRemoveBody', () => {
   test('succeeds', async () => {
-    const body = await Factories.CastRemoveBody.build();
+    const body = Factories.CastRemoveBody.build();
     expect(validations.validateCastRemoveBody(body)._unsafeUnwrap()).toEqual(body);
   });
 
   test('fails when targetHash is missing', async () => {
-    const body = await Factories.CastRemoveBody.build({ targetHash: undefined });
+    const body = Factories.CastRemoveBody.build({ targetHash: undefined });
     expect(validations.validateCastRemoveBody(body)._unsafeUnwrapErr()).toEqual(
       new HubError('bad_request.validation_failure', 'hash is missing')
     );
@@ -527,9 +527,12 @@ describe('validateReactionBody', () => {
 });
 
 describe('validateVerificationAddEthAddressBody', () => {
+  const fid = Factories.Fid.build();
+  const network = Factories.FarcasterNetwork.build();
+
   test('succeeds', async () => {
-    const body = await Factories.VerificationAddEthAddressBody.build();
-    const result = await validations.validateVerificationAddEthAddressBody(body);
+    const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
+    const result = await validations.validateVerificationAddEthAddressBody(body, fid, network);
     expect(result).toEqual(ok(body));
   });
 
@@ -539,7 +542,7 @@ describe('validateVerificationAddEthAddressBody', () => {
 
     afterEach(async () => {
       // TODO: improve VerificationAddEthAddressBody factory so that it doesn't always try to generate ethSignature
-      const result = await validations.validateVerificationAddEthAddressBody(body);
+      const result = await validations.validateVerificationAddEthAddressBody(body, fid, network);
       expect(result).toEqual(err(new HubError('bad_request.validation_failure', hubErrorMessage)));
     });
 
@@ -575,7 +578,7 @@ describe('validateVerificationAddEthAddressSignature', () => {
 
   test('succeeds', async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
-    const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result.isOk()).toBeTruthy();
   });
 
@@ -583,8 +586,8 @@ describe('validateVerificationAddEthAddressSignature', () => {
     const body = await Factories.VerificationAddEthAddressBody.create({
       ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
     });
-    const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError('bad_request', 'invalid ethSignature')));
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    expect(result).toEqual(err(new HubError('unknown', 'Cannot convert 0x to a BigInt')));
   });
 
   test('fails with eth signature from different address', async () => {
@@ -597,7 +600,7 @@ describe('validateVerificationAddEthAddressSignature', () => {
       blockHash,
       address: Factories.EthAddress.build(),
     });
-    const result = validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'ethSignature does not match address')));
   });
 });
@@ -839,11 +842,11 @@ describe('validateMessage', () => {
 });
 
 describe('validateMessageData', () => {
-  test('fails with timestamp more than 10 mins in the future', () => {
+  test('fails with timestamp more than 10 mins in the future', async () => {
     const data = Factories.MessageData.build({
       timestamp: getFarcasterTime()._unsafeUnwrap() + validations.ALLOWED_CLOCK_SKEW_SECONDS + 1,
     });
-    const result = validations.validateMessageData(data);
+    const result = await validations.validateMessageData(data);
     expect(result).toEqual(
       err(new HubError('bad_request.validation_failure', 'timestamp more than 10 mins in the future'))
     );
@@ -861,30 +864,30 @@ describe('validateMessageData', () => {
       global.Date.now = realDateNow;
     });
 
-    test('fails with embedsDeprecated when timestamp is past cut-off', () => {
+    test('fails with embedsDeprecated when timestamp is past cut-off', async () => {
       const data = Factories.CastAddData.build({
         timestamp: validations.EMBEDS_V1_CUTOFF + 1,
         castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
       });
-      const result = validations.validateMessageData(data);
+      const result = await validations.validateMessageData(data);
       expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'string embeds have been deprecated')));
     });
 
-    test('fails with embedsDeprecated when timestamp is at cut-off', () => {
+    test('fails with embedsDeprecated when timestamp is at cut-off', async () => {
       const data = Factories.CastAddData.build({
         timestamp: validations.EMBEDS_V1_CUTOFF,
         castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
       });
-      const result = validations.validateMessageData(data);
+      const result = await validations.validateMessageData(data);
       expect(result).toEqual(err(new HubError('bad_request.validation_failure', 'string embeds have been deprecated')));
     });
 
-    test('succeeds with embedsDeprecated when timestamp is before cut-off', () => {
+    test('succeeds with embedsDeprecated when timestamp is before cut-off', async () => {
       const data = Factories.CastAddData.build({
         timestamp: validations.EMBEDS_V1_CUTOFF - 1,
         castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
       });
-      const result = validations.validateMessageData(data);
+      const result = await validations.validateMessageData(data);
       expect(result).toEqual(ok(data));
     });
   });

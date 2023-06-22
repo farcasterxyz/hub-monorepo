@@ -20,8 +20,8 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
       const hash = blake3(bytes, { dkLen: 20 });
       const signature = await signer.signMessageHash(hash);
       expect(signature.isOk()).toBeTruthy();
-      const recoveredAddress = eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap());
-      expect(recoveredAddress).toEqual(ok(signerKey));
+      const valid = await eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap(), signerKey);
+      expect(valid).toEqual(ok(true));
     });
   });
 
@@ -42,8 +42,8 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
 
     test('succeeds', async () => {
-      const recoveredAddress = eip712.verifyVerificationEthAddressClaimSignature(claim, signature);
-      expect(recoveredAddress).toEqual(ok(signerKey));
+      const valid = await eip712.verifyVerificationEthAddressClaimSignature(claim, signature, signerKey);
+      expect(valid).toEqual(ok(true));
     });
 
     test('succeeds when encoding twice', async () => {

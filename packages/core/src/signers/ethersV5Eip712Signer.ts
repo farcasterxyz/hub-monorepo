@@ -30,7 +30,7 @@ export class EthersV5Eip712Signer extends Eip712Signer {
     const hexSignature = await ResultAsync.fromPromise(
       this._typedDataSigner._signTypedData(
         eip712.EIP_712_FARCASTER_DOMAIN,
-        { MessageData: eip712.EIP_712_FARCASTER_MESSAGE_DATA },
+        { MessageData: [...eip712.EIP_712_FARCASTER_MESSAGE_DATA] },
         { hash }
       ),
       (e) => new HubError('bad_request.invalid_param', e as Error)
@@ -42,7 +42,7 @@ export class EthersV5Eip712Signer extends Eip712Signer {
     const hexSignature = await ResultAsync.fromPromise(
       this._typedDataSigner._signTypedData(
         eip712.EIP_712_FARCASTER_DOMAIN,
-        { VerificationClaim: eip712.EIP_712_FARCASTER_VERIFICATION_CLAIM },
+        { VerificationClaim: [...eip712.EIP_712_FARCASTER_VERIFICATION_CLAIM] },
         claim
       ),
       (e) => new HubError('bad_request.invalid_param', e as Error)

@@ -1,7 +1,7 @@
 import * as protobufs from '../protobufs';
 import * as ed from '@noble/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { randomBytes } from 'ethers';
+import { randomBytes } from '@noble/hashes/utils';
 import { HubError } from '../errors';
 import { Factories } from '../factories';
 import * as ed25519 from './ed25519';

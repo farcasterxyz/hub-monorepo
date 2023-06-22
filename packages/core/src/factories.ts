@@ -2,13 +2,13 @@ import { faker } from '@faker-js/faker';
 import { Factory } from '@farcaster/fishery';
 import { ed25519 } from '@noble/curves/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
+import { randomBytes } from '@noble/hashes/utils';
 import { Wallet } from 'ethers';
 import * as protobufs from './protobufs';
 import { bytesToHexString } from './bytes';
 import { Ed25519Signer, Eip712Signer, EthersEip712Signer, NobleEd25519Signer, Signer } from './signers';
 import { getFarcasterTime } from './time';
 import { VerificationEthAddressClaim } from './verifications';
-import { randomBytes } from '@noble/hashes/utils';
 
 /** Scalars */
 

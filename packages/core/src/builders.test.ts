@@ -271,7 +271,7 @@ describe('makeMessageHash', () => {
     });
     const message = await builders.makeCastAdd(body, { fid, network }, ed25519Signer);
     expect(message.isOk()).toBeTruthy();
-    const data = builders.makeCastAddData(body, { fid, network });
+    const data = await builders.makeCastAddData(body, { fid, network });
     expect(data.isOk()).toBeTruthy();
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
     expect(hash).toEqual(ok(message._unsafeUnwrap().hash));
@@ -283,7 +283,7 @@ describe('makeMessageWithSignature', () => {
     const body = protobufs.SignerAddBody.create({ signer: signerKey });
     const signerAdd = await builders.makeSignerAdd(body, { fid, network }, eip712Signer);
 
-    const data = builders.makeSignerAddData(body, { fid, network });
+    const data = await builders.makeSignerAddData(body, { fid, network });
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
     const signature = (await eip712Signer.signMessageHash(hash._unsafeUnwrap()))._unsafeUnwrap();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
@@ -302,7 +302,7 @@ describe('makeMessageWithSignature', () => {
     const signature = hexStringToBytes(
       '0xf8dc77d52468483806addab7d397836e802551bfb692604e2d7df4bc4820556c63524399a63d319ae4b027090ce296ade08286878dc1f414b62412f89e8bc4e01b'
     )._unsafeUnwrap();
-    const data = builders.makeSignerAddData({ signer: signerKey }, { fid, network });
+    const data = await builders.makeSignerAddData({ signer: signerKey }, { fid, network });
     expect(data.isOk()).toBeTruthy();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
       signer: ethSignerKey,

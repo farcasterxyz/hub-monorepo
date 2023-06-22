@@ -1,6 +1,6 @@
 /* eslint-disable security/detect-object-injection */
 import { err, ok, Result } from 'neverthrow';
-import { bytesToHex, hexToBytes } from '@noble/curves/abstract/utils';
+import { bytesToHex, hexToBytes } from 'viem';
 import { HubError, HubResult } from './errors';
 
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
@@ -64,16 +64,16 @@ export const bytesDecrement = (inputBytes: Uint8Array): HubResult<Uint8Array> =>
   return ok(bytes);
 };
 
-export const bytesToHexString = (bytes: Uint8Array): HubResult<string> => {
+export const bytesToHexString = (bytes: Uint8Array): HubResult<`0x${string}`> => {
   return Result.fromThrowable(
-    (bytes: Uint8Array) => '0x' + bytesToHex(bytes),
+    (bytes: Uint8Array) => bytesToHex(bytes),
     (e) => new HubError('unknown', e as Error)
   )(bytes);
 };
 
 export const hexStringToBytes = (hex: string): HubResult<Uint8Array> => {
   return Result.fromThrowable(
-    (hex: string) => hexToBytes(hex.substring(0, 2) === '0x' ? hex.substring(2) : hex),
+    (hex: string) => hexToBytes(hex.startsWith('0x') ? (hex as `0x${string}`) : `0x${hex}`),
     (e) => new HubError('unknown', e as Error)
   )(hex);
 };
