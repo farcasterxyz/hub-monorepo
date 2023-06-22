@@ -47,6 +47,7 @@ if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
 }
 
 export const logger = pino.pino(defaultOptions);
+export type Logger = pino.Logger;
 
 export const messageTypeToName = (type?: MessageType) => {
   if (!type) return '';

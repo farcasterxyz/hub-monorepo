@@ -37,6 +37,7 @@
     "@types/node-cron": "^3.0.7",
     "@types/progress": "^2.0.5",
     "@types/rwlock": "^5.0.3",
+    "@viem/anvil": "^0.0.6",
     "chance": "~1.1.11",
     "csv-stringify": "~6.3.0",
     "eslint-config-custom": "*",
@@ -63,10 +64,10 @@
     "@libp2p/utils": "^3.0.2",
     "@multiformats/multiaddr": "^11.0.0",
     "@noble/curves": "^1.0.0",
+    "abitype": "^0.8.3",
     "async-lock": "^1.4.0",
     "axios": "^1.4.0",
     "commander": "~10.0.0",
-    "ethers": "~6.2.1",
     "libp2p": "0.42.2",
     "neverthrow": "~6.0.0",
     "node-cron": "~3.0.2",
@@ -74,6 +75,7 @@
     "rate-limiter-flexible": "^2.4.1",
     "rwlock": "~5.0.0",
     "semver": "^7.5.0",
-    "tiny-typed-emitter": "~2.1.0"
+    "tiny-typed-emitter": "~2.1.0",
+    "viem": "^1.1.4"
   }
 }

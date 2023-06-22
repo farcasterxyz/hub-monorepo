@@ -101,6 +101,9 @@ jobs:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('**/yarn.lock') }}
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
       - name: Install dependencies
         run: yarn install
 
