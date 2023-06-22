@@ -33,7 +33,8 @@ export class GoerliEthConstants {
 type NameRegistryRenewEvent = Omit<NameRegistryEvent, 'to' | 'from'>;
 
 /**
- * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
+ * Class that follows the Ethereum chain to handle on-chain events from the ID
+ * Registry and Name Registry contracts.
  */
 export class EthEventsProvider {
   private _hub: HubInterface;
@@ -56,18 +57,20 @@ export class EthEventsProvider {
   private _watchIdRegistryTransfers: WatchContractEvent<typeof IdRegistry.abi, 'Transfer', true>;
   private _watchBlockNumber: WatchBlockNumber;
 
-  // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
+  // Whether the historical events have been synced. This is used to avoid
+  // syncing the events multiple times.
   private _isHistoricalSyncDone = false;
 
-  // Number of blocks to wait before processing an event.
-  // This is hardcoded to 6 for now, because that's the threshold beyond which blocks are unlikely to reorg anymore.
-  // 6 blocks represents ~72 seconds on Goerli, so the delay is not too long.
+  // Number of blocks to wait before processing an event. This is hardcoded to
+  // 6 for now, because that's the threshold beyond which blocks are unlikely
+  // to reorg anymore. 6 blocks represents ~72 seconds on Goerli, so the delay
+  // is not too long.
   static numConfirmations = 6;
 
-  // Events are only processed after 6 blocks have been confirmed, so we can
-  // poll at a slower interval than the default without delaying any
-  // downstram effects.
-  static eventPollingInterval = (EthEventsProvider.numConfirmations / 2) * 12_000;
+  // Events are only processed after 6 blocks have been confirmed; poll less
+  // frequently while ensuring events are available the moment they are
+  // confirmed.
+  static eventPollingInterval = (EthEventsProvider.numConfirmations - 2) * 12_000;
   static blockPollingInterval = 4_000;
 
   constructor(
@@ -87,8 +90,8 @@ export class EthEventsProvider {
 
     this._lastBlockNumber = 0;
 
-    // Initialize the cache for the ID and Name Registry events. They will be processed after
-    // numConfirmations blocks have been mined.
+    // Initialize the cache for the ID and Name Registry events. They will be
+    // processed after numConfirmations blocks have been mined.
     this._nameEventsByBlock = new Map();
     this._idEventsByBlock = new Map();
     this._renewEventsByBlock = new Map();
