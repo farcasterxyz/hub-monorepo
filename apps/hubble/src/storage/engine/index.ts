@@ -227,7 +227,7 @@ class Engine {
   }
 
   async mergeUserNameProof(usernameProof: UserNameProof): HubAsyncResult<number> {
-    // TODO: Validate signature
+    // TODO: Validate signature here instead of the fname event provider
     return ResultAsync.fromPromise(this._userDataStore.mergeUserNameProof(usernameProof), (e) => e as HubError);
   }
 

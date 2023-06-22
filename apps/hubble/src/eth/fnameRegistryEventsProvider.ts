@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { HubInterface } from '../hubble.js';
-import { hexStringToBytes, UserNameProof, UserNameType, utf8StringToBytes } from '@farcaster/hub-nodejs';
+import { eip712, hexStringToBytes, UserNameProof, UserNameType, utf8StringToBytes } from '@farcaster/hub-nodejs';
 import { Result } from 'neverthrow';
+import { bytesCompare } from '@farcaster/core';
 
 const DEFAULT_POLL_TIMEOUT_IN_MS = 30_000;
 const DEFAULT_READ_TIMEOUT_IN_MS = 10_000;
@@ -23,6 +24,7 @@ export type FNameTransfer = {
 
 export interface FNameRegistryClientInterface {
   getTransfers(fromId: number): Promise<FNameTransfer[]>;
+  getSigner(): Promise<string>;
 }
 
 export class FNameRegistryClient implements FNameRegistryClientInterface {
@@ -37,6 +39,13 @@ export class FNameRegistryClient implements FNameRegistryClientInterface {
     });
     return response.data.transfers;
   }
+
+  public async getSigner(): Promise<string> {
+    const response = await axios.get(`${this.url}/signer`, {
+      timeout: DEFAULT_READ_TIMEOUT_IN_MS,
+    });
+    return response.data.signer;
+  }
 }
 
 export class FNameRegistryEventsProvider {
@@ -45,11 +54,13 @@ export class FNameRegistryEventsProvider {
   private lastTransferId = 0;
   private resyncEvents: boolean;
   private pollTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private signerAddress: Uint8Array;
 
   constructor(fnameRegistryClient: FNameRegistryClientInterface, hub: HubInterface, resyncEvents = false) {
     this.client = fnameRegistryClient;
     this.hub = hub;
     this.resyncEvents = resyncEvents;
+    this.signerAddress = new Uint8Array();
   }
 
   public async start() {
@@ -64,7 +75,12 @@ export class FNameRegistryEventsProvider {
       log.error(`Resyncing fname events from the beginning`);
       this.lastTransferId = 0;
     }
-    log.info(`Starting fname events provider from ${this.lastTransferId}`);
+    const rawAddress = await this.client.getSigner();
+    const signerAddress = hexStringToBytes(rawAddress);
+    if (signerAddress.isOk()) {
+      this.signerAddress = signerAddress.value;
+    }
+    log.info(`Starting fname events provider from ${this.lastTransferId} using signer: ${rawAddress}`);
     return this.pollForNewEvents();
   }
 
@@ -90,8 +106,8 @@ export class FNameRegistryEventsProvider {
       if (!lastTransfer) {
         break;
       }
-      this.lastTransferId = lastTransfer.timestamp;
-      transfers = await this.safeGetTransfers(lastTransfer.timestamp);
+      this.lastTransferId = lastTransfer.id;
+      transfers = await this.safeGetTransfers(this.lastTransferId);
     }
     log.info(`Fetched ${transfersCount} fname events upto ${this.lastTransferId}`);
     const result = await this.hub.getHubState();
@@ -113,6 +129,11 @@ export class FNameRegistryEventsProvider {
   }
 
   private async mergeTransfers(transfers: FNameTransfer[]) {
+    if (this.signerAddress.length === 0) {
+      log.warn(`No signer address, unable to merge name proofs`);
+      return;
+    }
+
     for (const transfer of transfers) {
       const serialized = Result.combine([
         utf8StringToBytes(transfer.username),
@@ -132,7 +153,20 @@ export class FNameRegistryEventsProvider {
         fid: transfer.to,
         type: UserNameType.USERNAME_TYPE_FNAME,
       });
-      await this.hub.submitUserNameProof(usernameProof, 'fname-registry');
+      // TODO: Move the validation into the engine
+      const recoveredAddress = eip712.verifyUserNameProof(
+        {
+          owner: transfer.owner,
+          timestamp: transfer.timestamp,
+          name: transfer.username,
+        },
+        signature
+      );
+      if (recoveredAddress.isOk() && bytesCompare(recoveredAddress.value, this.signerAddress) === 0) {
+        await this.hub.submitUserNameProof(usernameProof, 'fname-registry');
+      } else {
+        log.warn(`Failed to verify username proof for ${transfer.username} id: ${transfer.id}`);
+      }
     }
   }
 }
