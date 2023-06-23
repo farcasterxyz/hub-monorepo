@@ -8,6 +8,7 @@ import { HubAsyncResult, HubError } from '../errors';
 import { eip712 } from '../crypto';
 import { hexStringToBytes } from '../bytes';
 import { VerificationEthAddressClaim } from '../verifications';
+import { UserNameProofClaim } from 'crypto/eip712';
 
 export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
@@ -44,6 +45,18 @@ export class EthersV5Eip712Signer extends Eip712Signer {
         eip712.EIP_712_FARCASTER_DOMAIN,
         { VerificationClaim: [...eip712.EIP_712_FARCASTER_VERIFICATION_CLAIM] },
         claim
+      ),
+      (e) => new HubError('bad_request.invalid_param', e as Error)
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signUserNameProof(usernameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._typedDataSigner._signTypedData(
+        eip712.EIP_712_USERNAME_DOMAIN,
+        { UserNameProof: [...eip712.EIP_712_USERNAME_PROOF] },
+        usernameProof
       ),
       (e) => new HubError('bad_request.invalid_param', e as Error)
     );

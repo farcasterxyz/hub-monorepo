@@ -6,6 +6,8 @@ import { Factories } from '../factories';
 import { FarcasterNetwork } from '../protobufs';
 import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from '../verifications';
 import { Eip712Signer } from './eip712Signer';
+import { UserNameProofClaim } from '../crypto/eip712';
+import { bytesToHex } from 'viem';
 
 export const testEip712Signer = async (signer: Eip712Signer) => {
   let signerKey: Uint8Array;
@@ -49,6 +51,34 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     test('succeeds when encoding twice', async () => {
       const claim2: VerificationEthAddressClaim = { ...claim };
       const signature2 = await signer.signVerificationEthAddressClaim(claim2);
+      expect(signature2).toEqual(ok(signature));
+      expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(bytesToHexString(signature));
+    });
+  });
+
+  describe('signUserNameProof', () => {
+    let claim: UserNameProofClaim;
+    let signature: Uint8Array;
+
+    beforeAll(async () => {
+      claim = {
+        name: '0x000',
+        timestamp: Date.now(),
+        owner: bytesToHex(signerKey),
+      };
+      const signatureResult = await signer.signUserNameProof(claim);
+      expect(signatureResult.isOk()).toBeTruthy();
+      signature = signatureResult._unsafeUnwrap();
+    });
+
+    test('succeeds', async () => {
+      const valid = await eip712.verifyUserNameProof(claim, signature, signerKey);
+      expect(valid).toEqual(ok(true));
+    });
+
+    test('succeeds when encoding twice', async () => {
+      const claim2: UserNameProofClaim = { ...claim };
+      const signature2 = await signer.signUserNameProof(claim2);
       expect(signature2).toEqual(ok(signature));
       expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(bytesToHexString(signature));
     });

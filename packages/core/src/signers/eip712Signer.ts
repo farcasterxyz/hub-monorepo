@@ -2,6 +2,7 @@ import { SignatureScheme } from '../protobufs';
 import { HubAsyncResult } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
 import { Signer } from './signer';
+import { UserNameProofClaim } from 'crypto/eip712';
 
 /**
  * Extend this class to implement an EIP712 signer.
@@ -16,4 +17,5 @@ export abstract class Eip712Signer implements Signer {
   public abstract getSignerKey(): HubAsyncResult<Uint8Array>;
   public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
   public abstract signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array>;
+  public abstract signUserNameProof(claim: UserNameProofClaim): HubAsyncResult<Uint8Array>;
 }
