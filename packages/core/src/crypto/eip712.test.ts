@@ -14,7 +14,7 @@ describe('verifyUserNameProof', () => {
     const nameProof: UserNameProofClaim = {
       owner: '0x8773442740c17c9d0f0b87022c722f9a136206ed',
       name: 'farcaster',
-      timestamp: 1628882891n,
+      timestamp: 1628882891,
     };
     const signature = await signer.signUserNameProof(nameProof);
     expect(signature.isOk()).toBeTruthy();
@@ -30,7 +30,7 @@ describe('verifyUserNameProof', () => {
     const nameProof: UserNameProofClaim = {
       owner: '0x8773442740c17c9d0f0b87022c722f9a136206ed',
       name: 'farcaster',
-      timestamp: 1628882891n,
+      timestamp: 1628882891,
     };
     const signature = hexStringToBytes(
       '0xb7181760f14eda0028e0b647ff15f45235526ced3b4ae07fcce06141b73d32960d3253776e62f761363fb8137087192047763f4af838950a96f3885f3c2289c41b'

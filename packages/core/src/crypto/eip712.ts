@@ -71,7 +71,7 @@ export const verifyVerificationEthAddressClaimSignature = async (
 
 export type UserNameProofClaim = {
   name: string;
-  timestamp: bigint;
+  timestamp: number;
   owner: `0x${string}`;
 };
 
@@ -86,7 +86,10 @@ export const verifyUserNameProof = async (
       domain: EIP_712_USERNAME_DOMAIN,
       types: { UserNameProof: EIP_712_USERNAME_PROOF },
       primaryType: 'UserNameProof',
-      message: nameProof,
+      message: {
+        ...nameProof,
+        timestamp: BigInt(nameProof.timestamp),
+      },
       signature,
     }),
     (e) => new HubError('unknown', e as Error)

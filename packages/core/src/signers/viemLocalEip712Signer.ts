@@ -63,7 +63,10 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         domain: EIP_712_USERNAME_DOMAIN,
         types: { UserNameProof: EIP_712_USERNAME_PROOF },
         primaryType: 'UserNameProof',
-        message: userNameProof,
+        message: {
+          ...userNameProof,
+          timestamp: BigInt(userNameProof.timestamp),
+        },
       }),
       (e) => new HubError('bad_request.invalid_param', e as Error)
     );
