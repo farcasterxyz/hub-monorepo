@@ -165,6 +165,7 @@ export class HubReplicator {
     for (const fn of [
       this.getCastsByFidInBatchesOf,
       this.getReactionsByFidInBatchesOf,
+      this.getLinksByFidInBatchesOf,
       this.getSignersByFidInBatchesOf,
       this.getVerificationsByFidInBatchesOf,
       this.getUserDataByFidInBatchesOf,
@@ -204,6 +205,22 @@ export class HubReplicator {
 
       if (!pageToken?.length) break;
       result = await this.client.getReactionsByFid({ pageSize, pageToken, fid });
+    }
+  }
+
+  private async *getLinksByFidInBatchesOf(fid: number, pageSize: number) {
+    let result = await this.client.getLinksByFid({ pageSize, fid });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error('Unable to backfill', { cause: result.error });
+      }
+
+      const { messages, nextPageToken: pageToken } = result.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      result = await this.client.getLinksByFid({ pageSize, pageToken, fid });
     }
   }
 
