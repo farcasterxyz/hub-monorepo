@@ -35,6 +35,7 @@ import { getMessage, makeTsHash, typeToSetPostfix } from '../db/message.js';
 import { StoreEvents } from '../stores/storeEventHandler.js';
 import { makeVerificationEthAddressClaim } from '@farcaster/core';
 import { setReferenceDateForTest } from '../../utils/versions.js';
+import { getUserNameProof } from '../db/nameRegistryEvent.js';
 
 const db = jestRocksDB('protobufs.engine.test');
 const network = FarcasterNetwork.TESTNET;
@@ -112,6 +113,14 @@ describe('mergeNameRegistryEvent', () => {
     const invalidEvent = Factories.NameRegistryEvent.build({ type: 10 as unknown as NameRegistryEventType });
     const result = await engine.mergeNameRegistryEvent(invalidEvent);
     expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'invalid event type'));
+  });
+});
+
+describe('mergeUserNameProof', () => {
+  test('succeeds', async () => {
+    const userNameProof = Factories.UserNameProof.build();
+    await expect(engine.mergeUserNameProof(userNameProof)).resolves.toBeInstanceOf(Ok);
+    expect(await getUserNameProof(db, userNameProof.name)).toBeTruthy();
   });
 });
 

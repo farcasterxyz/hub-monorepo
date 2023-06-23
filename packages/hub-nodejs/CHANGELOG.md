@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.8.1
+
+### Patch Changes
+
+- f1c6b25: Fetch, validate and store username proofs from fname registry
+- Updated dependencies [f1c6b25]
+  - @farcaster/core@0.9.1
+
 ## 0.8.0
 
 ### Minor Changes

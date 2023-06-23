@@ -42,6 +42,7 @@ First, ensure that the following are installed globally on your machine:
 
 - [Node.js 20+](https://nodejs.org/en/download/releases)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
+- [Anvil](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 
 Then, from the root folder run:
 

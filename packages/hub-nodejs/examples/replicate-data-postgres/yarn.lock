@@ -288,30 +288,24 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@faker-js/faker@^7.6.0":
-  version "7.6.0"
-  resolved "https://registry.npmjs.org/@faker-js/faker/-/faker-7.6.0.tgz#9ea331766084288634a9247fcd8b84f16ff4ba07"
-  integrity sha512-XK6BTq1NDMo9Xqw/YkYyGjSsg44fbNwYRx7QK2CuoQgyy+f1rrTDHoExVM5PsyXCtfl2vs2vVJ0MN0yN6LppRw==
-
-"@farcaster/core@0.7.1":
-  version "0.7.1"
-  resolved "https://registry.npmjs.org/@farcaster/core/-/core-0.7.1.tgz#69525a1cf4485dd5e0a24395daf1ae35fd0e38cb"
-  integrity sha512-2hVRWSgMDnoHFsuCzKhaTmsp7XWMk1QSE0RLjHarQYbosz6fILHB8F57fEZ0unAi0vDqgoMabvNLdkqQiO6HCQ==
+"@farcaster/core@0.9.0":
+  version "0.9.0"
+  resolved "https://registry.npmjs.org/@farcaster/core/-/core-0.9.0.tgz#54972cbbb7b84fb0985bd4b4bb1c12e3089010a3"
+  integrity sha512-RJPYG6y7an3316avmEwRi2hSKsgxza/9hOQOz0YYgRukOu6qfobt7awQHnDIgV8NUrVtHM0q5UYat5s0N/4UnA==
   dependencies:
     "@ethersproject/abstract-signer" "^5.7.0"
-    "@faker-js/faker" "^7.6.0"
-    "@noble/ed25519" "^1.7.3"
+    "@noble/curves" "^1.0.0"
     "@noble/hashes" "^1.3.0"
     ethers "~6.2.1"
     neverthrow "^6.0.0"
     viem "^0.3.2"
 
-"@farcaster/hub-nodejs@^0.7.1":
-  version "0.7.1"
-  resolved "https://registry.npmjs.org/@farcaster/hub-nodejs/-/hub-nodejs-0.7.1.tgz#5ebe822890ebc4fe48f2ba2d58d5e2a78778ac65"
-  integrity sha512-w9U619g041RAuNlL+QXB52fLygBVBGClhbDP+28LbosDLShCPxxdpMC3Wtr5YiwusinXtiqR46yYTFuQBsEGag==
+"@farcaster/hub-nodejs@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.npmjs.org/@farcaster/hub-nodejs/-/hub-nodejs-0.8.0.tgz#f999edd94e4a39213c9e85da41b25bb77f198c90"
+  integrity sha512-wTKx5TZOLDnzQcuNHhXWiQ53pltwy+5Z42OIrx9TIVppLJJNvVdnZYRQ9ttvL/desmNIc/oo+9GNYPq+i8BkuQ==
   dependencies:
-    "@farcaster/core" "0.7.1"
+    "@farcaster/core" "0.9.0"
     "@grpc/grpc-js" "^1.8.13"
     "@noble/hashes" "^1.3.0"
     ethers "~6.2.1"
@@ -343,17 +337,19 @@
   dependencies:
     "@noble/hashes" "1.3.0"
 
+"@noble/curves@^1.0.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@noble/curves/-/curves-1.1.0.tgz#f13fc667c89184bc04cccb9b11e8e7bae27d8c3d"
+  integrity sha512-091oBExgENk/kGj3AZmtBDMpxQPDtxQABR2B9lb1JbVTs6ytdzZNwvhxQ4MWasRNEzlbEH8jCWFCwhF/Obj5AA==
+  dependencies:
+    "@noble/hashes" "1.3.1"
+
 "@noble/curves@~0.8.3":
   version "0.8.3"
   resolved "https://registry.npmjs.org/@noble/curves/-/curves-0.8.3.tgz#ad6d48baf2599cf1d58dcb734c14d5225c8996e0"
   integrity sha512-OqaOf4RWDaCRuBKJLDURrgVxjLmneGsiCXGuzYB5y95YithZMA6w4uk34DHSm0rKMrrYiaeZj48/81EvaAScLQ==
   dependencies:
     "@noble/hashes" "1.3.0"
-
-"@noble/ed25519@^1.7.3":
-  version "1.7.3"
-  resolved "https://registry.npmjs.org/@noble/ed25519/-/ed25519-1.7.3.tgz#57e1677bf6885354b466c38e2b620c62f45a7123"
-  integrity sha512-iR8GBkDt0Q3GyaVcIu7mSsVIqnFbkbRzGLWlvhwunacoLwt4J3swfKhfaM6rN6WY+TBGoYT1GtT1mIh2/jGbRQ==
 
 "@noble/hashes@1.1.2":
   version "1.1.2"
@@ -364,6 +360,11 @@
   version "1.3.0"
   resolved "https://registry.npmjs.org/@noble/hashes/-/hashes-1.3.0.tgz#085fd70f6d7d9d109671090ccae1d3bec62554a1"
   integrity sha512-ilHEACi9DwqJB0pw7kv+Apvh50jiiSyR/cQ3y4W7lOR5mhvn/50FLUfsnfJz0BDZtl/RR16kXvptiv6q1msYZg==
+
+"@noble/hashes@1.3.1":
+  version "1.3.1"
+  resolved "https://registry.npmjs.org/@noble/hashes/-/hashes-1.3.1.tgz#8831ef002114670c603c458ab8b11328406953a9"
+  integrity sha512-EbqwksQwz9xDRGfDST86whPBgM65E0OH/pCgqW0GBVzO22bNE+NuIbeTb714+IfSjU3aRk47EUvXIb5bTsenKA==
 
 "@noble/secp256k1@1.7.1":
   version "1.7.1"

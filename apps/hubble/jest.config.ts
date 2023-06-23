@@ -15,6 +15,8 @@ const jestConfig: Config = {
   transform: {
     '^.+\\.(t|j)sx?$': '@swc/jest',
   },
+  globalSetup: '<rootDir>/src/test/globalSetup.js',
+  globalTeardown: '<rootDir>/src/test/globalTeardown.js',
 };
 
 export default jestConfig;

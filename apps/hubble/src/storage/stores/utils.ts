@@ -1,4 +1,11 @@
-import { IdRegistryEvent, NameRegistryEvent, HubError, bytesCompare, bytesIncrement } from '@farcaster/hub-nodejs';
+import {
+  IdRegistryEvent,
+  NameRegistryEvent,
+  UserNameProof,
+  HubError,
+  bytesCompare,
+  bytesIncrement,
+} from '@farcaster/hub-nodejs';
 
 type Event = IdRegistryEvent | NameRegistryEvent;
 
@@ -30,6 +37,17 @@ export const eventCompare = (a: Event, b: Event): number => {
   }
 
   return 0;
+};
+
+export const usernameProofCompare = (a: UserNameProof, b: UserNameProof): number => {
+  // Compare timestamps
+  if (a.timestamp < b.timestamp) {
+    return -1;
+  } else if (a.timestamp > b.timestamp) {
+    return 1;
+  }
+
+  throw new HubError('bad_request.validation_failure', 'proofs have the same timestamp');
 };
 
 export const makeEndPrefix = (prefix: Buffer): Buffer | undefined => {

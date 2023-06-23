@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.9.1
+
+### Patch Changes
+
+- f1c6b25: Fetch, validate and store username proofs from fname registry
+
 ## 0.9.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hubble",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Farcaster Hub",
   "author": "",
   "license": "",
@@ -37,6 +37,7 @@
     "@types/node-cron": "^3.0.7",
     "@types/progress": "^2.0.5",
     "@types/rwlock": "^5.0.3",
+    "@viem/anvil": "^0.0.6",
     "chance": "~1.1.11",
     "csv-stringify": "~6.3.0",
     "eslint-config-custom": "*",
@@ -51,7 +52,7 @@
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
     "@faker-js/faker": "~7.6.0",
-    "@farcaster/hub-nodejs": "^0.8.0",
+    "@farcaster/hub-nodejs": "^0.8.1",
     "@farcaster/rocksdb": "^5.5.0",
     "@grpc/grpc-js": "~1.8.7",
     "@libp2p/interface-connection": "^3.0.2",
@@ -63,16 +64,18 @@
     "@libp2p/utils": "^3.0.2",
     "@multiformats/multiaddr": "^11.0.0",
     "@noble/curves": "^1.0.0",
+    "abitype": "^0.8.3",
     "async-lock": "^1.4.0",
+    "axios": "^1.4.0",
     "commander": "~10.0.0",
-    "ethers": "~6.2.1",
     "libp2p": "0.42.2",
     "neverthrow": "~6.0.0",
     "node-cron": "~3.0.2",
     "pino": "~8.11.0",
     "rate-limiter-flexible": "^2.4.1",
     "rwlock": "~5.0.0",
-    "semver": "^7.5.0",
-    "tiny-typed-emitter": "~2.1.0"
+    "semver": "^7.5.2",
+    "tiny-typed-emitter": "~2.1.0",
+    "viem": "^1.1.4"
   }
 }

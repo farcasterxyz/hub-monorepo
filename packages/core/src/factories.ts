@@ -621,6 +621,17 @@ const StorageAdminRegistryEventFactory = Factory.define<protobufs.StorageAdminRe
   });
 });
 
+const UserNameProofFactory = Factory.define<protobufs.UserNameProof>(() => {
+  return protobufs.UserNameProof.create({
+    timestamp: Date.now(),
+    signature: Eip712SignatureFactory.build(),
+    owner: EthAddressFactory.build(),
+    name: FnameFactory.build(),
+    fid: FidFactory.build(),
+    type: protobufs.UserNameType.USERNAME_TYPE_FNAME,
+  });
+});
+
 export const Factories = {
   Fid: FidFactory,
   Fname: FnameFactory,
@@ -680,6 +691,7 @@ export const Factories = {
   IdRegistryEvent: IdRegistryEventFactory,
   NameRegistryEventType: NameRegistryEventTypeFactory,
   NameRegistryEvent: NameRegistryEventFactory,
+  UserNameProof: UserNameProofFactory,
   RentRegistryEventType: RentRegistryEventTypeFactory,
   RentRegistryEvent: RentRegistryEventFactory,
   StorageAdminRegistryEventType: StorageAdminRegistryEventTypeFactory,

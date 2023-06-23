@@ -14,6 +14,8 @@ export const Config = {
   id: './.hub/default_id.protobuf',
   /** Network URL of the IdRegistry Contract */
   // ethRpcUrl: '',
+  /** FName Registry Server URL */
+  // fnameServerUrl: '';
   /** Address of the IdRegistry Contract  */
   // firAddress: '',
   /** A list of MultiAddrs to use for bootstrapping */

@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.3.1
+
+### Patch Changes
+
+- 7dabc0b: Refactored stores to use a generic implementation for easier addition of types
+- 6667748: Handle peers with no messages in status command
+- f1c6b25: Fetch, validate and store username proofs from fname registry
+- c6fc422: Fix server hanging due to slow subscribers in certain conditions
+- Updated dependencies [f1c6b25]
+  - @farcaster/hub-nodejs@0.8.1
+
 ## 1.3.0
 
 ### Minor Changes

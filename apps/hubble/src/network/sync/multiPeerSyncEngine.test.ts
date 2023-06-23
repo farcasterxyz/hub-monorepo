@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import {
   Ed25519Signer,
   Factories,
@@ -10,6 +11,7 @@ import {
   Message,
   TrieNodePrefix,
   HubInfoRequest,
+  getFarcasterTime,
 } from '@farcaster/hub-nodejs';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '../../hubble.js';
 import SyncEngine from './syncEngine.js';
@@ -17,12 +19,10 @@ import { SyncId } from './syncId.js';
 import Server from '../../rpc/server.js';
 import { jestRocksDB } from '../../storage/db/jestUtils.js';
 import Engine from '../../storage/engine/index.js';
-import { MockHub, MockRPCProvider } from '../../test/mocks.js';
+import { MockHub } from '../../test/mocks.js';
 import { sleep, sleepWhile } from '../../utils/crypto.js';
 import { EthEventsProvider } from '../../eth/ethEventsProvider.js';
-import { Contract } from 'ethers';
-import { IdRegistry, NameRegistry } from '../../eth/abis.js';
-import { getFarcasterTime } from '@farcaster/core';
+import { deployIdRegistry, deployNameRegistry, publicClient } from '../../test/utils.js';
 
 /* eslint-disable security/detect-non-literal-fs-filename */
 
@@ -315,24 +315,31 @@ describe('Multi peer sync engine', () => {
     // Do not merge the custory event into engine2
     const engine2 = new Engine(testDb2, network);
     const hub2 = new MockHub(testDb2, engine2);
-    const mockRPCProvider = new MockRPCProvider();
+
+    const { contractAddress: idRegistryAddress } = await deployIdRegistry();
+    if (!idRegistryAddress) throw new Error('Failed to deploy NameRegistry contract');
+
+    const { contractAddress: nameRegistryAddress } = await deployNameRegistry();
+    if (!nameRegistryAddress) throw new Error('Failed to deploy NameRegistry contract');
+
     const ethEventsProvider = new EthEventsProvider(
       hub2,
-      mockRPCProvider,
-      new Contract('0x000001', IdRegistry.abi, mockRPCProvider),
-      new Contract('0x000002', NameRegistry.abi, mockRPCProvider),
+      publicClient,
+      idRegistryAddress,
+      nameRegistryAddress,
       1,
       10000,
       false
     );
     const syncEngine2 = new SyncEngine(hub2, testDb2, ethEventsProvider);
+    const retrySpy = jest.spyOn(ethEventsProvider, 'retryEventsFromBlock');
 
     // Sync engine 2 with engine 1
     await syncEngine2.performSync('engine1', (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
     // Because do it without awaiting, we need to wait for the promise to resolve
     await sleep(100);
-    expect(mockRPCProvider.getLogsCount).toEqual(3);
+    expect(retrySpy).toHaveBeenCalled();
   });
 
   test('Merge with multiple signers', async () => {
