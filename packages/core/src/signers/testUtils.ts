@@ -54,6 +54,15 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
       expect(signature2).toEqual(ok(signature));
       expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(bytesToHexString(signature));
     });
+
+    test('fails with HubError', async () => {
+      const result = await signer.signVerificationEthAddressClaim({
+        ...claim,
+        fid: -1n,
+      });
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().errCode).toBe('bad_request.invalid_param');
+    });
   });
 
   describe('signUserNameProof', () => {
@@ -81,6 +90,15 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
       const signature2 = await signer.signUserNameProof(claim2);
       expect(signature2).toEqual(ok(signature));
       expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(bytesToHexString(signature));
+    });
+
+    test('fails with HubError', async () => {
+      const result = await signer.signUserNameProof({
+        ...claim,
+        timestamp: -1,
+      });
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().errCode).toBe('bad_request.invalid_param');
     });
   });
 };
