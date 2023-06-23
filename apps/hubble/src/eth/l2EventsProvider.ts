@@ -6,6 +6,7 @@ import {
   RentRegistryEvent,
   StorageAdminRegistryEvent,
   StorageRegistryEventType,
+  storageRegistryEventTypeToJSON,
 } from '@farcaster/hub-nodejs';
 import { AbstractProvider, Contract, ContractEventPayload, EthersError, EventLog } from 'ethers';
 import { Err, err, Ok, ok, Result, ResultAsync } from 'neverthrow';
@@ -85,29 +86,29 @@ export class L2EventsProvider {
         this.cacheRentRegistryEvent(payer, fid, units, StorageRegistryEventType.RENT, event.log);
       }
     );
-    // this._storageRegistryContract.on(
-    //   'SetDeprecationTimestamp',
-    //   (oldTimestamp: bigint, newTimestamp: bigint, event: ContractEventPayload) => {
-    //     this.cacheStorageAdminRegistryEvent(
-    //       oldTimestamp,
-    //       newTimestamp,
-    //       StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
-    //       event.log
-    //     );
-    //   }
-    // );
-    // this._storageRegistryContract.on(
-    //   'SetGracePeriod',
-    //   (oldPeriod: bigint, newPeriod: bigint, event: ContractEventPayload) => {
-    //     this.cacheStorageAdminRegistryEvent(oldPeriod, newPeriod, StorageRegistryEventType.SET_GRACE_PERIOD, event.log);
-    //   }
-    // );
-    // this._storageRegistryContract.on('SetMaxUnits', (oldMax: bigint, newMax: bigint, event: ContractEventPayload) => {
-    //   this.cacheStorageAdminRegistryEvent(oldMax, newMax, StorageRegistryEventType.SET_MAX_UNITS, event.log);
-    // });
-    // this._storageRegistryContract.on('SetPrice', (oldPrice: bigint, newPrice: bigint, event: ContractEventPayload) => {
-    //   this.cacheStorageAdminRegistryEvent(oldPrice, newPrice, StorageRegistryEventType.SET_PRICE, event.log);
-    // });
+    this._storageRegistryContract.on(
+      'SetDeprecationTimestamp',
+      (oldTimestamp: bigint, newTimestamp: bigint, event: ContractEventPayload) => {
+        this.cacheStorageAdminRegistryEvent(
+          oldTimestamp,
+          newTimestamp,
+          StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
+          event.log
+        );
+      }
+    );
+    this._storageRegistryContract.on(
+      'SetGracePeriod',
+      (oldPeriod: bigint, newPeriod: bigint, event: ContractEventPayload) => {
+        this.cacheStorageAdminRegistryEvent(oldPeriod, newPeriod, StorageRegistryEventType.SET_GRACE_PERIOD, event.log);
+      }
+    );
+    this._storageRegistryContract.on('SetMaxUnits', (oldMax: bigint, newMax: bigint, event: ContractEventPayload) => {
+      this.cacheStorageAdminRegistryEvent(oldMax, newMax, StorageRegistryEventType.SET_MAX_UNITS, event.log);
+    });
+    this._storageRegistryContract.on('SetPrice', (oldPrice: bigint, newPrice: bigint, event: ContractEventPayload) => {
+      this.cacheStorageAdminRegistryEvent(oldPrice, newPrice, StorageRegistryEventType.SET_PRICE, event.log);
+    });
 
     // Set up block listener to confirm blocks
     this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
@@ -407,6 +408,60 @@ export class L2EventsProvider {
     rentEvents.push(rentRegistryEvent);
 
     logEvent.info(`cacheRentRegistryEvent: fid ${fid.toString()} rented ${units} units in block ${blockNumber}`);
+
+    return ok(undefined);
+  }
+
+  private async cacheStorageAdminRegistryEvent(
+    oldValue: bigint,
+    newValue: bigint,
+    type: StorageRegistryEventType,
+    eventLog: EventLog
+  ): HubAsyncResult<void> {
+    const { blockNumber, blockHash, transactionHash, index, address } = eventLog;
+
+    const logEvent = log.child({ event: { type, blockNumber } });
+
+    const serialized = Result.combine([
+      hexStringToBytes(blockHash),
+      hexStringToBytes(transactionHash),
+      hexStringToBytes(address),
+      bigIntToBytes(newValue),
+    ]);
+
+    if (serialized.isErr()) {
+      logEvent.error(
+        { errCode: serialized.error.errCode },
+        `cacheStorageAdminRegistryEvent error: ${serialized.error.message}`
+      );
+      return err(serialized.error);
+    }
+
+    const [blockHashBytes, transactionHashBytes, fromBytes, newValueBytes] = serialized.value;
+
+    const storageAdminRegistryEvent = StorageAdminRegistryEvent.create({
+      blockNumber,
+      blockHash: blockHashBytes,
+      transactionHash: transactionHashBytes,
+      logIndex: index,
+      from: fromBytes,
+      type: type,
+      value: newValueBytes,
+    });
+
+    // Add it to the cache
+    let storageAdminEvents = this._storageAdminEventsByBlock.get(blockNumber);
+    if (!storageAdminEvents) {
+      storageAdminEvents = [];
+      this._storageAdminEventsByBlock.set(blockNumber, storageAdminEvents);
+    }
+    storageAdminEvents.push(storageAdminRegistryEvent);
+
+    logEvent.info(
+      `cacheStorageAdminRegistryEvent: address ${address} performed ${storageRegistryEventTypeToJSON(
+        type
+      )} from ${oldValue.toString()} to ${newValue.toString()} in block ${blockNumber}`
+    );
 
     return ok(undefined);
   }
