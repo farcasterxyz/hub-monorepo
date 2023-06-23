@@ -24,11 +24,11 @@ export const makeRentRegistryEventByExpiryKey = (expiry: number, fid: number): B
   return buffer;
 };
 
-export const getRentRegistryEventsIterator = (db: RocksDB, fid: number): Iterator => {
+export const getRentRegistryEventsIterator = (db: RocksDB, fid: number, reverse = false): Iterator => {
   const prefix = Buffer.alloc(1 + FID_BYTES);
   prefix.writeUint8(RootPrefix.RentRegistryEvent, 0);
   prefix.writeUint32BE(fid, 1);
-  return db.iteratorByPrefix(prefix, { keys: false });
+  return db.iteratorByPrefix(prefix, { keys: false, reverse });
 };
 
 export const getStorageAdminRegistryEvent = async (

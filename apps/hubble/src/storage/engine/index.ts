@@ -59,6 +59,7 @@ import { logger } from '../../utils/logger.js';
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from '../jobs/revokeMessagesBySignerJob.js';
 import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent.js';
 import { ensureAboveTargetFarcasterVersion } from '../../utils/versions.js';
+import StorageEventStore from 'storage/stores/storageEventStore.js';
 
 const log = logger.child({
   component: 'Engine',
@@ -76,6 +77,7 @@ class Engine {
   private _castStore: CastStore;
   private _userDataStore: UserDataStore;
   private _verificationStore: VerificationStore;
+  private _storageEventsDataStore: StorageEventStore;
 
   private _validationWorker: Worker | undefined;
   private _validationWorkerJobId = 0;
@@ -96,6 +98,7 @@ class Engine {
     this._castStore = new CastStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
+    this._storageEventsDataStore = new StorageEventStore(db, this.eventHandler);
 
     this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
     this._revokeSignerWorker = new RevokeMessagesBySignerJobWorker(this._revokeSignerQueue, db, this);
@@ -231,7 +234,7 @@ class Engine {
 
   async mergeRentRegistryEvent(event: RentRegistryEvent): HubAsyncResult<number> {
     if (event.type === StorageRegistryEventType.RENT) {
-      return ResultAsync.fromPromise(this._storageDataStore.mergeRentRegistryEvent(event), (e) => e as HubError);
+      return ResultAsync.fromPromise(this._storageEventsDataStore.mergeRentRegistryEvent(event), (e) => e as HubError);
     }
 
     return err(new HubError('bad_request.validation_failure', 'invalid event type'));
@@ -245,7 +248,7 @@ class Engine {
       event.type === StorageRegistryEventType.SET_PRICE
     ) {
       return ResultAsync.fromPromise(
-        this._storageDataStore.mergeStorageAdminRegistryEvent(event),
+        this._storageEventsDataStore.mergeStorageAdminRegistryEvent(event),
         (e) => e as HubError
       );
     }
