@@ -15,7 +15,7 @@ import { GossipNode } from '../network/p2p/gossipNode.js';
 import RocksDB from '../storage/db/rocksdb.js';
 import Engine from '../storage/engine/index.js';
 import { PeerId } from '@libp2p/interface-peer-id';
-import { ContactInfoContent } from '@farcaster/core';
+import { ContactInfoContent, RentRegistryEvent, StorageAdminRegistryEvent } from '@farcaster/core';
 import { getHubState, putHubState } from '../storage/db/hubState.js';
 
 export class MockHub implements HubInterface {
@@ -28,6 +28,18 @@ export class MockHub implements HubInterface {
     this.db = db;
     this.engine = engine ?? new Engine(db, FarcasterNetwork.TESTNET);
     this.gossipNode = gossipNode;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource | undefined): HubAsyncResult<number> {
+    throw new Error('Method not implemented.');
+  }
+  submitStorageAdminRegistryEvent(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    event: StorageAdminRegistryEvent,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    source?: HubSubmitSource | undefined
+  ): HubAsyncResult<number> {
+    throw new Error('Method not implemented.');
   }
 
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
