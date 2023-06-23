@@ -39,5 +39,5 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWSJj9pDSX5sEFoZum1fsdHuCJnoxwgHKhCg5rrLU7Gepe', // @pfista
   '12D3KooWDXSemEhSAidFCZT1HyRhTHayunCokg68VSuwStf8UEU5', // @98967eth
   '12D3KooWHcViME8KUZXo1wStoRF2jmg4edWidexGy5utVyoxNNnn', // @parthkohli
-  '12D3KooWDfxjnmTTk2nb89dBZZrCQ7g71BoJELKnVpUQUTt4YcL4', // Razzle.eth
+  '12D3KooWDfxjnmTTk2nb89dBZZrCQ7g71BoJELKnVpUQUTt4YcL4', // @razzle
 ];
