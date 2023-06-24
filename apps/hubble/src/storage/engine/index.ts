@@ -59,7 +59,7 @@ import { logger } from '../../utils/logger.js';
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from '../jobs/revokeMessagesBySignerJob.js';
 import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent.js';
 import { ensureAboveTargetFarcasterVersion } from '../../utils/versions.js';
-import StorageEventStore from 'storage/stores/storageEventStore.js';
+import StorageEventStore from '../stores/storageEventStore.js';
 import { RentRegistryEventsResponse } from '@farcaster/hub-nodejs';
 
 const log = logger.child({
