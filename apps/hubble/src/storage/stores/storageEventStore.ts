@@ -7,7 +7,7 @@ import {
   getRentRegistryEventsIterator,
   putRentRegistryEventTransaction,
   putStorageAdminRegistryEventTransaction,
-} from 'storage/db/storageRegistryEvent.js';
+} from '../db/storageRegistryEvent.js';
 
 /**
  * StorageEventStore persists Storage Event messages in RocksDB using two grow only CRDT sets
