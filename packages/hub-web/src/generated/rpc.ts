@@ -26,7 +26,8 @@ import {
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
-  RentRegistryEventRequest,
+  RentRegistryEventsRequest,
+  RentRegistryEventsResponse,
   SignerRequest,
   SubscribeRequest,
   SyncIds,
@@ -70,10 +71,10 @@ export interface HubService {
     request: DeepPartial<NameRegistryEventRequest>,
     metadata?: grpc.Metadata
   ): Promise<NameRegistryEvent>;
-  getRentRegistryEvent(
-    request: DeepPartial<RentRegistryEventRequest>,
+  getRentRegistryEvents(
+    request: DeepPartial<RentRegistryEventsRequest>,
     metadata?: grpc.Metadata
-  ): Promise<RentRegistryEvent>;
+  ): Promise<RentRegistryEventsResponse>;
   /** Verifications */
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message>;
   getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
@@ -134,7 +135,7 @@ export class HubServiceClientImpl implements HubService {
     this.getUserData = this.getUserData.bind(this);
     this.getUserDataByFid = this.getUserDataByFid.bind(this);
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
-    this.getRentRegistryEvent = this.getRentRegistryEvent.bind(this);
+    this.getRentRegistryEvents = this.getRentRegistryEvents.bind(this);
     this.getVerification = this.getVerification.bind(this);
     this.getVerificationsByFid = this.getVerificationsByFid.bind(this);
     this.getSigner = this.getSigner.bind(this);
@@ -224,11 +225,15 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceGetNameRegistryEventDesc, NameRegistryEventRequest.fromPartial(request), metadata);
   }
 
-  getRentRegistryEvent(
-    request: DeepPartial<RentRegistryEventRequest>,
+  getRentRegistryEvents(
+    request: DeepPartial<RentRegistryEventsRequest>,
     metadata?: grpc.Metadata
-  ): Promise<RentRegistryEvent> {
-    return this.rpc.unary(HubServiceGetRentRegistryEventDesc, RentRegistryEventRequest.fromPartial(request), metadata);
+  ): Promise<RentRegistryEventsResponse> {
+    return this.rpc.unary(
+      HubServiceGetRentRegistryEventsDesc,
+      RentRegistryEventsRequest.fromPartial(request),
+      metadata
+    );
   }
 
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message> {
@@ -660,19 +665,19 @@ export const HubServiceGetNameRegistryEventDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
-export const HubServiceGetRentRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetRentRegistryEvent',
+export const HubServiceGetRentRegistryEventsDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetRentRegistryEvents',
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return RentRegistryEventRequest.encode(this).finish();
+      return RentRegistryEventsRequest.encode(this).finish();
     },
   } as any,
   responseType: {
     deserializeBinary(data: Uint8Array) {
-      const value = RentRegistryEvent.decode(data);
+      const value = RentRegistryEventsResponse.decode(data);
       return {
         ...value,
         toObject() {

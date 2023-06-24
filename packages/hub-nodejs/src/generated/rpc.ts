@@ -36,7 +36,8 @@ import {
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
-  RentRegistryEventRequest,
+  RentRegistryEventsRequest,
+  RentRegistryEventsResponse,
   SignerRequest,
   SubscribeRequest,
   SyncIds,
@@ -184,14 +185,16 @@ export const HubServiceService = {
     responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
   },
-  getRentRegistryEvent: {
-    path: '/HubService/GetRentRegistryEvent',
+  getRentRegistryEvents: {
+    path: '/HubService/GetRentRegistryEvents',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: RentRegistryEventRequest) => Buffer.from(RentRegistryEventRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => RentRegistryEventRequest.decode(value),
-    responseSerialize: (value: RentRegistryEvent) => Buffer.from(RentRegistryEvent.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => RentRegistryEvent.decode(value),
+    requestSerialize: (value: RentRegistryEventsRequest) =>
+      Buffer.from(RentRegistryEventsRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => RentRegistryEventsRequest.decode(value),
+    responseSerialize: (value: RentRegistryEventsResponse) =>
+      Buffer.from(RentRegistryEventsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => RentRegistryEventsResponse.decode(value),
   },
   /** Verifications */
   getVerification: {
@@ -422,7 +425,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getUserData: handleUnaryCall<UserDataRequest, Message>;
   getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getNameRegistryEvent: handleUnaryCall<NameRegistryEventRequest, NameRegistryEvent>;
-  getRentRegistryEvent: handleUnaryCall<RentRegistryEventRequest, RentRegistryEvent>;
+  getRentRegistryEvents: handleUnaryCall<RentRegistryEventsRequest, RentRegistryEventsResponse>;
   /** Verifications */
   getVerification: handleUnaryCall<VerificationRequest, Message>;
   getVerificationsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -651,20 +654,20 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void
   ): ClientUnaryCall;
-  getRentRegistryEvent(
-    request: RentRegistryEventRequest,
-    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+  getRentRegistryEvents(
+    request: RentRegistryEventsRequest,
+    callback: (error: ServiceError | null, response: RentRegistryEventsResponse) => void
   ): ClientUnaryCall;
-  getRentRegistryEvent(
-    request: RentRegistryEventRequest,
+  getRentRegistryEvents(
+    request: RentRegistryEventsRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+    callback: (error: ServiceError | null, response: RentRegistryEventsResponse) => void
   ): ClientUnaryCall;
-  getRentRegistryEvent(
-    request: RentRegistryEventRequest,
+  getRentRegistryEvents(
+    request: RentRegistryEventsRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: RentRegistryEvent) => void
+    callback: (error: ServiceError | null, response: RentRegistryEventsResponse) => void
   ): ClientUnaryCall;
   /** Verifications */
   getVerification(

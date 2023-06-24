@@ -38,10 +38,17 @@ class StorageEventStore {
     this._mergeLock = new AsyncLock();
   }
 
-  /** Returns the most recent event from the RentRegistry contract that affected the fid  */
-  async getRentRegistryEvent(fid: number): Promise<RentRegistryEvent> {
-    const iterator = await getRentRegistryEventsIterator(this._db, fid, true);
-    return await getNextRentRegistryEventFromIterator(iterator);
+  /** Returns the events from the RentRegistry contract that affected the fid  */
+  async getRentRegistryEvents(fid: number): Promise<RentRegistryEvent[]> {
+    const iterator = await getRentRegistryEventsIterator(this._db, fid);
+    const events: RentRegistryEvent[] = [];
+    let event: RentRegistryEvent | undefined;
+
+    while ((event = await getNextRentRegistryEventFromIterator(iterator))) {
+      events.push(event);
+    }
+
+    return events;
   }
 
   /**

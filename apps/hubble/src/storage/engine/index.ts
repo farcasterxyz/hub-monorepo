@@ -60,6 +60,7 @@ import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from 
 import { getIdRegistryEventByCustodyAddress } from '../db/idRegistryEvent.js';
 import { ensureAboveTargetFarcasterVersion } from '../../utils/versions.js';
 import StorageEventStore from 'storage/stores/storageEventStore.js';
+import { RentRegistryEventsResponse } from '@farcaster/hub-nodejs';
 
 const log = logger.child({
   component: 'Engine',
@@ -655,6 +656,17 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
+  }
+
+  async getRentRegistryEvents(fid: number): HubAsyncResult<RentRegistryEventsResponse> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._storageEventsDataStore.getRentRegistryEvents(fid), (e) => e as HubError).map(
+      (events) => RentRegistryEventsResponse.create({ events })
+    );
   }
 
   /* -------------------------------------------------------------------------- */

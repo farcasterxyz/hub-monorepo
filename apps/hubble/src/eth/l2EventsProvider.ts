@@ -8,18 +8,21 @@ import {
   StorageRegistryEventType,
   storageRegistryEventTypeToJSON,
 } from '@farcaster/hub-nodejs';
-import { AbstractProvider, Contract, ContractEventPayload, EthersError, EventLog } from 'ethers';
-import { Err, err, Ok, ok, Result, ResultAsync } from 'neverthrow';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { StorageRegistry } from './abis.js';
 import { HubInterface } from '../hubble.js';
 import { logger } from '../utils/logger.js';
+import { optimismGoerli } from 'viem/chains';
+import { createPublicClient, http, Log, PublicClient } from 'viem';
+import { WatchContractEvent } from './watchContractEvent.js';
+import { WatchBlockNumber } from './watchBlockNumber.js';
 
 const log = logger.child({
   component: 'L2EventsProvider',
 });
 
 export class OPGoerliEthConstants {
-  public static StorageRegistryAddress = '0x0000000000000000000000000000000000000000';
+  public static StorageRegistryAddress = '0x0000000000000000000000000000000000000000' as const;
   public static FirstBlock = 7648795;
   public static ChunkSize = 10000;
   public static chainId = BigInt(420); // OP Goerli
@@ -30,9 +33,8 @@ export class OPGoerliEthConstants {
  */
 export class L2EventsProvider {
   private _hub: HubInterface;
-  private _jsonRpcProvider: AbstractProvider;
+  private _publicClient: PublicClient;
 
-  private _storageRegistryContract: Contract;
   private _firstBlock: number;
   private _chunkSize: number;
   private _resyncEvents: boolean;
@@ -46,21 +48,47 @@ export class L2EventsProvider {
   private _lastBlockNumber: number;
   private _ethersPromiseCacheDelayMS: number;
 
+  private _watchRentRegistryRent: WatchContractEvent<typeof StorageRegistry.abi, 'Rent', true>;
+  private _watchStorageAdminRegistrySetDeprecationTimestamp: WatchContractEvent<
+    typeof StorageRegistry.abi,
+    'SetDeprecationTimestamp',
+    true
+  >;
+  private _watchStorageAdminRegistrySetGracePeriod: WatchContractEvent<
+    typeof StorageRegistry.abi,
+    'SetGracePeriod',
+    true
+  >;
+  private _watchStorageAdminRegistrySetMaxUnits: WatchContractEvent<typeof StorageRegistry.abi, 'SetMaxUnits', true>;
+  private _watchStorageAdminRegistrySetPrice: WatchContractEvent<typeof StorageRegistry.abi, 'SetPrice', true>;
+  private _watchBlockNumber: WatchBlockNumber;
+
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
   private _isHistoricalSyncDone = false;
 
+  // Number of blocks to wait before processing an event. This is hardcoded to
+  // 6 for now, because that's the threshold beyond which blocks are unlikely
+  // to reorg anymore. 6 blocks represents ~72 seconds on Goerli, so the delay
+  // is not too long.
+  static numConfirmations = 6;
+
+  // Events are only processed after 6 blocks have been confirmed; poll less
+  // frequently while ensuring events are available the moment they are
+  // confirmed.
+  static eventPollingInterval = (L2EventsProvider.numConfirmations - 2) * 12_000;
+  static blockPollingInterval = 4_000;
+
   constructor(
     hub: HubInterface,
-    jsonRpcProvider: AbstractProvider,
-    storageRegistryContract: Contract,
+    publicClient: PublicClient,
+    storageRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
     ethersPromiseCacheDelayMS = 250
   ) {
     this._hub = hub;
-    this._jsonRpcProvider = jsonRpcProvider;
-    this._storageRegistryContract = storageRegistryContract;
+    this._publicClient = publicClient;
     this._firstBlock = firstBlock;
     this._chunkSize = chunkSize;
     this._resyncEvents = resyncEvents;
@@ -80,38 +108,78 @@ export class L2EventsProvider {
     this._retryDedupMap = new Map();
 
     // Setup StorageRegistry contract
-    this._storageRegistryContract.on(
-      'Rent',
-      (payer: string, fid: bigint, units: bigint, event: ContractEventPayload) => {
-        this.cacheRentRegistryEvent(payer, fid, units, StorageRegistryEventType.RENT, event.log);
-      }
+    this._watchRentRegistryRent = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        eventName: 'Rent',
+        onLogs: this.processRentEvents.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'StorageRegistry Rent'
     );
-    this._storageRegistryContract.on(
-      'SetDeprecationTimestamp',
-      (oldTimestamp: bigint, newTimestamp: bigint, event: ContractEventPayload) => {
-        this.cacheStorageAdminRegistryEvent(
-          oldTimestamp,
-          newTimestamp,
-          StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
-          event.log
-        );
-      }
-    );
-    this._storageRegistryContract.on(
-      'SetGracePeriod',
-      (oldPeriod: bigint, newPeriod: bigint, event: ContractEventPayload) => {
-        this.cacheStorageAdminRegistryEvent(oldPeriod, newPeriod, StorageRegistryEventType.SET_GRACE_PERIOD, event.log);
-      }
-    );
-    this._storageRegistryContract.on('SetMaxUnits', (oldMax: bigint, newMax: bigint, event: ContractEventPayload) => {
-      this.cacheStorageAdminRegistryEvent(oldMax, newMax, StorageRegistryEventType.SET_MAX_UNITS, event.log);
-    });
-    this._storageRegistryContract.on('SetPrice', (oldPrice: bigint, newPrice: bigint, event: ContractEventPayload) => {
-      this.cacheStorageAdminRegistryEvent(oldPrice, newPrice, StorageRegistryEventType.SET_PRICE, event.log);
-    });
 
-    // Set up block listener to confirm blocks
-    this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
+    this._watchStorageAdminRegistrySetDeprecationTimestamp = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        eventName: 'SetDeprecationTimestamp',
+        onLogs: this.processStorageSetDeprecationTimestampEvents.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'StorageRegistry SetDeprecationTimestamp'
+    );
+
+    this._watchStorageAdminRegistrySetGracePeriod = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        eventName: 'SetGracePeriod',
+        onLogs: this.processStorageSetGracePeriodEvents.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'StorageRegistry SetGracePeriod'
+    );
+
+    this._watchStorageAdminRegistrySetMaxUnits = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        eventName: 'SetMaxUnits',
+        onLogs: this.processStorageSetMaxUnitsEvents.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'StorageRegistry SetMaxUnits'
+    );
+
+    this._watchStorageAdminRegistrySetPrice = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        eventName: 'SetPrice',
+        onLogs: this.processStorageSetPriceEvents.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'StorageRegistry SetPrice'
+    );
+
+    this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
+      pollingInterval: L2EventsProvider.blockPollingInterval,
+      onBlockNumber: (blockNumber) => this.handleNewBlock(Number(blockNumber)),
+      onError: (error) => {
+        log.error(`Error watching new block numbers: ${error}`, { error });
+      },
+    });
   }
 
   /**
@@ -120,21 +188,22 @@ export class L2EventsProvider {
    */
   public static build(
     hub: HubInterface,
-    rpcProvider: AbstractProvider,
-    storageRegistry: string | Contract,
+    l2RpcUrl: string,
+    storageRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
     ethersPromiseCacheDelayMS = 250
   ): L2EventsProvider {
-    const storageRegistryContract = (storageRegistry as Contract).target
-      ? (storageRegistry as Contract)
-      : new Contract(storageRegistry as string, StorageRegistry.abi, rpcProvider);
+    const publicClient = createPublicClient({
+      chain: optimismGoerli,
+      transport: http(l2RpcUrl, { retryCount: 10 }),
+    });
 
     const provider = new L2EventsProvider(
       hub,
-      rpcProvider,
-      storageRegistryContract,
+      publicClient,
+      storageRegistryAddress,
       firstBlock,
       chunkSize,
       resyncEvents,
@@ -151,12 +220,22 @@ export class L2EventsProvider {
   public async start() {
     // Connect to L2 RPC
     await this.connectAndSyncHistoricalEvents();
+
+    this._watchBlockNumber.start();
+    this._watchRentRegistryRent.start();
+    this._watchStorageAdminRegistrySetDeprecationTimestamp.start();
+    this._watchStorageAdminRegistrySetGracePeriod.start();
+    this._watchStorageAdminRegistrySetMaxUnits.start();
+    this._watchStorageAdminRegistrySetPrice.start();
   }
 
   public async stop() {
-    this._storageRegistryContract.removeAllListeners();
-    this._jsonRpcProvider.removeAllListeners();
-    this._jsonRpcProvider._forEachSubscriber((s) => s.stop());
+    this._watchStorageAdminRegistrySetPrice.stop();
+    this._watchStorageAdminRegistrySetMaxUnits.stop();
+    this._watchStorageAdminRegistrySetGracePeriod.stop();
+    this._watchStorageAdminRegistrySetDeprecationTimestamp.stop();
+    this._watchRentRegistryRent.stop();
+    this._watchBlockNumber.stop();
 
     // Wait for all async promises to resolve
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -175,12 +254,152 @@ export class L2EventsProvider {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
+  private async processRentEvents(logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, 'Rent'>[]) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheRentRegistryEvent(
+          event.args.payer,
+          event.args.fid,
+          event.args.units,
+          StorageRegistryEventType.RENT,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
+  private async processStorageSetDeprecationTimestampEvents(
+    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, 'SetDeprecationTimestamp'>[]
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheStorageAdminRegistryEvent(
+          event.args.oldTimestamp,
+          event.args.newTimestamp,
+          StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
+          address,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
+  private async processStorageSetGracePeriodEvents(
+    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, 'SetGracePeriod'>[]
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheStorageAdminRegistryEvent(
+          event.args.oldPeriod,
+          event.args.newPeriod,
+          StorageRegistryEventType.SET_GRACE_PERIOD,
+          address,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
+  private async processStorageSetMaxUnitsEvents(
+    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, 'SetMaxUnits'>[]
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheStorageAdminRegistryEvent(
+          event.args.oldMax,
+          event.args.newMax,
+          StorageRegistryEventType.SET_MAX_UNITS,
+          address,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
+  private async processStorageSetPriceEvents(
+    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, 'SetPrice'>[]
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheStorageAdminRegistryEvent(
+          event.args.oldPrice,
+          event.args.newPrice,
+          StorageRegistryEventType.SET_PRICE,
+          address,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
   /** Connect to Ethereum RPC */
   private async connectAndSyncHistoricalEvents() {
-    const latestBlockResult = await this.executeCallAsPromiseWithRetry(
-      () => this._jsonRpcProvider.getBlock('latest'),
-      (err) => err
-    );
+    const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error(
         { err: latestBlockResult.error },
@@ -188,25 +407,14 @@ export class L2EventsProvider {
       );
       return;
     }
-
-    const network = await this.executeCallAsPromiseWithRetry(
-      () => this._jsonRpcProvider.getNetwork(),
-      (err) => err
-    );
-
-    if (network.isErr() || network.value.chainId !== OPGoerliEthConstants.chainId) {
-      log.error({ err: network.isErr() ? network.error : `Wrong network ${network.value.chainId}` }, 'Bad network');
-      return;
-    }
-
-    const latestBlock = latestBlockResult.value;
+    const latestBlock = Number(latestBlockResult.value);
 
     if (!latestBlock) {
       log.error('failed to get the latest block from the RPC provider');
       return;
     }
 
-    log.info({ latestBlock: latestBlock.number, network: network.value.chainId }, 'connected to optimism node');
+    log.info({ latestBlock: latestBlock }, 'connected to ethereum node');
 
     // Find how how much we need to sync
     let lastSyncedBlock = this._firstBlock;
@@ -222,10 +430,40 @@ export class L2EventsProvider {
     }
 
     log.info({ lastSyncedBlock }, 'last synced block');
-    const toBlock = latestBlock.number;
+    const toBlock = latestBlock;
 
-    // Sync old Rent events
-    await this.syncHistoricalRentEvents(StorageRegistryEventType.RENT, lastSyncedBlock, toBlock, this._chunkSize);
+    if (lastSyncedBlock < toBlock) {
+      log.info({ fromBlock: lastSyncedBlock, toBlock }, 'syncing events from missed blocks');
+
+      // Sync old Rent events
+      await this.syncHistoricalStorageEvents(StorageRegistryEventType.RENT, lastSyncedBlock, toBlock, this._chunkSize);
+
+      // Sync old Storage Admin events
+      await this.syncHistoricalStorageEvents(
+        StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
+        lastSyncedBlock,
+        toBlock,
+        this._chunkSize
+      );
+      await this.syncHistoricalStorageEvents(
+        StorageRegistryEventType.SET_GRACE_PERIOD,
+        lastSyncedBlock,
+        toBlock,
+        this._chunkSize
+      );
+      await this.syncHistoricalStorageEvents(
+        StorageRegistryEventType.SET_MAX_UNITS,
+        lastSyncedBlock,
+        toBlock,
+        this._chunkSize
+      );
+      await this.syncHistoricalStorageEvents(
+        StorageRegistryEventType.SET_PRICE,
+        lastSyncedBlock,
+        toBlock,
+        this._chunkSize
+      );
+    }
 
     this._isHistoricalSyncDone = true;
   }
@@ -241,22 +479,29 @@ export class L2EventsProvider {
     }
     this._retryDedupMap.set(blockNumber, true);
 
-    // Sync old Rent events
-    await this.syncHistoricalRentEvents(StorageRegistryEventType.RENT, blockNumber, blockNumber + 1, 1);
+    // Sync old Storage events
+    await this.syncHistoricalStorageEvents(StorageRegistryEventType.RENT, blockNumber, blockNumber + 1, 1);
+    await this.syncHistoricalStorageEvents(
+      StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
+      blockNumber,
+      blockNumber + 1,
+      1
+    );
+    await this.syncHistoricalStorageEvents(StorageRegistryEventType.SET_GRACE_PERIOD, blockNumber, blockNumber + 1, 1);
+    await this.syncHistoricalStorageEvents(StorageRegistryEventType.SET_MAX_UNITS, blockNumber, blockNumber + 1, 1);
+    await this.syncHistoricalStorageEvents(StorageRegistryEventType.SET_PRICE, blockNumber, blockNumber + 1, 1);
   }
 
   /**
-   * Sync old Rent events that may have happened before hub was started. We'll put them all
+   * Sync old Storage events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalRentEvents(
+  private async syncHistoricalStorageEvents(
     type: StorageRegistryEventType,
     fromBlock: number,
     toBlock: number,
     batchSize: number
   ) {
-    if (type !== StorageRegistryEventType.RENT) throw new Error('unsupported event type');
-
     /*
      * Querying Blocks in Batches
      *
@@ -286,33 +531,66 @@ export class L2EventsProvider {
         nextFromBlock += 1;
       }
 
-      const oldRentBatchEvents = await this.executeCallAsPromiseWithRetry(
-        // Safety: queryFilter will always return EventLog as long as the ABI is valid
-        () =>
-          this._storageRegistryContract.queryFilter('Rent', Number(nextFromBlock), Number(nextToBlock)) as Promise<
-            EventLog[]
-          >,
-        (e) => e
-      );
+      if (type === StorageRegistryEventType.RENT) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: OPGoerliEthConstants.StorageRegistryAddress,
+          abi: StorageRegistry.abi,
+          eventName: 'Rent',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
 
-      if (oldRentBatchEvents.isErr()) {
-        // If we still hit an error, just log the error and return
-        log.error({ err: oldRentBatchEvents.error }, 'failed to get old Rent events');
-        return;
-      }
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processRentEvents(logs);
+      } else if (type === StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: OPGoerliEthConstants.StorageRegistryAddress,
+          abi: StorageRegistry.abi,
+          eventName: 'SetDeprecationTimestamp',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
 
-      for (const event of oldRentBatchEvents.value) {
-        if (type === StorageRegistryEventType.RENT) {
-          // Handling: use try-catch + log since errors are expected and not important to surface
-          try {
-            const payer: string = event.args.at(0);
-            const fid = BigInt(event.args.at(1));
-            const units = BigInt(event.args.at(2));
-            await this.cacheRentRegistryEvent(payer, fid, units, StorageRegistryEventType.RENT, event);
-          } catch (e) {
-            log.error({ event }, 'failed to parse event args');
-          }
-        }
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processStorageSetDeprecationTimestampEvents(logs);
+      } else if (type === StorageRegistryEventType.SET_GRACE_PERIOD) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: OPGoerliEthConstants.StorageRegistryAddress,
+          abi: StorageRegistry.abi,
+          eventName: 'SetGracePeriod',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
+
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processStorageSetGracePeriodEvents(logs);
+      } else if (type === StorageRegistryEventType.SET_MAX_UNITS) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: OPGoerliEthConstants.StorageRegistryAddress,
+          abi: StorageRegistry.abi,
+          eventName: 'SetMaxUnits',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
+
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processStorageSetMaxUnitsEvents(logs);
+      } else if (type === StorageRegistryEventType.SET_PRICE) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: OPGoerliEthConstants.StorageRegistryAddress,
+          abi: StorageRegistry.abi,
+          eventName: 'SetPrice',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
+
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processStorageSetPriceEvents(logs);
       }
     }
   }
@@ -364,10 +642,11 @@ export class L2EventsProvider {
     fid: bigint,
     units: bigint,
     type: StorageRegistryEventType,
-    eventLog: EventLog
+    blockNumber: number,
+    blockHash: string,
+    transactionHash: string,
+    index: number
   ): HubAsyncResult<void> {
-    const { blockNumber, blockHash, transactionHash, index } = eventLog;
-
     const logEvent = log.child({ event: { fid, blockNumber } });
 
     const serialized = Result.combine([
@@ -416,10 +695,12 @@ export class L2EventsProvider {
     oldValue: bigint,
     newValue: bigint,
     type: StorageRegistryEventType,
-    eventLog: EventLog
+    address: string,
+    blockNumber: number,
+    blockHash: string,
+    transactionHash: string,
+    index: number
   ): HubAsyncResult<void> {
-    const { blockNumber, blockHash, transactionHash, index, address } = eventLog;
-
     const logEvent = log.child({ event: { type, blockNumber } });
 
     const serialized = Result.combine([
@@ -464,45 +745,5 @@ export class L2EventsProvider {
     );
 
     return ok(undefined);
-  }
-
-  private async executeCallAsPromiseWithRetry<T, E>(
-    call: () => Promise<T>,
-    errorFn: (e: unknown) => E,
-    attempt = 1
-  ): Promise<Result<T, E>> {
-    const result = await ResultAsync.fromPromise(call(), (err) => err);
-
-    if (result.isErr()) {
-      const err = result.error as EthersError;
-      if (err && err.code)
-        switch (err.code) {
-          // non-request-specific ethers errors:
-          case 'UNKNOWN_ERROR':
-          case 'BAD_DATA':
-          case 'SERVER_ERROR':
-          case 'NETWORK_ERROR':
-          case 'TIMEOUT':
-          case 'OFFCHAIN_FAULT':
-            if (attempt !== 3) {
-              const logger = log.child({ event: { rpcError: err.code } });
-              logger.warn(`l2RPCError: RPC returned response ${err.message}, retrying (attempt ${attempt}).`);
-
-              // delay is required because ethers caches results from promises for 250ms, also exponential backoff
-              await new Promise<void>((resolve) =>
-                setTimeout(() => {
-                  resolve();
-                }, this._ethersPromiseCacheDelayMS * Math.pow(attempt, attempt) + 1)
-              );
-
-              return await this.executeCallAsPromiseWithRetry(call, errorFn, attempt + 1);
-            }
-            break;
-        }
-
-      return new Err(errorFn(result.error));
-    }
-
-    return new Ok(result.value);
   }
 }

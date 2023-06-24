@@ -24,11 +24,11 @@ export const makeRentRegistryEventByExpiryKey = (expiry: number, fid: number): B
   return buffer;
 };
 
-export const getRentRegistryEventsIterator = (db: RocksDB, fid: number, reverse = false): Iterator => {
+export const getRentRegistryEventsIterator = (db: RocksDB, fid: number): Iterator => {
   const prefix = Buffer.alloc(1 + FID_BYTES);
   prefix.writeUint8(RootPrefix.RentRegistryEvent, 0);
   prefix.writeUint32BE(fid, 1);
-  return db.iteratorByPrefix(prefix, { keys: false, reverse });
+  return db.iteratorByPrefix(prefix, { keys: false });
 };
 
 export const getStorageAdminRegistryEvent = async (
@@ -49,9 +49,11 @@ export const getStorageAdminRegistryEventsIterator = (db: RocksDB): Iterator => 
   return db.iteratorByPrefix(prefix, { keys: false });
 };
 
-export const getNextRentRegistryEventFromIterator = async (iterator: Iterator): Promise<RentRegistryEvent> => {
+export const getNextRentRegistryEventFromIterator = async (
+  iterator: Iterator
+): Promise<RentRegistryEvent | undefined> => {
   const [, value] = await iterator.next();
-  return RentRegistryEvent.decode(Uint8Array.from(value as Buffer));
+  return value === undefined ? undefined : RentRegistryEvent.decode(Uint8Array.from(value as Buffer));
 };
 
 export const getNextStorageAdminRegistryEventFromIterator = async (

@@ -12,6 +12,7 @@ import {
   userDataTypeFromJSON,
   userDataTypeToJSON,
 } from './message';
+import { RentRegistryEvent } from './storage_event';
 
 export interface Empty {}
 
@@ -149,8 +150,12 @@ export interface NameRegistryEventRequest {
   name: Uint8Array;
 }
 
-export interface RentRegistryEventRequest {
+export interface RentRegistryEventsRequest {
   fid: number;
+}
+
+export interface RentRegistryEventsResponse {
+  events: RentRegistryEvent[];
 }
 
 export interface StorageAdminRegistryEventRequest {
@@ -2190,22 +2195,22 @@ export const NameRegistryEventRequest = {
   },
 };
 
-function createBaseRentRegistryEventRequest(): RentRegistryEventRequest {
+function createBaseRentRegistryEventsRequest(): RentRegistryEventsRequest {
   return { fid: 0 };
 }
 
-export const RentRegistryEventRequest = {
-  encode(message: RentRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const RentRegistryEventsRequest = {
+  encode(message: RentRegistryEventsRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.fid !== 0) {
       writer.uint32(8).uint64(message.fid);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): RentRegistryEventRequest {
+  decode(input: _m0.Reader | Uint8Array, length?: number): RentRegistryEventsRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseRentRegistryEventRequest();
+    const message = createBaseRentRegistryEventsRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2225,23 +2230,85 @@ export const RentRegistryEventRequest = {
     return message;
   },
 
-  fromJSON(object: any): RentRegistryEventRequest {
+  fromJSON(object: any): RentRegistryEventsRequest {
     return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
   },
 
-  toJSON(message: RentRegistryEventRequest): unknown {
+  toJSON(message: RentRegistryEventsRequest): unknown {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<RentRegistryEventRequest>, I>>(base?: I): RentRegistryEventRequest {
-    return RentRegistryEventRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<RentRegistryEventsRequest>, I>>(base?: I): RentRegistryEventsRequest {
+    return RentRegistryEventsRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<RentRegistryEventRequest>, I>>(object: I): RentRegistryEventRequest {
-    const message = createBaseRentRegistryEventRequest();
+  fromPartial<I extends Exact<DeepPartial<RentRegistryEventsRequest>, I>>(object: I): RentRegistryEventsRequest {
+    const message = createBaseRentRegistryEventsRequest();
     message.fid = object.fid ?? 0;
+    return message;
+  },
+};
+
+function createBaseRentRegistryEventsResponse(): RentRegistryEventsResponse {
+  return { events: [] };
+}
+
+export const RentRegistryEventsResponse = {
+  encode(message: RentRegistryEventsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.events) {
+      RentRegistryEvent.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): RentRegistryEventsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRentRegistryEventsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.events.push(RentRegistryEvent.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RentRegistryEventsResponse {
+    return {
+      events: Array.isArray(object?.events) ? object.events.map((e: any) => RentRegistryEvent.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: RentRegistryEventsResponse): unknown {
+    const obj: any = {};
+    if (message.events) {
+      obj.events = message.events.map((e) => (e ? RentRegistryEvent.toJSON(e) : undefined));
+    } else {
+      obj.events = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RentRegistryEventsResponse>, I>>(base?: I): RentRegistryEventsResponse {
+    return RentRegistryEventsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<RentRegistryEventsResponse>, I>>(object: I): RentRegistryEventsResponse {
+    const message = createBaseRentRegistryEventsResponse();
+    message.events = object.events?.map((e) => RentRegistryEvent.fromPartial(e)) || [];
     return message;
   },
 };

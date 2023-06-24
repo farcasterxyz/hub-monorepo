@@ -67,7 +67,7 @@ import { GossipContactInfoJobScheduler } from './storage/jobs/gossipContactInfoJ
 import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet.js';
 import StoreEventHandler from './storage/stores/storeEventHandler.js';
 import { FNameRegistryClient, FNameRegistryEventsProvider } from './eth/fnameRegistryEventsProvider.js';
-import { L2EventsProvider, OPGoerliEthConstants } from 'eth/l2EventsProvider.js';
+import { L2EventsProvider, OPGoerliEthConstants } from './eth/l2EventsProvider.js';
 
 export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'l2-provider' | 'sync' | 'fname-registry';
 
@@ -148,7 +148,7 @@ export interface HubOptions {
   nameRegistryAddress?: `0x${string}`;
 
   /** Address of the StorageRegistryAddress contract  */
-  storageRegistryAddress?: string;
+  storageRegistryAddress?: `0x${string}`;
 
   /** Block number to begin syncing events from  */
   firstBlock?: number;

@@ -31,7 +31,7 @@ service HubService {
   rpc GetUserData(UserDataRequest) returns (Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
   rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
-  rpc GetRentRegistryEvent(RentRegistryEventRequest) returns (RentRegistryEvent);
+  rpc GetRentRegistryEvents(RentRegistryEventsRequest) returns (RentRegistryEventsResponse);
 
   // Verifications
   rpc GetVerification(VerificationRequest) returns (Message);
