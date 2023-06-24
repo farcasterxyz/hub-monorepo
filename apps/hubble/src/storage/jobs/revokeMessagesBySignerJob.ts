@@ -157,6 +157,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
 
     const result = await ResultAsync.fromPromise(iterator.value.next(), (e) => e as HubError);
     if (result.isErr()) {
+      await iterator.value.end();
       return err(result.error);
     }
 

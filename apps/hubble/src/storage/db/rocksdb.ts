@@ -2,11 +2,17 @@ import { bytesIncrement, HubError, isHubError } from '@farcaster/hub-nodejs';
 import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from 'abstract-leveldown';
 import { mkdir } from 'fs';
 import AbstractRocksDB from '@farcaster/rocksdb';
+import { logger } from '../../utils/logger.js';
 
 export const DB_DIRECTORY = '.rocks';
+export const MAX_DB_ITERATOR_OPEN_MILLISECONDS = 60 * 1000; // 1 min
 const DB_NAME_DEFAULT = 'farcaster';
 
 export type Transaction = AbstractChainedBatch<Buffer, Buffer>;
+
+const log = logger.child({
+  component: 'RocksDB',
+});
 
 const parseError = (e: Error): HubError => {
   if (/NotFound/i.test(e.message)) {
@@ -17,9 +23,15 @@ const parseError = (e: Error): HubError => {
 
 export class Iterator {
   protected _iterator: AbstractIterator<AbstractRocksDB.Bytes, AbstractRocksDB.Bytes>;
+  private _isOpen: boolean;
 
   constructor(iterator: AbstractIterator<AbstractRocksDB.Bytes, AbstractRocksDB.Bytes>) {
     this._iterator = iterator;
+    this._isOpen = true;
+  }
+
+  get isOpen() {
+    return this._isOpen;
   }
 
   async *[Symbol.asyncIterator]() {
@@ -56,6 +68,9 @@ export class Iterator {
 
     return new Promise((resolve, reject) => {
       this._iterator.end((err: Error | undefined) => {
+        if (!err) {
+          this._isOpen = false;
+        }
         err ? reject(err) : resolve(undefined);
       });
     });
@@ -71,8 +86,37 @@ class RocksDB {
 
   private _hasOpened = false;
 
+  /** This set and cron are used to check whether iterators are open
+   * (i.e. iterator.end) has not been called for MAX_DB_ITERATOR_OPEN_MILLISECONDS
+   */
+  private _openIterators: Set<{
+    iterator: Iterator;
+    openTimestamp: number;
+    options: AbstractRocksDB.IteratorOptions | undefined;
+  }>;
+  private _iteratorCheckTimer?: NodeJS.Timer;
+
   constructor(name?: string) {
     this._db = new AbstractRocksDB(`${DB_DIRECTORY}/${name ?? DB_NAME_DEFAULT}`);
+    this._openIterators = new Set();
+    this._iteratorCheckTimer = setInterval(() => {
+      const now = Date.now();
+      const openIterators = [...this._openIterators].flatMap((entry) => {
+        if (!entry.iterator.isOpen) {
+          return [];
+        } else {
+          if (now - entry.openTimestamp >= MAX_DB_ITERATOR_OPEN_MILLISECONDS) {
+            log.warn(
+              entry.options,
+              `RocksDB iterator open
+                for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`
+            );
+          }
+          return [entry];
+        }
+      });
+      this._openIterators = new Set(openIterators);
+    }, MAX_DB_ITERATOR_OPEN_MILLISECONDS);
   }
 
   get location() {
@@ -81,6 +125,10 @@ class RocksDB {
 
   get status() {
     return this._db.status;
+  }
+
+  get openIterators() {
+    return this._openIterators;
   }
 
   async put(key: Buffer, value: Buffer): Promise<void> {
@@ -179,7 +227,9 @@ class RocksDB {
   }
 
   iterator(options?: AbstractRocksDB.IteratorOptions): Iterator {
-    return new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
+    const iterator = new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
+    this._openIterators.add({ iterator: iterator, openTimestamp: Date.now(), options: options });
+    return iterator;
   }
 
   /* -------------------------------------------------------------------------- */

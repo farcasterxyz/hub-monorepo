@@ -40,6 +40,7 @@ describe('gossip network tests', () => {
         const result = await n.connect(nodes[0] as GossipNode);
         expect(result.isOk()).toBeTruthy();
       }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const primaryTopic = nodes[0]!.primaryTopic();
       // Subscribe each node to the test topic
       nodes.forEach((n) => n.gossip?.subscribe(primaryTopic));

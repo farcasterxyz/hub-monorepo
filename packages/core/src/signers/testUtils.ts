@@ -20,7 +20,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
       const hash = blake3(bytes, { dkLen: 20 });
       const signature = await signer.signMessageHash(hash);
       expect(signature.isOk()).toBeTruthy();
-      const recoveredAddress = await eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap());
+      const recoveredAddress = eip712.verifyMessageHashSignature(hash, signature._unsafeUnwrap());
       expect(recoveredAddress).toEqual(ok(signerKey));
     });
   });

@@ -3,48 +3,46 @@ import {
   hexStringToBytes,
   HubAsyncResult,
   HubError,
-  HubState,
   IdRegistryEvent,
   IdRegistryEventType,
   NameRegistryEvent,
   NameRegistryEventType,
   toFarcasterTime,
 } from '@farcaster/hub-nodejs';
-import { AbstractProvider, BaseContractMethod, Contract, ContractEventPayload, EthersError, EventLog } from 'ethers';
-import { Err, err, Ok, ok, Result, ResultAsync } from 'neverthrow';
+import { createPublicClient, http, Log, PublicClient } from 'viem';
+import { goerli } from 'viem/chains';
+import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { IdRegistry, NameRegistry } from './abis.js';
 import { bytes32ToBytes, bytesToBytes32 } from './utils.js';
 import { HubInterface } from '../hubble.js';
 import { logger } from '../utils/logger.js';
+import { WatchContractEvent } from './watchContractEvent.js';
+import { WatchBlockNumber } from './watchBlockNumber.js';
 
 const log = logger.child({
   component: 'EthEventsProvider',
 });
 
 export class GoerliEthConstants {
-  public static IdRegistryAddress = '0xda107a1caf36d198b12c16c7b6a1d1c795978c42';
-  public static NameRegistryAddress = '0xe3be01d99baa8db9905b33a3ca391238234b79d1';
+  public static IdRegistryAddress = '0xda107a1caf36d198b12c16c7b6a1d1c795978c42' as const;
+  public static NameRegistryAddress = '0xe3be01d99baa8db9905b33a3ca391238234b79d1' as const;
   public static FirstBlock = 7648795;
   public static ChunkSize = 10000;
-  public static chainId = BigInt(5);
 }
 
 type NameRegistryRenewEvent = Omit<NameRegistryEvent, 'to' | 'from'>;
 
 /**
- * Class that follows the Ethereum chain to handle on-chain events from the ID Registry and Name Registry contracts.
+ * Class that follows the Ethereum chain to handle on-chain events from the ID
+ * Registry and Name Registry contracts.
  */
 export class EthEventsProvider {
   private _hub: HubInterface;
-  private _jsonRpcProvider: AbstractProvider;
+  private _publicClient: PublicClient;
 
-  private _idRegistryContract: Contract;
-  private _nameRegistryContract: Contract;
   private _firstBlock: number;
   private _chunkSize: number;
   private _resyncEvents: boolean;
-
-  private _numConfirmations: number;
 
   private _idEventsByBlock: Map<number, Array<IdRegistryEvent>>;
   private _nameEventsByBlock: Map<number, Array<NameRegistryEvent>>;
@@ -52,98 +50,138 @@ export class EthEventsProvider {
   private _retryDedupMap: Map<number, boolean>;
 
   private _lastBlockNumber: number;
-  private _ethersPromiseCacheDelayMS: number;
 
-  // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
+  private _watchNameRegistryTransfers: WatchContractEvent<typeof NameRegistry.abi, 'Transfer', true>;
+  private _watchNameRegistryRenews: WatchContractEvent<typeof NameRegistry.abi, 'Renew', true>;
+  private _watchIdRegistryRegisters: WatchContractEvent<typeof IdRegistry.abi, 'Register', true>;
+  private _watchIdRegistryTransfers: WatchContractEvent<typeof IdRegistry.abi, 'Transfer', true>;
+  private _watchBlockNumber: WatchBlockNumber;
+
+  // Whether the historical events have been synced. This is used to avoid
+  // syncing the events multiple times.
   private _isHistoricalSyncDone = false;
+
+  // Number of blocks to wait before processing an event. This is hardcoded to
+  // 6 for now, because that's the threshold beyond which blocks are unlikely
+  // to reorg anymore. 6 blocks represents ~72 seconds on Goerli, so the delay
+  // is not too long.
+  static numConfirmations = 6;
+
+  // Events are only processed after 6 blocks have been confirmed; poll less
+  // frequently while ensuring events are available the moment they are
+  // confirmed.
+  static eventPollingInterval = (EthEventsProvider.numConfirmations - 2) * 12_000;
+  static blockPollingInterval = 4_000;
 
   constructor(
     hub: HubInterface,
-    jsonRpcProvider: AbstractProvider,
-    idRegistryContract: Contract,
-    nameRegistryContract: Contract,
+    publicClient: PublicClient,
+    idRegistryAddress: `0x${string}`,
+    nameRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
-    resyncEvents: boolean,
-    ethersPromiseCacheDelayMS = 250
+    resyncEvents: boolean
   ) {
     this._hub = hub;
-    this._jsonRpcProvider = jsonRpcProvider;
-    this._idRegistryContract = idRegistryContract;
-    this._nameRegistryContract = nameRegistryContract;
+    this._publicClient = publicClient;
     this._firstBlock = firstBlock;
     this._chunkSize = chunkSize;
     this._resyncEvents = resyncEvents;
-    this._ethersPromiseCacheDelayMS = ethersPromiseCacheDelayMS;
-
-    // Number of blocks to wait before processing an event.
-    // This is hardcoded to 6 for now, because that's the threshold beyond which blocks are unlikely to reorg anymore.
-    // 6 blocks represents ~72 seconds on Goerli, so the delay is not too long.
-    this._numConfirmations = 6;
 
     this._lastBlockNumber = 0;
 
-    // Initialize the cache for the ID and Name Registry events. They will be processed after
-    // numConfirmations blocks have been mined.
+    // Initialize the cache for the ID and Name Registry events. They will be
+    // processed after numConfirmations blocks have been mined.
     this._nameEventsByBlock = new Map();
     this._idEventsByBlock = new Map();
     this._renewEventsByBlock = new Map();
     this._retryDedupMap = new Map();
 
     // Setup IdRegistry contract
-    this._idRegistryContract.on('Register', (to: string, id: bigint, _recovery, _url, event: ContractEventPayload) => {
-      this.cacheIdRegistryEvent(null, to, id, IdRegistryEventType.REGISTER, event.log);
-    });
-    this._idRegistryContract.on('Transfer', (from: string, to: string, id: bigint, event: ContractEventPayload) => {
-      this.cacheIdRegistryEvent(from, to, id, IdRegistryEventType.TRANSFER, event.log);
-    });
-
-    // Setup NameRegistry contract
-    this._nameRegistryContract.on(
-      'Transfer',
-      (from: string, to: string, tokenId: bigint, event: ContractEventPayload) => {
-        this.cacheNameRegistryEvent(from, to, tokenId, event.log);
-      }
+    this._watchIdRegistryRegisters = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: idRegistryAddress,
+        abi: IdRegistry.abi,
+        eventName: 'Register',
+        onLogs: this.processIdRegisterEvents.bind(this),
+        pollingInterval: EthEventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'IdRegistry Register'
     );
 
-    this._nameRegistryContract.on('Renew', (tokenId: bigint, expiry: bigint, event: ContractEventPayload) => {
-      this.cacheRenewEvent(tokenId, expiry, event.log);
-    });
+    this._watchIdRegistryTransfers = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: idRegistryAddress,
+        abi: IdRegistry.abi,
+        eventName: 'Transfer',
+        onLogs: this.processIdTransferEvents.bind(this),
+        pollingInterval: EthEventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'IdRegistry Transfer'
+    );
 
-    // Set up block listener to confirm blocks
-    this._jsonRpcProvider.on('block', (blockNumber: number) => this.handleNewBlock(blockNumber));
+    // Setup NameRegistry contract
+    this._watchNameRegistryTransfers = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: nameRegistryAddress,
+        abi: NameRegistry.abi,
+        eventName: 'Transfer' as const,
+        onLogs: this.processNameTransferEvents.bind(this),
+        pollingInterval: EthEventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'NameRegistry Transfer'
+    );
+
+    this._watchNameRegistryRenews = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: nameRegistryAddress,
+        abi: NameRegistry.abi,
+        eventName: 'Renew',
+        onLogs: this.processNameRenewEvents.bind(this),
+        pollingInterval: EthEventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      'NameRegistry Renew'
+    );
+
+    this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
+      pollingInterval: EthEventsProvider.blockPollingInterval,
+      onBlockNumber: (blockNumber) => this.handleNewBlock(Number(blockNumber)),
+      onError: (error) => {
+        log.error(`Error watching new block numbers: ${error}`, { error });
+      },
+    });
   }
 
-  /**
-   *
-   * Build an Eth Events Provider for the ID Registry and Name Registry contracts.
-   */
   public static build(
     hub: HubInterface,
-    rpcProvider: AbstractProvider,
-    idRegistry: string | Contract,
-    nameRegistry: string | Contract,
+    ethRpcUrl: string,
+    idRegistryAddress: `0x${string}`,
+    nameRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
-    resyncEvents: boolean,
-    ethersPromiseCacheDelayMS = 250
+    resyncEvents: boolean
   ): EthEventsProvider {
-    const idRegistryContract = (idRegistry as Contract).target
-      ? (idRegistry as Contract)
-      : new Contract(idRegistry as string, IdRegistry.abi, rpcProvider);
-    const nameRegistryContract = (nameRegistry as Contract).target
-      ? (nameRegistry as Contract)
-      : new Contract(nameRegistry as string, NameRegistry.abi, rpcProvider);
+    const publicClient = createPublicClient({
+      chain: goerli,
+      transport: http(ethRpcUrl, { retryCount: 10 }),
+    });
 
     const provider = new EthEventsProvider(
       hub,
-      rpcProvider,
-      idRegistryContract,
-      nameRegistryContract,
+      publicClient,
+      idRegistryAddress,
+      nameRegistryAddress,
       firstBlock,
       chunkSize,
-      resyncEvents,
-      ethersPromiseCacheDelayMS
+      resyncEvents
     );
 
     return provider;
@@ -156,13 +194,20 @@ export class EthEventsProvider {
   public async start() {
     // Connect to Ethereum RPC
     await this.connectAndSyncHistoricalEvents();
+
+    this._watchBlockNumber.start();
+    this._watchNameRegistryTransfers.start();
+    this._watchNameRegistryRenews.start();
+    this._watchIdRegistryRegisters.start();
+    this._watchIdRegistryTransfers.start();
   }
 
   public async stop() {
-    this._idRegistryContract.removeAllListeners();
-    this._nameRegistryContract.removeAllListeners();
-    this._jsonRpcProvider.removeAllListeners();
-    this._jsonRpcProvider._forEachSubscriber((s) => s.stop());
+    this._watchNameRegistryTransfers.stop();
+    this._watchNameRegistryRenews.stop();
+    this._watchIdRegistryRegisters.stop();
+    this._watchIdRegistryTransfers.stop();
+    this._watchBlockNumber.stop();
 
     // Wait for all async promises to resolve
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -176,12 +221,13 @@ export class EthEventsProvider {
       return err(encodedFnameResult.error);
     }
 
-    // Safety: expiryOf exists on the contract's abi, but ethers won't infer it from the ABI though
-    // it is supposed to  in v6 https://github.com/ethers-io/ethers.js/issues/1138
-    const expiryOfMethod = this._nameRegistryContract['expiryOf'] as BaseContractMethod;
-
-    const expiryResult: Result<bigint, HubError> = await this.executeCallAsPromiseWithRetry(
-      () => expiryOfMethod(encodedFnameResult.value),
+    const expiryResult: Result<bigint, HubError> = await ResultAsync.fromPromise(
+      this._publicClient.readContract({
+        address: GoerliEthConstants.NameRegistryAddress,
+        abi: NameRegistry.abi,
+        functionName: 'expiryOf',
+        args: [encodedFnameResult.value],
+      }),
       (err) => new HubError('unavailable.network_failure', err as Error)
     );
 
@@ -194,10 +240,7 @@ export class EthEventsProvider {
 
   /** Connect to Ethereum RPC */
   private async connectAndSyncHistoricalEvents() {
-    const latestBlockResult = await this.executeCallAsPromiseWithRetry(
-      () => this._jsonRpcProvider.getBlock('latest'),
-      (err) => err
-    );
+    const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error(
         { err: latestBlockResult.error },
@@ -206,24 +249,14 @@ export class EthEventsProvider {
       return;
     }
 
-    const network = await this.executeCallAsPromiseWithRetry(
-      () => this._jsonRpcProvider.getNetwork(),
-      (err) => err
-    );
-
-    if (network.isErr() || network.value.chainId !== GoerliEthConstants.chainId) {
-      log.error({ err: network.isErr() ? network.error : `Wrong network ${network.value.chainId}` }, 'Bad network');
-      return;
-    }
-
-    const latestBlock = latestBlockResult.value;
+    const latestBlock = Number(latestBlockResult.value);
 
     if (!latestBlock) {
       log.error('failed to get the latest block from the RPC provider');
       return;
     }
 
-    log.info({ latestBlock: latestBlock.number, network: network.value.chainId }, 'connected to ethereum node');
+    log.info({ latestBlock: latestBlock }, 'connected to ethereum node');
 
     // Find how how much we need to sync
     let lastSyncedBlock = this._firstBlock;
@@ -239,17 +272,21 @@ export class EthEventsProvider {
     }
 
     log.info({ lastSyncedBlock }, 'last synced block');
-    const toBlock = latestBlock.number;
+    const toBlock = latestBlock;
 
-    // Sync old Id events
-    await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, lastSyncedBlock, toBlock, this._chunkSize);
-    await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
+    if (lastSyncedBlock < toBlock) {
+      log.info({ fromBlock: lastSyncedBlock, toBlock }, 'syncing events from missed blocks');
 
-    // Sync old Name Transfer events
-    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
+      // Sync old Id events
+      await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, lastSyncedBlock, toBlock, this._chunkSize);
+      await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
 
-    // We don't need to sync historical Renew events because the expiry
-    // is pulled when NameRegistryEvents are merged
+      // Sync old Name Transfer events
+      await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
+
+      // We don't need to sync historical Renew events because the expiry
+      // is pulled when NameRegistryEvents are merged
+    }
 
     this._isHistoricalSyncDone = true;
   }
@@ -281,8 +318,6 @@ export class EthEventsProvider {
     toBlock: number,
     batchSize: number
   ) {
-    const typeString = type === IdRegistryEventType.REGISTER ? 'Register' : 'Transfer';
-
     /*
      * How querying blocks in batches works
      * We calculate the difference in blocks, for example, lets say we need to sync/cache 769,531 blocks (difference between the contracts FirstBlock, and the latest Goerli block at time of writing, 8418326)
@@ -304,38 +339,30 @@ export class EthEventsProvider {
         nextFromBlock += 1;
       }
 
-      // Fetch our batch of blocks
-      const batchIdEvents = await this.executeCallAsPromiseWithRetry(
-        // Safety: queryFilter will always return EventLog as long as the ABI is valid
-        () =>
-          this._idRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
-            EventLog[]
-          >,
-        (e) => e
-      );
+      if (type === IdRegistryEventType.REGISTER) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: GoerliEthConstants.IdRegistryAddress,
+          abi: IdRegistry.abi,
+          eventName: 'Register',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
 
-      // Make sure the batch didn't error, and if it did, retry.
-      if (batchIdEvents.isErr()) {
-        // If we still hit an error, just log the error and return
-        log.error({ err: batchIdEvents.error }, 'failed to get a batch of old ID events');
-        return;
-      }
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processIdRegisterEvents(logs);
+      } else if (type === IdRegistryEventType.TRANSFER) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: GoerliEthConstants.IdRegistryAddress,
+          abi: IdRegistry.abi,
+          eventName: 'Transfer',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
 
-      // Loop through each event, get the right values, and cache it
-      for (const event of batchIdEvents.value) {
-        const toIndex = type === IdRegistryEventType.REGISTER ? 0 : 1;
-        const idIndex = type === IdRegistryEventType.REGISTER ? 1 : 2;
-
-        // Parsing can throw errors, so we'll just log them and continue
-        try {
-          const to: string = event.args.at(toIndex);
-          const id = BigInt(event.args.at(idIndex));
-          const from: string = type === IdRegistryEventType.REGISTER ? null : event.args.at(0);
-
-          await this.cacheIdRegistryEvent(from, to, id, type, event);
-        } catch (e) {
-          log.error({ event }, 'failed to parse event args');
-        }
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processIdTransferEvents(logs);
       }
     }
   }
@@ -350,8 +377,6 @@ export class EthEventsProvider {
     toBlock: number,
     batchSize: number
   ) {
-    const typeString = type === NameRegistryEventType.TRANSFER ? 'Transfer' : 'Renew';
-
     /*
      * Querying Blocks in Batches
      *
@@ -381,33 +406,129 @@ export class EthEventsProvider {
         nextFromBlock += 1;
       }
 
-      const oldNameBatchEvents = await this.executeCallAsPromiseWithRetry(
-        // Safety: queryFilter will always return EventLog as long as the ABI is valid
-        () =>
-          this._nameRegistryContract.queryFilter(typeString, Number(nextFromBlock), Number(nextToBlock)) as Promise<
-            EventLog[]
-          >,
-        (e) => e
-      );
+      if (type === NameRegistryEventType.TRANSFER) {
+        const filter = await this._publicClient.createContractEventFilter({
+          address: GoerliEthConstants.NameRegistryAddress,
+          abi: NameRegistry.abi,
+          eventName: 'Transfer',
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
 
-      if (oldNameBatchEvents.isErr()) {
-        // If we still hit an error, just log the error and return
-        log.error({ err: oldNameBatchEvents.error }, 'failed to get old Name events');
-        return;
+        const logs = await this._publicClient.getFilterLogs({ filter });
+        await this.processNameTransferEvents(logs);
+      }
+    }
+  }
+
+  private async processIdTransferEvents(
+    logs: Log<bigint, number, undefined, true, typeof IdRegistry.abi, 'Transfer'>[]
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
       }
 
-      for (const event of oldNameBatchEvents.value) {
-        if (type === NameRegistryEventType.TRANSFER) {
-          // Handling: use try-catch + log since errors are expected and not important to surface
-          try {
-            const from: string = event.args.at(0);
-            const to: string = event.args.at(1);
-            const tokenId = BigInt(event.args.at(2));
-            await this.cacheNameRegistryEvent(from, to, tokenId, event);
-          } catch (e) {
-            log.error({ event }, 'failed to parse event args');
-          }
-        }
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheIdRegistryEvent(
+          event.args.from,
+          event.args.to,
+          event.args.id,
+          IdRegistryEventType.TRANSFER,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
+  private async processIdRegisterEvents(
+    logs: Log<bigint, number, undefined, true, typeof IdRegistry.abi, 'Register'>[]
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheIdRegistryEvent(
+          null,
+          event.args.to,
+          event.args.id,
+          IdRegistryEventType.REGISTER,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
+  private async processNameTransferEvents(
+    logs: Log<bigint, number, undefined, true, typeof NameRegistry.abi, 'Transfer'>[]
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheNameRegistryEvent(
+          event.args.from,
+          event.args.to,
+          event.args.tokenId,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
+      }
+    }
+  }
+
+  private async processNameRenewEvents(logs: Log<bigint, number, undefined, true, typeof NameRegistry.abi, 'Renew'>[]) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        await this.cacheRenewEvent(
+          event.args.tokenId,
+          event.args.expiry,
+          Number(blockNumber),
+          blockHash,
+          transactionHash,
+          Number(transactionIndex)
+        );
+      } catch (e) {
+        log.error({ event }, 'failed to parse event args');
       }
     }
   }
@@ -426,7 +547,7 @@ export class EthEventsProvider {
     cachedBlocks.sort();
 
     for (const cachedBlock of cachedBlocks) {
-      if (cachedBlock + this._numConfirmations <= blockNumber) {
+      if (cachedBlock + EthEventsProvider.numConfirmations <= blockNumber) {
         const idEvents = this._idEventsByBlock.get(cachedBlock);
         this._idEventsByBlock.delete(cachedBlock);
 
@@ -476,8 +597,13 @@ export class EthEventsProvider {
 
     // Update the last synced block if all the historical events have been synced
     if (this._isHistoricalSyncDone) {
-      const hubState = HubState.create({ lastEthBlock: blockNumber });
-      await this._hub.putHubState(hubState);
+      const hubState = await this._hub.getHubState();
+      if (hubState.isOk()) {
+        hubState.value.lastEthBlock = blockNumber;
+        await this._hub.putHubState(hubState.value);
+      } else {
+        log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
+      }
     }
 
     this._lastBlockNumber = blockNumber;
@@ -488,10 +614,11 @@ export class EthEventsProvider {
     to: string,
     id: bigint,
     type: IdRegistryEventType,
-    eventLog: EventLog
+    blockNumber: number,
+    blockHash: string,
+    transactionHash: string,
+    index: number
   ): HubAsyncResult<void> {
-    const { blockNumber, blockHash, transactionHash, index } = eventLog;
-
     const logEvent = log.child({ event: { to, id: id.toString(), blockNumber } });
 
     const serialized = Result.combine([
@@ -540,10 +667,11 @@ export class EthEventsProvider {
     from: string,
     to: string,
     tokenId: bigint,
-    eventLog: EventLog
+    blockNumber: number,
+    blockHash: string,
+    transactionHash: string,
+    index: number
   ): HubAsyncResult<void> {
-    const { blockNumber, blockHash, transactionHash, index } = eventLog;
-
     const logEvent = log.child({ event: { to, blockNumber } });
 
     const serialized = Result.combine([
@@ -588,9 +716,14 @@ export class EthEventsProvider {
     return ok(undefined);
   }
 
-  private async cacheRenewEvent(tokenId: bigint, expiry: bigint, eventLog: EventLog): HubAsyncResult<void> {
-    const { blockHash, transactionHash, blockNumber, index } = eventLog;
-
+  private async cacheRenewEvent(
+    tokenId: bigint,
+    expiry: bigint,
+    blockNumber: number,
+    blockHash: string,
+    transactionHash: string,
+    index: number
+  ): HubAsyncResult<void> {
     const logEvent = log.child({ event: { blockNumber } });
 
     const serialized = Result.combine([
@@ -628,45 +761,5 @@ export class EthEventsProvider {
     logEvent.info(`cacheRenewEvent: token id ${tokenId.toString()} renewed in block ${blockNumber}`);
 
     return ok(undefined);
-  }
-
-  private async executeCallAsPromiseWithRetry<T, E>(
-    call: () => Promise<T>,
-    errorFn: (e: unknown) => E,
-    attempt = 1
-  ): Promise<Result<T, E>> {
-    const result = await ResultAsync.fromPromise(call(), (err) => err);
-
-    if (result.isErr()) {
-      const err = result.error as EthersError;
-      if (err && err.code)
-        switch (err.code) {
-          // non-request-specific ethers errors:
-          case 'UNKNOWN_ERROR':
-          case 'BAD_DATA':
-          case 'SERVER_ERROR':
-          case 'NETWORK_ERROR':
-          case 'TIMEOUT':
-          case 'OFFCHAIN_FAULT':
-            if (attempt !== 3) {
-              const logger = log.child({ event: { rpcError: err.code } });
-              logger.warn(`ethRPCError: RPC returned response ${err.message}, retrying (attempt ${attempt}).`);
-
-              // delay is required because ethers caches results from promises for 250ms, also exponential backoff
-              await new Promise<void>((resolve) =>
-                setTimeout(() => {
-                  resolve();
-                }, this._ethersPromiseCacheDelayMS * Math.pow(attempt, attempt) + 1)
-              );
-
-              return await this.executeCallAsPromiseWithRetry(call, errorFn, attempt + 1);
-            }
-            break;
-        }
-
-      return new Err(errorFn(result.error));
-    }
-
-    return new Ok(result.value);
   }
 }

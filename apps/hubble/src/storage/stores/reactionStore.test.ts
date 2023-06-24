@@ -433,7 +433,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(reactionAddLater);
         await expect(set.merge(reactionAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertReactionDoesNotExist(reactionAdd);
@@ -467,7 +467,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(reactionAddLater);
         await expect(set.merge(reactionAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
 
         await assertReactionDoesNotExist(reactionAdd);
@@ -496,7 +496,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(reactionRemove);
         await expect(set.merge(reactionAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertReactionRemoveWins(reactionRemove);
@@ -516,7 +516,7 @@ describe('merge', () => {
 
         await set.merge(reactionRemoveLater);
         await expect(set.merge(reactionAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertReactionRemoveWins(reactionRemoveLater);
@@ -534,7 +534,7 @@ describe('merge', () => {
 
         await set.merge(reactionRemoveEarlier);
         await expect(set.merge(reactionAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertReactionRemoveWins(reactionRemoveEarlier);
@@ -586,7 +586,7 @@ describe('merge', () => {
       test('fails with an earlier timestamp', async () => {
         await set.merge(reactionRemoveLater);
         await expect(set.merge(reactionRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertReactionDoesNotExist(reactionRemove);
@@ -620,7 +620,7 @@ describe('merge', () => {
       test('fails with a lower hash', async () => {
         await set.merge(reactionRemoveLater);
         await expect(set.merge(reactionRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
         );
 
         await assertReactionDoesNotExist(reactionRemove);
@@ -652,7 +652,7 @@ describe('merge', () => {
 
         await set.merge(reactionAddLater);
         await expect(set.merge(reactionRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd')
+          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
         );
         await assertReactionAddWins(reactionAddLater);
         await assertReactionDoesNotExist(reactionRemove);

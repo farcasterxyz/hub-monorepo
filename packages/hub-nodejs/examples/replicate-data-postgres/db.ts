@@ -117,6 +117,18 @@ export interface Database {
     custodyAddress: Uint8Array;
     expiresAt: Date;
   };
+
+  links: {
+    id: GeneratedAlways<string>;
+    fid: number;
+    targetFid: number | null;
+    type: string;
+    timestamp: Date;
+    createdAt: Generated<Date>;
+    updatedAt: Generated<Date>;
+    displayTimestamp: Date | null;
+    deletedAt: Date | null;
+  };
 }
 
 export const getDbClient = (connectionString: string) => {

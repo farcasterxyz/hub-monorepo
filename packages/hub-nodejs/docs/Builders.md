@@ -19,7 +19,7 @@ Builders are factory methods that construct and sign Farcaster Messages which ca
 
 ## Prerequisites
 
-Before you can build messages, you'll need construct the following objects:
+Before you can build messages, you'll need to construct the following objects:
 
 - An `ed25519Signer`, used to sign most messages.
 - A `eip712Signer`, used to sign some messages.
@@ -419,6 +419,6 @@ const verificationRemoveMessage = await makeVerificationRemove(verificationRemov
 
 | Name          | Type                                                             | Description                                                          |
 | :------------ | :--------------------------------------------------------------- | :------------------------------------------------------------------- |
-| `body`        | [`VerificationRemoveBody`](./Messages.md#verificationremovebody) | An object which contains data about the Verification being removed . |
+| `body`        | [`VerificationRemoveBody`](./Messages.md#verificationremovebody) | An object which contains data about the Verification being removed. |
 | `dataOptions` | [`DataOptions`](#data-options)                                   | Optional metadata to construct the message.                          |
 | `signer`      | [`Ed25519Signer`](./signers/NobleEd25519Signer.md)               | A currently valid Signer for the fid.                                |

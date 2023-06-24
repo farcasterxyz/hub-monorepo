@@ -1,7 +1,5 @@
-import { Wallet } from 'ethers';
 import cron from 'node-cron';
 import {
-  EthersEip712Signer,
   makeCastAdd,
   makeReactionAdd,
   makeSignerAdd,
@@ -13,12 +11,14 @@ import {
   FarcasterNetwork,
   ReactionType,
   CastAddBody,
+  ViemLocalEip712Signer,
 } from '@farcaster/hub-nodejs';
 import { logger } from '../utils/logger.js';
 import { ed25519 as ed } from '@noble/curves/ed25519';
 import { faker } from '@faker-js/faker';
 import Server from '../rpc/server.js';
 import { Result } from 'neverthrow';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
 const log = logger.child({
   component: 'PeriodicTestDataJob',
@@ -69,8 +69,8 @@ export class PeriodicTestDataJobScheduler {
         continue;
       }
 
-      const wallet = Wallet.fromPhrase(testUser.mnemonic);
-      const eip712Signer = new EthersEip712Signer(wallet);
+      const account = privateKeyToAccount(generatePrivateKey());
+      const eip712Signer = new ViemLocalEip712Signer(account);
 
       // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
       const signerPrivateKey = ed.utils.randomPrivateKey();

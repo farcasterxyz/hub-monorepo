@@ -1,41 +1,29 @@
 import {
-  bytesCompare,
   CastId,
-  getFarcasterTime,
   HubAsyncResult,
   HubError,
-  HubEventType,
-  isHubError,
   isReactionAddMessage,
   isReactionRemoveMessage,
-  Message,
   MessageType,
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
 } from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
 import { err, ok, ResultAsync } from 'neverthrow';
 import {
-  deleteMessageTransaction,
   getManyMessages,
-  getMessage,
-  getMessagesPageByPrefix,
-  getMessagesPruneIterator,
-  getNextMessageFromIterator,
   getPageIteratorByPrefix,
   makeCastIdKey,
   makeFidKey,
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
-  putMessageTransaction,
 } from '../db/message.js';
 import RocksDB, { Transaction } from '../db/rocksdb.js';
-import { RootPrefix, TSHASH_LENGTH, UserPostfix } from '../db/types.js';
-import StoreEventHandler, { HubEventArgs } from '../stores/storeEventHandler.js';
-import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types.js';
-import { logger } from '../../utils/logger.js';
+import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from '../db/types.js';
+import StoreEventHandler from '../stores/storeEventHandler.js';
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types.js';
+import { Store } from './store.js';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
@@ -136,19 +124,82 @@ const makeReactionsByTargetKey = (target: CastId | string, fid?: number, tsHash?
  * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
  * 3. reactionTarget:reactionType:targetCastTsHash -> fid:tsHash (Target Index)
  */
-class ReactionStore {
-  private _db: RocksDB;
-  private _eventHandler: StoreEventHandler;
-  private _pruneSizeLimit: number;
-  private _pruneTimeLimit: number;
-  private _mergeLock: AsyncLock;
+class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
+  override _postfix: UserMessagePostfix = UserPostfix.ReactionMessage;
+  override makeAddKey(msg: ReactionAddMessage) {
+    return makeReactionAddsKey(
+      msg.data.fid,
+      msg.data.reactionBody.type,
+      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId
+    ) as Buffer;
+  }
+
+  override makeRemoveKey(msg: ReactionRemoveMessage) {
+    return makeReactionRemovesKey(
+      msg.data.fid,
+      msg.data.reactionBody.type,
+      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId
+    );
+  }
+
+  override _isAddType = isReactionAddMessage;
+  override _isRemoveType = isReactionRemoveMessage;
+  override _addMessageType = MessageType.REACTION_ADD;
+  override _removeMessageType = MessageType.REACTION_REMOVE;
+  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
+  protected override PRUNE_TIME_LIMIT_DEFAULT = PRUNE_TIME_LIMIT_DEFAULT;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    this._db = db;
-    this._eventHandler = eventHandler;
-    this._pruneSizeLimit = options.pruneSizeLimit ?? PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneTimeLimit = options.pruneTimeLimit ?? PRUNE_TIME_LIMIT_DEFAULT;
-    this._mergeLock = new AsyncLock();
+    super(db, eventHandler, options);
+    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
+  }
+
+  override async findMergeAddConflicts(_message: ReactionAddMessage): HubAsyncResult<void> {
+    return ok(undefined);
+  }
+
+  override async findMergeRemoveConflicts(_message: ReactionRemoveMessage): HubAsyncResult<void> {
+    return ok(undefined);
+  }
+
+  override async buildSecondaryIndices(txn: Transaction, message: ReactionAddMessage): HubAsyncResult<void> {
+    const tsHash = makeTsHash(message.data.timestamp, message.hash);
+
+    if (tsHash.isErr()) {
+      return err(tsHash.error);
+    }
+
+    const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
+
+    if (!target) {
+      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+    }
+
+    // Puts message key into the byTarget index
+    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
+    txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
+
+    return ok(undefined);
+  }
+
+  override async deleteSecondaryIndices(txn: Transaction, message: ReactionAddMessage): HubAsyncResult<void> {
+    const tsHash = makeTsHash(message.data.timestamp, message.hash);
+
+    if (tsHash.isErr()) {
+      return err(tsHash.error);
+    }
+
+    const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
+
+    if (!target) {
+      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+    }
+
+    // Delete the message key from byTarget index
+    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
+    txn = txn.del(byTargetKey);
+
+    return ok(undefined);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -165,10 +216,9 @@ class ReactionStore {
    * @returns the ReactionAdd Model if it exists, undefined otherwise
    */
   async getReactionAdd(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionAddMessage> {
-    const reactionAddsSetKey = makeReactionAddsKey(fid, type, target);
-    const reactionMessageKey = await this._db.get(reactionAddsSetKey);
-
-    return getMessage(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
+    const targetUrl = typeof target === 'string' ? target : undefined;
+    const targetCastId = typeof target === 'string' ? undefined : target;
+    return await this.getAdd({ data: { fid, reactionBody: { type, targetCastId, targetUrl } } });
   }
 
   /**
@@ -180,10 +230,9 @@ class ReactionStore {
    * @returns the ReactionRemove message if it exists, undefined otherwise
    */
   async getReactionRemove(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionRemoveMessage> {
-    const reactionRemovesKey = makeReactionRemovesKey(fid, type, target);
-    const reactionMessageKey = await this._db.get(reactionRemovesKey);
-
-    return getMessage(this._db, fid, UserPostfix.ReactionMessage, reactionMessageKey);
+    const targetUrl = typeof target === 'string' ? target : undefined;
+    const targetCastId = typeof target === 'string' ? undefined : target;
+    return await this.getRemove({ data: { fid, reactionBody: { type, targetCastId, targetUrl } } });
   }
 
   /** Finds all ReactionAdd Messages by iterating through the prefixes */
@@ -192,11 +241,7 @@ class ReactionStore {
     type?: ReactionType,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<ReactionAddMessage>> {
-    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
-    const filter = (message: Message): message is ReactionAddMessage => {
-      return isReactionAddMessage(message) && (type ? message.data.reactionBody.type === type : true);
-    };
-    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
+    return await this.getAddsByFid({ data: { fid, reactionBody: { type: type as ReactionType } } }, pageOptions);
   }
 
   /** Finds all ReactionRemove Messages by iterating through the prefixes */
@@ -205,22 +250,14 @@ class ReactionStore {
     type?: ReactionType,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<ReactionRemoveMessage>> {
-    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
-    const filter = (message: Message): message is ReactionRemoveMessage => {
-      return isReactionRemoveMessage(message) && (type ? message.data.reactionBody.type === type : true);
-    };
-    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
+    return await this.getRemovesByFid({ data: { fid, reactionBody: { type: type as ReactionType } } }, pageOptions);
   }
 
   async getAllReactionMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {}
   ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
-    const prefix = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage);
-    const filter = (message: Message): message is ReactionAddMessage | ReactionRemoveMessage => {
-      return isReactionAddMessage(message) || isReactionRemoveMessage(message);
-    };
-    return getMessagesPageByPrefix(this._db, prefix, filter, pageOptions);
+    return await this.getAllMessagesByFid(fid, pageOptions);
   }
 
   /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
@@ -265,411 +302,12 @@ class ReactionStore {
 
     const messages = await getManyMessages<ReactionAddMessage>(this._db, messageKeys);
 
+    await iterator.end();
     if (!iteratorFinished) {
-      await iterator.end(); // clear iterator if it has not finished
       return { messages, nextPageToken: lastPageToken };
     } else {
       return { messages, nextPageToken: undefined };
     }
-  }
-
-  /** Merges a ReactionAdd or ReactionRemove message into the ReactionStore */
-  async merge(message: Message): Promise<number> {
-    if (!isReactionAddMessage(message) && !isReactionRemoveMessage(message)) {
-      throw new HubError('bad_request.validation_failure', 'invalid message type');
-    }
-
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message,
-            UserPostfix.ReactionMessage,
-            this._pruneSizeLimit,
-            this._pruneTimeLimit
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError('bad_request.prunable', 'message would be pruned');
-          }
-
-          if (isReactionAddMessage(message)) {
-            return this.mergeAdd(message);
-          } else if (isReactionRemoveMessage(message)) {
-            return this.mergeRemove(message);
-          } else {
-            throw new HubError('bad_request.validation_failure', 'invalid message type');
-          }
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT }
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError('unavailable.storage_failure', 'merge timed out');
-      });
-  }
-
-  async revoke(message: Message): HubAsyncResult<number> {
-    let txn = this._db.transaction();
-    if (isReactionAddMessage(message)) {
-      txn = this.deleteReactionAddTransaction(txn, message);
-    } else if (isReactionRemoveMessage(message)) {
-      txn = this.deleteReactionRemoveTransaction(txn, message);
-    } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid message type'));
-    }
-
-    return this._eventHandler.commitTransaction(txn, {
-      type: HubEventType.REVOKE_MESSAGE,
-      revokeMessageBody: { message },
-    });
-  }
-
-  async pruneMessages(fid: number): HubAsyncResult<number[]> {
-    const commits: number[] = [];
-
-    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.ReactionMessage);
-
-    // Require storage cache to be synced to prune
-    if (cachedCount.isErr()) {
-      return err(cachedCount.error);
-    }
-
-    // Return immediately if there are no messages to prune
-    if (cachedCount.value === 0) {
-      return ok(commits);
-    }
-
-    const farcasterTime = getFarcasterTime();
-    if (farcasterTime.isErr()) {
-      return err(farcasterTime.error);
-    }
-
-    // Calculate the timestamp cut-off to prune
-    const timestampToPrune = farcasterTime.value - this._pruneTimeLimit;
-
-    // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = getMessagesPruneIterator(this._db, fid, UserPostfix.ReactionMessage);
-
-    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
-      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-      if (nextMessage.isErr()) {
-        return ok(undefined); // Nothing left to prune
-      }
-
-      const count = await this._eventHandler.getCacheMessageCount(fid, UserPostfix.ReactionMessage);
-      if (count.isErr()) {
-        return err(count.error);
-      }
-
-      if (
-        count.value <= this._pruneSizeLimit &&
-        nextMessage.value.data &&
-        nextMessage.value.data.timestamp >= timestampToPrune
-      ) {
-        return ok(undefined);
-      }
-
-      let txn = this._db.transaction();
-
-      if (isReactionAddMessage(nextMessage.value)) {
-        txn = this.deleteReactionAddTransaction(txn, nextMessage.value);
-      } else if (isReactionRemoveMessage(nextMessage.value)) {
-        txn = this.deleteReactionRemoveTransaction(txn, nextMessage.value);
-      } else {
-        return err(new HubError('unknown', 'invalid message type'));
-      }
-
-      return this._eventHandler.commitTransaction(txn, {
-        type: HubEventType.PRUNE_MESSAGE,
-        pruneMessageBody: { message: nextMessage.value },
-      });
-    };
-
-    let pruneResult = await pruneNextMessage();
-    while (!(pruneResult.isOk() && pruneResult.value === undefined)) {
-      pruneResult.match(
-        (commit) => {
-          if (commit) {
-            commits.push(commit);
-          }
-        },
-        (e) => {
-          logger.error({ errCode: e.errCode }, `error pruning reaction message for fid ${fid}: ${e.message}`);
-        }
-      );
-
-      pruneResult = await pruneNextMessage();
-    }
-
-    await pruneIterator.end();
-
-    return ok(commits);
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /*                               Private Methods                              */
-  /* -------------------------------------------------------------------------- */
-
-  private async mergeAdd(message: ReactionAddMessage): Promise<number> {
-    const mergeConflicts = await this.getMergeConflicts(message);
-    if (mergeConflicts.isErr()) {
-      throw mergeConflicts.error;
-    }
-
-    // Create rocksdb transaction to delete the merge conflicts
-    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
-
-    // Add ops to store the message by messageKey and index the the messageKey by set and by target
-    txn = this.putReactionAddTransaction(txn, message);
-
-    const hubEvent: HubEventArgs = {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
-    };
-
-    // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    return result.value;
-  }
-
-  private async mergeRemove(message: ReactionRemoveMessage): Promise<number> {
-    const mergeConflicts = await this.getMergeConflicts(message);
-
-    if (mergeConflicts.isErr()) {
-      throw mergeConflicts.error;
-    }
-
-    // Create rocksdb transaction to delete the merge conflicts
-    let txn = this.deleteManyTransaction(this._db.transaction(), mergeConflicts.value);
-
-    // Add ops to store the message by messageKey and index the the messageKey by set
-    txn = this.putReactionRemoveTransaction(txn, message);
-
-    const hubEvent: HubEventArgs = {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
-    };
-
-    // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    return result.value;
-  }
-
-  private reactionMessageCompare(
-    aType: MessageType.REACTION_ADD | MessageType.REACTION_REMOVE,
-    aTsHash: Uint8Array,
-    bType: MessageType.REACTION_ADD | MessageType.REACTION_REMOVE,
-    bTsHash: Uint8Array
-  ): number {
-    // Compare timestamps (first 4 bytes of tsHash) to enforce Last-Write-Wins
-    const timestampOrder = bytesCompare(aTsHash.subarray(0, 4), bTsHash.subarray(0, 4));
-    if (timestampOrder !== 0) {
-      return timestampOrder;
-    }
-
-    // Compare message types to enforce that RemoveWins in case of LWW ties.
-    if (aType === MessageType.REACTION_REMOVE && bType === MessageType.REACTION_ADD) {
-      return 1;
-    } else if (aType === MessageType.REACTION_ADD && bType === MessageType.REACTION_REMOVE) {
-      return -1;
-    }
-
-    // Compare hashes (last 4 bytes of tsHash) to break ties between messages of the same type and timestamp
-    return bytesCompare(aTsHash.subarray(4), bTsHash.subarray(4));
-  }
-
-  /**
-   * Determines the RocksDB keys that must be modified to settle merge conflicts as a result of
-   * adding a Reaction to the Store.
-   *
-   * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
-   */
-  private async getMergeConflicts(
-    message: ReactionAddMessage | ReactionRemoveMessage
-  ): HubAsyncResult<(ReactionAddMessage | ReactionRemoveMessage)[]> {
-    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
-    if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
-    }
-
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    const conflicts: (ReactionAddMessage | ReactionRemoveMessage)[] = [];
-
-    // Checks if there is a remove timestamp hash for this reaction
-    const reactionRemoveKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, target);
-    const reactionRemoveTsHash = await ResultAsync.fromPromise(this._db.get(reactionRemoveKey), () => undefined);
-
-    if (reactionRemoveTsHash.isOk()) {
-      const removeCompare = this.reactionMessageCompare(
-        MessageType.REACTION_REMOVE,
-        new Uint8Array(reactionRemoveTsHash.value),
-        message.data.type,
-        tsHash.value
-      );
-      if (removeCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionRemove'));
-      } else if (removeCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
-      } else {
-        // If the existing remove has a lower order than the new message, retrieve the full
-        // ReactionRemove message and delete it as part of the RocksDB transaction
-        const existingRemove = await getMessage<ReactionRemoveMessage>(
-          this._db,
-          message.data.fid,
-          UserPostfix.ReactionMessage,
-          reactionRemoveTsHash.value
-        );
-        conflicts.push(existingRemove);
-      }
-    }
-
-    // Checks if there is an add timestamp hash for this reaction
-    const reactionAddKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, target);
-    const reactionAddTsHash = await ResultAsync.fromPromise(this._db.get(reactionAddKey), () => undefined);
-
-    if (reactionAddTsHash.isOk()) {
-      const addCompare = this.reactionMessageCompare(
-        MessageType.REACTION_ADD,
-        new Uint8Array(reactionAddTsHash.value),
-        message.data.type,
-        tsHash.value
-      );
-      if (addCompare > 0) {
-        return err(new HubError('bad_request.conflict', 'message conflicts with a more recent ReactionAdd'));
-      } else if (addCompare === 0) {
-        return err(new HubError('bad_request.duplicate', 'message has already been merged'));
-      } else {
-        // If the existing add has a lower order than the new message, retrieve the full
-        // ReactionAdd message and delete it as part of the RocksDB transaction
-        const existingAdd = await getMessage<ReactionAddMessage>(
-          this._db,
-          message.data.fid,
-          UserPostfix.ReactionMessage,
-          reactionAddTsHash.value
-        );
-        conflicts.push(existingAdd);
-      }
-    }
-
-    return ok(conflicts);
-  }
-
-  private deleteManyTransaction(
-    txn: Transaction,
-    messages: (ReactionAddMessage | ReactionRemoveMessage)[]
-  ): Transaction {
-    for (const message of messages) {
-      if (isReactionAddMessage(message)) {
-        txn = this.deleteReactionAddTransaction(txn, message);
-      } else if (isReactionRemoveMessage(message)) {
-        txn = this.deleteReactionRemoveTransaction(txn, message);
-      }
-    }
-    return txn;
-  }
-
-  /* Builds a RocksDB transaction to insert a ReactionAdd message and construct its indices */
-  private putReactionAddTransaction(txn: Transaction, message: ReactionAddMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
-    if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
-    }
-
-    // Puts the message into the database
-    txn = putMessageTransaction(txn, message);
-
-    // Puts the message into the ReactionAdds Set index
-    const addsKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, target);
-    txn = txn.put(addsKey, Buffer.from(tsHash.value));
-
-    // Puts message key into the byTarget index
-    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
-    txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
-
-    return txn;
-  }
-
-  /* Builds a RocksDB transaction to remove a ReactionAdd message and delete its indices */
-  private deleteReactionAddTransaction(txn: Transaction, message: ReactionAddMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
-    if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
-    }
-
-    // Delete the message key from byTarget index
-    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
-    txn = txn.del(byTargetKey);
-
-    // Delete the message key from ReactionAdds Set index
-    const addsKey = makeReactionAddsKey(message.data.fid, message.data.reactionBody.type, target);
-    txn = txn.del(addsKey);
-
-    // Delete the message
-    return deleteMessageTransaction(txn, message);
-  }
-
-  /* Builds a RocksDB transaction to insert a ReactionRemove message and construct its indices */
-  private putReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
-    if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
-    }
-
-    // Puts the message
-    txn = putMessageTransaction(txn, message);
-
-    // Puts message key into the ReactionRemoves Set index
-    const removesKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, target);
-    txn = txn.put(removesKey, Buffer.from(tsHash.value));
-
-    return txn;
-  }
-
-  /* Builds a RocksDB transaction to remove a ReactionRemove message and delete its indices */
-  private deleteReactionRemoveTransaction(txn: Transaction, message: ReactionRemoveMessage): Transaction {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-    if (tsHash.isErr()) {
-      throw tsHash.error;
-    }
-
-    const target = message.data.reactionBody.targetCastId ?? message.data.reactionBody.targetUrl;
-    if (!target) {
-      throw new HubError('bad_request.validation_failure', 'target is missing');
-    }
-
-    // Delete message key from ReactionRemoves Set index
-    const removesKey = makeReactionRemovesKey(message.data.fid, message.data.reactionBody.type, target);
-    txn = txn.del(removesKey);
-
-    // Delete the message
-    return deleteMessageTransaction(txn, message);
   }
 }
 

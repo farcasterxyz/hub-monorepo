@@ -15,6 +15,7 @@ import {
   HubRpcClient,
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromBytes } from '@libp2p/peer-id';
@@ -44,6 +45,7 @@ import {
   messageToLog,
   messageTypeToName,
   nameRegistryEventToLog,
+  usernameProofToLog,
 } from './utils/logger.js';
 import {
   addressInfoFromGossip,
@@ -59,10 +61,9 @@ import { ValidateOrRevokeMessagesJobScheduler } from './storage/jobs/validateOrR
 import { GossipContactInfoJobScheduler } from './storage/jobs/gossipContactInfoJob.js';
 import { MAINNET_ALLOWED_PEERS } from './allowedPeers.mainnet.js';
 import StoreEventHandler from './storage/stores/storeEventHandler.js';
-import { RetryProvider } from './eth/retryProvider.js';
-import { JsonRpcProvider } from 'ethers';
+import { FNameRegistryClient, FNameRegistryEventsProvider } from './eth/fnameRegistryEventsProvider.js';
 
-export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync';
+export type HubSubmitSource = 'gossip' | 'rpc' | 'eth-provider' | 'sync' | 'fname-registry';
 
 export const APP_VERSION = process.env['npm_package_version'] ?? '1.0.0';
 export const APP_NICKNAME = process.env['HUBBLE_NAME'] ?? 'Farcaster Hub';
@@ -79,6 +80,7 @@ export interface HubInterface {
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
   submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
@@ -125,11 +127,14 @@ export interface HubOptions {
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
+  /** FName Registry Server URL */
+  fnameServerUrl?: string;
+
   /** Address of the IdRegistry contract  */
-  idRegistryAddress?: string;
+  idRegistryAddress?: `0x${string}`;
 
   /** Address of the NameRegistryAddress contract  */
-  nameRegistryAddress?: string;
+  nameRegistryAddress?: `0x${string}`;
 
   /** Block number to begin syncing events from  */
   firstBlock?: number;
@@ -137,8 +142,11 @@ export interface HubOptions {
   /** Number of blocks to batch when syncing historical events  */
   chunkSize?: number;
 
-  /** Resync events */
+  /** Resync eth events */
   resyncEthEvents?: boolean;
+
+  /** Resync fname events */
+  resyncNameEvents?: boolean;
 
   /** Name of the RocksDB instance */
   rocksDBName?: string;
@@ -209,6 +217,7 @@ export class Hub implements HubInterface {
 
   engine: Engine;
   ethRegistryProvider?: EthEventsProvider;
+  fNameRegistryEventsProvider?: FNameRegistryEventsProvider;
 
   constructor(options: HubOptions) {
     this.options = options;
@@ -218,12 +227,9 @@ export class Hub implements HubInterface {
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
     if (options.ethRpcUrl) {
-      const RetryingJsonRPCProvider = RetryProvider(JsonRpcProvider);
-      const jsonRpcProvider = new RetryingJsonRPCProvider(options.ethRpcUrl);
-
       this.ethRegistryProvider = EthEventsProvider.build(
         this,
-        jsonRpcProvider,
+        options.ethRpcUrl,
         options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
         options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
         options.firstBlock ?? GoerliEthConstants.FirstBlock,
@@ -232,6 +238,16 @@ export class Hub implements HubInterface {
       );
     } else {
       log.warn('No ETH RPC URL provided, not syncing with ETH contract events');
+    }
+
+    if (options.fnameServerUrl && options.fnameServerUrl !== '') {
+      this.fNameRegistryEventsProvider = new FNameRegistryEventsProvider(
+        new FNameRegistryClient(options.fnameServerUrl),
+        this,
+        options.resyncNameEvents ?? false
+      );
+    } else {
+      log.warn('No FName Registry URL provided, not syncing with fname events');
     }
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
@@ -373,6 +389,8 @@ export class Hub implements HubInterface {
       await this.ethRegistryProvider.start();
     }
 
+    await this.fNameRegistryEventsProvider?.start();
+
     // Start the sync engine
     await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
 
@@ -471,6 +489,8 @@ export class Hub implements HubInterface {
       await this.ethRegistryProvider.stop();
     }
 
+    await this.fNameRegistryEventsProvider?.stop();
+
     // Stop the engine
     await this.engine.stop();
 
@@ -483,7 +503,14 @@ export class Hub implements HubInterface {
   }
 
   async getHubState(): HubAsyncResult<HubState> {
-    return ResultAsync.fromPromise(getHubState(this.rocksDB), (e) => e as HubError);
+    const result = await ResultAsync.fromPromise(getHubState(this.rocksDB), (e) => e as HubError);
+    if (result.isErr() && result.error.errCode === 'not_found') {
+      log.info('hub state not found, resetting state');
+      const hubState = HubState.create({ lastEthBlock: 0, lastFnameProof: 0 });
+      await putHubState(this.rocksDB, hubState);
+      return ok(hubState);
+    }
+    return result;
   }
 
   async putHubState(hubState: HubState): HubAsyncResult<void> {
@@ -804,6 +831,27 @@ export class Hub implements HubInterface {
       const payload = UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
       await this.updateNameRegistryEventExpiryJobQueue.enqueueJob(payload);
     }
+
+    return mergeResult;
+  }
+
+  async submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number> {
+    const logEvent = log.child({ event: usernameProofToLog(usernameProof), source });
+
+    const mergeResult = await this.engine.mergeUserNameProof(usernameProof);
+
+    mergeResult.match(
+      (eventId) => {
+        logEvent.info(
+          `submitUserNameProof success ${eventId}: fname ${bytesToUtf8String(
+            usernameProof.name
+          )._unsafeUnwrap()} assigned to fid: ${usernameProof.fid} at timestamp ${usernameProof.timestamp}`
+        );
+      },
+      (e) => {
+        logEvent.warn({ errCode: e.errCode }, `submitUserNameProof error: ${e.message}`);
+      }
+    );
 
     return mergeResult;
   }

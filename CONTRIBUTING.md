@@ -18,7 +18,7 @@
 
 Thanks for your interest in improving the Farcaster Hub!
 
-No contribution is too small and we welcome to your help. There's always something to work on, no matter how experienced you are. If you're looking for ideas, start with the [good first issue](https://github.com/farcasterxyz/hub/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [help wanted](https://github.com/farcasterxyz/hub/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) sections in the issues. You can help make Farcaster better by:
+No contribution is too small and we welcome your help. There's always something to work on, no matter how experienced you are. If you're looking for ideas, start with the [good first issue](https://github.com/farcasterxyz/hub/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [help wanted](https://github.com/farcasterxyz/hub/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) sections in the issues. You can help make Farcaster better by:
 
 - Opening issues or adding details to existing issues
 - Fixing bugs in the code
@@ -42,6 +42,7 @@ First, ensure that the following are installed globally on your machine:
 
 - [Node.js 20+](https://nodejs.org/en/download/releases)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
+- [Anvil](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 
 Then, from the root folder run:
 
@@ -80,7 +81,7 @@ You can run commands like `yarn test` and `yarn build` which TurboRepo will auto
 - [Installing Packages](https://turbo.build/repo/docs/handbook/package-installation)
 - [Creating New Packages](https://turbo.build/repo/docs/handbook/sharing-code/internal-packages)
 
-TurboRepo uses a local cache which can be disabled by adding the `--force` option to yarn commmands. Remote caching is not enabled since the performance gains at our scale are not worth the cost of introducing subtle caching bugs.
+TurboRepo uses a local cache which can be disabled by adding the `--force` option to yarn commands. Remote caching is not enabled since the performance gains at our scale are not worth the cost of introducing subtle caching bugs.
 
 ## 3. Proposing Changes
 
@@ -112,7 +113,7 @@ All changes should have supporting documentation that makes reviewing and unders
 
 Errors are not handled using `throw` and `try / catch` as is common with Javascript programs. This pattern makes it hard for people to reason about whether methods are safe which leads to incomplete test coverage, unexpected errors and less safety. Instead we use a more functional approach to dealing with errors. See [this issue](https://github.com/farcasterxyz/hub/issues/213) for the rationale behind this approach.
 
-All errors must be constructed using the `HubError` class which extends extends Error. It is stricter than error and requires a Hub Error Code (e.g. `unavailable.database_error`) and some additional context. Codes are used a replacement for error subclassing since they can be easily serialized over network calls. Codes also have multiple levels (e.g. `database_error` is a type of `unavailable`) which help with making decisions about error handling.
+All errors must be constructed using the `HubError` class which extends Error. It is stricter than error and requires a Hub Error Code (e.g. `unavailable.database_error`) and some additional context. Codes are used a replacement for error subclassing since they can be easily serialized over network calls. Codes also have multiple levels (e.g. `database_error` is a type of `unavailable`) which help with making decisions about error handling.
 
 Functions that can fail should always return `HubResult` which is a type that can either be the desired value or an error. Callers of the function should inspect the value and handle the success and failure case explicitly. The HubResult is an alias over [neverthrow's Result](https://github.com/supermacro/neverthrow). If you have never used a language where this is common (like Rust) you may want to start with the [API docs](https://github.com/supermacro/neverthrow#api-documentation). This pattern ensures that:
 
@@ -191,7 +192,7 @@ public something(): HubResult<number> {
   const result = computationThatMightFail();
   if (result.isErr()) return err(new HubError('unavailable', 'down'));
 
-   // do a lot of things that would be unweidly to put in a match
+   // do a lot of things that would be unwieldy to put in a match
    // ...
    // ...
    return ok(200);
@@ -278,7 +279,7 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 6. Hubble is private and must be manually tagged with `git tag -a @farcaster/hubble@<version>` if bumped.
 7. Run `git push origin <tag>` on each tag to push up the tags.
 
-## 4. TroubleShooting
+## 4. Troubleshooting
 
 ### Upgrading Libp2p
 

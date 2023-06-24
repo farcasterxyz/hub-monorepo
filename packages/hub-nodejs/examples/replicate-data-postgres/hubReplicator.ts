@@ -9,6 +9,8 @@ import {
   ReactionRemoveMessage,
   SignerAddMessage,
   SignerRemoveMessage,
+  LinkAddMessage,
+  LinkRemoveMessage,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
@@ -24,6 +26,8 @@ import {
   isSignerAddMessage,
   isSignerRemoveMessage,
   isUserDataAddMessage,
+  isLinkAddMessage,
+  isLinkRemoveMessage,
   isVerificationAddEthAddressMessage,
   isVerificationRemoveMessage,
   getSSLHubRpcClient,
@@ -91,13 +95,13 @@ export class HubReplicator {
   }
 
   public async start() {
-    const infoResult = await this.client.getInfo({ syncStats: true });
+    const infoResult = await this.client.getInfo({ dbStats: true });
 
-    if (infoResult.isErr() || infoResult.value.syncStats === undefined) {
+    if (infoResult.isErr() || infoResult.value.dbStats === undefined) {
       throw new Error(`Unable to get information about hub ${this.hubAddress}`);
     }
 
-    const { numMessages } = infoResult.value.syncStats;
+    const { numMessages } = infoResult.value.dbStats;
 
     // Not technically true, since hubs don't return CastRemove/etc. messages,
     // but at least gives a rough ballpark of order of magnitude.
@@ -161,6 +165,7 @@ export class HubReplicator {
     for (const fn of [
       this.getCastsByFidInBatchesOf,
       this.getReactionsByFidInBatchesOf,
+      this.getLinksByFidInBatchesOf,
       this.getSignersByFidInBatchesOf,
       this.getVerificationsByFidInBatchesOf,
       this.getUserDataByFidInBatchesOf,
@@ -200,6 +205,22 @@ export class HubReplicator {
 
       if (!pageToken?.length) break;
       result = await this.client.getReactionsByFid({ pageSize, pageToken, fid });
+    }
+  }
+
+  private async *getLinksByFidInBatchesOf(fid: number, pageSize: number) {
+    let result = await this.client.getLinksByFid({ pageSize, fid });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error('Unable to backfill', { cause: result.error });
+      }
+
+      const { messages, nextPageToken: pageToken } = result.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      result = await this.client.getLinksByFid({ pageSize, pageToken, fid });
     }
   }
 
@@ -359,6 +380,10 @@ export class HubReplicator {
       await this.onSignerRemove(messages as SignerRemoveMessage[]);
     } else if (isUserDataAddMessage(firstMessage)) {
       await this.onUserDataAdd(messages as UserDataAddMessage[], isInitialCreation);
+    } else if (isLinkAddMessage(firstMessage)) {
+      await this.onLinkAdd(messages as LinkAddMessage[], isInitialCreation);
+    } else if (isLinkRemoveMessage(firstMessage)) {
+      await this.onLinkRemove(messages as LinkRemoveMessage[]);
     }
   }
 
@@ -588,6 +613,43 @@ export class HubReplicator {
       if (isInitialCreation[bytesToHex(message.hash)]) {
         // TODO: Execute any one-time side effects
       }
+    }
+  }
+
+  private async onLinkAdd(messages: LinkAddMessage[], isInitialCreation: Record<string, boolean>) {
+    await this.db
+      .insertInto('links')
+      .values(
+        messages.map((message) => ({
+          timestamp: farcasterTimeToDate(message.data.timestamp),
+          // type assertion due to a problem with the type definitions. This field is infact required and present in all valid messages
+          targetFid: message.data.linkBody.targetFid!,
+          type: message.data.linkBody.type,
+          fid: message.data.fid,
+          displayTimestamp: farcasterTimeToDate(message.data.linkBody.displayTimestamp),
+        }))
+      )
+      .execute();
+
+    for (const message of messages) {
+      if (isInitialCreation[bytesToHex(message.hash)]) {
+        // TODO: Execute any one-time side effects
+      }
+    }
+  }
+
+  private async onLinkRemove(messages: LinkRemoveMessage[]) {
+    for (const message of messages) {
+      await this.db
+        .updateTable('links')
+        .where('fid', '=', message.data.fid)
+        // type assertion due to a problem with the type definitions. This field is infact required and present in all valid messages
+        .where('targetFid', '=', message.data.linkBody.targetFid!)
+        .where('type', '=', message.data.linkBody.type)
+        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
+        .execute();
+
+      // TODO: Execute any cleanup side effects to remove the cast
     }
   }
 }
