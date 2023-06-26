@@ -5,8 +5,8 @@ import { eip712 } from '../crypto';
 import { Factories } from '../factories';
 import { FarcasterNetwork } from '../protobufs';
 import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from '../verifications';
+import { makeUserNameProofClaim, UserNameProofClaim } from '../userNameProof';
 import { Eip712Signer } from './eip712Signer';
-import { UserNameProofClaim } from '../crypto/eip712';
 import { bytesToHex } from 'viem';
 
 export const testEip712Signer = async (signer: Eip712Signer) => {
@@ -65,17 +65,17 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
   });
 
-  describe('signUserNameProof', () => {
+  describe('signUserNameProofClaim', () => {
     let claim: UserNameProofClaim;
     let signature: Uint8Array;
 
     beforeAll(async () => {
-      claim = {
+      claim = makeUserNameProofClaim({
         name: '0x000',
         timestamp: Date.now(),
         owner: bytesToHex(signerKey),
-      };
-      const signatureResult = await signer.signUserNameProof(claim);
+      });
+      const signatureResult = await signer.signUserNameProofClaim(claim);
       expect(signatureResult.isOk()).toBeTruthy();
       signature = signatureResult._unsafeUnwrap();
     });
@@ -87,15 +87,15 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
 
     test('succeeds when encoding twice', async () => {
       const claim2: UserNameProofClaim = { ...claim };
-      const signature2 = await signer.signUserNameProof(claim2);
+      const signature2 = await signer.signUserNameProofClaim(claim2);
       expect(signature2).toEqual(ok(signature));
       expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(bytesToHexString(signature));
     });
 
     test('fails with HubError', async () => {
-      const result = await signer.signUserNameProof({
+      const result = await signer.signUserNameProofClaim({
         ...claim,
-        timestamp: -1,
+        timestamp: -1n,
       });
       expect(result.isErr()).toBe(true);
       expect(result._unsafeUnwrapErr().errCode).toBe('bad_request.invalid_param');

@@ -2,6 +2,7 @@ import { bytesToHex, verifyTypedData } from 'viem';
 import { ResultAsync } from 'neverthrow';
 import { HubAsyncResult, HubError } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
+import { UserNameProofClaim } from '../userNameProof';
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: 'Farcaster Verify Ethereum Address',
@@ -69,12 +70,6 @@ export const verifyVerificationEthAddressClaimSignature = async (
   return valid;
 };
 
-export type UserNameProofClaim = {
-  name: string;
-  timestamp: number;
-  owner: `0x${string}`;
-};
-
 export const verifyUserNameProof = async (
   nameProof: UserNameProofClaim,
   signature: Uint8Array,
@@ -86,10 +81,7 @@ export const verifyUserNameProof = async (
       domain: EIP_712_USERNAME_DOMAIN,
       types: { UserNameProof: EIP_712_USERNAME_PROOF },
       primaryType: 'UserNameProof',
-      message: {
-        ...nameProof,
-        timestamp: BigInt(nameProof.timestamp),
-      },
+      message: nameProof,
       signature,
     }),
     (e) => new HubError('unknown', e as Error)

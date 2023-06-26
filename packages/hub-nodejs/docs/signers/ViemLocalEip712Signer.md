@@ -1,6 +1,6 @@
-# EthersEip712Signer
+# ViemLocalEip712Signer
 
-An Eip712Signer that is initialized with an [Ethers v6](https://github.com/ethers-io/ethers.js/) Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages. If you're looking for Ethers v5 support, see [this troubleshooting guide](../README.md#ethers-v5).
+An Eip712Signer that is initialized with an [Viem](https://viem.sh/docs) LocalACcount and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
 
 ## Properties
 
@@ -10,17 +10,17 @@ An Eip712Signer that is initialized with an [Ethers v6](https://github.com/ether
 
 ## Constructors
 
-### `static` new EthersEip712Signer
+### `static` new ViemLocalEip712Signer
 
 ### Usage
 
 ```typescript
-import { EthersEip712Signer } from '@farcaster/hub-nodejs';
-import { Wallet } from 'ethers';
+import { ViemLocalEip712Signer } from '@farcaster/hub-nodejs';
+import { mnemonicToAccount } from 'viem/accounts';
 
 const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
-const wallet = Wallet.fromPhrase(mnemonic);
-const eip712Signer = new EthersEip712Signer(wallet);
+const account = mnemonicToAccount(mnemonic);
+const eip712Signer = new ViemLocalEip712Signer(account);
 ```
 
 #### Parameters
@@ -136,15 +136,15 @@ Generates a 256-bit signature for a UserNameProofClaim and returns the bytes.
 #### Usage
 
 ```typescript
-import { makeUserNameProofClaim } from '@farcaster/hub-nodejs';
+import { UserNameProofClaim } from '@farcaster/hub-nodejs';
 
-const claim = makeUserNameProofClaim({
+const claim: UserNameProofClaim = {
   owner: '0x8773442740c17c9d0f0b87022c722f9a136206ed',
   name: 'farcaster',
-  timestamp: Date.now(),
-});
+  timestamp: 1628882891,
+};
 
-const signatureResult = await eip712Signer.signUserNameProofClaim(claim);
+const signatureResult = await eip712Signer.signUserNameProof(claim);
 if (signatureResult.isOk()) {
   console.log(signatureResult.value);
 }

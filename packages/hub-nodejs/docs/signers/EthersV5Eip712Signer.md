@@ -128,3 +128,38 @@ if (ethereumAddressResult.isOk()) {
 | `claim` | [`VerificationEthAddressClaim`](../modules/types.md#verificationethaddressclaim) | The body of the claim to be signed. |
 
 ---
+
+### signUserNameProofClaim
+
+Generates a 256-bit signature for a UserNameProofClaim and returns the bytes.
+
+#### Usage
+
+```typescript
+import { makeUserNameProofClaim } from '@farcaster/hub-nodejs';
+
+const claim = makeUserNameProofClaim({
+  owner: '0x8773442740c17c9d0f0b87022c722f9a136206ed',
+  name: 'farcaster',
+  timestamp: Date.now(),
+});
+
+const signatureResult = await eip712Signer.signUserNameProofClaim(claim);
+if (signatureResult.isOk()) {
+  console.log(signatureResult.value);
+}
+```
+
+#### Returns
+
+| Value                        | Description                            |
+| :--------------------------- | :------------------------------------- |
+| `HubAsyncResult<Uint8Array>` | The 256-bit signature as a Uint8Array. |
+
+#### Parameters
+
+| Name    | Type                 | Description                         |
+| :------ | :------------------- | :---------------------------------- |
+| `claim` | `UserNameProofClaim` | The body of the claim to be signed. |
+
+---

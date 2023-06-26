@@ -8,7 +8,7 @@ import { HubAsyncResult, HubError } from '../errors';
 import { eip712 } from '../crypto';
 import { hexStringToBytes } from '../bytes';
 import { VerificationEthAddressClaim } from '../verifications';
-import { UserNameProofClaim } from 'crypto/eip712';
+import { UserNameProofClaim } from '../userNameProof';
 
 export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
@@ -51,7 +51,7 @@ export class EthersV5Eip712Signer extends Eip712Signer {
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signUserNameProof(usernameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
+  public async signUserNameProofClaim(usernameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._typedDataSigner._signTypedData(
         eip712.EIP_712_USERNAME_DOMAIN,

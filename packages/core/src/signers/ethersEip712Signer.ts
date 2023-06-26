@@ -2,6 +2,7 @@ import { ResultAsync } from 'neverthrow';
 import type { Signer } from 'ethers';
 import { HubAsyncResult, HubError } from '../errors';
 import { VerificationEthAddressClaim } from '../verifications';
+import { UserNameProofClaim } from '../userNameProof';
 import { Eip712Signer } from './eip712Signer';
 import { hexStringToBytes } from '../bytes';
 import {
@@ -10,7 +11,6 @@ import {
   EIP_712_FARCASTER_VERIFICATION_CLAIM,
   EIP_712_USERNAME_DOMAIN,
   EIP_712_USERNAME_PROOF,
-  UserNameProofClaim,
 } from '../crypto/eip712';
 
 export type MinimalEthersSigner = Pick<Signer, 'signTypedData' | 'getAddress'>;
@@ -57,7 +57,7 @@ export class EthersEip712Signer extends Eip712Signer {
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signUserNameProof(userNameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
+  public async signUserNameProofClaim(userNameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._ethersSigner.signTypedData(
         EIP_712_USERNAME_DOMAIN,
