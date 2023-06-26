@@ -6,7 +6,6 @@ import {
   AdminService,
   AdminServiceClientImpl,
 } from './generated/rpc';
-import { NodeHttpTransport } from '@improbable-eng/grpc-web-node-http-transport';
 
 import grpcWeb from '@improbable-eng/grpc-web';
 import { err, ok } from 'neverthrow';
@@ -92,18 +91,18 @@ const wrapClient = <C extends object>(client: C) => {
 
 export type HubRpcClient = WrappedClient<HubService>;
 
-export const getHubRpcClient = (url: string, isBrowser = true): HubRpcClient => {
-  return wrapClient(new HubServiceClientImpl(getRpcWebClient(url, isBrowser)));
+export const getHubRpcClient = (...args: Parameters<typeof getRpcWebClient>): HubRpcClient => {
+  return wrapClient(new HubServiceClientImpl(getRpcWebClient(...args)));
 };
 
 export type AdminRpcClient = WrappedClient<AdminService>;
 
-export const getAdminRpcClient = (url: string, isBrowser = true): AdminRpcClient => {
-  return wrapClient(new AdminServiceClientImpl(getRpcWebClient(url, isBrowser)));
+export const getAdminRpcClient = (...args: Parameters<typeof getRpcWebClient>): AdminRpcClient => {
+  return wrapClient(new AdminServiceClientImpl(getRpcWebClient(...args)));
 };
 
-const getRpcWebClient = (address: string, isBrowser = true): GrpcWebImpl => {
-  return new GrpcWebImpl(address, isBrowser ? {} : { transport: NodeHttpTransport() });
+const getRpcWebClient = (...args: ConstructorParameters<typeof GrpcWebImpl>): GrpcWebImpl => {
+  return new GrpcWebImpl(...args);
 };
 
 export const getAuthMetadata = (username: string, password: string): grpcWeb.grpc.Metadata => {
