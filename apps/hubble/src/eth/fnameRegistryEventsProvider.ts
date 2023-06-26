@@ -1,9 +1,15 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { HubInterface } from '../hubble.js';
-import { eip712, hexStringToBytes, UserNameProof, UserNameType, utf8StringToBytes } from '@farcaster/hub-nodejs';
+import {
+  eip712,
+  hexStringToBytes,
+  UserNameProof,
+  UserNameType,
+  utf8StringToBytes,
+  makeUserNameProofClaim,
+} from '@farcaster/hub-nodejs';
 import { Result } from 'neverthrow';
-import { bytesCompare } from '@farcaster/core';
 
 const DEFAULT_POLL_TIMEOUT_IN_MS = 30_000;
 const DEFAULT_READ_TIMEOUT_IN_MS = 10_000;
@@ -15,7 +21,7 @@ const log = logger.child({
 export type FNameTransfer = {
   id: number;
   username: string;
-  owner: string;
+  owner: `0x${string}`;
   server_signature: string;
   timestamp: number;
   from: number;
@@ -154,15 +160,16 @@ export class FNameRegistryEventsProvider {
         type: UserNameType.USERNAME_TYPE_FNAME,
       });
       // TODO: Move the validation into the engine
-      const recoveredAddress = eip712.verifyUserNameProof(
-        {
+      const verificationResult = await eip712.verifyUserNameProofClaim(
+        makeUserNameProofClaim({
           owner: transfer.owner,
           timestamp: transfer.timestamp,
           name: transfer.username,
-        },
-        signature
+        }),
+        signature,
+        owner
       );
-      if (recoveredAddress.isOk() && bytesCompare(recoveredAddress.value, this.signerAddress) === 0) {
+      if (verificationResult.isOk() && verificationResult.value) {
         await this.hub.submitUserNameProof(usernameProof, 'fname-registry');
       } else {
         log.warn(`Failed to verify username proof for ${transfer.username} id: ${transfer.id}`);

@@ -1,6 +1,6 @@
-# EthersV5Eip712Signer
+# ViemLocalEip712Signer
 
-An Eip712Signer that is initialized with an [Ethers v5](https://github.com/ethers-io/ethers.js/tree/v5) Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
+An Eip712Signer that is initialized with an [Viem](https://viem.sh/docs) LocalACcount and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
 
 ## Properties
 
@@ -10,17 +10,17 @@ An Eip712Signer that is initialized with an [Ethers v5](https://github.com/ether
 
 ## Constructors
 
-### `static` new EthersV5Eip712Signer
+### `static` new ViemLocalEip712Signer
 
 ### Usage
 
 ```typescript
-import { EthersV5Eip712Signer } from '@farcaster/hub-nodejs';
-import { Wallet } from 'ethers'; // ethers v5
+import { ViemLocalEip712Signer } from '@farcaster/hub-nodejs';
+import { mnemonicToAccount } from 'viem/accounts';
 
 const mnemonic = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
-const wallet = Wallet.fromPhrase(mnemonic);
-const eip712Signer = new EthersV5Eip712Signer(wallet);
+const account = mnemonicToAccount(mnemonic);
+const eip712Signer = new ViemLocalEip712Signer(account);
 ```
 
 #### Parameters
@@ -94,7 +94,7 @@ Generates a 256-bit signature for a VerificationClaim and returns the bytes.
 import { FarcasterNetwork, hexStringToBytes, makeVerificationEthAddressClaim } from '@farcaster/hub-nodejs';
 
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
-const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety: blockHashHex is known and can't erro
+const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety: blockHashHex is known and can't error
 
 const ethereumAddressResult = await eip712Signer.getSignerKey();
 

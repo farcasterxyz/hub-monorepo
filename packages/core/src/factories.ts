@@ -2,13 +2,14 @@ import { faker } from '@faker-js/faker';
 import { Factory } from '@farcaster/fishery';
 import { ed25519 } from '@noble/curves/ed25519';
 import { blake3 } from '@noble/hashes/blake3';
-import { Wallet } from 'ethers';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { randomBytes } from '@noble/hashes/utils';
 import * as protobufs from './protobufs';
 import { bytesToHexString } from './bytes';
-import { Ed25519Signer, Eip712Signer, EthersEip712Signer, NobleEd25519Signer, Signer } from './signers';
+import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, ViemLocalEip712Signer, Signer } from './signers';
 import { getFarcasterTime } from './time';
 import { VerificationEthAddressClaim } from './verifications';
-import { randomBytes } from '@noble/hashes/utils';
+import { LocalAccount } from 'viem';
 
 /** Scalars */
 
@@ -90,9 +91,9 @@ const Ed25519SignatureFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 64 } });
 });
 
-const Eip712SignerFactory = Factory.define<Eip712Signer, { wallet: Wallet }>(({ transientParams }) => {
-  const wallet = transientParams.wallet ?? Wallet.createRandom();
-  return new EthersEip712Signer(wallet);
+const Eip712SignerFactory = Factory.define<Eip712Signer, { account: LocalAccount }>(({ transientParams }) => {
+  const account = transientParams.account ?? privateKeyToAccount(generatePrivateKey());
+  return new ViemLocalEip712Signer(account);
 });
 
 const Eip712SignatureFactory = Factory.define<Uint8Array>(() => {

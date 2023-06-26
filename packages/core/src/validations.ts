@@ -100,7 +100,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
   if (!data) {
     return err(new HubError('bad_request.validation_failure', 'data is missing'));
   }
-  const validData = validateMessageData(data);
+  const validData = await validateMessageData(data);
   if (validData.isErr()) {
     return err(validData.error);
   }
@@ -135,11 +135,11 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
 
   const eip712SignerRequired = EIP712_MESSAGE_TYPES.includes(data.type);
   if (message.signatureScheme === protobufs.SignatureScheme.EIP712 && eip712SignerRequired) {
-    const verifiedSigner = eip712.verifyMessageHashSignature(hash, signature);
-    if (verifiedSigner.isErr()) {
-      return err(verifiedSigner.error);
+    const verificationResult = await eip712.verifyMessageHashSignature(hash, signature, signer);
+    if (verificationResult.isErr()) {
+      return err(verificationResult.error);
     }
-    if (bytesCompare(verifiedSigner.value, signer) !== 0) {
+    if (!verificationResult.value) {
       return err(new HubError('bad_request.validation_failure', 'signature does not match signer'));
     }
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
@@ -154,7 +154,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
   return ok(message);
 };
 
-export const validateMessageData = <T extends protobufs.MessageData>(data: T): HubResult<T> => {
+export const validateMessageData = async <T extends protobufs.MessageData>(data: T): HubAsyncResult<T> => {
   // 1. Validate fid
   const validFid = validateFid(data.fid);
   if (validFid.isErr()) {
@@ -213,9 +213,11 @@ export const validateMessageData = <T extends protobufs.MessageData>(data: T): H
     !!data.verificationAddEthAddressBody
   ) {
     // Special check for verification claim
-    bodyResult = validateVerificationAddEthAddressBody(data.verificationAddEthAddressBody).andThen((body) => {
-      return validateVerificationAddEthAddressSignature(body, validFid.value, validNetwork.value);
-    });
+    bodyResult = await validateVerificationAddEthAddressBody(
+      data.verificationAddEthAddressBody,
+      validFid.value,
+      validNetwork.value
+    );
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
   } else {
@@ -229,25 +231,27 @@ export const validateMessageData = <T extends protobufs.MessageData>(data: T): H
   return ok(data);
 };
 
-export const validateVerificationAddEthAddressSignature = (
+export const validateVerificationAddEthAddressSignature = async (
   body: protobufs.VerificationAddEthAddressBody,
   fid: number,
   network: protobufs.FarcasterNetwork
-): HubResult<Uint8Array> => {
+): HubAsyncResult<Uint8Array> => {
   const reconstructedClaim = makeVerificationEthAddressClaim(fid, body.address, network, body.blockHash);
   if (reconstructedClaim.isErr()) {
     return err(reconstructedClaim.error);
   }
 
-  const recoveredAddress = eip712
-    .verifyVerificationEthAddressClaimSignature(reconstructedClaim.value, body.ethSignature)
-    .mapErr(() => new HubError('bad_request.validation_failure', 'invalid ethSignature'));
+  const verificationResult = await eip712.verifyVerificationEthAddressClaimSignature(
+    reconstructedClaim.value,
+    body.ethSignature,
+    body.address
+  );
 
-  if (recoveredAddress.isErr()) {
-    return err(recoveredAddress.error);
+  if (verificationResult.isErr()) {
+    return err(verificationResult.error);
   }
 
-  if (bytesCompare(recoveredAddress.value, body.address ?? new Uint8Array()) !== 0) {
+  if (!verificationResult.value) {
     return err(new HubError('bad_request.validation_failure', 'ethSignature does not match address'));
   }
 
@@ -486,9 +490,11 @@ export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<pr
   return validateTarget(target).map(() => body);
 };
 
-export const validateVerificationAddEthAddressBody = (
-  body: protobufs.VerificationAddEthAddressBody
-): HubResult<protobufs.VerificationAddEthAddressBody> => {
+export const validateVerificationAddEthAddressBody = async (
+  body: protobufs.VerificationAddEthAddressBody,
+  fid: number,
+  network: protobufs.FarcasterNetwork
+): HubAsyncResult<protobufs.VerificationAddEthAddressBody> => {
   const validAddress = validateEthAddress(body.address);
   if (validAddress.isErr()) {
     return err(validAddress.error);
@@ -499,7 +505,10 @@ export const validateVerificationAddEthAddressBody = (
     return err(validBlockHash.error);
   }
 
-  // TODO: validate eth signature
+  const validSignature = await validateVerificationAddEthAddressSignature(body, fid, network);
+  if (validSignature.isErr()) {
+    return err(validSignature.error);
+  }
 
   return ok(body);
 };

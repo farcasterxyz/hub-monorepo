@@ -6,9 +6,9 @@ import { validateEthAddress, validateEthBlockHash } from './validations';
 
 export type VerificationEthAddressClaim = {
   fid: bigint;
-  address: string; // Hex string
+  address: `0x${string}`;
   network: FarcasterNetwork;
-  blockHash: string; // Hex string
+  blockHash: `0x${string}`;
 };
 
 export const makeVerificationEthAddressClaim = (

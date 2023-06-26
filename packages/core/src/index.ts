@@ -8,3 +8,4 @@ export * from './signers';
 export * from './time';
 export * as validations from './validations';
 export * from './verifications';
+export * from './userNameProof';
