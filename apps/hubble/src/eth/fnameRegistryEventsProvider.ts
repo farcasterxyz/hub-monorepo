@@ -1,7 +1,14 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { HubInterface } from '../hubble.js';
-import { eip712, hexStringToBytes, UserNameProof, UserNameType, utf8StringToBytes } from '@farcaster/hub-nodejs';
+import {
+  eip712,
+  hexStringToBytes,
+  UserNameProof,
+  UserNameType,
+  utf8StringToBytes,
+  makeUserNameProofClaim,
+} from '@farcaster/hub-nodejs';
 import { Result } from 'neverthrow';
 
 const DEFAULT_POLL_TIMEOUT_IN_MS = 30_000;
@@ -153,12 +160,12 @@ export class FNameRegistryEventsProvider {
         type: UserNameType.USERNAME_TYPE_FNAME,
       });
       // TODO: Move the validation into the engine
-      const verificationResult = await eip712.verifyUserNameProof(
-        {
+      const verificationResult = await eip712.verifyUserNameProofClaim(
+        makeUserNameProofClaim({
           owner: transfer.owner,
           timestamp: transfer.timestamp,
           name: transfer.username,
-        },
+        }),
         signature,
         owner
       );

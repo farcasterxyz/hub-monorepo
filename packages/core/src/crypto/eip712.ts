@@ -70,7 +70,7 @@ export const verifyVerificationEthAddressClaimSignature = async (
   return valid;
 };
 
-export const verifyUserNameProof = async (
+export const verifyUserNameProofClaim = async (
   nameProof: UserNameProofClaim,
   signature: Uint8Array,
   address: Uint8Array

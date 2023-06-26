@@ -81,7 +81,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
 
     test('succeeds', async () => {
-      const valid = await eip712.verifyUserNameProof(claim, signature, signerKey);
+      const valid = await eip712.verifyUserNameProofClaim(claim, signature, signerKey);
       expect(valid).toEqual(ok(true));
     });
 

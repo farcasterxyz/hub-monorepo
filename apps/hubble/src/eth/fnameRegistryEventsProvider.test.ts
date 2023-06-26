@@ -5,8 +5,7 @@ import {
 } from './fnameRegistryEventsProvider.js';
 import { jestRocksDB } from '../storage/db/jestUtils.js';
 import Engine from '../storage/engine/index.js';
-import { FarcasterNetwork } from '@farcaster/hub-nodejs';
-import { ViemLocalEip712Signer } from '@farcaster/core';
+import { ViemLocalEip712Signer, makeUserNameProofClaim, FarcasterNetwork } from '@farcaster/core';
 import { MockHub } from '../test/mocks.js';
 import { getUserNameProof } from '../storage/db/nameRegistryEvent.js';
 import { utf8ToBytes } from '@noble/curves/abstract/utils';
@@ -31,11 +30,13 @@ class MockFnameRegistryClient implements FNameRegistryClientInterface {
       if (t.server_signature === '') {
         t.server_signature = bytesToHex(
           (
-            await this.signer.signUserNameProof({
-              name: t.username,
-              owner: t.owner,
-              timestamp: t.timestamp,
-            })
+            await this.signer.signUserNameProofClaim(
+              makeUserNameProofClaim({
+                name: t.username,
+                owner: t.owner,
+                timestamp: t.timestamp,
+              })
+            )
           )._unsafeUnwrap()
         );
       }

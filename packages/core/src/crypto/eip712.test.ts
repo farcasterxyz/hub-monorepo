@@ -9,7 +9,7 @@ const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
 const signer = new ViemLocalEip712Signer(account);
 
-describe('verifyUserNameProof', () => {
+describe('verifyUserNameProofClaim', () => {
   test('succeeds with a generated proof', async () => {
     const nameProof = makeUserNameProofClaim({
       name: 'farcaster',
@@ -18,7 +18,7 @@ describe('verifyUserNameProof', () => {
     });
     const signature = await signer.signUserNameProofClaim(nameProof);
     expect(signature.isOk()).toBeTruthy();
-    const valid = await eip712.verifyUserNameProof(
+    const valid = await eip712.verifyUserNameProofClaim(
       nameProof,
       signature._unsafeUnwrap(),
       (await signer.getSignerKey())._unsafeUnwrap()
@@ -36,7 +36,7 @@ describe('verifyUserNameProof', () => {
       '0xb7181760f14eda0028e0b647ff15f45235526ced3b4ae07fcce06141b73d32960d3253776e62f761363fb8137087192047763f4af838950a96f3885f3c2289c41b'
     );
     expect(signature.isOk()).toBeTruthy();
-    const valid = await eip712.verifyUserNameProof(
+    const valid = await eip712.verifyUserNameProofClaim(
       nameProof,
       signature._unsafeUnwrap(),
       hexStringToBytes('0xBc5274eFc266311015793d89E9B591fa46294741')._unsafeUnwrap()
