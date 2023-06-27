@@ -109,8 +109,8 @@ describe('process events', () => {
     const postCreditRegistryEventIterator = await getRentRegistryEventsIterator(db, 1);
     const postCreditRegistryEvent = await getNextRentRegistryEventFromIterator(postCreditRegistryEventIterator);
     expect(postCreditRegistryEvent).toBeDefined();
-    expect(postCreditRegistryEvent.fid).toEqual(1);
-    expect(postCreditRegistryEvent.type).toEqual(StorageRegistryEventType.RENT);
-    expect(postCreditRegistryEvent.expiry).toEqual(creditTrx.blockNumber);
+    expect(postCreditRegistryEvent!.fid).toEqual(1);
+    expect(postCreditRegistryEvent!.type).toEqual(StorageRegistryEventType.RENT);
+    expect(postCreditRegistryEvent!.expiry).toEqual(creditTrx.blockNumber);
   });
 });

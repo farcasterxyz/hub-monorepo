@@ -1,5 +1,4 @@
 import {
-  EthAddress,
   Factories,
   // getFarcasterTime,
   HubError,
@@ -15,7 +14,7 @@ const set = new StorageEventStore(db, eventHandler);
 // const signer = Factories.Ed25519Signer.build();
 const fid = Factories.Fid.build();
 
-let address1: EthAddress;
+let address1: Uint8Array;
 
 let rentEvent: RentRegistryEvent;
 
