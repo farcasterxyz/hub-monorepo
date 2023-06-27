@@ -16,6 +16,8 @@ export const Config = {
   // ethRpcUrl: '',
   /** FName Registry Server URL */
   // fnameServerUrl: '';
+  /** Network URL of the StorageRegistry Contract */
+  // l2RpcUrl: '',
   /** Address of the IdRegistry Contract  */
   // firAddress: '',
   /** A list of MultiAddrs to use for bootstrapping */

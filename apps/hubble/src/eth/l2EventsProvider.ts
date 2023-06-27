@@ -22,8 +22,8 @@ const log = logger.child({
 });
 
 export class OPGoerliEthConstants {
-  public static StorageRegistryAddress = '0x0000000000000000000000000000000000000000' as const;
-  public static FirstBlock = 7648795;
+  public static StorageRegistryAddress = '0xa89cC9427335da6E8138517419FCB3c9c37d1604' as const;
+  public static FirstBlock = 11183461;
   public static ChunkSize = 10000;
   public static chainId = BigInt(420); // OP Goerli
 }
@@ -276,6 +276,7 @@ export class L2EventsProvider {
           Number(transactionIndex)
         );
       } catch (e) {
+        log.error(e);
         log.error({ event }, 'failed to parse event args');
       }
     }
@@ -653,8 +654,6 @@ export class L2EventsProvider {
       hexStringToBytes(blockHash),
       hexStringToBytes(transactionHash),
       payer && payer.length > 0 ? hexStringToBytes(payer) : ok(new Uint8Array()),
-      bigIntToBytes(fid),
-      bigIntToBytes(units),
     ]);
 
     if (serialized.isErr()) {
@@ -665,7 +664,7 @@ export class L2EventsProvider {
       return err(serialized.error);
     }
 
-    const [blockHashBytes, transactionHashBytes, payerBytes, fidBytes, unitsBytes] = serialized.value;
+    const [blockHashBytes, transactionHashBytes, payerBytes] = serialized.value;
 
     const rentRegistryEvent = RentRegistryEvent.create({
       blockNumber,
@@ -673,8 +672,8 @@ export class L2EventsProvider {
       transactionHash: transactionHashBytes,
       logIndex: index,
       payer: payerBytes,
-      fid: Buffer.from(fidBytes).readIntBE(0, 8),
-      units: Buffer.from(unitsBytes).readIntBE(0, 8),
+      fid: Number(fid),
+      units: Number(units),
       type: StorageRegistryEventType.RENT,
     });
 
