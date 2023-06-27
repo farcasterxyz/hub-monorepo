@@ -52,8 +52,12 @@ export const getStorageAdminRegistryEventsIterator = (db: RocksDB): Iterator => 
 export const getNextRentRegistryEventFromIterator = async (
   iterator: Iterator
 ): Promise<RentRegistryEvent | undefined> => {
-  const [, value] = await iterator.next();
-  return value === undefined ? undefined : RentRegistryEvent.decode(Uint8Array.from(value as Buffer));
+  try {
+    const [, value] = await iterator.next();
+    return value === undefined ? undefined : RentRegistryEvent.decode(Uint8Array.from(value as Buffer));
+  } catch {
+    return undefined;
+  }
 };
 
 export const getNextStorageAdminRegistryEventFromIterator = async (

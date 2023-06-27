@@ -1,4 +1,4 @@
-import { bytesCompare, Factories, HubError, RentRegistryEvent } from '@farcaster/hub-nodejs';
+import { bytesCompare, Factories, RentRegistryEvent } from '@farcaster/hub-nodejs';
 import { jestRocksDB } from './jestUtils.js';
 import {
   getNextRentRegistryEventFromIterator,
@@ -45,6 +45,6 @@ describe('getRentRegistryEventsIterator', () => {
   test('fails when event not found', async () => {
     await expect(
       getNextRentRegistryEventFromIterator(getRentRegistryEventsIterator(db, rentRegistryEvent.fid))
-    ).rejects.toThrow(HubError);
+    ).resolves.toBeUndefined();
   });
 });

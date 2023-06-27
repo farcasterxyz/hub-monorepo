@@ -1,4 +1,4 @@
-import { HubEventType, RentRegistryEvent, StorageAdminRegistryEvent } from '@farcaster/hub-nodejs';
+import { HubError, HubEventType, RentRegistryEvent, StorageAdminRegistryEvent } from '@farcaster/hub-nodejs';
 import RocksDB from '../db/rocksdb.js';
 import StoreEventHandler from './storeEventHandler.js';
 import AsyncLock from 'async-lock';
@@ -44,9 +44,11 @@ class StorageEventStore {
     const events: RentRegistryEvent[] = [];
     let event: RentRegistryEvent | undefined;
 
-    while ((event = await getNextRentRegistryEventFromIterator(iterator))) {
+    while (iterator.isOpen && (event = await getNextRentRegistryEventFromIterator(iterator))) {
       events.push(event);
     }
+
+    if (events.length === 0) throw new HubError('not_found', 'record not found');
 
     return events;
   }

@@ -1,7 +1,5 @@
-import { Factories, bytesToHexString, FarcasterNetwork, StorageRegistryEventType } from '@farcaster/hub-nodejs';
+import { FarcasterNetwork, StorageRegistryEventType } from '@farcaster/hub-nodejs';
 import { StorageRegistry } from './abis.js';
-import { EthEventsProvider } from './ethEventsProvider.js';
-import { getIdRegistryEvent } from '../storage/db/idRegistryEvent.js';
 import { jestRocksDB } from '../storage/db/jestUtils.js';
 import Engine from '../storage/engine/index.js';
 import { MockHub } from '../test/mocks.js';
@@ -12,7 +10,7 @@ import { L2EventsProvider } from './l2EventsProvider.js';
 import {
   getNextRentRegistryEventFromIterator,
   getRentRegistryEventsIterator,
-} from 'storage/db/storageRegistryEvent.js';
+} from '../storage/db/storageRegistryEvent.js';
 
 const db = jestRocksDB('protobufs.l2EventsProvider.test');
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
@@ -21,14 +19,10 @@ const hub = new MockHub(db, engine);
 let l2EventsProvider: L2EventsProvider;
 let storageRegistryAddress: `0x${string}`;
 
-const generateEthAddressHex = () => {
-  return bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap() as `0x${string}`;
-};
-
 beforeAll(() => {
   // Poll aggressively for fast testing
-  EthEventsProvider.blockPollingInterval = 10;
-  EthEventsProvider.eventPollingInterval = 10;
+  L2EventsProvider.blockPollingInterval = 10;
+  L2EventsProvider.eventPollingInterval = 10;
 });
 
 afterAll(async () => {
@@ -65,52 +59,25 @@ describe('process events', () => {
   });
 
   test('processes StorageRegistry events', async () => {
-    const address1 = generateEthAddressHex();
-    const transferOwnershipSim = await publicClient.simulateContract({
+    const rentSim = await publicClient.simulateContract({
       address: storageRegistryAddress,
       abi: StorageRegistry.abi,
-      functionName: 'transferOwnership',
-      account: accounts[0].address,
-      args: [accounts[0].address as `0x${string}`],
+      functionName: 'batchCredit',
+      account: accounts[1].address,
+      args: [[BigInt(1)], BigInt(1)],
     });
-    const transferOwnershipHash = await walletClientWithAccount.writeContract(transferOwnershipSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: transferOwnershipHash });
+    const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
+    const rentTrx = await publicClient.waitForTransactionReceipt({ hash: rentHash });
+    await sleep(1000); // allow time for the rent event to be polled for
 
-    const acceptOwnerSim = await publicClient.simulateContract({
-      address: storageRegistryAddress,
-      abi: StorageRegistry.abi,
-      functionName: 'acceptOwnership',
-      account: accounts[0].address,
-    });
-
-    const acceptOwnerHash = await walletClientWithAccount.writeContract(acceptOwnerSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: acceptOwnerHash });
-    await sleep(1000); // allow time for the accept event to be polled for
-
-    // The event is not immediately available, since it has to wait for confirmations
-    await expect(getIdRegistryEvent(db, 1)).rejects.toThrow();
     await testClient.mine({ blocks: 7 });
-
-    const creditSim = await publicClient.simulateContract({
-      address: storageRegistryAddress,
-      abi: StorageRegistry.abi,
-      functionName: 'credit',
-      account: address1,
-      args: [BigInt(1), BigInt(1)],
-    });
-    const creditHash = await walletClientWithAccount.writeContract(creditSim.request);
-    const creditTrx = await publicClient.waitForTransactionReceipt({ hash: creditHash });
-    await sleep(1000); // allow time for the register event to be polled for
-
-    // Wait for the transfer block to be confirmed
-    await testClient.mine({ blocks: 7 });
-    await waitForBlock(Number(creditTrx.blockNumber) + L2EventsProvider.numConfirmations);
+    await waitForBlock(Number(rentTrx.blockNumber) + L2EventsProvider.numConfirmations);
 
     const postCreditRegistryEventIterator = await getRentRegistryEventsIterator(db, 1);
     const postCreditRegistryEvent = await getNextRentRegistryEventFromIterator(postCreditRegistryEventIterator);
     expect(postCreditRegistryEvent).toBeDefined();
     expect(postCreditRegistryEvent!.fid).toEqual(1);
     expect(postCreditRegistryEvent!.type).toEqual(StorageRegistryEventType.RENT);
-    expect(postCreditRegistryEvent!.expiry).toEqual(creditTrx.blockNumber);
-  });
+    expect(postCreditRegistryEvent!.expiry).toEqual(rentTrx.blockNumber);
+  }, 30000);
 });

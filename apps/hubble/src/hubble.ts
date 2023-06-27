@@ -912,16 +912,23 @@ export class Hub implements HubInterface {
 
   async submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
     const logEvent = log.child({ event: rentRegistryEventToLog(event), source });
-
+    // eslint-disable-next-line no-console
+    console.log('submitting rent event');
     const mergeResult = await this.engine.mergeRentRegistryEvent(event);
 
     mergeResult.match(
       (eventId) => {
+        // eslint-disable-next-line no-console
+        console.log(
+          `submitRentRegistryEvent success ${eventId}: fid ${event.fid} assigned ${event.units} in block ${event.blockNumber}`
+        );
         logEvent.info(
           `submitRentRegistryEvent success ${eventId}: fid ${event.fid} assigned ${event.units} in block ${event.blockNumber}`
         );
       },
       (e) => {
+        // eslint-disable-next-line no-console
+        console.log(`submitRentRegistryEvent error: ${e.message}`);
         logEvent.warn({ errCode: e.errCode }, `submitRentRegistryEvent error: ${e.message}`);
       }
     );

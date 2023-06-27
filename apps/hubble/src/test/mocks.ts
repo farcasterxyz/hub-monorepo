@@ -29,17 +29,13 @@ export class MockHub implements HubInterface {
     this.engine = engine ?? new Engine(db, FarcasterNetwork.TESTNET);
     this.gossipNode = gossipNode;
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource | undefined): HubAsyncResult<number> {
-    throw new Error('Method not implemented.');
+
+  async submitRentRegistryEvent(event: RentRegistryEvent): HubAsyncResult<number> {
+    return this.engine.mergeRentRegistryEvent(event);
   }
-  submitStorageAdminRegistryEvent(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    event: StorageAdminRegistryEvent,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    source?: HubSubmitSource | undefined
-  ): HubAsyncResult<number> {
-    throw new Error('Method not implemented.');
+
+  async submitStorageAdminRegistryEvent(event: StorageAdminRegistryEvent): HubAsyncResult<number> {
+    return this.engine.mergeStorageAdminRegistryEvent(event);
   }
 
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {

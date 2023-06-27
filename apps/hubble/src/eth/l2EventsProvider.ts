@@ -39,14 +39,11 @@ export class L2EventsProvider {
   private _chunkSize: number;
   private _resyncEvents: boolean;
 
-  private _numConfirmations: number;
-
   private _rentEventsByBlock: Map<number, Array<RentRegistryEvent>>;
   private _storageAdminEventsByBlock: Map<number, Array<StorageAdminRegistryEvent>>;
   private _retryDedupMap: Map<number, boolean>;
 
   private _lastBlockNumber: number;
-  private _ethersPromiseCacheDelayMS: number;
 
   private _watchRentRegistryRent: WatchContractEvent<typeof StorageRegistry.abi, 'Rent', true>;
   private _watchStorageAdminRegistrySetDeprecationTimestamp: WatchContractEvent<
@@ -84,20 +81,13 @@ export class L2EventsProvider {
     storageRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
-    resyncEvents: boolean,
-    ethersPromiseCacheDelayMS = 250
+    resyncEvents: boolean
   ) {
     this._hub = hub;
     this._publicClient = publicClient;
     this._firstBlock = firstBlock;
     this._chunkSize = chunkSize;
     this._resyncEvents = resyncEvents;
-    this._ethersPromiseCacheDelayMS = ethersPromiseCacheDelayMS;
-
-    // Number of blocks to wait before processing an event.
-    // This is hardcoded to 6 for now, because that's the threshold beyond which blocks are unlikely to reorg anymore.
-    // 6 blocks represents ~72 seconds on Goerli, so the delay is not too long.
-    this._numConfirmations = 6;
 
     this._lastBlockNumber = 0;
 
@@ -192,8 +182,7 @@ export class L2EventsProvider {
     storageRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
-    resyncEvents: boolean,
-    ethersPromiseCacheDelayMS = 250
+    resyncEvents: boolean
   ): L2EventsProvider {
     const publicClient = createPublicClient({
       chain: optimismGoerli,
@@ -206,8 +195,7 @@ export class L2EventsProvider {
       storageRegistryAddress,
       firstBlock,
       chunkSize,
-      resyncEvents,
-      ethersPromiseCacheDelayMS
+      resyncEvents
     );
 
     return provider;
@@ -606,7 +594,7 @@ export class L2EventsProvider {
     cachedBlocks.sort();
 
     for (const cachedBlock of cachedBlocks) {
-      if (cachedBlock + this._numConfirmations <= blockNumber) {
+      if (cachedBlock + L2EventsProvider.numConfirmations <= blockNumber) {
         const rentEvents = this._rentEventsByBlock.get(cachedBlock);
         this._rentEventsByBlock.delete(cachedBlock);
 
