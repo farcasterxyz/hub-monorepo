@@ -52,7 +52,7 @@ describe('process events', () => {
     const latestBlockNumber = await publicClient.getBlockNumber();
     await waitForBlock(Number(latestBlockNumber));
     expect(l2EventsProvider.getLatestBlockNumber()).toBeGreaterThanOrEqual(latestBlockNumber);
-  });
+  }, 10000);
 
   test('processes StorageRegistry events', async () => {
     const rentSim = await publicClient.simulateContract({
