@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.3.2
+
+### Patch Changes
+
+- 159c62d: Upgraded viem to 1.1.4
+  Used viem to interact with ethereum
+  - @farcaster/hub-nodejs@0.8.2
+
 ## 1.3.1
 
 ### Patch Changes
