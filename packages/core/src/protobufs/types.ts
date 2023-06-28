@@ -2,6 +2,7 @@ import { IdRegistryEvent } from './generated/id_registry_event';
 import { NameRegistryEvent } from './generated/name_registry_event';
 import * as hubEventProtobufs from './generated/hub_event';
 import * as protobufs from './generated/message';
+import { UserNameProof } from './generated/username_proof';
 
 /** Message types */
 
@@ -149,5 +150,12 @@ export type MergeNameRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
   type: hubEventProtobufs.HubEventType.MERGE_NAME_REGISTRY_EVENT;
   mergeNameRegistryEventBody: hubEventProtobufs.MergeNameRegistryEventBody & {
     nameRegistryEvent: NameRegistryEvent;
+  };
+};
+
+export type MergeUsernameProofHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.MERGE_USERNAME_PROOF;
+  mergeUsernameProofBody: hubEventProtobufs.MergeUserNameProofBody & {
+    usernameProof: UserNameProof;
   };
 };

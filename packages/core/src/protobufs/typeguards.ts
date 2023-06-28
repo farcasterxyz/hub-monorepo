@@ -188,3 +188,13 @@ export const isMergeNameRegistryEventHubEvent = (
     typeof event.mergeNameRegistryEventBody.nameRegistryEvent !== 'undefined'
   );
 };
+
+export const isMergeUsernameProofHubEvent = (
+  event: hubEventProtobufs.HubEvent
+): event is types.MergeUsernameProofHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.MERGE_USERNAME_PROOF &&
+    typeof event.mergeUsernameProofBody !== 'undefined' &&
+    typeof event.mergeUsernameProofBody.usernameProof !== 'undefined'
+  );
+};

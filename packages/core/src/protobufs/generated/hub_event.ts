@@ -88,6 +88,7 @@ export interface MergeNameRegistryEventBody {
 
 export interface MergeUserNameProofBody {
   usernameProof: UserNameProof | undefined;
+  deletedUsernameProof: UserNameProof | undefined;
 }
 
 export interface HubEvent {
@@ -422,13 +423,16 @@ export const MergeNameRegistryEventBody = {
 };
 
 function createBaseMergeUserNameProofBody(): MergeUserNameProofBody {
-  return { usernameProof: undefined };
+  return { usernameProof: undefined, deletedUsernameProof: undefined };
 }
 
 export const MergeUserNameProofBody = {
   encode(message: MergeUserNameProofBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.usernameProof !== undefined) {
       UserNameProof.encode(message.usernameProof, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.deletedUsernameProof !== undefined) {
+      UserNameProof.encode(message.deletedUsernameProof, writer.uint32(18).fork()).ldelim();
     }
     return writer;
   },
@@ -447,6 +451,13 @@ export const MergeUserNameProofBody = {
 
           message.usernameProof = UserNameProof.decode(reader, reader.uint32());
           continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.deletedUsernameProof = UserNameProof.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -457,13 +468,22 @@ export const MergeUserNameProofBody = {
   },
 
   fromJSON(object: any): MergeUserNameProofBody {
-    return { usernameProof: isSet(object.usernameProof) ? UserNameProof.fromJSON(object.usernameProof) : undefined };
+    return {
+      usernameProof: isSet(object.usernameProof) ? UserNameProof.fromJSON(object.usernameProof) : undefined,
+      deletedUsernameProof: isSet(object.deletedUsernameProof)
+        ? UserNameProof.fromJSON(object.deletedUsernameProof)
+        : undefined,
+    };
   },
 
   toJSON(message: MergeUserNameProofBody): unknown {
     const obj: any = {};
     message.usernameProof !== undefined &&
       (obj.usernameProof = message.usernameProof ? UserNameProof.toJSON(message.usernameProof) : undefined);
+    message.deletedUsernameProof !== undefined &&
+      (obj.deletedUsernameProof = message.deletedUsernameProof
+        ? UserNameProof.toJSON(message.deletedUsernameProof)
+        : undefined);
     return obj;
   },
 
@@ -476,6 +496,10 @@ export const MergeUserNameProofBody = {
     message.usernameProof =
       object.usernameProof !== undefined && object.usernameProof !== null
         ? UserNameProof.fromPartial(object.usernameProof)
+        : undefined;
+    message.deletedUsernameProof =
+      object.deletedUsernameProof !== undefined && object.deletedUsernameProof !== null
+        ? UserNameProof.fromPartial(object.deletedUsernameProof)
         : undefined;
     return message;
   },

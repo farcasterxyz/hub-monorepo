@@ -60,13 +60,13 @@ export class FNameRegistryEventsProvider {
   private lastTransferId = 0;
   private resyncEvents: boolean;
   private pollTimeoutId: ReturnType<typeof setTimeout> | undefined;
-  private signerAddress: Uint8Array;
+  private serverSignerAddress: Uint8Array;
 
   constructor(fnameRegistryClient: FNameRegistryClientInterface, hub: HubInterface, resyncEvents = false) {
     this.client = fnameRegistryClient;
     this.hub = hub;
     this.resyncEvents = resyncEvents;
-    this.signerAddress = new Uint8Array();
+    this.serverSignerAddress = new Uint8Array();
   }
 
   public async start() {
@@ -84,7 +84,7 @@ export class FNameRegistryEventsProvider {
     const rawAddress = await this.client.getSigner();
     const signerAddress = hexStringToBytes(rawAddress);
     if (signerAddress.isOk()) {
-      this.signerAddress = signerAddress.value;
+      this.serverSignerAddress = signerAddress.value;
     }
     log.info(`Starting fname events provider from ${this.lastTransferId} using signer: ${rawAddress}`);
     return this.pollForNewEvents();
@@ -135,7 +135,7 @@ export class FNameRegistryEventsProvider {
   }
 
   private async mergeTransfers(transfers: FNameTransfer[]) {
-    if (this.signerAddress.length === 0) {
+    if (this.serverSignerAddress.length === 0) {
       log.warn(`No signer address, unable to merge name proofs`);
       return;
     }
@@ -150,12 +150,12 @@ export class FNameRegistryEventsProvider {
         log.error(`Failed to serialize username proof for ${transfer.username}: ${serialized.error}`);
         continue;
       }
-      const [username, owner, signature] = serialized.value;
+      const [username, owner, serverSignature] = serialized.value;
       const usernameProof = UserNameProof.create({
         timestamp: transfer.timestamp,
         name: username,
         owner: owner,
-        signature: signature,
+        signature: serverSignature,
         fid: transfer.to,
         type: UserNameType.USERNAME_TYPE_FNAME,
       });
@@ -166,8 +166,8 @@ export class FNameRegistryEventsProvider {
           timestamp: transfer.timestamp,
           name: transfer.username,
         }),
-        signature,
-        owner
+        serverSignature,
+        this.serverSignerAddress
       );
       if (verificationResult.isOk() && verificationResult.value) {
         await this.hub.submitUserNameProof(usernameProof, 'fname-registry');

@@ -104,8 +104,8 @@ describe('getUserData', () => {
     const display = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.DISPLAY }));
     expect(Message.toJSON(display._unsafeUnwrap())).toEqual(Message.toJSON(displayAdd));
 
-    const nameRegistryEvent = Factories.NameRegistryEvent.build({ fname, to: custodySignerKey });
-    await engine.mergeNameRegistryEvent(nameRegistryEvent);
+    const nameProof = Factories.UserNameProof.build({ name: fname, owner: custodySignerKey });
+    await engine.mergeUserNameProof(nameProof);
 
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);
     const fnameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
