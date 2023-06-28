@@ -45,8 +45,10 @@ import {
   TrieNodePrefix,
   TrieNodeSnapshotResponse,
   UserDataRequest,
+  UsernameProofRequest,
   VerificationRequest,
 } from './request_response';
+import { UserNameProof } from './username_proof';
 
 export type HubServiceService = typeof HubServiceService;
 export const HubServiceService = {
@@ -181,6 +183,15 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => NameRegistryEventRequest.decode(value),
     responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
+  },
+  getUsernameProof: {
+    path: '/HubService/GetUsernameProof',
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: UsernameProofRequest) => Buffer.from(UsernameProofRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => UsernameProofRequest.decode(value),
+    responseSerialize: (value: UserNameProof) => Buffer.from(UserNameProof.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => UserNameProof.decode(value),
   },
   /** Verifications */
   getVerification: {
@@ -411,6 +422,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getUserData: handleUnaryCall<UserDataRequest, Message>;
   getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getNameRegistryEvent: handleUnaryCall<NameRegistryEventRequest, NameRegistryEvent>;
+  getUsernameProof: handleUnaryCall<UsernameProofRequest, UserNameProof>;
   /** Verifications */
   getVerification: handleUnaryCall<VerificationRequest, Message>;
   getVerificationsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
@@ -638,6 +650,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void
+  ): ClientUnaryCall;
+  getUsernameProof(
+    request: UsernameProofRequest,
+    callback: (error: ServiceError | null, response: UserNameProof) => void
+  ): ClientUnaryCall;
+  getUsernameProof(
+    request: UsernameProofRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: UserNameProof) => void
+  ): ClientUnaryCall;
+  getUsernameProof(
+    request: UsernameProofRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: UserNameProof) => void
   ): ClientUnaryCall;
   /** Verifications */
   getVerification(

@@ -35,6 +35,7 @@ import {
   VerificationRemoveMessage,
   SyncStatusResponse,
   SyncStatus,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '../hubble.js';
@@ -633,6 +634,19 @@ export default class Server {
         nameRegistryEventResult?.match(
           (nameRegistryEvent: NameRegistryEvent) => {
             callback(null, nameRegistryEvent);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          }
+        );
+      },
+      getUsernameProof: async (call, callback) => {
+        const request = call.request;
+
+        const usernameProofResult = await this.engine?.getUserNameProof(request.name);
+        usernameProofResult?.match(
+          (usernameProof: UserNameProof) => {
+            callback(null, usernameProof);
           },
           (err: HubError) => {
             callback(toServiceError(err));

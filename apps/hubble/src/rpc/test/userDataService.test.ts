@@ -12,6 +12,8 @@ import {
   HubError,
   getInsecureHubRpcClient,
   HubRpcClient,
+  UsernameProofRequest,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
 import { Ok } from 'neverthrow';
 import SyncEngine from '../../network/sync/syncEngine.js';
@@ -110,6 +112,9 @@ describe('getUserData', () => {
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);
     const fnameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
     expect(Message.toJSON(fnameData._unsafeUnwrap())).toEqual(Message.toJSON(addFname));
+
+    const usernameProof = await client.getUsernameProof(UsernameProofRequest.create({ name: nameProof.name }));
+    expect(UserNameProof.toJSON(usernameProof._unsafeUnwrap())).toEqual(UserNameProof.toJSON(nameProof));
   });
 
   test('fails when user data is missing', async () => {
