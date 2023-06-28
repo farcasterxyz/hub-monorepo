@@ -64,11 +64,8 @@ describe('process events', () => {
       gas: BigInt(6700000),
       gasPrice: BigInt(670519845),
     });
-    const filter = await publicClient.createEventFilter();
     const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
     const rentTrx = await publicClient.waitForTransactionReceipt({ hash: rentHash });
-    // eslint-disable-next-line no-console
-    console.log(await publicClient.getFilterLogs({ filter }));
     await sleep(1000); // allow time for the rent event to be polled for
 
     await testClient.mine({ blocks: 7 });

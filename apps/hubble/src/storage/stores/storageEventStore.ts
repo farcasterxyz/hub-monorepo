@@ -4,7 +4,9 @@ import StoreEventHandler from './storeEventHandler.js';
 import AsyncLock from 'async-lock';
 import {
   getNextRentRegistryEventFromIterator,
+  getNextStorageAdminRegistryEventFromIterator,
   getRentRegistryEventsIterator,
+  getStorageAdminRegistryEventsIterator,
   putRentRegistryEventTransaction,
   putStorageAdminRegistryEventTransaction,
 } from '../db/storageRegistryEvent.js';
@@ -45,6 +47,21 @@ class StorageEventStore {
     let event: RentRegistryEvent | undefined;
 
     while (iterator.isOpen && (event = await getNextRentRegistryEventFromIterator(iterator))) {
+      events.push(event);
+    }
+
+    if (events.length === 0) throw new HubError('not_found', 'record not found');
+
+    return events;
+  }
+
+  /** Returns the events from the StorageAdminRegistry contract that affected the storage mechanics  */
+  async getStorageAdminRegistryEvents(): Promise<StorageAdminRegistryEvent[]> {
+    const iterator = await getStorageAdminRegistryEventsIterator(this._db);
+    const events: StorageAdminRegistryEvent[] = [];
+    let event: StorageAdminRegistryEvent | undefined;
+
+    while (iterator.isOpen && (event = await getNextStorageAdminRegistryEventFromIterator(iterator))) {
       events.push(event);
     }
 

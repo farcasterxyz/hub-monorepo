@@ -3,6 +3,8 @@ import {
   // getFarcasterTime,
   HubError,
   RentRegistryEvent,
+  StorageAdminRegistryEvent,
+  StorageRegistryEventType,
 } from '@farcaster/hub-nodejs';
 import { jestRocksDB } from '../db/jestUtils.js';
 import StorageEventStore from './storageEventStore.js';
@@ -17,12 +19,32 @@ const fid = Factories.Fid.build();
 let address1: Uint8Array;
 
 let rentEvent: RentRegistryEvent;
+let setDeprecationTimestampEvent: StorageAdminRegistryEvent;
+let setGracePeriodEvent: StorageAdminRegistryEvent;
+let setMaxUnitsEvent: StorageAdminRegistryEvent;
+let setPriceEvent: StorageAdminRegistryEvent;
 
 beforeAll(async () => {
   address1 = Factories.EthAddress.build();
   rentEvent = Factories.RentRegistryEvent.build({
     fid,
     payer: address1,
+  });
+  setDeprecationTimestampEvent = Factories.StorageAdminRegistryEvent.build({
+    from: address1,
+    type: StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
+  });
+  setGracePeriodEvent = Factories.StorageAdminRegistryEvent.build({
+    from: address1,
+    type: StorageRegistryEventType.SET_GRACE_PERIOD,
+  });
+  setMaxUnitsEvent = Factories.StorageAdminRegistryEvent.build({
+    from: address1,
+    type: StorageRegistryEventType.SET_MAX_UNITS,
+  });
+  setPriceEvent = Factories.StorageAdminRegistryEvent.build({
+    from: address1,
+    type: StorageRegistryEventType.SET_PRICE,
   });
 });
 
@@ -38,6 +60,23 @@ describe('getRentRegistryEvent', () => {
 
   test('fails if event is missing', async () => {
     await expect(set.getRentRegistryEvents(fid)).rejects.toThrow(HubError);
+  });
+});
+
+describe('getStorageAdminRegistryEvent', () => {
+  test('returns contract event if it exists', async () => {
+    await set.mergeStorageAdminRegistryEvent(setDeprecationTimestampEvent);
+    await set.mergeStorageAdminRegistryEvent(setGracePeriodEvent);
+    await set.mergeStorageAdminRegistryEvent(setMaxUnitsEvent);
+    await set.mergeStorageAdminRegistryEvent(setPriceEvent);
+    await expect(set.getStorageAdminRegistryEvents()).resolves.toContainEqual(setDeprecationTimestampEvent);
+    await expect(set.getStorageAdminRegistryEvents()).resolves.toContainEqual(setGracePeriodEvent);
+    await expect(set.getStorageAdminRegistryEvents()).resolves.toContainEqual(setMaxUnitsEvent);
+    await expect(set.getStorageAdminRegistryEvents()).resolves.toContainEqual(setPriceEvent);
+  });
+
+  test('fails if event is missing', async () => {
+    await expect(set.getStorageAdminRegistryEvents()).rejects.toThrow(HubError);
   });
 });
 
