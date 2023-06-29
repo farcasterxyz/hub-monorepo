@@ -53,7 +53,6 @@ import {
   SLOW_CLIENT_GRACE_PERIOD_MS,
 } from './bufferedStreamWriter.js';
 import { sleep } from '../utils/crypto.js';
-import { RentRegistryEventsResponse } from '@farcaster/hub-nodejs';
 
 export type RpcUsers = Map<string, string[]>;
 
@@ -776,18 +775,6 @@ export default class Server {
         idRegistryEventResult?.match(
           (idRegistryEvent: IdRegistryEvent) => {
             callback(null, idRegistryEvent);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          }
-        );
-      },
-      getRentRegistryEvents: async (call, callback) => {
-        const request = call.request;
-        const rentRegistryEventsResult = await this.engine?.getRentRegistryEvents(request.fid);
-        rentRegistryEventsResult?.match(
-          (rentRegistryEvents: RentRegistryEventsResponse) => {
-            callback(null, rentRegistryEvents);
           },
           (err: HubError) => {
             callback(toServiceError(err));
