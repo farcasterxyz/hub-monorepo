@@ -3,6 +3,7 @@ import { NameRegistryEvent } from './generated/name_registry_event';
 import * as hubEventProtobufs from './generated/hub_event';
 import * as protobufs from './generated/message';
 import { RentRegistryEvent, StorageAdminRegistryEvent } from './generated/storage_event';
+import { UserNameProof } from './generated/username_proof';
 
 /** Message types */
 
@@ -164,5 +165,12 @@ export type MergeStorageAdminRegistryEventHubEvent = hubEventProtobufs.HubEvent 
   type: hubEventProtobufs.HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT;
   mergeStorageAdminRegistryEventBody: hubEventProtobufs.MergeStorageAdminRegistryEventBody & {
     storageAdminRegistryEvent: StorageAdminRegistryEvent;
+  };
+};
+
+export type MergeUsernameProofHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.MERGE_USERNAME_PROOF;
+  mergeUsernameProofBody: hubEventProtobufs.MergeUserNameProofBody & {
+    usernameProof: UserNameProof;
   };
 };

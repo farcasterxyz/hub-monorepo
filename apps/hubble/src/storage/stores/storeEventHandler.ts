@@ -8,12 +8,13 @@ import {
   HubEvent,
   isMergeIdRegistryEventHubEvent,
   isMergeMessageHubEvent,
-  isMergeNameRegistryEventHubEvent,
+  isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
   MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
   MergeNameRegistryEventHubEvent,
+  MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
 } from '@farcaster/hub-nodejs';
@@ -89,6 +90,12 @@ export type StoreEvents = {
    * is merged into the UserDataStore.
    */
   mergeNameRegistryEvent: (event: MergeNameRegistryEventHubEvent) => void;
+
+  /**
+   * mergeUsernameProofEvent is emitted when a username proof from the fname server
+   * is merged into the UserDataStore.
+   */
+  mergeUsernameProofEvent: (event: MergeUsernameProofHubEvent) => void;
 };
 
 export type HubEventArgs = Omit<HubEvent, 'id'>;
@@ -320,8 +327,8 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       this.emit('revokeMessage', event);
     } else if (isMergeIdRegistryEventHubEvent(event)) {
       this.emit('mergeIdRegistryEvent', event);
-    } else if (isMergeNameRegistryEventHubEvent(event)) {
-      this.emit('mergeNameRegistryEvent', event);
+    } else if (isMergeUsernameProofHubEvent(event)) {
+      this.emit('mergeUsernameProofEvent', event);
     } else {
       return err(new HubError('bad_request.invalid_param', 'invalid event type'));
     }

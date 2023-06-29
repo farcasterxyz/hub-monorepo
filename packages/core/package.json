@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/core",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -16,10 +16,8 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@ethersproject/abstract-signer": "^5.7.0",
     "@noble/curves": "^1.0.0",
     "@noble/hashes": "^1.3.0",
-    "ethers": "~6.2.1",
     "neverthrow": "^6.0.0",
     "viem": "^1.1.4"
   },
@@ -33,9 +31,11 @@
     "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
+    "@ethersproject/abstract-signer": "^5.7.0",
     "@faker-js/faker": "^7.6.0",
     "@farcaster/fishery": "2.2.3",
     "eslint-config-custom": "*",
+    "ethers": "^6.6.1",
     "ethers5": "npm:ethers@^5.7.0",
     "prettier-config-custom": "*",
     "ts-proto": "^1.146.0"

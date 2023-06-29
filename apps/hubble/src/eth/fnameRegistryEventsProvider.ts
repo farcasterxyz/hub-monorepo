@@ -1,9 +1,15 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { HubInterface } from '../hubble.js';
-import { eip712, hexStringToBytes, UserNameProof, UserNameType, utf8StringToBytes } from '@farcaster/hub-nodejs';
+import {
+  eip712,
+  hexStringToBytes,
+  UserNameProof,
+  UserNameType,
+  utf8StringToBytes,
+  makeUserNameProofClaim,
+} from '@farcaster/hub-nodejs';
 import { Result } from 'neverthrow';
-import { bytesCompare } from '@farcaster/core';
 
 const DEFAULT_POLL_TIMEOUT_IN_MS = 30_000;
 const DEFAULT_READ_TIMEOUT_IN_MS = 10_000;
@@ -15,7 +21,7 @@ const log = logger.child({
 export type FNameTransfer = {
   id: number;
   username: string;
-  owner: string;
+  owner: `0x${string}`;
   server_signature: string;
   timestamp: number;
   from: number;
@@ -54,13 +60,13 @@ export class FNameRegistryEventsProvider {
   private lastTransferId = 0;
   private resyncEvents: boolean;
   private pollTimeoutId: ReturnType<typeof setTimeout> | undefined;
-  private signerAddress: Uint8Array;
+  private serverSignerAddress: Uint8Array;
 
   constructor(fnameRegistryClient: FNameRegistryClientInterface, hub: HubInterface, resyncEvents = false) {
     this.client = fnameRegistryClient;
     this.hub = hub;
     this.resyncEvents = resyncEvents;
-    this.signerAddress = new Uint8Array();
+    this.serverSignerAddress = new Uint8Array();
   }
 
   public async start() {
@@ -78,7 +84,7 @@ export class FNameRegistryEventsProvider {
     const rawAddress = await this.client.getSigner();
     const signerAddress = hexStringToBytes(rawAddress);
     if (signerAddress.isOk()) {
-      this.signerAddress = signerAddress.value;
+      this.serverSignerAddress = signerAddress.value;
     }
     log.info(`Starting fname events provider from ${this.lastTransferId} using signer: ${rawAddress}`);
     return this.pollForNewEvents();
@@ -129,7 +135,7 @@ export class FNameRegistryEventsProvider {
   }
 
   private async mergeTransfers(transfers: FNameTransfer[]) {
-    if (this.signerAddress.length === 0) {
+    if (this.serverSignerAddress.length === 0) {
       log.warn(`No signer address, unable to merge name proofs`);
       return;
     }
@@ -144,25 +150,26 @@ export class FNameRegistryEventsProvider {
         log.error(`Failed to serialize username proof for ${transfer.username}: ${serialized.error}`);
         continue;
       }
-      const [username, owner, signature] = serialized.value;
+      const [username, owner, serverSignature] = serialized.value;
       const usernameProof = UserNameProof.create({
         timestamp: transfer.timestamp,
         name: username,
         owner: owner,
-        signature: signature,
+        signature: serverSignature,
         fid: transfer.to,
         type: UserNameType.USERNAME_TYPE_FNAME,
       });
       // TODO: Move the validation into the engine
-      const recoveredAddress = eip712.verifyUserNameProof(
-        {
+      const verificationResult = await eip712.verifyUserNameProofClaim(
+        makeUserNameProofClaim({
           owner: transfer.owner,
           timestamp: transfer.timestamp,
           name: transfer.username,
-        },
-        signature
+        }),
+        serverSignature,
+        this.serverSignerAddress
       );
-      if (recoveredAddress.isOk() && bytesCompare(recoveredAddress.value, this.signerAddress) === 0) {
+      if (verificationResult.isOk() && verificationResult.value) {
         await this.hub.submitUserNameProof(usernameProof, 'fname-registry');
       } else {
         log.warn(`Failed to verify username proof for ${transfer.username} id: ${transfer.id}`);

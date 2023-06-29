@@ -37,9 +37,11 @@ import {
   TrieNodePrefix,
   TrieNodeSnapshotResponse,
   UserDataRequest,
+  UsernameProofRequest,
   VerificationRequest,
 } from './request_response';
 import { RentRegistryEvent, StorageAdminRegistryEvent } from './storage_event';
+import { UserNameProof } from './username_proof';
 
 export interface HubService {
   /** Submit Methods */
@@ -75,6 +77,7 @@ export interface HubService {
     request: DeepPartial<RentRegistryEventsRequest>,
     metadata?: grpc.Metadata
   ): Promise<RentRegistryEventsResponse>;
+  getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpc.Metadata): Promise<UserNameProof>;
   /** Verifications */
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message>;
   getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
@@ -136,6 +139,7 @@ export class HubServiceClientImpl implements HubService {
     this.getUserDataByFid = this.getUserDataByFid.bind(this);
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
     this.getRentRegistryEvents = this.getRentRegistryEvents.bind(this);
+    this.getUsernameProof = this.getUsernameProof.bind(this);
     this.getVerification = this.getVerification.bind(this);
     this.getVerificationsByFid = this.getVerificationsByFid.bind(this);
     this.getSigner = this.getSigner.bind(this);
@@ -234,6 +238,10 @@ export class HubServiceClientImpl implements HubService {
       RentRegistryEventsRequest.fromPartial(request),
       metadata
     );
+  }
+
+  getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpc.Metadata): Promise<UserNameProof> {
+    return this.rpc.unary(HubServiceGetUsernameProofDesc, UsernameProofRequest.fromPartial(request), metadata);
   }
 
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message> {
@@ -678,6 +686,29 @@ export const HubServiceGetRentRegistryEventsDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = RentRegistryEventsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetUsernameProofDesc: UnaryMethodDefinitionish = {
+  methodName: 'GetUsernameProof',
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return UsernameProofRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = UserNameProof.decode(data);
       return {
         ...value,
         toObject() {

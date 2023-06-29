@@ -149,7 +149,10 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
 
     const result = await this._eventHandler.commitTransaction(txn, {
       type: HubEventType.MERGE_USERNAME_PROOF,
-      mergeUsernameProofBody: { usernameProof: usernameProof },
+      mergeUsernameProofBody: {
+        usernameProof: usernameProof,
+        deletedUsernameProof: existingProof.isOk() ? existingProof.value : undefined,
+      },
     });
 
     if (result.isErr()) {

@@ -24,6 +24,7 @@ import {
   SignerRemoveMessage,
   UserDataAddMessage,
   UserDataType,
+  UserNameProof,
   VerificationAddEthAddressMessage,
 } from '@farcaster/hub-nodejs';
 import { err, Ok, ok } from 'neverthrow';
@@ -53,6 +54,7 @@ let custodySignerKey: Uint8Array;
 let signerKey: Uint8Array;
 let custodyEvent: IdRegistryEvent;
 let fnameTransfer: NameRegistryEvent;
+let userNameProof: UserNameProof;
 let signerAdd: SignerAddMessage;
 let signerRemove: SignerRemoveMessage;
 let castAdd: CastAddMessage;
@@ -67,6 +69,7 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
 
   fnameTransfer = Factories.NameRegistryEvent.build({ fname, to: custodyEvent.to });
+  userNameProof = Factories.UserNameProof.build({ name: fname, owner: custodyEvent.to });
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
@@ -227,16 +230,16 @@ describe('mergeMessage', () => {
       });
 
       describe('with fname', () => {
-        let fnameAdd: UserDataAddMessage;
+        let usernameAdd: UserDataAddMessage;
 
         beforeAll(async () => {
-          const fnameString = bytesToUtf8String(fnameTransfer.fname)._unsafeUnwrap();
-          fnameAdd = await Factories.UserDataAddMessage.create(
+          const nameString = bytesToUtf8String(userNameProof.name)._unsafeUnwrap();
+          usernameAdd = await Factories.UserDataAddMessage.create(
             {
               data: {
                 fid,
                 network,
-                userDataBody: { type: UserDataType.FNAME, value: fnameString },
+                userDataBody: { type: UserDataType.FNAME, value: nameString },
               },
             },
             { transient: { signer } }
@@ -244,23 +247,24 @@ describe('mergeMessage', () => {
         });
 
         test('succeeds when fname owned by custody address', async () => {
-          await expect(engine.mergeNameRegistryEvent(fnameTransfer)).resolves.toBeInstanceOf(Ok);
-          await expect(engine.mergeMessage(fnameAdd)).resolves.toBeInstanceOf(Ok);
+          await expect(engine.mergeUserNameProof(userNameProof)).resolves.toBeInstanceOf(Ok);
+          await expect(engine.mergeMessage(usernameAdd)).resolves.toBeInstanceOf(Ok);
         });
 
         test('fails when fname transfer event is missing', async () => {
-          const result = await engine.mergeMessage(fnameAdd);
+          const result = await engine.mergeMessage(usernameAdd);
           expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
           expect(result._unsafeUnwrapErr().message).toMatch('is not registered');
         });
 
         test('fails when fname is owned by another custody address', async () => {
-          const fnameEvent = Factories.NameRegistryEvent.build({
-            ...fnameTransfer,
-            to: Factories.EthAddress.build(),
+          const proof = Factories.UserNameProof.build({
+            name: userNameProof.name,
+            timestamp: userNameProof.timestamp + 1,
+            owner: Factories.EthAddress.build(),
           });
-          await expect(engine.mergeNameRegistryEvent(fnameEvent)).resolves.toBeInstanceOf(Ok);
-          const result = await engine.mergeMessage(fnameAdd);
+          await expect(engine.mergeUserNameProof(proof)).resolves.toBeInstanceOf(Ok);
+          const result = await engine.mergeMessage(usernameAdd);
           expect(result).toMatchObject(err({ errCode: 'bad_request.validation_failure' }));
           expect(result._unsafeUnwrapErr().message).toMatch('does not match');
         });
@@ -620,12 +624,11 @@ describe('with listeners and workers', () => {
 
     test('revokes UserDataAdd when fname is transferred', async () => {
       const fname = Factories.Fname.build();
-      const nameEvent = Factories.NameRegistryEvent.build({
-        fname,
-        to: custodyEvent.to,
-        type: NameRegistryEventType.TRANSFER,
+      const nameProof = Factories.UserNameProof.build({
+        name: fname,
+        owner: custodyEvent.to,
       });
-      await expect(liveEngine.mergeNameRegistryEvent(nameEvent)).resolves.toBeInstanceOf(Ok);
+      await expect(liveEngine.mergeUserNameProof(nameProof)).resolves.toBeInstanceOf(Ok);
       const fnameAdd = await Factories.UserDataAddMessage.create(
         {
           data: {
@@ -636,13 +639,12 @@ describe('with listeners and workers', () => {
         { transient: { signer } }
       );
       await expect(liveEngine.mergeMessage(fnameAdd)).resolves.toBeInstanceOf(Ok);
-      const nameTransfer = Factories.NameRegistryEvent.build({
-        fname,
-        from: custodySignerKey,
-        type: NameRegistryEventType.TRANSFER,
-        blockNumber: nameEvent.blockNumber + 1,
+      const nameTransfer = Factories.UserNameProof.build({
+        name: fname,
+        owner: Factories.EthAddress.build(),
+        timestamp: nameProof.timestamp + 1,
       });
-      await expect(liveEngine.mergeNameRegistryEvent(nameTransfer)).resolves.toBeInstanceOf(Ok);
+      await expect(liveEngine.mergeUserNameProof(nameTransfer)).resolves.toBeInstanceOf(Ok);
       expect(revokedMessages).toEqual([]);
       await sleep(200); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([fnameAdd]);
@@ -650,12 +652,11 @@ describe('with listeners and workers', () => {
 
     test('revokes UserDataAdd when fid is transferred', async () => {
       const fname = Factories.Fname.build();
-      const nameEvent = Factories.NameRegistryEvent.build({
-        fname,
-        to: custodyEvent.to,
-        type: NameRegistryEventType.TRANSFER,
+      const nameProof = Factories.UserNameProof.build({
+        name: fname,
+        owner: custodyEvent.to,
       });
-      await expect(liveEngine.mergeNameRegistryEvent(nameEvent)).resolves.toBeInstanceOf(Ok);
+      await expect(liveEngine.mergeUserNameProof(nameProof)).resolves.toBeInstanceOf(Ok);
       const fnameAdd = await Factories.UserDataAddMessage.create(
         {
           data: {
