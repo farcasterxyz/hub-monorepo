@@ -38,6 +38,7 @@ message MergeNameRegistryEventBody {
 
 message MergeUserNameProofBody {
   UserNameProof username_proof = 1;
+  UserNameProof deleted_username_proof = 2;
 }
 
 message HubEvent {

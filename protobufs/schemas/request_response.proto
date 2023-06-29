@@ -145,6 +145,10 @@ message NameRegistryEventRequest {
   bytes name = 1;
 }
 
+message UsernameProofRequest {
+  bytes name = 1;
+}
+
 message VerificationRequest {
   uint64 fid = 1;
   bytes address = 2;

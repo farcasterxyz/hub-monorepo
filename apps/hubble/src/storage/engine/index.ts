@@ -18,7 +18,6 @@ import {
   LinkRemoveMessage,
   MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
-  MergeNameRegistryEventHubEvent,
   Message,
   NameRegistryEvent,
   UserNameProof,
@@ -37,6 +36,7 @@ import {
   validations,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
+  MergeUsernameProofHubEvent,
 } from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import fs from 'fs';
@@ -99,7 +99,7 @@ class Engine {
 
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
-    this.handleMergeNameRegistryEvent = this.handleMergeNameRegistryEvent.bind(this);
+    this.handleMergeUsernameProofEvent = this.handleMergeUsernameProofEvent.bind(this);
     this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
     this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
   }
@@ -141,7 +141,7 @@ class Engine {
     }
 
     this.eventHandler.on('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
-    this.eventHandler.on('mergeNameRegistryEvent', this.handleMergeNameRegistryEvent);
+    this.eventHandler.on('mergeUsernameProofEvent', this.handleMergeUsernameProofEvent);
     this.eventHandler.on('mergeMessage', this.handleMergeMessageEvent);
     this.eventHandler.on('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.on('pruneMessage', this.handlePruneMessageEvent);
@@ -153,7 +153,7 @@ class Engine {
   async stop(): Promise<void> {
     log.info('stopping engine');
     this.eventHandler.off('mergeIdRegistryEvent', this.handleMergeIdRegistryEvent);
-    this.eventHandler.off('mergeNameRegistryEvent', this.handleMergeNameRegistryEvent);
+    this.eventHandler.off('mergeUsernameProofEvent', this.handleMergeUsernameProofEvent);
     this.eventHandler.off('mergeMessage', this.handleMergeMessageEvent);
     this.eventHandler.off('revokeMessage', this.handleRevokeMessageEvent);
     this.eventHandler.off('pruneMessage', this.handlePruneMessageEvent);
@@ -627,6 +627,15 @@ class Engine {
     return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
   }
 
+  async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {
+    const validatedFname = validations.validateFname(name);
+    if (validatedFname.isErr()) {
+      return err(validatedFname.error);
+    }
+
+    return ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                              Link Store Methods                            */
   /* -------------------------------------------------------------------------- */
@@ -766,35 +775,38 @@ class Engine {
     // 5. For fname add UserDataAdd messages, check that the user actually owns the fname
     if (isUserDataAddMessage(message) && message.data.userDataBody.type === UserDataType.FNAME) {
       // For fname messages, check if the user actually owns the fname.
-      const fnameBytes = utf8StringToBytes(message.data.userDataBody.value);
-      if (fnameBytes.isErr()) {
-        return err(fnameBytes.error);
+      const nameBytes = utf8StringToBytes(message.data.userDataBody.value);
+      if (nameBytes.isErr()) {
+        return err(nameBytes.error);
       }
 
       // Users are allowed to set fname = '' to remove their fname, so check to see if fname is set
       // before validating the custody address
-      if (fnameBytes.value.length > 0) {
+      if (nameBytes.value.length > 0) {
         // Get the NameRegistryEvent for the fname
-        const fnameEvent = (await this.getNameRegistryEvent(fnameBytes.value)).mapErr((e) =>
+        const nameProof = (await this.getUserNameProof(nameBytes.value)).mapErr((e) =>
           e.errCode === 'not_found'
             ? new HubError(
                 'bad_request.validation_failure',
-                `fname ${message.data.userDataBody.value} is not registered`
+                `name ${message.data.userDataBody.value} is not registered`
               )
             : e
         );
-        if (fnameEvent.isErr()) {
-          return err(fnameEvent.error);
+        if (nameProof.isErr()) {
+          return err(nameProof.error);
         }
 
         // Check that the custody address for the fname and fid are the same
-        if (bytesCompare(custodyEvent.value.to, fnameEvent.value.to) !== 0) {
-          const hex = Result.combine([bytesToHexString(custodyEvent.value.to), bytesToHexString(fnameEvent.value.to)]);
-          return hex.andThen(([custodySignerHex, fnameSignerHex]) => {
+        if (bytesCompare(custodyEvent.value.to, nameProof.value.owner) !== 0) {
+          const hex = Result.combine([
+            bytesToHexString(custodyEvent.value.to),
+            bytesToHexString(nameProof.value.owner),
+          ]);
+          return hex.andThen(([custodySignerHex, fnameOwnerHex]) => {
             return err(
               new HubError(
                 'bad_request.validation_failure',
-                `fname custody address ${fnameSignerHex} does not match custody address ${custodySignerHex} for fid ${message.data.fid}`
+                `fname custody address ${fnameOwnerHex} does not match custody address ${custodySignerHex} for fid ${message.data.fid}`
               )
             );
           });
@@ -861,15 +873,15 @@ class Engine {
     return ok(undefined);
   }
 
-  private async handleMergeNameRegistryEvent(event: MergeNameRegistryEventHubEvent): HubAsyncResult<void> {
-    const { nameRegistryEvent } = event.mergeNameRegistryEventBody;
+  private async handleMergeUsernameProofEvent(event: MergeUsernameProofHubEvent): HubAsyncResult<void> {
+    const { deletedUsernameProof } = event.mergeUsernameProofBody;
 
-    // When there is a NameRegistryEvent, we need to check if we need to revoke UserDataAdd messages from the
+    // When there is a UserNameProof, we need to check if we need to revoke UserDataAdd messages from the
     // previous owner of the name.
-    if (nameRegistryEvent.type === NameRegistryEventType.TRANSFER && nameRegistryEvent.from.length > 0) {
+    if (deletedUsernameProof && deletedUsernameProof.owner.length > 0) {
       // Check to see if the from address has an fid
       const idRegistryEvent = await ResultAsync.fromPromise(
-        getIdRegistryEventByCustodyAddress(this._db, nameRegistryEvent.from),
+        getIdRegistryEventByCustodyAddress(this._db, deletedUsernameProof.owner),
         () => undefined
       );
 

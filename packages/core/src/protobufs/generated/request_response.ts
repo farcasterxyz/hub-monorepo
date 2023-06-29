@@ -149,6 +149,10 @@ export interface NameRegistryEventRequest {
   name: Uint8Array;
 }
 
+export interface UsernameProofRequest {
+  name: Uint8Array;
+}
+
 export interface VerificationRequest {
   fid: number;
   address: Uint8Array;
@@ -2177,6 +2181,63 @@ export const NameRegistryEventRequest = {
 
   fromPartial<I extends Exact<DeepPartial<NameRegistryEventRequest>, I>>(object: I): NameRegistryEventRequest {
     const message = createBaseNameRegistryEventRequest();
+    message.name = object.name ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseUsernameProofRequest(): UsernameProofRequest {
+  return { name: new Uint8Array() };
+}
+
+export const UsernameProofRequest = {
+  encode(message: UsernameProofRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.name.length !== 0) {
+      writer.uint32(10).bytes(message.name);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): UsernameProofRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUsernameProofRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.name = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UsernameProofRequest {
+    return { name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array() };
+  },
+
+  toJSON(message: UsernameProofRequest): unknown {
+    const obj: any = {};
+    message.name !== undefined &&
+      (obj.name = base64FromBytes(message.name !== undefined ? message.name : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UsernameProofRequest>, I>>(base?: I): UsernameProofRequest {
+    return UsernameProofRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<UsernameProofRequest>, I>>(object: I): UsernameProofRequest {
+    const message = createBaseUsernameProofRequest();
     message.name = object.name ?? new Uint8Array();
     return message;
   },

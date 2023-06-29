@@ -5,6 +5,7 @@ import "id_registry_event.proto";
 import "name_registry_event.proto";
 import "hub_event.proto";
 import "request_response.proto";
+import "username_proof.proto";
 
 service HubService {
   // Submit Methods
@@ -30,6 +31,7 @@ service HubService {
   rpc GetUserData(UserDataRequest) returns (Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
   rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
+  rpc GetUsernameProof(UsernameProofRequest) returns (UserNameProof);
 
   // Verifications
   rpc GetVerification(VerificationRequest) returns (Message);

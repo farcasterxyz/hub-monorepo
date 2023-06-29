@@ -35,6 +35,7 @@ import {
   VerificationRemoveMessage,
   SyncStatusResponse,
   SyncStatus,
+  UserNameProof,
 } from '@farcaster/hub-nodejs';
 import { err, ok, Result, ResultAsync } from 'neverthrow';
 import { APP_NICKNAME, APP_VERSION, HubInterface } from '../hubble.js';
@@ -639,6 +640,19 @@ export default class Server {
           }
         );
       },
+      getUsernameProof: async (call, callback) => {
+        const request = call.request;
+
+        const usernameProofResult = await this.engine?.getUserNameProof(request.name);
+        usernameProofResult?.match(
+          (usernameProof: UserNameProof) => {
+            callback(null, usernameProof);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          }
+        );
+      },
       getVerification: async (call, callback) => {
         const request = call.request;
 
@@ -911,6 +925,7 @@ export default class Server {
           this.engine?.eventHandler.off('revokeMessage', eventListener);
           this.engine?.eventHandler.off('mergeIdRegistryEvent', eventListener);
           this.engine?.eventHandler.off('mergeNameRegistryEvent', eventListener);
+          this.engine?.eventHandler.off('mergeUsernameProofEvent', eventListener);
         });
 
         // If the user wants to start from a specific event, we'll start from there first
@@ -980,6 +995,7 @@ export default class Server {
           this.engine?.eventHandler.on('revokeMessage', eventListener);
           this.engine?.eventHandler.on('mergeIdRegistryEvent', eventListener);
           this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
+          this.engine?.eventHandler.on('mergeUsernameProofEvent', eventListener);
         } else {
           for (const eventType of request.eventTypes) {
             if (eventType === HubEventType.MERGE_MESSAGE) {
@@ -992,6 +1008,8 @@ export default class Server {
               this.engine?.eventHandler.on('mergeIdRegistryEvent', eventListener);
             } else if (eventType === HubEventType.MERGE_NAME_REGISTRY_EVENT) {
               this.engine?.eventHandler.on('mergeNameRegistryEvent', eventListener);
+            } else if (eventType === HubEventType.MERGE_USERNAME_PROOF) {
+              this.engine?.eventHandler.on('mergeUsernameProofEvent', eventListener);
             }
           }
         }

@@ -19,6 +19,8 @@ import {
   getInsecureHubRpcClient,
   HubRpcClient,
   ClientReadableStream,
+  UserNameProof,
+  isMergeUsernameProofHubEvent,
 } from '@farcaster/hub-nodejs';
 import Server from '../server.js';
 import { jestRocksDB } from '../../storage/db/jestUtils.js';
@@ -49,7 +51,7 @@ const fname = Factories.Fname.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 let custodyEvent: IdRegistryEvent;
-let nameRegistryEvent: NameRegistryEvent;
+let usernameProof: UserNameProof;
 let signerAdd: SignerAddMessage;
 let castAdd: CastAddMessage;
 let reactionAdd: ReactionAddMessage;
@@ -70,7 +72,7 @@ beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   custodyEvent = Factories.IdRegistryEvent.build({ to: custodySignerKey, fid });
-  nameRegistryEvent = Factories.NameRegistryEvent.build({ to: custodySignerKey, fname });
+  usernameProof = Factories.UserNameProof.build({ owner: custodySignerKey, name: fname });
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } }
@@ -100,6 +102,8 @@ const setupSubscription = async (
       events.push([event.type, IdRegistryEvent.toJSON(event.mergeIdRegistryEventBody.idRegistryEvent!)]);
     } else if (isMergeNameRegistryEventHubEvent(event)) {
       events.push([event.type, NameRegistryEvent.toJSON(event.mergeNameRegistryEventBody.nameRegistryEvent!)]);
+    } else if (isMergeUsernameProofHubEvent(event)) {
+      events.push([event.type, UserNameProof.toJSON(event.mergeUsernameProofBody.usernameProof!)]);
     }
   });
 
@@ -131,7 +135,7 @@ describe('subscribe', () => {
       });
 
       await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      await engine.mergeUserNameProof(usernameProof);
       await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
       await sleep(100); // Wait for server to send events over stream
@@ -147,19 +151,19 @@ describe('subscribe', () => {
       stream = await setupSubscription(events, {
         eventTypes: [
           HubEventType.MERGE_MESSAGE,
-          HubEventType.MERGE_NAME_REGISTRY_EVENT,
+          HubEventType.MERGE_USERNAME_PROOF,
           HubEventType.MERGE_ID_REGISTRY_EVENT,
         ],
       });
 
       await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      await engine.mergeUserNameProof(usernameProof);
       await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
       await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
         [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
-        [HubEventType.MERGE_NAME_REGISTRY_EVENT, NameRegistryEvent.toJSON(nameRegistryEvent)],
+        [HubEventType.MERGE_USERNAME_PROOF, UserNameProof.toJSON(usernameProof)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
       ]);
@@ -172,13 +176,13 @@ describe('subscribe', () => {
       const idResult = await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
       stream = await setupSubscription(events, { fromId: idResult._unsafeUnwrap() });
-      await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      await engine.mergeUserNameProof(usernameProof);
       await engine.mergeMessage(reactionAdd);
       await sleep(100);
       expect(events).toEqual([
         [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
-        [HubEventType.MERGE_NAME_REGISTRY_EVENT, NameRegistryEvent.toJSON(nameRegistryEvent)],
+        [HubEventType.MERGE_USERNAME_PROOF, UserNameProof.toJSON(usernameProof)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(reactionAdd)],
       ]);
     });
@@ -210,10 +214,10 @@ describe('subscribe', () => {
 
   describe('with fromId and type filters', () => {
     test('emits events', async () => {
-      const idResult = await engine.mergeNameRegistryEvent(nameRegistryEvent);
+      const nameResult = await engine.mergeUserNameProof(usernameProof);
       await engine.mergeIdRegistryEvent(custodyEvent);
       stream = await setupSubscription(events, {
-        fromId: idResult._unsafeUnwrap(),
+        fromId: nameResult._unsafeUnwrap(),
         eventTypes: [HubEventType.MERGE_MESSAGE, HubEventType.MERGE_ID_REGISTRY_EVENT],
       });
       await engine.mergeMessage(signerAdd);
