@@ -4,6 +4,7 @@ import _m0 from 'protobufjs/minimal';
 import { IdRegistryEvent } from './id_registry_event';
 import { Message } from './message';
 import { NameRegistryEvent } from './name_registry_event';
+import { RentRegistryEvent, StorageAdminRegistryEvent } from './storage_event';
 import { UserNameProof } from './username_proof';
 
 export enum HubEventType {
@@ -14,6 +15,8 @@ export enum HubEventType {
   MERGE_ID_REGISTRY_EVENT = 4,
   MERGE_NAME_REGISTRY_EVENT = 5,
   MERGE_USERNAME_PROOF = 6,
+  MERGE_RENT_REGISTRY_EVENT = 7,
+  MERGE_STORAGE_ADMIN_REGISTRY_EVENT = 8,
 }
 
 export function hubEventTypeFromJSON(object: any): HubEventType {
@@ -39,6 +42,12 @@ export function hubEventTypeFromJSON(object: any): HubEventType {
     case 6:
     case 'HUB_EVENT_TYPE_MERGE_USERNAME_PROOF':
       return HubEventType.MERGE_USERNAME_PROOF;
+    case 7:
+    case 'HUB_EVENT_TYPE_MERGE_RENT_REGISTRY_EVENT':
+      return HubEventType.MERGE_RENT_REGISTRY_EVENT;
+    case 8:
+    case 'HUB_EVENT_TYPE_MERGE_STORAGE_ADMIN_REGISTRY_EVENT':
+      return HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT;
     default:
       throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum HubEventType');
   }
@@ -60,6 +69,10 @@ export function hubEventTypeToJSON(object: HubEventType): string {
       return 'HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT';
     case HubEventType.MERGE_USERNAME_PROOF:
       return 'HUB_EVENT_TYPE_MERGE_USERNAME_PROOF';
+    case HubEventType.MERGE_RENT_REGISTRY_EVENT:
+      return 'HUB_EVENT_TYPE_MERGE_RENT_REGISTRY_EVENT';
+    case HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT:
+      return 'HUB_EVENT_TYPE_MERGE_STORAGE_ADMIN_REGISTRY_EVENT';
     default:
       throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum HubEventType');
   }
@@ -86,6 +99,14 @@ export interface MergeNameRegistryEventBody {
   nameRegistryEvent: NameRegistryEvent | undefined;
 }
 
+export interface MergeRentRegistryEventBody {
+  rentRegistryEvent: RentRegistryEvent | undefined;
+}
+
+export interface MergeStorageAdminRegistryEventBody {
+  storageAdminRegistryEvent: StorageAdminRegistryEvent | undefined;
+}
+
 export interface MergeUserNameProofBody {
   usernameProof: UserNameProof | undefined;
   deletedUsernameProof: UserNameProof | undefined;
@@ -100,6 +121,8 @@ export interface HubEvent {
   mergeIdRegistryEventBody?: MergeIdRegistryEventBody | undefined;
   mergeNameRegistryEventBody?: MergeNameRegistryEventBody | undefined;
   mergeUsernameProofBody?: MergeUserNameProofBody | undefined;
+  mergeRentRegistryEventBody?: MergeRentRegistryEventBody | undefined;
+  mergeStorageAdminRegistryEventBody?: MergeStorageAdminRegistryEventBody | undefined;
 }
 
 function createBaseMergeMessageBody(): MergeMessageBody {
@@ -422,6 +445,142 @@ export const MergeNameRegistryEventBody = {
   },
 };
 
+function createBaseMergeRentRegistryEventBody(): MergeRentRegistryEventBody {
+  return { rentRegistryEvent: undefined };
+}
+
+export const MergeRentRegistryEventBody = {
+  encode(message: MergeRentRegistryEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.rentRegistryEvent !== undefined) {
+      RentRegistryEvent.encode(message.rentRegistryEvent, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MergeRentRegistryEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMergeRentRegistryEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.rentRegistryEvent = RentRegistryEvent.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MergeRentRegistryEventBody {
+    return {
+      rentRegistryEvent: isSet(object.rentRegistryEvent)
+        ? RentRegistryEvent.fromJSON(object.rentRegistryEvent)
+        : undefined,
+    };
+  },
+
+  toJSON(message: MergeRentRegistryEventBody): unknown {
+    const obj: any = {};
+    message.rentRegistryEvent !== undefined &&
+      (obj.rentRegistryEvent = message.rentRegistryEvent
+        ? RentRegistryEvent.toJSON(message.rentRegistryEvent)
+        : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MergeRentRegistryEventBody>, I>>(base?: I): MergeRentRegistryEventBody {
+    return MergeRentRegistryEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MergeRentRegistryEventBody>, I>>(object: I): MergeRentRegistryEventBody {
+    const message = createBaseMergeRentRegistryEventBody();
+    message.rentRegistryEvent =
+      object.rentRegistryEvent !== undefined && object.rentRegistryEvent !== null
+        ? RentRegistryEvent.fromPartial(object.rentRegistryEvent)
+        : undefined;
+    return message;
+  },
+};
+
+function createBaseMergeStorageAdminRegistryEventBody(): MergeStorageAdminRegistryEventBody {
+  return { storageAdminRegistryEvent: undefined };
+}
+
+export const MergeStorageAdminRegistryEventBody = {
+  encode(message: MergeStorageAdminRegistryEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.storageAdminRegistryEvent !== undefined) {
+      StorageAdminRegistryEvent.encode(message.storageAdminRegistryEvent, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MergeStorageAdminRegistryEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMergeStorageAdminRegistryEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.storageAdminRegistryEvent = StorageAdminRegistryEvent.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MergeStorageAdminRegistryEventBody {
+    return {
+      storageAdminRegistryEvent: isSet(object.storageAdminRegistryEvent)
+        ? StorageAdminRegistryEvent.fromJSON(object.storageAdminRegistryEvent)
+        : undefined,
+    };
+  },
+
+  toJSON(message: MergeStorageAdminRegistryEventBody): unknown {
+    const obj: any = {};
+    message.storageAdminRegistryEvent !== undefined &&
+      (obj.storageAdminRegistryEvent = message.storageAdminRegistryEvent
+        ? StorageAdminRegistryEvent.toJSON(message.storageAdminRegistryEvent)
+        : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MergeStorageAdminRegistryEventBody>, I>>(
+    base?: I
+  ): MergeStorageAdminRegistryEventBody {
+    return MergeStorageAdminRegistryEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MergeStorageAdminRegistryEventBody>, I>>(
+    object: I
+  ): MergeStorageAdminRegistryEventBody {
+    const message = createBaseMergeStorageAdminRegistryEventBody();
+    message.storageAdminRegistryEvent =
+      object.storageAdminRegistryEvent !== undefined && object.storageAdminRegistryEvent !== null
+        ? StorageAdminRegistryEvent.fromPartial(object.storageAdminRegistryEvent)
+        : undefined;
+    return message;
+  },
+};
+
 function createBaseMergeUserNameProofBody(): MergeUserNameProofBody {
   return { usernameProof: undefined, deletedUsernameProof: undefined };
 }
@@ -515,6 +674,8 @@ function createBaseHubEvent(): HubEvent {
     mergeIdRegistryEventBody: undefined,
     mergeNameRegistryEventBody: undefined,
     mergeUsernameProofBody: undefined,
+    mergeRentRegistryEventBody: undefined,
+    mergeStorageAdminRegistryEventBody: undefined,
   };
 }
 
@@ -543,6 +704,15 @@ export const HubEvent = {
     }
     if (message.mergeUsernameProofBody !== undefined) {
       MergeUserNameProofBody.encode(message.mergeUsernameProofBody, writer.uint32(66).fork()).ldelim();
+    }
+    if (message.mergeRentRegistryEventBody !== undefined) {
+      MergeRentRegistryEventBody.encode(message.mergeRentRegistryEventBody, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.mergeStorageAdminRegistryEventBody !== undefined) {
+      MergeStorageAdminRegistryEventBody.encode(
+        message.mergeStorageAdminRegistryEventBody,
+        writer.uint32(82).fork()
+      ).ldelim();
     }
     return writer;
   },
@@ -610,6 +780,23 @@ export const HubEvent = {
 
           message.mergeUsernameProofBody = MergeUserNameProofBody.decode(reader, reader.uint32());
           continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.mergeRentRegistryEventBody = MergeRentRegistryEventBody.decode(reader, reader.uint32());
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.mergeStorageAdminRegistryEventBody = MergeStorageAdminRegistryEventBody.decode(
+            reader,
+            reader.uint32()
+          );
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -637,6 +824,12 @@ export const HubEvent = {
       mergeUsernameProofBody: isSet(object.mergeUsernameProofBody)
         ? MergeUserNameProofBody.fromJSON(object.mergeUsernameProofBody)
         : undefined,
+      mergeRentRegistryEventBody: isSet(object.mergeRentRegistryEventBody)
+        ? MergeRentRegistryEventBody.fromJSON(object.mergeRentRegistryEventBody)
+        : undefined,
+      mergeStorageAdminRegistryEventBody: isSet(object.mergeStorageAdminRegistryEventBody)
+        ? MergeStorageAdminRegistryEventBody.fromJSON(object.mergeStorageAdminRegistryEventBody)
+        : undefined,
     };
   },
 
@@ -663,6 +856,14 @@ export const HubEvent = {
     message.mergeUsernameProofBody !== undefined &&
       (obj.mergeUsernameProofBody = message.mergeUsernameProofBody
         ? MergeUserNameProofBody.toJSON(message.mergeUsernameProofBody)
+        : undefined);
+    message.mergeRentRegistryEventBody !== undefined &&
+      (obj.mergeRentRegistryEventBody = message.mergeRentRegistryEventBody
+        ? MergeRentRegistryEventBody.toJSON(message.mergeRentRegistryEventBody)
+        : undefined);
+    message.mergeStorageAdminRegistryEventBody !== undefined &&
+      (obj.mergeStorageAdminRegistryEventBody = message.mergeStorageAdminRegistryEventBody
+        ? MergeStorageAdminRegistryEventBody.toJSON(message.mergeStorageAdminRegistryEventBody)
         : undefined);
     return obj;
   },
@@ -698,6 +899,14 @@ export const HubEvent = {
     message.mergeUsernameProofBody =
       object.mergeUsernameProofBody !== undefined && object.mergeUsernameProofBody !== null
         ? MergeUserNameProofBody.fromPartial(object.mergeUsernameProofBody)
+        : undefined;
+    message.mergeRentRegistryEventBody =
+      object.mergeRentRegistryEventBody !== undefined && object.mergeRentRegistryEventBody !== null
+        ? MergeRentRegistryEventBody.fromPartial(object.mergeRentRegistryEventBody)
+        : undefined;
+    message.mergeStorageAdminRegistryEventBody =
+      object.mergeStorageAdminRegistryEventBody !== undefined && object.mergeStorageAdminRegistryEventBody !== null
+        ? MergeStorageAdminRegistryEventBody.fromPartial(object.mergeStorageAdminRegistryEventBody)
         : undefined;
     return message;
   },
