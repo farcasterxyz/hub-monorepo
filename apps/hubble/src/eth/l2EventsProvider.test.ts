@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from '@farcaster/hub-nodejs';
+import { FarcasterNetwork, StorageRegistryEventType } from '@farcaster/hub-nodejs';
 import { StorageRegistry } from './abis.js';
 import { jestRocksDB } from '../storage/db/jestUtils.js';
 import Engine from '../storage/engine/index.js';
@@ -7,6 +7,10 @@ import { deployStorageRegistry, publicClient, testClient, walletClientWithAccoun
 import { accounts } from '../test/constants.js';
 import { sleep } from '../utils/crypto.js';
 import { L2EventsProvider } from './l2EventsProvider.js';
+import {
+  getNextRentRegistryEventFromIterator,
+  getRentRegistryEventsIterator,
+} from '../storage/db/storageRegistryEvent.js';
 
 const db = jestRocksDB('protobufs.l2EventsProvider.test');
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
@@ -61,8 +65,6 @@ describe('process events', () => {
       functionName: 'batchCredit',
       account: accounts[0].address,
       args: [[BigInt(1)], BigInt(1)],
-      gas: BigInt(6700000),
-      gasPrice: BigInt(670519845),
     });
     const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
     const rentTrx = await publicClient.waitForTransactionReceipt({ hash: rentHash });
@@ -72,11 +74,10 @@ describe('process events', () => {
     await waitForBlock(Number(rentTrx.blockNumber) + L2EventsProvider.numConfirmations);
 
     // Note: Weird stuff is happening on anvil and ganache, events are not triggering. Disabling for now.
-    // const postCreditRegistryEventIterator = await getRentRegistryEventsIterator(db, 1);
-    // const postCreditRegistryEvent = await getNextRentRegistryEventFromIterator(postCreditRegistryEventIterator);
-    // expect(postCreditRegistryEvent).toBeDefined();
-    // expect(postCreditRegistryEvent!.fid).toEqual(1);
-    // expect(postCreditRegistryEvent!.type).toEqual(StorageRegistryEventType.RENT);
-    // expect(postCreditRegistryEvent!.expiry).toEqual(rentTrx.blockNumber);
+    const postCreditRegistryEventIterator = await getRentRegistryEventsIterator(db, 1);
+    const postCreditRegistryEvent = await getNextRentRegistryEventFromIterator(postCreditRegistryEventIterator);
+    expect(postCreditRegistryEvent).toBeDefined();
+    expect(postCreditRegistryEvent!.fid).toEqual(1);
+    expect(postCreditRegistryEvent!.type).toEqual(StorageRegistryEventType.RENT);
   }, 30000);
 });

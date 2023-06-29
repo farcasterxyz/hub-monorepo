@@ -130,16 +130,16 @@ export const deployNameRegistry = async () => {
 };
 
 export const deployStorageRegistry = async () => {
-  return await deploy({
+  return deploy({
     abi: StorageRegistry.abi,
-    bytecode: StorageRegistry.bytecode,
     account: accounts[0].address,
+    bytecode: StorageRegistry.bytecode,
     args: [
       accounts[0].address,
       accounts[0].address,
       BigInt(0),
       BigInt(0),
-      BigInt(1000),
+      BigInt(10000),
       BigInt(0),
       BigInt(0),
       accounts[0].address,
