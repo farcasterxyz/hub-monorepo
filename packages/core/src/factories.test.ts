@@ -42,6 +42,22 @@ describe('ReactionRemoveMessageFactory', () => {
   });
 });
 
+describe('LinkAddMessageFactory', () => {
+  test('generates a valid LinkAdd', async () => {
+    const message = await Factories.LinkAddMessage.create();
+    expect(protobufs.isLinkAddMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+});
+
+describe('LinkRemoveMessageFactory', () => {
+  test('generates a valid LinkRemove', async () => {
+    const message = await Factories.LinkRemoveMessage.create();
+    expect(protobufs.isLinkRemoveMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+});
+
 describe('VerificationAddEthAddressMessageFactory', () => {
   test('generates a valid VerificationAddEthAddress', async () => {
     const message = await Factories.VerificationAddEthAddressMessage.create();
@@ -103,5 +119,25 @@ describe('NameRegistryEventFactory', () => {
     const encoded = protobufs.NameRegistryEvent.encode(event).finish();
     const decoded = protobufs.NameRegistryEvent.decode(encoded);
     expect(protobufs.NameRegistryEvent.toJSON(decoded)).toEqual(protobufs.NameRegistryEvent.toJSON(event));
+  });
+});
+
+describe('RentRegistryEventFactory', () => {
+  test('succeeds', () => {
+    const event = Factories.RentRegistryEvent.build();
+    const encoded = protobufs.RentRegistryEvent.encode(event).finish();
+    const decoded = protobufs.RentRegistryEvent.decode(encoded);
+    expect(protobufs.RentRegistryEvent.toJSON(decoded)).toEqual(protobufs.RentRegistryEvent.toJSON(event));
+  });
+});
+
+describe('StorageAdminRegistryEventFactory', () => {
+  test('succeeds', () => {
+    const event = Factories.StorageAdminRegistryEvent.build();
+    const encoded = protobufs.StorageAdminRegistryEvent.encode(event).finish();
+    const decoded = protobufs.StorageAdminRegistryEvent.decode(encoded);
+    expect(protobufs.StorageAdminRegistryEvent.toJSON(decoded)).toEqual(
+      protobufs.StorageAdminRegistryEvent.toJSON(event)
+    );
   });
 });
