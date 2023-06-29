@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 import "message.proto";
-import "storage_event.proto";
 import "hub_event.proto";
 
 message Empty {}
@@ -144,18 +143,6 @@ message UserDataRequest {
 
 message NameRegistryEventRequest {
   bytes name = 1;
-}
-
-message RentRegistryEventsRequest {
-  uint64 fid = 1;
-}
-
-message RentRegistryEventsResponse {
-  repeated RentRegistryEvent events = 1;
-}
-
-message StorageAdminRegistryEventRequest {
-  bytes transaction_hash = 1;
 }
 
 message UsernameProofRequest {
