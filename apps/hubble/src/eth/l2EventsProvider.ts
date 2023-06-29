@@ -706,12 +706,17 @@ export class L2EventsProvider {
     }
 
     const [blockHashBytes, transactionHashBytes, fromBytes, newValueBytes] = serialized.value;
+    const block = await this._publicClient.getBlock({
+      blockHash: blockHash as `0x${string}`,
+    });
+    const timestamp = Number(block.timestamp);
 
     const storageAdminRegistryEvent = StorageAdminRegistryEvent.create({
       blockNumber,
       blockHash: blockHashBytes,
       transactionHash: transactionHashBytes,
       logIndex: index,
+      timestamp: timestamp,
       from: fromBytes,
       type: type,
       value: newValueBytes,

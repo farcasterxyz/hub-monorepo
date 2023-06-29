@@ -70,6 +70,9 @@ describe('process events', () => {
       args: [[BigInt(1)], BigInt(1)],
     });
 
+    const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
+    await publicClient.waitForTransactionReceipt({ hash: rentHash });
+
     const setPriceSim = await publicClient.simulateContract({
       address: storageRegistryAddress,
       abi: StorageRegistry.abi,
@@ -77,6 +80,9 @@ describe('process events', () => {
       account: accounts[0].address,
       args: [BigInt(1)],
     });
+    const setPriceHash = await walletClientWithAccount.writeContract(setPriceSim.request);
+    await publicClient.waitForTransactionReceipt({ hash: setPriceHash });
+    await testClient.mine({ blocks: 1 });
 
     const setDeprecationTimestampSim = await publicClient.simulateContract({
       address: storageRegistryAddress,
@@ -85,6 +91,9 @@ describe('process events', () => {
       account: accounts[0].address,
       args: [BigInt(100000000000000)],
     });
+    const setDeprecationTimestampHash = await walletClientWithAccount.writeContract(setDeprecationTimestampSim.request);
+    await publicClient.waitForTransactionReceipt({ hash: setDeprecationTimestampHash });
+    await testClient.mine({ blocks: 1 });
 
     const setGracePeriodSim = await publicClient.simulateContract({
       address: storageRegistryAddress,
@@ -93,6 +102,9 @@ describe('process events', () => {
       account: accounts[0].address,
       args: [BigInt(1)],
     });
+    const setGracePeriodHash = await walletClientWithAccount.writeContract(setGracePeriodSim.request);
+    await publicClient.waitForTransactionReceipt({ hash: setGracePeriodHash });
+    await testClient.mine({ blocks: 1 });
 
     const setMaxUnitsSim = await publicClient.simulateContract({
       address: storageRegistryAddress,
@@ -101,14 +113,6 @@ describe('process events', () => {
       account: accounts[0].address,
       args: [BigInt(1)],
     });
-    const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: rentHash });
-    const setPriceHash = await walletClientWithAccount.writeContract(setPriceSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: setPriceHash });
-    const setDeprecationTimestampHash = await walletClientWithAccount.writeContract(setDeprecationTimestampSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: setDeprecationTimestampHash });
-    const setGracePeriodHash = await walletClientWithAccount.writeContract(setGracePeriodSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: setGracePeriodHash });
     const setMaxUnitsHash = await walletClientWithAccount.writeContract(setMaxUnitsSim.request);
     const maxUnitsTrx = await publicClient.waitForTransactionReceipt({ hash: setMaxUnitsHash });
     await sleep(1000); // allow time for the rent event to be polled for
@@ -128,14 +132,16 @@ describe('process events', () => {
       storageAdminEvents.push(await getNextStorageAdminRegistryEventFromIterator(storageAdminRegistryEventIterator));
     }
 
-    // based on tshash ordering
-    expect(storageAdminEvents[0]!.type).toEqual(StorageRegistryEventType.SET_MAX_UNITS);
+    expect(storageAdminEvents[0]!.type).toEqual(StorageRegistryEventType.SET_PRICE);
     expect(storageAdminEvents[0]!.value).toEqual(toBytes(BigInt(1)));
-    expect(storageAdminEvents[1]!.type).toEqual(StorageRegistryEventType.SET_PRICE);
-    expect(storageAdminEvents[1]!.value).toEqual(toBytes(BigInt(1)));
+
+    expect(storageAdminEvents[1]!.type).toEqual(StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP);
+    expect(storageAdminEvents[1]!.value).toEqual(toBytes(BigInt(100000000000000)));
+
     expect(storageAdminEvents[2]!.type).toEqual(StorageRegistryEventType.SET_GRACE_PERIOD);
     expect(storageAdminEvents[2]!.value).toEqual(toBytes(BigInt(1)));
-    expect(storageAdminEvents[3]!.type).toEqual(StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP);
-    expect(storageAdminEvents[3]!.value).toEqual(toBytes(BigInt(100000000000000)));
+
+    expect(storageAdminEvents[3]!.type).toEqual(StorageRegistryEventType.SET_MAX_UNITS);
+    expect(storageAdminEvents[3]!.value).toEqual(toBytes(BigInt(1)));
   }, 30000);
 });

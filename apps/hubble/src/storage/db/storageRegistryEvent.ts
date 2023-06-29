@@ -1,6 +1,7 @@
 import { RentRegistryEvent, StorageAdminRegistryEvent } from '@farcaster/hub-nodejs';
 import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
 import { FID_BYTES, RootPrefix } from '../db/types.js';
+import { makeTsHash } from './message.js';
 
 const EXPIRY_BYTES = 4;
 
@@ -105,8 +106,9 @@ export const putStorageAdminRegistryEventTransaction = (
   event: StorageAdminRegistryEvent
 ): Transaction => {
   const eventBuffer = Buffer.from(StorageAdminRegistryEvent.encode(event).finish());
-
-  const primaryKey = makeStorageAdminRegistryEventPrimaryKey(event.transactionHash);
+  const tsHash = makeTsHash(event.timestamp, event.transactionHash);
+  if (tsHash.isErr()) throw tsHash.error;
+  const primaryKey = makeStorageAdminRegistryEventPrimaryKey(tsHash.value);
   txn = txn.put(primaryKey, eventBuffer);
 
   return txn;
@@ -127,7 +129,9 @@ export const deleteStorageAdminRegistryEventTransaction = (
   txn: Transaction,
   event: StorageAdminRegistryEvent
 ): Transaction => {
-  const primaryKey = makeStorageAdminRegistryEventPrimaryKey(event.transactionHash);
+  const tsHash = makeTsHash(event.timestamp, event.transactionHash);
+  if (tsHash.isErr()) throw tsHash.error;
+  const primaryKey = makeStorageAdminRegistryEventPrimaryKey(tsHash.value);
 
   return txn.del(primaryKey);
 };

@@ -26,7 +26,8 @@ message StorageAdminRegistryEvent {
   bytes block_hash = 2;
   bytes transaction_hash = 3;
   uint32 log_index = 4;
-  bytes from = 5;
-  StorageRegistryEventType type = 6;
-  bytes value = 7;
+  uint64 timestamp = 5;
+  bytes from = 6;
+  StorageRegistryEventType type = 7;
+  bytes value = 8;
 }

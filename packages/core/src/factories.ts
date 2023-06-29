@@ -616,6 +616,7 @@ const StorageAdminRegistryEventFactory = Factory.define<protobufs.StorageAdminRe
     blockHash: BlockHashFactory.build(),
     transactionHash: TransactionHashFactory.build(),
     logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
+    timestamp: faker.datatype.number({ min: 0, max: 1_000 }),
     from: EthAddressFactory.build(),
     type: RentRegistryEventTypeFactory.build(),
     value: BytesFactory.build({}, { transient: { length: 4 } }),

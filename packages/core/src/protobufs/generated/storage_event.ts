@@ -72,6 +72,7 @@ export interface StorageAdminRegistryEvent {
   blockHash: Uint8Array;
   transactionHash: Uint8Array;
   logIndex: number;
+  timestamp: number;
   from: Uint8Array;
   type: StorageRegistryEventType;
   value: Uint8Array;
@@ -260,6 +261,7 @@ function createBaseStorageAdminRegistryEvent(): StorageAdminRegistryEvent {
     blockHash: new Uint8Array(),
     transactionHash: new Uint8Array(),
     logIndex: 0,
+    timestamp: 0,
     from: new Uint8Array(),
     type: 0,
     value: new Uint8Array(),
@@ -280,14 +282,17 @@ export const StorageAdminRegistryEvent = {
     if (message.logIndex !== 0) {
       writer.uint32(32).uint32(message.logIndex);
     }
+    if (message.timestamp !== 0) {
+      writer.uint32(40).uint64(message.timestamp);
+    }
     if (message.from.length !== 0) {
-      writer.uint32(42).bytes(message.from);
+      writer.uint32(50).bytes(message.from);
     }
     if (message.type !== 0) {
-      writer.uint32(48).int32(message.type);
+      writer.uint32(56).int32(message.type);
     }
     if (message.value.length !== 0) {
-      writer.uint32(58).bytes(message.value);
+      writer.uint32(66).bytes(message.value);
     }
     return writer;
   },
@@ -328,21 +333,28 @@ export const StorageAdminRegistryEvent = {
           message.logIndex = reader.uint32();
           continue;
         case 5:
-          if (tag != 42) {
+          if (tag != 40) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 50) {
             break;
           }
 
           message.from = reader.bytes();
           continue;
-        case 6:
-          if (tag != 48) {
+        case 7:
+          if (tag != 56) {
             break;
           }
 
           message.type = reader.int32() as any;
           continue;
-        case 7:
-          if (tag != 58) {
+        case 8:
+          if (tag != 66) {
             break;
           }
 
@@ -363,6 +375,7 @@ export const StorageAdminRegistryEvent = {
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
       transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
       logIndex: isSet(object.logIndex) ? Number(object.logIndex) : 0,
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
       from: isSet(object.from) ? bytesFromBase64(object.from) : new Uint8Array(),
       type: isSet(object.type) ? storageRegistryEventTypeFromJSON(object.type) : 0,
       value: isSet(object.value) ? bytesFromBase64(object.value) : new Uint8Array(),
@@ -379,6 +392,7 @@ export const StorageAdminRegistryEvent = {
         message.transactionHash !== undefined ? message.transactionHash : new Uint8Array()
       ));
     message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
     message.from !== undefined &&
       (obj.from = base64FromBytes(message.from !== undefined ? message.from : new Uint8Array()));
     message.type !== undefined && (obj.type = storageRegistryEventTypeToJSON(message.type));
@@ -397,6 +411,7 @@ export const StorageAdminRegistryEvent = {
     message.blockHash = object.blockHash ?? new Uint8Array();
     message.transactionHash = object.transactionHash ?? new Uint8Array();
     message.logIndex = object.logIndex ?? 0;
+    message.timestamp = object.timestamp ?? 0;
     message.from = object.from ?? new Uint8Array();
     message.type = object.type ?? 0;
     message.value = object.value ?? new Uint8Array();
