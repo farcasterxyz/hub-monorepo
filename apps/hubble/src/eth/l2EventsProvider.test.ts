@@ -9,8 +9,11 @@ import { sleep } from '../utils/crypto.js';
 import { L2EventsProvider } from './l2EventsProvider.js';
 import {
   getNextRentRegistryEventFromIterator,
+  getNextStorageAdminRegistryEventFromIterator,
   getRentRegistryEventsIterator,
+  getStorageAdminRegistryEventsIterator,
 } from '../storage/db/storageRegistryEvent.js';
+import { toBytes } from 'viem';
 
 const db = jestRocksDB('protobufs.l2EventsProvider.test');
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
@@ -66,18 +69,73 @@ describe('process events', () => {
       account: accounts[0].address,
       args: [[BigInt(1)], BigInt(1)],
     });
+
+    const setPriceSim = await publicClient.simulateContract({
+      address: storageRegistryAddress,
+      abi: StorageRegistry.abi,
+      functionName: 'setPrice',
+      account: accounts[0].address,
+      args: [BigInt(1)],
+    });
+
+    const setDeprecationTimestampSim = await publicClient.simulateContract({
+      address: storageRegistryAddress,
+      abi: StorageRegistry.abi,
+      functionName: 'setDeprecationTimestamp',
+      account: accounts[0].address,
+      args: [BigInt(100000000000000)],
+    });
+
+    const setGracePeriodSim = await publicClient.simulateContract({
+      address: storageRegistryAddress,
+      abi: StorageRegistry.abi,
+      functionName: 'setGracePeriod',
+      account: accounts[0].address,
+      args: [BigInt(1)],
+    });
+
+    const setMaxUnitsSim = await publicClient.simulateContract({
+      address: storageRegistryAddress,
+      abi: StorageRegistry.abi,
+      functionName: 'setMaxUnits',
+      account: accounts[0].address,
+      args: [BigInt(1)],
+    });
     const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
-    const rentTrx = await publicClient.waitForTransactionReceipt({ hash: rentHash });
+    await publicClient.waitForTransactionReceipt({ hash: rentHash });
+    const setPriceHash = await walletClientWithAccount.writeContract(setPriceSim.request);
+    await publicClient.waitForTransactionReceipt({ hash: setPriceHash });
+    const setDeprecationTimestampHash = await walletClientWithAccount.writeContract(setDeprecationTimestampSim.request);
+    await publicClient.waitForTransactionReceipt({ hash: setDeprecationTimestampHash });
+    const setGracePeriodHash = await walletClientWithAccount.writeContract(setGracePeriodSim.request);
+    await publicClient.waitForTransactionReceipt({ hash: setGracePeriodHash });
+    const setMaxUnitsHash = await walletClientWithAccount.writeContract(setMaxUnitsSim.request);
+    const maxUnitsTrx = await publicClient.waitForTransactionReceipt({ hash: setMaxUnitsHash });
     await sleep(1000); // allow time for the rent event to be polled for
 
     await testClient.mine({ blocks: 7 });
-    await waitForBlock(Number(rentTrx.blockNumber) + L2EventsProvider.numConfirmations);
+    await waitForBlock(Number(maxUnitsTrx.blockNumber) + L2EventsProvider.numConfirmations);
 
-    // Note: Weird stuff is happening on anvil and ganache, events are not triggering. Disabling for now.
     const postCreditRegistryEventIterator = await getRentRegistryEventsIterator(db, 1);
     const postCreditRegistryEvent = await getNextRentRegistryEventFromIterator(postCreditRegistryEventIterator);
     expect(postCreditRegistryEvent).toBeDefined();
     expect(postCreditRegistryEvent!.fid).toEqual(1);
     expect(postCreditRegistryEvent!.type).toEqual(StorageRegistryEventType.RENT);
+
+    const storageAdminRegistryEventIterator = await getStorageAdminRegistryEventsIterator(db);
+    const storageAdminEvents = [];
+    for (let i = 0; i < 4; i++) {
+      storageAdminEvents.push(await getNextStorageAdminRegistryEventFromIterator(storageAdminRegistryEventIterator));
+    }
+
+    // based on tshash ordering
+    expect(storageAdminEvents[0]!.type).toEqual(StorageRegistryEventType.SET_MAX_UNITS);
+    expect(storageAdminEvents[0]!.value).toEqual(toBytes(BigInt(1)));
+    expect(storageAdminEvents[1]!.type).toEqual(StorageRegistryEventType.SET_PRICE);
+    expect(storageAdminEvents[1]!.value).toEqual(toBytes(BigInt(1)));
+    expect(storageAdminEvents[2]!.type).toEqual(StorageRegistryEventType.SET_GRACE_PERIOD);
+    expect(storageAdminEvents[2]!.value).toEqual(toBytes(BigInt(1)));
+    expect(storageAdminEvents[3]!.type).toEqual(StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP);
+    expect(storageAdminEvents[3]!.value).toEqual(toBytes(BigInt(100000000000000)));
   }, 30000);
 });
