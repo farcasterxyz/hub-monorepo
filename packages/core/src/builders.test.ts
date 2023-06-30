@@ -7,6 +7,7 @@ import { HubError } from './errors';
 import { Factories } from './factories';
 import * as validations from './validations';
 import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from './verifications';
+import { getFarcasterTime } from './time';
 
 const fid = Factories.Fid.build();
 const network = protobufs.FarcasterNetwork.TESTNET;
@@ -308,5 +309,83 @@ describe('makeMessageWithSignature', () => {
       signature,
     });
     expect(message).toEqual(err(new HubError('bad_request.validation_failure', 'signature does not match signer')));
+  });
+});
+
+describe('makeLinkAddData', () => {
+  test('succeeds', async () => {
+    const targetFid = Factories.Fid.build();
+    const type = 'follow';
+    const displayTimestamp = getFarcasterTime()._unsafeUnwrap();
+    const data = await builders.makeLinkAddData(
+      protobufs.LinkBody.create({
+        targetFid,
+        type,
+        displayTimestamp,
+      }),
+      { fid, network }
+    );
+    expect(data.isOk()).toBeTruthy();
+    expect(data._unsafeUnwrap().linkBody.targetFid).toEqual(targetFid);
+    expect(data._unsafeUnwrap().linkBody.type).toEqual(type);
+    expect(data._unsafeUnwrap().linkBody.displayTimestamp).toEqual(displayTimestamp);
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
+  });
+});
+
+describe('makeLinkRemoveData', () => {
+  test('succeeds', async () => {
+    const targetFid = Factories.Fid.build();
+    const type = 'follow';
+    const displayTimestamp = getFarcasterTime()._unsafeUnwrap();
+    const data = await builders.makeLinkRemoveData(
+      protobufs.LinkBody.create({
+        targetFid,
+        type,
+        displayTimestamp,
+      }),
+      { fid, network }
+    );
+    expect(data.isOk()).toBeTruthy();
+    expect(data._unsafeUnwrap().linkBody.targetFid).toEqual(targetFid);
+    expect(data._unsafeUnwrap().linkBody.type).toEqual(type);
+    expect(data._unsafeUnwrap().linkBody.displayTimestamp).toEqual(displayTimestamp);
+    const isValid = await validations.validateMessageData(data._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
+  });
+});
+
+describe('makeLinkAdd', () => {
+  test('succeeds', async () => {
+    const message = await builders.makeLinkAdd(
+      protobufs.LinkBody.create({
+        targetFid: Factories.Fid.build(),
+        type: 'follow',
+        displayTimestamp: getFarcasterTime()._unsafeUnwrap(),
+      }),
+      { fid, network },
+      ed25519Signer
+    );
+    expect(message.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessage(message._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
+  });
+});
+
+describe('makeLinkRemove', () => {
+  test('succeeds', async () => {
+    const message = await builders.makeLinkRemove(
+      protobufs.LinkBody.create({
+        targetFid: Factories.Fid.build(),
+        type: 'follow',
+        displayTimestamp: getFarcasterTime()._unsafeUnwrap(),
+      }),
+      { fid, network },
+      ed25519Signer
+    );
+    expect(message.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessage(message._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
   });
 });
