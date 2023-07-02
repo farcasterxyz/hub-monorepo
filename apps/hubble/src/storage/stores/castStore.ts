@@ -18,11 +18,10 @@ import {
   makeTsHash,
   makeUserKey,
 } from '../db/message.js';
-import RocksDB, { Transaction } from '../db/rocksdb.js';
+import { Transaction } from '../db/rocksdb.js';
 import { RootPrefix, TRUE_VALUE, UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PageOptions, StorePruneOptions } from '../stores/types.js';
+import { MessagesPage, PageOptions } from '../stores/types.js';
 import { Store } from './store.js';
-import StoreEventHandler from './storeEventHandler.js';
 
 /**
  * Generates unique keys used to store or fetch CastAdd messages in the adds set index
@@ -131,12 +130,13 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   override _isRemoveType = isCastRemoveMessage;
   override _addMessageType = MessageType.CAST_ADD;
   override _removeMessageType = MessageType.CAST_REMOVE;
-  protected override PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
-  protected override PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 365; // 1 year
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super(db, eventHandler, options);
-    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
+  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+    return 10_000;
+  }
+
+  protected override get PRUNE_TIME_LIMIT_DEFAULT() {
+    return 60 * 60 * 24 * 365; // 1 year
   }
 
   override async buildSecondaryIndices(txn: Transaction, message: CastAddMessage): HubAsyncResult<void> {

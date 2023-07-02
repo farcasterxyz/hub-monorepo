@@ -83,7 +83,10 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   override _isRemoveType = undefined;
   override _addMessageType = MessageType.USER_DATA_ADD;
   override _removeMessageType = undefined;
-  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
+
+  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+    return PRUNE_SIZE_LIMIT_DEFAULT;
+  }
 
   /**
    * Finds a UserDataAdd Message by checking the adds set index
