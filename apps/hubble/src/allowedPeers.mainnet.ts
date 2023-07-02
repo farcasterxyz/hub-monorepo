@@ -48,4 +48,5 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWS39hrt41rMuD5ZfPFMxUVycxVwz7w15CxZVhxP4AZDGr', // @rozhnovskiyigor
   '12D3KooWHXZkdEYWb5RCajv7YbffasjYNSEP1U68DMR1JeZ4QiXH', // @fedecastelli
   '12D3KooWCPdo8CNq3pu7oyJQYFzV6d4GbHUH8HTUbtHM6jpv6buy', // @cameron
+  '12D3KooWLaAwoVekyBYw399eAJJ38Pvxfrmd2wxHa2KSYr91Loqh', // @logos00000
 ];
