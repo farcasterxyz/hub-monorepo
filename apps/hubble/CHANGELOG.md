@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.3.3
+
+### Patch Changes
+
+- abca3ed: Fixed bug with prune limits
+- 5a1baae: Switch fnames from contract events to fname server proofs
+- Updated dependencies [5a1baae]
+  - @farcaster/hub-nodejs@0.8.3
+
 ## 1.3.2
 
 ### Patch Changes
