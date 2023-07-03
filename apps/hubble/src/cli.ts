@@ -165,7 +165,18 @@ app
     }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
-    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
+    let hubConfig: any = DefaultConfig;
+    if (cliOptions.config) {
+      if (!cliOptions.config.endsWith('.js')) {
+        throw new Error(`Config file ${cliOptions.config} must be a .js file`);
+      }
+
+      if (!fs.existsSync(resolve(cliOptions.config))) {
+        throw new Error(`Config file ${cliOptions.config} does not exist`);
+      }
+
+      hubConfig = (await import(resolve(cliOptions.config))).Config;
+    }
 
     // Read PeerID from 1. CLI option, 2. Environment variable, 3. Config file
     let peerId;
