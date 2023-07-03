@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.10.1
+
+### Patch Changes
+
+- 5a1baae: Switch fnames from contract events to fname server proofs
+
 ## 0.10.0
 
 ### Minor Changes
