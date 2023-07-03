@@ -1134,3 +1134,9 @@ describe('pruneMessages', () => {
     });
   });
 });
+
+describe('sizeLimit', () => {
+  test('defaults to 100', () => {
+    expect(set.pruneSizeLimit).toBe(100);
+  });
+});

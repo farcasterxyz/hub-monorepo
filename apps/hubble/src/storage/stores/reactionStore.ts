@@ -19,10 +19,9 @@ import {
   makeTsHash,
   makeUserKey,
 } from '../db/message.js';
-import RocksDB, { Transaction } from '../db/rocksdb.js';
+import { Transaction } from '../db/rocksdb.js';
 import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from '../db/types.js';
-import StoreEventHandler from '../stores/storeEventHandler.js';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from '../stores/types.js';
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '../stores/types.js';
 import { Store } from './store.js';
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
@@ -146,12 +145,13 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   override _isRemoveType = isReactionRemoveMessage;
   override _addMessageType = MessageType.REACTION_ADD;
   override _removeMessageType = MessageType.REACTION_REMOVE;
-  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
-  protected override PRUNE_TIME_LIMIT_DEFAULT = PRUNE_TIME_LIMIT_DEFAULT;
 
-  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    super(db, eventHandler, options);
-    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
+  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+    return PRUNE_SIZE_LIMIT_DEFAULT;
+  }
+
+  protected override get PRUNE_TIME_LIMIT_DEFAULT() {
+    return PRUNE_TIME_LIMIT_DEFAULT;
   }
 
   override async findMergeAddConflicts(_message: ReactionAddMessage): HubAsyncResult<void> {
