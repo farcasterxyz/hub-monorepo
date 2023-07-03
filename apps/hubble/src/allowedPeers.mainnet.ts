@@ -7,7 +7,7 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWHiyvASqvhGn9kqsLBemPTAF6UYEaFGaLUpPxnM54KFbG', // @deodad
   '12D3KooWKXAG1Z212HHrwYaW5NnwBxoXkk3Sr7USzRxMzS9pieZi', // @paden
   '12D3KooWFbnaXtbD5fwbMGq2JRjPaj7C6EpZRgaxC8jdtcX7FJbZ', // @v
-  '12D3KooWMDdQaMWCkQ8Gf3C6zdJdMEfFs8R2pw8YQw2HgoY8qhzA', // @adityapk
+  '12D3KooWNr294AH1fviDQxRmQ4K79iFSGoRCWzGspVxPprJUKN47', // @adityapk
   '12D3KooWKwUpms7tgUoVsjQ2uV9g93hS2UiMRUfR8f4xjMtsk1Kq', // @pfh
   '12D3KooWATZKmurjSqWHfcLBgD4oYbNYiAHZ5VPq8W2kNid5TEuL', // @df
   '12D3KooWMnmYq2BDGKJ76w5pFyz2c1ZsK8pMvu6wxyg747j3p679', // @eddy
