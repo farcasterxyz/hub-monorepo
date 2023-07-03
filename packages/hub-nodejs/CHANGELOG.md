@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.8.3
+
+### Patch Changes
+
+- 5a1baae: Switch fnames from contract events to fname server proofs
+- Updated dependencies [5a1baae]
+  - @farcaster/core@0.10.1
+
 ## 0.8.2
 
 ### Patch Changes

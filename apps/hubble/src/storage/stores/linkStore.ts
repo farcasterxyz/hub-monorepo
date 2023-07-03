@@ -150,7 +150,10 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   override _isRemoveType = isLinkRemoveMessage;
   override _addMessageType = MessageType.LINK_ADD;
   override _removeMessageType = MessageType.LINK_REMOVE;
-  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
+
+  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+    return PRUNE_SIZE_LIMIT_DEFAULT;
+  }
 
   override async buildSecondaryIndices(txn: Transaction, message: LinkAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);

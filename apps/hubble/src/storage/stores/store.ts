@@ -59,9 +59,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _pruneTimeLimit: number | undefined;
   private _mergeLock: AsyncLock;
 
-  protected PRUNE_SIZE_LIMIT_DEFAULT = 10000;
-  protected PRUNE_TIME_LIMIT_DEFAULT: number | undefined;
-
   abstract _postfix: UserMessagePostfix;
 
   abstract makeAddKey(data: DeepPartial<TAdd>): Buffer;
@@ -328,6 +325,22 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     await pruneIterator.end();
 
     return ok(commits);
+  }
+
+  get pruneSizeLimit(): number {
+    return this._pruneSizeLimit;
+  }
+
+  get pruneTimeLimit(): number | undefined {
+    return this._pruneTimeLimit;
+  }
+
+  protected get PRUNE_SIZE_LIMIT_DEFAULT(): number {
+    return 10000;
+  }
+
+  protected get PRUNE_TIME_LIMIT_DEFAULT(): number | undefined {
+    return undefined;
   }
 
   protected async getBySecondaryIndex(prefix: Buffer, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {

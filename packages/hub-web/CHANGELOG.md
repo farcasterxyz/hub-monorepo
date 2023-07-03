@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.4.1
+
+### Patch Changes
+
+- 5a1baae: Switch fnames from contract events to fname server proofs
+- Updated dependencies [5a1baae]
+  - @farcaster/core@0.10.1
+
 ## 0.4.0
 
 ### Minor Changes

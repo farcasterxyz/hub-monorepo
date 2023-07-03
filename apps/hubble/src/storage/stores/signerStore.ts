@@ -96,7 +96,10 @@ class SignerStore extends Store<SignerAddMessage, SignerRemoveMessage> {
   override _isRemoveType = isSignerRemoveMessage;
   override _addMessageType = MessageType.SIGNER_ADD;
   override _removeMessageType = MessageType.SIGNER_REMOVE;
-  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
+
+  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+    return PRUNE_SIZE_LIMIT_DEFAULT;
+  }
 
   override async findMergeAddConflicts(_message: SignerAddMessage): HubAsyncResult<void> {
     return ok(undefined);
