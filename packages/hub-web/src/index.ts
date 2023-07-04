@@ -1,4 +1,4 @@
-export * from '@farcaster/core';
+export * from "@farcaster/core";
 
-export * from './generated/rpc';
-export * from './client';
+export * from "./generated/rpc";
+export * from "./client";
