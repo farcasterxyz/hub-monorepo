@@ -51,6 +51,4 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWHguasQqxAK9px8i5NDMFSG7VYhHRt4C7d2brpjakh5Sk', // @mboyle
   '12D3KooWDfxjnmTTk2nb89dBZZrCQ7g71BoJELKnVpUQUTt4YcL4', // @razzle
   '12D3KooWEoXRpLMjiRo9KxVHqg8Ng5gJxkJdd9uDotSNfYy8jFNv', // @pseudobun
-  '12D3KooWPcrf4XYUQrxsLniTJR4u4roQJre2T6ev14JeJcAFzZZv', // airstack.xyz
-  '12D3KooWLCAqhHempm8C8ZCLMMnK4pBPAyjS3HM2BMBopsC2HZDS', // airstack.xyz
 ];
