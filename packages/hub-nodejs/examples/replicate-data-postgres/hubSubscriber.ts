@@ -1,7 +1,7 @@
-import { ClientReadableStream, HubEvent, HubEventType, HubRpcClient } from '@farcaster/hub-nodejs';
-import { Result, ok, err } from 'neverthrow';
-import { Logger } from 'pino';
-import { TypedEmitter } from 'tiny-typed-emitter';
+import { ClientReadableStream, HubEvent, HubEventType, HubRpcClient } from "@farcaster/hub-nodejs";
+import { Result, ok, err } from "neverthrow";
+import { Logger } from "pino";
+import { TypedEmitter } from "tiny-typed-emitter";
 
 interface HubEvents {
   event: (hubEvent: HubEvent) => void;
@@ -67,7 +67,7 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
         this.stream = stream;
         this.stopped = false;
 
-        stream.on('close', async () => {
+        stream.on("close", async () => {
           this.log.info(`HubSubscriber stream closed`);
           this.stopped = true;
           this.stream = null;
@@ -89,7 +89,7 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
       for await (const event of stream) {
         const fnLog = this.log.child({ eventId: event.id, eventType: event.type });
         fnLog.debug(`Processing event ${event.id} (${event.type})`);
-        this.emit('event', event);
+        this.emit("event", event);
       }
     } catch (e: any) {
       this.log.info(`Hub event stream processing halted ${e.message}`);
