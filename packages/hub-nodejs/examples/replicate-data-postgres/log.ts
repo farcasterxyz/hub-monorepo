@@ -1,8 +1,8 @@
-import { pino } from 'pino';
+import { pino } from "pino";
 
 export const log = pino({
   transport: {
-    target: 'pino-pretty',
+    target: "pino-pretty",
     options: {
       colorize: true,
     },
