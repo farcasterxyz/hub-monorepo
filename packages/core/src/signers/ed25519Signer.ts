@@ -1,6 +1,6 @@
-import { SignatureScheme } from '../protobufs';
-import { HubAsyncResult } from 'errors';
-import { Signer } from './signer';
+import { SignatureScheme } from "../protobufs";
+import { HubAsyncResult } from "errors";
+import { Signer } from "./signer";
 
 /**
  * Extend this class to implement an Ed25519 signer.
