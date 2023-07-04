@@ -11,18 +11,18 @@ import {
   Message,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-} from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils.js';
-import { getMessage, makeTsHash } from '../db/message.js';
-import { UserPostfix } from '../db/types.js';
-import CastStore from './castStore.js';
-import StoreEventHandler from './storeEventHandler.js';
-import { sleep } from '../../utils/crypto.js';
-import { err, ok } from 'neverthrow';
-import { faker } from '@faker-js/faker';
-import { FARCASTER_EPOCH } from '@farcaster/core';
+} from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "../db/jestUtils.js";
+import { getMessage, makeTsHash } from "../db/message.js";
+import { UserPostfix } from "../db/types.js";
+import CastStore from "./castStore.js";
+import StoreEventHandler from "./storeEventHandler.js";
+import { sleep } from "../../utils/crypto.js";
+import { err, ok } from "neverthrow";
+import { faker } from "@faker-js/faker";
+import { FARCASTER_EPOCH } from "@farcaster/core";
 
-const db = jestRocksDB('protobufs.castStore.test');
+const db = jestRocksDB("protobufs.castStore.test");
 const eventHandler = new StoreEventHandler(db);
 const store = new CastStore(db, eventHandler);
 const fid = Factories.Fid.build();
@@ -43,14 +43,14 @@ beforeEach(async () => {
   await eventHandler.syncCache();
 });
 
-describe('getCastAdd', () => {
+describe("getCastAdd", () => {
   const getCastAdd = () => store.getCastAdd(fid, castAdd.hash);
 
-  test('fails if missing', async () => {
+  test("fails if missing", async () => {
     await expect(getCastAdd()).rejects.toThrow(HubError);
   });
 
-  test('fails if incorrect values are passed in', async () => {
+  test("fails if incorrect values are passed in", async () => {
     await store.merge(castAdd);
 
     const invalidFid = Factories.Fid.build();
@@ -60,18 +60,18 @@ describe('getCastAdd', () => {
     await expect(store.getCastAdd(fid, invalidHash)).rejects.toThrow(HubError);
   });
 
-  test('succeeds with message', async () => {
+  test("succeeds with message", async () => {
     await store.merge(castAdd);
     await expect(getCastAdd()).resolves.toEqual(castAdd);
   });
 });
 
-describe('getCastRemove', () => {
-  test('fails if missing', async () => {
+describe("getCastRemove", () => {
+  test("fails if missing", async () => {
     await expect(store.getCastRemove(fid, castAdd.hash)).rejects.toThrow(HubError);
   });
 
-  test('fails if incorrect values are passed in', async () => {
+  test("fails if incorrect values are passed in", async () => {
     await store.merge(castRemove);
 
     const invalidFid = Factories.Fid.build();
@@ -81,30 +81,30 @@ describe('getCastRemove', () => {
     await expect(store.getCastAdd(fid, invalidHash)).rejects.toThrow(HubError);
   });
 
-  test('returns message', async () => {
+  test("returns message", async () => {
     await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
     await expect(store.getCastRemove(fid, castAdd.hash)).resolves.toEqual(castRemove);
   });
 });
 
-describe('getCastAddsByFid', () => {
-  test('returns cast adds for an fid', async () => {
+describe("getCastAddsByFid", () => {
+  test("returns cast adds for an fid", async () => {
     await store.merge(castAdd);
     await expect(store.getCastAddsByFid(fid)).resolves.toEqual({ messages: [castAdd], nextPageToken: undefined });
   });
 
-  test('fails if incorrect values are passed in', async () => {
+  test("fails if incorrect values are passed in", async () => {
     await store.merge(castAdd);
 
     const invalidFid = Factories.Fid.build();
     await expect(store.getCastAddsByFid(invalidFid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     await expect(store.getCastAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns cast adds in chronological order according to pageOptions', async () => {
+  test("returns cast adds in chronological order according to pageOptions", async () => {
     const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, timestamp: castAdd.data.timestamp + 1 } });
     const castRemove2 = await Factories.CastRemoveMessage.create({ data: { fid } });
     await store.merge(castRemove2);
@@ -122,19 +122,19 @@ describe('getCastAddsByFid', () => {
   });
 });
 
-describe('getCastRemovesByFid', () => {
-  test('fails if incorrect values are passed in', async () => {
+describe("getCastRemovesByFid", () => {
+  test("fails if incorrect values are passed in", async () => {
     await store.merge(castRemove);
 
     const invalidFid = Factories.Fid.build();
     await expect(store.getCastRemovesByFid(invalidFid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     await expect(store.getCastRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns cast removes in chronological order according to pageOptions', async () => {
+  test("returns cast removes in chronological order according to pageOptions", async () => {
     const castAdd2 = await Factories.CastAddMessage.create({ data: { fid } });
     const castRemove2 = await Factories.CastRemoveMessage.create({
       data: { fid, timestamp: castRemove.data.timestamp + 1 },
@@ -154,19 +154,19 @@ describe('getCastRemovesByFid', () => {
   });
 });
 
-describe('getCastsByParent', () => {
-  test('returns empty array if no casts exist', async () => {
+describe("getCastsByParent", () => {
+  test("returns empty array if no casts exist", async () => {
     const byTargetUser = await store.getCastsByParent(parentCastId);
     expect(byTargetUser).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns empty array if casts exist, but for a different parent', async () => {
+  test("returns empty array if casts exist, but for a different parent", async () => {
     await store.merge(castAdd);
     expect(await store.getCastsByParent(Factories.CastId.build())).toEqual({ messages: [], nextPageToken: undefined });
-    expect(await store.getCastsByParent('foo')).toEqual({ messages: [], nextPageToken: undefined });
+    expect(await store.getCastsByParent("foo")).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that reply to a parent cast id according to pageOptions', async () => {
+  test("returns casts that reply to a parent cast id according to pageOptions", async () => {
     const castAddSameParent = await Factories.CastAddMessage.create({
       data: { castAddBody: { parentCastId }, timestamp: castAdd.data.timestamp + 1 },
     });
@@ -187,7 +187,7 @@ describe('getCastsByParent', () => {
     expect(results3).toEqual({ messages: [castAddSameParent, castAdd], nextPageToken: undefined });
   });
 
-  test('returns casts that reply to a parent url', async () => {
+  test("returns casts that reply to a parent url", async () => {
     const parentUrl = faker.internet.url();
     const cast1 = await Factories.CastAddMessage.create({
       data: { castAddBody: { parentUrl, parentCastId: undefined } },
@@ -205,18 +205,18 @@ describe('getCastsByParent', () => {
   });
 });
 
-describe('getCastsByMention', () => {
-  test('returns empty array if no casts exist', async () => {
+describe("getCastsByMention", () => {
+  test("returns empty array if no casts exist", async () => {
     const byTargetUser = await store.getCastsByMention(Factories.Fid.build());
     expect(byTargetUser).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns empty array if casts exist, but for a different fid or hash', async () => {
+  test("returns empty array if casts exist, but for a different fid or hash", async () => {
     await store.merge(castAdd);
     expect(await store.getCastsByMention(Factories.Fid.build())).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns casts that mention an fid according to pageOptions', async () => {
+  test("returns casts that mention an fid according to pageOptions", async () => {
     const castAdd2 = await Factories.CastAddMessage.create({
       data: {
         timestamp: castAdd.data.timestamp + 1,
@@ -244,7 +244,7 @@ describe('getCastsByMention', () => {
   });
 });
 
-describe('merge', () => {
+describe("merge", () => {
   let mergeEvents: [Message | undefined, Message[]][] = [];
 
   const mergeMessageHandler = (event: MergeMessageHubEvent) => {
@@ -253,7 +253,7 @@ describe('merge', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('mergeMessage', mergeMessageHandler);
+    eventHandler.on("mergeMessage", mergeMessageHandler);
   });
 
   beforeEach(() => {
@@ -261,7 +261,7 @@ describe('merge', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('mergeMessage', mergeMessageHandler);
+    eventHandler.off("mergeMessage", mergeMessageHandler);
   });
 
   const assetMessageExists = async (message: CastAddMessage | CastRemoveMessage) => {
@@ -304,23 +304,23 @@ describe('merge', () => {
     await expect(store.getCastAdd(fid, castHash)).rejects.toThrow(HubError);
   };
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const message = await Factories.ReactionAddMessage.create();
     await expect(store.merge(message)).rejects.toThrow(HubError);
   });
 
-  describe('CastAdd', () => {
-    test('succeeds', async () => {
+  describe("CastAdd", () => {
+    test("succeeds", async () => {
       await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
       await assertCastAddWins(castAdd);
 
       expect(mergeEvents).toEqual([[castAdd, []]]);
     });
 
-    test('fails if merged twice', async () => {
+    test("fails if merged twice", async () => {
       await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
       await expect(store.merge(castAdd)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
 
       await assertCastAddWins(castAdd);
@@ -328,25 +328,25 @@ describe('merge', () => {
       expect(mergeEvents).toEqual([[castAdd, []]]);
     });
 
-    describe('with conflicting CastRemove with different timestamps', () => {
-      test('fails with a later timestamp', async () => {
+    describe("with conflicting CastRemove with different timestamps", () => {
+      test("fails with a later timestamp", async () => {
         const castRemoveEarlier = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp - 1 },
         });
 
         await store.merge(castRemoveEarlier);
         await expect(store.merge(castAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+          new HubError("bad_request.conflict", "message conflicts with a CastRemove"),
         );
 
         await assertCastRemoveWins(castRemoveEarlier);
         await assertMessageDoesNotExist(castAdd);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await store.merge(castRemove);
         await expect(store.merge(castAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+          new HubError("bad_request.conflict", "message conflicts with a CastRemove"),
         );
 
         await assertCastRemoveWins(castRemove);
@@ -354,8 +354,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting CastRemove with identical timestamps', () => {
-      test('fails with a later hash', async () => {
+    describe("with conflicting CastRemove with identical timestamps", () => {
+      test("fails with a later hash", async () => {
         const castRemoveEarlier = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp },
           hash: bytesDecrement(castAdd.hash)._unsafeUnwrap(),
@@ -363,14 +363,14 @@ describe('merge', () => {
 
         await store.merge(castRemoveEarlier);
         await expect(store.merge(castAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+          new HubError("bad_request.conflict", "message conflicts with a CastRemove"),
         );
 
         await assertCastRemoveWins(castRemoveEarlier);
         await assertMessageDoesNotExist(castAdd);
       });
 
-      test('fails with an earlier hash', async () => {
+      test("fails with an earlier hash", async () => {
         const castRemoveLater = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp },
           hash: bytesIncrement(castAdd.hash)._unsafeUnwrap(),
@@ -378,7 +378,7 @@ describe('merge', () => {
 
         await store.merge(castRemoveLater);
         await expect(store.merge(castAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a CastRemove')
+          new HubError("bad_request.conflict", "message conflicts with a CastRemove"),
         );
 
         await assertCastRemoveWins(castRemoveLater);
@@ -387,8 +387,8 @@ describe('merge', () => {
     });
   });
 
-  describe('CastRemove', () => {
-    test('succeeds', async () => {
+  describe("CastRemove", () => {
+    test("succeeds", async () => {
       await store.merge(castAdd);
       await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
 
@@ -401,10 +401,10 @@ describe('merge', () => {
       ]);
     });
 
-    test('fails if merged twice', async () => {
+    test("fails if merged twice", async () => {
       await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
       await expect(store.merge(castRemove)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
 
       await assertCastRemoveWins(castRemove);
@@ -412,7 +412,7 @@ describe('merge', () => {
       expect(mergeEvents).toEqual([[castRemove, []]]);
     });
 
-    describe('with a conflicting CastRemove with different timestamps', () => {
+    describe("with a conflicting CastRemove with different timestamps", () => {
       let castRemoveLater: CastRemoveMessage;
 
       beforeAll(async () => {
@@ -421,7 +421,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a later timestamp', async () => {
+      test("succeeds with a later timestamp", async () => {
         await store.merge(castRemove);
         await expect(store.merge(castRemoveLater)).resolves.toBeGreaterThan(0);
 
@@ -434,10 +434,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await store.merge(castRemoveLater);
         await expect(store.merge(castRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertMessageDoesNotExist(castRemove);
@@ -445,7 +445,7 @@ describe('merge', () => {
       });
     });
 
-    describe('with a conflicting CastRemove with identical timestamps', () => {
+    describe("with a conflicting CastRemove with identical timestamps", () => {
       let castRemoveLater: CastRemoveMessage;
 
       beforeAll(async () => {
@@ -455,7 +455,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a later hash', async () => {
+      test("succeeds with a later hash", async () => {
         await store.merge(castRemove);
         await expect(store.merge(castRemoveLater)).resolves.toBeGreaterThan(0);
 
@@ -469,10 +469,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier hash', async () => {
+      test("fails with an earlier hash", async () => {
         await store.merge(castRemoveLater);
         await expect(store.merge(castRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertMessageDoesNotExist(castRemove);
@@ -480,8 +480,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting CastAdd with different timestamps', () => {
-      test('succeeds with a later timestamp', async () => {
+    describe("with conflicting CastAdd with different timestamps", () => {
+      test("succeeds with a later timestamp", async () => {
         await store.merge(castAdd);
         await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
         await assertCastRemoveWins(castRemove);
@@ -493,7 +493,7 @@ describe('merge', () => {
         ]);
       });
 
-      test('succeeds with an earlier timestamp', async () => {
+      test("succeeds with an earlier timestamp", async () => {
         const castRemoveEarlier = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp - 1 },
         });
@@ -510,8 +510,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting CastAdd with identical timestamps', () => {
-      test('succeeds with an earlier hash', async () => {
+    describe("with conflicting CastAdd with identical timestamps", () => {
+      test("succeeds with an earlier hash", async () => {
         const castRemoveEarlier = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp },
           hash: bytesDecrement(castAdd.hash)._unsafeUnwrap(),
@@ -529,7 +529,7 @@ describe('merge', () => {
         ]);
       });
 
-      test('succeeds with a later hash', async () => {
+      test("succeeds with a later hash", async () => {
         const castRemoveLater = await Factories.CastRemoveMessage.create({
           data: { ...castRemove.data, timestamp: castAdd.data.timestamp },
           hash: bytesIncrement(castAdd.hash)._unsafeUnwrap(),
@@ -555,7 +555,7 @@ describe('merge', () => {
   });
 });
 
-describe('revoke', () => {
+describe("revoke", () => {
   let revokedMessages: Message[] = [];
 
   const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
@@ -563,7 +563,7 @@ describe('revoke', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('revokeMessage', revokeMessageHandler);
+    eventHandler.on("revokeMessage", revokeMessageHandler);
   });
 
   beforeEach(() => {
@@ -571,17 +571,17 @@ describe('revoke', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('revokeMessage', revokeMessageHandler);
+    eventHandler.off("revokeMessage", revokeMessageHandler);
   });
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } });
     const result = await store.revoke(reactionAdd);
-    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "invalid message type")));
     expect(revokedMessages).toEqual([]);
   });
 
-  test('deletes all keys relating to the cast', async () => {
+  test("deletes all keys relating to the cast", async () => {
     await store.merge(castAdd);
     const castKeys: Buffer[] = [];
     for await (const [key] of db.iterator()) {
@@ -597,7 +597,7 @@ describe('revoke', () => {
     expect(castKeysAfterRevoke.length).toEqual(2);
   });
 
-  test('deletes all keys relating to the cast with parent url', async () => {
+  test("deletes all keys relating to the cast with parent url", async () => {
     const cast = await Factories.CastAddMessage.create({
       data: { castAddBody: { parentCastId: undefined, parentUrl: faker.internet.url() } },
     });
@@ -616,7 +616,7 @@ describe('revoke', () => {
     expect(castKeysAfterRevoke.length).toEqual(2);
   });
 
-  test('succeeds with CastAdd', async () => {
+  test("succeeds with CastAdd", async () => {
     await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
     const result = await store.revoke(castAdd);
     expect(result.isOk()).toBeTruthy();
@@ -625,7 +625,7 @@ describe('revoke', () => {
     expect(revokedMessages).toEqual([castAdd]);
   });
 
-  test('succeeds with CastRemove', async () => {
+  test("succeeds with CastRemove", async () => {
     await expect(store.merge(castRemove)).resolves.toBeGreaterThan(0);
     const result = await store.revoke(castRemove);
     expect(result.isOk()).toBeTruthy();
@@ -634,7 +634,7 @@ describe('revoke', () => {
     expect(revokedMessages).toEqual([castRemove]);
   });
 
-  test('succeeds with unmerged message', async () => {
+  test("succeeds with unmerged message", async () => {
     const result = await store.revoke(castAdd);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
@@ -643,14 +643,14 @@ describe('revoke', () => {
   });
 });
 
-describe('pruneMessages', () => {
+describe("pruneMessages", () => {
   let prunedMessages: Message[];
   const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
-    eventHandler.on('pruneMessage', pruneMessageListener);
+    eventHandler.on("pruneMessage", pruneMessageListener);
   });
 
   beforeEach(() => {
@@ -658,7 +658,7 @@ describe('pruneMessages', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('pruneMessage', pruneMessageListener);
+    eventHandler.off("pruneMessage", pruneMessageListener);
   });
 
   let add1: CastAddMessage;
@@ -683,7 +683,7 @@ describe('pruneMessages', () => {
   const generateRemoveWithTimestamp = async (
     fid: number,
     timestamp: number,
-    target?: CastAddMessage
+    target?: CastAddMessage,
   ): Promise<CastRemoveMessage> => {
     return Factories.CastRemoveMessage.create({
       data: { fid, timestamp, castRemoveBody: { targetHash: target ? target.hash : Factories.MessageHash.build() } },
@@ -706,16 +706,16 @@ describe('pruneMessages', () => {
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5);
   });
 
-  describe('with size limit', () => {
+  describe("with size limit", () => {
     const sizePrunedStore = new CastStore(db, eventHandler, { pruneSizeLimit: 3 });
 
-    test('no-ops when no messages have been merged', async () => {
+    test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
       expect(prunedMessages).toEqual([]);
     });
 
-    test('prunes earliest add messages', async () => {
+    test("prunes earliest add messages", async () => {
       const messages = [add1, add2, add3, add4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -732,7 +732,7 @@ describe('pruneMessages', () => {
       }
     });
 
-    test('prunes earliest remove messages', async () => {
+    test("prunes earliest remove messages", async () => {
       const messages = [remove1, remove2, remove3, remove4, remove5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -749,7 +749,7 @@ describe('pruneMessages', () => {
       }
     });
 
-    test('prunes earliest messages', async () => {
+    test("prunes earliest messages", async () => {
       const messages = [add1, remove2, add3, remove4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -761,7 +761,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([add1, remove2]);
     });
 
-    test('no-ops when adds have been removed', async () => {
+    test("no-ops when adds have been removed", async () => {
       const messages = [add1, remove1, add2, remove2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -773,48 +773,48 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([]);
     });
 
-    test('fails to merge message which would be immediately pruned', async () => {
+    test("fails to merge message which would be immediately pruned", async () => {
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(undefined));
 
       await expect(sizePrunedStore.merge(add3)).resolves.toBeGreaterThan(0);
       await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-        makeTsHash(add3.data.timestamp, add3.hash)
+        makeTsHash(add3.data.timestamp, add3.hash),
       );
 
       await expect(sizePrunedStore.merge(add2)).resolves.toBeGreaterThan(0);
       await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(2));
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-        makeTsHash(add2.data.timestamp, add2.hash)
+        makeTsHash(add2.data.timestamp, add2.hash),
       );
 
       await expect(sizePrunedStore.merge(remove2)).resolves.toBeGreaterThan(0);
       await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(2));
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-        makeTsHash(remove2.data.timestamp, remove2.hash)
+        makeTsHash(remove2.data.timestamp, remove2.hash),
       );
 
       await expect(sizePrunedStore.merge(add4)).resolves.toBeGreaterThan(0);
       await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(3));
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-        makeTsHash(remove2.data.timestamp, remove2.hash)
+        makeTsHash(remove2.data.timestamp, remove2.hash),
       );
 
       // remove1 is older than remove2 and the store is at capacity so it's rejected
       await expect(sizePrunedStore.merge(remove1)).rejects.toEqual(
-        new HubError('bad_request.prunable', 'message would be pruned')
+        new HubError("bad_request.prunable", "message would be pruned"),
       );
 
       // add1 is older than remove2 and the store is at capacity so it's rejected
       await expect(sizePrunedStore.merge(add1)).rejects.toEqual(
-        new HubError('bad_request.prunable', 'message would be pruned')
+        new HubError("bad_request.prunable", "message would be pruned"),
       );
 
       // merging add5 succeeds because while the store is at capacity, add5 would not be pruned
       await expect(sizePrunedStore.merge(add5)).resolves.toBeGreaterThan(0);
       await expect(eventHandler.getCacheMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(4));
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-        makeTsHash(remove2.data.timestamp, remove2.hash)
+        makeTsHash(remove2.data.timestamp, remove2.hash),
       );
 
       const result = await sizePrunedStore.pruneMessages(fid);
@@ -824,10 +824,10 @@ describe('pruneMessages', () => {
     });
   });
 
-  describe('with time limit', () => {
+  describe("with time limit", () => {
     const timePrunedStore = new CastStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
 
-    test('prunes earliest messages', async () => {
+    test("prunes earliest messages", async () => {
       const messages = [add1, add2, remove3, add4];
       for (const message of messages) {
         await timePrunedStore.merge(message);
@@ -847,18 +847,18 @@ describe('pruneMessages', () => {
       await expect(timePrunedStore.getCastAdd(fid, add1.hash)).rejects.toThrow(HubError);
       await expect(timePrunedStore.getCastAdd(fid, add1.hash)).rejects.toThrow(HubError);
       await expect(timePrunedStore.getCastRemove(fid, remove3.data.castRemoveBody.targetHash)).rejects.toThrow(
-        HubError
+        HubError,
       );
     });
 
-    test('fails to merge message which would be immediately pruned', async () => {
+    test("fails to merge message which would be immediately pruned", async () => {
       const messages = [add1, add2];
       for (const message of messages) {
         await timePrunedStore.merge(message);
       }
 
       await expect(timePrunedStore.merge(addOld1)).rejects.toEqual(
-        new HubError('bad_request.prunable', 'message would be pruned')
+        new HubError("bad_request.prunable", "message would be pruned"),
       );
 
       const result = await timePrunedStore.pruneMessages(fid);

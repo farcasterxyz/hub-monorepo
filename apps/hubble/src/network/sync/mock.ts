@@ -1,10 +1,10 @@
-import { ok } from 'neverthrow';
+import { ok } from "neverthrow";
 
-import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from '@farcaster/hub-nodejs';
+import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from "@farcaster/hub-nodejs";
 
-import Engine from '../../storage/engine/index.js';
-import { NodeMetadata } from './merkleTrie.js';
-import SyncEngine from './syncEngine.js';
+import Engine from "../../storage/engine/index.js";
+import { NodeMetadata } from "./merkleTrie.js";
+import SyncEngine from "./syncEngine.js";
 
 export class MockRpcClient {
   engine: Engine;
@@ -37,7 +37,7 @@ export class MockRpcClient {
               numMessages: child.numMessages,
               hash: child.hash,
               children: [],
-            })
+            }),
           );
         }
       }
@@ -62,7 +62,7 @@ export class MockRpcClient {
     return ok(
       SyncIds.create({
         syncIds,
-      })
+      }),
     );
   }
 

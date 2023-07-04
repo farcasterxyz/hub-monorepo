@@ -1,16 +1,16 @@
-import { Multiaddr } from '@multiformats/multiaddr';
-import { logger } from '../../utils/logger.js';
-import cron from 'node-cron';
-import { GossipNode } from './gossipNode.js';
+import { Multiaddr } from "@multiformats/multiaddr";
+import { logger } from "../../utils/logger.js";
+import cron from "node-cron";
+import { GossipNode } from "./gossipNode.js";
 
 const log = logger.child({
-  component: 'PeriodicSyncJob',
+  component: "PeriodicSyncJob",
 });
 
-type SchedulerStatus = 'started' | 'stopped';
+type SchedulerStatus = "started" | "stopped";
 
 // Every 2 minutes, at 00:45 seconds, to avoid clashing with the prune job
-const DEFAULT_PERIODIC_PEER_CHECK_CRON = '*/5 * * * *';
+const DEFAULT_PERIODIC_PEER_CHECK_CRON = "*/5 * * * *";
 
 export class PeriodicPeerCheckScheduler {
   private _bootstrapPeers: Multiaddr[];
@@ -36,14 +36,14 @@ export class PeriodicPeerCheckScheduler {
   }
 
   status(): SchedulerStatus {
-    return this._cronTask ? 'started' : 'stopped';
+    return this._cronTask ? "started" : "stopped";
   }
 
   async doJobs() {
     // If there are no peers, try to connect to the bootstrap peers
     const result = await this._gossipNode.bootstrap(this._bootstrapPeers);
     if (result.isErr()) {
-      log.warn({ err: result.error }, 'No Connected Peers');
+      log.warn({ err: result.error }, "No Connected Peers");
     }
   }
 }

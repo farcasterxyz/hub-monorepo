@@ -1,4 +1,4 @@
-import { Message } from '@farcaster/hub-nodejs';
+import { Message } from "@farcaster/hub-nodejs";
 export const MERGE_TIMEOUT_DEFAULT = 10_000; // 10 seconds
 
 export type StorePruneOptions = {

@@ -1,4 +1,4 @@
-import { faker } from '@faker-js/faker';
+import { faker } from "@faker-js/faker";
 import {
   ContactInfoContent,
   Factories,
@@ -6,15 +6,15 @@ import {
   GossipMessage,
   GossipVersion,
   hexStringToBytes,
-} from '@farcaster/hub-nodejs';
-import { PeerId } from '@libp2p/interface-peer-id';
-import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { Factory } from 'fishery';
-import { HASH_LENGTH, SyncId } from '../../network/sync/syncId.js';
+} from "@farcaster/hub-nodejs";
+import { PeerId } from "@libp2p/interface-peer-id";
+import { createEd25519PeerId } from "@libp2p/peer-id-factory";
+import { Factory } from "fishery";
+import { HASH_LENGTH, SyncId } from "../../network/sync/syncId.js";
 
 const GossipAddressInfoFactory = Factory.define<GossipAddressInfo>(() => {
   return GossipAddressInfo.create({
-    address: '0.0.0.0',
+    address: "0.0.0.0",
     port: faker.datatype.number({ min: 1, max: 65535 }),
     family: 4,
   });
@@ -41,10 +41,10 @@ const GossipMessageFactory = Factory.define<GossipMessage, { peerId?: PeerId }, 
     return GossipMessage.create({
       peerId: transientParams.peerId ? transientParams.peerId.toBytes() : new Uint8Array(),
       message: Factories.Message.build(),
-      topics: ['f_network_0_primary'],
+      topics: ["f_network_0_primary"],
       version: GossipVersion.V1_1,
     });
-  }
+  },
 );
 
 const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid: number }, SyncId>(
@@ -52,7 +52,7 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
     onCreate(async () => {
       const { date, hash, fid } = transientParams;
       const hashBytes = hexStringToBytes(
-        hash || faker.datatype.hexadecimal({ length: HASH_LENGTH * 2 })
+        hash || faker.datatype.hexadecimal({ length: HASH_LENGTH * 2 }),
       )._unsafeUnwrap();
 
       const signerMessage = await Factories.SignerAddMessage.create({
@@ -64,7 +64,7 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
     });
 
     return undefined;
-  }
+  },
 );
 
 export const NetworkFactories = {

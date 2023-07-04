@@ -1,5 +1,5 @@
-import { BufferedStreamWriter, STREAM_MESSAGE_BUFFER_SIZE } from '../bufferedStreamWriter.js';
-import { HubEvent, SubscribeRequest, ServerWritableStream } from '@farcaster/hub-nodejs';
+import { BufferedStreamWriter, STREAM_MESSAGE_BUFFER_SIZE } from "../bufferedStreamWriter.js";
+import { HubEvent, SubscribeRequest, ServerWritableStream } from "@farcaster/hub-nodejs";
 
 type StreamMessage = { data: number };
 
@@ -38,7 +38,7 @@ class MockStream {
   }
 }
 
-describe('Writing to a stream', () => {
+describe("Writing to a stream", () => {
   let mockStream: MockStream;
   let stream: BufferedStreamWriter;
 
@@ -52,7 +52,7 @@ describe('Writing to a stream', () => {
     mockStream.reset();
   });
 
-  test('should write to a stream', () => {
+  test("should write to a stream", () => {
     expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
     expect(mockStream.totalMessages).toBe(1);
     expect(stream.isStreamBackedUp()).toBe(false);
@@ -81,7 +81,7 @@ describe('Writing to a stream', () => {
     expect(mockStream.totalMessages).toBe(3); // The write went through
   });
 
-  test('Exceeding the buffer size should destroy the stream', () => {
+  test("Exceeding the buffer size should destroy the stream", () => {
     // Make the stream full, so all writes will be buffered
     mockStream.isFull = true;
     expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);
@@ -101,7 +101,7 @@ describe('Writing to a stream', () => {
     expect(mockStream.isDestroyed).toBe(true);
   });
 
-  test('handles write failing when draining', () => {
+  test("handles write failing when draining", () => {
     // Make the stream full, so all writes will be buffered
     mockStream.isFull = true;
     expect(stream.writeToStream({ data: 1 }).isOk()).toBe(true);

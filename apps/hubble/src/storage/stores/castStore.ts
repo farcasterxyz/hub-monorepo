@@ -8,8 +8,8 @@ import {
   bytesCompare,
   isCastAddMessage,
   isCastRemoveMessage,
-} from '@farcaster/hub-nodejs';
-import { err, ok, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import { err, ok, ResultAsync } from "neverthrow";
 import {
   getMessagesPageByPrefix,
   makeCastIdKey,
@@ -17,11 +17,11 @@ import {
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
-} from '../db/message.js';
-import { Transaction } from '../db/rocksdb.js';
-import { RootPrefix, TRUE_VALUE, UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PageOptions } from '../stores/types.js';
-import { Store } from './store.js';
+} from "../db/message.js";
+import { Transaction } from "../db/rocksdb.js";
+import { RootPrefix, TRUE_VALUE, UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PageOptions } from "../stores/types.js";
+import { Store } from "./store.js";
 
 /**
  * Generates unique keys used to store or fetch CastAdd messages in the adds set index
@@ -31,7 +31,7 @@ import { Store } from './store.js';
  * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
  */
 const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastAdds]), Buffer.from(hash ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastAdds]), Buffer.from(hash ?? "")]);
 };
 
 /**
@@ -42,7 +42,7 @@ const makeCastAddsKey = (fid: number, hash?: Uint8Array): Buffer => {
  * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<tsHash?>
  */
 const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastRemoves]), Buffer.from(hash ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.CastRemoves]), Buffer.from(hash ?? "")]);
 };
 
 // TODO: make parentFid and parentHash fixed size
@@ -56,12 +56,12 @@ const makeCastRemovesKey = (fid: number, hash?: Uint8Array): Buffer => {
  * @returns RocksDB index key of the form <root_prefix>:<parentFid>:<parentTsHash>:<tsHash?>:<fid?>
  */
 const makeCastsByParentKey = (parent: CastId | string, fid?: number, tsHash?: Uint8Array): Buffer => {
-  const parentKey = typeof parent === 'string' ? Buffer.from(parent) : makeCastIdKey(parent);
+  const parentKey = typeof parent === "string" ? Buffer.from(parent) : makeCastIdKey(parent);
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByParent]),
     parentKey,
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -77,8 +77,8 @@ const makeCastsByMentionKey = (mentionFid: number, fid?: number, tsHash?: Uint8A
   return Buffer.concat([
     Buffer.from([RootPrefix.CastsByMention]),
     makeFidKey(mentionFid),
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -115,14 +115,14 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   override makeAddKey(msg: CastAddMessage) {
     return makeCastAddsKey(
       msg.data.fid,
-      msg.data.castAddBody || !msg.data.castRemoveBody ? msg.hash : msg.data.castRemoveBody.targetHash
+      msg.data.castAddBody || !msg.data.castRemoveBody ? msg.hash : msg.data.castRemoveBody.targetHash,
     ) as Buffer;
   }
 
   override makeRemoveKey(msg: CastRemoveMessage) {
     return makeCastRemovesKey(
       msg.data.fid,
-      msg.data.castAddBody || !msg.data.castRemoveBody ? msg.hash : msg.data.castRemoveBody.targetHash
+      msg.data.castAddBody || !msg.data.castRemoveBody ? msg.hash : msg.data.castRemoveBody.targetHash,
     );
   }
 
@@ -185,23 +185,23 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
     // Look up the remove tsHash for this cast
     const castRemoveTsHash = await ResultAsync.fromPromise(
       this._db.get(makeCastRemovesKey(message.data.fid, message.hash)),
-      () => undefined
+      () => undefined,
     );
 
     // If remove tsHash exists, fail because this cast has already been removed
     if (castRemoveTsHash.isOk()) {
-      throw new HubError('bad_request.conflict', 'message conflicts with a CastRemove');
+      throw new HubError("bad_request.conflict", "message conflicts with a CastRemove");
     }
 
     // Look up the add tsHash for this cast
     const castAddTsHash = await ResultAsync.fromPromise(
       this._db.get(makeCastAddsKey(message.data.fid, message.hash)),
-      () => undefined
+      () => undefined,
     );
 
     // If add tsHash exists, no-op because this cast has already been added
     if (castAddTsHash.isOk()) {
-      throw new HubError('bad_request.duplicate', 'message has already been merged');
+      throw new HubError("bad_request.duplicate", "message has already been merged");
     }
 
     return ok(undefined);
@@ -253,7 +253,7 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
 
   async getAllCastMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<CastAddMessage | CastRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }
@@ -261,7 +261,7 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */
   async getCastsByParent(
     parent: CastId | string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<CastAddMessage>> {
     return await this.getBySecondaryIndex(makeCastsByParentKey(parent), pageOptions);
   }

@@ -7,13 +7,13 @@ import {
   IdRegistryEvent,
   SignerAddMessage,
   CastAddMessage,
-} from '@farcaster/hub-nodejs';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import { MockHub } from '../../test/mocks.js';
-import { MockRpcClient } from './mock.js';
-import { EMPTY_HASH } from './trieNode.js';
-import { getFarcasterTime } from '@farcaster/core';
+} from "@farcaster/hub-nodejs";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { MockHub } from "../../test/mocks.js";
+import { MockRpcClient } from "./mock.js";
+import { EMPTY_HASH } from "./trieNode.js";
+import { getFarcasterTime } from "@farcaster/core";
 
 const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
 const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
@@ -33,25 +33,25 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 });
 
-describe('SyncEnginePerfTest', () => {
+describe("SyncEnginePerfTest", () => {
   const makeMessagesWithTimeDelta = async (timeDeltas: number[]): Promise<CastAddMessage[]> => {
     return await Promise.all(
       timeDeltas.map(async (t) => {
         const farcasterTime = getFarcasterTime()._unsafeUnwrap();
         return Factories.CastAddMessage.create(
           { data: { fid, network, timestamp: farcasterTime + t } },
-          { transient: { signer } }
+          { transient: { signer } },
         );
-      })
+      }),
     );
   };
 
   test(
-    'should not fetch all messages when snapshot contains non-existent prefix',
+    "should not fetch all messages when snapshot contains non-existent prefix",
     async () => {
       const nowOrig = Date.now;
 
@@ -83,12 +83,12 @@ describe('SyncEnginePerfTest', () => {
         Date.now = () => 1683074200000 + 200 * 1000;
 
         const snapshot2 = (await syncEngine2.getSnapshot())._unsafeUnwrap();
-        expect((snapshot2.prefix as Buffer).toString('utf8')).toEqual('0073615');
+        expect((snapshot2.prefix as Buffer).toString("utf8")).toEqual("0073615");
         // Force a non-existent prefix (the original bug #536 is fixed)
-        snapshot2.prefix = Buffer.from('00306622', 'hex');
+        snapshot2.prefix = Buffer.from("00306622", "hex");
 
         let rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
-        await syncEngine1.performSync('engine2', snapshot2, rpcClient as unknown as HubRpcClient);
+        await syncEngine1.performSync("engine2", snapshot2, rpcClient as unknown as HubRpcClient);
         expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
         expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
 
@@ -98,13 +98,13 @@ describe('SyncEnginePerfTest', () => {
         // Even with a bad snapshot, we should still not call the sync APIs because the hashes match
         rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
         await syncEngine1.performSync(
-          'engine2',
+          "engine2",
           {
             numMessages: 1000,
-            prefix: Buffer.from('999999'),
+            prefix: Buffer.from("999999"),
             excludedHashes: [EMPTY_HASH],
           },
-          rpcClient as unknown as HubRpcClient
+          rpcClient as unknown as HubRpcClient,
         );
         expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
         expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
@@ -114,6 +114,6 @@ describe('SyncEnginePerfTest', () => {
         await syncEngine2?.stop();
       }
     },
-    15 * 1000
+    15 * 1000,
   );
 });

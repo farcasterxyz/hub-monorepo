@@ -1,13 +1,13 @@
-import cron from 'node-cron';
-import { HubInterface } from '../../hubble.js';
-import { logger } from '../../utils/logger.js';
-import { HubAsyncResult } from '@farcaster/core';
+import cron from "node-cron";
+import { HubInterface } from "../../hubble.js";
+import { logger } from "../../utils/logger.js";
+import { HubAsyncResult } from "@farcaster/core";
 
 const log = logger.child({
-  component: 'GossipContactInfo',
+  component: "GossipContactInfo",
 });
 
-type SchedulerStatus = 'started' | 'stopped';
+type SchedulerStatus = "started" | "stopped";
 
 export class GossipContactInfoJobScheduler {
   private _hub: HubInterface;
@@ -30,11 +30,11 @@ export class GossipContactInfoJobScheduler {
   }
 
   status(): SchedulerStatus {
-    return this._cronTask ? 'started' : 'stopped';
+    return this._cronTask ? "started" : "stopped";
   }
 
   async doJobs(): HubAsyncResult<void> {
-    log.info({}, 'starting gossip contact info job');
+    log.info({}, "starting gossip contact info job");
 
     return await this._hub.gossipContactInfo();
   }

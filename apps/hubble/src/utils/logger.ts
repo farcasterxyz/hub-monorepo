@@ -6,8 +6,8 @@ import {
   MessageType,
   NameRegistryEvent,
   UserNameProof,
-} from '@farcaster/hub-nodejs';
-import pino from 'pino';
+} from "@farcaster/hub-nodejs";
+import pino from "pino";
 
 /**
  * Logging Guidelines
@@ -41,18 +41,18 @@ import pino from 'pino';
 const defaultOptions: pino.LoggerOptions = {};
 
 // Disable logging in tests and CI to reduce noise
-if (process.env['NODE_ENV'] === 'test' || process.env['CI']) {
+if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
   // defaultOptions.level = 'debug';
-  defaultOptions.level = 'silent';
+  defaultOptions.level = "silent";
 }
 
 export const logger = pino.pino(defaultOptions);
 export type Logger = pino.Logger;
 
 export const messageTypeToName = (type?: MessageType) => {
-  if (!type) return '';
+  if (!type) return "";
   // eslint-disable-next-line security/detect-object-injection
-  return (MessageType[type] as string).replace('MESSAGE_TYPE_', '');
+  return (MessageType[type] as string).replace("MESSAGE_TYPE_", "");
 };
 
 export const messageToLog = (message: Message) => {
@@ -75,7 +75,7 @@ export const idRegistryEventToLog = (event: IdRegistryEvent) => {
 export const nameRegistryEventToLog = (event: NameRegistryEvent) => {
   return {
     blockNumber: event.blockNumber,
-    fname: Buffer.from(event.fname).toString('utf-8').replace(/\0/g, ''),
+    fname: Buffer.from(event.fname).toString("utf-8").replace(/\0/g, ""),
     to: bytesToHexString(event.to)._unsafeUnwrap(),
   };
 };
@@ -83,7 +83,7 @@ export const nameRegistryEventToLog = (event: NameRegistryEvent) => {
 export const usernameProofToLog = (usernameProof: UserNameProof) => {
   return {
     timestamp: usernameProof.timestamp,
-    name: Buffer.from(usernameProof.name).toString('utf-8').replace(/\0/g, ''),
+    name: Buffer.from(usernameProof.name).toString("utf-8").replace(/\0/g, ""),
     owner: bytesToHexString(usernameProof.owner)._unsafeUnwrap(),
   };
 };

@@ -1,8 +1,8 @@
 /* eslint-disable security/detect-object-injection */
-import Chance from 'chance';
+import Chance from "chance";
 
-import { Message } from '@farcaster/hub-nodejs';
-import { SyncId } from '../../network/sync/syncId.js';
+import { Message } from "@farcaster/hub-nodejs";
+import { SyncId } from "../../network/sync/syncId.js";
 
 /**
  * Generate `n` SyncId. The SyncIds are sampled from FIDs between 1 to `numFids`.  Timestamp in
@@ -24,7 +24,7 @@ export const generateSyncIds = (n: number, numFids = 1, maxTimeShift = 1): SyncI
   for (let i = 0; i < n; i++) {
     const fid = chance.pickone(fids);
     const hash = chance.hash({ length: 40 });
-    const syncId = fastSyncId(fid, Buffer.from(hash, 'hex'), ts, 1);
+    const syncId = fastSyncId(fid, Buffer.from(hash, "hex"), ts, 1);
     syncIds.push(syncId);
     ts += chance.integer({ min: 1, max: maxTimeShift });
   }
