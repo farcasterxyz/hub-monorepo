@@ -6,7 +6,7 @@ import {
   MessageType,
   isLinkAddMessage,
   isLinkRemoveMessage,
-} from '@farcaster/hub-nodejs';
+} from "@farcaster/hub-nodejs";
 import {
   getManyMessages,
   getPageIteratorByPrefix,
@@ -14,12 +14,12 @@ import {
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
-} from '../../storage/db/message.js';
-import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from './types.js';
-import { Store } from './store.js';
-import { ResultAsync, err, ok } from 'neverthrow';
-import { Transaction } from '../db/rocksdb.js';
+} from "../../storage/db/message.js";
+import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./types.js";
+import { Store } from "./store.js";
+import { ResultAsync, err, ok } from "neverthrow";
+import { Transaction } from "../db/rocksdb.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 2_500;
 
@@ -38,18 +38,18 @@ const makeTargetKey = (target: number): Buffer => {
  */
 const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
   if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
-    throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+    throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.LinkAdds]), // -------------- link_adds key, 1 byte
-    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(''), //-------- type, 8 bytes
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 4 bytes
+    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(""), //-------- type, 8 bytes
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 4 bytes
   ]);
 };
 
@@ -64,18 +64,18 @@ const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer =>
  */
 const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
   if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
-    throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+    throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.LinkRemoves]), // ----------- link_adds key, 1 byte
-    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(''), //-------- type, 8 bytes
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 4 bytes
+    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(""), //-------- type, 8 bytes
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 4 bytes
   ]);
 };
 
@@ -90,18 +90,18 @@ const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer
  */
 const makeLinksByTargetKey = (target: number, fid?: number, tsHash?: Uint8Array): Buffer => {
   if (fid && !tsHash) {
-    throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
+    throw new HubError("bad_request.validation_failure", "fid provided without tsHash");
   }
 
   if (tsHash && !fid) {
-    throw new HubError('bad_request.validation_failure', 'tsHash provided without fid');
+    throw new HubError("bad_request.validation_failure", "tsHash provided without fid");
   }
 
   return Buffer.concat([
     Buffer.from([RootPrefix.LinksByTarget]),
     makeTargetKey(target),
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -163,7 +163,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
     }
 
     if (!message.data.linkBody.targetFid) {
-      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+      return err(new HubError("bad_request.invalid_param", "targetfid null"));
     }
 
     // Puts message key into the byTarget index
@@ -181,7 +181,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
     }
 
     if (!message.data.linkBody.targetFid) {
-      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+      return err(new HubError("bad_request.invalid_param", "targetfid null"));
     }
 
     // Delete the message key from byTarget index
@@ -224,7 +224,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   async getLinkAddsByFid(
     fid: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage>> {
     return await this.getAddsByFid({ data: { fid, linkBody: { type: type as string } } }, pageOptions);
   }
@@ -233,14 +233,14 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   async getLinkRemovesByFid(
     fid: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkRemoveMessage>> {
     return await this.getRemovesByFid({ data: { fid, linkBody: { type: type as string } } }, pageOptions);
   }
 
   async getAllLinkMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }
@@ -249,7 +249,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   async getLinksByTarget(
     target: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage>> {
     const prefix = makeLinksByTargetKey(target);
 

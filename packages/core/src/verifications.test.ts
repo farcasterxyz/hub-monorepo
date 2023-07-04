@@ -1,8 +1,8 @@
-import { Factories } from './factories';
-import { makeVerificationEthAddressClaim } from './verifications';
+import { Factories } from "./factories";
+import { makeVerificationEthAddressClaim } from "./verifications";
 
-describe('makeVerificationEthAddressClaim', () => {
-  test('succeeds', () => {
+describe("makeVerificationEthAddressClaim", () => {
+  test("succeeds", () => {
     const fid = Factories.Fid.build();
     const ethAddress = Factories.EthAddress.build();
     const network = Factories.FarcasterNetwork.build();

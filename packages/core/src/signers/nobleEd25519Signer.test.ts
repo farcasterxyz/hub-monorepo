@@ -1,10 +1,10 @@
-import { blake3 } from '@noble/hashes/blake3';
-import { randomBytes } from '@noble/hashes/utils';
-import { Factories } from '../factories';
-import { NobleEd25519Signer } from './nobleEd25519Signer';
-import { ed25519 } from '@noble/curves/ed25519';
+import { blake3 } from "@noble/hashes/blake3";
+import { randomBytes } from "@noble/hashes/utils";
+import { Factories } from "../factories";
+import { NobleEd25519Signer } from "./nobleEd25519Signer";
+import { ed25519 } from "@noble/curves/ed25519";
 
-describe('NobleEd25519Signer', () => {
+describe("NobleEd25519Signer", () => {
   const privateKey = Factories.Ed25519PrivateKey.build();
   const signer = new NobleEd25519Signer(privateKey);
   let signerKey: Uint8Array;
@@ -13,8 +13,8 @@ describe('NobleEd25519Signer', () => {
     signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   });
 
-  describe('signMessageHash', () => {
-    test('generates valid signature', async () => {
+  describe("signMessageHash", () => {
+    test("generates valid signature", async () => {
       const bytes = randomBytes(32);
       const hash = blake3(bytes, { dkLen: 20 });
       const signature = await signer.signMessageHash(hash);

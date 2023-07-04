@@ -1,7 +1,7 @@
-import { ok } from 'neverthrow';
-import { ed25519 } from '@noble/curves/ed25519';
-import { HubAsyncResult } from '../errors';
-import { Ed25519Signer } from './ed25519Signer';
+import { ok } from "neverthrow";
+import { ed25519 } from "@noble/curves/ed25519";
+import { HubAsyncResult } from "../errors";
+import { Ed25519Signer } from "./ed25519Signer";
 
 export class NobleEd25519Signer extends Ed25519Signer {
   private readonly _privateKey: Uint8Array;

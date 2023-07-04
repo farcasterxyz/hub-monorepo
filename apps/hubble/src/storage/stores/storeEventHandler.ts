@@ -17,14 +17,14 @@ import {
   MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-} from '@farcaster/hub-nodejs';
-import AsyncLock from 'async-lock';
-import { err, ok, ResultAsync } from 'neverthrow';
-import { TypedEmitter } from 'tiny-typed-emitter';
-import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
-import { RootPrefix, UserMessagePostfix } from '../db/types.js';
-import { StorageCache } from './storageCache.js';
-import { makeTsHash } from '../db/message.js';
+} from "@farcaster/hub-nodejs";
+import AsyncLock from "async-lock";
+import { err, ok, ResultAsync } from "neverthrow";
+import { TypedEmitter } from "tiny-typed-emitter";
+import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import { RootPrefix, UserMessagePostfix } from "../db/types.js";
+import { StorageCache } from "./storageCache.js";
+import { makeTsHash } from "../db/message.js";
 import {
   bytesCompare,
   CastAddMessage,
@@ -39,7 +39,7 @@ import {
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-} from '@farcaster/core';
+} from "@farcaster/core";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 1_000;
@@ -98,7 +98,7 @@ export type StoreEvents = {
   mergeUsernameProofEvent: (event: MergeUsernameProofHubEvent) => void;
 };
 
-export type HubEventArgs = Omit<HubEvent, 'id'>;
+export type HubEventArgs = Omit<HubEvent, "id">;
 
 // Chosen to keep number under Number.MAX_SAFE_INTEGER
 const TIMESTAMP_BITS = 41;
@@ -109,7 +109,7 @@ const makeEventId = (timestamp: number, seq: number): number => {
   let binarySeq = seq.toString(2);
   if (binarySeq.length) {
     while (binarySeq.length < SEQUENCE_BITS) {
-      binarySeq = '0' + binarySeq;
+      binarySeq = "0" + binarySeq;
     }
   }
 
@@ -138,11 +138,11 @@ export class HubEventIdGenerator {
     }
 
     if (this._lastTimestamp >= 2 ** TIMESTAMP_BITS) {
-      return err(new HubError('bad_request.invalid_param', `timestamp > ${TIMESTAMP_BITS} bits`));
+      return err(new HubError("bad_request.invalid_param", `timestamp > ${TIMESTAMP_BITS} bits`));
     }
 
     if (this._lastSeq >= 2 ** SEQUENCE_BITS) {
-      return err(new HubError('bad_request.invalid_param', `sequence > ${SEQUENCE_BITS} bits`));
+      return err(new HubError("bad_request.invalid_param", `sequence > ${SEQUENCE_BITS} bits`));
     }
 
     return ok(makeEventId(this._lastTimestamp, this._lastSeq));
@@ -232,7 +232,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     message: PrunableMessage,
     set: UserMessagePostfix,
     sizeLimit: number,
-    timeLimit: number | undefined = undefined
+    timeLimit: number | undefined = undefined,
   ): HubAsyncResult<boolean> {
     const farcasterTime = getFarcasterTime();
     if (farcasterTime.isErr()) {
@@ -277,7 +277,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   async commitTransaction(txn: Transaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
     return this._lock
-      .acquire('commit', async () => {
+      .acquire("commit", async () => {
         const eventId = this._generator.generateId();
         if (eventId.isErr()) {
           throw eventId.error;
@@ -294,7 +294,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         return ok(event.id);
       })
       .catch((e: Error) => {
-        return err(isHubError(e) ? e : new HubError('unavailable.storage_failure', e.message));
+        return err(isHubError(e) ? e : new HubError("unavailable.storage_failure", e.message));
       });
   }
 
@@ -320,17 +320,17 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   private broadcastEvent(event: HubEvent): HubResult<void> {
     if (isMergeMessageHubEvent(event)) {
-      this.emit('mergeMessage', event);
+      this.emit("mergeMessage", event);
     } else if (isPruneMessageHubEvent(event)) {
-      this.emit('pruneMessage', event);
+      this.emit("pruneMessage", event);
     } else if (isRevokeMessageHubEvent(event)) {
-      this.emit('revokeMessage', event);
+      this.emit("revokeMessage", event);
     } else if (isMergeIdRegistryEventHubEvent(event)) {
-      this.emit('mergeIdRegistryEvent', event);
+      this.emit("mergeIdRegistryEvent", event);
     } else if (isMergeUsernameProofHubEvent(event)) {
-      this.emit('mergeUsernameProofEvent', event);
+      this.emit("mergeUsernameProofEvent", event);
     } else {
-      return err(new HubError('bad_request.invalid_param', 'invalid event type'));
+      return err(new HubError("bad_request.invalid_param", "invalid event type"));
     }
 
     return ok(undefined);

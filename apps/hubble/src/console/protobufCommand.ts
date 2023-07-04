@@ -1,13 +1,13 @@
-import * as hubNodejs from '@farcaster/hub-nodejs';
-import { Factories } from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console.js';
+import * as hubNodejs from "@farcaster/hub-nodejs";
+import { Factories } from "@farcaster/hub-nodejs";
+import { ConsoleCommandInterface } from "./console.js";
 
 export class ProtobufCommand implements ConsoleCommandInterface {
   commandName(): string {
-    return 'protobufs';
+    return "protobufs";
   }
   shortHelp(): string {
-    return 'Use the protobufs library to create and parse messages';
+    return "Use the protobufs library to create and parse messages";
   }
   help(): string {
     return `
@@ -24,10 +24,10 @@ export class ProtobufCommand implements ConsoleCommandInterface {
 
 export class FactoriesCommand implements ConsoleCommandInterface {
   commandName(): string {
-    return 'factories';
+    return "factories";
   }
   shortHelp(): string {
-    return 'Use the factories library to create test messages';
+    return "Use the factories library to create test messages";
   }
   help(): string {
     return `

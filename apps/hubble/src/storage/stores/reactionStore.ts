@@ -8,8 +8,8 @@ import {
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
-} from '@farcaster/hub-nodejs';
-import { err, ok, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import { err, ok, ResultAsync } from "neverthrow";
 import {
   getManyMessages,
   getPageIteratorByPrefix,
@@ -18,17 +18,17 @@ import {
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
-} from '../db/message.js';
-import { Transaction } from '../db/rocksdb.js';
-import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '../stores/types.js';
-import { Store } from './store.js';
+} from "../db/message.js";
+import { Transaction } from "../db/rocksdb.js";
+import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
+import { Store } from "./store.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
 const makeTargetKey = (target: CastId | string): Buffer => {
-  return typeof target === 'string' ? Buffer.from(target) : makeCastIdKey(target);
+  return typeof target === "string" ? Buffer.from(target) : makeCastIdKey(target);
 };
 
 /**
@@ -42,14 +42,14 @@ const makeTargetKey = (target: CastId | string): Buffer => {
  */
 const makeReactionAddsKey = (fid: number, type?: ReactionType, target?: CastId | string): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
-    Buffer.from(type ? [type] : ''), //-------- type, 1 byte
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 28 bytes
+    Buffer.from(type ? [type] : ""), //-------- type, 1 byte
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 28 bytes
   ]);
 };
 
@@ -64,14 +64,14 @@ const makeReactionAddsKey = (fid: number, type?: ReactionType, target?: CastId |
  */
 const makeReactionRemovesKey = (fid: number, type?: ReactionType, target?: CastId | string): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
-    Buffer.from(type ? [type] : ''), //-------- type, 1 byte
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 28 bytes
+    Buffer.from(type ? [type] : ""), //-------- type, 1 byte
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 28 bytes
   ]);
 };
 
@@ -86,18 +86,18 @@ const makeReactionRemovesKey = (fid: number, type?: ReactionType, target?: CastI
  */
 const makeReactionsByTargetKey = (target: CastId | string, fid?: number, tsHash?: Uint8Array): Buffer => {
   if (fid && !tsHash) {
-    throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
+    throw new HubError("bad_request.validation_failure", "fid provided without tsHash");
   }
 
   if (tsHash && !fid) {
-    throw new HubError('bad_request.validation_failure', 'tsHash provided without fid');
+    throw new HubError("bad_request.validation_failure", "tsHash provided without fid");
   }
 
   return Buffer.concat([
     Buffer.from([RootPrefix.ReactionsByTarget]),
     makeTargetKey(target),
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -129,7 +129,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
     return makeReactionAddsKey(
       msg.data.fid,
       msg.data.reactionBody.type,
-      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId
+      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId,
     ) as Buffer;
   }
 
@@ -137,7 +137,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
     return makeReactionRemovesKey(
       msg.data.fid,
       msg.data.reactionBody.type,
-      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId
+      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId,
     );
   }
 
@@ -172,7 +172,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
     const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
 
     if (!target) {
-      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+      return err(new HubError("bad_request.invalid_param", "targetfid null"));
     }
 
     // Puts message key into the byTarget index
@@ -192,7 +192,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
     const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
 
     if (!target) {
-      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+      return err(new HubError("bad_request.invalid_param", "targetfid null"));
     }
 
     // Delete the message key from byTarget index
@@ -216,8 +216,8 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
    * @returns the ReactionAdd Model if it exists, undefined otherwise
    */
   async getReactionAdd(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionAddMessage> {
-    const targetUrl = typeof target === 'string' ? target : undefined;
-    const targetCastId = typeof target === 'string' ? undefined : target;
+    const targetUrl = typeof target === "string" ? target : undefined;
+    const targetCastId = typeof target === "string" ? undefined : target;
     return await this.getAdd({ data: { fid, reactionBody: { type, targetCastId, targetUrl } } });
   }
 
@@ -230,8 +230,8 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
    * @returns the ReactionRemove message if it exists, undefined otherwise
    */
   async getReactionRemove(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionRemoveMessage> {
-    const targetUrl = typeof target === 'string' ? target : undefined;
-    const targetCastId = typeof target === 'string' ? undefined : target;
+    const targetUrl = typeof target === "string" ? target : undefined;
+    const targetCastId = typeof target === "string" ? undefined : target;
     return await this.getRemove({ data: { fid, reactionBody: { type, targetCastId, targetUrl } } });
   }
 
@@ -239,7 +239,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   async getReactionAddsByFid(
     fid: number,
     type?: ReactionType,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<ReactionAddMessage>> {
     return await this.getAddsByFid({ data: { fid, reactionBody: { type: type as ReactionType } } }, pageOptions);
   }
@@ -248,14 +248,14 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   async getReactionRemovesByFid(
     fid: number,
     type?: ReactionType,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<ReactionRemoveMessage>> {
     return await this.getRemovesByFid({ data: { fid, reactionBody: { type: type as ReactionType } } }, pageOptions);
   }
 
   async getAllReactionMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }
@@ -264,7 +264,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   async getReactionsByTarget(
     target: CastId | string,
     type?: ReactionType,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<ReactionAddMessage>> {
     const prefix = makeReactionsByTargetKey(target);
 

@@ -1,19 +1,19 @@
-import { ResultAsync } from 'neverthrow';
-import type { Signer } from 'ethers';
-import { HubAsyncResult, HubError } from '../errors';
-import { VerificationEthAddressClaim } from '../verifications';
-import { UserNameProofClaim } from '../userNameProof';
-import { Eip712Signer } from './eip712Signer';
-import { hexStringToBytes } from '../bytes';
+import { ResultAsync } from "neverthrow";
+import type { Signer } from "ethers";
+import { HubAsyncResult, HubError } from "../errors";
+import { VerificationEthAddressClaim } from "../verifications";
+import { UserNameProofClaim } from "../userNameProof";
+import { Eip712Signer } from "./eip712Signer";
+import { hexStringToBytes } from "../bytes";
 import {
   EIP_712_FARCASTER_DOMAIN,
   EIP_712_FARCASTER_MESSAGE_DATA,
   EIP_712_FARCASTER_VERIFICATION_CLAIM,
   EIP_712_USERNAME_DOMAIN,
   EIP_712_USERNAME_PROOF,
-} from '../crypto/eip712';
+} from "../crypto/eip712";
 
-export type MinimalEthersSigner = Pick<Signer, 'signTypedData' | 'getAddress'>;
+export type MinimalEthersSigner = Pick<Signer, "signTypedData" | "getAddress">;
 
 export class EthersEip712Signer extends Eip712Signer {
   private readonly _ethersSigner: MinimalEthersSigner;
@@ -24,8 +24,8 @@ export class EthersEip712Signer extends Eip712Signer {
   }
 
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
-    return ResultAsync.fromPromise(this._ethersSigner.getAddress(), (e) => new HubError('unknown', e as Error)).andThen(
-      hexStringToBytes
+    return ResultAsync.fromPromise(this._ethersSigner.getAddress(), (e) => new HubError("unknown", e as Error)).andThen(
+      hexStringToBytes,
     );
   }
 
@@ -34,9 +34,9 @@ export class EthersEip712Signer extends Eip712Signer {
       this._ethersSigner.signTypedData(
         EIP_712_FARCASTER_DOMAIN,
         { MessageData: [...EIP_712_FARCASTER_MESSAGE_DATA] },
-        { hash }
+        { hash },
       ),
-      (e) => new HubError('bad_request.invalid_param', e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
 
     // Convert hex signature to bytes
@@ -48,9 +48,9 @@ export class EthersEip712Signer extends Eip712Signer {
       this._ethersSigner.signTypedData(
         EIP_712_FARCASTER_DOMAIN,
         { VerificationClaim: [...EIP_712_FARCASTER_VERIFICATION_CLAIM] },
-        claim
+        claim,
       ),
-      (e) => new HubError('bad_request.invalid_param', e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
 
     // Convert hex signature to bytes
@@ -62,9 +62,9 @@ export class EthersEip712Signer extends Eip712Signer {
       this._ethersSigner.signTypedData(
         EIP_712_USERNAME_DOMAIN,
         { UserNameProof: [...EIP_712_USERNAME_PROOF] },
-        userNameProof
+        userNameProof,
       ),
-      (e) => new HubError('bad_request.invalid_param', e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
 
     // Convert hex signature to bytes

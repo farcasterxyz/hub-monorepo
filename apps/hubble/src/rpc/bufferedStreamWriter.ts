@@ -1,5 +1,5 @@
-import { ServerWritableStream, HubEvent, SubscribeRequest, HubError, HubResult } from '@farcaster/hub-nodejs';
-import { err, ok } from 'neverthrow';
+import { ServerWritableStream, HubEvent, SubscribeRequest, HubError, HubResult } from "@farcaster/hub-nodejs";
+import { err, ok } from "neverthrow";
 
 export const STREAM_DRAIN_TIMEOUT_MS = 10_000;
 export const SLOW_CLIENT_GRACE_PERIOD_MS = 60_000;
@@ -33,7 +33,7 @@ export class BufferedStreamWriter {
       if (this.dataWaitingForDrain.length > STREAM_MESSAGE_BUFFER_SIZE) {
         this.destroyStream();
 
-        return err(new HubError('unavailable.network_failure', 'Stream is backed up and cache is full'));
+        return err(new HubError("unavailable.network_failure", "Stream is backed up and cache is full"));
       }
 
       return ok(false);
@@ -48,7 +48,7 @@ export class BufferedStreamWriter {
       // We'll wait only for 10 seconds before destroying the stream
       const timeout = setTimeout(() => this.destroyStream(), STREAM_DRAIN_TIMEOUT_MS);
 
-      this.stream.once('drain', () => {
+      this.stream.once("drain", () => {
         this.streamIsBackedUp = false;
         clearTimeout(timeout);
 
@@ -69,7 +69,7 @@ export class BufferedStreamWriter {
 
   private destroyStream() {
     this.dataWaitingForDrain = [];
-    this.stream.destroy(new Error('Stream is backed up, please consume events faster. Closing stream.'));
+    this.stream.destroy(new Error("Stream is backed up, please consume events faster. Closing stream."));
   }
 
   public getCacheSize(): number {

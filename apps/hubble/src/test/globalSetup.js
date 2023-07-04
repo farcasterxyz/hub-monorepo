@@ -1,4 +1,4 @@
-import { startProxy } from '@viem/anvil';
+import { startProxy } from "@viem/anvil";
 
 export default async () => {
   // Using this proxy, we can parallelize our test suite by spawning multiple "on demand" anvil

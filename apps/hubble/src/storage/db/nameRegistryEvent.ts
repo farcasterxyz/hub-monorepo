@@ -1,6 +1,6 @@
-import { NameRegistryEvent, UserNameProof } from '@farcaster/hub-nodejs';
-import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
-import { RootPrefix } from '../db/types.js';
+import { NameRegistryEvent, UserNameProof } from "@farcaster/hub-nodejs";
+import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import { RootPrefix } from "../db/types.js";
 
 const EXPIRY_BYTES = 4;
 

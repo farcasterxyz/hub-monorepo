@@ -1,20 +1,20 @@
-import { Factories, hexStringToBytes, utf8StringToBytes } from '@farcaster/hub-nodejs';
-import { TIMESTAMP_LENGTH } from './syncId.js';
-import { EMPTY_HASH, TrieNode } from './trieNode.js';
-import { NetworkFactories } from '../utils/factories.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import { Factories, hexStringToBytes, utf8StringToBytes } from "@farcaster/hub-nodejs";
+import { TIMESTAMP_LENGTH } from "./syncId.js";
+import { EMPTY_HASH, TrieNode } from "./trieNode.js";
+import { NetworkFactories } from "../utils/factories.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
 
 // Safety: fs inputs are always safe in tests
 /* eslint-disable security/detect-non-literal-fs-filename */
 
 const fid = Factories.Fid.build();
 const sharedDate = new Date(1665182332000);
-const sharedPrefixHashA = '09bc3dad4e7f2a77bbb2cccbecb06febfc6a4321';
-const sharedPrefixHashB = '09bc3dad4e7f2a77bbb2cccbecb06febfc6b1234';
+const sharedPrefixHashA = "09bc3dad4e7f2a77bbb2cccbecb06febfc6a4321";
+const sharedPrefixHashB = "09bc3dad4e7f2a77bbb2cccbecb06febfc6b1234";
 
-const db = jestRocksDB('protobufs.network.trienode.test');
+const db = jestRocksDB("protobufs.network.trienode.test");
 
-describe('TrieNode', () => {
+describe("TrieNode", () => {
   // Traverse the node until we find a leaf or path splits into multiple choices
   const traverse = (node: TrieNode): TrieNode => {
     if (node.isLeaf) {
@@ -27,8 +27,8 @@ describe('TrieNode', () => {
     return traverse((children[0] as [number, TrieNode])[1]);
   };
 
-  describe('insert', () => {
-    test('succeeds inserting a single item', async () => {
+  describe("insert", () => {
+    test("succeeds inserting a single item", async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
@@ -41,7 +41,7 @@ describe('TrieNode', () => {
       expect(root.hash).toBeTruthy();
     });
 
-    test('inserting the same item twice is idempotent', async () => {
+    test("inserting the same item twice is idempotent", async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
@@ -54,7 +54,7 @@ describe('TrieNode', () => {
       expect(root.items).toEqual(1);
     });
 
-    test('value is always undefined for non-leaf nodes', async () => {
+    test("value is always undefined for non-leaf nodes", async () => {
       const trie = new TrieNode();
       const syncId = await NetworkFactories.SyncId.create();
 
@@ -63,7 +63,7 @@ describe('TrieNode', () => {
       expect(trie.value).toBeFalsy();
     });
 
-    test('insert compacts hashstring component of syncid to single node for efficiency', async () => {
+    test("insert compacts hashstring component of syncid to single node for efficiency", async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
@@ -81,7 +81,7 @@ describe('TrieNode', () => {
       expect(Buffer.from(node.value ?? [])).toEqual(id.syncId());
     });
 
-    test('inserting another key with a common prefix splits the node', async () => {
+    test("inserting another key with a common prefix splits the node", async () => {
       // Generate two ids with the same timestamp and the same hash prefix. The trie should split the node
       // where they diverge
       const id1 = await NetworkFactories.SyncId.create(undefined, {
@@ -122,8 +122,8 @@ describe('TrieNode', () => {
     });
   });
 
-  describe('delete', () => {
-    test('deleting a single item removes the node', async () => {
+  describe("delete", () => {
+    test("deleting a single item removes the node", async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
@@ -132,10 +132,10 @@ describe('TrieNode', () => {
 
       await root.delete(id.syncId(), db, new Map());
       expect(root.items).toEqual(0);
-      expect(Buffer.from(root.hash).toString('hex')).toEqual(EMPTY_HASH);
+      expect(Buffer.from(root.hash).toString("hex")).toEqual(EMPTY_HASH);
     });
 
-    test('deleting a single item from a node with multiple items removes the item', async () => {
+    test("deleting a single item from a node with multiple items removes the item", async () => {
       const root = new TrieNode();
       const id1 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
       const id2 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
@@ -151,7 +151,7 @@ describe('TrieNode', () => {
       expect(root.hash).toEqual(previousHash);
     });
 
-    test('deleting a single item from a split node should preserve previous hash', async () => {
+    test("deleting a single item from a split node should preserve previous hash", async () => {
       const id1 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashA },
       });
@@ -174,11 +174,11 @@ describe('TrieNode', () => {
       expect(root.hash).toEqual(previousRootHash);
     });
 
-    test('deleting item only compacts the branch of the trie with the deleted item', async () => {
+    test("deleting item only compacts the branch of the trie with the deleted item", async () => {
       const ids = [
-        '0'.padStart(TIMESTAMP_LENGTH * 2, '0') + '010680',
-        '0'.padStart(TIMESTAMP_LENGTH * 2, '0') + '010a10',
-        '0'.padStart(TIMESTAMP_LENGTH * 2, '0') + '05d220',
+        "0".padStart(TIMESTAMP_LENGTH * 2, "0") + "010680",
+        "0".padStart(TIMESTAMP_LENGTH * 2, "0") + "010a10",
+        "0".padStart(TIMESTAMP_LENGTH * 2, "0") + "05d220",
       ].map((id) => hexStringToBytes(id)._unsafeUnwrap());
 
       const root = new TrieNode();
@@ -198,9 +198,9 @@ describe('TrieNode', () => {
       expect(root.items).toEqual(2);
     });
 
-    test('deleting from a deeper node still compacts the trie', async () => {
-      const ids = ['0030662167axxxx', '0030662167bcdxxxx', '0035059000xxxx'].map((id) =>
-        utf8StringToBytes(id)._unsafeUnwrap()
+    test("deleting from a deeper node still compacts the trie", async () => {
+      const ids = ["0030662167axxxx", "0030662167bcdxxxx", "0035059000xxxx"].map((id) =>
+        utf8StringToBytes(id)._unsafeUnwrap(),
       );
       const root = new TrieNode();
 
@@ -224,8 +224,8 @@ describe('TrieNode', () => {
     });
   });
 
-  describe('get', () => {
-    test('getting a single item returns the value', async () => {
+  describe("get", () => {
+    test("getting a single item returns the value", async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
@@ -235,7 +235,7 @@ describe('TrieNode', () => {
       expect(await root.exists(id.syncId(), db)).toBeTruthy();
     });
 
-    test('getting an item after deleting it returns undefined', async () => {
+    test("getting an item after deleting it returns undefined", async () => {
       const root = new TrieNode();
       const id = await NetworkFactories.SyncId.create();
 
@@ -247,7 +247,7 @@ describe('TrieNode', () => {
       expect(root.items).toEqual(0);
     });
 
-    test('getting an non-existent item that share the same prefix with an existing item returns undefined', async () => {
+    test("getting an non-existent item that share the same prefix with an existing item returns undefined", async () => {
       const id1 = await NetworkFactories.SyncId.create(undefined, {
         transient: { date: sharedDate, hash: sharedPrefixHashA },
       });

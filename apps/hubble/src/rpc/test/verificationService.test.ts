@@ -10,14 +10,14 @@ import {
   VerificationAddEthAddressMessage,
   VerificationRequest,
   FidRequest,
-} from '@farcaster/hub-nodejs';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import Server from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
+} from "@farcaster/hub-nodejs";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import Server from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
 
-const db = jestRocksDB('protobufs.rpc.verificationService.test');
+const db = jestRocksDB("protobufs.rpc.verificationService.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
@@ -53,22 +53,22 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 
   verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
     { data: { fid, network } },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 });
 
-describe('getVerification', () => {
+describe("getVerification", () => {
   beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     const r = await engine.mergeMessage(verificationAdd);
     expect(r.isOk()).toBeTruthy();
 
@@ -76,58 +76,58 @@ describe('getVerification', () => {
       VerificationRequest.create({
         fid,
         address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
-      })
+      }),
     );
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(verificationAdd));
   });
 
-  test('fails if verification is missing', async () => {
+  test("fails if verification is missing", async () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
         address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
-      })
+      }),
     );
-    expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
+    expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
 
-  test('fails without address', async () => {
+  test("fails without address", async () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
         address: new Uint8Array(),
-      })
+      }),
     );
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'address is missing'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "address is missing"));
   });
 
-  test('fails without fid', async () => {
+  test("fails without fid", async () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
-      })
+      }),
     );
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
   });
 });
 
-describe('getVerificationsByFid', () => {
+describe("getVerificationsByFid", () => {
   beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     const result = await engine.mergeMessage(verificationAdd);
     expect(result.isOk()).toBeTruthy();
 
     const verifications = await client.getVerificationsByFid(FidRequest.create({ fid }));
     expect(verifications._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-      [verificationAdd].map((m) => Message.toJSON(m))
+      [verificationAdd].map((m) => Message.toJSON(m)),
     );
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     const verifications = await client.getVerificationsByFid(FidRequest.create({ fid }));
     expect(verifications._unsafeUnwrap().messages).toEqual([]);
   });

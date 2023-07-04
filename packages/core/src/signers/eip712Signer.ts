@@ -1,8 +1,8 @@
-import { SignatureScheme } from '../protobufs';
-import { HubAsyncResult } from '../errors';
-import { VerificationEthAddressClaim } from '../verifications';
-import { UserNameProofClaim } from '../userNameProof';
-import { Signer } from './signer';
+import { SignatureScheme } from "../protobufs";
+import { HubAsyncResult } from "../errors";
+import { VerificationEthAddressClaim } from "../verifications";
+import { UserNameProofClaim } from "../userNameProof";
+import { Signer } from "./signer";
 
 /**
  * Extend this class to implement an EIP712 signer.

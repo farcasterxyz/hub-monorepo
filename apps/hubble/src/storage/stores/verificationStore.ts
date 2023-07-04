@@ -5,12 +5,12 @@ import {
   MessageType,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-} from '@farcaster/hub-nodejs';
-import { ok } from 'neverthrow';
-import { makeUserKey } from '../db/message.js';
-import { UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PageOptions } from './types.js';
-import { Store } from './store.js';
+} from "@farcaster/hub-nodejs";
+import { ok } from "neverthrow";
+import { makeUserKey } from "../db/message.js";
+import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PageOptions } from "./types.js";
+import { Store } from "./store.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
@@ -24,7 +24,7 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 50;
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<address?>
  */
 const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationAdds]), Buffer.from(address ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationAdds]), Buffer.from(address ?? "")]);
 };
 
 /**
@@ -37,7 +37,7 @@ const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
 const makeVerificationRemovesKey = (fid: number, address?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationRemoves]), Buffer.from(address ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationRemoves]), Buffer.from(address ?? "")]);
 };
 
 /**
@@ -69,14 +69,14 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
   override makeAddKey(msg: VerificationAddEthAddressMessage) {
     return makeVerificationAddsKey(
       msg.data.fid,
-      (msg.data.verificationAddEthAddressBody || msg.data.verificationRemoveBody).address
+      (msg.data.verificationAddEthAddressBody || msg.data.verificationRemoveBody).address,
     ) as Buffer;
   }
 
   override makeRemoveKey(msg: VerificationRemoveMessage) {
     return makeVerificationRemovesKey(
       msg.data.fid,
-      (msg.data.verificationAddEthAddressBody || msg.data.verificationRemoveBody).address
+      (msg.data.verificationAddEthAddressBody || msg.data.verificationRemoveBody).address,
     );
   }
 
@@ -128,7 +128,7 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
    */
   async getVerificationAddsByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<VerificationAddEthAddressMessage>> {
     return await this.getAddsByFid({ data: { fid } }, pageOptions);
   }
@@ -141,14 +141,14 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
    */
   async getVerificationRemovesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<VerificationRemoveMessage>> {
     return await this.getRemovesByFid({ data: { fid } }, pageOptions);
   }
 
   async getAllVerificationMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }

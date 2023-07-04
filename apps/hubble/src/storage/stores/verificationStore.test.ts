@@ -11,15 +11,15 @@ import {
   RevokeMessageHubEvent,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-} from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils.js';
-import StoreEventHandler from './storeEventHandler.js';
-import VerificationStore from './verificationStore.js';
-import { getMessage, makeTsHash } from '../db/message.js';
-import { UserPostfix } from '../db/types.js';
-import { err } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "../db/jestUtils.js";
+import StoreEventHandler from "./storeEventHandler.js";
+import VerificationStore from "./verificationStore.js";
+import { getMessage, makeTsHash } from "../db/message.js";
+import { UserPostfix } from "../db/types.js";
+import { err } from "neverthrow";
 
-const db = jestRocksDB('verificationStore.test');
+const db = jestRocksDB("verificationStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.Fid.build();
@@ -36,7 +36,7 @@ beforeAll(async () => {
     {
       data: { fid, verificationAddEthAddressBody: { address: ethSignerKey } },
     },
-    { transient: { ethSigner } }
+    { transient: { ethSigner } },
   );
 
   verificationRemove = await Factories.VerificationRemoveMessage.create({
@@ -52,30 +52,30 @@ beforeEach(async () => {
   await eventHandler.syncCache();
 });
 
-describe('getVerificationAdd', () => {
-  test('fails if missing', async () => {
+describe("getVerificationAdd", () => {
+  test("fails if missing", async () => {
     await expect(set.getVerificationAdd(fid, ethSignerKey)).rejects.toThrow(HubError);
   });
 
-  test('returns message', async () => {
+  test("returns message", async () => {
     await set.merge(verificationAdd);
     await expect(set.getVerificationAdd(fid, ethSignerKey)).resolves.toEqual(verificationAdd);
   });
 });
 
-describe('getVerificationRemove', () => {
-  test('fails if missing', async () => {
+describe("getVerificationRemove", () => {
+  test("fails if missing", async () => {
     await expect(set.getVerificationRemove(fid, ethSignerKey)).rejects.toThrow(HubError);
   });
 
-  test('returns message', async () => {
+  test("returns message", async () => {
     await set.merge(verificationRemove);
     await expect(set.getVerificationRemove(fid, ethSignerKey)).resolves.toEqual(verificationRemove);
   });
 });
 
-describe('getVerificationAddsByFid', () => {
-  test('returns verification adds for an fid', async () => {
+describe("getVerificationAddsByFid", () => {
+  test("returns verification adds for an fid", async () => {
     await set.merge(verificationAdd);
     await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual({
       messages: [verificationAdd],
@@ -83,13 +83,13 @@ describe('getVerificationAddsByFid', () => {
     });
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     await expect(set.getVerificationAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
-describe('getVerificationRemovesByFid', () => {
-  test('returns verification removes for an fid', async () => {
+describe("getVerificationRemovesByFid", () => {
+  test("returns verification removes for an fid", async () => {
     await set.merge(verificationRemove);
     await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual({
       messages: [verificationRemove],
@@ -97,14 +97,14 @@ describe('getVerificationRemovesByFid', () => {
     });
   });
 
-  test('returns empty array without messages', async () => {
+  test("returns empty array without messages", async () => {
     await expect(set.getVerificationRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
 // TODO: getAllVerificationMessagesByFid
 
-describe('merge', () => {
+describe("merge", () => {
   let mergeEvents: [Message | undefined, Message[]][] = [];
 
   const mergeMessageHandler = (event: MergeMessageHubEvent) => {
@@ -113,7 +113,7 @@ describe('merge', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('mergeMessage', mergeMessageHandler);
+    eventHandler.on("mergeMessage", mergeMessageHandler);
   });
 
   beforeEach(() => {
@@ -121,7 +121,7 @@ describe('merge', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('mergeMessage', mergeMessageHandler);
+    eventHandler.off("mergeMessage", mergeMessageHandler);
   });
 
   const assertVerificationExists = async (message: VerificationAddEthAddressMessage | VerificationRemoveMessage) => {
@@ -130,7 +130,7 @@ describe('merge', () => {
   };
 
   const assertVerificationDoesNotExist = async (
-    message: VerificationAddEthAddressMessage | VerificationRemoveMessage
+    message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
   ) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, fid, UserPostfix.VerificationMessage, tsHash)).rejects.toThrow(HubError);
@@ -148,28 +148,28 @@ describe('merge', () => {
     await expect(set.getVerificationAdd(fid, ethSignerKey)).rejects.toThrow(HubError);
   };
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const message = await Factories.ReactionAddMessage.create({ data: { fid } });
     await expect(set.merge(message)).rejects.toThrow(HubError);
   });
 
-  describe('VerificationAddEthAddress', () => {
-    test('succeeds', async () => {
+  describe("VerificationAddEthAddress", () => {
+    test("succeeds", async () => {
       await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
       await assertVerificationAddWins(verificationAdd);
       expect(mergeEvents).toEqual([[verificationAdd, []]]);
     });
 
-    test('fails if merged twice', async () => {
+    test("fails if merged twice", async () => {
       await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
       await expect(set.merge(verificationAdd)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
       await assertVerificationAddWins(verificationAdd);
       expect(mergeEvents).toEqual([[verificationAdd, []]]);
     });
 
-    describe('with a conflicting VerificationAddEthAddress with different timestamps', () => {
+    describe("with a conflicting VerificationAddEthAddress with different timestamps", () => {
       let verificationAddLater: VerificationAddEthAddressMessage;
 
       beforeAll(async () => {
@@ -178,7 +178,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a later timestamp', async () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(verificationAdd);
         await expect(set.merge(verificationAddLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationAdd);
@@ -189,10 +189,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(verificationAddLater);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
@@ -200,7 +200,7 @@ describe('merge', () => {
       });
     });
 
-    describe('with a conflicting VerificationAddEthAddress with identical timestamps', () => {
+    describe("with a conflicting VerificationAddEthAddress with identical timestamps", () => {
       let verificationAddLater: VerificationAddEthAddressMessage;
 
       beforeAll(async () => {
@@ -210,7 +210,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         await set.merge(verificationAdd);
         await expect(set.merge(verificationAddLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationAdd);
@@ -221,10 +221,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with a lower hash', async () => {
+      test("fails with a lower hash", async () => {
         await set.merge(verificationAddLater);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
         await assertVerificationDoesNotExist(verificationAdd);
         await assertVerificationAddWins(verificationAddLater);
@@ -232,8 +232,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting VerificationRemove with different timestamps', () => {
-      test('succeeds with a later timestamp', async () => {
+    describe("with conflicting VerificationRemove with different timestamps", () => {
+      test("succeeds with a later timestamp", async () => {
         const verificationRemoveEarlier = await Factories.VerificationRemoveMessage.create({
           data: { ...verificationRemove.data, timestamp: verificationAdd.data.timestamp - 1 },
         });
@@ -247,10 +247,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(verificationRemove);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
         await assertVerificationRemoveWins(verificationRemove);
         await assertVerificationDoesNotExist(verificationAdd);
@@ -258,22 +258,22 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting VerificationRemove with identical timestamps', () => {
-      test('fails if remove has a higher hash', async () => {
+    describe("with conflicting VerificationRemove with identical timestamps", () => {
+      test("fails if remove has a higher hash", async () => {
         const verificationRemoveLater = await Factories.VerificationRemoveMessage.create({
           data: { ...verificationRemove.data, timestamp: verificationAdd.data.timestamp },
         });
 
         await set.merge(verificationRemoveLater);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
         await assertVerificationRemoveWins(verificationRemoveLater);
         await assertVerificationDoesNotExist(verificationAdd);
         expect(mergeEvents).toEqual([[verificationRemoveLater, []]]);
       });
 
-      test('fails if remove has a lower hash', async () => {
+      test("fails if remove has a lower hash", async () => {
         const verificationRemoveEarlier = await Factories.VerificationRemoveMessage.create({
           data: { ...verificationRemove.data, timestamp: verificationAdd.data.timestamp },
           hash: bytesDecrement(verificationAdd.hash)._unsafeUnwrap(),
@@ -281,7 +281,7 @@ describe('merge', () => {
 
         await set.merge(verificationRemoveEarlier);
         await expect(set.merge(verificationAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
         await assertVerificationRemoveWins(verificationRemoveEarlier);
         await assertVerificationDoesNotExist(verificationAdd);
@@ -290,23 +290,23 @@ describe('merge', () => {
     });
   });
 
-  describe('VerificationRemove', () => {
-    test('succeeds', async () => {
+  describe("VerificationRemove", () => {
+    test("succeeds", async () => {
       await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
       await assertVerificationRemoveWins(verificationRemove);
       expect(mergeEvents).toEqual([[verificationRemove, []]]);
     });
 
-    test('fails if merged twice', async () => {
+    test("fails if merged twice", async () => {
       await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
       await expect(set.merge(verificationRemove)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
       await assertVerificationRemoveWins(verificationRemove);
       expect(mergeEvents).toEqual([[verificationRemove, []]]);
     });
 
-    describe('with a conflicting VerificationRemove with different timestamps', () => {
+    describe("with a conflicting VerificationRemove with different timestamps", () => {
       let verificationRemoveLater: VerificationRemoveMessage;
 
       beforeAll(async () => {
@@ -315,7 +315,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a later timestamp', async () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(verificationRemove);
         await expect(set.merge(verificationRemoveLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationRemove);
@@ -326,10 +326,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(verificationRemoveLater);
         await expect(set.merge(verificationRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
@@ -337,7 +337,7 @@ describe('merge', () => {
       });
     });
 
-    describe('with a conflicting VerificationRemove with identical timestamps', () => {
+    describe("with a conflicting VerificationRemove with identical timestamps", () => {
       let verificationRemoveLater: VerificationRemoveMessage;
 
       beforeAll(async () => {
@@ -347,7 +347,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         await set.merge(verificationRemove);
         await expect(set.merge(verificationRemoveLater)).resolves.toBeGreaterThan(0);
         await assertVerificationDoesNotExist(verificationRemove);
@@ -358,10 +358,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with a lower hash', async () => {
+      test("fails with a lower hash", async () => {
         await set.merge(verificationRemoveLater);
         await expect(set.merge(verificationRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
         await assertVerificationDoesNotExist(verificationRemove);
         await assertVerificationRemoveWins(verificationRemoveLater);
@@ -369,8 +369,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting VerificationAddEthAddress with different timestamps', () => {
-      test('succeeds with a later timestamp', async () => {
+    describe("with conflicting VerificationAddEthAddress with different timestamps", () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(verificationAdd);
         await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
         await assertVerificationRemoveWins(verificationRemove);
@@ -381,14 +381,14 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         const verificationAddLater = await Factories.VerificationAddEthAddressMessage.create({
           data: { ...verificationAdd.data, timestamp: verificationRemove.data.timestamp + 1 },
         });
 
         await set.merge(verificationAddLater);
         await expect(set.merge(verificationRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
         await assertVerificationAddWins(verificationAddLater);
         await assertVerificationDoesNotExist(verificationRemove);
@@ -396,8 +396,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting VerificationAddEthAddress with identical timestamps', () => {
-      test('succeeds regardless of add message hash', async () => {
+    describe("with conflicting VerificationAddEthAddress with identical timestamps", () => {
+      test("succeeds regardless of add message hash", async () => {
         const verificationAddSameTime = await Factories.VerificationAddEthAddressMessage.create({
           data: { ...verificationAdd.data, timestamp: verificationRemove.data.timestamp },
         });
@@ -415,7 +415,7 @@ describe('merge', () => {
   });
 });
 
-describe('revoke', () => {
+describe("revoke", () => {
   let revokedMessages: Message[] = [];
 
   const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
@@ -423,7 +423,7 @@ describe('revoke', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('revokeMessage', revokeMessageHandler);
+    eventHandler.on("revokeMessage", revokeMessageHandler);
   });
 
   beforeEach(() => {
@@ -431,57 +431,57 @@ describe('revoke', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('revokeMessage', revokeMessageHandler);
+    eventHandler.off("revokeMessage", revokeMessageHandler);
   });
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
     const result = await set.revoke(castAdd);
-    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "invalid message type")));
     expect(revokedMessages).toEqual([]);
   });
 
-  test('succeeds with VerificationAddEthAddress', async () => {
+  test("succeeds with VerificationAddEthAddress", async () => {
     await expect(set.merge(verificationAdd)).resolves.toBeGreaterThan(0);
     const result = await set.revoke(verificationAdd);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address)
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([verificationAdd]);
   });
 
-  test('succeeds with VerificationRemove', async () => {
+  test("succeeds with VerificationRemove", async () => {
     await expect(set.merge(verificationRemove)).resolves.toBeGreaterThan(0);
     const result = await set.revoke(verificationRemove);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getVerificationRemove(fid, verificationRemove.data.verificationRemoveBody.address)
+      set.getVerificationRemove(fid, verificationRemove.data.verificationRemoveBody.address),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([verificationRemove]);
   });
 
-  test('succeeds with unmerged message', async () => {
+  test("succeeds with unmerged message", async () => {
     const result = await set.revoke(verificationAdd);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address)
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([verificationAdd]);
   });
 });
 
-describe('pruneMessages', () => {
+describe("pruneMessages", () => {
   let prunedMessages: Message[];
   const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
-    eventHandler.on('pruneMessage', pruneMessageListener);
+    eventHandler.on("pruneMessage", pruneMessageListener);
   });
 
   beforeEach(() => {
@@ -489,7 +489,7 @@ describe('pruneMessages', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('pruneMessage', pruneMessageListener);
+    eventHandler.off("pruneMessage", pruneMessageListener);
   });
 
   let add1: VerificationAddEthAddressMessage;
@@ -507,7 +507,7 @@ describe('pruneMessages', () => {
 
   const generateAddWithTimestamp = async (
     fid: number,
-    timestamp: number
+    timestamp: number,
   ): Promise<VerificationAddEthAddressMessage> => {
     return Factories.VerificationAddEthAddressMessage.create({ data: { fid, timestamp } });
   };
@@ -515,7 +515,7 @@ describe('pruneMessages', () => {
   const generateRemoveWithTimestamp = async (
     fid: number,
     timestamp: number,
-    address?: Uint8Array | null
+    address?: Uint8Array | null,
   ): Promise<VerificationRemoveMessage> => {
     return Factories.VerificationRemoveMessage.create({
       data: { fid, timestamp, verificationRemoveBody: { address: address ?? Factories.EthAddress.build() } },
@@ -538,16 +538,16 @@ describe('pruneMessages', () => {
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.verificationAddEthAddressBody.address);
   });
 
-  describe('with size limit', () => {
+  describe("with size limit", () => {
     const sizePrunedStore = new VerificationStore(db, eventHandler, { pruneSizeLimit: 3 });
 
-    test('no-ops when no messages have been merged', async () => {
+    test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
       expect(prunedMessages).toEqual([]);
     });
 
-    test('prunes earliest add messages', async () => {
+    test("prunes earliest add messages", async () => {
       const messages = [add1, add2, add3, add4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -565,7 +565,7 @@ describe('pruneMessages', () => {
       }
     });
 
-    test('prunes earliest remove messages', async () => {
+    test("prunes earliest remove messages", async () => {
       const messages = [remove1, remove2, remove3, remove4, remove5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -582,7 +582,7 @@ describe('pruneMessages', () => {
       }
     });
 
-    test('prunes earliest messages', async () => {
+    test("prunes earliest messages", async () => {
       const messages = [add1, remove2, add3, remove4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -594,7 +594,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([add1, remove2]);
     });
 
-    test('no-ops when adds have been removed', async () => {
+    test("no-ops when adds have been removed", async () => {
       const messages = [add1, remove1, add2, remove2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -606,7 +606,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([]);
     });
 
-    test('fails to add messages older than the earliest message', async () => {
+    test("fails to add messages older than the earliest message", async () => {
       const messages = [add1, add2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -614,7 +614,7 @@ describe('pruneMessages', () => {
 
       // Older messages are rejected
       await expect(sizePrunedStore.merge(addOld1)).rejects.toEqual(
-        new HubError('bad_request.prunable', 'message would be pruned')
+        new HubError("bad_request.prunable", "message would be pruned"),
       );
     });
   });

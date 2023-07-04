@@ -8,16 +8,16 @@ import {
   SignerAddMessage,
   Message,
   CastId,
-} from '@farcaster/hub-nodejs';
-import { err } from 'neverthrow';
-import SyncEngine from '../../network/sync/syncEngine.js';
+} from "@farcaster/hub-nodejs";
+import { err } from "neverthrow";
+import SyncEngine from "../../network/sync/syncEngine.js";
 
-import Server from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
+import Server from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
 
-const db = jestRocksDB('protobufs.rpc.submitService.test');
+const db = jestRocksDB("protobufs.rpc.submitService.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
@@ -53,42 +53,42 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
   castRemove = await Factories.CastRemoveMessage.create(
     { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 });
 
-describe('submitMessage', () => {
-  describe('with signer', () => {
+describe("submitMessage", () => {
+  describe("with signer", () => {
     beforeEach(async () => {
       await hub.submitIdRegistryEvent(custodyEvent);
       await hub.submitMessage(signerAdd);
     });
 
-    test('succeeds', async () => {
+    test("succeeds", async () => {
       const result = await client.submitMessage(castAdd);
       expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(castAdd));
       const getCast = await client.getCast(CastId.create({ fid: castAdd.data?.fid ?? 0, hash: castAdd.hash }));
       expect(Message.toJSON(getCast._unsafeUnwrap())).toEqual(Message.toJSON(castAdd));
     });
 
-    test('fails with conflict', async () => {
+    test("fails with conflict", async () => {
       await engine.mergeMessage(castRemove);
       const result = await client.submitMessage(castAdd);
-      expect(result).toEqual(err(new HubError('bad_request.conflict', 'message conflicts with a CastRemove')));
+      expect(result).toEqual(err(new HubError("bad_request.conflict", "message conflicts with a CastRemove")));
     });
   });
 
-  test('fails without signer', async () => {
+  test("fails without signer", async () => {
     const result = await client.submitMessage(castAdd);
     const err = result._unsafeUnwrapErr();
-    expect(err.errCode).toEqual('bad_request.validation_failure');
-    expect(err.message).toMatch('unknown fid');
+    expect(err.errCode).toEqual("bad_request.validation_failure");
+    expect(err.message).toMatch("unknown fid");
   });
 });

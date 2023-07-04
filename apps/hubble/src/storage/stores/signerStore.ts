@@ -8,19 +8,19 @@ import {
   MessageType,
   SignerAddMessage,
   SignerRemoveMessage,
-} from '@farcaster/hub-nodejs';
-import { ok, ResultAsync } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import { ok, ResultAsync } from "neverthrow";
 import {
   getIdRegistryEvent,
   getIdRegistryEventByCustodyAddress,
   putIdRegistryEventTransaction,
-} from '../db/idRegistryEvent.js';
-import { getPageIteratorByPrefix, makeUserKey } from '../db/message.js';
-import { Iterator } from '../db/rocksdb.js';
-import { RootPrefix, UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from './types.js';
-import { eventCompare } from './utils.js';
-import { Store } from './store.js';
+} from "../db/idRegistryEvent.js";
+import { getPageIteratorByPrefix, makeUserKey } from "../db/message.js";
+import { Iterator } from "../db/rocksdb.js";
+import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./types.js";
+import { eventCompare } from "./utils.js";
+import { Store } from "./store.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -161,7 +161,7 @@ class SignerStore extends Store<SignerAddMessage, SignerRemoveMessage> {
 
   async getAllSignerMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<SignerAddMessage | SignerRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }
@@ -213,7 +213,7 @@ class SignerStore extends Store<SignerAddMessage, SignerRemoveMessage> {
   async mergeIdRegistryEvent(event: IdRegistryEvent): Promise<number> {
     const existingEvent = await ResultAsync.fromPromise(this.getIdRegistryEvent(event.fid), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
-      throw new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent');
+      throw new HubError("bad_request.conflict", "event conflicts with a more recent IdRegistryEvent");
     }
 
     const txn = putIdRegistryEventTransaction(this._db.transaction(), event);

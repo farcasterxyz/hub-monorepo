@@ -1,13 +1,13 @@
-import { bytesCompare, DbTrieNode, HubError } from '@farcaster/hub-nodejs';
-import { blake3 } from '@noble/hashes/blake3';
-import { ResultAsync } from 'neverthrow';
-import { TIMESTAMP_LENGTH } from './syncId.js';
-import RocksDB from '../../storage/db/rocksdb.js';
-import { RootPrefix } from '../../storage/db/types.js';
-import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from '../../utils/crypto.js';
-import { NodeMetadata } from './merkleTrie.js';
+import { bytesCompare, DbTrieNode, HubError } from "@farcaster/hub-nodejs";
+import { blake3 } from "@noble/hashes/blake3";
+import { ResultAsync } from "neverthrow";
+import { TIMESTAMP_LENGTH } from "./syncId.js";
+import RocksDB from "../../storage/db/rocksdb.js";
+import { RootPrefix } from "../../storage/db/types.js";
+import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from "../../utils/crypto.js";
+import { NodeMetadata } from "./merkleTrie.js";
 
-export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString('hex');
+export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString("hex");
 export const MAX_VALUES_RETURNED_PER_CALL = 1000;
 
 /**
@@ -72,10 +72,10 @@ class TrieNode {
     key: Uint8Array,
     db: RocksDB,
     dbUpdatesMap: Map<Buffer, Buffer>,
-    current_index = 0
+    current_index = 0,
   ): Promise<TrieNodeOpResult> {
     if (current_index >= key.length) {
-      throw 'Key length exceeded';
+      throw "Key length exceeded";
     }
     const char = key.at(current_index) as number;
 
@@ -141,7 +141,7 @@ class TrieNode {
     key: Uint8Array,
     db: RocksDB,
     dbUpdatesMap: Map<Buffer, Buffer>,
-    current_index = 0
+    current_index = 0,
   ): Promise<TrieNodeOpResult> {
     if (this.isLeaf) {
       if (bytesCompare(this._key ?? new Uint8Array(), key) === 0) {
@@ -156,7 +156,7 @@ class TrieNode {
     }
 
     if (current_index >= key.length) {
-      throw 'Key length exceeded2';
+      throw "Key length exceeded2";
     }
     const char = key.at(current_index) as number;
     if (!this._children.has(char)) {
@@ -217,7 +217,7 @@ class TrieNode {
     }
 
     if (current_index >= key.length) {
-      throw 'Key length exceeded3';
+      throw "Key length exceeded3";
     }
     const char = key.at(current_index) as number;
     if (!this._children.has(char)) {
@@ -258,7 +258,7 @@ class TrieNode {
       currentNode = await currentNode._getOrLoadChild(currentPrefix, char, db);
     }
 
-    excludedHashes.push(Buffer.from(currentNode.hash).toString('hex'));
+    excludedHashes.push(Buffer.from(currentNode.hash).toString("hex"));
 
     return {
       prefix,
@@ -310,11 +310,11 @@ class TrieNode {
       result.set(char, {
         numMessages: child.items,
         prefix: newPrefix,
-        hash: Buffer.from(child.hash).toString('hex'),
+        hash: Buffer.from(child.hash).toString("hex"),
       });
     }
 
-    return { prefix, children: result, numMessages: this.items, hash: Buffer.from(this.hash).toString('hex') };
+    return { prefix, children: result, numMessages: this.items, hash: Buffer.from(this.hash).toString("hex") };
   }
 
   public get children(): IterableIterator<[number, TrieNode | SerializedTrieNode]> {
@@ -425,7 +425,7 @@ class TrieNode {
   private async _excludedHash(
     prefix: Uint8Array,
     prefixChar: number,
-    db: RocksDB
+    db: RocksDB,
   ): Promise<{ items: number; hash: string }> {
     const hash = blake3.create({ dkLen: 20 });
     let excludedItems = 0;
@@ -439,7 +439,7 @@ class TrieNode {
 
     const digest = hash.digest();
     return {
-      hash: Buffer.from(digest.buffer, digest.byteOffset, digest.byteLength).toString('hex'),
+      hash: Buffer.from(digest.buffer, digest.byteOffset, digest.byteLength).toString("hex"),
       items: excludedItems,
     };
   }
@@ -456,11 +456,11 @@ class TrieNode {
   private async _splitLeafNode(
     current_index: number,
     db: RocksDB,
-    dbUpdatesMap: Map<Buffer, Buffer>
+    dbUpdatesMap: Map<Buffer, Buffer>,
   ): Promise<Map<Buffer, Buffer>> {
     if (!this._key) {
       // This should never happen, check is here for type safety
-      throw new HubError('bad_request', 'Cannot split a leaf node without a key and value');
+      throw new HubError("bad_request", "Cannot split a leaf node without a key and value");
     }
 
     const newChildChar = this._key.at(current_index) as number;

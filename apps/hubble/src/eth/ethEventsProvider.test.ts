@@ -5,26 +5,26 @@ import {
   IdRegistryEventType,
   hexStringToBytes,
   NameRegistryEventType,
-} from '@farcaster/hub-nodejs';
-import { parseEther, toHex } from 'viem';
-import { IdRegistry, NameRegistry } from './abis.js';
-import { EthEventsProvider } from './ethEventsProvider.js';
-import { getIdRegistryEvent } from '../storage/db/idRegistryEvent.js';
-import { jestRocksDB } from '../storage/db/jestUtils.js';
-import { getNameRegistryEvent } from '../storage/db/nameRegistryEvent.js';
-import Engine from '../storage/engine/index.js';
-import { MockHub } from '../test/mocks.js';
+} from "@farcaster/hub-nodejs";
+import { parseEther, toHex } from "viem";
+import { IdRegistry, NameRegistry } from "./abis.js";
+import { EthEventsProvider } from "./ethEventsProvider.js";
+import { getIdRegistryEvent } from "../storage/db/idRegistryEvent.js";
+import { jestRocksDB } from "../storage/db/jestUtils.js";
+import { getNameRegistryEvent } from "../storage/db/nameRegistryEvent.js";
+import Engine from "../storage/engine/index.js";
+import { MockHub } from "../test/mocks.js";
 import {
   deployIdRegistry,
   deployNameRegistry,
   publicClient,
   testClient,
   walletClientWithAccount,
-} from '../test/utils.js';
-import { accounts } from '../test/constants.js';
-import { sleep } from '../utils/crypto.js';
+} from "../test/utils.js";
+import { accounts } from "../test/constants.js";
+import { sleep } from "../utils/crypto.js";
 
-const db = jestRocksDB('protobufs.ethEventsProvider.test');
+const db = jestRocksDB("protobufs.ethEventsProvider.test");
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const hub = new MockHub(db, engine);
 
@@ -48,14 +48,14 @@ afterAll(async () => {
   await engine.stop();
 });
 
-describe('process events', () => {
+describe("process events", () => {
   beforeEach(async () => {
     const { contractAddress: idAddr } = await deployIdRegistry();
-    if (!idAddr) throw new Error('Failed to deploy NameRegistry contract');
+    if (!idAddr) throw new Error("Failed to deploy NameRegistry contract");
     idRegistryAddress = idAddr;
 
     const { contractAddress: nameAddr } = await deployNameRegistry();
-    if (!nameAddr) throw new Error('Failed to deploy NameRegistry contract');
+    if (!nameAddr) throw new Error("Failed to deploy NameRegistry contract");
     nameRegistryAddress = nameAddr;
 
     ethEventsProvider = new EthEventsProvider(
@@ -65,7 +65,7 @@ describe('process events', () => {
       nameRegistryAddress,
       1,
       10000,
-      false
+      false,
     );
 
     await ethEventsProvider.start();
@@ -82,20 +82,20 @@ describe('process events', () => {
     }
   };
 
-  test('handles new blocks', async () => {
+  test("handles new blocks", async () => {
     await testClient.mine({ blocks: 1 });
     const latestBlockNumber = await publicClient.getBlockNumber();
     await waitForBlock(Number(latestBlockNumber));
     expect(ethEventsProvider.getLatestBlockNumber()).toBeGreaterThanOrEqual(latestBlockNumber);
   });
 
-  test('processes IdRegistry events', async () => {
+  test("processes IdRegistry events", async () => {
     const address1 = generateEthAddressHex();
     const address2 = generateEthAddressHex();
     const changeTrustedCallerSim = await publicClient.simulateContract({
       address: idRegistryAddress,
       abi: IdRegistry.abi,
-      functionName: 'changeTrustedCaller',
+      functionName: "changeTrustedCaller",
       account: accounts[0].address,
       args: [accounts[0].address as `0x${string}`],
     });
@@ -105,9 +105,9 @@ describe('process events', () => {
     const registerSim = await publicClient.simulateContract({
       address: idRegistryAddress,
       abi: IdRegistry.abi,
-      functionName: 'trustedRegister',
+      functionName: "trustedRegister",
       account: accounts[0].address,
-      args: [address1 as `0x${string}`, address2 as `0x${string}`, ''],
+      args: [address1 as `0x${string}`, address2 as `0x${string}`, ""],
     });
 
     const registerHash = await walletClientWithAccount.writeContract(registerSim.request);
@@ -125,7 +125,7 @@ describe('process events', () => {
 
     await testClient.setBalance({
       address: address1,
-      value: parseEther('1'),
+      value: parseEther("1"),
     });
     await testClient.impersonateAccount({
       address: address1,
@@ -133,7 +133,7 @@ describe('process events', () => {
     const transferSim = await publicClient.simulateContract({
       address: idRegistryAddress,
       abi: IdRegistry.abi,
-      functionName: 'transfer',
+      functionName: "transfer",
       account: address1,
       args: [address2 as `0x${string}`],
     });
@@ -151,13 +151,13 @@ describe('process events', () => {
     expect(postTransferIdRegistryEvent.to).toEqual(hexStringToBytes(address2)._unsafeUnwrap());
   });
 
-  test('processes NameRegistry events', async () => {
+  test("processes NameRegistry events", async () => {
     const address1 = generateEthAddressHex();
     const address2 = generateEthAddressHex();
     const changeTrustedCallerSim = await publicClient.simulateContract({
       address: idRegistryAddress,
       abi: IdRegistry.abi,
-      functionName: 'changeTrustedCaller',
+      functionName: "changeTrustedCaller",
       account: accounts[0].address,
       args: [accounts[0].address as `0x${string}`],
     });
@@ -167,9 +167,9 @@ describe('process events', () => {
     const registerSim = await publicClient.simulateContract({
       address: idRegistryAddress,
       abi: IdRegistry.abi,
-      functionName: 'trustedRegister',
+      functionName: "trustedRegister",
       account: accounts[0].address,
-      args: [address1 as `0x${string}`, address2 as `0x${string}`, ''],
+      args: [address1 as `0x${string}`, address2 as `0x${string}`, ""],
     });
     const registerHash = await walletClientWithAccount.writeContract(registerSim.request);
     const registerTrx = await publicClient.waitForTransactionReceipt({ hash: registerHash });
@@ -186,7 +186,7 @@ describe('process events', () => {
 
     await testClient.setBalance({
       address: address1,
-      value: parseEther('10'),
+      value: parseEther("10"),
     });
     await testClient.impersonateAccount({
       address: address1,
@@ -195,13 +195,13 @@ describe('process events', () => {
     const commit = await publicClient.readContract({
       address: nameRegistryAddress,
       abi: NameRegistry.abi,
-      functionName: 'generateCommit',
-      args: [toHex(fname, { size: 16 }), address1, toHex('secret', { size: 32 }), address2],
+      functionName: "generateCommit",
+      args: [toHex(fname, { size: 16 }), address1, toHex("secret", { size: 32 }), address2],
     });
     const makeCommitSim = await publicClient.simulateContract({
       address: nameRegistryAddress,
       abi: NameRegistry.abi,
-      functionName: 'makeCommit',
+      functionName: "makeCommit",
       account: address1,
       args: [commit],
     });
@@ -215,10 +215,10 @@ describe('process events', () => {
     const fnameRegisterSim = await publicClient.simulateContract({
       address: nameRegistryAddress,
       abi: NameRegistry.abi,
-      functionName: 'register',
+      functionName: "register",
       account: address1,
-      value: parseEther('1'),
-      args: [toHex(fname, { size: 16 }), address1, toHex('secret', { size: 32 }), address2],
+      value: parseEther("1"),
+      args: [toHex(fname, { size: 16 }), address1, toHex("secret", { size: 32 }), address2],
     });
     const fnameRegisterHash = await walletClientWithAccount.writeContract(fnameRegisterSim.request);
     const fnameRegisterTrx = await publicClient.waitForTransactionReceipt({ hash: fnameRegisterHash });

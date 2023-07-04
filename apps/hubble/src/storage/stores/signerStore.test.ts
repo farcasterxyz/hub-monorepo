@@ -13,15 +13,15 @@ import {
   RevokeMessageHubEvent,
   SignerAddMessage,
   SignerRemoveMessage,
-} from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils.js';
-import { getMessage, makeFidKey, makeTsHash } from '../db/message.js';
-import { UserPostfix } from '../db/types.js';
-import SignerStore from './signerStore.js';
-import StoreEventHandler from './storeEventHandler.js';
-import { err } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "../db/jestUtils.js";
+import { getMessage, makeFidKey, makeTsHash } from "../db/message.js";
+import { UserPostfix } from "../db/types.js";
+import SignerStore from "./signerStore.js";
+import StoreEventHandler from "./storeEventHandler.js";
+import { err } from "neverthrow";
 
-const db = jestRocksDB('protobufs.signerStore.test');
+const db = jestRocksDB("protobufs.signerStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new SignerStore(db, eventHandler);
 const signer = Factories.Ed25519Signer.build();
@@ -55,13 +55,13 @@ beforeAll(async () => {
   });
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custody1 } }
+    { transient: { signer: custody1 } },
   );
   signerRemove = await Factories.SignerRemoveMessage.create(
     {
       data: { fid, signerRemoveBody: { signer: signerKey }, timestamp: signerAdd.data.timestamp + 1 },
     },
-    { transient: { signer: custody1 } }
+    { transient: { signer: custody1 } },
   );
 });
 
@@ -69,57 +69,57 @@ beforeEach(async () => {
   await eventHandler.syncCache();
 });
 
-describe('getIdRegistryEvent', () => {
-  test('returns contract event if it exists', async () => {
+describe("getIdRegistryEvent", () => {
+  test("returns contract event if it exists", async () => {
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
   });
 
-  test('fails if event is missing', async () => {
+  test("fails if event is missing", async () => {
     await expect(set.getIdRegistryEvent(fid)).rejects.toThrow(HubError);
   });
 });
 
-describe('getIdRegistryEventByAddress', () => {
-  test('returns contract event if it exists', async () => {
+describe("getIdRegistryEventByAddress", () => {
+  test("returns contract event if it exists", async () => {
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.getIdRegistryEventByAddress(custody1Event.to)).resolves.toEqual(custody1Event);
   });
 
-  test('fails if event is missing', async () => {
+  test("fails if event is missing", async () => {
     await expect(set.getIdRegistryEventByAddress(custody1Event.to)).rejects.toThrow(HubError);
   });
 });
 
-describe('getSignerAdd', () => {
-  test('fails if missing', async () => {
+describe("getSignerAdd", () => {
+  test("fails if missing", async () => {
     await expect(set.getSignerAdd(fid, signerKey)).rejects.toThrow(HubError);
   });
 
-  test('returns message', async () => {
+  test("returns message", async () => {
     await set.merge(signerAdd);
     await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
   });
 });
 
-describe('getSignerRemove', () => {
-  test('fails if missing', async () => {
+describe("getSignerRemove", () => {
+  test("fails if missing", async () => {
     await expect(set.getSignerRemove(fid, signerKey)).rejects.toThrow(HubError);
   });
 
-  test('returns message', async () => {
+  test("returns message", async () => {
     await set.merge(signerRemove);
     await expect(set.getSignerRemove(fid, signerKey)).resolves.toEqual(signerRemove);
   });
 });
 
-describe('getSignerAddsByFid', () => {
-  test('returns empty array when messages have not been merged', async () => {
+describe("getSignerAddsByFid", () => {
+  test("returns empty array when messages have not been merged", async () => {
     const result = await set.getSignerAddsByFid(fid);
     expect(result.messages).toEqual([]);
   });
 
-  describe('with messages', () => {
+  describe("with messages", () => {
     let signerAdd2: SignerAddMessage;
     let signerAdd3: SignerAddMessage;
     let signerRemove4: SignerRemoveMessage;
@@ -127,16 +127,16 @@ describe('getSignerAddsByFid', () => {
     beforeAll(async () => {
       signerAdd2 = await Factories.SignerAddMessage.create(
         { data: { fid, timestamp: signerAdd.data.timestamp + 1 } },
-        { transient: { signer: custody1 } }
+        { transient: { signer: custody1 } },
       );
       signerAdd3 = await Factories.SignerAddMessage.create(
         { data: { fid, timestamp: signerAdd.data.timestamp + 2 } },
-        { transient: { signer: custody1 } }
+        { transient: { signer: custody1 } },
       );
 
       signerRemove4 = await Factories.SignerRemoveMessage.create(
         { data: { fid } },
-        { transient: { signer: custody1 } }
+        { transient: { signer: custody1 } },
       );
     });
 
@@ -147,47 +147,47 @@ describe('getSignerAddsByFid', () => {
       await set.merge(signerRemove4);
     });
 
-    test('returns all SignerAdd messages for an fid in chronological order without pageOptions', async () => {
+    test("returns all SignerAdd messages for an fid in chronological order without pageOptions", async () => {
       const result = await set.getSignerAddsByFid(fid);
       expect(result.messages).toEqual([signerAdd, signerAdd2, signerAdd3]);
     });
 
-    test('returns all SignerAdd messages for an fid in reverse chronological order', async () => {
+    test("returns all SignerAdd messages for an fid in reverse chronological order", async () => {
       const result = await set.getSignerAddsByFid(fid, { reverse: true });
       expect(result.messages).toEqual([signerAdd3, signerAdd2, signerAdd]);
     });
 
-    test('returns limit messages with limit < number of messages', async () => {
+    test("returns limit messages with limit < number of messages", async () => {
       const result = await set.getSignerAddsByFid(fid, { pageSize: 1 });
       expect(result.messages).toEqual([signerAdd]);
     });
 
-    test('returns limit messages with limit < number of messages in reverse', async () => {
+    test("returns limit messages with limit < number of messages in reverse", async () => {
       const result = await set.getSignerAddsByFid(fid, { pageSize: 1, reverse: true });
       expect(result.messages).toEqual([signerAdd3]);
     });
 
-    test('returns all messages with limit > number of messages', async () => {
+    test("returns all messages with limit > number of messages", async () => {
       const result = await set.getSignerAddsByFid(fid, { pageSize: 4 });
       expect(result).toEqual({ messages: [signerAdd, signerAdd2, signerAdd3], nextPageToken: undefined });
     });
 
-    test('returns all messages with limit > number of messages in reverse', async () => {
+    test("returns all messages with limit > number of messages in reverse", async () => {
       const result = await set.getSignerAddsByFid(fid, { pageSize: 4, reverse: true });
       expect(result).toEqual({ messages: [signerAdd3, signerAdd2, signerAdd], nextPageToken: undefined });
     });
 
-    test('returns all messages with limit = number of messages', async () => {
+    test("returns all messages with limit = number of messages", async () => {
       const result = await set.getSignerAddsByFid(fid, { pageSize: 3 });
       expect(result.messages).toEqual([signerAdd, signerAdd2, signerAdd3]);
     });
 
-    test('returns all messages with limit = number of messages in reverse', async () => {
+    test("returns all messages with limit = number of messages in reverse", async () => {
       const result = await set.getSignerAddsByFid(fid, { pageSize: 3, reverse: true });
       expect(result.messages).toEqual([signerAdd3, signerAdd2, signerAdd]);
     });
 
-    test('returns messages from pageToken', async () => {
+    test("returns messages from pageToken", async () => {
       const result1 = await set.getSignerAddsByFid(fid, { pageSize: 1 });
       const result2 = await set.getSignerAddsByFid(fid, { pageToken: result1.nextPageToken, pageSize: 1 });
       expect(result2.messages).toEqual([signerAdd2]);
@@ -195,7 +195,7 @@ describe('getSignerAddsByFid', () => {
       expect(result3.messages).toEqual([signerAdd3]);
     });
 
-    test('returns messages from pageToken in reverse', async () => {
+    test("returns messages from pageToken in reverse", async () => {
       const result1 = await set.getSignerAddsByFid(fid, { pageSize: 1, reverse: true });
       expect(result1.messages).toEqual([signerAdd3]);
       const result2 = await set.getSignerAddsByFid(fid, {
@@ -212,13 +212,13 @@ describe('getSignerAddsByFid', () => {
       expect(result3.messages).toEqual([signerAdd]);
     });
 
-    test('returns empty array with invalid pageToken', async () => {
+    test("returns empty array with invalid pageToken", async () => {
       const invalidPageKey = new Uint8Array([255]);
       const results = await set.getSignerAddsByFid(fid, { pageToken: invalidPageKey });
       expect(results).toEqual({ messages: [], nextPageToken: undefined });
     });
 
-    test('returns empty array with invalid pageToken in reverse', async () => {
+    test("returns empty array with invalid pageToken in reverse", async () => {
       const invalidPageKey = new Uint8Array([0]);
       const results = await set.getSignerAddsByFid(fid, { pageToken: invalidPageKey, reverse: true });
       expect(results).toEqual({ messages: [], nextPageToken: undefined });
@@ -226,24 +226,24 @@ describe('getSignerAddsByFid', () => {
   });
 });
 
-describe('getSignerRemovesByFid', () => {
-  test('returns empty array when messages have not been merged', async () => {
+describe("getSignerRemovesByFid", () => {
+  test("returns empty array when messages have not been merged", async () => {
     const result = await set.getSignerRemovesByFid(fid);
     expect(result.messages).toEqual([]);
   });
 
-  describe('with messages', () => {
+  describe("with messages", () => {
     let signerRemove2: SignerRemoveMessage;
     let signerAdd3: SignerAddMessage;
 
     beforeAll(async () => {
       signerRemove2 = await Factories.SignerRemoveMessage.create(
         { data: { fid, timestamp: signerRemove.data.timestamp + 1 } },
-        { transient: { signer: custody1 } }
+        { transient: { signer: custody1 } },
       );
       signerAdd3 = await Factories.SignerAddMessage.create(
         { data: { fid, timestamp: signerAdd.data.timestamp + 2 } },
-        { transient: { signer: custody1 } }
+        { transient: { signer: custody1 } },
       );
     });
 
@@ -253,34 +253,34 @@ describe('getSignerRemovesByFid', () => {
       await set.merge(signerAdd3);
     });
 
-    test('returns all SignerAdd messages for an fid in chronological order without pageOptions', async () => {
+    test("returns all SignerAdd messages for an fid in chronological order without pageOptions", async () => {
       const result = await set.getSignerRemovesByFid(fid);
       expect(result.messages).toEqual([signerRemove, signerRemove2]);
     });
 
-    test('returns limit messages with limit < number of messages', async () => {
+    test("returns limit messages with limit < number of messages", async () => {
       const result = await set.getSignerRemovesByFid(fid, { pageSize: 1 });
       expect(result.messages).toEqual([signerRemove]);
     });
 
-    test('returns all messages with limit > number of messages', async () => {
+    test("returns all messages with limit > number of messages", async () => {
       const result = await set.getSignerRemovesByFid(fid, { pageSize: 4 });
       expect(result).toEqual({ messages: [signerRemove, signerRemove2], nextPageToken: undefined });
     });
 
-    test('returns all messages with limit = number of messages', async () => {
+    test("returns all messages with limit = number of messages", async () => {
       const result = await set.getSignerRemovesByFid(fid, { pageSize: 3 });
       expect(result.messages).toEqual([signerRemove, signerRemove2]);
     });
 
-    test('returns messages from pageToken', async () => {
+    test("returns messages from pageToken", async () => {
       const results1 = await set.getSignerRemovesByFid(fid, { pageSize: 1 });
       expect(results1.messages).toEqual([signerRemove]);
       const results2 = await set.getSignerRemovesByFid(fid, { pageToken: results1.nextPageToken, pageSize: 1 });
       expect(results2.messages).toEqual([signerRemove2]);
     });
 
-    test('returns empty array with invalid pageToken', async () => {
+    test("returns empty array with invalid pageToken", async () => {
       const invalidPageKey = new Uint8Array([255]);
       const results = await set.getSignerRemovesByFid(fid, { pageToken: invalidPageKey });
       expect(results).toEqual({ messages: [], nextPageToken: undefined });
@@ -288,24 +288,24 @@ describe('getSignerRemovesByFid', () => {
   });
 });
 
-describe('getAllSignerMessagesByFid', () => {
-  test('returns empty array when messages have not been merged', async () => {
+describe("getAllSignerMessagesByFid", () => {
+  test("returns empty array when messages have not been merged", async () => {
     const result = await set.getAllSignerMessagesByFid(fid);
     expect(result.messages).toEqual([]);
   });
 
-  describe('with messages', () => {
+  describe("with messages", () => {
     let signerRemove2: SignerRemoveMessage;
     let signerAdd3: SignerAddMessage;
 
     beforeAll(async () => {
       signerRemove2 = await Factories.SignerRemoveMessage.create(
         { data: { fid, timestamp: signerAdd.data.timestamp + 1 } },
-        { transient: { signer: custody1 } }
+        { transient: { signer: custody1 } },
       );
       signerAdd3 = await Factories.SignerAddMessage.create(
         { data: { fid, timestamp: signerAdd.data.timestamp + 2 } },
-        { transient: { signer: custody1 } }
+        { transient: { signer: custody1 } },
       );
     });
 
@@ -315,34 +315,34 @@ describe('getAllSignerMessagesByFid', () => {
       await set.merge(signerAdd3);
     });
 
-    test('returns all SignerAdd and SignerRemove messages for an fid in chronological order without pageOptions', async () => {
+    test("returns all SignerAdd and SignerRemove messages for an fid in chronological order without pageOptions", async () => {
       const result = await set.getAllSignerMessagesByFid(fid);
       expect(result.messages).toEqual([signerAdd, signerRemove2, signerAdd3]);
     });
 
-    test('returns limit messages with limit < number of messages', async () => {
+    test("returns limit messages with limit < number of messages", async () => {
       const result = await set.getAllSignerMessagesByFid(fid, { pageSize: 1 });
       expect(result.messages).toEqual([signerAdd]);
     });
 
-    test('returns all messages with limit > number of messages', async () => {
+    test("returns all messages with limit > number of messages", async () => {
       const result = await set.getAllSignerMessagesByFid(fid, { pageSize: 4 });
       expect(result).toEqual({ messages: [signerAdd, signerRemove2, signerAdd3], nextPageToken: undefined });
     });
 
-    test('returns all messages with limit = number of messages', async () => {
+    test("returns all messages with limit = number of messages", async () => {
       const result = await set.getAllSignerMessagesByFid(fid, { pageSize: 3 });
       expect(result.messages).toEqual([signerAdd, signerRemove2, signerAdd3]);
     });
 
-    test('returns messages from pageToken', async () => {
+    test("returns messages from pageToken", async () => {
       const result1 = await set.getAllSignerMessagesByFid(fid, { pageSize: 1 });
       expect(result1.messages).toEqual([signerAdd]);
       const result2 = await set.getAllSignerMessagesByFid(fid, { pageToken: result1.nextPageToken, pageSize: 2 });
       expect(result2.messages).toEqual([signerRemove2, signerAdd3]);
     });
 
-    test('returns empty array with invalid pageToken', async () => {
+    test("returns empty array with invalid pageToken", async () => {
       const invalidPageKey = new Uint8Array([255]);
       const results = await set.getAllSignerMessagesByFid(fid, { pageToken: invalidPageKey });
       expect(results).toEqual({ messages: [], nextPageToken: undefined });
@@ -352,7 +352,7 @@ describe('getAllSignerMessagesByFid', () => {
 
 // TODO: write test cases for cyclical custody event transfers
 
-describe('mergeIdRegistryEvent', () => {
+describe("mergeIdRegistryEvent", () => {
   let mergedContractEvents: IdRegistryEvent[];
 
   const handleMergeEvent = (event: MergeIdRegistryEventHubEvent) => {
@@ -360,7 +360,7 @@ describe('mergeIdRegistryEvent', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('mergeIdRegistryEvent', handleMergeEvent);
+    eventHandler.on("mergeIdRegistryEvent", handleMergeEvent);
   });
 
   beforeEach(() => {
@@ -368,17 +368,17 @@ describe('mergeIdRegistryEvent', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('mergeIdRegistryEvent', handleMergeEvent);
+    eventHandler.off("mergeIdRegistryEvent", handleMergeEvent);
   });
 
-  test('succeeds', async () => {
+  test("succeeds", async () => {
     await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toBeGreaterThan(0);
     await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
 
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
-  test('fails if events have the same blockNumber but different blockHashes', async () => {
+  test("fails if events have the same blockNumber but different blockHashes", async () => {
     const blockHashConflictEvent = Factories.IdRegistryEvent.build({
       ...custody1Event,
       blockHash: Factories.BlockHash.build(),
@@ -386,13 +386,13 @@ describe('mergeIdRegistryEvent', () => {
 
     await set.mergeIdRegistryEvent(custody1Event);
     await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(
-      new HubError('bad_request.invalid_param', 'block hash mismatch')
+      new HubError("bad_request.invalid_param", "block hash mismatch"),
     );
 
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
-  test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
+  test("fails if events have the same blockNumber and logIndex but different transactionHashes", async () => {
     const txHashConflictEvent = Factories.IdRegistryEvent.build({
       ...custody1Event,
       transactionHash: Factories.TransactionHash.build(),
@@ -404,7 +404,7 @@ describe('mergeIdRegistryEvent', () => {
     expect(mergedContractEvents).toEqual([custody1Event]);
   });
 
-  describe('overwrites existing event', () => {
+  describe("overwrites existing event", () => {
     let newEvent: IdRegistryEvent;
 
     beforeEach(async () => {
@@ -421,7 +421,7 @@ describe('mergeIdRegistryEvent', () => {
       await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
     });
 
-    test('when it has a higher block number', async () => {
+    test("when it has a higher block number", async () => {
       newEvent = Factories.IdRegistryEvent.build({
         ...custody1Event,
         transactionHash: Factories.TransactionHash.build(),
@@ -430,7 +430,7 @@ describe('mergeIdRegistryEvent', () => {
       });
     });
 
-    test('when it has the same block number and a higher log index', async () => {
+    test("when it has the same block number and a higher log index", async () => {
       newEvent = Factories.IdRegistryEvent.build({
         ...custody1Event,
         transactionHash: Factories.TransactionHash.build(),
@@ -440,7 +440,7 @@ describe('mergeIdRegistryEvent', () => {
     });
   });
 
-  describe('does not overwrite existing event', () => {
+  describe("does not overwrite existing event", () => {
     let newEvent: IdRegistryEvent;
 
     beforeEach(async () => {
@@ -451,7 +451,7 @@ describe('mergeIdRegistryEvent', () => {
 
     afterEach(async () => {
       await expect(set.mergeIdRegistryEvent(newEvent)).rejects.toThrow(
-        new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent')
+        new HubError("bad_request.conflict", "event conflicts with a more recent IdRegistryEvent"),
       );
       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
       await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
@@ -459,7 +459,7 @@ describe('mergeIdRegistryEvent', () => {
       expect(mergedContractEvents).toEqual([custody1Event]);
     });
 
-    test('when it has a lower block number', async () => {
+    test("when it has a lower block number", async () => {
       newEvent = Factories.IdRegistryEvent.build({
         ...custody1Event,
         transactionHash: Factories.TransactionHash.build(),
@@ -468,7 +468,7 @@ describe('mergeIdRegistryEvent', () => {
       });
     });
 
-    test('when it has the same block number and a lower log index', async () => {
+    test("when it has the same block number and a lower log index", async () => {
       newEvent = Factories.IdRegistryEvent.build({
         ...custody1Event,
         to: custody2Address,
@@ -476,13 +476,13 @@ describe('mergeIdRegistryEvent', () => {
       });
     });
 
-    test('when is a duplicate', async () => {
+    test("when is a duplicate", async () => {
       newEvent = custody1Event;
     });
   });
 });
 
-describe('merge', () => {
+describe("merge", () => {
   let mergeEvents: [Message | undefined, Message[]][] = [];
 
   const mergeMessageHandler = (event: MergeMessageHubEvent) => {
@@ -491,7 +491,7 @@ describe('merge', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('mergeMessage', mergeMessageHandler);
+    eventHandler.on("mergeMessage", mergeMessageHandler);
   });
 
   beforeEach(() => {
@@ -499,7 +499,7 @@ describe('merge', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('mergeMessage', mergeMessageHandler);
+    eventHandler.off("mergeMessage", mergeMessageHandler);
   });
 
   const assertSignerExists = async (message: SignerAddMessage | SignerRemoveMessage) => {
@@ -524,25 +524,25 @@ describe('merge', () => {
     await expect(set.getSignerAdd(fid, signerKey)).rejects.toThrow(HubError);
   };
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const message = await Factories.CastAddMessage.create();
     await expect(set.merge(message)).rejects.toThrow(HubError);
 
     expect(mergeEvents).toEqual([]);
   });
 
-  describe('SignerAdd', () => {
-    test('succeeds', async () => {
+  describe("SignerAdd", () => {
+    test("succeeds", async () => {
       await expect(set.merge(signerAdd)).resolves.toBeGreaterThan(0);
       await assertSignerAddWins(signerAdd);
 
       expect(mergeEvents).toEqual([[signerAdd, []]]);
     });
 
-    test('fails when merged twice', async () => {
+    test("fails when merged twice", async () => {
       await expect(set.merge(signerAdd)).resolves.toBeGreaterThan(0);
       await expect(set.merge(signerAdd)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
 
       await assertSignerAddWins(signerAdd);
@@ -550,7 +550,7 @@ describe('merge', () => {
       expect(mergeEvents).toEqual([[signerAdd, []]]);
     });
 
-    describe('with a conflicting SignerAdd with different timestamps', () => {
+    describe("with a conflicting SignerAdd with different timestamps", () => {
       let signerAddLater: SignerAddMessage;
 
       beforeAll(async () => {
@@ -561,11 +561,11 @@ describe('merge', () => {
               timestamp: signerAdd.data.timestamp + 1,
             },
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
       });
 
-      test('succeeds with a later timestamp', async () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(signerAdd);
         await expect(set.merge(signerAddLater)).resolves.toBeGreaterThan(0);
 
@@ -578,10 +578,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(signerAddLater);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
 
         await assertSignerDoesNotExist(signerAdd);
@@ -591,7 +591,7 @@ describe('merge', () => {
       });
     });
 
-    describe('with a conflicting SignerAdd with identical timestamps', () => {
+    describe("with a conflicting SignerAdd with identical timestamps", () => {
       let signerAddLater: SignerAddMessage;
 
       beforeAll(async () => {
@@ -600,11 +600,11 @@ describe('merge', () => {
             data: { ...signerAdd.data },
             hash: bytesIncrement(signerAdd.hash)._unsafeUnwrap(),
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         await set.merge(signerAdd);
         await expect(set.merge(signerAddLater)).resolves.toBeGreaterThan(0);
 
@@ -616,10 +616,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with a lower hash', async () => {
+      test("fails with a lower hash", async () => {
         await set.merge(signerAddLater);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
 
         await assertSignerDoesNotExist(signerAdd);
@@ -628,13 +628,13 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting SignerRemove with different timestamps', () => {
-      test('succeeds with a later timestamp', async () => {
+    describe("with conflicting SignerRemove with different timestamps", () => {
+      test("succeeds with a later timestamp", async () => {
         const signerRemoveEarlier = await Factories.SignerRemoveMessage.create(
           {
             data: { ...signerRemove.data, timestamp: signerAdd.data.timestamp - 1 },
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
 
         await set.merge(signerRemoveEarlier);
@@ -648,10 +648,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertSignerRemoveWins(signerRemove);
@@ -660,18 +660,18 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting SignerRemove with identical timestamps', () => {
-      test('fails if remove has a higher hash', async () => {
+    describe("with conflicting SignerRemove with identical timestamps", () => {
+      test("fails if remove has a higher hash", async () => {
         const signerRemoveLater = await Factories.SignerRemoveMessage.create(
           {
             data: { ...signerRemove.data, timestamp: signerAdd.data.timestamp },
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
 
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertSignerRemoveWins(signerRemoveLater);
@@ -679,7 +679,7 @@ describe('merge', () => {
         expect(mergeEvents).toEqual([[signerRemoveLater, []]]);
       });
 
-      test('fails if remove has a lower hash', async () => {
+      test("fails if remove has a lower hash", async () => {
         const signerRemoveEarlier = await Factories.SignerRemoveMessage.create({
           data: { ...signerRemove.data, timestamp: signerAdd.data.timestamp },
           hash: bytesDecrement(signerAdd.hash)._unsafeUnwrap(),
@@ -687,7 +687,7 @@ describe('merge', () => {
 
         await set.merge(signerRemoveEarlier);
         await expect(set.merge(signerAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertSignerDoesNotExist(signerAdd);
@@ -697,25 +697,25 @@ describe('merge', () => {
     });
   });
 
-  describe('SignerRemove', () => {
-    test('succeeds', async () => {
+  describe("SignerRemove", () => {
+    test("succeeds", async () => {
       await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
 
       await assertSignerRemoveWins(signerRemove);
       expect(mergeEvents).toEqual([[signerRemove, []]]);
     });
 
-    test('fails if merged twice', async () => {
+    test("fails if merged twice", async () => {
       await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
       await expect(set.merge(signerRemove)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
 
       await assertSignerRemoveWins(signerRemove);
       expect(mergeEvents).toEqual([[signerRemove, []]]);
     });
 
-    describe('with a conflicting SignerRemove with different timestamps', () => {
+    describe("with a conflicting SignerRemove with different timestamps", () => {
       let signerRemoveLater: SignerRemoveMessage;
 
       beforeAll(async () => {
@@ -723,11 +723,11 @@ describe('merge', () => {
           {
             data: { ...signerRemove.data, timestamp: signerRemove.data.timestamp + 1 },
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
       });
 
-      test('succeeds with a later timestamp', async () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerRemoveLater)).resolves.toBeGreaterThan(0);
 
@@ -739,10 +739,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertSignerDoesNotExist(signerRemove);
@@ -751,7 +751,7 @@ describe('merge', () => {
       });
     });
 
-    describe('with a conflicting SignerRemove with identical timestamps', () => {
+    describe("with a conflicting SignerRemove with identical timestamps", () => {
       let signerRemoveLater: SignerRemoveMessage;
 
       beforeAll(async () => {
@@ -760,11 +760,11 @@ describe('merge', () => {
             data: { ...signerRemove.data },
             hash: bytesIncrement(signerRemove.hash)._unsafeUnwrap(),
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         await set.merge(signerRemove);
         await expect(set.merge(signerRemoveLater)).resolves.toBeGreaterThan(0);
 
@@ -776,10 +776,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with a lower hash', async () => {
+      test("fails with a lower hash", async () => {
         await set.merge(signerRemoveLater);
         await expect(set.merge(signerRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertSignerDoesNotExist(signerRemove);
@@ -788,8 +788,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting SignerAdd with different timestamps', () => {
-      test('succeeds with a later timestamp', async () => {
+    describe("with conflicting SignerAdd with different timestamps", () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(signerAdd);
         await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
 
@@ -801,17 +801,17 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         const signerAddLater = await Factories.SignerAddMessage.create(
           {
             data: { ...signerAdd.data, timestamp: signerRemove.data.timestamp + 1 },
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
 
         await set.merge(signerAddLater);
         await expect(set.merge(signerRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
 
         await assertSignerAddWins(signerAddLater);
@@ -820,13 +820,13 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting SignerAdd with identical timestamps', () => {
-      test('succeeds with a lower hash', async () => {
+    describe("with conflicting SignerAdd with identical timestamps", () => {
+      test("succeeds with a lower hash", async () => {
         const signerAddLater = await Factories.SignerAddMessage.create(
           {
             data: { ...signerAdd.data, timestamp: signerRemove.data.timestamp },
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
 
         await set.merge(signerAddLater);
@@ -840,13 +840,13 @@ describe('merge', () => {
         ]);
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         const signerAddEarlier = await Factories.SignerAddMessage.create(
           {
             data: { ...signerAdd.data, timestamp: signerRemove.data.timestamp },
             hash: bytesDecrement(signerRemove.hash)._unsafeUnwrap(),
           },
-          { transient: { signer: custody1 } }
+          { transient: { signer: custody1 } },
         );
 
         await set.merge(signerAddEarlier);
@@ -863,13 +863,13 @@ describe('merge', () => {
   });
 });
 
-describe('getFids', () => {
-  test('returns empty array without custody events', async () => {
+describe("getFids", () => {
+  test("returns empty array without custody events", async () => {
     const result = await set.getFids();
     expect(result).toEqual({ fids: [], nextPageToken: undefined });
   });
 
-  describe('with fids', () => {
+  describe("with fids", () => {
     beforeEach(async () => {
       custody2Event = Factories.IdRegistryEvent.build({
         fid: fid2,
@@ -879,57 +879,57 @@ describe('getFids', () => {
       await set.mergeIdRegistryEvent(custody2Event);
     });
 
-    test('returns all fids for merged custody events without pageOptions', async () => {
+    test("returns all fids for merged custody events without pageOptions", async () => {
       const result = await set.getFids();
       expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
     });
 
-    test('returns all fids for merged custody events in reverse', async () => {
+    test("returns all fids for merged custody events in reverse", async () => {
       const result = await set.getFids({ reverse: true });
       expect(result).toEqual({ fids: [fid2, fid], nextPageToken: undefined });
     });
 
-    test('returns limit fids with pageSize < number of messages', async () => {
+    test("returns limit fids with pageSize < number of messages", async () => {
       const result = await set.getFids({ pageSize: 1 });
       expect(result).toEqual({ fids: [fid], nextPageToken: Uint8Array.from(makeFidKey(fid)) });
     });
 
-    test('returns limit fids with pageSize < number of messages in reverse', async () => {
+    test("returns limit fids with pageSize < number of messages in reverse", async () => {
       const result = await set.getFids({ pageSize: 1, reverse: true });
       expect(result).toEqual({ fids: [fid2], nextPageToken: Uint8Array.from(makeFidKey(fid2)) });
     });
 
-    test('returns all fids with pageSize > number of messages', async () => {
+    test("returns all fids with pageSize > number of messages", async () => {
       const result = await set.getFids({ pageSize: 3 });
       expect(result).toEqual({ fids: [fid, fid2], nextPageToken: undefined });
     });
 
-    test('returns all fids with pageSize > number of messages in reverse', async () => {
+    test("returns all fids with pageSize > number of messages in reverse", async () => {
       const result = await set.getFids({ pageSize: 3, reverse: true });
       expect(result).toEqual({ fids: [fid2, fid], nextPageToken: undefined });
     });
 
-    test('returns fids from pageToken', async () => {
+    test("returns fids from pageToken", async () => {
       const result1 = await set.getFids({ pageSize: 1 });
       expect(result1.fids).toEqual([fid]);
       const result2 = await set.getFids({ pageToken: result1.nextPageToken });
       expect(result2).toEqual({ fids: [fid2], nextPageToken: undefined });
     });
 
-    test('returns fids from pageToken in reverse', async () => {
+    test("returns fids from pageToken in reverse", async () => {
       const result1 = await set.getFids({ pageSize: 1, reverse: true });
       expect(result1.fids).toEqual([fid2]);
       const result2 = await set.getFids({ pageToken: result1.nextPageToken, reverse: true });
       expect(result2).toEqual({ fids: [fid], nextPageToken: undefined });
     });
 
-    test('returns empty array with invalid pageToken', async () => {
+    test("returns empty array with invalid pageToken", async () => {
       const invalidPageKey = Buffer.from([255]);
       const results = await set.getFids({ pageToken: invalidPageKey });
       expect(results).toEqual({ fids: [], nextPageToken: undefined });
     });
 
-    test('returns empty array with invalid pageToken in reverse', async () => {
+    test("returns empty array with invalid pageToken in reverse", async () => {
       const invalidPageKey = Buffer.from([0]);
       const results = await set.getFids({ pageToken: invalidPageKey, reverse: true });
       expect(results).toEqual({ fids: [], nextPageToken: undefined });
@@ -937,7 +937,7 @@ describe('getFids', () => {
   });
 });
 
-describe('revoke', () => {
+describe("revoke", () => {
   let revokedMessages: Message[] = [];
 
   const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
@@ -945,7 +945,7 @@ describe('revoke', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('revokeMessage', revokeMessageHandler);
+    eventHandler.on("revokeMessage", revokeMessageHandler);
   });
 
   beforeEach(() => {
@@ -953,17 +953,17 @@ describe('revoke', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('revokeMessage', revokeMessageHandler);
+    eventHandler.off("revokeMessage", revokeMessageHandler);
   });
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
     const result = await set.revoke(castAdd);
-    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "invalid message type")));
     expect(revokedMessages).toEqual([]);
   });
 
-  test('succeeds with SignerAdd', async () => {
+  test("succeeds with SignerAdd", async () => {
     await expect(set.merge(signerAdd)).resolves.toBeGreaterThan(0);
     const result = await set.revoke(signerAdd);
     expect(result.isOk()).toBeTruthy();
@@ -972,7 +972,7 @@ describe('revoke', () => {
     expect(revokedMessages).toEqual([signerAdd]);
   });
 
-  test('succeeds with SignerRemove', async () => {
+  test("succeeds with SignerRemove", async () => {
     await expect(set.merge(signerRemove)).resolves.toBeGreaterThan(0);
     const result = await set.revoke(signerRemove);
     expect(result.isOk()).toBeTruthy();
@@ -981,7 +981,7 @@ describe('revoke', () => {
     expect(revokedMessages).toEqual([signerRemove]);
   });
 
-  test('succeeds with unmerged message', async () => {
+  test("succeeds with unmerged message", async () => {
     const result = await set.revoke(signerAdd);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
@@ -990,14 +990,14 @@ describe('revoke', () => {
   });
 });
 
-describe('pruneMessages', () => {
+describe("pruneMessages", () => {
   let prunedMessages: Message[];
   const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
   };
 
   beforeAll(() => {
-    eventHandler.on('pruneMessage', pruneMessageListener);
+    eventHandler.on("pruneMessage", pruneMessageListener);
   });
 
   beforeEach(() => {
@@ -1005,7 +1005,7 @@ describe('pruneMessages', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('pruneMessage', pruneMessageListener);
+    eventHandler.off("pruneMessage", pruneMessageListener);
   });
 
   let add1: SignerAddMessage;
@@ -1030,7 +1030,7 @@ describe('pruneMessages', () => {
   const generateRemoveWithTimestamp = async (
     fid: number,
     timestamp: number,
-    signer?: Uint8Array | null
+    signer?: Uint8Array | null,
   ): Promise<SignerRemoveMessage> => {
     return Factories.SignerRemoveMessage.create({
       data: { fid, timestamp, signerRemoveBody: { signer: signer ?? Factories.Ed25519PPublicKey.build() } },
@@ -1053,17 +1053,17 @@ describe('pruneMessages', () => {
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.signerAddBody.signer);
   });
 
-  describe('with size limit', () => {
+  describe("with size limit", () => {
     const sizePrunedStore = new SignerStore(db, eventHandler, { pruneSizeLimit: 3 });
 
-    test('no-ops when no messages have been merged', async () => {
+    test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
 
       expect(prunedMessages).toEqual([]);
     });
 
-    test('prunes earliest add messages', async () => {
+    test("prunes earliest add messages", async () => {
       const messages = [add1, add2, add3, add4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -1080,7 +1080,7 @@ describe('pruneMessages', () => {
       }
     });
 
-    test('prunes earliest remove messages', async () => {
+    test("prunes earliest remove messages", async () => {
       const messages = [remove1, remove2, remove3, remove4, remove5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -1097,7 +1097,7 @@ describe('pruneMessages', () => {
       }
     });
 
-    test('prunes earliest messages', async () => {
+    test("prunes earliest messages", async () => {
       const messages = [add1, remove2, add3, remove4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -1109,7 +1109,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([add1, remove2]);
     });
 
-    test('no-ops when adds have been removed', async () => {
+    test("no-ops when adds have been removed", async () => {
       const messages = [add1, remove1, add2, remove2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -1121,7 +1121,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([]);
     });
 
-    test('fails to add messages older than the earliest message', async () => {
+    test("fails to add messages older than the earliest message", async () => {
       const messages = [add1, add2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -1129,14 +1129,14 @@ describe('pruneMessages', () => {
 
       // Older messages are rejected
       await expect(sizePrunedStore.merge(addOld1)).rejects.toEqual(
-        new HubError('bad_request.prunable', 'message would be pruned')
+        new HubError("bad_request.prunable", "message would be pruned"),
       );
     });
   });
 });
 
-describe('sizeLimit', () => {
-  test('defaults to 100', () => {
+describe("sizeLimit", () => {
+  test("defaults to 100", () => {
     expect(set.pruneSizeLimit).toBe(100);
   });
 });
