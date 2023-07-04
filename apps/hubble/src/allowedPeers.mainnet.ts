@@ -24,7 +24,7 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWDMXc4uVXr8zWGujaRuzhDnTBBHkTsJ58WimB8QU4cgos', // @nj
   '12D3KooWCZBZAirRXA2cecgud2zC7T5iN4hwr9nf7VAn9d8u9px2', // @rss3
   '12D3KooWJwBPFDdCkxWqVE6tCWPs4sDx2t4Pgy2cCewqKzLTRHgr', // @cryptobenkei
-  '12D3KooWPaHFmDULq5ahsFM7TQ9tC3UmpiC5XUjtYe9xaoaw7iAs', // @les
+  '12D3KooWErFRoVgMHwShjDUjVGBFUGRfyCC1dHSix4HoEsxjmMvA', // @les
   '12D3KooWEr4WoKduAQg8VJSgwcNsqptbdkSQLw1ceEr8oSBQurJX', // @yanisme
   '12D3KooWMZK4VeMX3ZARugTuGexXFHNiGHgNFq6XE2vzi88fMgwC', // @event
   '12D3KooWEs1QcvJcoVv3ihHqqa3yxh4gijegrjyyVkvso2qayUdj', // @colin / @paragraph
@@ -51,4 +51,14 @@ export const MAINNET_ALLOWED_PEERS = [
   '12D3KooWHguasQqxAK9px8i5NDMFSG7VYhHRt4C7d2brpjakh5Sk', // @mboyle
   '12D3KooWDfxjnmTTk2nb89dBZZrCQ7g71BoJELKnVpUQUTt4YcL4', // @razzle
   '12D3KooWEoXRpLMjiRo9KxVHqg8Ng5gJxkJdd9uDotSNfYy8jFNv', // @pseudobun
+  '12D3KooWPcrf4XYUQrxsLniTJR4u4roQJre2T6ev14JeJcAFzZZv', // airstack.xyz
+  '12D3KooWLCAqhHempm8C8ZCLMMnK4pBPAyjS3HM2BMBopsC2HZDS', // airstack.xyz
+  '12D3KooWCDxDVkirzdV6Ze8zgDq2i1X3tQLGgwTGRxwuYeHD6XDE', // @wrdwccz
+  '12D3KooWHkYUwM3PeRqdYniuxAGXWhPYx6EzPhDY39J3cyNciQhE', // @naratech-eng
+  '12D3KooWGU1ebBRwdTBrfb2jQniip7FsWfr22PJhZQwwAf4d8jgX', // Gvozdaryova43654.telegram
+  /*
+   * Add a new entry by adding your peerId and a comment with your farcaster username. To ensure a
+   * fast merge, add your name randomly in the middle of the list, since adding at the end creates
+   * merge conflicts with everyone else updating this file
+   */
 ];
