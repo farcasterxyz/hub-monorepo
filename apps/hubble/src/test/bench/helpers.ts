@@ -1,4 +1,3 @@
-/* eslint-disable security/detect-object-injection */
 import Chance from "chance";
 
 import { Message } from "@farcaster/hub-nodejs";

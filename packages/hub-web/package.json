@@ -22,7 +22,6 @@
     "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
-    "eslint-config-custom": "*",
     "rome-config-custom": "*",
     "ts-proto": "^1.146.0"
   },
