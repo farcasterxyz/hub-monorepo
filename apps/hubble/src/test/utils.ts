@@ -19,15 +19,15 @@ export const anvilChain = {
 } as const satisfies Chain;
 
 const provider = {
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   on: (message: string, listener: (...args: any[]) => null) => {
     if (message === "accountsChanged") {
-      // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+      // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
       listener([accounts[0].address] as any);
     }
   },
   removeListener: () => null,
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   request: async ({ method, params }: any) => {
     if (method === "eth_requestAccounts") {
       return [accounts[0].address];

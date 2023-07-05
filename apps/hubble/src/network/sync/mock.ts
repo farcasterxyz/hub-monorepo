@@ -10,11 +10,11 @@ export class MockRpcClient {
   engine: Engine;
   syncEngine: SyncEngine;
 
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getSyncMetadataByPrefixCalls: Array<any> = [];
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getAllSyncIdsByPrefixCalls: Array<any> = [];
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getAllMessagesBySyncIdsCalls: Array<any> = [];
   getAllMessagesBySyncIdsReturns = 0;
 

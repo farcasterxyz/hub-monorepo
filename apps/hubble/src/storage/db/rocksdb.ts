@@ -37,7 +37,7 @@ export class Iterator {
   async *[Symbol.asyncIterator]() {
     try {
       let kv: [Buffer | undefined, Buffer | undefined] | undefined;
-      // rome-ignore lint/suspicious/noAssignInExpressions: legacy eslint migration, to fix
+      // rome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code, to fix
       while ((kv = await this.next())) {
         yield kv;
       }

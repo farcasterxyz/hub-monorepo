@@ -163,7 +163,7 @@ app
     }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
-    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+    // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     let hubConfig: any = DefaultConfig;
     if (cliOptions.config) {
       if (!cliOptions.config.endsWith(".js")) {
@@ -391,7 +391,7 @@ const writePeerId = async (peerId: PeerId, filepath: string) => {
       await mkdir(directory, { recursive: true });
     }
     await writeFile(filepath, proto, "binary");
-    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+    // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   } catch (err: any) {
     throw new Error(err);
   }

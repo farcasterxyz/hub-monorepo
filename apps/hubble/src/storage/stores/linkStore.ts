@@ -168,7 +168,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
     // Puts message key into the byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
-    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.put(byTargetKey, Buffer.from(message.data.linkBody.type));
 
     return ok(undefined);
@@ -187,7 +187,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
     // Delete the message key from byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
-    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.del(byTargetKey);
 
     return ok(undefined);
