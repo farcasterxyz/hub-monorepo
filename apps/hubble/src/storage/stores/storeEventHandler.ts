@@ -284,7 +284,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         }
         const event = HubEvent.create({ ...eventArgs, id: eventId.value });
         // TODO: validate event
-        // rome-ignore lint/style/noParameterAssign: legacy eslint migration
+        // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
         txn = putEventTransaction(txn, event);
 
         await this._db.commit(txn);

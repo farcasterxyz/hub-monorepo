@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   Message,
   FarcasterNetwork,
@@ -55,7 +54,7 @@ let usernameProof: UserNameProof;
 let signerAdd: SignerAddMessage;
 let castAdd: CastAddMessage;
 let reactionAdd: ReactionAddMessage;
-// rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 let events: [HubEventType, any][];
 let stream: ClientReadableStream<HubEvent>;
 
@@ -83,7 +82,7 @@ beforeAll(async () => {
 });
 
 const setupSubscription = async (
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   events: [HubEventType, any][],
   options: { eventTypes?: HubEventType[]; fromId?: number } = {},
 ): Promise<ClientReadableStream<HubEvent>> => {
@@ -95,22 +94,22 @@ const setupSubscription = async (
 
   stream.on("data", (event: HubEvent) => {
     if (isMergeMessageHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.mergeMessageBody.message!)]);
     } else if (isPruneMessageHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.pruneMessageBody.message!)]);
     } else if (isRevokeMessageHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.revokeMessageBody.message!)]);
     } else if (isMergeIdRegistryEventHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, IdRegistryEvent.toJSON(event.mergeIdRegistryEventBody.idRegistryEvent!)]);
     } else if (isMergeNameRegistryEventHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, NameRegistryEvent.toJSON(event.mergeNameRegistryEventBody.nameRegistryEvent!)]);
     } else if (isMergeUsernameProofHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, UserNameProof.toJSON(event.mergeUsernameProofBody.usernameProof!)]);
     }
   });

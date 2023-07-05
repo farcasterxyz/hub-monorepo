@@ -1,4 +1,3 @@
-/* eslint-disable security/detect-non-literal-fs-filename */
 import {
   FarcasterNetwork,
   getInsecureHubRpcClient,
@@ -158,14 +157,13 @@ app
       });
     };
 
-    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions
     setTimeout(function checkLoop() {
       checkForProcessNumChange();
       setTimeout(checkLoop, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
     }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
-    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+    // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     let hubConfig: any = DefaultConfig;
     if (cliOptions.config) {
       if (!cliOptions.config.endsWith(".js")) {
@@ -389,12 +387,11 @@ const writePeerId = async (peerId: PeerId, filepath: string) => {
   // want a fast failure back to the CLI
   try {
     // Safety: directory, writefile are provided from the command line, and safe to trust
-    /* eslint-disable security/detect-non-literal-fs-filename */
     if (!existsSync(directory)) {
       await mkdir(directory, { recursive: true });
     }
     await writeFile(filepath, proto, "binary");
-    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+    // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   } catch (err: any) {
     throw new Error(err);
   }
@@ -561,8 +558,6 @@ app
   });
 
 const readPeerId = async (filePath: string) => {
-  /* eslint-disable security/detect-non-literal-fs-filename */
-
   const proto = await readFile(filePath);
   return createFromProtobuf(proto);
 };

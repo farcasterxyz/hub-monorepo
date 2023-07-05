@@ -229,7 +229,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           try {
             const publishResult = await gossip.publish(topic, encodedMessage.value);
             return ok(publishResult);
-            // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+            // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
           } catch (error: any) {
             log.error(error, "Failed to publish message");
             return err(new HubError("bad_request.duplicate", error));
@@ -313,7 +313,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     });
     this.gossip?.addEventListener("message", (event) => {
       log.info(
-        // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+        // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
         { identity: this.identity, from: (event.detail as any)["from"] },
         `Received message for topic: ${event.detail.topic}`,
       );
@@ -358,7 +358,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       }
       peerIdFromBytes(gossipMessage.peerId);
       return ok(GossipMessage.decode(Uint8Array.from(message)));
-      // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+      // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     } catch (error: any) {
       return err(new HubError("bad_request.parse_failure", error));
     }

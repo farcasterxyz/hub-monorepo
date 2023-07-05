@@ -184,7 +184,6 @@ describe("getCast", () => {
       for (let i = 0; i < (castAdd.data?.castAddBody?.mentions.length as number); i++) {
         const casts = await client.getCastsByMention(
           // Safety: i is controlled by the loop and cannot be used to inject
-          // eslint-disable-next-line security/detect-object-injection
           FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number }),
         );
         expect(Message.toJSON(casts._unsafeUnwrap().messages.at(0) as Message)).toEqual(Message.toJSON(castAdd));
@@ -195,7 +194,6 @@ describe("getCast", () => {
       for (let i = 0; i < (castAdd.data?.castAddBody?.mentions.length as number); i++) {
         const casts = await client.getCastsByMention(
           // Safety: i is controlled by the loop and cannot be used to inject
-          // eslint-disable-next-line security/detect-object-injection
           FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number }),
         );
         expect(casts._unsafeUnwrap().messages).toEqual([]);

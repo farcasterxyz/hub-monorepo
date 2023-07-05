@@ -1,5 +1,3 @@
-// eslint-disable-file security/detect-non-literal-fs-filename
-
 import { blake3 } from "@noble/hashes/blake3";
 import { DbTrieNode } from "@farcaster/hub-nodejs";
 import { MerkleTrie } from "../sync/merkleTrie.js";
@@ -166,7 +164,6 @@ describe("MerkleTrie", () => {
       await trie.commitToDb();
 
       leafs = 0;
-      //eslint-disable-next-line @typescript-eslint/no-unused-vars
       count = await forEachDbItem(db, async (i, key, value) => {
         // Parse the value as a DbTriNode
         const node = DbTrieNode.decode(value);

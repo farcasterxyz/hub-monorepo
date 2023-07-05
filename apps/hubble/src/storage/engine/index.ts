@@ -177,7 +177,7 @@ class Engine {
       return err(validatedMessage.error);
     }
 
-    // rome-ignore lint/style/noNonNullAssertion: legacy migration
+    // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     const setPostfix = typeToSetPostfix(message.data!.type);
 
     switch (setPostfix) {

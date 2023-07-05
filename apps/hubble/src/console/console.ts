@@ -22,7 +22,7 @@ export interface ConsoleCommandInterface {
   commandName(): string;
   shortHelp(): string;
   help(): string;
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   object(): any;
 }
 
@@ -95,7 +95,6 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
 
   if (info.isErr()) {
     replServer.output.write(`Could not connect to hub at "${addressString}"\n`);
-    // eslint-disable-next-line no-console
     console.log(info.error);
     process.exit(1);
   }

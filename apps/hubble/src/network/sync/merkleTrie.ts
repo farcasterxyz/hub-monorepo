@@ -168,7 +168,6 @@ class MerkleTrie {
   public async exists(id: SyncId): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        // eslint-disable-next-line security/detect-non-literal-fs-filename
         const r = await this._root.exists(id.syncId(), this._db);
 
         await this._unloadFromMemory(false);

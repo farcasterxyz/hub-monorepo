@@ -61,7 +61,6 @@ const promisifyClient = <C extends Client>(client: C) => {
 
       if (key === "close") return () => target.close;
 
-      // eslint-disable-next-line security/detect-object-injection
       const func = target[key];
       // rome-ignore lint/suspicious/noExplicitAny: any is needed here because of the grpc-js types
       if (typeof func === "function" && (func as any).responseStream === false) {

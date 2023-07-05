@@ -6,7 +6,7 @@ interface HubErrorOpts {
   presentable: boolean;
 }
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const isHubError = (e: any): e is HubError => {
   return typeof e.errCode !== "undefined";
 };

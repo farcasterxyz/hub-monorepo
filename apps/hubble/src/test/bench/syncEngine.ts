@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable security/detect-object-injection */
 import { Writable } from "node:stream";
 
 import Chance from "chance";
@@ -34,7 +32,7 @@ const makeSyncEninge = async (id: number) => {
   await db.clear();
   const hub = new MockHub(db);
   const syncEngine = new SyncEngine(hub, db);
-  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   (syncEngine as any)["_id"] = id;
   return syncEngine;
 };
@@ -173,7 +171,7 @@ export const benchSyncEngine = async ({
 
   // Stub the timestamp
   global.Date.now = () =>
-    // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+    // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     (messages[messages.length - 1]!.data!.timestamp + chance.integer({ min: 1, max: 60 })) * 1000 + FARCASTER_EPOCH;
 
   writer.write([0, "", "", "", "", ""]);
@@ -219,14 +217,14 @@ export const benchSyncEngine = async ({
 
           const otherSnapshot = (await theirSyncEngine.getSnapshot())._unsafeUnwrap();
           if ((await ourSyncEngine.syncStatus(i.toString(), otherSnapshot))._unsafeUnwrap().shouldSync) {
-            // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+            // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
             const rpcClient = new MockRpcClient((theirSyncEngine as any).engine, theirSyncEngine);
             await ourSyncEngine.performSync(i.toString(), otherSnapshot, rpcClient as unknown as HubRpcClient);
 
             const nodeMetadata = await ourSyncEngine.getTrieNodeMetadata(new Uint8Array());
             stats[i] = {
               synced: 1,
-              // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
+              // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
               staled: messages.length > nodeMetadata!.numMessages,
               ...rpcClient.stats(),
             };
@@ -265,7 +263,7 @@ export const benchSyncEngine = async ({
     // Clean up RocksDb
     process.stderr.write("Cleaning up\n");
     peers.forEach((syncEngine) => {
-      // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+      // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
       const db = (syncEngine.trie as any)._db;
       db.destroy();
     });

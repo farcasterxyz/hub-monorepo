@@ -6,7 +6,6 @@ import RocksDB, { MAX_DB_ITERATOR_OPEN_MILLISECONDS } from "./rocksdb.js";
 import { jest } from "@jest/globals";
 
 //Safety: fs is safe to use in tests
-/* eslint-disable security/detect-non-literal-fs-filename */
 
 const randomDbName = () => `rocksdb.test.${faker.name.lastName().toLowerCase()}.${faker.random.alphaNumeric(8)}`;
 

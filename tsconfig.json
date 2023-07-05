@@ -26,7 +26,7 @@
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with eslint instead
+    "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with instead
     "noUnusedParameters": false
   },
 

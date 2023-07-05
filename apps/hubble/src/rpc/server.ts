@@ -360,7 +360,7 @@ export default class Server {
               log.warn({ num: corruptedMessages.length }, "Found corrupted messages, rebuilding some syncIDs");
               // Don't wait for this to finish, just return the messages we have.
               this.syncEngine?.rebuildSyncIds(request.syncIds);
-              // rome-ignore lint/style/noParameterAssign: legacy migration
+              // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }
 

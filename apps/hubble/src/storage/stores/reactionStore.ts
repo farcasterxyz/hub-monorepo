@@ -177,7 +177,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
 
     // Puts message key into the byTarget index
     const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
-    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
 
     return ok(undefined);
@@ -198,7 +198,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
 
     // Delete the message key from byTarget index
     const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
-    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.del(byTargetKey);
 
     return ok(undefined);

@@ -1,4 +1,3 @@
-/* eslint-disable security/detect-non-literal-fs-filename */
 import * as fs from "node:fs";
 
 import { stringify } from "csv-stringify";
@@ -26,7 +25,7 @@ export const yieldToEventLoop = (): Promise<void> => {
 
 export const waitForPromise = (promise: Promise<unknown>) => {
   let finished = false;
-  // rome-ignore lint/suspicious/noAssignInExpressions: legacy eslint migration
+  // rome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code
   promise.finally(() => (finished = true));
 
   const pollToFinish = () => {

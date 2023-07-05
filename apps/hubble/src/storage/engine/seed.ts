@@ -9,7 +9,7 @@ export const seedSigner = async (
   ethSigner?: Eip712Signer,
 ): Promise<Eip712Signer> => {
   if (!ethSigner) {
-    // rome-ignore lint/style/noParameterAssign: legacy migration
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     ethSigner = Factories.Eip712Signer.build();
     const ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
 
