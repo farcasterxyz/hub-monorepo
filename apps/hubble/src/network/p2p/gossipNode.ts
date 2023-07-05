@@ -2,6 +2,7 @@ import { gossipsub, GossipSub } from "@chainsafe/libp2p-gossipsub";
 import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
 import { noise } from "@chainsafe/libp2p-noise";
 import {
+  bytesToHexString,
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
@@ -58,6 +59,9 @@ interface NodeOptions {
   allowedPeerIdStrs?: string[] | undefined;
 }
 
+// Max number of messages to keep in the dedup cache
+const DEDUP_CACHE_SIZE: number = 10;
+
 /**
  * A GossipNode allows a Hubble instance to connect and gossip messages to its peers.
  *
@@ -70,9 +74,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
 
+  private _dedupMessageCache: Set<string>[];
+
   constructor(network?: FarcasterNetwork) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
+
+    this._dedupMessageCache = [new Set<string>(), new Set<string>()];
   }
 
   /** Returns the PeerId (public key) of this node */
@@ -88,6 +96,30 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /** Returns the node's libp2p AddressBook */
   get addressBook() {
     return this._node?.peerStore.addressBook;
+  }
+
+  /** Checks if the message was recently gossip'd, and if it was not,
+   * add it to the recent gossip'd message dedup cache */
+  checkDupMessage(message: Message): boolean {
+    const hashString = bytesToHexString(message.hash);
+
+    if (hashString.isOk()) {
+      const hash = hashString.value;
+      // Check for recent duplicates
+      if (this._dedupMessageCache[0]?.has(hash) || this._dedupMessageCache[1]?.has(hash)) {
+        return true;
+      }
+
+      if (this._dedupMessageCache[1]?.size || 0 >= DEDUP_CACHE_SIZE) {
+        this._dedupMessageCache[0] = this._dedupMessageCache[1] as Set<string>;
+        this._dedupMessageCache[1] = new Set<string>();
+      }
+
+      this._dedupMessageCache[1]?.add(hash);
+      return false;
+    }
+
+    return false;
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {

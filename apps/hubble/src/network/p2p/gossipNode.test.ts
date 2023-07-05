@@ -156,6 +156,17 @@ describe("GossipNode", () => {
       castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
     });
 
+    test("blocks dup", async () => {
+      const node = new GossipNode();
+
+      const isDup = node.checkDupMessage(signerAdd);
+      expect(isDup).toBeFalsy();
+
+      // Now adding it again will make it a dup
+      const isDup2 = node.checkDupMessage(signerAdd);
+      expect(isDup2).toBeTruthy();
+    });
+
     test("gossip messages only from rpc", async () => {
       let numMessagesGossiped = 0;
       const mockGossipNode = {

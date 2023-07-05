@@ -563,6 +563,10 @@ export class Hub implements HubInterface {
         return err(new HubError("unavailable", "Sync queue is full"));
       }
 
+      if (this.gossipNode.checkDupMessage(message)) {
+        return err(new HubError("bad_request.duplicate", "message was recently merged"));
+      }
+
       // Merge the message
       const result = await this.submitMessage(message, "gossip");
       return result.map(() => undefined);
