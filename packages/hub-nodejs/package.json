@@ -11,9 +11,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "MIT",
   "dependencies": {
     "@farcaster/core": "0.10.1",
@@ -35,7 +33,6 @@
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
     "eslint-config-custom": "*",
-    "prettier-config-custom": "*",
     "rome-config-custom": "*",
     "ts-proto": "^1.146.0"
   },

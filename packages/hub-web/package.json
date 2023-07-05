@@ -11,9 +11,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "MIT",
   "scripts": {
     "build": "tsup --config tsup.config.ts",
@@ -25,7 +23,6 @@
   },
   "devDependencies": {
     "eslint-config-custom": "*",
-    "prettier-config-custom": "*",
     "rome-config-custom": "*",
     "ts-proto": "^1.146.0"
   },
