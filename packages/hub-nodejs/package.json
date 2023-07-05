@@ -26,7 +26,8 @@
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto  --ts_proto_out=./src/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=grpc-js,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=../../protobufs/schemas ../../protobufs/schemas/rpc.proto",
-    "lint": "eslint  src/ --color --ext .ts",
+    "lint": "rome format src/ examples/ --write && rome check src/ examples --apply",
+    "lint:ci": "rome ci src/ examples/",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
     "prepublishOnly": "yarn run build"
@@ -35,6 +36,7 @@
     "@faker-js/faker": "^7.6.0",
     "eslint-config-custom": "*",
     "prettier-config-custom": "*",
+    "rome-config-custom": "*",
     "ts-proto": "^1.146.0"
   },
   "publishConfig": {

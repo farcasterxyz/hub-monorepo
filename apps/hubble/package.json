@@ -19,8 +19,8 @@
     "build": "yarn clean && tsc --project ./tsconfig.json",
     "clean": "rimraf ./build",
     "dev": "yarn start | yarn pino-pretty",
-    "lint": "eslint  src/ --color --ext .ts",
-    "lint:fix": "yarn run lint -- --fix",
+    "lint": "rome format src/ --write && rome check src/ --apply",
+    "lint:ci": "rome ci src/",
     "start": "node build/cli.js start",
     "identity": "node build/cli.js identity",
     "dbreset": "node build/cli.js dbreset",
@@ -45,6 +45,7 @@
     "pino-pretty": "~10.0.0",
     "prettier-config-custom": "*",
     "progress": "~2.0.3",
+    "rome-config-custom": "*",
     "ts-mockito": "~2.6.1",
     "tsx": "~3.12.5"
   },
