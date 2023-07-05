@@ -165,6 +165,7 @@ app
     }, PROCESS_SHUTDOWN_FILE_CHECK_INTERVAL_MS);
 
     // try to load the config file
+    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
     let hubConfig: any = DefaultConfig;
     if (cliOptions.config) {
       if (!cliOptions.config.endsWith(".js")) {
@@ -393,7 +394,7 @@ const writePeerId = async (peerId: PeerId, filepath: string) => {
       await mkdir(directory, { recursive: true });
     }
     await writeFile(filepath, proto, "binary");
-    /* eslint-enable security/detect-non-literal-fs-filename */
+    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
   } catch (err: any) {
     throw new Error(err);
   }
@@ -410,7 +411,7 @@ const createIdCommand = new Command("create")
     for (let i = 0; i < options.count; i++) {
       const peerId = await createEd25519PeerId();
 
-      if (i == 0) {
+      if (i === 0) {
         // Create a copy of the first peerId as the default one to use
         await writePeerId(peerId, resolve(`${options.output}/${DEFAULT_PEER_ID_FILENAME}`));
       }

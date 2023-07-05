@@ -109,7 +109,7 @@ const makeEventId = (timestamp: number, seq: number): number => {
   let binarySeq = seq.toString(2);
   if (binarySeq.length) {
     while (binarySeq.length < SEQUENCE_BITS) {
-      binarySeq = "0" + binarySeq;
+      binarySeq = `0${binarySeq}`;
     }
   }
 
@@ -284,6 +284,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         }
         const event = HubEvent.create({ ...eventArgs, id: eventId.value });
         // TODO: validate event
+        // rome-ignore lint/style/noParameterAssign: legacy eslint migration
         txn = putEventTransaction(txn, event);
 
         await this._db.commit(txn);

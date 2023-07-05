@@ -20,5 +20,5 @@ export function bytesToHex(bytes: Uint8Array): string;
 export function bytesToHex(bytes: Uint8Array | null | undefined): string | null | undefined {
   if (bytes === undefined) return undefined;
   if (bytes === null) return null;
-  return "0x" + Buffer.from(bytes).toString("hex");
+  return `0x${Buffer.from(bytes).toString("hex")}`;
 }

@@ -177,7 +177,7 @@ class Engine {
       return err(validatedMessage.error);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // rome-ignore lint/style/noNonNullAssertion: legacy migration
     const setPostfix = typeToSetPostfix(message.data!.type);
 
     switch (setPostfix) {

@@ -184,6 +184,7 @@ export const validateMessageData = async <T extends protobufs.MessageData>(data:
   }
 
   // 5. Validate body
+  // rome-ignore lint/suspicious/noExplicitAny: legacy from eslint migration
   let bodyResult: HubResult<any>;
   if (validType.value === protobufs.MessageType.CAST_ADD && !!data.castAddBody) {
     // Allow usage of embedsDeprecated if timestamp is before cut-off
@@ -385,6 +386,7 @@ export const validateCastAddBody = (
     }
     if (i > 0) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // rome-ignore lint/style/noNonNullAssertion: not sure why we do this, legacy when migrating from eslint.
       const prevPosition = body.mentionsPositions[i - 1]!;
       if (position < prevPosition) {
         return err(

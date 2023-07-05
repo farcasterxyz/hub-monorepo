@@ -176,9 +176,9 @@ describe("TrieNode", () => {
 
     test("deleting item only compacts the branch of the trie with the deleted item", async () => {
       const ids = [
-        "0".padStart(TIMESTAMP_LENGTH * 2, "0") + "010680",
-        "0".padStart(TIMESTAMP_LENGTH * 2, "0") + "010a10",
-        "0".padStart(TIMESTAMP_LENGTH * 2, "0") + "05d220",
+        `${"0".padStart(TIMESTAMP_LENGTH * 2, "0")}010680`,
+        `${"0".padStart(TIMESTAMP_LENGTH * 2, "0")}010a10`,
+        `${"0".padStart(TIMESTAMP_LENGTH * 2, "0")}05d220`,
       ].map((id) => hexStringToBytes(id)._unsafeUnwrap());
 
       const root = new TrieNode();

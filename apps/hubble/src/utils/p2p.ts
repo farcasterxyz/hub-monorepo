@@ -26,7 +26,7 @@ export const checkNodeAddrs = (listenIPAddr: string, listenCombinedAddr: string)
 
 /** Builds an AddressInfo from a NodeAddress */
 export const addressInfoFromNodeAddress = (nodeAddress: NodeAddress): HubResult<AddressInfo> => {
-  if (nodeAddress.family != 4 && nodeAddress.family != 6)
+  if (nodeAddress.family !== 4 && nodeAddress.family !== 6)
     return err(new HubError("bad_request", `invalid nodeAddress family: ${nodeAddress.family}`));
 
   return ok({
@@ -55,7 +55,7 @@ export const addressInfoFromParts = (address: string, port: number): HubResult<A
  * Does not preserve port or transport information
  */
 export const ipMultiAddrStrFromAddressInfo = (addressInfo: AddressInfo): HubResult<string> => {
-  if (addressInfo.family != "IPv6" && addressInfo.family != "IPv4")
+  if (addressInfo.family !== "IPv6" && addressInfo.family !== "IPv4")
     return err(new HubError("bad_request", `invalid AddressInfo family: ${addressInfo.family}`));
 
   const family = addressInfo.family === "IPv6" ? "ip6" : "ip4";
@@ -95,7 +95,7 @@ export const addressInfoFromGossip = (addressInfo: GossipAddressInfo): HubResult
 
 /* Converts ipFamily number to string */
 export const ipFamilyToString = (family: number): string => {
-  return family == 4 ? "IPv4" : "IPv6";
+  return family === 4 ? "IPv4" : "IPv6";
 };
 
 /* Converts AddressInfo to address string  */
@@ -116,19 +116,20 @@ export const getPublicIp = async (): HubAsyncResult<string> => {
   return new Promise((resolve, reject) => {
     const now = new Date().getTime();
     const since = now - lastIpFetch.timestamp;
-    if (since <= 10 * 60 * 1000 && lastIpFetch.ip != "") {
-      logger.debug({ component: "utils/p2p", ip: lastIpFetch.ip }, `Cached public IP`);
+    if (since <= 10 * 60 * 1000 && lastIpFetch.ip !== "") {
+      logger.debug({ component: "utils/p2p", ip: lastIpFetch.ip }, "Cached public IP");
       resolve(ok(lastIpFetch.ip));
       return;
     }
     try {
       get({ host: "api64.ipify.org", port: 80, path: "/" }, (resp) => {
         resp.on("data", (ip: Buffer) => {
-          logger.info({ component: "utils/p2p", ip: ip.toString() }, `Fetched public IP`);
+          logger.info({ component: "utils/p2p", ip: ip.toString() }, "Fetched public IP");
           lastIpFetch = { timestamp: now, ip: ip.toString() };
           resolve(ok(ip.toString()));
         });
       });
+      // rome-ignore lint/suspicious/noExplicitAny: error catching
     } catch (err: any) {
       reject(new HubError("unavailable.network_failure", err));
     }
@@ -168,7 +169,7 @@ const checkCombinedAddr = (combinedAddr: string): HubResult<void> => {
   )();
 
   return optionsResult.andThen((options) => {
-    if (options.transport != "tcp") return err(new HubError("bad_request", "multiaddr transport must be tcp"));
+    if (options.transport !== "tcp") return err(new HubError("bad_request", "multiaddr transport must be tcp"));
     return ok(undefined);
   });
 };

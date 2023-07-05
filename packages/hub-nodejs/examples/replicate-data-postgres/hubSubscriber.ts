@@ -23,7 +23,7 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
   public stop() {
     this.stream?.cancel();
     this.stopped = true;
-    this.log.info(`Stopped HubSubscriber`);
+    this.log.info("Stopped HubSubscriber");
   }
 
   public destroy() {
@@ -40,14 +40,14 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
   }
 
   public async start(fromId?: number) {
-    this.log.info(`Starting HubSubscriber`);
+    this.log.info("Starting HubSubscriber");
 
     const hubClientReady = await this._waitForReadyHubClient();
     if (hubClientReady.isErr()) {
       this.log.error(`Failed to connect to hub: ${hubClientReady.error}`);
       return err(hubClientReady.error);
     }
-    this.log.info(`Connected to hub`);
+    this.log.info("Connected to hub");
 
     const subscribeParams: { eventTypes: HubEventType[]; fromId?: number } = {
       eventTypes: [
@@ -63,12 +63,12 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
     const subscribeRequest = await this.hubClient.subscribe(subscribeParams);
     return subscribeRequest
       .andThen((stream) => {
-        this.log.info(`Subscribed to hub events`);
+        this.log.info("Subscribed to hub events");
         this.stream = stream;
         this.stopped = false;
 
         stream.on("close", async () => {
-          this.log.info(`HubSubscriber stream closed`);
+          this.log.info("HubSubscriber stream closed");
           this.stopped = true;
           this.stream = null;
         });
@@ -84,13 +84,14 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
   }
 
   private async processStream(stream: ClientReadableStream<HubEvent>) {
-    this.log.debug(`Started hub event stream processing`);
+    this.log.debug("Started hub event stream processing");
     try {
       for await (const event of stream) {
         const fnLog = this.log.child({ eventId: event.id, eventType: event.type });
         fnLog.debug(`Processing event ${event.id} (${event.type})`);
         this.emit("event", event);
       }
+      // rome-ignore lint/suspicious/noExplicitAny: error catching
     } catch (e: any) {
       this.log.info(`Hub event stream processing halted ${e.message}`);
     }

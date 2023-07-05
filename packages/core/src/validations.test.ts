@@ -246,7 +246,7 @@ describe("validateCastAddBody", () => {
       });
 
       test("with an embed url string over 256 bytes", () => {
-        body = Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.random.alphaNumeric(254) + "🤓"] });
+        body = Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [`${faker.random.alphaNumeric(254)}🤓`] });
         hubErrorMessage = "url > 256 bytes";
       });
     });
@@ -278,7 +278,7 @@ describe("validateCastAddBody", () => {
     });
 
     test("when text is longer than 320 bytes", () => {
-      const text = faker.random.alphaNumeric(318) + "🤓";
+      const text = `${faker.random.alphaNumeric(318)}🤓`;
       expect(text.length).toEqual(320);
       body = Factories.CastAddBody.build({ text });
       hubErrorMessage = "text > 320 bytes";
@@ -307,7 +307,7 @@ describe("validateCastAddBody", () => {
 
     test("with an embed url string over 256 bytes", () => {
       body = Factories.CastAddBody.build({
-        embeds: [{ url: faker.random.alphaNumeric(254) + "🤓" }],
+        embeds: [{ url: `${faker.random.alphaNumeric(254)}🤓` }],
       });
       hubErrorMessage = "url > 256 bytes";
     });
@@ -680,7 +680,7 @@ describe("validateSignerAddBody", () => {
     test("with name > 32 bytes", () => {
       let name = "";
       for (let i = 0; i < 10; i++) {
-        name = name + "🔥";
+        name = `${name}🔥`;
       }
       body = Factories.SignerAddBody.build({ name });
     });

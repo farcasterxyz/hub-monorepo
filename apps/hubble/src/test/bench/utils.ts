@@ -26,6 +26,7 @@ export const yieldToEventLoop = (): Promise<void> => {
 
 export const waitForPromise = (promise: Promise<unknown>) => {
   let finished = false;
+  // rome-ignore lint/suspicious/noAssignInExpressions: legacy eslint migration
   promise.finally(() => (finished = true));
 
   const pollToFinish = () => {

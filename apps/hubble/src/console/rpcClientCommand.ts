@@ -10,7 +10,7 @@ export class RpcClientCommand implements ConsoleCommandInterface {
     return "Use the RPC client connected to the Hub";
   }
   help(): string {
-    return `Usage: rpcClient.<rpc>(<args>)`;
+    return "Usage: rpcClient.<rpc>(<args>)";
   }
   object(): HubRpcClient {
     return this.rpcClient;

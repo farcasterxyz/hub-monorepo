@@ -143,7 +143,9 @@ export const getDbClient = (connectionString: string) => {
           bigint: {
             to: 20,
             from: 20,
+            // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
             parse: (x: any) => Number(x),
+            // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
             serialize: (x: any) => x.toString(),
           },
         },
@@ -154,6 +156,7 @@ export const getDbClient = (connectionString: string) => {
   });
 };
 
+// rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
 export const migrateToLatest = async (db: Kysely<any>, log: Logger): Promise<Result<void, unknown>> => {
   const migrator = new Migrator({
     db,

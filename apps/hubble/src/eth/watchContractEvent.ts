@@ -42,12 +42,12 @@ export class WatchContractEvent<
       },
     });
 
-    this._log.info(`Started watching contract events`);
+    this._log.info("Started watching contract events");
   }
 
   public stop() {
     if (this._unwatch) this._unwatch();
-    this._log.info(`Stopped watching contract events`);
+    this._log.info("Stopped watching contract events");
   }
 
   public restart() {

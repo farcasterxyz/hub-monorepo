@@ -177,6 +177,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
 
     // Puts message key into the byTarget index
     const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
+    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
     txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
 
     return ok(undefined);
@@ -197,6 +198,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
 
     // Delete the message key from byTarget index
     const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
+    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
     txn = txn.del(byTargetKey);
 
     return ok(undefined);
@@ -287,7 +289,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
 
       lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
 
-      if (type === undefined || (value !== undefined && value.equals(Buffer.from([type])))) {
+      if (type === undefined || value?.equals(Buffer.from([type]))) {
         // Calculates the positions in the key where the fid and tsHash begin
         const tsHashOffset = prefix.length;
         const fidOffset = tsHashOffset + TSHASH_LENGTH;

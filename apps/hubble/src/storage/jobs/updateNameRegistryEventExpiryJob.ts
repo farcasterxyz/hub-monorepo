@@ -179,9 +179,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
 
   async enqueueJob(payload: UpdateNameRegistryEventExpiryJobPayload, doAt?: number): HubAsyncResult<Buffer> {
     // If doAt timestamp is missing, use current timestamp
-    if (!doAt) {
-      doAt = Date.now();
-    }
+    const doAtTimestamp = doAt ? doAt : Date.now();
 
     const payloadBytes = UpdateNameRegistryEventExpiryJobPayload.encode(payload).finish();
 
@@ -189,7 +187,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
     const hash = blake3(Uint8Array.from(payloadBytes), { dkLen: 4 });
 
     // Create job key
-    const key = UpdateNameRegistryEventExpiryJobQueue.makeJobKey(doAt, hash);
+    const key = UpdateNameRegistryEventExpiryJobQueue.makeJobKey(doAtTimestamp, hash);
     if (key.isErr()) {
       return err(key.error);
     }
@@ -228,7 +226,7 @@ export class UpdateNameRegistryEventExpiryJobQueue extends TypedEmitter<JobQueue
       (err) =>
         new HubError("bad_request.parse_failure", {
           cause: err as Error,
-          message: `Failed to parse UpdateNameRegistryEventExpiryJobPayload`,
+          message: "Failed to parse UpdateNameRegistryEventExpiryJobPayload",
         }),
     )();
 

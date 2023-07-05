@@ -365,8 +365,7 @@ export class Hub implements HubInterface {
     if (dbNetworkResult.isOk() && dbNetworkResult.value && dbNetworkResult.value !== this.options.network) {
       throw new HubError(
         "unavailable",
-        `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. ` +
-          `Please reset the DB with the "dbreset" command if this is intentional.`,
+        `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. Please reset the DB with the "dbreset" command if this is intentional.`,
       );
     }
 
@@ -559,7 +558,7 @@ export class Hub implements HubInterface {
         // will eventually re-fetch and merge this message in anyway.
         log.warn(
           { syncTrieQ: this.syncEngine.syncTrieQSize, syncMergeQ: this.syncEngine.syncMergeQSize },
-          `Sync queue is full, dropping gossip message`,
+          "Sync queue is full, dropping gossip message",
         );
         return err(new HubError("unavailable", "Sync queue is full"));
       }
@@ -699,7 +698,7 @@ export class Hub implements HubInterface {
     // sorts addresses by Public IPs first
     const addr = peerInfo.addresses.sort((a, b) => publicAddressesFirst(a, b))[0];
     if (addr === undefined) {
-      log.info({ function: "getRPCClientForPeer", peer }, `peer found but no address is available to request sync`);
+      log.info({ function: "getRPCClientForPeer", peer }, "peer found but no address is available to request sync");
 
       return;
     }

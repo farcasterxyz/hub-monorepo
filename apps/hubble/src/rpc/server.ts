@@ -244,7 +244,7 @@ export default class Server {
     return new Promise((resolve, reject) => {
       if (force) {
         this.grpcServer.forceShutdown();
-        log.info({ component: "gRPC Server" }, `Force shutdown succeeded`);
+        log.info({ component: "gRPC Server" }, "Force shutdown succeeded");
         resolve();
       } else {
         this.grpcServer.tryShutdown((err) => {
@@ -252,7 +252,7 @@ export default class Server {
             log.error({ component: "gRPC Server" }, `Shutdown failed: ${err}`);
             reject(err);
           } else {
-            log.info({ component: "gRPC Server" }, `Shutdown succeeded`);
+            log.info({ component: "gRPC Server" }, "Shutdown succeeded");
             resolve();
           }
         });
@@ -360,6 +360,7 @@ export default class Server {
               log.warn({ num: corruptedMessages.length }, "Found corrupted messages, rebuilding some syncIDs");
               // Don't wait for this to finish, just return the messages we have.
               this.syncEngine?.rebuildSyncIds(request.syncIds);
+              // rome-ignore lint/style/noParameterAssign: legacy migration
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }
 

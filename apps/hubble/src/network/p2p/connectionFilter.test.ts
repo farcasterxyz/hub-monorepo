@@ -18,7 +18,7 @@ describe("connectionFilter tests", () => {
     expect(multiaddr(allowedMultiAddrStr)).toBeDefined();
     filteredMultiAddrStr = `/ip4/127.0.0.1/tcp/64455/p2p/${blockedPeerId.toString()}`;
     expect(multiaddr(filteredMultiAddrStr)).toBeDefined();
-    localMultiAddrStr = `/ip4/127.0.0.1/tcp/64456/`;
+    localMultiAddrStr = "/ip4/127.0.0.1/tcp/64456/";
   });
 
   test("denies all connections by default", async () => {

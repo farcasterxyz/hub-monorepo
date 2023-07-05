@@ -41,7 +41,7 @@ const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer =>
     throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
-  if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
+  if (type && (Buffer.from(type).length > 8 || type.length === 0)) {
     throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
@@ -67,7 +67,7 @@ const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer
     throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
-  if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
+  if (type && (Buffer.from(type).length > 8 || type.length === 0)) {
     throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
@@ -168,6 +168,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
     // Puts message key into the byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
+    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
     txn = txn.put(byTargetKey, Buffer.from(message.data.linkBody.type));
 
     return ok(undefined);
@@ -186,6 +187,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
     // Delete the message key from byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
+    // rome-ignore lint/style/noParameterAssign: legacy eslint migration
     txn = txn.del(byTargetKey);
 
     return ok(undefined);
@@ -272,7 +274,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
       lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
 
-      if (type === undefined || (value !== undefined && value.equals(Buffer.from(type)))) {
+      if (type === undefined || value?.equals(Buffer.from(type))) {
         // Calculates the positions in the key where the fid and tsHash begin
         const tsHashOffset = prefix.length;
         const fidOffset = tsHashOffset + TSHASH_LENGTH;

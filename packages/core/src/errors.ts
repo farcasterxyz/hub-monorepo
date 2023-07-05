@@ -6,6 +6,7 @@ interface HubErrorOpts {
   presentable: boolean;
 }
 
+// rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
 export const isHubError = (e: any): e is HubError => {
   return typeof e.errCode !== "undefined";
 };
@@ -30,17 +31,21 @@ export class HubError extends Error {
    * @param context - a message, another Error, or a HubErrorOpts
    */
   constructor(errCode: HubErrorCode, context: Partial<HubErrorOpts> | string | Error) {
+    let parsedContext: string | Error | Partial<HubErrorOpts>;
+
     if (typeof context === "string") {
-      context = { message: context };
+      parsedContext = { message: context };
     } else if (context instanceof Error) {
-      context = { cause: context, message: context.message };
+      parsedContext = { cause: context, message: context.message };
+    } else {
+      parsedContext = context;
     }
 
-    if (!context.message) {
-      context.message = context.cause?.message || "";
+    if (!parsedContext.message) {
+      parsedContext.message = parsedContext.cause?.message || "";
     }
 
-    super(context.message, { cause: context.cause });
+    super(parsedContext.message, { cause: parsedContext.cause });
 
     this.name = "HubError";
     this.errCode = errCode;
