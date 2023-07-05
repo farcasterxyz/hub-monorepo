@@ -37,9 +37,8 @@ export type DeepPartial<T> = T extends object
 const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
   if (typeof partial === "object") {
     for (const key in partial) {
-      // eslint-disable-next-line security/detect-object-injection
       if (partial[key] !== undefined) {
-        // eslint-disable-next-line security/detect-object-injection
+        // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
         if (!deepPartialEquals(partial[key] as any, whole[key as keyof T] as any)) {
           return false;
         }
@@ -165,7 +164,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     const castMessagesPrefix = makeMessagePrimaryKey(extractible.data.fid, this._postfix);
     const filter = (message: Message): message is TRemove => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
       return this._isRemoveType!(message) && deepPartialEquals(extractible, message);
     };
     return getMessagesPageByPrefix(this._db, castMessagesPrefix, filter, pageOptions);
@@ -189,35 +188,39 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw new HubError("bad_request.invalid_param", "data null");
     }
 
-    return this._mergeLock
-      .acquire(
-        message.data.fid.toString(),
-        async () => {
-          const prunableResult = await this._eventHandler.isPrunable(
-            message as any,
-            this._postfix,
-            this._pruneSizeLimit,
-            this._pruneTimeLimit,
-          );
-          if (prunableResult.isErr()) {
-            throw prunableResult.error;
-          } else if (prunableResult.value) {
-            throw new HubError("bad_request.prunable", "message would be pruned");
-          }
+    return (
+      this._mergeLock
+        .acquire(
+          message.data.fid.toString(),
+          async () => {
+            const prunableResult = await this._eventHandler.isPrunable(
+              // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+              message as any,
+              this._postfix,
+              this._pruneSizeLimit,
+              this._pruneTimeLimit,
+            );
+            if (prunableResult.isErr()) {
+              throw prunableResult.error;
+            } else if (prunableResult.value) {
+              throw new HubError("bad_request.prunable", "message would be pruned");
+            }
 
-          if (this._isAddType(message)) {
-            return this.mergeAdd(message);
-          } else if (this._isRemoveType && this._isRemoveType(message)) {
-            return this.mergeRemove(message);
-          } else {
-            throw new HubError("bad_request.validation_failure", "invalid message type");
-          }
-        },
-        { timeout: MERGE_TIMEOUT_DEFAULT },
-      )
-      .catch((e: any) => {
-        throw isHubError(e) ? e : new HubError("unavailable.storage_failure", "merge timed out");
-      });
+            if (this._isAddType(message)) {
+              return this.mergeAdd(message);
+            } else if (this._isRemoveType?.(message)) {
+              return this.mergeRemove(message);
+            } else {
+              throw new HubError("bad_request.validation_failure", "invalid message type");
+            }
+          },
+          { timeout: MERGE_TIMEOUT_DEFAULT },
+        )
+        // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
+        .catch((e: any) => {
+          throw isHubError(e) ? e : new HubError("unavailable.storage_failure", "merge timed out");
+        })
+    );
   }
 
   async revoke(message: Message): HubAsyncResult<number> {
@@ -226,7 +229,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       const txnMaybe = await this.deleteAddTransaction(txn, message);
       if (txnMaybe.isErr()) throw txnMaybe.error;
       txn = txnMaybe.value;
-    } else if (this._isRemoveType && this._isRemoveType(message)) {
+    } else if (this._isRemoveType?.(message)) {
       const txnMaybe = await this.deleteRemoveTransaction(txn, message);
       if (txnMaybe.isErr()) throw txnMaybe.error;
       txn = txnMaybe.value;
@@ -292,7 +295,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         const txnMaybe = await this.deleteAddTransaction(txn, nextMessage.value);
         if (txnMaybe.isErr()) throw txnMaybe.error;
         txn = txnMaybe.value;
-      } else if (this._isRemoveType && this._isRemoveType(nextMessage.value)) {
+      } else if (this._isRemoveType?.(nextMessage.value)) {
         const txnMaybe = await this.deleteRemoveTransaction(txn, nextMessage.value);
         if (txnMaybe.isErr()) throw txnMaybe.error;
         txn = txnMaybe.value;
@@ -487,8 +490,9 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       return err(checkResult.error);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
+
     if (tsHash.isErr()) {
       throw tsHash.error;
     }
@@ -497,15 +501,16 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     if (this._isRemoveType) {
       // Checks if there is a remove timestamp hash for this
+      // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
       const removeKey = this.makeRemoveKey(message as any);
       const removeTsHash = await ResultAsync.fromPromise(this._db.get(removeKey), () => undefined);
 
       if (removeTsHash.isOk()) {
         const removeCompare = this.messageCompare(
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
           this._removeMessageType!,
           new Uint8Array(removeTsHash.value),
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
           message.data!.type,
           tsHash.value,
         );
@@ -518,7 +523,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
           // TRemove message and delete it as part of the RocksDB transaction
           const existingRemove = await getMessage<TRemove>(
             this._db,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
             message.data!.fid,
             this._postfix,
             removeTsHash.value,
@@ -528,6 +533,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       }
     }
     // Checks if there is an add timestamp hash for this
+    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
     const addKey = this.makeAddKey(message as any);
     const addTsHash = await ResultAsync.fromPromise(this._db.get(addKey), () => undefined);
 
@@ -535,7 +541,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       const addCompare = this.messageCompare(
         this._addMessageType,
         new Uint8Array(addTsHash.value),
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
         message.data!.type,
         tsHash.value,
       );
@@ -546,7 +552,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // TAdd message and delete it as part of the RocksDB transaction
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
         const existingAdd = await getMessage<TAdd>(this._db, message.data!.fid, this._postfix, addTsHash.value);
         conflicts.push(existingAdd);
       }
@@ -556,46 +562,49 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   private async deleteManyTransaction(txn: Transaction, messages: (TAdd | TRemove)[]): Promise<Transaction> {
+    let deleteTxn = txn;
+
     for (const message of messages) {
       if (this._isAddType(message)) {
-        const txnMaybe = await this.deleteAddTransaction(txn, message);
+        const txnMaybe = await this.deleteAddTransaction(deleteTxn, message);
         if (txnMaybe.isErr()) throw txnMaybe.error;
-        txn = txnMaybe.value;
-      } else if (this._isRemoveType && this._isRemoveType(message)) {
-        const txnMaybe = await this.deleteRemoveTransaction(txn, message);
+        deleteTxn = txnMaybe.value;
+      } else if (this._isRemoveType?.(message)) {
+        const txnMaybe = await this.deleteRemoveTransaction(deleteTxn, message);
         if (txnMaybe.isErr()) throw txnMaybe.error;
-        txn = txnMaybe.value;
+        deleteTxn = txnMaybe.value;
       }
     }
-    return txn;
+    return deleteTxn;
   }
 
   /* Builds a RocksDB transaction to insert a TAdd message and construct its indices */
   private async putAddTransaction(txn: Transaction, message: TAdd): HubAsyncResult<Transaction> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
     }
 
     // Puts the message into the database
-    txn = putMessageTransaction(txn, message);
+    let addTxn = putMessageTransaction(txn, message);
 
     // Puts the message into the TAdds Set index
+    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
     const addsKey = this.makeAddKey(message as any);
-    txn = txn.put(addsKey, Buffer.from(tsHash.value));
+    addTxn = addTxn.put(addsKey, Buffer.from(tsHash.value));
 
-    const build = await this.buildSecondaryIndices(txn, message);
+    const build = await this.buildSecondaryIndices(addTxn, message);
     if (build.isErr()) {
       return err(build.error);
     }
 
-    return ok(txn);
+    return ok(addTxn);
   }
 
   /* Builds a RocksDB transaction to remove a TAdd message and delete its indices */
   private async deleteAddTransaction(txn: Transaction, message: TAdd): HubAsyncResult<Transaction> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
@@ -607,11 +616,12 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     }
 
     // Delete the message key from TAdds Set index
+    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
     const addsKey = this.makeAddKey(message as any);
-    txn = txn.del(addsKey);
+    const deleteTxn = txn.del(addsKey);
 
     // Delete the message
-    return ok(deleteMessageTransaction(txn, message));
+    return ok(deleteMessageTransaction(deleteTxn, message));
   }
 
   /* Builds a RocksDB transaction to insert a TRemove message and construct its indices */
@@ -620,20 +630,21 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw new Error("remove type is unsupported for this store");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
     }
 
     // Puts the message
-    txn = putMessageTransaction(txn, message);
+    let removeTxn = putMessageTransaction(txn, message);
 
     // Puts message key into the TRemoves Set index
+    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
     const removesKey = this.makeRemoveKey(message as any);
-    txn = txn.put(removesKey, Buffer.from(tsHash.value));
+    removeTxn = removeTxn.put(removesKey, Buffer.from(tsHash.value));
 
-    return ok(txn);
+    return ok(removeTxn);
   }
 
   /* Builds a RocksDB transaction to remove a TRemove message and delete its indices */
@@ -642,17 +653,18 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw new Error("remove type is unsupported for this store");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // rome-ignore lint/style/noNonNullAssertion: legacy eslint migration
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
       throw tsHash.error;
     }
 
     // Delete message key from TRemoves Set index
+    // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
     const removesKey = this.makeRemoveKey(message as any);
-    txn = txn.del(removesKey);
+    const deleteTxn = txn.del(removesKey);
 
     // Delete the message
-    return ok(deleteMessageTransaction(txn, message));
+    return ok(deleteMessageTransaction(deleteTxn, message));
   }
 }

@@ -14,6 +14,7 @@ export const STREAM_MESSAGE_BUFFER_SIZE = 1000;
 export class BufferedStreamWriter {
   private streamIsBackedUp = false;
   private stream: ServerWritableStream<SubscribeRequest, HubEvent>;
+  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
   private dataWaitingForDrain: any[] = [];
 
   constructor(stream: ServerWritableStream<SubscribeRequest, HubEvent>) {
@@ -26,6 +27,7 @@ export class BufferedStreamWriter {
    * ok(false) if the message was buffered because the stream is full
    * err if the stream can't be written to any more and will be closed.
    */
+  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
   public writeToStream(message: any): HubResult<boolean> {
     if (this.streamIsBackedUp) {
       this.dataWaitingForDrain.push(message);

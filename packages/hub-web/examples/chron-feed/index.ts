@@ -86,6 +86,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   for (let i = 0; i < mentions.length; i++) {
     textWithMentions += decoder.decode(bytes.slice(indexBytes, mentionsPositions[i]));
     const result = await getFnameFromFid(mentions[i], client);
+    // rome-ignore lint/suspicious/noAssignInExpressions: legacy eslint migration
     result.map((fname) => (textWithMentions += fname));
     indexBytes = mentionsPositions[i];
   }
@@ -127,7 +128,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   const castsResult = Result.combine(await Promise.all(castResultPromises));
 
   if (castsResult.isErr()) {
-    console.error("Fetching fnames failed:" + castsResult.error);
+    console.error(`Fetching fnames failed:${castsResult.error}`);
     return;
   }
 

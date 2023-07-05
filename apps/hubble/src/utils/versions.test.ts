@@ -20,6 +20,7 @@ describe("versions tests", () => {
     test("returns ok if version is greater than min version", () => {
       const minVersion = getMinFarcasterVersion();
       const higherVersion = semver.inc(minVersion._unsafeUnwrap(), "patch");
+      // rome-ignore lint/style/noNonNullAssertion: legacy migration
       const result = ensureAboveMinFarcasterVersion(higherVersion!);
       expect(result).toEqual(ok(undefined));
     });
@@ -46,6 +47,7 @@ describe("versions tests", () => {
       const current = FARCASTER_VERSIONS_SCHEDULE.find((value) => value.version === FARCASTER_VERSION);
       expect(current).toBeTruthy();
       const seven_days_in_ms = 7 * 24 * 60 * 60 * 1000;
+      // rome-ignore lint/style/noNonNullAssertion: legacy migration
       expect(current!.expiresAt - Date.now()).toBeGreaterThan(seven_days_in_ms);
     });
   });
@@ -55,6 +57,7 @@ describe("versions tests", () => {
       const current = FARCASTER_VERSIONS_SCHEDULE.find((value) => value.version === FARCASTER_VERSION);
       expect(current).toBeTruthy();
       setReferenceDateForTest(0);
+      // rome-ignore lint/style/noNonNullAssertion: legacy migration
       const result = ensureAboveTargetFarcasterVersion(current!.version);
       expect(result.isErr()).toBeTruthy();
       expect(result._unsafeUnwrapErr().message).toEqual("target version has not expired");
@@ -64,6 +67,7 @@ describe("versions tests", () => {
       const current = FARCASTER_VERSIONS_SCHEDULE.find((value) => value.version === FARCASTER_VERSION);
       expect(current).toBeTruthy();
       setReferenceDateForTest(100000000000000000000000);
+      // rome-ignore lint/style/noNonNullAssertion: legacy migration
       const result = ensureAboveTargetFarcasterVersion(current!.version);
       expect(result).toEqual(ok(undefined));
     });

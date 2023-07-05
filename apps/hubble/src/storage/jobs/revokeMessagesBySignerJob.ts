@@ -119,9 +119,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
 
   async enqueueJob(payload: RevokeMessagesBySignerJobPayload, doAt?: number): HubAsyncResult<Buffer> {
     // If doAt timestamp is missing, use current timestamp
-    if (!doAt) {
-      doAt = Date.now();
-    }
+    const doAtTimestamp = doAt ? doAt : Date.now();
 
     const payloadBytes = RevokeMessagesBySignerJobPayload.encode(payload).finish();
 
@@ -129,7 +127,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     const hash = blake3(Uint8Array.from(payloadBytes), { dkLen: 4 });
 
     // Create job key
-    const key = RevokeMessagesBySignerJobQueue.makeJobKey(doAt, hash);
+    const key = RevokeMessagesBySignerJobQueue.makeJobKey(doAtTimestamp, hash);
     if (key.isErr()) {
       return err(key.error);
     }
@@ -168,7 +166,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
       (err) =>
         new HubError("bad_request.parse_failure", {
           cause: err as Error,
-          message: `Failed to parse RevokeMessagesBySignerJobPayload`,
+          message: "Failed to parse RevokeMessagesBySignerJobPayload",
         }),
     )();
 

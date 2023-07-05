@@ -36,8 +36,7 @@ const fromServiceError = (err: GrpcWebError): HubError => {
 
   // due to envoy, the error for no connection is Response closed without headers
   if (err.code === 2 && context === "Response closed without headers") {
-    context =
-      "Connection failed: please check that the hub’s address, ports and authentication config are correct. " + context;
+    context = `Connection failed: please check that the hub’s address, ports and authentication config are correct. ${context}`;
     return new HubError("unavailable" as HubErrorCode, context);
   }
 
@@ -75,6 +74,7 @@ const wrapClient = <C extends object>(client: C) => {
         return (...args: unknown[]) => {
           const result = func.call(target, ...args);
           if (result instanceof Promise) {
+            // rome-ignore lint/suspicious/noExplicitAny: legacy from eslint migration
             return (result as Promise<any>).then(
               (res) => ok(res),
               (e) => err(fromServiceError(e as GrpcWebError)),

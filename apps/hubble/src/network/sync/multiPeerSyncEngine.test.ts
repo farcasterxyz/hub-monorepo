@@ -28,8 +28,8 @@ import { deployIdRegistry, deployNameRegistry, publicClient } from "../../test/u
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
-const testDb1 = jestRocksDB(`engine1.peersyncEngine.test`);
-const testDb2 = jestRocksDB(`engine2.peersyncEngine.test`);
+const testDb1 = jestRocksDB("engine1.peersyncEngine.test");
+const testDb2 = jestRocksDB("engine2.peersyncEngine.test");
 
 const network = FarcasterNetwork.TESTNET;
 

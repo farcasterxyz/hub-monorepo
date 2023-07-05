@@ -15,8 +15,8 @@ import { MockRpcClient } from "./mock.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { getFarcasterTime } from "@farcaster/core";
 
-const testDb = jestRocksDB(`engine.syncEnginePerf.test`);
-const testDb2 = jestRocksDB(`engine2.syncEnginePerf.test`);
+const testDb = jestRocksDB("engine.syncEnginePerf.test");
+const testDb2 = jestRocksDB("engine2.syncEnginePerf.test");
 
 const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();

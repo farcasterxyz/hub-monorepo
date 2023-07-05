@@ -221,7 +221,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.info({ peerIdString }, "Diffsync: Starting diff sync");
 
     if (this.currentHubPeerContacts.size === 0) {
-      log.warn(`Diffsync: No peer contacts, skipping sync`);
+      log.warn("Diffsync: No peer contacts, skipping sync");
       this.emit("syncComplete", false);
       return;
     }
@@ -249,20 +249,20 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // If we still don't have a peer, skip the sync
     if (!peerContact || !peerId) {
-      log.warn({ peerContact, peerId }, `Diffsync: No contact info for peer, skipping sync`);
+      log.warn({ peerContact, peerId }, "Diffsync: No contact info for peer, skipping sync");
       this.emit("syncComplete", false);
       return;
     } else {
-      log.info({ peerId, peerContact }, `Diffsync: Starting diff sync with peer`);
+      log.info({ peerId, peerContact }, "Diffsync: Starting diff sync with peer");
     }
 
-    peerIdString = peerId.toString();
+    const updatedPeerIdString = peerId.toString();
     const rpcClient = await hub.getRPCClientForPeer(peerId, peerContact);
     if (!rpcClient) {
-      log.warn(`Diffsync: Failed to get RPC client for peer, skipping sync`);
+      log.warn("Diffsync: Failed to get RPC client for peer, skipping sync");
       // If we're unable to reach the peer, remove it from our contact list. We'll retry when it's added back by
       // the periodic ContactInfo gossip job.
-      this.removeContactInfoForPeerId(peerIdString);
+      this.removeContactInfoForPeerId(updatedPeerIdString);
       this.emit("syncComplete", false);
       return;
     }
@@ -276,16 +276,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (peerStateResult.isErr()) {
         log.warn(
           { error: peerStateResult.error, errMsg: peerStateResult.error.message, peerId, peerContact },
-          `Diffsync: Failed to get peer state, skipping sync`,
+          "Diffsync: Failed to get peer state, skipping sync",
         );
         this.emit("syncComplete", false);
         return;
       }
 
       const peerState = peerStateResult.value;
-      const syncStatusResult = await this.syncStatus(peerIdString, peerState);
+      const syncStatusResult = await this.syncStatus(updatedPeerIdString, peerState);
       if (syncStatusResult.isErr()) {
-        log.warn(`Diffsync: Failed to get shouldSync`);
+        log.warn("Diffsync: Failed to get shouldSync");
         this.emit("syncComplete", false);
         return;
       }
@@ -310,10 +310,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       );
 
       if (syncStatus.shouldSync === true) {
-        log.info({ peerId }, `Diffsync: Syncing with peer`);
-        await this.performSync(peerIdString, peerState, rpcClient);
+        log.info({ peerId }, "Diffsync: Syncing with peer");
+        await this.performSync(updatedPeerIdString, peerState, rpcClient);
       } else {
-        log.info({ peerId }, `No need to sync`);
+        log.info({ peerId }, "No need to sync");
         this.emit("syncComplete", false);
         return;
       }
@@ -395,7 +395,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
-    log.info(`Perform sync: Start`);
+    log.info("Perform sync: Start");
 
     let success = false;
     try {
@@ -430,15 +430,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           fullSyncResult.successCount === 0 &&
           fullSyncResult.deferredCount === 0
         ) {
-          log.warn(`No messages were successfully fetched`);
+          log.warn("No messages were successfully fetched");
           this._unproductivePeers.set(peerId, new Date());
         }
 
-        log.info(`Sync complete`);
+        log.info("Sync complete");
         success = true;
       }
     } catch (e) {
-      log.warn(e, `Error performing sync`);
+      log.warn(e, "Error performing sync");
     } finally {
       this._isSyncing = false;
     }
@@ -489,7 +489,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       },
       async (err) => {
         // e.g. Node goes down while we're performing the sync. No need to handle it, the next round of sync will retry.
-        log.warn(err, `Error fetching messages for sync`);
+        log.warn(err, "Error fetching messages for sync");
       },
     );
     return result;
@@ -497,8 +497,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async mergeMessages(messages: Message[], rpcClient: HubRpcClient): Promise<MergeResult> {
     const mergeResults: HubResult<number>[] = [];
-    let deferredCount = 0,
-      errCount = 0;
+    let deferredCount = 0;
+    let errCount = 0;
     // First, sort the messages by timestamp to reduce thrashing and refetching
     messages.sort((a, b) => (a.data?.timestamp || 0) - (b.data?.timestamp || 0));
 
@@ -574,7 +574,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   ): Promise<void> {
     // Check if we should interrupt the sync
     if (this._interruptSync) {
-      log.info(`Interrupting sync`);
+      log.info("Interrupting sync");
       return;
     }
 
@@ -590,7 +590,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } else if (theirNodeResult.value.numMessages === 0) {
       // If there are no messages, we're done, but something is probably wrong, since we should never have
       // a node with no messages.
-      log.warn({ prefix }, `No messages for prefix, skipping`);
+      log.warn({ prefix }, "No messages for prefix, skipping");
       return;
     } else if (ourNode?.hash === theirNodeResult.value.hash) {
       // Hashes match, we're done.
@@ -613,7 +613,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
   ): Promise<void> {
     if (this._interruptSync) {
-      log.info(`Interrupting sync`);
+      log.info("Interrupting sync");
       return;
     }
 
@@ -696,8 +696,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async getDbStats(): Promise<DbStats> {
-    let numFids = 0,
-      numFnames = 0;
+    let numFids = 0;
+    let numFnames = 0;
 
     for await (const [,] of this._db.iteratorByPrefix(Buffer.from([RootPrefix.IdRegistryEvent]), {
       keys: false,

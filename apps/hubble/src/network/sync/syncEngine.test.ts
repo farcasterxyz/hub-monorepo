@@ -23,8 +23,8 @@ import { NetworkFactories } from "../../network/utils/factories.js";
 import { HubInterface } from "../../hubble.js";
 import { MockHub } from "../../test/mocks.js";
 
-const testDb = jestRocksDB(`engine.syncEngine.test`);
-const testDb2 = jestRocksDB(`engine2.syncEngine.test`);
+const testDb = jestRocksDB("engine.syncEngine.test");
+const testDb2 = jestRocksDB("engine2.syncEngine.test");
 
 const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();

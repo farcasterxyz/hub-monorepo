@@ -78,7 +78,7 @@ export class FNameRegistryEventsProvider {
       this.lastTransferId = result.value.lastFnameProof;
     }
     if (this.resyncEvents) {
-      log.error(`Resyncing fname events from the beginning`);
+      log.error("Resyncing fname events from the beginning");
       this.lastTransferId = 0;
     }
     const rawAddress = await this.client.getSigner();
@@ -136,7 +136,7 @@ export class FNameRegistryEventsProvider {
 
   private async mergeTransfers(transfers: FNameTransfer[]) {
     if (this.serverSignerAddress.length === 0) {
-      log.warn(`No signer address, unable to merge name proofs`);
+      log.warn("No signer address, unable to merge name proofs");
       return;
     }
 

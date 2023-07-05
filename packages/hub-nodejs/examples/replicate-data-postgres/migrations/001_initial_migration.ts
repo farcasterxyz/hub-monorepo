@@ -1,5 +1,6 @@
 import { Kysely, sql } from "kysely";
 
+// rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
 export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("hubSubscriptions")
@@ -190,6 +191,7 @@ export const up = async (db: Kysely<any>) => {
     .execute();
 };
 
+// rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
 export const down = async (db: Kysely<any>) => {
   await db.schema.dropTable("links").ifExists().execute();
   await db.schema.dropTable("fnames").ifExists().execute();

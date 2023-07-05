@@ -92,7 +92,7 @@ export const bigIntToBytes = (value: bigint): HubResult<Uint8Array> => {
   let hexValue = value.toString(16);
 
   // Prefix odd-length hex values with a 0 since hexStringToBytes requires even-length hex values
-  hexValue = hexValue.length % 2 == 0 ? hexValue : "0" + hexValue;
+  hexValue = hexValue.length % 2 === 0 ? hexValue : `0${hexValue}`;
 
   return hexStringToBytes(hexValue);
 };

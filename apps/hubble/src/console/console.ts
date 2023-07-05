@@ -22,6 +22,7 @@ export interface ConsoleCommandInterface {
   commandName(): string;
   shortHelp(): string;
   help(): string;
+  // rome-ignore lint/suspicious/noExplicitAny: legacy eslint migration
   object(): any;
 }
 
@@ -38,7 +39,7 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
     });
 
   replServer.output.write("\nWelcome to the Hub console. Type '.help' for a list of commands.\n");
-  replServer.output.write('Connecting to hub at "' + addressString + '"\n');
+  replServer.output.write(`Connecting to hub at "${addressString}"\n`);
 
   replServer.setupHistory(path.join(process.cwd(), ".hub_history"), (err) => {
     if (err) {
@@ -70,7 +71,7 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
     action() {
       this.clearBufferedCommand();
 
-      this.output.write(`Available commands:\n`);
+      this.output.write("Available commands:\n");
       commands.forEach((command) => {
         this.output.write(`\t${command.commandName()} - ${command.shortHelp()}\n`);
       });
@@ -93,13 +94,13 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
   });
 
   if (info.isErr()) {
-    replServer.output.write('Could not connect to hub at "' + addressString + '"\n');
+    replServer.output.write(`Could not connect to hub at "${addressString}"\n`);
     // eslint-disable-next-line no-console
     console.log(info.error);
     process.exit(1);
   }
 
-  replServer.output.write("Connected Info: " + JSON.stringify(info.value) + "\n");
+  replServer.output.write(`Connected Info: ${JSON.stringify(info.value)}\n`);
 
   replServer.displayPrompt();
 };
