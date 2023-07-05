@@ -30,5 +30,5 @@
       "outputs": ["coverage/**"]
     }
   },
-  "globalDependencies": ["tsconfig.json", ".eslintrc.cjs"]
+  "globalDependencies": ["tsconfig.json"]
 }

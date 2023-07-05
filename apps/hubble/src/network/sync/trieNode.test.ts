@@ -5,7 +5,6 @@ import { NetworkFactories } from "../utils/factories.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 
 // Safety: fs inputs are always safe in tests
-/* eslint-disable security/detect-non-literal-fs-filename */
 
 const fid = Factories.Fid.build();
 const sharedDate = new Date(1665182332000);
@@ -95,7 +94,6 @@ describe("TrieNode", () => {
       const hash2 = id2.syncId();
 
       // The node at which the trie splits should be the first character that differs between the two hashes
-      // eslint-disable-next-line security/detect-object-injection
       const firstDiffPos = hash1.findIndex((c, i) => c !== hash2[i]);
 
       const root = new TrieNode();
@@ -110,12 +108,10 @@ describe("TrieNode", () => {
       const secondChild = children[1] as [number, TrieNode];
       expect(children.length).toEqual(2);
       // hash1 node
-      // eslint-disable-next-line security/detect-object-injection
       expect(firstChild[0]).toEqual(hash1[firstDiffPos]);
       expect(firstChild[1].isLeaf).toBeTruthy();
       expect(Buffer.from(firstChild[1].value ?? [])).toEqual(id1.syncId());
       // hash2 node
-      // eslint-disable-next-line security/detect-object-injection
       expect(secondChild[0]).toEqual(hash2[firstDiffPos]);
       expect(secondChild[1].isLeaf).toBeTruthy();
       expect(Buffer.from(secondChild[1].value ?? [])).toEqual(id2.syncId());
@@ -185,7 +181,6 @@ describe("TrieNode", () => {
 
       for (let i = 0; i < ids.length; i++) {
         // Safety: i is controlled by the loop and cannot be used to inject
-        // eslint-disable-next-line security/detect-object-injection
         await root.insert(ids[i] as Uint8Array, db, new Map());
       }
 
@@ -206,7 +201,6 @@ describe("TrieNode", () => {
 
       for (let i = 0; i < ids.length; i++) {
         // Safety: i is controlled by the loop and cannot be used to inject
-        // eslint-disable-next-line security/detect-object-injection
         await root.insert(ids[i] as Uint8Array, db, new Map());
       }
 

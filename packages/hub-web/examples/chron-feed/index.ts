@@ -1,5 +1,3 @@
-/* eslint no-console: 0 */
-
 import {
   CastAddMessage,
   fromFarcasterTime,

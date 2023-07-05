@@ -24,8 +24,6 @@ import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
 import { deployIdRegistry, deployNameRegistry, publicClient } from "../../test/utils.js";
 
-/* eslint-disable security/detect-non-literal-fs-filename */
-
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
 const testDb1 = jestRocksDB("engine1.peersyncEngine.test");

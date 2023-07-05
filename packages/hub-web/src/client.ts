@@ -68,7 +68,6 @@ const wrapClient = <C extends object>(client: C) => {
 
       if (key === "$") return target;
 
-      // eslint-disable-next-line security/detect-object-injection
       const func = target[key];
       if (typeof func === "function") {
         return (...args: unknown[]) => {

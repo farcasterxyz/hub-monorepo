@@ -1,4 +1,3 @@
-/* eslint-disable security/detect-non-literal-fs-filename */
 import * as fs from "node:fs";
 
 import { stringify } from "csv-stringify";

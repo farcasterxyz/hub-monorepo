@@ -370,7 +370,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const excludedHashesMatch =
       ourSnapshot.excludedHashes.length === theirSnapshot.excludedHashes.length &&
       // NOTE: `index` is controlled by `every` and so not at risk of object injection.
-      // eslint-disable-next-line security/detect-object-injection
       ourSnapshot.excludedHashes.every((value, index) => value === theirSnapshot.excludedHashes[index]);
 
     const divergencePrefix = Buffer.from(this.getDivergencePrefix(ourSnapshot, theirSnapshot.excludedHashes)).toString(
@@ -462,7 +461,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     for (let i = 0; i < prefix.length; i++) {
       // NOTE: `i` is controlled by for loop and hence not at risk of object injection.
-      // eslint-disable-next-line security/detect-object-injection
       if (excludedHashes[i] !== otherExcludedHashes[i]) {
         return prefix.slice(0, i);
       }
@@ -829,7 +827,6 @@ const fromNodeMetadataResponse = (response: TrieNodeMetadataResponse): NodeMetad
   const children = new Map<number, NodeMetadata>();
   for (let i = 0; i < response.children.length; i++) {
     // Safety: i is controlled by the loop
-    // eslint-disable-next-line security/detect-object-injection
     const child = response.children[i];
 
     if (child && child.prefix.length > 0) {

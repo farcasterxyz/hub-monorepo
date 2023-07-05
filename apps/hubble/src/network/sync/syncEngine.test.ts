@@ -1,5 +1,3 @@
-/* eslint-disable security/detect-non-literal-fs-filename */
-
 import {
   FarcasterNetwork,
   Factories,

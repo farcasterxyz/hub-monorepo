@@ -51,7 +51,6 @@ export type Logger = pino.Logger;
 
 export const messageTypeToName = (type?: MessageType) => {
   if (!type) return "";
-  // eslint-disable-next-line security/detect-object-injection
   return (MessageType[type] as string).replace("MESSAGE_TYPE_", "");
 };
 

@@ -181,8 +181,6 @@ class RocksDB {
       } else if (this._db.status === "open") {
         resolve(undefined);
       } else {
-        // NOTE: eslint falsely identifies `open(...)` as `fs.open`.
-        // eslint-disable-next-line security/detect-non-literal-fs-filename
         mkdir(this._db["location"], { recursive: true }, (fsErr: Error | null) => {
           if (fsErr) reject(parseError(fsErr));
           this._db.open({ createIfMissing: true, errorIfExists: false }, (e?: Error) => {

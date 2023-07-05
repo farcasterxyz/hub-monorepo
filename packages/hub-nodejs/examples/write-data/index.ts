@@ -10,8 +10,6 @@ import {
 import * as ed from "@noble/ed25519";
 import { Wallet } from "ethers";
 
-/* eslint no-console: 0 */
-
 /**
  * Populate the following constants with your own values
  */

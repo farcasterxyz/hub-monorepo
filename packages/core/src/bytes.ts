@@ -1,4 +1,3 @@
-/* eslint-disable security/detect-object-injection */
 import { err, ok, Result } from "neverthrow";
 import { bytesToHex, hexToBytes } from "viem";
 import { HubError, HubResult } from "./errors";

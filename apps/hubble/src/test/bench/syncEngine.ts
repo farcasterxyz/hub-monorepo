@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable security/detect-object-injection */
 import { Writable } from "node:stream";
 
 import Chance from "chance";

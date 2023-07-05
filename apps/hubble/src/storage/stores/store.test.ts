@@ -116,7 +116,6 @@ describe("store", () => {
       pruneSizeLimit: 100,
       pruneTimeLimit: 100,
     });
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await store.merge(castAdd._unsafeUnwrap());
 
     await store.getAdd({ hash: castAdd._unsafeUnwrap().hash, data: { fid: castAdd._unsafeUnwrap().data.fid } });

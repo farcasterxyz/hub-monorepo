@@ -224,8 +224,6 @@ class TrieNode {
       return false;
     }
 
-    // NOTE: eslint falsely identifies as `fs.exists`.
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
     const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
     const exists = (await child.exists(key, db, current_index + 1)) || false;
 
@@ -238,7 +236,6 @@ class TrieNode {
     const excludedHashes: string[] = [];
     let numMessages = 0;
 
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     let currentNode: TrieNode = this; // traverse from current node
     for (let i = currentIndex; i < prefix.length; i++) {
       const currentPrefix = prefix.subarray(0, i);
@@ -366,7 +363,6 @@ class TrieNode {
     trieNode._hash = dbtrieNode.hash;
 
     for (let i = 0; i < dbtrieNode.childChars.length; i++) {
-      // eslint-disable-next-line security/detect-object-injection
       trieNode._children.set(dbtrieNode.childChars[i] as number, new SerializedTrieNode());
     }
     trieNode._children = new Map([...trieNode._children.entries()].sort());

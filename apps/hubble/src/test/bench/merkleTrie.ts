@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable prefer-arrow-functions/prefer-arrow-functions */
-/* eslint-disable no-console */
-
 import { performance } from "node:perf_hooks";
 import { Writable } from "node:stream";
 import v8 from "v8";
