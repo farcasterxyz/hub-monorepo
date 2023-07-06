@@ -64,7 +64,7 @@ import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJ
 import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
-import { GOSSIP_PROTOCOL_VERSION } from "network/p2p/protocol.js";
+import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "sync" | "fname-registry";
 
