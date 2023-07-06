@@ -171,7 +171,7 @@ export class EthEventsProvider {
   ): EthEventsProvider {
     const publicClient = createPublicClient({
       chain: goerli,
-      transport: http(ethRpcUrl, { retryCount: 10 }),
+      transport: http(ethRpcUrl, { retryCount: 5 }),
     });
 
     const provider = new EthEventsProvider(
@@ -242,11 +242,12 @@ export class EthEventsProvider {
   private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
-      log.error(
-        { err: latestBlockResult.error },
-        "failed to connect to ethereum node. Check your eth RPC URL (e.g. --eth-rpc-url)",
-      );
-      return;
+      logger.fatal(latestBlockResult.error);
+      logger.fatal("Failed to connect to ethereum node. Check your eth RPC URL (e.g. --eth-rpc-url)");
+      throw new HubError("unknown", {
+        message: "Failed to connect to ethereum node.",
+        cause: latestBlockResult.error as Error,
+      });
     }
 
     const latestBlock = Number(latestBlockResult.value);
