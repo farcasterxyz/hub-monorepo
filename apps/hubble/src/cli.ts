@@ -21,6 +21,7 @@ import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { parseNetwork } from "./utils/command.js";
 import { sleep } from "./utils/crypto.js";
 import { Config as DefaultConfig } from "./defaultConfig.js";
+import { profileStorageUsed } from "./profile.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -468,6 +469,29 @@ app
   .description("Create or verify a peerID")
   .addCommand(createIdCommand)
   .addCommand(verifyIdCommand);
+
+const storageProfileCommand = new Command("storage")
+  .description("Profile the storage layout of the hub, accounting for all the storage")
+  .option("--db-name <name>", "The name of the RocksDB instance")
+  .option("-c, --config <filepath>", "Path to a config file with options")
+  .action(async (cliOptions) => {
+    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
+    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
+    const rocksDB = new RocksDB(rocksDBName);
+
+    if (!rocksDBName) throw new Error("No RocksDB name provided.");
+    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
+    if (dbResult.isErr()) {
+      logger.warn({ rocksDBName }, "Failed to open RocksDB. The Hub needs to be stopped to run this command.");
+    } else {
+      await profileStorageUsed(rocksDB);
+    }
+
+    await rocksDB.close();
+    exit(0);
+  });
+
+app.command("profile").description("Profile various resources used by the hub").addCommand(storageProfileCommand);
 
 app
   .command("status")
