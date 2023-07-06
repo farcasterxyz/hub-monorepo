@@ -110,7 +110,7 @@ function toPrettyPrintObject(keysProfile: KeysProfile[]): string[][] {
  * 4. Hub Events
  * 5. Others
  */
-function prefixProfileToDataType(keysProfile: KeysProfile[]): KeysProfile[] {
+function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: KeysProfile[]): KeysProfile[] {
   const dataTypePrefixes = [
     new KeysProfile("User Data"),
     new KeysProfile("Indexes"),
@@ -122,26 +122,40 @@ function prefixProfileToDataType(keysProfile: KeysProfile[]): KeysProfile[] {
   for (let i = 0; i < keysProfile.length; i++) {
     const kp = keysProfile[i] as KeysProfile;
 
+    let index = 0;
+
     if (kp.label.includes("User")) {
-      (dataTypePrefixes[0] as KeysProfile).count += kp.count;
-      (dataTypePrefixes[0] as KeysProfile).keyBytes += kp.keyBytes;
-      (dataTypePrefixes[0] as KeysProfile).valueBytes += kp.valueBytes;
+      index = 0;
     } else if (kp.label.includes("By")) {
+      index = 1;
+    } else if (kp.label.includes("Trie")) {
+      index = 2;
+    } else if (kp.label.includes("HubEvents")) {
+      index = 3;
+    } else {
+      index = 4;
+    }
+
+    const profile = dataTypePrefixes[index] as KeysProfile;
+    profile.count += kp.count;
+    profile.keyBytes += kp.keyBytes;
+    profile.valueBytes += kp.valueBytes;
+  }
+
+  // The UserData also contains indexes (enum value >= 86), so adjust those from the userPostfix values
+  for (let i = 0; i < userPostfixKeys.length; i++) {
+    const kp = userPostfixKeys[i] as KeysProfile;
+
+    if (i >= 86) {
+      // This is index data, so remove it from the UserData
+      (dataTypePrefixes[0] as KeysProfile).count -= kp.count;
+      (dataTypePrefixes[0] as KeysProfile).keyBytes -= kp.keyBytes;
+      (dataTypePrefixes[0] as KeysProfile).valueBytes -= kp.valueBytes;
+
+      // ... and add it to the Indexes
       (dataTypePrefixes[1] as KeysProfile).count += kp.count;
       (dataTypePrefixes[1] as KeysProfile).keyBytes += kp.keyBytes;
       (dataTypePrefixes[1] as KeysProfile).valueBytes += kp.valueBytes;
-    } else if (kp.label.includes("Trie")) {
-      (dataTypePrefixes[2] as KeysProfile).count += kp.count;
-      (dataTypePrefixes[2] as KeysProfile).keyBytes += kp.keyBytes;
-      (dataTypePrefixes[2] as KeysProfile).valueBytes += kp.valueBytes;
-    } else if (kp.label.includes("HubEvents")) {
-      (dataTypePrefixes[3] as KeysProfile).count += kp.count;
-      (dataTypePrefixes[3] as KeysProfile).keyBytes += kp.keyBytes;
-      (dataTypePrefixes[3] as KeysProfile).valueBytes += kp.valueBytes;
-    } else {
-      (dataTypePrefixes[4] as KeysProfile).count += kp.count;
-      (dataTypePrefixes[4] as KeysProfile).keyBytes += kp.keyBytes;
-      (dataTypePrefixes[4] as KeysProfile).valueBytes += kp.valueBytes;
     }
   }
 
@@ -204,7 +218,7 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
   console.log(prettyPrintTable(toPrettyPrintObject(prefixKeys)));
 
   console.log("\nBy Data Type:\n");
-  console.log(prettyPrintTable(toPrettyPrintObject(prefixProfileToDataType(prefixKeys))));
+  console.log(prettyPrintTable(toPrettyPrintObject(prefixProfileToDataType(prefixKeys, userPostfixKeys))));
 
   console.log("\nBy User Data type:\n");
   console.log(prettyPrintTable(toPrettyPrintObject(userPostfixKeys)));
