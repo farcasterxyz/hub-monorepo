@@ -4,6 +4,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWJECuSHn5edaorpufE9ceAoqR5zcAuD4ThoyDzVaz77GV", // lamia.farcaster.xyz
   "12D3KooWMQrf6unpGJfLBmTGy3eKTo4cGcXktWRbgMnfbZLXqBbn", // nemes.farcaster.xyz
   "12D3KooWN9ztVoHYi26NwTDDLNjgBozz479br3pwBuy3oLQVQmhz", // @cassie
+  "12D3KooWBJnUaDeM1bm5CYQSKqBN7yKJZoF5E85SDYDiMKHr9UwA", // @roadz
   "12D3KooWHiyvASqvhGn9kqsLBemPTAF6UYEaFGaLUpPxnM54KFbG", // @deodad
   "12D3KooWKXAG1Z212HHrwYaW5NnwBxoXkk3Sr7USzRxMzS9pieZi", // @paden
   "12D3KooWFbnaXtbD5fwbMGq2JRjPaj7C6EpZRgaxC8jdtcX7FJbZ", // @v
