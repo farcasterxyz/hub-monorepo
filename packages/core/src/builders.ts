@@ -1,39 +1,39 @@
-import * as protobufs from './protobufs';
-import { blake3 } from '@noble/hashes/blake3';
-import { err, ok } from 'neverthrow';
-import { HubAsyncResult, HubResult } from './errors';
-import { Signer } from './signers';
-import { getFarcasterTime } from './time';
-import * as validations from './validations';
+import * as protobufs from "./protobufs";
+import { blake3 } from "@noble/hashes/blake3";
+import { err, ok } from "neverthrow";
+import { HubAsyncResult } from "./errors";
+import { Signer } from "./signers";
+import { getFarcasterTime } from "./time";
+import * as validations from "./validations";
 
 /** Internal Types  */
 
-type MessageDataOptions = Pick<protobufs.MessageData, 'fid' | 'network'> & {
+type MessageDataOptions = Pick<protobufs.MessageData, "fid" | "network"> & {
   timestamp?: number; // Farcaster timestamp
 };
 
-type MessageSignerOptions = Pick<protobufs.Message, 'signature' | 'signatureScheme' | 'signer'>;
+type MessageSignerOptions = Pick<protobufs.Message, "signature" | "signatureScheme" | "signer">;
 
 type MessageBodyOptions = Pick<
   protobufs.MessageData,
-  | 'castAddBody'
-  | 'castRemoveBody'
-  | 'reactionBody'
-  | 'verificationAddEthAddressBody'
-  | 'verificationRemoveBody'
-  | 'signerAddBody'
-  | 'signerRemoveBody'
-  | 'userDataBody'
-  | 'linkBody'
+  | "castAddBody"
+  | "castRemoveBody"
+  | "reactionBody"
+  | "verificationAddEthAddressBody"
+  | "verificationRemoveBody"
+  | "signerAddBody"
+  | "signerRemoveBody"
+  | "userDataBody"
+  | "linkBody"
 >;
 
 /** Generic Methods */
 
-const makeMessageData = <TData extends protobufs.MessageData>(
+const makeMessageData = async <TData extends protobufs.MessageData>(
   bodyOptions: MessageBodyOptions,
   messageType: protobufs.MessageType,
-  dataOptions: MessageDataOptions
-): HubResult<TData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<TData> => {
   if (!dataOptions.timestamp) {
     getFarcasterTime().map((timestamp) => {
       dataOptions.timestamp = timestamp;
@@ -51,7 +51,7 @@ const makeMessageData = <TData extends protobufs.MessageData>(
 
 const makeMessage = async <TMessage extends protobufs.Message>(
   messageData: protobufs.MessageData,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<TMessage> => {
   const dataBytes = protobufs.MessageData.encode(messageData).finish();
 
@@ -82,7 +82,7 @@ export const makeMessageHash = async (messageData: protobufs.MessageData): HubAs
 
 export const makeMessageWithSignature = async (
   messageData: protobufs.MessageData,
-  signerOptions: MessageSignerOptions
+  signerOptions: MessageSignerOptions,
 ): HubAsyncResult<protobufs.Message> => {
   const dataBytes = protobufs.MessageData.encode(messageData).finish();
 
@@ -105,9 +105,9 @@ export const makeMessageWithSignature = async (
 export const makeCastAdd = async (
   body: protobufs.CastAddBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.CastAddMessage> => {
-  const data = makeCastAddData(body, dataOptions);
+  const data = await makeCastAddData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -117,26 +117,26 @@ export const makeCastAdd = async (
 export const makeCastRemove = async (
   body: protobufs.CastRemoveBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.CastRemoveMessage> => {
-  const data = makeCastRemoveData(body, dataOptions);
+  const data = await makeCastRemoveData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
   return makeMessage(data.value, signer);
 };
 
-export const makeCastAddData = (
+export const makeCastAddData = async (
   body: protobufs.CastAddBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.CastAddData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.CastAddData> => {
   return makeMessageData({ castAddBody: body }, protobufs.MessageType.CAST_ADD, dataOptions);
 };
 
 export const makeCastRemoveData = (
   body: protobufs.CastRemoveBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.CastRemoveData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.CastRemoveData> => {
   return makeMessageData({ castRemoveBody: body }, protobufs.MessageType.CAST_REMOVE, dataOptions);
 };
 
@@ -147,9 +147,9 @@ export const makeCastRemoveData = (
 export const makeLinkAdd = async (
   body: protobufs.LinkBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.LinkAddMessage> => {
-  const data = makeLinkAddData(body, dataOptions);
+  const data = await makeLinkAddData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -159,9 +159,9 @@ export const makeLinkAdd = async (
 export const makeLinkRemove = async (
   body: protobufs.LinkBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.LinkRemoveMessage> => {
-  const data = makeLinkRemoveData(body, dataOptions);
+  const data = await makeLinkRemoveData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -170,15 +170,15 @@ export const makeLinkRemove = async (
 
 export const makeLinkAddData = (
   body: protobufs.LinkBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.LinkAddData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.LinkAddData> => {
   return makeMessageData({ linkBody: body }, protobufs.MessageType.LINK_ADD, dataOptions);
 };
 
 export const makeLinkRemoveData = (
   body: protobufs.LinkBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.LinkRemoveData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.LinkRemoveData> => {
   return makeMessageData({ linkBody: body }, protobufs.MessageType.LINK_REMOVE, dataOptions);
 };
 
@@ -189,9 +189,9 @@ export const makeLinkRemoveData = (
 export const makeReactionAdd = async (
   body: protobufs.ReactionBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.ReactionAddMessage> => {
-  const data = makeReactionAddData(body, dataOptions);
+  const data = await makeReactionAddData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -201,9 +201,9 @@ export const makeReactionAdd = async (
 export const makeReactionRemove = async (
   body: protobufs.ReactionBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.ReactionRemoveMessage> => {
-  const data = makeReactionRemoveData(body, dataOptions);
+  const data = await makeReactionRemoveData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -212,15 +212,15 @@ export const makeReactionRemove = async (
 
 export const makeReactionAddData = (
   body: protobufs.ReactionBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.ReactionAddData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.ReactionAddData> => {
   return makeMessageData({ reactionBody: body }, protobufs.MessageType.REACTION_ADD, dataOptions);
 };
 
 export const makeReactionRemoveData = (
   body: protobufs.ReactionBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.ReactionRemoveData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.ReactionRemoveData> => {
   return makeMessageData({ reactionBody: body }, protobufs.MessageType.REACTION_REMOVE, dataOptions);
 };
 
@@ -231,9 +231,9 @@ export const makeReactionRemoveData = (
 export const makeVerificationAddEthAddress = async (
   body: protobufs.VerificationAddEthAddressBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.VerificationAddEthAddressMessage> => {
-  const data = makeVerificationAddEthAddressData(body, dataOptions);
+  const data = await makeVerificationAddEthAddressData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -243,9 +243,9 @@ export const makeVerificationAddEthAddress = async (
 export const makeVerificationRemove = async (
   body: protobufs.VerificationRemoveBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.VerificationRemoveMessage> => {
-  const data = makeVerificationRemoveData(body, dataOptions);
+  const data = await makeVerificationRemoveData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -254,19 +254,19 @@ export const makeVerificationRemove = async (
 
 export const makeVerificationAddEthAddressData = (
   body: protobufs.VerificationAddEthAddressBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.VerificationAddEthAddressData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.VerificationAddEthAddressData> => {
   return makeMessageData(
     { verificationAddEthAddressBody: body },
     protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
-    dataOptions
+    dataOptions,
   );
 };
 
 export const makeVerificationRemoveData = (
   body: protobufs.VerificationRemoveBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.VerificationRemoveData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.VerificationRemoveData> => {
   return makeMessageData({ verificationRemoveBody: body }, protobufs.MessageType.VERIFICATION_REMOVE, dataOptions);
 };
 
@@ -277,9 +277,9 @@ export const makeVerificationRemoveData = (
 export const makeSignerAdd = async (
   body: protobufs.SignerAddBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.SignerAddMessage> => {
-  const data = makeSignerAddData(body, dataOptions);
+  const data = await makeSignerAddData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -289,9 +289,9 @@ export const makeSignerAdd = async (
 export const makeSignerRemove = async (
   body: protobufs.SignerRemoveBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.SignerRemoveMessage> => {
-  const data = makeSignerRemoveData(body, dataOptions);
+  const data = await makeSignerRemoveData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -300,15 +300,15 @@ export const makeSignerRemove = async (
 
 export const makeSignerAddData = (
   body: protobufs.SignerAddBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.SignerAddData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.SignerAddData> => {
   return makeMessageData({ signerAddBody: body }, protobufs.MessageType.SIGNER_ADD, dataOptions);
 };
 
 export const makeSignerRemoveData = (
   body: protobufs.SignerRemoveBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.SignerRemoveData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.SignerRemoveData> => {
   return makeMessageData({ signerRemoveBody: body }, protobufs.MessageType.SIGNER_REMOVE, dataOptions);
 };
 
@@ -319,9 +319,9 @@ export const makeSignerRemoveData = (
 export const makeUserDataAdd = async (
   body: protobufs.UserDataBody,
   dataOptions: MessageDataOptions,
-  signer: Signer
+  signer: Signer,
 ): HubAsyncResult<protobufs.UserDataAddMessage> => {
-  const data = makeUserDataAddData(body, dataOptions);
+  const data = await makeUserDataAddData(body, dataOptions);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -330,7 +330,7 @@ export const makeUserDataAdd = async (
 
 export const makeUserDataAddData = (
   body: protobufs.UserDataBody,
-  dataOptions: MessageDataOptions
-): HubResult<protobufs.UserDataAddData> => {
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.UserDataAddData> => {
   return makeMessageData({ userDataBody: body }, protobufs.MessageType.USER_DATA_ADD, dataOptions);
 };

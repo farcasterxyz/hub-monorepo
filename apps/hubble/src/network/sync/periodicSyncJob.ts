@@ -1,17 +1,17 @@
-import { ResultAsync } from 'neverthrow';
-import cron from 'node-cron';
-import { Hub } from '../../hubble.js';
-import { logger } from '../..//utils/logger.js';
-import SyncEngine from './syncEngine.js';
+import { ResultAsync } from "neverthrow";
+import cron from "node-cron";
+import { Hub } from "../../hubble.js";
+import { logger } from "../..//utils/logger.js";
+import SyncEngine from "./syncEngine.js";
 
 const log = logger.child({
-  component: 'PeriodicSyncJob',
+  component: "PeriodicSyncJob",
 });
 
-type SchedulerStatus = 'started' | 'stopped';
+type SchedulerStatus = "started" | "stopped";
 
 // Every 2 minutes, at 00:45 seconds, to avoid clashing with the prune job
-const DEFAULT_PERIODIC_SYNC_JOB_CRON = '45 */2 * * * *';
+const DEFAULT_PERIODIC_SYNC_JOB_CRON = "45 */2 * * * *";
 
 export class PeriodicSyncJobScheduler {
   private _hub: Hub;
@@ -38,17 +38,17 @@ export class PeriodicSyncJobScheduler {
   }
 
   status(): SchedulerStatus {
-    return this._cronTask ? 'started' : 'stopped';
+    return this._cronTask ? "started" : "stopped";
   }
 
   async doJobs() {
     this._jobCount += 1;
-    log.info({ jobCount: this._jobCount }, 'starting periodic sync job');
+    log.info({ jobCount: this._jobCount }, "starting periodic sync job");
 
     // Do a diff sync
     const syncResult = await ResultAsync.fromPromise(this._syncEngine.diffSyncIfRequired(this._hub), (e) => e);
     if (syncResult.isErr()) {
-      log.error({ err: syncResult.error }, 'error during periodic sync job');
+      log.error({ err: syncResult.error }, "error during periodic sync job");
     }
 
     this._jobCount -= 1;

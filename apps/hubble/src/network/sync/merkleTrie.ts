@@ -1,11 +1,11 @@
-import { Result, ResultAsync } from 'neverthrow';
-import ReadWriteLock from 'rwlock';
-import { HubError, Message } from '@farcaster/hub-nodejs';
-import { SyncId } from './syncId.js';
-import { TrieNode, TrieSnapshot } from './trieNode.js';
-import RocksDB from '../../storage/db/rocksdb.js';
-import { FID_BYTES, RootPrefix, UserMessagePostfixMax } from '../../storage/db/types.js';
-import { logger } from '../../utils/logger.js';
+import { Result, ResultAsync } from "neverthrow";
+import ReadWriteLock from "rwlock";
+import { HubError, Message } from "@farcaster/hub-nodejs";
+import { SyncId } from "./syncId.js";
+import { TrieNode, TrieSnapshot } from "./trieNode.js";
+import RocksDB from "../../storage/db/rocksdb.js";
+import { FID_BYTES, RootPrefix, UserMessagePostfixMax } from "../../storage/db/types.js";
+import { logger } from "../../utils/logger.js";
 
 const TRIE_UNLOAD_THRESHOLD = 25_000;
 
@@ -25,7 +25,7 @@ export type NodeMetadata = {
 };
 
 const log = logger.child({
-  component: 'SyncMerkleTrie',
+  component: "SyncMerkleTrie",
 });
 
 /**
@@ -65,8 +65,8 @@ class MerkleTrie {
           if (rootBytes && rootBytes.length > 0) {
             this._root = TrieNode.deserialize(rootBytes);
             log.info(
-              { rootHash: Buffer.from(this._root.hash).toString('hex'), items: this.items },
-              'Merkle Trie loaded from DB'
+              { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this.items },
+              "Merkle Trie loaded from DB",
             );
           }
         } catch (e) {
@@ -83,10 +83,10 @@ class MerkleTrie {
     // First, delete the root node
     const dbStatus = await ResultAsync.fromPromise(
       this._db.del(TrieNode.makePrimaryKey(new Uint8Array())),
-      (e) => e as HubError
+      (e) => e as HubError,
     );
     if (dbStatus.isErr()) {
-      log.warn('Error Deleting trie root node. Ignoring', dbStatus.error);
+      log.warn("Error Deleting trie root node. Ignoring", dbStatus.error);
     }
 
     // Brand new empty root node
@@ -101,13 +101,13 @@ class MerkleTrie {
       if (postfix < UserMessagePostfixMax) {
         const message = Result.fromThrowable(
           () => Message.decode(new Uint8Array(value as Buffer)),
-          (e) => e as HubError
+          (e) => e as HubError,
         )();
         if (message.isOk()) {
           await this.insert(new SyncId(message.value));
           count += 1;
           if (count % 10_000 === 0) {
-            log.info({ count }, 'Rebuilding Merkle Trie');
+            log.info({ count }, "Rebuilding Merkle Trie");
           }
         }
       }
@@ -126,7 +126,7 @@ class MerkleTrie {
 
           resolve(status);
         } catch (e) {
-          log.error({ e }, 'Insert Error');
+          log.error({ e }, "Insert Error");
 
           resolve(false);
         }
@@ -150,7 +150,7 @@ class MerkleTrie {
 
           resolve(status);
         } catch (e) {
-          log.error({ e }, 'Delete Error');
+          log.error({ e }, "Delete Error");
 
           resolve(false);
         }
@@ -168,7 +168,6 @@ class MerkleTrie {
   public async exists(id: SyncId): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        // eslint-disable-next-line security/detect-non-literal-fs-filename
         const r = await this._root.exists(id.syncId(), this._db);
 
         await this._unloadFromMemory(false);
@@ -270,7 +269,7 @@ class MerkleTrie {
   public async rootHash(): Promise<string> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        resolve(Buffer.from(this._root.hash).toString('hex'));
+        resolve(Buffer.from(this._root.hash).toString("hex"));
         release();
       });
     });
@@ -312,7 +311,7 @@ class MerkleTrie {
     // Fn that does the actual unloading
     const doUnload = async () => {
       this._callsSinceLastUnload = 0;
-      logger.info('Unloading trie from memory');
+      logger.info("Unloading trie from memory");
 
       // First, we need to commit any pending db updates.
       const txn = this._db.transaction();
@@ -326,7 +325,7 @@ class MerkleTrie {
       }
 
       await this._db.commit(txn);
-      logger.info({ numDbUpdates: this._pendingDbUpdates.size }, 'Trie committed pending DB updates');
+      logger.info({ numDbUpdates: this._pendingDbUpdates.size }, "Trie committed pending DB updates");
 
       this._pendingDbUpdates.clear();
       this._root.unloadChildren();

@@ -1,6 +1,6 @@
-import { HubState } from '@farcaster/hub-nodejs';
-import RocksDB, { Transaction } from './rocksdb.js';
-import { RootPrefix } from './types.js';
+import { HubState } from "@farcaster/hub-nodejs";
+import RocksDB, { Transaction } from "./rocksdb.js";
+import { RootPrefix } from "./types.js";
 
 export const makeHubStatePrimaryKey = (): Buffer => {
   return Buffer.from([RootPrefix.HubState]);

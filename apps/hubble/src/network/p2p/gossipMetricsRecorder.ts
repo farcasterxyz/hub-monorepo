@@ -1,20 +1,20 @@
-import { PeerId } from '@libp2p/interface-peer-id';
-import { AckMessageBody, PingMessageBody, HubError, NetworkLatencyMessage, GossipMessage } from '@farcaster/hub-nodejs';
-import { logger } from '../../utils/logger.js';
-import { GossipNode } from './gossipNode.js';
-import { Result, ResultAsync } from 'neverthrow';
-import { peerIdFromBytes } from '@libp2p/peer-id';
-import cron from 'node-cron';
-import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
-import RocksDB from '../../storage/db/rocksdb.js';
-import { RootPrefix } from '../../storage/db/types.js';
+import { PeerId } from "@libp2p/interface-peer-id";
+import { AckMessageBody, PingMessageBody, HubError, NetworkLatencyMessage, GossipMessage } from "@farcaster/hub-nodejs";
+import { logger } from "../../utils/logger.js";
+import { GossipNode } from "./gossipNode.js";
+import { Result, ResultAsync } from "neverthrow";
+import { peerIdFromBytes } from "@libp2p/peer-id";
+import cron from "node-cron";
+import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
+import RocksDB from "../../storage/db/rocksdb.js";
+import { RootPrefix } from "../../storage/db/types.js";
 
 export const METRICS_TTL_MILLISECONDS = 3600 * 1000; // Expire stored metrics every 1 hour
-const DEFAULT_PERIODIC_LATENCY_PING_CRON = '*/5 * * * *';
+const DEFAULT_PERIODIC_LATENCY_PING_CRON = "*/5 * * * *";
 const MAX_JITTER_MILLISECONDS = 2 * 60 * 1000; // 2 minutes
 const NETWORK_COVERAGE_THRESHOLD = [0.5, 0.75, 0.9, 0.99];
 
-const log = logger.child({ component: 'GossipMetricsRecorder' });
+const log = logger.child({ component: "GossipMetricsRecorder" });
 
 type Average = {
   sum: number;
@@ -34,31 +34,31 @@ type PeerMessageMetrics = {
  *  type so that metrics can be JSON-serialized easily when reading / writing from
  *  RocksDB. Using Maps requires explicit coercion of deserialized objects to Maps
  */
-interface StringMap {
-  [key: string]: number;
+interface StringMap<T> {
+  [key: string]: T;
 }
 
 interface NetworkCoverageTimes {
-  coverageMap: StringMap;
-  seenPeerIds: StringMap;
+  coverageMap: StringMap<number>;
+  seenPeerIds: StringMap<number>;
 }
 
 type GlobalMetrics = {
-  networkCoverage: { [key: string]: NetworkCoverageTimes };
+  networkCoverage: StringMap<NetworkCoverageTimes>;
   messageMergeTime: Average;
 };
 
 export class GossipMetrics {
-  recentPeerIds: StringMap;
-  peerLatencyMetrics: { [key: string]: PeerLatencyMetrics };
-  peerMessageMetrics: { [key: string]: PeerMessageMetrics };
+  recentPeerIds: StringMap<number>;
+  peerLatencyMetrics: StringMap<PeerLatencyMetrics>;
+  peerMessageMetrics: StringMap<PeerMessageMetrics>;
   globalMetrics: GlobalMetrics;
 
   constructor(
     recentPeerIds?: StringMap,
-    peerLatencyMetrics?: { [key: string]: PeerLatencyMetrics },
-    peerMessageMetrics?: { [key: string]: PeerMessageMetrics },
-    globalMetrics?: GlobalMetrics
+    peerLatencyMetrics?: StringMap<PeerLatencyMetrics>,
+    peerMessageMetrics?: StringMap<PeerMessageMetrics>,
+    globalMetrics?: GlobalMetrics,
   ) {
     this.recentPeerIds = recentPeerIds ?? {};
     this.peerLatencyMetrics = peerLatencyMetrics ?? {};
@@ -71,7 +71,7 @@ export class GossipMetrics {
       const obj = JSON.parse(buffer.toString());
       return new GossipMetrics(obj.recentPeerIds, obj.peerLatencyMetrics, obj.peerMessageMetrics, obj.globalMetrics);
     } catch (e) {
-      logger.error('Error parsing GossipMetrics from DB');
+      logger.error("Error parsing GossipMetrics from DB");
       return new GossipMetrics();
     }
   }
@@ -140,7 +140,7 @@ export class GossipMetricsRecorder {
   async recordLatencyAckMessageReceipt(ackMessage: AckMessageBody) {
     const pingOriginPeerId = this.getPeerIdFromBytes(ackMessage.pingOriginPeerId);
     if (pingOriginPeerId) {
-      const peerIdMatchesOrigin = this._gossipNode.peerId?.toString() == pingOriginPeerId.toString() ?? false;
+      const peerIdMatchesOrigin = this._gossipNode.peerId?.toString() === pingOriginPeerId.toString() ?? false;
       if (peerIdMatchesOrigin) {
         // Log ack latency for peer
         const ackPeerId = this.getPeerIdFromBytes(ackMessage.ackOriginPeerId);
@@ -188,8 +188,15 @@ export class GossipMetricsRecorder {
     const jitter = Math.floor(Math.random() * jitterMs);
     await new Promise((f) => setTimeout(f, jitter));
 
+    const peerIdBytes = this._gossipNode.peerId?.toBytes();
+
+    if (!peerIdBytes) {
+      log.error("Failed to send gossip latency ping: peerId is undefined");
+      return;
+    }
+
     const pingMessage = PingMessageBody.create({
-      pingOriginPeerId: this._gossipNode.peerId!.toBytes(),
+      pingOriginPeerId: peerIdBytes,
       pingTimestamp: Date.now(),
     });
     const networkLatencyMessage = NetworkLatencyMessage.create({
@@ -204,7 +211,7 @@ export class GossipMetricsRecorder {
     const result = await this._gossipNode.publish(gossipMessage);
     const combinedResult = Result.combineWithAllErrors(result);
     if (combinedResult.isErr()) {
-      log.warn({ err: combinedResult.error }, 'Failed to send gossip latency ping');
+      log.warn({ err: combinedResult.error }, "Failed to send gossip latency ping");
     }
     // Since logging message counts on each message might make logs too noisy,
     // we log message count metrics here instead
@@ -217,7 +224,7 @@ export class GossipMetricsRecorder {
   logMetrics() {
     // Log peer-level latency metrics
     Object.entries(this._metrics.peerLatencyMetrics).forEach(([key, metrics]) => {
-      const keyFragments = key.split('_');
+      const keyFragments = key.split("_");
       const peerId = keyFragments[0];
       const pingTimestamp = Number(keyFragments[1]);
       log.info(
@@ -226,7 +233,7 @@ export class GossipMetricsRecorder {
           latencyMilliseconds: metrics.lastAckTimestamp - pingTimestamp,
           peerNetwork: this._gossipNode.network,
         },
-        'GossipPeerLatencyMetrics'
+        "GossipPeerLatencyMetrics",
       );
     });
 
@@ -238,7 +245,7 @@ export class GossipMetricsRecorder {
           messageCount: metrics.messageCount,
           peerNetwork: this._gossipNode.network,
         },
-        'GossipPeerMessageMetrics'
+        "GossipPeerMessageMetrics",
       );
     });
 
@@ -250,35 +257,35 @@ export class GossipMetricsRecorder {
           coverage: coverage.coverageMap,
           peerNetwork: this._gossipNode.network,
         },
-        'GossipNetworkCoverageMetrics'
+        "GossipNetworkCoverageMetrics",
       );
     });
     const messageMergeTime = this._metrics.globalMetrics.messageMergeTime;
     log.info(
       {
-        messageMergeTime: messageMergeTime.numElements == 0 ? 0 : messageMergeTime.sum / messageMergeTime.numElements,
+        messageMergeTime: messageMergeTime.numElements === 0 ? 0 : messageMergeTime.sum / messageMergeTime.numElements,
         peerNetwork: this._gossipNode.network,
       },
-      'GossipGlobalMetrics'
+      "GossipGlobalMetrics",
     );
   }
 
   expireMetrics() {
     const currTime = Date.now();
     this._metrics.recentPeerIds = Object.fromEntries(
-      Object.entries(this._metrics.recentPeerIds).filter(([_, v]) => currTime - v < METRICS_TTL_MILLISECONDS)
+      Object.entries(this._metrics.recentPeerIds).filter(([_, v]) => currTime - v < METRICS_TTL_MILLISECONDS),
     );
     this._metrics.globalMetrics.networkCoverage = Object.fromEntries(
       Object.entries(this._metrics.globalMetrics.networkCoverage).filter(
-        ([timestamp, _]) => currTime - Number(timestamp) < METRICS_TTL_MILLISECONDS
-      )
+        ([timestamp, _]) => currTime - Number(timestamp) < METRICS_TTL_MILLISECONDS,
+      ),
     );
     this._metrics.globalMetrics.messageMergeTime = { sum: 0, numElements: 0 };
 
     this._metrics.peerLatencyMetrics = Object.fromEntries(
       Object.entries(this._metrics.peerLatencyMetrics).filter(
-        ([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS
-      )
+        ([_, v]) => currTime - v.lastAckTimestamp < METRICS_TTL_MILLISECONDS,
+      ),
     );
 
     this._metrics.peerMessageMetrics = {};
@@ -290,7 +297,7 @@ export class GossipMetricsRecorder {
     } else {
       const peerIdResult = Result.fromThrowable(
         () => peerIdFromBytes(peerIdBytes),
-        (error) => new HubError('bad_request.parse_failure', error as Error)
+        (error) => new HubError("bad_request.parse_failure", error as Error),
       )();
       if (peerIdResult.isOk()) {
         return peerIdResult.value;
@@ -303,9 +310,9 @@ export class GossipMetricsRecorder {
   private getUpdatedCoverage(
     peerId: PeerId,
     time: number,
-    currentCoverage?: NetworkCoverageTimes
+    currentCoverage?: NetworkCoverageTimes,
   ): NetworkCoverageTimes {
-    if (currentCoverage && currentCoverage.seenPeerIds[peerId.toString()]) {
+    if (currentCoverage?.seenPeerIds[peerId.toString()]) {
       return currentCoverage;
     } else {
       const seenPeerIds: StringMap = Object.assign({}, currentCoverage?.seenPeerIds ?? {});

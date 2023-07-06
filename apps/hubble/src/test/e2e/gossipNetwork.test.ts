@@ -1,16 +1,16 @@
-import { GossipNode } from '../../network/p2p/gossipNode.js';
-import { sleep } from '../../utils/crypto.js';
-import { NetworkFactories } from '../../network/utils/factories.js';
-import { GossipMessage } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import { GossipNode } from "../../network/p2p/gossipNode.js";
+import { sleep } from "../../utils/crypto.js";
+import { NetworkFactories } from "../../network/utils/factories.js";
+import { GossipMessage } from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "storage/db/jestUtils.js";
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 const TEST_TIMEOUT_SHORT = 10 * 1000;
-const db = jestRocksDB('GossipNetworkTest');
+const db = jestRocksDB("GossipNetworkTest");
 
-describe('gossip network tests', () => {
+describe("gossip network tests", () => {
   /**
    * MessageStore keeps track of every message in every topic received by a peer. It maps the
    * peerId -> topic -> GossipMessage[]
@@ -33,7 +33,7 @@ describe('gossip network tests', () => {
   }, TEST_TIMEOUT_SHORT);
 
   test(
-    'broadcast a message via gossip to other nodes',
+    "broadcast a message via gossip to other nodes",
     async () => {
       // Connect the first node to every other node by dialing them manually
       for (const n of nodes.slice(1)) {
@@ -42,7 +42,7 @@ describe('gossip network tests', () => {
         const result = await n.connect(nodes[0] as GossipNode);
         expect(result.isOk()).toBeTruthy();
       }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       const primaryTopic = nodes[0]!.primaryTopic();
       // Subscribe each node to the test topic
       nodes.forEach((n) => n.gossip?.subscribe(primaryTopic));
@@ -55,10 +55,10 @@ describe('gossip network tests', () => {
       // Add listeners that receive new GossipMessages and push them to the MessageStore
       nodes.forEach((n) => {
         {
-          n.addListener('message', (topic, message) => {
+          n.addListener("message", (topic, message) => {
             expect(message.isOk()).toBeTruthy();
 
-            const peerId = n.peerId?.toString() ?? '';
+            const peerId = n.peerId?.toString() ?? "";
             const existingTopics = messageStore.get(peerId) || new Map();
             const existingMessages = existingTopics.get(topic) || [];
 
@@ -84,7 +84,7 @@ describe('gossip network tests', () => {
       const nonSenderNodes = nodes.filter((n) => n.peerId?.toString() !== randomNode.peerId?.toString());
 
       nonSenderNodes.map((n) => {
-        const topics = messageStore.get(n.peerId?.toString() ?? '');
+        const topics = messageStore.get(n.peerId?.toString() ?? "");
         expect(topics).toBeDefined();
         expect(topics?.has(primaryTopic)).toBeTruthy();
         const topicMessages = topics?.get(primaryTopic) ?? [];
@@ -92,6 +92,6 @@ describe('gossip network tests', () => {
         expect(topicMessages[0]).toEqual(message);
       });
     },
-    TEST_TIMEOUT_LONG
+    TEST_TIMEOUT_LONG,
   );
 });

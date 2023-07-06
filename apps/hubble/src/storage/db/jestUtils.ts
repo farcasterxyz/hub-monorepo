@@ -1,4 +1,4 @@
-import RocksDB from './rocksdb.js';
+import RocksDB from "./rocksdb.js";
 
 /** Temporary binary version */
 export const jestRocksDB = (name: string) => {

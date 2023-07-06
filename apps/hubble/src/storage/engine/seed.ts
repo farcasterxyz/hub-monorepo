@@ -1,14 +1,15 @@
-import { Eip712Signer, Factories } from '@farcaster/hub-nodejs';
-import Engine from '../engine/index.js';
+import { Eip712Signer, Factories } from "@farcaster/hub-nodejs";
+import Engine from "../engine/index.js";
 
 /** Util to seed engine with all the data needed to make a signer valid for an fid */
 export const seedSigner = async (
   engine: Engine,
   fid: number,
   signer: Uint8Array,
-  ethSigner?: Eip712Signer
+  ethSigner?: Eip712Signer,
 ): Promise<Eip712Signer> => {
   if (!ethSigner) {
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     ethSigner = Factories.Eip712Signer.build();
     const ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
 
@@ -27,7 +28,7 @@ export const seedSigner = async (
     {
       data: { fid, signerAddBody: { signer } },
     },
-    { transient: { signer: ethSigner } }
+    { transient: { signer: ethSigner } },
   );
 
   const r = await engine.mergeMessage(signerAdd);

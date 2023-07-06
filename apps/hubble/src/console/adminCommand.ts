@@ -1,14 +1,14 @@
-import { AdminRpcClient, Empty } from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console.js';
+import { AdminRpcClient, Empty } from "@farcaster/hub-nodejs";
+import { ConsoleCommandInterface } from "./console.js";
 
 export class AdminCommand implements ConsoleCommandInterface {
   constructor(private readonly adminClient: AdminRpcClient) {}
 
   commandName(): string {
-    return 'admin';
+    return "admin";
   }
   shortHelp(): string {
-    return 'Admin commands';
+    return "Admin commands";
   }
   help(): string {
     return `
@@ -22,16 +22,16 @@ export class AdminCommand implements ConsoleCommandInterface {
       rebuildSyncTrie: async () => {
         const result = await this.adminClient.rebuildSyncTrie(Empty.create());
         return result.match(
-          () => '',
-          (e) => `Error: ${e}`
+          () => "",
+          (e) => `Error: ${e}`,
         );
       },
 
       deleteAllMessagesFromDb: async () => {
         const result = await this.adminClient.deleteAllMessagesFromDb(Empty.create());
         return result.match(
-          () => '',
-          (e) => `Error: ${e}`
+          () => "",
+          (e) => `Error: ${e}`,
         );
       },
     };

@@ -5,9 +5,9 @@ import {
   bytesCompare,
   Factories,
   HubError,
-} from '@farcaster/hub-nodejs';
-import { jestRocksDB } from './jestUtils.js';
-import { TRUE_VALUE, UserPostfix } from './types.js';
+} from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "./jestUtils.js";
+import { TRUE_VALUE, UserPostfix } from "./types.js";
 import {
   getAllMessagesByFid,
   getAllMessagesBySigner,
@@ -19,9 +19,9 @@ import {
   makeUserKey,
   putMessage,
   typeToSetPostfix,
-} from './message.js';
+} from "./message.js";
 
-const db = jestRocksDB('storage.db.message.test');
+const db = jestRocksDB("storage.db.message.test");
 
 const signer = Factories.Ed25519Signer.build();
 
@@ -33,8 +33,8 @@ beforeAll(async () => {
   reactionMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
 });
 
-describe('makeUserKey', () => {
-  test('orders keys by fid', () => {
+describe("makeUserKey", () => {
+  test("orders keys by fid", () => {
     const key1 = makeUserKey(1_000);
     const key2 = makeUserKey(1_001);
     const key3 = makeUserKey(1_000_000);
@@ -43,8 +43,8 @@ describe('makeUserKey', () => {
   });
 });
 
-describe('makeMessagePrimaryKey', () => {
-  test('orders keys by fid, set, tsHash', async () => {
+describe("makeMessagePrimaryKey", () => {
+  test("orders keys by fid, set, tsHash", async () => {
     const tsHash1 = makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap();
     const tsHash2 = makeTsHash(castMessage.data.timestamp + 1, castMessage.hash)._unsafeUnwrap();
     const key1 = makeMessagePrimaryKey(10, UserPostfix.CastMessage, tsHash1);
@@ -63,74 +63,74 @@ describe('makeMessagePrimaryKey', () => {
   });
 });
 
-describe('makeTsHash', () => {
-  test('succeeds', () => {
+describe("makeTsHash", () => {
+  test("succeeds", () => {
     const tsHash = makeTsHash(castMessage.data.timestamp, castMessage.hash);
     expect(tsHash.isOk()).toBeTruthy();
   });
 
-  test('primarily orders keys by timestamp', () => {
+  test("primarily orders keys by timestamp", () => {
     const tsHash1 = makeTsHash(castMessage.data.timestamp, castMessage.hash);
     const tsHash2 = makeTsHash(castMessage.data.timestamp + 1, castMessage.hash);
     expect(bytesCompare(tsHash1._unsafeUnwrap(), tsHash2._unsafeUnwrap())).toEqual(-1);
   });
 
-  test('secondarily orders keys by hash', () => {
+  test("secondarily orders keys by hash", () => {
     const tsHash1 = makeTsHash(castMessage.data.timestamp, castMessage.hash);
     const tsHash2 = makeTsHash(castMessage.data.timestamp, new Uint8Array([...castMessage.hash, 1]));
     expect(bytesCompare(tsHash1._unsafeUnwrap(), tsHash2._unsafeUnwrap())).toEqual(-1);
   });
 });
 
-describe('putMessage', () => {
-  test('succeeds', async () => {
+describe("putMessage", () => {
+  test("succeeds", async () => {
     await expect(putMessage(db, castMessage)).resolves.toEqual(undefined);
     await expect(
       getMessage(
         db,
         castMessage.data.fid,
         typeToSetPostfix(castMessage.data.type),
-        makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap()
-      )
+        makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap(),
+      ),
     ).resolves.toEqual(castMessage);
   });
 });
 
-describe('getMessage', () => {
-  test('succeeds when message exists', async () => {
+describe("getMessage", () => {
+  test("succeeds when message exists", async () => {
     await putMessage(db, castMessage);
     await expect(
       getMessage(
         db,
         castMessage.data.fid,
         typeToSetPostfix(castMessage.data.type),
-        makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap()
-      )
+        makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap(),
+      ),
     ).resolves.toEqual(castMessage);
   });
 
-  test('fails when message not found', async () => {
+  test("fails when message not found", async () => {
     await expect(
       getMessage(
         db,
         castMessage.data.fid,
         typeToSetPostfix(castMessage.data.type),
-        makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap()
-      )
+        makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap(),
+      ),
     ).rejects.toThrow(HubError);
   });
 
-  test('fails with wrong key', async () => {
+  test("fails with wrong key", async () => {
     await putMessage(db, castMessage);
     const badTsHash = new Uint8Array([...makeTsHash(castMessage.data.timestamp, castMessage.hash)._unsafeUnwrap(), 1]);
     await expect(
-      getMessage(db, castMessage.data.fid, typeToSetPostfix(castMessage.data.type), badTsHash)
+      getMessage(db, castMessage.data.fid, typeToSetPostfix(castMessage.data.type), badTsHash),
     ).rejects.toThrow(HubError);
   });
 });
 
-describe('getManyMessages', () => {
-  test('succeeds', async () => {
+describe("getManyMessages", () => {
+  test("succeeds", async () => {
     await putMessage(db, castMessage);
     await putMessage(db, reactionMessage);
     const primaryKey = makeMessagePrimaryKeyFromMessage(castMessage);
@@ -140,21 +140,21 @@ describe('getManyMessages', () => {
   });
 });
 
-describe('getAllMessagesByFid', () => {
-  test('succeeds', async () => {
+describe("getAllMessagesByFid", () => {
+  test("succeeds", async () => {
     await putMessage(db, castMessage);
     await putMessage(db, reactionMessage);
     await expect(getAllMessagesByFid(db, castMessage.data.fid)).resolves.toEqual([castMessage]);
     await expect(getAllMessagesByFid(db, reactionMessage.data.fid)).resolves.toEqual([reactionMessage]);
   });
 
-  test('succeeds with no results', async () => {
+  test("succeeds with no results", async () => {
     await expect(getAllMessagesByFid(db, Factories.Fid.build())).resolves.toEqual([]);
   });
 });
 
-describe('getAllMessagesBySigner', () => {
-  test('succeeds', async () => {
+describe("getAllMessagesBySigner", () => {
+  test("succeeds", async () => {
     await putMessage(db, castMessage);
     await putMessage(db, reactionMessage);
     await expect(getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer)).resolves.toEqual([castMessage]);
@@ -163,20 +163,20 @@ describe('getAllMessagesBySigner', () => {
     ]);
   });
 
-  test('succeeds with type', async () => {
+  test("succeeds with type", async () => {
     await putMessage(db, castMessage);
     await putMessage(db, reactionMessage);
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.CAST_ADD)
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.CAST_ADD),
     ).resolves.toEqual([castMessage]);
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.REACTION_ADD)
+      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.REACTION_ADD),
     ).resolves.toEqual([]);
   });
 
-  test('succeeds with no results', async () => {
+  test("succeeds with no results", async () => {
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, Factories.Ed25519PPublicKey.build())
+      getAllMessagesBySigner(db, castMessage.data.fid, Factories.Ed25519PPublicKey.build()),
     ).resolves.toEqual([]);
   });
 });

@@ -16,6 +16,7 @@
     "test": "./node_modules/.bin/turbo run test",
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
+    "lint:ci": "./node_modules/.bin/turbo run lint:ci --parallel",
     "prepare": "husky install",
     "version-packages": "changeset version --ignore @farcaster/hubble",
     "release-packages": "yarn build && changeset publish",
@@ -44,8 +45,7 @@
   },
   "lint-staged": {
     "*.ts": [
-      "eslint --cache --fix",
-      "prettier --write"
+      "rome check"
     ]
   }
 }

@@ -12,5 +12,6 @@ coverage:
         base: auto
         if_ci_failed: success
 ignore:
-  - "**/generated"
-  - "**/mocks.ts"
+  - '**/generated'
+  - '**/mocks.ts'
+  - '**/test'

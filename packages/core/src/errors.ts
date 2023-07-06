@@ -1,4 +1,4 @@
-import { Result } from 'neverthrow';
+import { Result } from "neverthrow";
 
 interface HubErrorOpts {
   message: string;
@@ -6,8 +6,9 @@ interface HubErrorOpts {
   presentable: boolean;
 }
 
+// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const isHubError = (e: any): e is HubError => {
-  return typeof e.errCode !== 'undefined';
+  return typeof e.errCode !== "undefined";
 };
 
 /**
@@ -30,19 +31,23 @@ export class HubError extends Error {
    * @param context - a message, another Error, or a HubErrorOpts
    */
   constructor(errCode: HubErrorCode, context: Partial<HubErrorOpts> | string | Error) {
-    if (typeof context === 'string') {
-      context = { message: context };
+    let parsedContext: string | Error | Partial<HubErrorOpts>;
+
+    if (typeof context === "string") {
+      parsedContext = { message: context };
     } else if (context instanceof Error) {
-      context = { cause: context, message: context.message };
+      parsedContext = { cause: context, message: context.message };
+    } else {
+      parsedContext = context;
     }
 
-    if (!context.message) {
-      context.message = context.cause?.message || '';
+    if (!parsedContext.message) {
+      parsedContext.message = parsedContext.cause?.message || "";
     }
 
-    super(context.message, { cause: context.cause });
+    super(parsedContext.message, { cause: parsedContext.cause });
 
-    this.name = 'HubError';
+    this.name = "HubError";
     this.errCode = errCode;
   }
 }
@@ -56,28 +61,28 @@ export class HubError extends Error {
  */
 export type HubErrorCode =
   /* The request did not have valid authentication credentials, retry with credentials  */
-  | 'unauthenticated'
+  | "unauthenticated"
   /* The authenticated request did not have the authority to perform this action  */
-  | 'unauthorized'
+  | "unauthorized"
   /* The request cannot be completed as constructed, do not retry */
-  | 'bad_request'
-  | 'bad_request.parse_failure'
-  | 'bad_request.invalid_param'
-  | 'bad_request.validation_failure'
-  | 'bad_request.duplicate'
-  | 'bad_request.conflict'
-  | 'bad_request.prunable'
+  | "bad_request"
+  | "bad_request.parse_failure"
+  | "bad_request.invalid_param"
+  | "bad_request.validation_failure"
+  | "bad_request.duplicate"
+  | "bad_request.conflict"
+  | "bad_request.prunable"
   /* The requested resource could not be found */
-  | 'not_found'
+  | "not_found"
   /* The request could not be completed because the operation is not executable */
-  | 'not_implemented'
-  | 'not_implemented.deprecated'
+  | "not_implemented"
+  | "not_implemented.deprecated"
   /* The request could not be completed, it may or may not be safe to retry */
-  | 'unavailable'
-  | 'unavailable.network_failure'
-  | 'unavailable.storage_failure'
+  | "unavailable"
+  | "unavailable.network_failure"
+  | "unavailable.storage_failure"
   /* An unknown error was encountered */
-  | 'unknown';
+  | "unknown";
 
 /** Type alias for shorthand when handling errors */
 export type HubResult<T> = Result<T, HubError>;

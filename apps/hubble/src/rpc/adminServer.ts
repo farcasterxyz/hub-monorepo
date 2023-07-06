@@ -7,18 +7,18 @@ import {
   HubAsyncResult,
   HubError,
   Empty,
-} from '@farcaster/hub-nodejs';
-import * as net from 'net';
-import { err, ok, ResultAsync } from 'neverthrow';
-import { HubInterface } from '../hubble.js';
-import SyncEngine from '../network/sync/syncEngine.js';
-import { authenticateUser, getRPCUsersFromAuthString, RpcUsers, toServiceError } from './server.js';
-import RocksDB from '../storage/db/rocksdb.js';
-import { RootPrefix } from '../storage/db/types.js';
-import Engine from '../storage/engine/index.js';
-import { logger } from '../utils/logger.js';
+} from "@farcaster/hub-nodejs";
+import * as net from "net";
+import { err, ok, ResultAsync } from "neverthrow";
+import { HubInterface } from "../hubble.js";
+import SyncEngine from "../network/sync/syncEngine.js";
+import { authenticateUser, getRPCUsersFromAuthString, RpcUsers, toServiceError } from "./server.js";
+import RocksDB from "../storage/db/rocksdb.js";
+import { RootPrefix } from "../storage/db/types.js";
+import Engine from "../storage/engine/index.js";
+import { logger } from "../utils/logger.js";
 
-const log = logger.child({ module: 'rpc:admin' });
+const log = logger.child({ module: "rpc:admin" });
 export const ADMIN_SERVER_PORT = 2284;
 
 export default class AdminServer {
@@ -42,14 +42,14 @@ export default class AdminServer {
     this.rpcUsers = getRPCUsersFromAuthString(rpcAuth);
 
     if (this.rpcUsers.size > 0) {
-      log.info({ num_users: this.rpcUsers.size }, 'RPC auth enabled');
+      log.info({ num_users: this.rpcUsers.size }, "RPC auth enabled");
     }
   }
 
-  async start(host = '127.0.0.1'): HubAsyncResult<undefined> {
+  async start(host = "127.0.0.1"): HubAsyncResult<undefined> {
     // Create a unix socket server
     net.createServer(() => {
-      log.info('Admin server socket connected');
+      log.info("Admin server socket connected");
     });
 
     return new Promise((resolve) => {
@@ -57,10 +57,10 @@ export default class AdminServer {
       this.grpcServer.bindAsync(`${host}:${ADMIN_SERVER_PORT}`, ServerCredentials.createInsecure(), (e, port) => {
         if (e) {
           log.error(`Failed to bind admin server to socket: ${e}`);
-          resolve(err(new HubError('unavailable.network_failure', `Failed to bind admin server to socket: ${e}`)));
+          resolve(err(new HubError("unavailable.network_failure", `Failed to bind admin server to socket: ${e}`)));
         } else {
           this.grpcServer.start();
-          log.info({ host, port }, 'Starting Admin server');
+          log.info({ host, port }, "Starting Admin server");
           resolve(ok(undefined));
         }
       });
@@ -91,9 +91,11 @@ export default class AdminServer {
         (async () => {
           const authResult = await authenticateUser(call.metadata, this.rpcUsers);
           if (authResult.isErr()) {
-            logger.warn({ errMsg: authResult.error.message }, 'rebuildSyncTrie failed');
+            logger.warn({ errMsg: authResult.error.message }, "rebuildSyncTrie failed");
             callback(
-              toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+              toServiceError(
+                new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`),
+              ),
             );
             return;
           }
@@ -107,14 +109,16 @@ export default class AdminServer {
         (async () => {
           const authResult = await authenticateUser(call.metadata, this.rpcUsers);
           if (authResult.isErr()) {
-            logger.warn({ errMsg: authResult.error.message }, 'deleteAllMessagesFromDb failed');
+            logger.warn({ errMsg: authResult.error.message }, "deleteAllMessagesFromDb failed");
             callback(
-              toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+              toServiceError(
+                new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`),
+              ),
             );
             return;
           }
 
-          log.warn('Deleting all messages from DB');
+          log.warn("Deleting all messages from DB");
           let deletedCount = 0;
           const prefixes = [
             RootPrefix.User,
@@ -133,8 +137,8 @@ export default class AdminServer {
                   deletedCount += 1;
                 },
                 (e) => {
-                  log.error({ errCode: e.errCode }, 'Failed to delete key: ${e.message}');
-                }
+                  log.error({ errCode: e.errCode }, "Failed to delete key: ${e.message}");
+                },
               );
             }
           }
@@ -143,7 +147,7 @@ export default class AdminServer {
           // Rebuild the sync trie after deleting all messages
           await this.syncEngine?.rebuildSyncTrie();
 
-          log.warn('Finished deleting all messages from DB');
+          log.warn("Finished deleting all messages from DB");
           callback(null, Empty.create());
         })();
       },
@@ -151,44 +155,44 @@ export default class AdminServer {
       submitIdRegistryEvent: async (call, callback) => {
         const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, 'submitIdRegistryEvent failed');
+          logger.warn({ errMsg: authResult.error.message }, "submitIdRegistryEvent failed");
           callback(
-            toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+            toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
           );
           return;
         }
 
         const idRegistryEvent = call.request;
-        const result = await this.hub?.submitIdRegistryEvent(idRegistryEvent, 'rpc');
+        const result = await this.hub?.submitIdRegistryEvent(idRegistryEvent, "rpc");
         result?.match(
           () => {
             callback(null, idRegistryEvent);
           },
           (err: HubError) => {
             callback(toServiceError(err));
-          }
+          },
         );
       },
 
       submitNameRegistryEvent: async (call, callback) => {
         const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, 'submitNameRegistryEvent failed');
+          logger.warn({ errMsg: authResult.error.message }, "submitNameRegistryEvent failed");
           callback(
-            toServiceError(new HubError('unauthenticated', `gRPC authentication failed: ${authResult.error.message}`))
+            toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
           );
           return;
         }
 
         const nameRegistryEvent = call.request;
-        const result = await this.hub?.submitNameRegistryEvent(nameRegistryEvent, 'rpc');
+        const result = await this.hub?.submitNameRegistryEvent(nameRegistryEvent, "rpc");
         result?.match(
           () => {
             callback(null, nameRegistryEvent);
           },
           (err: HubError) => {
             callback(toServiceError(err));
-          }
+          },
         );
       },
     };

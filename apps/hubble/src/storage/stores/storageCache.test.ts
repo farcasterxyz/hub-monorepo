@@ -1,11 +1,11 @@
-import { ok } from 'neverthrow';
-import { Factories, HubEvent, HubEventType } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils.js';
-import { makeTsHash, putMessage } from '../db/message.js';
-import { UserPostfix } from '../db/types.js';
-import { StorageCache } from './storageCache.js';
+import { ok } from "neverthrow";
+import { Factories, HubEvent, HubEventType } from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "../db/jestUtils.js";
+import { makeTsHash, putMessage } from "../db/message.js";
+import { UserPostfix } from "../db/types.js";
+import { StorageCache } from "./storageCache.js";
 
-const db = jestRocksDB('engine.storageCache.test');
+const db = jestRocksDB("engine.storageCache.test");
 
 let cache: StorageCache;
 
@@ -13,8 +13,8 @@ beforeEach(() => {
   cache = new StorageCache(db);
 });
 
-describe('syncFromDb', () => {
-  test('populates cache with messages from db', async () => {
+describe("syncFromDb", () => {
+  test("populates cache with messages from db", async () => {
     const usage = [
       { fid: Factories.Fid.build(), usage: { cast: 3, reaction: 2, verification: 4, userData: 1, signer: 0 } },
       { fid: Factories.Fid.build(), usage: { cast: 2, reaction: 3, verification: 0, userData: 2, signer: 5 } },
@@ -48,26 +48,26 @@ describe('syncFromDb', () => {
     await cache.syncFromDb();
     for (const fidUsage of usage) {
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.CastMessage)).resolves.toEqual(
-        ok(fidUsage.usage.cast)
+        ok(fidUsage.usage.cast),
       );
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.ReactionMessage)).resolves.toEqual(
-        ok(fidUsage.usage.reaction)
+        ok(fidUsage.usage.reaction),
       );
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.VerificationMessage)).resolves.toEqual(
-        ok(fidUsage.usage.verification)
+        ok(fidUsage.usage.verification),
       );
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.UserDataMessage)).resolves.toEqual(
-        ok(fidUsage.usage.userData)
+        ok(fidUsage.usage.userData),
       );
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.SignerMessage)).resolves.toEqual(
-        ok(fidUsage.usage.signer)
+        ok(fidUsage.usage.signer),
       );
     }
   });
 });
 
-describe('getMessageCount', () => {
-  test('returns the correct count even if the cache is not synced', async () => {
+describe("getMessageCount", () => {
+  test("returns the correct count even if the cache is not synced", async () => {
     const fid = Factories.Fid.build();
     const message = await Factories.CastAddMessage.create({ data: { fid } });
     const message2 = await Factories.CastAddMessage.create({ data: { fid } });
@@ -77,20 +77,20 @@ describe('getMessageCount', () => {
     await putMessage(db, message3_differnt_fid);
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(2));
     await expect(cache.getMessageCount(message3_differnt_fid.data.fid, UserPostfix.CastMessage)).resolves.toEqual(
-      ok(1)
+      ok(1),
     );
     await expect(cache.getMessageCount(Factories.Fid.build(), UserPostfix.CastMessage)).resolves.toEqual(ok(0));
   });
 });
 
-describe('getEarliestTsHash', () => {
-  test('returns undefined if there are no messages', async () => {
+describe("getEarliestTsHash", () => {
+  test("returns undefined if there are no messages", async () => {
     await expect(cache.getEarliestTsHash(Factories.Fid.build(), UserPostfix.CastMessage)).resolves.toEqual(
-      ok(undefined)
+      ok(undefined),
     );
   });
 
-  test('returns the earliest tsHash by scanning the db on first use', async () => {
+  test("returns the earliest tsHash by scanning the db on first use", async () => {
     const fid = Factories.Fid.build();
     const first = await Factories.CastAddMessage.create({ data: { fid, timestamp: 123 } });
     const second = await Factories.CastAddMessage.create({ data: { fid, timestamp: 213 } });
@@ -99,19 +99,19 @@ describe('getEarliestTsHash', () => {
     await putMessage(db, first);
 
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-      makeTsHash(first.data.timestamp, first.hash)
+      makeTsHash(first.data.timestamp, first.hash),
     );
 
     await putMessage(db, third);
     // Unchanged
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-      makeTsHash(first.data.timestamp, first.hash)
+      makeTsHash(first.data.timestamp, first.hash),
     );
   });
 });
 
-describe('processEvent', () => {
-  test('increments count with merge cast message event', async () => {
+describe("processEvent", () => {
+  test("increments count with merge cast message event", async () => {
     const fid = Factories.Fid.build();
     const message = await Factories.CastAddMessage.create({ data: { fid } });
     const event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } });
@@ -122,7 +122,7 @@ describe('processEvent', () => {
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
-  test('increments count with merge cast remove message event', async () => {
+  test("increments count with merge cast remove message event", async () => {
     const fid = Factories.Fid.build();
     const message = await Factories.CastRemoveMessage.create({ data: { fid } });
     const event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } });
@@ -133,7 +133,7 @@ describe('processEvent', () => {
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
-  test('count is unchanged when removing existing cast', async () => {
+  test("count is unchanged when removing existing cast", async () => {
     const fid = Factories.Fid.build();
     const cast = await Factories.CastAddMessage.create({ data: { fid } });
     const castRemove = await Factories.CastRemoveMessage.create({
@@ -151,7 +151,7 @@ describe('processEvent', () => {
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
-  test('count is decremented with prune message event', async () => {
+  test("count is decremented with prune message event", async () => {
     const fid = Factories.Fid.build();
     const message = await Factories.ReactionAddMessage.create({ data: { fid } });
     const event = HubEvent.create({ type: HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message } });
@@ -163,7 +163,7 @@ describe('processEvent', () => {
     await expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).resolves.toEqual(ok(0));
   });
 
-  test('count is decremented with revoke message event', async () => {
+  test("count is decremented with revoke message event", async () => {
     const fid = Factories.Fid.build();
     const message = await Factories.SignerAddMessage.create({ data: { fid } });
     const event = HubEvent.create({ type: HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
@@ -175,7 +175,7 @@ describe('processEvent', () => {
     await expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).resolves.toEqual(ok(0));
   });
 
-  test('sets earliest tsHash with merge cast message event', async () => {
+  test("sets earliest tsHash with merge cast message event", async () => {
     const fid = Factories.Fid.build();
 
     const middleMessage = await Factories.CastAddMessage.create({ data: { fid } });
@@ -187,7 +187,7 @@ describe('processEvent', () => {
 
     // Earliest tsHash is set
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-      makeTsHash(middleMessage.data.timestamp, middleMessage.hash)
+      makeTsHash(middleMessage.data.timestamp, middleMessage.hash),
     );
 
     // Adding a later messages does not change the earliest tsHash
@@ -197,7 +197,7 @@ describe('processEvent', () => {
     event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: laterMessage } });
     cache.processEvent(event);
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-      makeTsHash(middleMessage.data.timestamp, middleMessage.hash)
+      makeTsHash(middleMessage.data.timestamp, middleMessage.hash),
     );
 
     // Adding an earlier message changes the earliest tsHash
@@ -207,11 +207,11 @@ describe('processEvent', () => {
     event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: earlierMessage } });
     cache.processEvent(event);
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
-      makeTsHash(earlierMessage.data.timestamp, earlierMessage.hash)
+      makeTsHash(earlierMessage.data.timestamp, earlierMessage.hash),
     );
   });
 
-  test('unsets the earliest tsHash if the earliest message is removed', async () => {
+  test("unsets the earliest tsHash if the earliest message is removed", async () => {
     const fid = Factories.Fid.build();
     const firstMessage = await Factories.ReactionAddMessage.create({ data: { fid } });
     const laterMessage = await Factories.ReactionAddMessage.create({
@@ -230,13 +230,13 @@ describe('processEvent', () => {
     await putMessage(db, laterMessage);
     await cache.syncFromDb();
     await expect(cache.getEarliestTsHash(fid, UserPostfix.ReactionMessage)).resolves.toEqual(
-      makeTsHash(firstMessage.data.timestamp, firstMessage.hash)
+      makeTsHash(firstMessage.data.timestamp, firstMessage.hash),
     );
 
     cache.processEvent(laterEvent);
     // Unchanged
     await expect(cache.getEarliestTsHash(fid, UserPostfix.ReactionMessage)).resolves.toEqual(
-      makeTsHash(firstMessage.data.timestamp, firstMessage.hash)
+      makeTsHash(firstMessage.data.timestamp, firstMessage.hash),
     );
 
     cache.processEvent(firstEvent);

@@ -1,18 +1,18 @@
-import { bytesToHexString, HubAsyncResult, HubError, Message } from '@farcaster/hub-nodejs';
-import { ok, Result } from 'neverthrow';
-import cron from 'node-cron';
-import { logger } from '../../utils/logger.js';
-import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserMessagePostfixMax } from '../db/types.js';
-import RocksDB from '../db/rocksdb.js';
-import Engine from '../engine/index.js';
+import { bytesToHexString, HubAsyncResult, HubError, Message } from "@farcaster/hub-nodejs";
+import { ok, Result } from "neverthrow";
+import cron from "node-cron";
+import { logger } from "../../utils/logger.js";
+import { FID_BYTES, RootPrefix, TSHASH_LENGTH, UserMessagePostfixMax } from "../db/types.js";
+import RocksDB from "../db/rocksdb.js";
+import Engine from "../engine/index.js";
 
-export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = '0 1 * * *'; // Every day at 01:00 UTC
+export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "0 1 * * *"; // Every day at 01:00 UTC
 
 const log = logger.child({
-  component: 'ValidateOrRevokeMessagesJob',
+  component: "ValidateOrRevokeMessagesJob",
 });
 
-type SchedulerStatus = 'started' | 'stopped';
+type SchedulerStatus = "started" | "stopped";
 
 export class ValidateOrRevokeMessagesJobScheduler {
   private _db: RocksDB;
@@ -35,11 +35,11 @@ export class ValidateOrRevokeMessagesJobScheduler {
   }
 
   status(): SchedulerStatus {
-    return this._cronTask ? 'started' : 'stopped';
+    return this._cronTask ? "started" : "stopped";
   }
 
   async doJobs(): HubAsyncResult<void> {
-    log.info({}, 'starting ValidateOrRevokeMessagesJob');
+    log.info({}, "starting ValidateOrRevokeMessagesJob");
 
     const allUserPrefix = Buffer.from([RootPrefix.User]);
 
@@ -58,7 +58,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
 
       const message = Result.fromThrowable(
         () => Message.decode(new Uint8Array(value as Buffer)),
-        (e) => e as HubError
+        (e) => e as HubError,
       )();
 
       if (message.isOk()) {
@@ -69,18 +69,18 @@ export class ValidateOrRevokeMessagesJobScheduler {
               log.info(
                 `revoked message ${bytesToHexString(message.value.hash)._unsafeUnwrap()} from fid ${
                   message.value.data?.fid
-                }`
+                }`,
               );
             }
           },
           (e) => {
             log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
-          }
+          },
         );
       }
     }
 
-    log.info({}, 'finished ValidateOrRevokeMessagesJob');
+    log.info({}, "finished ValidateOrRevokeMessagesJob");
 
     return ok(undefined);
   }

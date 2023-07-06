@@ -5,16 +5,24 @@ import {
   isUserDataAddMessage,
   MessageType,
   NameRegistryEvent,
+  UserNameProof,
   UserDataAddMessage,
   UserDataType,
-} from '@farcaster/hub-nodejs';
-import { ok, ResultAsync } from 'neverthrow';
-import { makeUserKey } from '../db/message.js';
-import { getNameRegistryEvent, putNameRegistryEventTransaction } from '../db/nameRegistryEvent.js';
-import { UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PageOptions } from '../stores/types.js';
-import { eventCompare } from '../stores/utils.js';
-import { Store } from './store.js';
+} from "@farcaster/hub-nodejs";
+import { ok, ResultAsync } from "neverthrow";
+import { makeUserKey } from "../db/message.js";
+import {
+  getNameRegistryEvent,
+  putNameRegistryEventTransaction,
+  getUserNameProof,
+  putUserNameProofTransaction,
+  deleteUserNameProofTransaction,
+} from "../db/nameRegistryEvent.js";
+import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PageOptions } from "../stores/types.js";
+import { eventCompare, usernameProofCompare } from "../stores/utils.js";
+import { Store } from "./store.js";
+import { Transaction } from "../db/rocksdb.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
@@ -29,7 +37,7 @@ const makeUserDataAddsKey = (fid: number, dataType?: UserDataType): Buffer => {
   return Buffer.concat([
     makeUserKey(fid),
     Buffer.from([UserPostfix.UserDataAdds]),
-    dataType ? Buffer.from([dataType]) : Buffer.from(''),
+    dataType ? Buffer.from([dataType]) : Buffer.from(""),
   ]);
 };
 
@@ -60,7 +68,7 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   }
 
   override makeRemoveKey(_: never): Buffer {
-    throw new Error('removes not supported');
+    throw new Error("removes not supported");
   }
 
   override async findMergeAddConflicts(_message: UserDataAddMessage): HubAsyncResult<void> {
@@ -68,14 +76,17 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   }
 
   override async findMergeRemoveConflicts(_message: never): HubAsyncResult<void> {
-    throw new Error('removes not supported');
+    throw new Error("removes not supported");
   }
 
   override _isAddType = isUserDataAddMessage;
   override _isRemoveType = undefined;
   override _addMessageType = MessageType.USER_DATA_ADD;
   override _removeMessageType = undefined;
-  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
+
+  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+    return PRUNE_SIZE_LIMIT_DEFAULT;
+  }
 
   /**
    * Finds a UserDataAdd Message by checking the adds set index
@@ -98,6 +109,10 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
     return getNameRegistryEvent(this._db, fname);
   }
 
+  async getUserNameProof(name: Uint8Array): Promise<UserNameProof> {
+    return getUserNameProof(this._db, name);
+  }
+
   /**
    * Merges a NameRegistryEvent storing the causally latest event at the key:
    * <name registry root prefix byte, fname>
@@ -105,7 +120,7 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   async mergeNameRegistryEvent(event: NameRegistryEvent): Promise<number> {
     const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fname), () => undefined);
     if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
-      throw new HubError('bad_request.conflict', 'event conflicts with a more recent NameRegistryEvent');
+      throw new HubError("bad_request.conflict", "event conflicts with a more recent NameRegistryEvent");
     }
 
     const txn = putNameRegistryEventTransaction(this._db.transaction(), event);
@@ -113,6 +128,34 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
     const result = await this._eventHandler.commitTransaction(txn, {
       type: HubEventType.MERGE_NAME_REGISTRY_EVENT,
       mergeNameRegistryEventBody: { nameRegistryEvent: event },
+    });
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    return result.value;
+  }
+
+  async mergeUserNameProof(usernameProof: UserNameProof): Promise<number> {
+    const existingProof = await ResultAsync.fromPromise(this.getUserNameProof(usernameProof.name), () => undefined);
+    if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) >= 0) {
+      throw new HubError("bad_request.conflict", "event conflicts with a more recent UserNameProof");
+    }
+
+    let txn: Transaction;
+    if (usernameProof.fid === 0) {
+      txn = deleteUserNameProofTransaction(this._db.transaction(), usernameProof);
+    } else {
+      txn = putUserNameProofTransaction(this._db.transaction(), usernameProof);
+    }
+
+    const result = await this._eventHandler.commitTransaction(txn, {
+      type: HubEventType.MERGE_USERNAME_PROOF,
+      mergeUsernameProofBody: {
+        usernameProof: usernameProof,
+        deletedUsernameProof: existingProof.isOk() ? existingProof.value : undefined,
+      },
     });
 
     if (result.isErr()) {

@@ -1,5 +1,33 @@
 # @farcaster/hubble
 
+## 1.3.3
+
+### Patch Changes
+
+- abca3ed: Fixed bug with prune limits
+- 5a1baae: Switch fnames from contract events to fname server proofs
+- Updated dependencies [5a1baae]
+  - @farcaster/hub-nodejs@0.8.3
+
+## 1.3.2
+
+### Patch Changes
+
+- 159c62d: Upgraded viem to 1.1.4
+  Used viem to interact with ethereum
+  - @farcaster/hub-nodejs@0.8.2
+
+## 1.3.1
+
+### Patch Changes
+
+- 7dabc0b: Refactored stores to use a generic implementation for easier addition of types
+- 6667748: Handle peers with no messages in status command
+- f1c6b25: Fetch, validate and store username proofs from fname registry
+- c6fc422: Fix server hanging due to slow subscribers in certain conditions
+- Updated dependencies [f1c6b25]
+  - @farcaster/hub-nodejs@0.8.1
+
 ## 1.3.0
 
 ### Minor Changes

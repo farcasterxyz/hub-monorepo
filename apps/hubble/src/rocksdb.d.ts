@@ -55,8 +55,7 @@ declare module '@farcaster/rocksdb' {
   declare namespace RocksDB {
     type Bytes = string | Buffer;
     type ErrorSizeCallback = (err: Error | undefined, size: number) => void;
-    // eslint-disable-next-line @typescript-eslint/no-empty-interface
-    interface OpenOptions extends AbstractOpenOptions {}
+    type OpenOptions = AbstractOpenOptions;
 
     interface GetOptions extends AbstractGetOptions {
       fillCache?: boolean | undefined;

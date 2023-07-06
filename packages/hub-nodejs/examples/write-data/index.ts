@@ -6,24 +6,22 @@ import {
   makeUserDataAdd,
   NobleEd25519Signer,
   UserDataType,
-} from '@farcaster/hub-nodejs';
-import * as ed from '@noble/ed25519';
-import { Wallet } from 'ethers';
-
-/* eslint no-console: 0 */
+} from "@farcaster/hub-nodejs";
+import * as ed from "@noble/ed25519";
+import { Wallet } from "ethers";
 
 /**
  * Populate the following constants with your own values
  */
 
 // Recovery phrase of the custody address
-const MNEMONIC = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
+const MNEMONIC = "ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain";
 
 // Fid owned by the custody address
 const FID = 2;
 
 // Testnet Configuration
-const HUB_URL = 'testnet1.farcaster.xyz:2283'; // URL + Port of the Hub
+const HUB_URL = "testnet1.farcaster.xyz:2283"; // URL + Port of the Hub
 const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
 // Mainnet Configuration
@@ -87,7 +85,7 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
     return;
   }
 
-  console.log('SignerAdd was published successfully!');
+  console.log("SignerAdd was published successfully!");
 
   /**
    *
@@ -100,7 +98,7 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
   // Set a profile picture
   const userDataPfpBody = {
     type: UserDataType.PFP,
-    value: 'https://i.imgur.com/yed5Zfk.gif',
+    value: "https://i.imgur.com/yed5Zfk.gif",
   };
 
   const userDataAddMakeResult = await makeUserDataAdd(userDataPfpBody, dataOptions, ed25519Signer);
@@ -117,7 +115,7 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
     return;
   }
 
-  console.log('UserDataAdd was published successfully!');
+  console.log("UserDataAdd was published successfully!");
 
   client.close();
 })();

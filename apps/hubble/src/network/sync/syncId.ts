@@ -1,6 +1,6 @@
-import { makeMessagePrimaryKey, typeToSetPostfix } from '../../storage/db/message.js';
-import { FID_BYTES, HASH_LENGTH } from '../../storage/db/types.js';
-import { Message } from '@farcaster/hub-nodejs';
+import { makeMessagePrimaryKey, typeToSetPostfix } from "../../storage/db/message.js";
+import { FID_BYTES, HASH_LENGTH } from "../../storage/db/types.js";
+import { Message } from "@farcaster/hub-nodejs";
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp
 
@@ -61,11 +61,11 @@ class SyncId {
 
 /** Normalizes the timestamp in seconds to fixed length to ensure consistent depth in the trie */
 const timestampToPaddedTimestampPrefix = (timestamp: number): string => {
-  return Math.floor(timestamp).toString().padStart(TIMESTAMP_LENGTH, '0');
+  return Math.floor(timestamp).toString().padStart(TIMESTAMP_LENGTH, "0");
 };
 
 const prefixToTimestamp = (prefix: string): number => {
-  return parseInt(prefix.padEnd(TIMESTAMP_LENGTH, '0'), 10);
+  return parseInt(prefix.padEnd(TIMESTAMP_LENGTH, "0"), 10);
 };
 
 export { SyncId, timestampToPaddedTimestampPrefix, prefixToTimestamp, TIMESTAMP_LENGTH, HASH_LENGTH };

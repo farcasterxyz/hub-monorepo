@@ -9,46 +9,46 @@ import {
   GossipMessage,
   ContactInfoContent,
   GossipVersion,
-} from '@farcaster/hub-nodejs';
-import { multiaddr } from '@multiformats/multiaddr/';
-import { GossipNode } from './gossipNode.js';
-import Server from '../../rpc/server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import { MockHub } from '../../test/mocks.js';
-import SyncEngine from '../sync/syncEngine.js';
-import { PeerId } from '@libp2p/interface-peer-id';
-import { sleep } from '../../utils/crypto.js';
-import { createEd25519PeerId } from '@libp2p/peer-id-factory';
+} from "@farcaster/hub-nodejs";
+import { multiaddr } from "@multiformats/multiaddr/";
+import { GossipNode } from "./gossipNode.js";
+import Server from "../../rpc/server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { MockHub } from "../../test/mocks.js";
+import SyncEngine from "../sync/syncEngine.js";
+import { PeerId } from "@libp2p/interface-peer-id";
+import { sleep } from "../../utils/crypto.js";
+import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
-const db = jestRocksDB('network.p2p.gossipNode.test');
+const db = jestRocksDB("network.p2p.gossipNode.test");
 
-describe('GossipNode', () => {
-  test('start fails if IpMultiAddr has port or transport addrs', async () => {
+describe("GossipNode", () => {
+  test("start fails if IpMultiAddr has port or transport addrs", async () => {
     const node = new GossipNode(db);
-    const options = { ipMultiAddr: '/ip4/127.0.0.1/tcp/8080' };
+    const options = { ipMultiAddr: "/ip4/127.0.0.1/tcp/8080" };
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
-    expect(error.errCode).toEqual('unavailable');
-    expect(error.message).toMatch('unexpected multiaddr transport/port information');
+    expect(error.errCode).toEqual("unavailable");
+    expect(error.message).toMatch("unexpected multiaddr transport/port information");
     expect(node.isStarted()).toBeFalsy();
     await node.stop();
   });
 
-  test('start fails if multiaddr format is invalid', async () => {
+  test("start fails if multiaddr format is invalid", async () => {
     const node = new GossipNode(db);
     // an IPv6 being supplied as an IPv4
-    const options = { ipMultiAddr: '/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a' };
-    expect((await node.start([], options))._unsafeUnwrapErr().errCode).toEqual('unavailable');
+    const options = { ipMultiAddr: "/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a" };
+    expect((await node.start([], options))._unsafeUnwrapErr().errCode).toEqual("unavailable");
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
-    expect(error.errCode).toEqual('unavailable');
-    expect(error.message).toMatch('invalid multiaddr');
+    expect(error.errCode).toEqual("unavailable");
+    expect(error.message).toMatch("invalid multiaddr");
     expect(node.isStarted()).toBeFalsy();
     await node.stop();
   });
 
-  test('connect fails with a node that has not started', async () => {
+  test("connect fails with a node that has not started", async () => {
     const node = new GossipNode(db);
     await node.start([]);
 
@@ -63,7 +63,7 @@ describe('GossipNode', () => {
   });
 
   test(
-    'connect fails with a node that is not in the allow list',
+    "connect fails with a node that is not in the allow list",
     async () => {
       const node1 = new GossipNode(db);
       await node1.start([]);
@@ -77,7 +77,7 @@ describe('GossipNode', () => {
       if (node1.peerId) {
         await node3.start([], { allowedPeerIdStrs: [node1.peerId.toString()] });
       } else {
-        throw Error('Node1 not started, no peerId found');
+        throw Error("Node1 not started, no peerId found");
       }
 
       try {
@@ -95,10 +95,10 @@ describe('GossipNode', () => {
         await node3.stop();
       }
     },
-    TEST_TIMEOUT_SHORT
+    TEST_TIMEOUT_SHORT,
   );
 
-  test('removing from addressbook hangs up connection', async () => {
+  test("removing from addressbook hangs up connection", async () => {
     const node1 = new GossipNode(db);
     await node1.start([]);
 
@@ -129,7 +129,7 @@ describe('GossipNode', () => {
     }
   });
 
-  describe('gossip messages', () => {
+  describe("gossip messages", () => {
     const network = FarcasterNetwork.TESTNET;
     const fid = Factories.Fid.build();
     const signer = Factories.Ed25519Signer.build();
@@ -150,13 +150,13 @@ describe('GossipNode', () => {
 
       signerAdd = await Factories.SignerAddMessage.create(
         { data: { fid, network, signerAddBody: { signer: signerKey } } },
-        { transient: { signer: custodySigner } }
+        { transient: { signer: custodySigner } },
       );
 
       castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
     });
 
-    test('gossip messages only from rpc', async () => {
+    test("gossip messages only from rpc", async () => {
       let numMessagesGossiped = 0;
       const mockGossipNode = {
         gossipMessage: (_msg: Message) => {
@@ -189,7 +189,7 @@ describe('GossipNode', () => {
       await syncEngine.stop();
     });
 
-    test('Gossip Ids match for farcaster protocol messages', async () => {
+    test("Gossip Ids match for farcaster protocol messages", async () => {
       const node = new GossipNode(db);
       await node.start([]);
       await node.gossipMessage(castAdd);
@@ -197,7 +197,7 @@ describe('GossipNode', () => {
       let result = await node.gossipMessage(castAdd);
       result.forEach((res) => {
         expect(res.isErr()).toBeTruthy();
-        expect(res._unsafeUnwrapErr().errCode).toEqual('bad_request.duplicate');
+        expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
       });
 
       const gossipMessage = GossipMessage.create({
@@ -211,13 +211,13 @@ describe('GossipNode', () => {
       result = await node.publish(gossipMessage);
       result.forEach((res) => {
         expect(res.isErr()).toBeTruthy();
-        expect(res._unsafeUnwrapErr().errCode).toEqual('bad_request.duplicate');
+        expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
       });
 
       await node.stop();
     });
 
-    test('Gossip Ids do not match for gossip internal messages', async () => {
+    test("Gossip Ids do not match for gossip internal messages", async () => {
       const node = new GossipNode(db);
       await node.start([]);
 
@@ -229,7 +229,7 @@ describe('GossipNode', () => {
       await node.stop();
     });
 
-    test('Gossip Ids do not match for gossip V1 messages', async () => {
+    test("Gossip Ids do not match for gossip V1 messages", async () => {
       const node = new GossipNode(db);
       await node.start([]);
       const v1Message = GossipMessage.create({
@@ -248,31 +248,31 @@ describe('GossipNode', () => {
       await node.stop();
     });
 
-    test('Gossip Message decode works for valid messages', async () => {
+    test("Gossip Message decode works for valid messages", async () => {
       const contactInfo = ContactInfoContent.create();
       let gossipMessage = GossipMessage.create({
         contactInfoContent: contactInfo,
-        topics: ['foobar'],
+        topics: ["foobar"],
         peerId: peerId.toBytes(),
       });
       expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
 
       gossipMessage = GossipMessage.create({
         message: castAdd,
-        topics: ['foobar'],
+        topics: ["foobar"],
         peerId: peerId.toBytes(),
       });
       expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
 
       gossipMessage = GossipMessage.create({
         idRegistryEvent: custodyEvent,
-        topics: ['foobar'],
+        topics: ["foobar"],
         peerId: peerId.toBytes(),
       });
       expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
     });
 
-    test('Gossip Message decode fails for invalid buffers', async () => {
+    test("Gossip Message decode fails for invalid buffers", async () => {
       expect(GossipNode.decodeMessage(new Uint8Array()).isErr()).toBeTruthy();
       expect(GossipNode.decodeMessage(Message.encode(castAdd).finish()).isErr()).toBeTruthy();
 
@@ -286,7 +286,7 @@ describe('GossipNode', () => {
 
       gossipMessage = GossipMessage.create({
         message: castAdd,
-        topics: ['foobar'],
+        topics: ["foobar"],
         // invalid peerIds are not allowed
         peerId: new Uint8Array(),
       });
@@ -294,7 +294,7 @@ describe('GossipNode', () => {
 
       gossipMessage = GossipMessage.create({
         message: castAdd,
-        topics: ['foobar'],
+        topics: ["foobar"],
         peerId: peerId.toBytes(),
         // invalid versions are not allowed
         version: 12345 as GossipVersion,

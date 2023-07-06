@@ -1,21 +1,21 @@
-import { createEd25519PeerId } from '@libp2p/peer-id-factory';
-import { GossipMetricsRecorder, GossipMetrics, METRICS_TTL_MILLISECONDS } from './gossipMetricsRecorder.js';
-import { AckMessageBody, NetworkLatencyMessage, GossipMessage } from '@farcaster/hub-nodejs';
-import { GossipNode } from './gossipNode.js';
-import { GOSSIP_PROTOCOL_VERSION } from './protocol.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import { RootPrefix } from '../../storage/db/types.js';
-import { jest } from '@jest/globals';
+import { createEd25519PeerId } from "@libp2p/peer-id-factory";
+import { GossipMetricsRecorder, GossipMetrics, METRICS_TTL_MILLISECONDS } from "./gossipMetricsRecorder.js";
+import { AckMessageBody, NetworkLatencyMessage, GossipMessage } from "@farcaster/hub-nodejs";
+import { GossipNode } from "./gossipNode.js";
+import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { RootPrefix } from "../../storage/db/types.js";
+import { jest } from "@jest/globals";
 
-const db = jestRocksDB('network.p2p.gossipMetricsRecorder.test');
+const db = jestRocksDB("network.p2p.gossipMetricsRecorder.test");
 
-describe('Gossip metrics recorder accumulates metrics from messages', () => {
+describe("Gossip metrics recorder accumulates metrics from messages", () => {
   afterEach(async () => {
     jest.resetAllMocks();
     await db.del(Buffer.from([RootPrefix.GossipMetrics]));
   });
 
-  test('', async () => {
+  test("", async () => {
     const node = new GossipNode(db, undefined, true);
     await node.start([]);
     const nodePeerId = node.peerId ?? (await createEd25519PeerId());
@@ -81,15 +81,15 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
         [ackPeerId.toString()]: timeTaken2,
       },
       coverageMap: {
-        '0.5': timeTaken2,
-        '0.75': timeTaken2,
-        '0.9': timeTaken2,
-        '0.99': timeTaken2,
+        "0.5": timeTaken2,
+        "0.75": timeTaken2,
+        "0.9": timeTaken2,
+        "0.99": timeTaken2,
       },
     });
   });
 
-  test('GossipMetrics ser/de works correctly', async () => {
+  test("GossipMetrics ser/de works correctly", async () => {
     const recentPeerIds = { testPeerId: 1 };
     const peerLatencyMetrics = { testPeerId_123: { numAcks: 1, lastAckTimestamp: 12345 } };
     const peerMessageMetrics = { testPeerId: { messageCount: 11 } };
@@ -102,7 +102,7 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
     expect(deserializedMetrics).toEqual(metrics);
   });
 
-  test('Message merge times are updated correctly', async () => {
+  test("Message merge times are updated correctly", async () => {
     const node = new GossipNode(db, undefined, true);
     node.start([]);
     const recorder = node.metricsRecorder ?? new GossipMetricsRecorder(node, db);
@@ -114,7 +114,7 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
     expect(recorder.globalMetrics.messageMergeTime).toEqual({ numElements: 2, sum: 110 });
   });
 
-  test('Metrics are expired correctly', async () => {
+  test("Metrics are expired correctly", async () => {
     const metricTime = Date.now() - METRICS_TTL_MILLISECONDS;
     const recentPeerIds = { testPeerId: metricTime };
     const peerLatencyMetrics = { testPeerId_123: { numAcks: 1, lastAckTimestamp: metricTime } };
@@ -138,15 +138,15 @@ describe('Gossip metrics recorder accumulates metrics from messages', () => {
     expect(recorder.recentPeerIds).toEqual({});
   });
 
-  test('Metrics are logged and expired after ping is sent', async () => {
+  test("Metrics are logged and expired after ping is sent", async () => {
     const node = new GossipNode(db, undefined, true);
     await node.start([]);
     const recorder = new GossipMetricsRecorder(node, db);
     await recorder.start();
 
-    jest.spyOn(recorder, 'expireMetrics');
-    jest.spyOn(recorder, 'logMetrics');
-    jest.spyOn(node, 'publish');
+    jest.spyOn(recorder, "expireMetrics");
+    jest.spyOn(recorder, "logMetrics");
+    jest.spyOn(node, "publish");
     await recorder.sendPingAndLogMetrics(0);
 
     expect(recorder.expireMetrics).toHaveBeenCalledTimes(1);

@@ -11,9 +11,11 @@ const DEFAULT_NETWORK = 3; // Farcaster Devnet
 
 export const Config = {
   /** Path to a PeerId file */
-  id: './.hub/default_id.protobuf',
+  id: "./.hub/default_id.protobuf",
   /** Network URL of the IdRegistry Contract */
   // ethRpcUrl: '',
+  /** FName Registry Server URL */
+  // fnameServerUrl: '';
   /** Address of the IdRegistry Contract  */
   // firAddress: '',
   /** A list of MultiAddrs to use for bootstrapping */
@@ -24,7 +26,7 @@ export const Config = {
   //   '12D3KooWMDdQaMWCkQ8Gf3C6zdJdMEfFs8R2pw8YQw2HgoY8qhzA', // @adityapk00
   // ],
   /** The IP address libp2p should listen on. */
-  ip: '0.0.0.0',
+  ip: "0.0.0.0",
   /** The IP address that libp2p should announce to peers */
   // announceIp: '',
   /** The server name to announce to peers */
@@ -38,7 +40,7 @@ export const Config = {
   /** Per-IP rate limiting for the RPC server*/
   rpcRateLimit: 20000,
   /** The name of the RocksDB instance */
-  dbName: 'rocks.hub._default',
+  dbName: "rocks.hub._default",
   /** Rebuild the sync trie before starting */
   rebuildSyncTrie: false,
   /** Commit lock timeout in ms */
@@ -50,5 +52,5 @@ export const Config = {
   /** Start the admin server? */
   adminServerEnabled: false,
   /** The admin server bind host */
-  adminServerHost: '127.0.0.1',
+  adminServerHost: "127.0.0.1",
 };

@@ -77,7 +77,7 @@ jobs:
       #   run: yarn audit
 
       - name: Run linter
-        run: yarn lint
+        run: yarn lint:ci
 
   test:
     timeout-minutes: 10
@@ -100,6 +100,9 @@ jobs:
         with:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
 
       - name: Install dependencies
         run: yarn install

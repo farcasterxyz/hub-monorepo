@@ -1,6 +1,6 @@
-import { HubReplicator } from './hubReplicator';
-import { getDbClient, migrateToLatest } from './db';
-import { log } from './log';
+import { HubReplicator } from "./hubReplicator";
+import { getDbClient, migrateToLatest } from "./db";
+import { log } from "./log";
 
 /**
  * Populate the following constants with your own values.
@@ -8,9 +8,9 @@ import { log } from './log';
  * If you're running this from the examples directory, make sure you follow the
  * README.
  */
-const HUB_HOST = process.env['HUB_HOST'] || 'nemes.farcaster.xyz:2283';
-const HUB_SSL = (process.env['HUB_SSL'] || 'true') === 'true';
-const POSTGRES_URL = process.env['POSTGRES_URL'] || 'postgres://app:password@localhost:6541/hub';
+const HUB_HOST = process.env["HUB_HOST"] || "nemes.farcaster.xyz:2283";
+const HUB_SSL = (process.env["HUB_SSL"] || "true") === "true";
+const POSTGRES_URL = process.env["POSTGRES_URL"] || "postgres://app:password@localhost:6541/hub";
 
 const db = getDbClient(POSTGRES_URL);
 
@@ -27,15 +27,14 @@ const shutdown = async () => {
   }
 };
 
-process.on('exit', (code) => {
+process.on("exit", (code) => {
   log.info(`Exiting process with status code ${code}`);
 });
 
-for (const signal of ['SIGTERM', 'SIGINT']) {
+for (const signal of ["SIGTERM", "SIGINT"]) {
   process.once(signal, (signalName: string) => {
     log.info(`Process received ${signalName}`);
     process.exitCode =
-      // eslint-disable-next-line security/detect-object-injection
       {
         SIGINT: 130,
         SIGTERM: 143,

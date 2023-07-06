@@ -1,18 +1,14 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable prefer-arrow-functions/prefer-arrow-functions */
-/* eslint-disable no-console */
+import { performance } from "node:perf_hooks";
+import { Writable } from "node:stream";
+import v8 from "v8";
 
-import { performance } from 'node:perf_hooks';
-import { Writable } from 'node:stream';
-import v8 from 'v8';
+import ProgressBar from "progress";
 
-import ProgressBar from 'progress';
+import { MerkleTrie } from "../../network/sync/merkleTrie.js";
 
-import { MerkleTrie } from '../../network/sync/merkleTrie.js';
-
-import RocksDB from '../../storage/db/rocksdb.js';
-import { generateSyncIds } from './helpers.js';
-import { yieldToEventLoop } from './utils.js';
+import RocksDB from "../../storage/db/rocksdb.js";
+import { generateSyncIds } from "./helpers.js";
+import { yieldToEventLoop } from "./utils.js";
 
 /**
  * Benchmark MerkleTrie. This is a CPU bound test (no disk operations). The test focuses on the
@@ -51,12 +47,12 @@ export const benchMerkleTrie = async ({
   }
   count = Math.ceil(count / cycle) * cycle;
 
-  const progress = new ProgressBar('benchmarking MerkleTrie :bar :current/:total ', {
+  const progress = new ProgressBar("benchmarking MerkleTrie :bar :current/:total ", {
     total: count,
   });
 
   const syncIds = generateSyncIds(count, 100_000, 300);
-  const db = new RocksDB('protobufs.bench.merkleTrie');
+  const db = new RocksDB("protobufs.bench.merkleTrie");
   await db.open();
 
   const trie = new MerkleTrie(db);
@@ -66,8 +62,8 @@ export const benchMerkleTrie = async ({
   const memoryUsage = process.memoryUsage();
   writer.write([
     0,
-    '',
-    '',
+    "",
+    "",
     memoryUsage.heapUsed / 1048576,
     memoryUsage.external / 1048576,
     memoryUsage.rss / 1048576,
@@ -80,6 +76,7 @@ export const benchMerkleTrie = async ({
   while (i < syncIds.length) {
     let start = performance.now();
     for (let j = 0; j < cycle; j++) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       await trie.insert(syncIds[(i + j) % syncIds.length]!);
     }
     const insertDuration = performance.now() - start;
@@ -88,6 +85,7 @@ export const benchMerkleTrie = async ({
 
     start = performance.now();
     for (let j = 0; j < cycle; j++) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       await trie.getSnapshot(syncIds[(i - 1) % syncIds.length]!.syncId().slice(0, 10));
     }
     const snapshotDuration = performance.now() - start;
@@ -114,5 +112,5 @@ export const benchMerkleTrie = async ({
   }
 
   db.clear();
-  process.stderr.write('finished\n');
+  process.stderr.write("finished\n");
 };

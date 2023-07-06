@@ -5,24 +5,22 @@ import {
   getSSLHubRpcClient,
   makeCastAdd,
   makeSignerAdd,
-} from '@farcaster/hub-nodejs';
-import * as ed from '@noble/ed25519';
-import { Wallet } from 'ethers';
-
-/* eslint no-console: 0 */
+} from "@farcaster/hub-nodejs";
+import * as ed from "@noble/ed25519";
+import { Wallet } from "ethers";
 
 /**
  * Populate the following constants with your own values
  */
 
 // Recovery phrase of the custody address and the
-const MNEMONIC = 'ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain';
+const MNEMONIC = "ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain";
 
 // Fid owned by the custody address
 const FID = 2;
 
 // Testnet Configuration
-const HUB_URL = 'testnet1.farcaster.xyz:2283'; // URL + Port of the Hub
+const HUB_URL = "testnet1.farcaster.xyz:2283"; // URL + Port of the Hub
 const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
 (async () => {
@@ -76,14 +74,14 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
   const cast = await makeCastAdd(
     {
-      text: 'This is a cast with no mentions',
+      text: "This is a cast with no mentions",
       embeds: [],
       embedsDeprecated: [],
       mentions: [],
       mentionsPositions: [],
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(cast);
 
@@ -94,14 +92,14 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
    */
   const castWithMentions = await makeCastAdd(
     {
-      text: ' and  are big fans of ',
+      text: " and  are big fans of ",
       embeds: [],
       embedsDeprecated: [],
       mentions: [3, 2, 1],
       mentionsPositions: [0, 5, 22],
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(castWithMentions);
 
@@ -112,14 +110,14 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
    */
   const castWithMentionsAndAttachment = await makeCastAdd(
     {
-      text: 'Hey , check this out!',
-      embeds: [{ url: 'https://farcaster.xyz' }],
+      text: "Hey , check this out!",
+      embeds: [{ url: "https://farcaster.xyz" }],
       embedsDeprecated: [],
       mentions: [3],
       mentionsPositions: [4],
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(castWithMentionsAndAttachment);
 
@@ -130,14 +128,14 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
    */
   const castWithMentionsAttachmentLink = await makeCastAdd(
     {
-      text: 'Hey , check out https://farcaster.xyz!',
-      embeds: [{ url: 'https://farcaster.xyz' }],
+      text: "Hey , check out https://farcaster.xyz!",
+      embeds: [{ url: "https://farcaster.xyz" }],
       embedsDeprecated: [],
       mentions: [3],
       mentionsPositions: [4],
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(castWithMentionsAttachmentLink);
 
@@ -149,14 +147,14 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
   const castWithMultipleMentions = await makeCastAdd(
     {
-      text: 'You can mention  multiple times:   ',
+      text: "You can mention  multiple times:   ",
       embeds: [],
       embedsDeprecated: [],
       mentions: [2, 2, 2, 2],
       mentionsPositions: [16, 33, 34, 35],
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(castWithMultipleMentions);
 
@@ -167,14 +165,14 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
    */
   const castWithEmojiAndMentions = await makeCastAdd(
     {
-      text: '🤓 can mention immediately after emoji',
+      text: "🤓 can mention immediately after emoji",
       embeds: [],
       embedsDeprecated: [],
       mentions: [1],
       mentionsPositions: [4],
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(castWithEmojiAndMentions);
 
@@ -186,14 +184,14 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
   const castWithEmojiLinkAttachmnent = await makeCastAdd(
     {
-      text: '🤓https://url-after-unicode.com can include URL immediately after emoji',
-      embeds: [{ url: 'https://url-after-unicode.com' }],
+      text: "🤓https://url-after-unicode.com can include URL immediately after emoji",
+      embeds: [{ url: "https://url-after-unicode.com" }],
       embedsDeprecated: [],
       mentions: [],
       mentionsPositions: [],
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(castWithEmojiLinkAttachmnent);
 
@@ -205,15 +203,15 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
   const castReplyingToAUrl = await makeCastAdd(
     {
-      text: 'I think this is a great protocol 🚀',
+      text: "I think this is a great protocol 🚀",
       embeds: [],
       embedsDeprecated: [],
       mentions: [],
       mentionsPositions: [],
-      parentUrl: 'https://www.farcaster.xyz/',
+      parentUrl: "https://www.farcaster.xyz/",
     },
     dataOptions,
-    ed25519Signer
+    ed25519Signer,
   );
   castResults.push(castReplyingToAUrl);
 

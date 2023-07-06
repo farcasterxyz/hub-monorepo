@@ -1,5 +1,43 @@
 # @farcaster/hub-web
 
+## 0.4.1
+
+### Patch Changes
+
+- 5a1baae: Switch fnames from contract events to fname server proofs
+- Updated dependencies [5a1baae]
+  - @farcaster/core@0.10.1
+
+## 0.4.0
+
+### Minor Changes
+
+- d8729a7: Made RPC client factory functions more flexible
+
+  - removed @improbable-eng/grpc-web-node-http-transport as a dependency
+    - this transport can be installed and configured using the `transport`
+      property of the GrpcHubImpl options
+  - factory functions no longer take a boolean indicating if the env is a browser
+    or not and instead an object to specify options of the GrpcWeb client
+    - if you need to use this in a node environment, install
+      @improbable-eng/grpc-web-node-http-transport and pass it as the transport,
+      or use @farcaster/hub-node-js
+
+### Patch Changes
+
+- Updated dependencies [159c62d]
+- Updated dependencies [159c62d]
+- Updated dependencies [bfdbfea]
+  - @farcaster/core@0.10.0
+
+## 0.3.6
+
+### Patch Changes
+
+- f1c6b25: Fetch, validate and store username proofs from fname registry
+- Updated dependencies [f1c6b25]
+  - @farcaster/core@0.9.1
+
 ## 0.3.5
 
 ### Patch Changes
