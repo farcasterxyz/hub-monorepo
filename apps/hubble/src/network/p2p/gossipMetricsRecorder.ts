@@ -55,7 +55,7 @@ export class GossipMetrics {
   globalMetrics: GlobalMetrics;
 
   constructor(
-    recentPeerIds?: StringMap,
+    recentPeerIds?: StringMap<number>,
     peerLatencyMetrics?: StringMap<PeerLatencyMetrics>,
     peerMessageMetrics?: StringMap<PeerMessageMetrics>,
     globalMetrics?: GlobalMetrics,
@@ -315,8 +315,8 @@ export class GossipMetricsRecorder {
     if (currentCoverage?.seenPeerIds[peerId.toString()]) {
       return currentCoverage;
     } else {
-      const seenPeerIds: StringMap = Object.assign({}, currentCoverage?.seenPeerIds ?? {});
-      const coverageMap: StringMap = Object.assign({}, currentCoverage?.coverageMap ?? {});
+      const seenPeerIds: StringMap<number> = Object.assign({}, currentCoverage?.seenPeerIds ?? {});
+      const coverageMap: StringMap<number> = Object.assign({}, currentCoverage?.coverageMap ?? {});
       seenPeerIds[peerId.toString()] = time;
       const numSeenPeerIds = Object.keys(seenPeerIds).length;
       const coverage = numSeenPeerIds / Object.keys(this._metrics.recentPeerIds ?? {}).length;
