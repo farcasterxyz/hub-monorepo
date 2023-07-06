@@ -124,13 +124,17 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
 
     let index = 0;
 
-    if (kp.label.includes("User")) {
+    if (i === RootPrefix.User) {
       index = 0;
-    } else if (kp.label.includes("By")) {
+    } else if (
+      (i >= RootPrefix.CastsByParent && i <= RootPrefix.ReactionsByTarget) ||
+      i === RootPrefix.IdRegistryEventByCustodyAddress ||
+      i === RootPrefix.NameRegistryEventsByExpiry
+    ) {
       index = 1;
-    } else if (kp.label.includes("Trie")) {
+    } else if (i === RootPrefix.SyncMerkleTrieNode) {
       index = 2;
-    } else if (kp.label.includes("HubEvents")) {
+    } else if (i === RootPrefix.HubEvents) {
       index = 3;
     } else {
       index = 4;
