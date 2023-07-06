@@ -55,7 +55,7 @@
     "@faker-js/faker": "~7.6.0",
     "@farcaster/hub-nodejs": "^0.8.3",
     "@farcaster/rocksdb": "^5.5.0",
-    "@grpc/grpc-js": "~1.8.7",
+    "@grpc/grpc-js": "~1.8.8",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^2.0.0",
     "@libp2p/mplex": "^7.0.0",
