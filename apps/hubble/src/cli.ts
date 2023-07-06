@@ -482,7 +482,7 @@ const storageProfileCommand = new Command("storage")
     if (!rocksDBName) throw new Error("No RocksDB name provided.");
     const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
     if (dbResult.isErr()) {
-      logger.warn({ rocksDBName }, "Failed to open RocksDB, falling back to rm");
+      logger.warn({ rocksDBName }, "Failed to open RocksDB. The Hub needs to be stopped to run this command.");
     } else {
       await profileStorageUsed(rocksDB);
     }
