@@ -25,6 +25,7 @@
     "identity": "node build/cli.js identity",
     "dbreset": "node build/cli.js dbreset",
     "console": "node build/cli.js console",
+    "profile": "node build/cli.js profile",
     "status": "node build/cli.js status",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
