@@ -22,7 +22,13 @@ function formatNumber(num?: number): string {
   else if (Math.abs(num) >= 1.0e9) return `${(Math.abs(num) / 1.0e9).toFixed(1)}B`;
   else if (Math.abs(num) >= 1.0e6) return `${(Math.abs(num) / 1.0e6).toFixed(1)}M`;
   else if (Math.abs(num) >= 1.0e3) return `${(Math.abs(num) / 1.0e3).toFixed(1)}K`;
-  else return num.toString();
+  else {
+    if (num.toString().includes(".")) {
+      return num.toFixed(2);
+    } else {
+      return num.toString();
+    }
+  }
 }
 
 // Pretty print a percentage
@@ -55,6 +61,59 @@ class KeysProfile {
   }
 }
 
+class ValueStats {
+  count: number;
+  min: number;
+  max: number;
+  median: number;
+  average: number;
+  sum: number;
+
+  allValues: number[];
+
+  label: string;
+
+  constructor(label = "") {
+    this.count = 0;
+    this.min = 0;
+    this.max = 0;
+    this.median = 0;
+    this.average = 0;
+    this.sum = 0;
+    this.allValues = [];
+
+    this.label = label;
+  }
+
+  addValue(value: number) {
+    this.count++;
+
+    this.allValues.push(value);
+  }
+
+  calculate() {
+    this.sum = this.allValues.reduce((a, b) => a + b, 0);
+
+    let min = Number.MAX_SAFE_INTEGER;
+    let max = Number.MIN_SAFE_INTEGER;
+    for (let i = 0; i < this.allValues.length; i++) {
+      if ((this.allValues[i] as number) < min) {
+        min = this.allValues[i] as number;
+      }
+
+      if ((this.allValues[i] as number) > max) {
+        max = this.allValues[i] as number;
+      }
+    }
+
+    this.min = min;
+    this.max = max;
+
+    this.median = this.allValues[Math.floor(this.allValues.length / 2)] || 0;
+    this.average = this.sum / this.count;
+  }
+}
+
 // Return a string that can printed to console of a table with the data
 function prettyPrintTable(data: (string | number)[][]): string {
   // First, calculate the maximum width of each column
@@ -72,10 +131,13 @@ function prettyPrintTable(data: (string | number)[][]): string {
 }
 
 // Format the keys profiles into a printable table
-function toPrettyPrintObject(keysProfile: KeysProfile[]): string[][] {
+function KeysProfileToPrettyPrintObject(keysProfile: KeysProfile[], calculateOverhead = false): string[][] {
   const data = [];
   // First, write the headers to the first row
   data.push(["Prefix", "Count", "Key Bytes", "Value Bytes", "Total Bytes %"]);
+  if (calculateOverhead) {
+    data[0]?.push("Overhead %");
+  }
 
   // First, calculate the total bytes
   let totalBytes = 0;
@@ -89,12 +151,61 @@ function toPrettyPrintObject(keysProfile: KeysProfile[]): string[][] {
   for (let i = 0; i < keysProfile.length; i++) {
     if ((keysProfile[i]?.count || 0) > 0) {
       const label = keysProfile[i]?.label || "";
+      const bytesTotal = (keysProfile[i]?.valueBytes || 0) + (keysProfile[i]?.keyBytes || 0);
       data.push([
         label,
         formatNumber(keysProfile[i]?.count),
         formatNumber(keysProfile[i]?.keyBytes),
         formatNumber(keysProfile[i]?.valueBytes),
-        formatPercentage(((keysProfile[i]?.valueBytes || 0) + (keysProfile[i]?.keyBytes || 0)) / totalBytes),
+        formatPercentage(bytesTotal / totalBytes),
+      ]);
+    }
+  }
+
+  // Calculate overhead as a % of the first row's Total Bytes
+  if (calculateOverhead) {
+    const firstRowTotalBytes = parseFloat(data[1]?.[4] || "0");
+    let totalOverhead = 0;
+
+    // Skip the header and the first row
+    for (let i = 1; i < data.length; i++) {
+      const bytesTotal = parseFloat(data[i]?.[4] || "0");
+      const overhead = bytesTotal / firstRowTotalBytes;
+
+      totalOverhead += overhead;
+
+      data[i]?.push(formatPercentage(overhead));
+    }
+
+    data.push(["Total", "", "", "", "", formatPercentage(totalOverhead - 1)]);
+  }
+
+  return data;
+}
+
+function ValueStatsToPrettyPrintObject(valueStats: ValueStats[]): string[][] {
+  // First, calculate all the valueStats
+  for (let i = 0; i < valueStats.length; i++) {
+    valueStats[i]?.calculate();
+  }
+
+  const data = [];
+  // First, write the headers to the first row
+  data.push(["Prefix", "Count", "Total", "Min", "Max", "Median", "Average"]);
+
+  // Then, for each prefix, write a row with the prefix and the count, key bytes, and value bytes
+  // for that prefix
+  for (let i = 0; i < valueStats.length; i++) {
+    if ((valueStats[i]?.count || 0) > 0) {
+      const label = valueStats[i]?.label || "";
+      data.push([
+        label,
+        formatNumber(valueStats[i]?.count),
+        formatNumber(valueStats[i]?.sum),
+        formatNumber(valueStats[i]?.min),
+        formatNumber(valueStats[i]?.max),
+        formatNumber(valueStats[i]?.median),
+        formatNumber(valueStats[i]?.average),
       ]);
     }
   }
@@ -182,6 +293,9 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
     (_v, i: number) => new KeysProfile(UserPostfix[i]?.toString()),
   );
 
+  // Caclulate the individual message sizes
+  const valueStats = Array.from({ length: 7 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
+
   for await (const [key, value] of iterator) {
     allKeys.count++;
     allKeys.keyBytes += key?.length || 0;
@@ -203,6 +317,10 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
             (userPostfixKeys[postfix] as KeysProfile).count++;
             (userPostfixKeys[postfix] as KeysProfile).keyBytes += key?.length || 0;
             (userPostfixKeys[postfix] as KeysProfile).valueBytes += value?.length || 0;
+
+            if (postfix <= UserPostfix.UserDataMessage) {
+              (valueStats[postfix] as ValueStats).addValue(value?.length || 0);
+            }
           } else {
             logger.error(`Invalid postfix ${postfix} for key ${key.toString("hex")}`);
           }
@@ -219,14 +337,19 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
 
   logger.info(`RocksDB contains ${allKeys.toString()}`);
 
-  console.log(prettyPrintTable(toPrettyPrintObject(prefixKeys)));
+  console.log(prettyPrintTable(KeysProfileToPrettyPrintObject(prefixKeys)));
 
   console.log("\nBy Data Type:\n");
-  console.log(prettyPrintTable(toPrettyPrintObject(prefixProfileToDataType(prefixKeys, userPostfixKeys))));
+  console.log(
+    prettyPrintTable(KeysProfileToPrettyPrintObject(prefixProfileToDataType(prefixKeys, userPostfixKeys), true)),
+  );
 
   console.log("\nBy User Data type:\n");
-  console.log(prettyPrintTable(toPrettyPrintObject(userPostfixKeys)));
+  console.log(prettyPrintTable(KeysProfileToPrettyPrintObject(userPostfixKeys)));
+
+  console.log("\nValue Sizes (bytes):\n");
+  console.log(prettyPrintTable(ValueStatsToPrettyPrintObject(valueStats)));
 
   console.log("\nTotals:\n");
-  console.log(prettyPrintTable(toPrettyPrintObject([allKeys])));
+  console.log(prettyPrintTable(KeysProfileToPrettyPrintObject([allKeys])));
 }
