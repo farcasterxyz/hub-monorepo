@@ -1,7 +1,7 @@
 /* eslint-disable */
-import Long from 'long';
-import _m0 from 'protobufjs/minimal';
-import { HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from './hub_event';
+import Long from "long";
+import _m0 from "protobufjs/minimal";
+import { HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
 import {
   CastId,
   Message,
@@ -11,9 +11,11 @@ import {
   UserDataType,
   userDataTypeFromJSON,
   userDataTypeToJSON,
-} from './message';
+} from "./message";
+import { UserNameProof } from "./username_proof";
 
-export interface Empty {}
+export interface Empty {
+}
 
 export interface SubscribeRequest {
   eventTypes: HubEventType[];
@@ -151,6 +153,10 @@ export interface NameRegistryEventRequest {
 
 export interface UsernameProofRequest {
   name: Uint8Array;
+}
+
+export interface UsernameProofsResponse {
+  proofs: UserNameProof[];
 }
 
 export interface VerificationRequest {
@@ -436,21 +442,21 @@ export const HubInfoRequest = {
 };
 
 function createBaseHubInfoResponse(): HubInfoResponse {
-  return { version: '', isSyncing: false, nickname: '', rootHash: '', dbStats: undefined };
+  return { version: "", isSyncing: false, nickname: "", rootHash: "", dbStats: undefined };
 }
 
 export const HubInfoResponse = {
   encode(message: HubInfoResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.version !== '') {
+    if (message.version !== "") {
       writer.uint32(10).string(message.version);
     }
     if (message.isSyncing === true) {
       writer.uint32(16).bool(message.isSyncing);
     }
-    if (message.nickname !== '') {
+    if (message.nickname !== "") {
       writer.uint32(26).string(message.nickname);
     }
-    if (message.rootHash !== '') {
+    if (message.rootHash !== "") {
       writer.uint32(34).string(message.rootHash);
     }
     if (message.dbStats !== undefined) {
@@ -512,10 +518,10 @@ export const HubInfoResponse = {
 
   fromJSON(object: any): HubInfoResponse {
     return {
-      version: isSet(object.version) ? String(object.version) : '',
+      version: isSet(object.version) ? String(object.version) : "",
       isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
-      nickname: isSet(object.nickname) ? String(object.nickname) : '',
-      rootHash: isSet(object.rootHash) ? String(object.rootHash) : '',
+      nickname: isSet(object.nickname) ? String(object.nickname) : "",
+      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
       dbStats: isSet(object.dbStats) ? DbStats.fromJSON(object.dbStats) : undefined,
     };
   },
@@ -536,12 +542,13 @@ export const HubInfoResponse = {
 
   fromPartial<I extends Exact<DeepPartial<HubInfoResponse>, I>>(object: I): HubInfoResponse {
     const message = createBaseHubInfoResponse();
-    message.version = object.version ?? '';
+    message.version = object.version ?? "";
     message.isSyncing = object.isSyncing ?? false;
-    message.nickname = object.nickname ?? '';
-    message.rootHash = object.rootHash ?? '';
-    message.dbStats =
-      object.dbStats !== undefined && object.dbStats !== null ? DbStats.fromPartial(object.dbStats) : undefined;
+    message.nickname = object.nickname ?? "";
+    message.rootHash = object.rootHash ?? "";
+    message.dbStats = (object.dbStats !== undefined && object.dbStats !== null)
+      ? DbStats.fromPartial(object.dbStats)
+      : undefined;
     return message;
   },
 };
@@ -742,7 +749,7 @@ export const SyncStatusResponse = {
     const obj: any = {};
     message.isSyncing !== undefined && (obj.isSyncing = message.isSyncing);
     if (message.syncStatus) {
-      obj.syncStatus = message.syncStatus.map((e) => (e ? SyncStatus.toJSON(e) : undefined));
+      obj.syncStatus = message.syncStatus.map((e) => e ? SyncStatus.toJSON(e) : undefined);
     } else {
       obj.syncStatus = [];
     }
@@ -763,10 +770,10 @@ export const SyncStatusResponse = {
 
 function createBaseSyncStatus(): SyncStatus {
   return {
-    peerId: '',
-    inSync: '',
+    peerId: "",
+    inSync: "",
     shouldSync: false,
-    divergencePrefix: '',
+    divergencePrefix: "",
     divergenceSecondsAgo: 0,
     theirMessages: 0,
     ourMessages: 0,
@@ -776,16 +783,16 @@ function createBaseSyncStatus(): SyncStatus {
 
 export const SyncStatus = {
   encode(message: SyncStatus, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.peerId !== '') {
+    if (message.peerId !== "") {
       writer.uint32(10).string(message.peerId);
     }
-    if (message.inSync !== '') {
+    if (message.inSync !== "") {
       writer.uint32(18).string(message.inSync);
     }
     if (message.shouldSync === true) {
       writer.uint32(24).bool(message.shouldSync);
     }
-    if (message.divergencePrefix !== '') {
+    if (message.divergencePrefix !== "") {
       writer.uint32(34).string(message.divergencePrefix);
     }
     if (message.divergenceSecondsAgo !== 0) {
@@ -877,10 +884,10 @@ export const SyncStatus = {
 
   fromJSON(object: any): SyncStatus {
     return {
-      peerId: isSet(object.peerId) ? String(object.peerId) : '',
-      inSync: isSet(object.inSync) ? String(object.inSync) : '',
+      peerId: isSet(object.peerId) ? String(object.peerId) : "",
+      inSync: isSet(object.inSync) ? String(object.inSync) : "",
       shouldSync: isSet(object.shouldSync) ? Boolean(object.shouldSync) : false,
-      divergencePrefix: isSet(object.divergencePrefix) ? String(object.divergencePrefix) : '',
+      divergencePrefix: isSet(object.divergencePrefix) ? String(object.divergencePrefix) : "",
       divergenceSecondsAgo: isSet(object.divergenceSecondsAgo) ? Number(object.divergenceSecondsAgo) : 0,
       theirMessages: isSet(object.theirMessages) ? Number(object.theirMessages) : 0,
       ourMessages: isSet(object.ourMessages) ? Number(object.ourMessages) : 0,
@@ -907,10 +914,10 @@ export const SyncStatus = {
 
   fromPartial<I extends Exact<DeepPartial<SyncStatus>, I>>(object: I): SyncStatus {
     const message = createBaseSyncStatus();
-    message.peerId = object.peerId ?? '';
-    message.inSync = object.inSync ?? '';
+    message.peerId = object.peerId ?? "";
+    message.inSync = object.inSync ?? "";
     message.shouldSync = object.shouldSync ?? false;
-    message.divergencePrefix = object.divergencePrefix ?? '';
+    message.divergencePrefix = object.divergencePrefix ?? "";
     message.divergenceSecondsAgo = object.divergenceSecondsAgo ?? 0;
     message.theirMessages = object.theirMessages ?? 0;
     message.ourMessages = object.ourMessages ?? 0;
@@ -920,7 +927,7 @@ export const SyncStatus = {
 };
 
 function createBaseTrieNodeMetadataResponse(): TrieNodeMetadataResponse {
-  return { prefix: new Uint8Array(), numMessages: 0, hash: '', children: [] };
+  return { prefix: new Uint8Array(), numMessages: 0, hash: "", children: [] };
 }
 
 export const TrieNodeMetadataResponse = {
@@ -931,7 +938,7 @@ export const TrieNodeMetadataResponse = {
     if (message.numMessages !== 0) {
       writer.uint32(16).uint64(message.numMessages);
     }
-    if (message.hash !== '') {
+    if (message.hash !== "") {
       writer.uint32(26).string(message.hash);
     }
     for (const v of message.children) {
@@ -988,7 +995,7 @@ export const TrieNodeMetadataResponse = {
     return {
       prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      hash: isSet(object.hash) ? String(object.hash) : '',
+      hash: isSet(object.hash) ? String(object.hash) : "",
       children: Array.isArray(object?.children)
         ? object.children.map((e: any) => TrieNodeMetadataResponse.fromJSON(e))
         : [],
@@ -1002,7 +1009,7 @@ export const TrieNodeMetadataResponse = {
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
     message.hash !== undefined && (obj.hash = message.hash);
     if (message.children) {
-      obj.children = message.children.map((e) => (e ? TrieNodeMetadataResponse.toJSON(e) : undefined));
+      obj.children = message.children.map((e) => e ? TrieNodeMetadataResponse.toJSON(e) : undefined);
     } else {
       obj.children = [];
     }
@@ -1017,14 +1024,14 @@ export const TrieNodeMetadataResponse = {
     const message = createBaseTrieNodeMetadataResponse();
     message.prefix = object.prefix ?? new Uint8Array();
     message.numMessages = object.numMessages ?? 0;
-    message.hash = object.hash ?? '';
+    message.hash = object.hash ?? "";
     message.children = object.children?.map((e) => TrieNodeMetadataResponse.fromPartial(e)) || [];
     return message;
   },
 };
 
 function createBaseTrieNodeSnapshotResponse(): TrieNodeSnapshotResponse {
-  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: '' };
+  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: "" };
 }
 
 export const TrieNodeSnapshotResponse = {
@@ -1038,7 +1045,7 @@ export const TrieNodeSnapshotResponse = {
     if (message.numMessages !== 0) {
       writer.uint32(24).uint64(message.numMessages);
     }
-    if (message.rootHash !== '') {
+    if (message.rootHash !== "") {
       writer.uint32(34).string(message.rootHash);
     }
     return writer;
@@ -1093,7 +1100,7 @@ export const TrieNodeSnapshotResponse = {
       prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      rootHash: isSet(object.rootHash) ? String(object.rootHash) : '',
+      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
     };
   },
 
@@ -1120,7 +1127,7 @@ export const TrieNodeSnapshotResponse = {
     message.prefix = object.prefix ?? new Uint8Array();
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.numMessages = object.numMessages ?? 0;
-    message.rootHash = object.rootHash ?? '';
+    message.rootHash = object.rootHash ?? "";
     return message;
   },
 };
@@ -1567,7 +1574,7 @@ export const MessagesResponse = {
   toJSON(message: MessagesResponse): unknown {
     const obj: any = {};
     if (message.messages) {
-      obj.messages = message.messages.map((e) => (e ? Message.toJSON(e) : undefined));
+      obj.messages = message.messages.map((e) => e ? Message.toJSON(e) : undefined);
     } else {
       obj.messages = [];
     }
@@ -1697,10 +1704,9 @@ export const CastsByParentRequest = {
 
   fromPartial<I extends Exact<DeepPartial<CastsByParentRequest>, I>>(object: I): CastsByParentRequest {
     const message = createBaseCastsByParentRequest();
-    message.parentCastId =
-      object.parentCastId !== undefined && object.parentCastId !== null
-        ? CastId.fromPartial(object.parentCastId)
-        : undefined;
+    message.parentCastId = (object.parentCastId !== undefined && object.parentCastId !== null)
+      ? CastId.fromPartial(object.parentCastId)
+      : undefined;
     message.parentUrl = object.parentUrl ?? undefined;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
@@ -1801,10 +1807,9 @@ export const ReactionRequest = {
     const message = createBaseReactionRequest();
     message.fid = object.fid ?? 0;
     message.reactionType = object.reactionType ?? 0;
-    message.targetCastId =
-      object.targetCastId !== undefined && object.targetCastId !== null
-        ? CastId.fromPartial(object.targetCastId)
-        : undefined;
+    message.targetCastId = (object.targetCastId !== undefined && object.targetCastId !== null)
+      ? CastId.fromPartial(object.targetCastId)
+      : undefined;
     message.targetUrl = object.targetUrl ?? undefined;
     return message;
   },
@@ -2045,10 +2050,9 @@ export const ReactionsByTargetRequest = {
 
   fromPartial<I extends Exact<DeepPartial<ReactionsByTargetRequest>, I>>(object: I): ReactionsByTargetRequest {
     const message = createBaseReactionsByTargetRequest();
-    message.targetCastId =
-      object.targetCastId !== undefined && object.targetCastId !== null
-        ? CastId.fromPartial(object.targetCastId)
-        : undefined;
+    message.targetCastId = (object.targetCastId !== undefined && object.targetCastId !== null)
+      ? CastId.fromPartial(object.targetCastId)
+      : undefined;
     message.targetUrl = object.targetUrl ?? undefined;
     message.reactionType = object.reactionType ?? undefined;
     message.pageSize = object.pageSize ?? undefined;
@@ -2243,6 +2247,66 @@ export const UsernameProofRequest = {
   },
 };
 
+function createBaseUsernameProofsResponse(): UsernameProofsResponse {
+  return { proofs: [] };
+}
+
+export const UsernameProofsResponse = {
+  encode(message: UsernameProofsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.proofs) {
+      UserNameProof.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): UsernameProofsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUsernameProofsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.proofs.push(UserNameProof.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UsernameProofsResponse {
+    return { proofs: Array.isArray(object?.proofs) ? object.proofs.map((e: any) => UserNameProof.fromJSON(e)) : [] };
+  },
+
+  toJSON(message: UsernameProofsResponse): unknown {
+    const obj: any = {};
+    if (message.proofs) {
+      obj.proofs = message.proofs.map((e) => e ? UserNameProof.toJSON(e) : undefined);
+    } else {
+      obj.proofs = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UsernameProofsResponse>, I>>(base?: I): UsernameProofsResponse {
+    return UsernameProofsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<UsernameProofsResponse>, I>>(object: I): UsernameProofsResponse {
+    const message = createBaseUsernameProofsResponse();
+    message.proofs = object.proofs?.map((e) => UserNameProof.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 function createBaseVerificationRequest(): VerificationRequest {
   return { fid: 0, address: new Uint8Array() };
 }
@@ -2388,7 +2452,7 @@ export const SignerRequest = {
 };
 
 function createBaseLinkRequest(): LinkRequest {
-  return { fid: 0, linkType: '', targetFid: undefined };
+  return { fid: 0, linkType: "", targetFid: undefined };
 }
 
 export const LinkRequest = {
@@ -2396,7 +2460,7 @@ export const LinkRequest = {
     if (message.fid !== 0) {
       writer.uint32(8).uint64(message.fid);
     }
-    if (message.linkType !== '') {
+    if (message.linkType !== "") {
       writer.uint32(18).string(message.linkType);
     }
     if (message.targetFid !== undefined) {
@@ -2445,7 +2509,7 @@ export const LinkRequest = {
   fromJSON(object: any): LinkRequest {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      linkType: isSet(object.linkType) ? String(object.linkType) : '',
+      linkType: isSet(object.linkType) ? String(object.linkType) : "",
       targetFid: isSet(object.targetFid) ? Number(object.targetFid) : undefined,
     };
   },
@@ -2465,7 +2529,7 @@ export const LinkRequest = {
   fromPartial<I extends Exact<DeepPartial<LinkRequest>, I>>(object: I): LinkRequest {
     const message = createBaseLinkRequest();
     message.fid = object.fid ?? 0;
-    message.linkType = object.linkType ?? '';
+    message.linkType = object.linkType ?? "";
     message.targetFid = object.targetFid ?? undefined;
     return message;
   },
@@ -2800,7 +2864,7 @@ export const IdRegistryEventByAddressRequest = {
   },
 
   fromPartial<I extends Exact<DeepPartial<IdRegistryEventByAddressRequest>, I>>(
-    object: I
+    object: I,
   ): IdRegistryEventByAddressRequest {
     const message = createBaseIdRegistryEventByAddressRequest();
     message.address = object.address ?? new Uint8Array();
@@ -2812,24 +2876,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -2842,36 +2906,30 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(''));
+    return tsProtoGlobalThis.btoa(bin.join(""));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
+    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
   }
   return long.toNumber();
 }

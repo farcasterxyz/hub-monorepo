@@ -546,6 +546,26 @@ const UserDataAddMessageFactory = Factory.define<protobufs.UserDataAddMessage, {
   },
 );
 
+const UsernameProofDataFactory = Factory.define<protobufs.UsernameProofData>(() => {
+  return MessageDataFactory.build({
+    usernameProofBody: UserNameProofFactory.build(),
+    type: protobufs.MessageType.USERNAME_PROOF,
+  }) as protobufs.UsernameProofData;
+});
+
+const UsernameProofMessageFactory = Factory.define<protobufs.UsernameProofMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.UsernameProofMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: UserDataAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams },
+    ) as protobufs.UsernameProofMessage;
+  },
+);
+
 /** Contract event Protobufs */
 
 const IdRegistryEventTypeFactory = Factory.define<protobufs.IdRegistryEventType>(() => {
@@ -654,4 +674,6 @@ export const Factories = {
   NameRegistryEventType: NameRegistryEventTypeFactory,
   NameRegistryEvent: NameRegistryEventFactory,
   UserNameProof: UserNameProofFactory,
+  UsernameProofData: UsernameProofDataFactory,
+  UsernameProofMessage: UsernameProofMessageFactory,
 };

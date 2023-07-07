@@ -655,6 +655,9 @@ export default class Server {
           },
         );
       },
+      getUserNameProofsByFid: async () => {
+        // TODO
+      },
       getVerification: async (call, callback) => {
         const request = call.request;
 
