@@ -44,6 +44,8 @@ const defaultOptions: pino.LoggerOptions = {};
 if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
   // defaultOptions.level = 'debug';
   defaultOptions.level = "silent";
+} else if (process.env["LOG_LEVEL"]) {
+  defaultOptions.level = process.env["LOG_LEVEL"];
 }
 
 export const logger = pino.pino(defaultOptions);
