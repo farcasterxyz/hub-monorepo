@@ -337,6 +337,7 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
 
   logger.info(`RocksDB contains ${allKeys.toString()}`);
 
+  console.log("\nBy Prefix:\n");
   console.log(prettyPrintTable(KeysProfileToPrettyPrintObject(prefixKeys)));
 
   console.log("\nBy Data Type:\n");
