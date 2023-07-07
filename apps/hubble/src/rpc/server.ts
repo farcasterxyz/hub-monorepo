@@ -117,7 +117,8 @@ export const toServiceError = (err: HubError): ServiceError => {
     err.errCode === "bad_request.validation_failure" ||
     err.errCode === "bad_request.invalid_param" ||
     err.errCode === "bad_request.conflict" ||
-    err.errCode === "bad_request.duplicate"
+    err.errCode === "bad_request.duplicate" ||
+    err.errCode === "bad_request.prunable"
   ) {
     grpcCode = status.INVALID_ARGUMENT;
   } else if (err.errCode === "not_found") {
