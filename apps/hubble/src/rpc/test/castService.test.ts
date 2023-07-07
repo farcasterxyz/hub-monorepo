@@ -1,4 +1,4 @@
-import { faker } from '@faker-js/faker';
+import { faker } from "@faker-js/faker";
 import {
   Message,
   FarcasterNetwork,
@@ -12,15 +12,15 @@ import {
   HubError,
   getInsecureHubRpcClient,
   HubRpcClient,
-} from '@farcaster/hub-nodejs';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import Server from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
-import { getFarcasterTime } from '@farcaster/core';
+} from "@farcaster/hub-nodejs";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import Server from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
+import { getFarcasterTime } from "@farcaster/core";
 
-const db = jestRocksDB('protobufs.rpc.castService.test');
+const db = jestRocksDB("protobufs.rpc.castService.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
@@ -55,14 +55,14 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
-describe('getCast', () => {
-  test('succeeds', async () => {
+describe("getCast", () => {
+  test("succeeds", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
@@ -72,41 +72,41 @@ describe('getCast', () => {
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(castAdd));
   });
 
-  test('fails if cast is missing', async () => {
+  test("fails if cast is missing", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     const result = await client.getCast(CastId.create({ fid, hash: castAdd.hash }));
-    expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
+    expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
 
-  test('fails without fid or tsHash', async () => {
+  test("fails without fid or tsHash", async () => {
     const result = await client.getCast(CastId.create({ fid: 0, hash: new Uint8Array() }));
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
   });
 
-  test('fails without tsHash', async () => {
+  test("fails without tsHash", async () => {
     const result = await client.getCast(CastId.create({ fid, hash: new Uint8Array() }));
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'NotFound: '));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "NotFound: "));
   });
 
-  test('fails without fid', async () => {
+  test("fails without fid", async () => {
     const result = await client.getCast(CastId.create({ fid: 0, hash: castAdd.hash }));
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
   });
 
-  describe('getCastsByFid', () => {
+  describe("getCastsByFid", () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
     });
 
-    test('succeeds', async () => {
+    test("succeeds", async () => {
       await engine.mergeMessage(castAdd);
       const casts = await client.getCastsByFid(FidRequest.create({ fid }));
       expect(Message.toJSON(casts._unsafeUnwrap().messages.at(0) as Message)).toEqual(Message.toJSON(castAdd));
     });
 
-    test('returns casts in chronological order', async () => {
+    test("returns casts in chronological order", async () => {
       const castsAsJson = [];
       let latestCast;
       const currentTime = getFarcasterTime()._unsafeUnwrap();
@@ -115,7 +115,7 @@ describe('getCast', () => {
           {
             data: { fid, network, timestamp: currentTime + i },
           },
-          { transient: { signer } }
+          { transient: { signer } },
         );
         await engine.mergeMessage(latestCast);
         castsAsJson.push(Message.toJSON(latestCast));
@@ -130,19 +130,19 @@ describe('getCast', () => {
       expect(clientRetrievedCastsAsJson).toEqual(castsAsJson);
     });
 
-    test('returns empty array without casts', async () => {
+    test("returns empty array without casts", async () => {
       const casts = await client.getCastsByFid(FidRequest.create({ fid }));
       expect(casts._unsafeUnwrap().messages).toEqual([]);
     });
   });
 
-  describe('getCastsByParent', () => {
+  describe("getCastsByParent", () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
     });
 
-    test('succeeds with parent CastId', async () => {
+    test("succeeds with parent CastId", async () => {
       await engine.mergeMessage(castAdd);
       const request = CastsByParentRequest.create({ parentCastId: castAdd.data.castAddBody.parentCastId });
       const casts = await client.getCastsByParent(request);
@@ -152,10 +152,10 @@ describe('getCast', () => {
       ]);
     });
 
-    test('succeeds with parent url', async () => {
+    test("succeeds with parent url", async () => {
       const castAdd2 = await Factories.CastAddMessage.create(
         { data: { fid, network, castAddBody: { parentCastId: undefined, parentUrl: faker.internet.url() } } },
-        { transient: { signer } }
+        { transient: { signer } },
       );
       await engine.mergeMessage(castAdd2);
       const request = CastsByParentRequest.create({ parentUrl: castAdd2.data.castAddBody.parentUrl });
@@ -166,37 +166,35 @@ describe('getCast', () => {
       ]);
     });
 
-    test('returns empty array without casts', async () => {
+    test("returns empty array without casts", async () => {
       const request = CastsByParentRequest.create({ parentCastId: castAdd.data.castAddBody.parentCastId });
       const casts = await client.getCastsByParent(request);
       expect(casts._unsafeUnwrap().messages).toEqual([]);
     });
   });
 
-  describe('getCastsByMention', () => {
+  describe("getCastsByMention", () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
     });
 
-    test('succeeds', async () => {
+    test("succeeds", async () => {
       await engine.mergeMessage(castAdd);
       for (let i = 0; i < (castAdd.data?.castAddBody?.mentions.length as number); i++) {
         const casts = await client.getCastsByMention(
           // Safety: i is controlled by the loop and cannot be used to inject
-          // eslint-disable-next-line security/detect-object-injection
-          FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
+          FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number }),
         );
         expect(Message.toJSON(casts._unsafeUnwrap().messages.at(0) as Message)).toEqual(Message.toJSON(castAdd));
       }
     });
 
-    test('returns empty array without casts', async () => {
+    test("returns empty array without casts", async () => {
       for (let i = 0; i < (castAdd.data?.castAddBody?.mentions.length as number); i++) {
         const casts = await client.getCastsByMention(
           // Safety: i is controlled by the loop and cannot be used to inject
-          // eslint-disable-next-line security/detect-object-injection
-          FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number })
+          FidRequest.create({ fid: castAdd.data?.castAddBody?.mentions[i] as number }),
         );
         expect(casts._unsafeUnwrap().messages).toEqual([]);
       }

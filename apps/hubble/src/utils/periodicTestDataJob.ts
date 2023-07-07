@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import cron from "node-cron";
 import {
   makeCastAdd,
   makeReactionAdd,
@@ -12,21 +12,21 @@ import {
   ReactionType,
   CastAddBody,
   ViemLocalEip712Signer,
-} from '@farcaster/hub-nodejs';
-import { logger } from '../utils/logger.js';
-import { ed25519 as ed } from '@noble/curves/ed25519';
-import { faker } from '@faker-js/faker';
-import Server from '../rpc/server.js';
-import { Result } from 'neverthrow';
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+} from "@farcaster/hub-nodejs";
+import { logger } from "../utils/logger.js";
+import { ed25519 as ed } from "@noble/curves/ed25519";
+import { faker } from "@faker-js/faker";
+import Server from "../rpc/server.js";
+import { Result } from "neverthrow";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const log = logger.child({
-  component: 'PeriodicTestDataJob',
+  component: "PeriodicTestDataJob",
 });
 
-type SchedulerStatus = 'started' | 'stopped';
+type SchedulerStatus = "started" | "stopped";
 
-const DEFAULT_PERIODIC_JOB_CRON = '*/10 * * * * *'; // Every 10 seconds
+const DEFAULT_PERIODIC_JOB_CRON = "*/10 * * * * *"; // Every 10 seconds
 
 export type TestUser = {
   fid: number;
@@ -59,7 +59,7 @@ export class PeriodicTestDataJobScheduler {
   }
 
   status(): SchedulerStatus {
-    return this._cronTask ? 'started' : 'stopped';
+    return this._cronTask ? "started" : "stopped";
   }
 
   async insertSignerAdds(client: HubRpcClient) {
@@ -85,14 +85,14 @@ export class PeriodicTestDataJobScheduler {
       const signerAddResult = await makeSignerAdd(
         { signer: (await ed25519Signer.getSignerKey())._unsafeUnwrap() },
         dataOptions,
-        eip712Signer
+        eip712Signer,
       );
       const signerAdd = signerAddResult._unsafeUnwrap();
 
       const rpcUsers = this._server.auth;
 
-      let user = '';
-      let password = '';
+      let user = "";
+      let password = "";
 
       if (rpcUsers.size > 0) {
         user = rpcUsers.keys().next().value as string;
@@ -101,7 +101,7 @@ export class PeriodicTestDataJobScheduler {
 
       const result = await client.submitMessage(signerAdd, getAuthMetadata(user, password));
       if (result.isErr()) {
-        log.error({ error: result.error, dataOptions }, 'TestData: failed to submit SignerAdd message');
+        log.error({ error: result.error, dataOptions }, "TestData: failed to submit SignerAdd message");
       }
 
       this._userEd25519KeyPairs.set(testUser.fid, ed25519Signer);
@@ -109,7 +109,7 @@ export class PeriodicTestDataJobScheduler {
   }
 
   async doJobs() {
-    log.info('starting periodic test data job');
+    log.info("starting periodic test data job");
 
     const client = getInsecureHubRpcClient(`127.0.0.1:${this._server.listenPort}`);
 
@@ -122,8 +122,8 @@ export class PeriodicTestDataJobScheduler {
 
     const rpcUsers = this._server.auth;
 
-    let rpcUsername = '';
-    let rpcPassword = '';
+    let rpcUsername = "";
+    let rpcPassword = "";
 
     if (rpcUsers.size > 0) {
       rpcUsername = rpcUsers.keys().next().value as string;
@@ -143,17 +143,17 @@ export class PeriodicTestDataJobScheduler {
         const castAdd = await makeCastAdd(
           CastAddBody.create({
             text: faker.lorem.sentence(12),
-            embeds: [{ url: 'http://www.farcaster.xyz' }],
+            embeds: [{ url: "http://www.farcaster.xyz" }],
             mentions: [],
             mentionsPositions: [],
           }),
           dataOptions,
-          signer
+          signer,
         );
 
         const result = await client.submitMessage(castAdd._unsafeUnwrap(), getAuthMetadata(rpcUsername, rpcPassword));
         if (result.isErr()) {
-          log.error({ error: result.error, dataOptions }, 'TestData: failed to submit CastAdd message');
+          log.error({ error: result.error, dataOptions }, "TestData: failed to submit CastAdd message");
         }
         targetCastIds.push({ fid: testUser.fid, hash: castAdd._unsafeUnwrap().hash });
       }
@@ -176,10 +176,10 @@ export class PeriodicTestDataJobScheduler {
 
             const result = await client.submitMessage(
               reactionAdd._unsafeUnwrap(),
-              getAuthMetadata(rpcUsername, rpcPassword)
+              getAuthMetadata(rpcUsername, rpcPassword),
             );
             if (result.isErr()) {
-              log.error({ error: result.error, dataOptions }, 'TestData: failed to submit ReactionAdd message');
+              log.error({ error: result.error, dataOptions }, "TestData: failed to submit ReactionAdd message");
             }
           }
         }
@@ -188,10 +188,10 @@ export class PeriodicTestDataJobScheduler {
 
     const closeResult = Result.fromThrowable(
       () => client.close(),
-      (e) => e as Error
+      (e) => e as Error,
     )();
     if (closeResult.isErr()) {
-      log.warn({ error: closeResult.error }, 'TestData: failed to close client');
+      log.warn({ error: closeResult.error }, "TestData: failed to close client");
     }
   }
 }

@@ -7,23 +7,13 @@
     "yarn.lock": true
   },
   "editor.formatOnSave": true,
-  "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+  "editor.defaultFormatter": "rome.rome",
+  "editor.codeActionsOnSave": { 
+    "source.organizeImports.rome": true 
   },
   "cSpell.words": [
     "farcaster",
-    "flatbuffer",
-    "flatbuffers",
     "gossipsub",
     "protobufs"
-  ]
+  ],
 }

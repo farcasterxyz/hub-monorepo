@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   Message,
   FarcasterNetwork,
@@ -21,14 +20,14 @@ import {
   ClientReadableStream,
   UserNameProof,
   isMergeUsernameProofHubEvent,
-} from '@farcaster/hub-nodejs';
-import Server from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
-import { sleep } from '../../utils/crypto.js';
+} from "@farcaster/hub-nodejs";
+import Server from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
+import { sleep } from "../../utils/crypto.js";
 
-const db = jestRocksDB('rpc.eventService.test');
+const db = jestRocksDB("rpc.eventService.test");
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const hub = new MockHub(db, engine);
 
@@ -55,6 +54,7 @@ let usernameProof: UserNameProof;
 let signerAdd: SignerAddMessage;
 let castAdd: CastAddMessage;
 let reactionAdd: ReactionAddMessage;
+// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 let events: [HubEventType, any][];
 let stream: ClientReadableStream<HubEvent>;
 
@@ -75,15 +75,16 @@ beforeAll(async () => {
   usernameProof = Factories.UserNameProof.build({ owner: custodySignerKey, name: fname });
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });
 });
 
 const setupSubscription = async (
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   events: [HubEventType, any][],
-  options: { eventTypes?: HubEventType[]; fromId?: number } = {}
+  options: { eventTypes?: HubEventType[]; fromId?: number } = {},
 ): Promise<ClientReadableStream<HubEvent>> => {
   const request = SubscribeRequest.create(options);
 
@@ -91,18 +92,24 @@ const setupSubscription = async (
   expect(streamResult.isOk()).toBeTruthy();
   const stream = streamResult._unsafeUnwrap();
 
-  stream.on('data', (event: HubEvent) => {
+  stream.on("data", (event: HubEvent) => {
     if (isMergeMessageHubEvent(event)) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.mergeMessageBody.message!)]);
     } else if (isPruneMessageHubEvent(event)) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.pruneMessageBody.message!)]);
     } else if (isRevokeMessageHubEvent(event)) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.revokeMessageBody.message!)]);
     } else if (isMergeIdRegistryEventHubEvent(event)) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, IdRegistryEvent.toJSON(event.mergeIdRegistryEventBody.idRegistryEvent!)]);
     } else if (isMergeNameRegistryEventHubEvent(event)) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, NameRegistryEvent.toJSON(event.mergeNameRegistryEventBody.nameRegistryEvent!)]);
     } else if (isMergeUsernameProofHubEvent(event)) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, UserNameProof.toJSON(event.mergeUsernameProofBody.usernameProof!)]);
     }
   });
@@ -112,9 +119,9 @@ const setupSubscription = async (
   return stream;
 };
 
-describe('subscribe', () => {
-  describe('without type filters', () => {
-    test('emits events', async () => {
+describe("subscribe", () => {
+  describe("without type filters", () => {
+    test("emits events", async () => {
       stream = await setupSubscription(events);
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
@@ -128,8 +135,8 @@ describe('subscribe', () => {
     });
   });
 
-  describe('with one type filter', () => {
-    test('emits events', async () => {
+  describe("with one type filter", () => {
+    test("emits events", async () => {
       stream = await setupSubscription(events, {
         eventTypes: [HubEventType.MERGE_MESSAGE],
       });
@@ -146,8 +153,8 @@ describe('subscribe', () => {
     });
   });
 
-  describe('with multiple type filters', () => {
-    test('emits events', async () => {
+  describe("with multiple type filters", () => {
+    test("emits events", async () => {
       stream = await setupSubscription(events, {
         eventTypes: [
           HubEventType.MERGE_MESSAGE,
@@ -170,8 +177,8 @@ describe('subscribe', () => {
     });
   });
 
-  describe('with fromId', () => {
-    test('emits events from id onwards', async () => {
+  describe("with fromId", () => {
+    test("emits events from id onwards", async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       const idResult = await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
@@ -187,7 +194,7 @@ describe('subscribe', () => {
       ]);
     });
 
-    test('emits events with early id', async () => {
+    test("emits events with early id", async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
 
@@ -199,7 +206,7 @@ describe('subscribe', () => {
       ]);
     });
 
-    test('emits events with fromId of 0', async () => {
+    test("emits events with fromId of 0", async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
 
@@ -212,8 +219,8 @@ describe('subscribe', () => {
     });
   });
 
-  describe('with fromId and type filters', () => {
-    test('emits events', async () => {
+  describe("with fromId and type filters", () => {
+    test("emits events", async () => {
       const nameResult = await engine.mergeUserNameProof(usernameProof);
       await engine.mergeIdRegistryEvent(custodyEvent);
       stream = await setupSubscription(events, {

@@ -6,11 +6,8 @@ import {
   FarcasterNetwork,
   Message,
   Metadata,
-} from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console.js';
-
-// We use console.log() in this file, so we disable the eslint rule. This is the REPL console, after all!
-/* eslint-disable no-console */
+} from "@farcaster/hub-nodejs";
+import { ConsoleCommandInterface } from "./console.js";
 
 export type SubmitStats = {
   numSuccess: number;
@@ -24,10 +21,10 @@ export class GenCommand implements ConsoleCommandInterface {
   constructor(private readonly rpcClient: HubRpcClient, private readonly adminRpcClient: AdminRpcClient) {}
 
   commandName(): string {
-    return 'gen';
+    return "gen";
   }
   shortHelp(): string {
-    return 'Generate and Submit messages to the Hub';
+    return "Generate and Submit messages to the Hub";
   }
   help(): string {
     return `
@@ -46,11 +43,11 @@ export class GenCommand implements ConsoleCommandInterface {
         numMessages = 100,
         network = FarcasterNetwork.DEVNET,
         username?: string | Metadata,
-        password?: string
+        password?: string,
       ): Promise<string | SubmitStats> => {
         // Submit messages might need a username/password
         let metadata = new Metadata();
-        if (username && typeof username !== 'string') {
+        if (username && typeof username !== "string") {
           metadata = username;
         } else if (username && password) {
           metadata = getAuthMetadata(username, password);
@@ -66,7 +63,7 @@ export class GenCommand implements ConsoleCommandInterface {
 
         let numSuccess = 0;
         let numFail = 0;
-        let errorMessage = '';
+        let errorMessage = "";
 
         const start = performance.now();
 
@@ -80,7 +77,7 @@ export class GenCommand implements ConsoleCommandInterface {
 
         const signerAdd = await Factories.SignerAddMessage.create(
           { data: { fid, network, signerAddBody: { signer: signerKey } } },
-          { transient: { signer: custodySigner } }
+          { transient: { signer: custodySigner } },
         );
 
         const signerResult = await this.rpcClient.submitMessage(signerAdd, metadata);
@@ -99,7 +96,7 @@ export class GenCommand implements ConsoleCommandInterface {
 
           let numSuccess = 0;
           let numFail = 0;
-          let errorMessage = '';
+          let errorMessage = "";
           for (const r of results) {
             if (r.isOk()) {
               numSuccess++;

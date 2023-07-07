@@ -1,7 +1,7 @@
-import { ok, err } from 'neverthrow';
-import semver from 'semver';
-import { HubError, HubResult } from '@farcaster/hub-nodejs';
-import { FARCASTER_VERSIONS_SCHEDULE } from '../hubble.js';
+import { ok, err } from "neverthrow";
+import semver from "semver";
+import { HubError, HubResult } from "@farcaster/hub-nodejs";
+import { FARCASTER_VERSIONS_SCHEDULE } from "../hubble.js";
 
 export type VersionSchedule = { version: string; expiresAt: number };
 
@@ -21,7 +21,7 @@ export const getMinFarcasterVersion = (): HubResult<string> => {
     }
   }
 
-  return err(new HubError('unavailable', 'no minimum Farcaster version available'));
+  return err(new HubError("unavailable", "no minimum Farcaster version available"));
 };
 
 export const ensureAboveMinFarcasterVersion = (version: string): HubResult<void> => {
@@ -31,18 +31,18 @@ export const ensureAboveMinFarcasterVersion = (version: string): HubResult<void>
   }
 
   if (!semver.valid(version)) {
-    return err(new HubError('bad_request.invalid_param', 'invalid version'));
+    return err(new HubError("bad_request.invalid_param", "invalid version"));
   }
 
   if (semver.lt(version, minVersion.value)) {
-    return err(new HubError('bad_request.validation_failure', 'version too low'));
+    return err(new HubError("bad_request.validation_failure", "version too low"));
   }
   return ok(undefined);
 };
 
 export const ensureAboveTargetFarcasterVersion = (targetVersion: string): HubResult<void> => {
   if (!semver.valid(targetVersion)) {
-    return err(new HubError('bad_request.invalid_param', 'invalid version'));
+    return err(new HubError("bad_request.invalid_param", "invalid version"));
   }
 
   const referenceDate = overrideDate || Date.now();
@@ -55,11 +55,11 @@ export const ensureAboveTargetFarcasterVersion = (targetVersion: string): HubRes
   }
 
   if (targetVersionExpiresAt === undefined) {
-    return err(new HubError('bad_request.invalid_param', 'invalid version'));
+    return err(new HubError("bad_request.invalid_param", "invalid version"));
   }
 
   if (referenceDate < targetVersionExpiresAt) {
-    return err(new HubError('bad_request.validation_failure', 'target version has not expired'));
+    return err(new HubError("bad_request.validation_failure", "target version has not expired"));
   }
   return ok(undefined);
 };

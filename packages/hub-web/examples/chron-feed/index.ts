@@ -1,5 +1,3 @@
-/* eslint no-console: 0 */
-
 import {
   CastAddMessage,
   fromFarcasterTime,
@@ -9,19 +7,19 @@ import {
   isCastAddMessage,
   isUserDataAddMessage,
   UserDataType,
-} from '@farcaster/hub-web';
-import TimeAgo from 'javascript-time-ago';
-import en from 'javascript-time-ago/locale/en';
-import { err, ok, Result } from 'neverthrow';
+} from "@farcaster/hub-web";
+import TimeAgo from "javascript-time-ago";
+import en from "javascript-time-ago/locale/en";
+import { err, ok, Result } from "neverthrow";
 
 TimeAgo.addDefaultLocale(en);
-const timeAgo = new TimeAgo('en-US');
+const timeAgo = new TimeAgo("en-US");
 
 /**
  * Populate the following constants with your own values
  */
 
-const HUB_URL = 'nemes.farcaster.xyz:2283'; // URL of the Hub
+const HUB_URL = "nemes.farcaster.xyz:2283"; // URL of the Hub
 const FIDS = [2, 3]; // User IDs to fetch casts for
 
 /**
@@ -47,7 +45,7 @@ const getFnameFromFid = async (fid: number, client: HubRpcClient): HubAsyncResul
     if (isUserDataAddMessage(message)) {
       return message.data.userDataBody.value;
     } else {
-      return '';
+      return "";
     }
   });
 };
@@ -81,18 +79,19 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   const bytes = encoder.encode(text);
 
   const decoder = new TextDecoder();
-  let textWithMentions = '';
+  let textWithMentions = "";
   let indexBytes = 0;
   for (let i = 0; i < mentions.length; i++) {
     textWithMentions += decoder.decode(bytes.slice(indexBytes, mentionsPositions[i]));
     const result = await getFnameFromFid(mentions[i], client);
+    // rome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code
     result.map((fname) => (textWithMentions += fname));
     indexBytes = mentionsPositions[i];
   }
   textWithMentions += decoder.decode(bytes.slice(indexBytes));
 
   // Remove newlines from the message text
-  const textNoLineBreaks = textWithMentions.replace(/(\r\n|\n|\r)/gm, ' ');
+  const textNoLineBreaks = textWithMentions.replace(/(\r\n|\n|\r)/gm, " ");
 
   return `${fname}: ${textNoLineBreaks}\n${dateString}\n`;
 };
@@ -119,7 +118,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
         const fname = uData.data.userDataBody.value;
         fidToFname.set(fid, fname);
       }
-    })
+    }),
   );
 
   // 2. Fetch primary casts for each fid and print them
@@ -127,7 +126,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   const castsResult = Result.combine(await Promise.all(castResultPromises));
 
   if (castsResult.isErr()) {
-    console.error('Fetching fnames failed:' + castsResult.error);
+    console.error(`Fetching fnames failed:${castsResult.error}`);
     return;
   }
 

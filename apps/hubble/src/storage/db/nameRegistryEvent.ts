@@ -1,6 +1,6 @@
-import { NameRegistryEvent, UserNameProof } from '@farcaster/hub-nodejs';
-import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
-import { RootPrefix } from '../db/types.js';
+import { NameRegistryEvent, UserNameProof } from "@farcaster/hub-nodejs";
+import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import { RootPrefix } from "../db/types.js";
 
 const EXPIRY_BYTES = 4;
 
@@ -58,39 +58,40 @@ export const putNameRegistryEventTransaction = (txn: Transaction, event: NameReg
   const eventBuffer = Buffer.from(NameRegistryEvent.encode(event).finish());
 
   const primaryKey = makeNameRegistryEventPrimaryKey(event.fname);
-  txn = txn.put(primaryKey, eventBuffer);
+  let putTxn = txn.put(primaryKey, eventBuffer);
 
   if (event.expiry) {
     const byExpiryKey = makeNameRegistryEventByExpiryKey(event.expiry, event.fname);
-    txn = txn.put(byExpiryKey, eventBuffer);
+    putTxn = putTxn.put(byExpiryKey, eventBuffer);
   }
 
-  return txn;
+  return putTxn;
 };
 
 export const putUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
   const proofBuffer = Buffer.from(UserNameProof.encode(usernameProof).finish());
 
   const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
-  txn = txn.put(primaryKey, proofBuffer);
+  const putTxn = txn.put(primaryKey, proofBuffer);
 
-  return txn;
+  return putTxn;
 };
 
 export const deleteUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
   const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
-  txn = txn.del(primaryKey);
+  const deleteTxn = txn.del(primaryKey);
 
-  return txn;
+  return deleteTxn;
 };
 
 export const deleteNameRegistryEventTransaction = (txn: Transaction, event: NameRegistryEvent): Transaction => {
+  let deleteTxn = txn;
   if (event.expiry) {
     const byExpiryKey = makeNameRegistryEventByExpiryKey(event.expiry, event.fname);
-    txn = txn.del(byExpiryKey);
+    deleteTxn = deleteTxn.del(byExpiryKey);
   }
 
   const primaryKey = makeNameRegistryEventPrimaryKey(event.fname);
 
-  return txn.del(primaryKey);
+  return deleteTxn.del(primaryKey);
 };

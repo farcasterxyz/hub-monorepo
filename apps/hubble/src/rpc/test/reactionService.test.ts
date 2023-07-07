@@ -1,4 +1,4 @@
-import { faker } from '@faker-js/faker';
+import { faker } from "@faker-js/faker";
 import {
   Message,
   FarcasterNetwork,
@@ -14,14 +14,14 @@ import {
   HubError,
   getInsecureHubRpcClient,
   HubRpcClient,
-} from '@farcaster/hub-nodejs';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import Server from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
+} from "@farcaster/hub-nodejs";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import Server from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
 
-const db = jestRocksDB('protobufs.rpc.reactionService.test');
+const db = jestRocksDB("protobufs.rpc.reactionService.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
@@ -60,14 +60,14 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 
   castId = Factories.CastId.build();
 
   reactionAddLike = await Factories.ReactionAddMessage.create(
     { data: { fid, reactionBody: { type: ReactionType.LIKE, targetCastId: castId } } },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 
   reactionAddRecast = await Factories.ReactionAddMessage.create(
@@ -78,42 +78,42 @@ beforeAll(async () => {
         timestamp: reactionAddLike.data.timestamp + 1,
       },
     },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 
   reactionAddTargetUrl = await Factories.ReactionAddMessage.create(
     { data: { fid, reactionBody: { targetCastId: undefined, targetUrl: faker.internet.url() } } },
-    { transient: { signer } }
+    { transient: { signer } },
   );
 });
 
-describe('getReaction', () => {
+describe("getReaction", () => {
   beforeEach(async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
   });
 
-  test('succeeds with like', async () => {
+  test("succeeds with like", async () => {
     await engine.mergeMessage(reactionAddLike);
 
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, reactionType: reactionAddLike.data.reactionBody.type, targetCastId: castId })
+      ReactionRequest.create({ fid, reactionType: reactionAddLike.data.reactionBody.type, targetCastId: castId }),
     );
 
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(reactionAddLike));
   });
 
-  test('succeeds with recast', async () => {
+  test("succeeds with recast", async () => {
     await engine.mergeMessage(reactionAddRecast);
 
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, targetCastId: castId })
+      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, targetCastId: castId }),
     );
 
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(reactionAddRecast));
   });
 
-  test('succeeds with target url', async () => {
+  test("succeeds with target url", async () => {
     await engine.mergeMessage(reactionAddTargetUrl);
 
     const { type, targetUrl } = reactionAddTargetUrl.data.reactionBody;
@@ -123,138 +123,138 @@ describe('getReaction', () => {
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(reactionAddTargetUrl));
   });
 
-  test('fails if reaction is missing', async () => {
+  test("fails if reaction is missing", async () => {
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, targetCastId: castId })
+      ReactionRequest.create({ fid, reactionType: reactionAddRecast.data.reactionBody.type, targetCastId: castId }),
     );
-    expect(result._unsafeUnwrapErr().errCode).toEqual('not_found');
+    expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
 
-  test('fails with invalid reaction type', async () => {
+  test("fails with invalid reaction type", async () => {
     const result = await client.getReaction(
       ReactionRequest.create({
         fid,
         targetCastId: castId,
-      })
+      }),
     );
 
     expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'targetId provided without type')
+      new HubError("bad_request.validation_failure", "targetId provided without type"),
     );
   });
 
-  test('fails without cast', async () => {
+  test("fails without cast", async () => {
     const castId = Factories.CastId.build({ fid: 0, hash: new Uint8Array() });
     const result = await client.getReaction(
-      ReactionRequest.create({ fid, targetCastId: castId, reactionType: ReactionType.LIKE })
+      ReactionRequest.create({ fid, targetCastId: castId, reactionType: ReactionType.LIKE }),
     );
     expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('bad_request.validation_failure', 'fid is missing, hash is missing')
+      new HubError("bad_request.validation_failure", "fid is missing, hash is missing"),
     );
   });
 
-  test('fails without fid', async () => {
+  test("fails without fid", async () => {
     const castId = Factories.CastId.build();
     const result = await client.getReaction(
-      ReactionRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE })
+      ReactionRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE }),
     );
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError('bad_request.validation_failure', 'fid is missing'));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
   });
 
-  describe('getReactionsByFid', () => {
+  describe("getReactionsByFid", () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
     });
 
-    describe('with messages', () => {
+    describe("with messages", () => {
       beforeEach(async () => {
         await engine.mergeMessage(reactionAddLike);
         await engine.mergeMessage(reactionAddRecast);
       });
 
-      test('succeeds without type', async () => {
+      test("succeeds without type", async () => {
         const reactions = await client.getReactionsByFid(ReactionsByFidRequest.create({ fid }));
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddLike, reactionAddRecast].map((m) => Message.toJSON(m))
+          [reactionAddLike, reactionAddRecast].map((m) => Message.toJSON(m)),
         );
       });
 
-      test('succeeds with type Like', async () => {
+      test("succeeds with type Like", async () => {
         const reactions = await client.getReactionsByFid(
-          ReactionsByFidRequest.create({ fid, reactionType: ReactionType.LIKE })
+          ReactionsByFidRequest.create({ fid, reactionType: ReactionType.LIKE }),
         );
 
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddLike].map((m) => Message.toJSON(m))
+          [reactionAddLike].map((m) => Message.toJSON(m)),
         );
       });
 
-      test('succeeds with type Recast', async () => {
+      test("succeeds with type Recast", async () => {
         const reactions = await client.getReactionsByFid(
-          ReactionsByFidRequest.create({ fid, reactionType: ReactionType.RECAST })
+          ReactionsByFidRequest.create({ fid, reactionType: ReactionType.RECAST }),
         );
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddRecast].map((m) => Message.toJSON(m))
+          [reactionAddRecast].map((m) => Message.toJSON(m)),
         );
       });
     });
 
-    test('returns empty array without messages', async () => {
+    test("returns empty array without messages", async () => {
       const reactions = await client.getReactionsByFid(ReactionsByFidRequest.create({ fid }));
       expect(reactions._unsafeUnwrap().messages).toEqual([]);
     });
   });
 
-  describe('getReactionsByCast', () => {
+  describe("getReactionsByCast", () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
     });
 
-    describe('with messages', () => {
+    describe("with messages", () => {
       beforeEach(async () => {
         await engine.mergeMessage(reactionAddLike);
         await engine.mergeMessage(reactionAddRecast);
       });
 
-      test('succeeds without type', async () => {
+      test("succeeds without type", async () => {
         const reactions = await client.getReactionsByCast(ReactionsByTargetRequest.create({ targetCastId: castId }));
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddLike, reactionAddRecast].map((m) => Message.toJSON(m))
+          [reactionAddLike, reactionAddRecast].map((m) => Message.toJSON(m)),
         );
       });
 
-      test('succeeds with type Like', async () => {
+      test("succeeds with type Like", async () => {
         const reactions = await client.getReactionsByCast(
-          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE })
+          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE }),
         );
 
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddLike].map((m) => Message.toJSON(m))
+          [reactionAddLike].map((m) => Message.toJSON(m)),
         );
       });
 
-      test('succeeds with type Recast', async () => {
+      test("succeeds with type Recast", async () => {
         const reactions = await client.getReactionsByCast(
-          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.RECAST })
+          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.RECAST }),
         );
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddRecast].map((m) => Message.toJSON(m))
+          [reactionAddRecast].map((m) => Message.toJSON(m)),
         );
       });
     });
 
-    test('returns empty array without messages', async () => {
+    test("returns empty array without messages", async () => {
       const reactions = await client.getReactionsByCast(ReactionsByTargetRequest.create({ targetCastId: castId }));
       expect(reactions._unsafeUnwrap().messages).toEqual([]);
     });
 
-    test('fails with target url', async () => {
+    test("fails with target url", async () => {
       const targetUrl = faker.internet.url();
       const reactionAddTargetUrl = await Factories.ReactionAddMessage.create(
         { data: { fid, reactionBody: { targetUrl, targetCastId: undefined } } },
-        { transient: { signer } }
+        { transient: { signer } },
       );
       await engine.mergeMessage(reactionAddTargetUrl);
       const reactions = await client.getReactionsByCast(ReactionsByTargetRequest.create({ targetUrl }));
@@ -262,59 +262,59 @@ describe('getReaction', () => {
     });
   });
 
-  describe('getReactionsByTarget', () => {
+  describe("getReactionsByTarget", () => {
     beforeEach(async () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
     });
 
-    describe('with messages', () => {
+    describe("with messages", () => {
       beforeEach(async () => {
         await engine.mergeMessage(reactionAddLike);
         await engine.mergeMessage(reactionAddRecast);
       });
 
-      test('succeeds without type', async () => {
+      test("succeeds without type", async () => {
         const reactions = await client.getReactionsByTarget(ReactionsByTargetRequest.create({ targetCastId: castId }));
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddLike, reactionAddRecast].map((m) => Message.toJSON(m))
+          [reactionAddLike, reactionAddRecast].map((m) => Message.toJSON(m)),
         );
       });
 
-      test('succeeds with type Like', async () => {
+      test("succeeds with type Like", async () => {
         const reactions = await client.getReactionsByTarget(
-          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE })
+          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.LIKE }),
         );
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddLike].map((m) => Message.toJSON(m))
+          [reactionAddLike].map((m) => Message.toJSON(m)),
         );
       });
 
-      test('succeeds with type Recast', async () => {
+      test("succeeds with type Recast", async () => {
         const reactions = await client.getReactionsByTarget(
-          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.RECAST })
+          ReactionsByTargetRequest.create({ targetCastId: castId, reactionType: ReactionType.RECAST }),
         );
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddRecast].map((m) => Message.toJSON(m))
+          [reactionAddRecast].map((m) => Message.toJSON(m)),
         );
       });
 
-      test('succeeds with target url', async () => {
+      test("succeeds with target url", async () => {
         const targetUrl = faker.internet.url();
         const reactionAddTargetUrl = await Factories.ReactionAddMessage.create(
           { data: { fid, reactionBody: { targetUrl, targetCastId: undefined } } },
-          { transient: { signer } }
+          { transient: { signer } },
         );
         await engine.mergeMessage(reactionAddTargetUrl);
         const reactions = await client.getReactionsByTarget(ReactionsByTargetRequest.create({ targetUrl }));
         expect(reactions.isOk()).toBeTruthy();
         expect(reactions._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-          [reactionAddTargetUrl].map((m) => Message.toJSON(m))
+          [reactionAddTargetUrl].map((m) => Message.toJSON(m)),
         );
       });
     });
 
-    test('returns empty array without messages', async () => {
+    test("returns empty array without messages", async () => {
       const reactions = await client.getReactionsByTarget(ReactionsByTargetRequest.create({ targetCastId: castId }));
       expect(reactions._unsafeUnwrap().messages).toEqual([]);
     });

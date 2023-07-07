@@ -1,5 +1,5 @@
-import { PublicClient, WatchBlockNumberParameters, WatchBlockNumberReturnType } from 'viem';
-import { logger, Logger } from '../utils/logger.js';
+import { PublicClient, WatchBlockNumberParameters, WatchBlockNumberReturnType } from "viem";
+import { logger, Logger } from "../utils/logger.js";
 
 export class WatchBlockNumber {
   private _publicClient: PublicClient;
@@ -13,7 +13,7 @@ export class WatchBlockNumber {
     this._publicClient = publicClient;
     this._params = params;
     this._log = logger.child({
-      component: 'WatchBlockNumber',
+      component: "WatchBlockNumber",
     });
   }
 
@@ -30,12 +30,12 @@ export class WatchBlockNumber {
         if (this._params.onError) this._params.onError(error);
       },
     });
-    this._log.info('Started watching block numbers');
+    this._log.info("Started watching block numbers");
   }
 
   public stop() {
     if (this._unwatch) this._unwatch();
-    this._log.info('Stopped watching block numbers');
+    this._log.info("Stopped watching block numbers");
   }
 
   public restart() {

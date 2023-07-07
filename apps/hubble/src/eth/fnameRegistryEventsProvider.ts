@@ -1,6 +1,6 @@
-import axios from 'axios';
-import { logger } from '../utils/logger.js';
-import { HubInterface } from '../hubble.js';
+import axios from "axios";
+import { logger } from "../utils/logger.js";
+import { HubInterface } from "../hubble.js";
 import {
   eip712,
   hexStringToBytes,
@@ -8,14 +8,14 @@ import {
   UserNameType,
   utf8StringToBytes,
   makeUserNameProofClaim,
-} from '@farcaster/hub-nodejs';
-import { Result } from 'neverthrow';
+} from "@farcaster/hub-nodejs";
+import { Result } from "neverthrow";
 
 const DEFAULT_POLL_TIMEOUT_IN_MS = 30_000;
 const DEFAULT_READ_TIMEOUT_IN_MS = 10_000;
 
 const log = logger.child({
-  component: 'FNameRegistryEventsProvider',
+  component: "FNameRegistryEventsProvider",
 });
 
 export type FNameTransfer = {
@@ -78,7 +78,7 @@ export class FNameRegistryEventsProvider {
       this.lastTransferId = result.value.lastFnameProof;
     }
     if (this.resyncEvents) {
-      log.error(`Resyncing fname events from the beginning`);
+      log.error("Resyncing fname events from the beginning");
       this.lastTransferId = 0;
     }
     const rawAddress = await this.client.getSigner();
@@ -136,7 +136,7 @@ export class FNameRegistryEventsProvider {
 
   private async mergeTransfers(transfers: FNameTransfer[]) {
     if (this.serverSignerAddress.length === 0) {
-      log.warn(`No signer address, unable to merge name proofs`);
+      log.warn("No signer address, unable to merge name proofs");
       return;
     }
 
@@ -167,10 +167,10 @@ export class FNameRegistryEventsProvider {
           name: transfer.username,
         }),
         serverSignature,
-        this.serverSignerAddress
+        this.serverSignerAddress,
       );
       if (verificationResult.isOk() && verificationResult.value) {
-        await this.hub.submitUserNameProof(usernameProof, 'fname-registry');
+        await this.hub.submitUserNameProof(usernameProof, "fname-registry");
       } else {
         log.warn(`Failed to verify username proof for ${transfer.username} id: ${transfer.id}`);
       }

@@ -1,12 +1,11 @@
-/* eslint-disable security/detect-non-literal-fs-filename */
-import * as fs from 'node:fs';
+import * as fs from "node:fs";
 
-import { stringify } from 'csv-stringify';
-import { Writable } from 'node:stream';
+import { stringify } from "csv-stringify";
+import { Writable } from "node:stream";
 
 export const outputWriter = (f: string | fs.WriteStream): Writable => {
   let stream: fs.WriteStream;
-  if (typeof f === 'string') {
+  if (typeof f === "string") {
     stream = fs.createWriteStream(f);
   } else {
     stream = f as fs.WriteStream;
@@ -26,6 +25,7 @@ export const yieldToEventLoop = (): Promise<void> => {
 
 export const waitForPromise = (promise: Promise<unknown>) => {
   let finished = false;
+  // rome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code
   promise.finally(() => (finished = true));
 
   const pollToFinish = () => {

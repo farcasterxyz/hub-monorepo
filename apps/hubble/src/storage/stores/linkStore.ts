@@ -6,7 +6,7 @@ import {
   MessageType,
   isLinkAddMessage,
   isLinkRemoveMessage,
-} from '@farcaster/hub-nodejs';
+} from "@farcaster/hub-nodejs";
 import {
   getManyMessages,
   getPageIteratorByPrefix,
@@ -14,12 +14,12 @@ import {
   makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
-} from '../../storage/db/message.js';
-import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from '../db/types.js';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from './types.js';
-import { Store } from './store.js';
-import { ResultAsync, err, ok } from 'neverthrow';
-import { Transaction } from '../db/rocksdb.js';
+} from "../../storage/db/message.js";
+import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./types.js";
+import { Store } from "./store.js";
+import { ResultAsync, err, ok } from "neverthrow";
+import { Transaction } from "../db/rocksdb.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 2_500;
 
@@ -38,18 +38,18 @@ const makeTargetKey = (target: number): Buffer => {
  */
 const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
-  if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
-    throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+  if (type && (Buffer.from(type).length > 8 || type.length === 0)) {
+    throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.LinkAdds]), // -------------- link_adds key, 1 byte
-    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(''), //-------- type, 8 bytes
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 4 bytes
+    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(""), //-------- type, 8 bytes
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 4 bytes
   ]);
 };
 
@@ -64,18 +64,18 @@ const makeLinkAddsKey = (fid: number, type?: string, target?: number): Buffer =>
  */
 const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer => {
   if (target && !type) {
-    throw new HubError('bad_request.validation_failure', 'targetId provided without type');
+    throw new HubError("bad_request.validation_failure", "targetId provided without type");
   }
 
-  if (type && (Buffer.from(type).length > 8 || type.length == 0)) {
-    throw new HubError('bad_request.validation_failure', 'type must be 1-8 bytes');
+  if (type && (Buffer.from(type).length > 8 || type.length === 0)) {
+    throw new HubError("bad_request.validation_failure", "type must be 1-8 bytes");
   }
 
   return Buffer.concat([
     makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
     Buffer.from([UserPostfix.LinkRemoves]), // ----------- link_adds key, 1 byte
-    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(''), //-------- type, 8 bytes
-    target ? makeTargetKey(target) : Buffer.from(''), //-- target id, 4 bytes
+    type ? Buffer.concat([Buffer.from(type)], 8) : Buffer.from(""), //-------- type, 8 bytes
+    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 4 bytes
   ]);
 };
 
@@ -90,18 +90,18 @@ const makeLinkRemovesKey = (fid: number, type?: string, target?: number): Buffer
  */
 const makeLinksByTargetKey = (target: number, fid?: number, tsHash?: Uint8Array): Buffer => {
   if (fid && !tsHash) {
-    throw new HubError('bad_request.validation_failure', 'fid provided without tsHash');
+    throw new HubError("bad_request.validation_failure", "fid provided without tsHash");
   }
 
   if (tsHash && !fid) {
-    throw new HubError('bad_request.validation_failure', 'tsHash provided without fid');
+    throw new HubError("bad_request.validation_failure", "tsHash provided without fid");
   }
 
   return Buffer.concat([
     Buffer.from([RootPrefix.LinksByTarget]),
     makeTargetKey(target),
-    Buffer.from(tsHash ?? ''),
-    fid ? makeFidKey(fid) : Buffer.from(''),
+    Buffer.from(tsHash ?? ""),
+    fid ? makeFidKey(fid) : Buffer.from(""),
   ]);
 };
 
@@ -150,7 +150,10 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   override _isRemoveType = isLinkRemoveMessage;
   override _addMessageType = MessageType.LINK_ADD;
   override _removeMessageType = MessageType.LINK_REMOVE;
-  protected override PRUNE_SIZE_LIMIT_DEFAULT = PRUNE_SIZE_LIMIT_DEFAULT;
+
+  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+    return PRUNE_SIZE_LIMIT_DEFAULT;
+  }
 
   override async buildSecondaryIndices(txn: Transaction, message: LinkAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
@@ -160,11 +163,12 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
     }
 
     if (!message.data.linkBody.targetFid) {
-      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+      return err(new HubError("bad_request.invalid_param", "targetfid null"));
     }
 
     // Puts message key into the byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.put(byTargetKey, Buffer.from(message.data.linkBody.type));
 
     return ok(undefined);
@@ -178,11 +182,12 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
     }
 
     if (!message.data.linkBody.targetFid) {
-      return err(new HubError('bad_request.invalid_param', 'targetfid null'));
+      return err(new HubError("bad_request.invalid_param", "targetfid null"));
     }
 
     // Delete the message key from byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
+    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.del(byTargetKey);
 
     return ok(undefined);
@@ -221,7 +226,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   async getLinkAddsByFid(
     fid: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage>> {
     return await this.getAddsByFid({ data: { fid, linkBody: { type: type as string } } }, pageOptions);
   }
@@ -230,14 +235,14 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   async getLinkRemovesByFid(
     fid: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkRemoveMessage>> {
     return await this.getRemovesByFid({ data: { fid, linkBody: { type: type as string } } }, pageOptions);
   }
 
   async getAllLinkMessagesByFid(
     fid: number,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }
@@ -246,7 +251,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   async getLinksByTarget(
     target: number,
     type?: string,
-    pageOptions: PageOptions = {}
+    pageOptions: PageOptions = {},
   ): Promise<MessagesPage<LinkAddMessage>> {
     const prefix = makeLinksByTargetKey(target);
 
@@ -269,7 +274,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
       lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
 
-      if (type === undefined || (value !== undefined && value.equals(Buffer.from(type)))) {
+      if (type === undefined || value?.equals(Buffer.from(type))) {
         // Calculates the positions in the key where the fid and tsHash begin
         const tsHashOffset = prefix.length;
         const fidOffset = tsHashOffset + TSHASH_LENGTH;

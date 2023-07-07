@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable security/detect-object-injection */
-import { Writable } from 'node:stream';
+import { Writable } from "node:stream";
 
-import Chance from 'chance';
+import Chance from "chance";
 
 import {
   CastAddBody,
@@ -12,15 +10,15 @@ import {
   Message,
   MessageData,
   MessageType,
-} from '@farcaster/hub-nodejs';
-import { MockRpcClient } from '../../network/sync/mock.js';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import { SyncId } from '../../network/sync/syncId.js';
-import RocksDB from '../../storage/db/rocksdb.js';
-import { blake3Truncate160, sleepWhile } from '../../utils/crypto.js';
-import { avgRecords } from './helpers.js';
-import { yieldToEventLoop } from './utils.js';
-import { MockHub } from '../mocks.js';
+} from "@farcaster/hub-nodejs";
+import { MockRpcClient } from "../../network/sync/mock.js";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import { SyncId } from "../../network/sync/syncId.js";
+import RocksDB from "../../storage/db/rocksdb.js";
+import { blake3Truncate160, sleepWhile } from "../../utils/crypto.js";
+import { avgRecords } from "./helpers.js";
+import { yieldToEventLoop } from "./utils.js";
+import { MockHub } from "../mocks.js";
 
 const INITIAL_MESSAGES_COUNT = 10_000;
 const FID_COUNT = 10_000;
@@ -34,13 +32,14 @@ const makeSyncEninge = async (id: number) => {
   await db.clear();
   const hub = new MockHub(db);
   const syncEngine = new SyncEngine(hub, db);
-  (syncEngine as any)['_id'] = id;
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  (syncEngine as any)["_id"] = id;
   return syncEngine;
 };
 
 const makeMessage = (fid: number, messageId: number, timestamp: number) => {
   const hash = Buffer.from(blake3Truncate160(Buffer.from(messageId.toString())));
-  hash.fill(' ', 10);
+  hash.fill(" ", 10);
   hash.write(messageId.toString(), 10);
   return Message.create({
     data: MessageData.create({
@@ -49,7 +48,7 @@ const makeMessage = (fid: number, messageId: number, timestamp: number) => {
       timestamp,
       network: FarcasterNetwork.DEVNET,
       castAddBody: CastAddBody.create({
-        text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam pharetra dolor leo, vitae tincidunt justo scelerisque vel. Praesent ac leo at nibh rutrum aliquet. Fusce rhoncus ligula a ipsum porta, nec.',
+        text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam pharetra dolor leo, vitae tincidunt justo scelerisque vel. Praesent ac leo at nibh rutrum aliquet. Fusce rhoncus ligula a ipsum porta, nec.",
       }),
     }),
     hash,
@@ -76,6 +75,7 @@ export const estimateEntropy = async () => {
   let sum = 0;
   for (let i = estimateEntropySkip; i < messages.length; i++) {
     let pm = 0;
+    // rome-ignore lint/style/noNonNullAssertion: <explanation>
     const syncId = new SyncId(messages[i]!);
     for (let j = 0; j < peers.length; j++) {
       const exists = await peers[j]?.trie.exists(syncId);
@@ -86,7 +86,7 @@ export const estimateEntropy = async () => {
     pm /= peers.length;
 
     // Skip unnecessary check in next round
-    if (pm == 1 && i == estimateEntropySkip) {
+    if (pm === 1 && i === estimateEntropySkip) {
       estimateEntropySkip++;
     }
 
@@ -171,9 +171,10 @@ export const benchSyncEngine = async ({
 
   // Stub the timestamp
   global.Date.now = () =>
+    // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     (messages[messages.length - 1]!.data!.timestamp + chance.integer({ min: 1, max: 60 })) * 1000 + FARCASTER_EPOCH;
 
-  writer.write([0, '', '', '', '', '']);
+  writer.write([0, "", "", "", "", ""]);
 
   try {
     // Rounds
@@ -207,6 +208,7 @@ export const benchSyncEngine = async ({
         // Pick a random peer to sync
         const stats = new Array(peers.length).fill({});
         for (let i = 0; i < peers.length; i++) {
+          // rome-ignore lint/style/noNonNullAssertion: <explanation>
           const ourSyncEngine = peers[i]!;
           let theirSyncEngine;
           do {
@@ -215,12 +217,14 @@ export const benchSyncEngine = async ({
 
           const otherSnapshot = (await theirSyncEngine.getSnapshot())._unsafeUnwrap();
           if ((await ourSyncEngine.syncStatus(i.toString(), otherSnapshot))._unsafeUnwrap().shouldSync) {
+            // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
             const rpcClient = new MockRpcClient((theirSyncEngine as any).engine, theirSyncEngine);
             await ourSyncEngine.performSync(i.toString(), otherSnapshot, rpcClient as unknown as HubRpcClient);
 
             const nodeMetadata = await ourSyncEngine.getTrieNodeMetadata(new Uint8Array());
             stats[i] = {
               synced: 1,
+              // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
               staled: messages.length > nodeMetadata!.numMessages,
               ...rpcClient.stats(),
             };
@@ -233,10 +237,10 @@ export const benchSyncEngine = async ({
 
         cycleStats[c] = {
           dropped: (peers.length * roundSize - realDelivered) / peers.length, // Average drop per peer
-          synced: avg['synced'] ?? 0,
-          getSyncMetadataByPrefixCalls: avg['getSyncMetadataByPrefixCalls'] ?? 0,
-          getAllSyncIdsByPrefixCalls: avg['getAllSyncIdsByPrefixCalls'] ?? 0,
-          getAllMessagesBySyncIdsReturns: avg['getAllMessagesBySyncIdsReturns'] ?? 0,
+          synced: avg["synced"] ?? 0,
+          getSyncMetadataByPrefixCalls: avg["getSyncMetadataByPrefixCalls"] ?? 0,
+          getAllSyncIdsByPrefixCalls: avg["getAllSyncIdsByPrefixCalls"] ?? 0,
+          getAllMessagesBySyncIdsReturns: avg["getAllMessagesBySyncIdsReturns"] ?? 0,
           entropy,
         };
       }
@@ -245,20 +249,21 @@ export const benchSyncEngine = async ({
 
       writer.write([
         round,
-        avg['dropped'] ?? 0,
-        avg['synced'] ?? 0,
-        avg['getSyncMetadataByPrefixCalls'] ?? 0,
-        avg['getAllSyncIdsByPrefixCalls'] ?? 0,
-        avg['getAllMessagesBySyncIdsReturns'] ?? 0,
-        avg['entropy'],
+        avg["dropped"] ?? 0,
+        avg["synced"] ?? 0,
+        avg["getSyncMetadataByPrefixCalls"] ?? 0,
+        avg["getAllSyncIdsByPrefixCalls"] ?? 0,
+        avg["getAllMessagesBySyncIdsReturns"] ?? 0,
+        avg["entropy"],
       ]);
 
       await yieldToEventLoop();
     }
   } finally {
     // Clean up RocksDb
-    process.stderr.write('Cleaning up\n');
+    process.stderr.write("Cleaning up\n");
     peers.forEach((syncEngine) => {
+      // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
       const db = (syncEngine.trie as any)._db;
       db.destroy();
     });

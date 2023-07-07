@@ -1,4 +1,4 @@
-import { RateLimiterMemory } from 'rate-limiter-flexible';
+import { RateLimiterMemory } from "rate-limiter-flexible";
 import {
   Factories,
   HubError,
@@ -8,16 +8,16 @@ import {
   IdRegistryEvent,
   SignerAddMessage,
   HubInfoRequest,
-} from '@farcaster/hub-nodejs';
-import SyncEngine from '../../network/sync/syncEngine.js';
+} from "@farcaster/hub-nodejs";
+import SyncEngine from "../../network/sync/syncEngine.js";
 
-import Server, { rateLimitByIp } from '../server.js';
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
-import { sleep } from '../../utils/crypto.js';
+import Server, { rateLimitByIp } from "../server.js";
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
+import { sleep } from "../../utils/crypto.js";
 
-const db = jestRocksDB('protobufs.rpcAuth.test');
+const db = jestRocksDB("protobufs.rpcAuth.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
@@ -36,7 +36,7 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 });
 
@@ -44,9 +44,9 @@ afterAll(async () => {
   await engine.stop();
 });
 
-describe('auth tests', () => {
-  test('fails with invalid password', async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, 'admin:password');
+describe("auth tests", () => {
+  test("fails with invalid password", async () => {
+    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, "admin:password");
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
@@ -55,28 +55,28 @@ describe('auth tests', () => {
     // No password
     const result = await authClient.submitMessage(signerAdd);
     expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError('unauthorized', 'gRPC authentication failed: Authorization header is empty')
+      new HubError("unauthorized", "gRPC authentication failed: Authorization header is empty"),
     );
 
     // Wrong password
     const metadata = new Metadata();
-    metadata.set('authorization', `Basic ${Buffer.from(`admin:wrongpassword`).toString('base64')}`);
+    metadata.set("authorization", `Basic ${Buffer.from("admin:wrongpassword").toString("base64")}`);
     const result2 = await authClient.submitMessage(signerAdd, metadata);
     expect(result2._unsafeUnwrapErr()).toEqual(
-      new HubError('unauthorized', 'gRPC authentication failed: Invalid password for user: admin')
+      new HubError("unauthorized", "gRPC authentication failed: Invalid password for user: admin"),
     );
 
     // Wrong username
     const metadata2 = new Metadata();
-    metadata2.set('authorization', `Basic ${Buffer.from(`wronguser:password`).toString('base64')}`);
+    metadata2.set("authorization", `Basic ${Buffer.from("wronguser:password").toString("base64")}`);
     const result3 = await authClient.submitMessage(signerAdd, metadata2);
     expect(result3._unsafeUnwrapErr()).toEqual(
-      new HubError('unauthorized', 'gRPC authentication failed: Invalid username: wronguser')
+      new HubError("unauthorized", "gRPC authentication failed: Invalid username: wronguser"),
     );
 
     // Right password
     const metadata3 = new Metadata();
-    metadata3.set('authorization', `Basic ${Buffer.from(`admin:password`).toString('base64')}`);
+    metadata3.set("authorization", `Basic ${Buffer.from("admin:password").toString("base64")}`);
     const result4 = await authClient.submitMessage(signerAdd, metadata3);
     expect(result4.isOk()).toBeTruthy();
 
@@ -88,8 +88,8 @@ describe('auth tests', () => {
     authClient.close();
   });
 
-  test('all submit methods require auth', async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, 'admin:password');
+  test("all submit methods require auth", async () => {
+    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, "admin:password");
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
@@ -98,12 +98,12 @@ describe('auth tests', () => {
     // Without auth fails
     const result1 = await authClient.submitMessage(signerAdd);
     expect(result1._unsafeUnwrapErr()).toEqual(
-      new HubError('unauthorized', 'gRPC authentication failed: Authorization header is empty')
+      new HubError("unauthorized", "gRPC authentication failed: Authorization header is empty"),
     );
 
     // Works with auth
     const metadata = new Metadata();
-    metadata.set('authorization', `Basic ${Buffer.from(`admin:password`).toString('base64')}`);
+    metadata.set("authorization", `Basic ${Buffer.from("admin:password").toString("base64")}`);
 
     const result2 = await authClient.submitMessage(signerAdd, metadata);
     expect(result2.isOk()).toBeTruthy();
@@ -112,7 +112,7 @@ describe('auth tests', () => {
     authClient.close();
   });
 
-  test('test rate limiting', async () => {
+  test("test rate limiting", async () => {
     const Limit10PerSecond = new RateLimiterMemory({
       points: 10,
       duration: 1,
@@ -120,7 +120,7 @@ describe('auth tests', () => {
 
     // 10 Requests should be fine
     for (let i = 0; i < 10; i++) {
-      const result = await rateLimitByIp('testip:3000', Limit10PerSecond);
+      const result = await rateLimitByIp("testip:3000", Limit10PerSecond);
       expect(result.isOk()).toBeTruthy();
     }
 
@@ -129,11 +129,11 @@ describe('auth tests', () => {
 
     // 11th+ request should fail
     for (let i = 0; i < 20; i++) {
-      const result = await rateLimitByIp('testip:3000', Limit10PerSecond);
+      const result = await rateLimitByIp("testip:3000", Limit10PerSecond);
       if (i < 10) {
         expect(result.isOk()).toBeTruthy();
       } else {
-        expect(result._unsafeUnwrapErr().message).toEqual('Too many requests');
+        expect(result._unsafeUnwrapErr().message).toEqual("Too many requests");
       }
     }
   });

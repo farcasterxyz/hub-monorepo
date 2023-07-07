@@ -1,8 +1,8 @@
-import { bytesIncrement, CastId, HubError, HubResult, Message, MessageType } from '@farcaster/hub-nodejs';
-import { err, ok, ResultAsync } from 'neverthrow';
-import RocksDB, { Iterator, Transaction } from './rocksdb.js';
-import { FID_BYTES, RootPrefix, TRUE_VALUE, UserMessagePostfix, UserMessagePostfixMax, UserPostfix } from './types.js';
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from '../stores/types.js';
+import { bytesIncrement, CastId, HubError, HubResult, Message, MessageType } from "@farcaster/hub-nodejs";
+import { err, ok, ResultAsync } from "neverthrow";
+import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
+import { FID_BYTES, RootPrefix, TRUE_VALUE, UserMessagePostfix, UserMessagePostfixMax, UserPostfix } from "./types.js";
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
 
 export const makeFidKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(FID_BYTES);
@@ -26,12 +26,12 @@ export const makeCastIdKey = (castId: CastId): Buffer => {
 
 /** <user prefix byte, fid, set index byte, tsHash> */
 export const makeMessagePrimaryKey = (fid: number, set: UserMessagePostfix, tsHash?: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([set]), Buffer.from(tsHash ?? '')]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([set]), Buffer.from(tsHash ?? "")]);
 };
 
 export const makeMessagePrimaryKeyFromMessage = (message: Message): Buffer => {
   if (!message.data) {
-    throw new HubError('bad_request.invalid_param', 'message data is missing');
+    throw new HubError("bad_request.invalid_param", "message data is missing");
   }
   const tsHash = makeTsHash(message.data.timestamp, message.hash);
   if (tsHash.isErr()) {
@@ -45,21 +45,21 @@ export const makeMessageBySignerKey = (
   fid: number,
   signer: Uint8Array,
   type?: MessageType,
-  tsHash?: Uint8Array
+  tsHash?: Uint8Array,
 ): Buffer => {
   return Buffer.concat([
     makeUserKey(fid),
     Buffer.from([UserPostfix.BySigner]),
     Buffer.from(signer),
-    Buffer.from(type ? [type] : ''),
-    Buffer.from(tsHash ?? ''),
+    Buffer.from(type ? [type] : ""),
+    Buffer.from(tsHash ?? ""),
   ]);
 };
 
 /** Generate tsHash from timestamp and hash */
 export const makeTsHash = (timestamp: number, hash: Uint8Array): HubResult<Uint8Array> => {
   if (timestamp >= 2 ** 32) {
-    return err(new HubError('bad_request.invalid_param', 'timestamp > 4 bytes'));
+    return err(new HubError("bad_request.invalid_param", "timestamp > 4 bytes"));
   }
   const buffer = Buffer.alloc(4 + hash.length);
 
@@ -95,7 +95,7 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.LinkMessage;
   }
 
-  throw new Error('invalid type');
+  throw new Error("invalid type");
 };
 
 export const putMessage = (db: RocksDB, message: Message): Promise<void> => {
@@ -107,7 +107,7 @@ export const getMessage = async <T extends Message>(
   db: RocksDB,
   fid: number,
   set: UserMessagePostfix,
-  tsHash: Uint8Array
+  tsHash: Uint8Array,
 ): Promise<T> => {
   const buffer = await db.get(makeMessagePrimaryKey(fid, set, tsHash));
   return Message.decode(new Uint8Array(buffer)) as T;
@@ -127,11 +127,11 @@ export const getManyMessagesByFid = async <T extends Message>(
   db: RocksDB,
   fid: number,
   set: UserMessagePostfix,
-  tsHashes: Uint8Array[]
+  tsHashes: Uint8Array[],
 ): Promise<T[]> => {
   return getManyMessages<T>(
     db,
-    tsHashes.map((tsHash) => makeMessagePrimaryKey(fid, set, tsHash))
+    tsHashes.map((tsHash) => makeMessagePrimaryKey(fid, set, tsHash)),
   );
 };
 
@@ -167,7 +167,7 @@ export const getPageIteratorByPrefix = (db: RocksDB, prefix: Buffer, pageOptions
   }
 
   if (pageOptions.pageSize && pageOptions.pageSize > PAGE_SIZE_MAX) {
-    throw new HubError('bad_request.invalid_param', `pageSize > ${PAGE_SIZE_MAX}`);
+    throw new HubError("bad_request.invalid_param", `pageSize > ${PAGE_SIZE_MAX}`);
   }
 
   return db.iterator(
@@ -176,7 +176,7 @@ export const getPageIteratorByPrefix = (db: RocksDB, prefix: Buffer, pageOptions
       : {
           gt: startKey,
           lt: Buffer.from(prefixEnd.value),
-        }
+        },
   );
 };
 
@@ -184,7 +184,7 @@ export const getMessagesPageByPrefix = async <T extends Message>(
   db: RocksDB,
   prefix: Buffer,
   filter: (message: Message) => message is T,
-  pageOptions: PageOptions = {}
+  pageOptions: PageOptions = {},
 ): Promise<MessagesPage<T>> => {
   const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
 
@@ -225,7 +225,7 @@ export const getMessagesBySignerIterator = (
   db: RocksDB,
   fid: number,
   signer: Uint8Array,
-  type?: MessageType
+  type?: MessageType,
 ): Iterator => {
   const prefix = makeMessageBySignerKey(fid, signer, type);
   return db.iteratorByPrefix(prefix, { values: false });
@@ -236,7 +236,7 @@ export const getAllMessagesBySigner = async <T extends Message>(
   db: RocksDB,
   fid: number,
   signer: Uint8Array,
-  type?: MessageType
+  type?: MessageType,
 ): Promise<T[]> => {
   // Generate prefix by excluding tsHash from the bySignerKey
   // Format of bySignerKey: <user prefix byte, fid, by signer index byte, signer, type, tsHash>
@@ -279,7 +279,7 @@ export const getNextMessageFromIterator = async (iterator: Iterator): Promise<Me
 
 export const putMessageTransaction = (txn: Transaction, message: Message): Transaction => {
   if (!message.data) {
-    throw new HubError('bad_request.invalid_param', 'message data is missing');
+    throw new HubError("bad_request.invalid_param", "message data is missing");
   }
   const tsHash = makeTsHash(message.data.timestamp, message.hash);
   if (tsHash.isErr()) {
@@ -293,7 +293,7 @@ export const putMessageTransaction = (txn: Transaction, message: Message): Trans
 
 export const deleteMessageTransaction = (txn: Transaction, message: Message): Transaction => {
   if (!message.data) {
-    throw new HubError('bad_request.invalid_param', 'message data is missing');
+    throw new HubError("bad_request.invalid_param", "message data is missing");
   }
   const tsHash = makeTsHash(message.data.timestamp, message.hash);
   if (tsHash.isErr()) {

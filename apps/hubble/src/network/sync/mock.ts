@@ -1,17 +1,20 @@
-import { ok } from 'neverthrow';
+import { ok } from "neverthrow";
 
-import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from '@farcaster/hub-nodejs';
+import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from "@farcaster/hub-nodejs";
 
-import Engine from '../../storage/engine/index.js';
-import { NodeMetadata } from './merkleTrie.js';
-import SyncEngine from './syncEngine.js';
+import Engine from "../../storage/engine/index.js";
+import { NodeMetadata } from "./merkleTrie.js";
+import SyncEngine from "./syncEngine.js";
 
 export class MockRpcClient {
   engine: Engine;
   syncEngine: SyncEngine;
 
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getSyncMetadataByPrefixCalls: Array<any> = [];
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getAllSyncIdsByPrefixCalls: Array<any> = [];
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getAllMessagesBySyncIdsCalls: Array<any> = [];
   getAllMessagesBySyncIdsReturns = 0;
 
@@ -37,7 +40,7 @@ export class MockRpcClient {
               numMessages: child.numMessages,
               hash: child.hash,
               children: [],
-            })
+            }),
           );
         }
       }
@@ -62,7 +65,7 @@ export class MockRpcClient {
     return ok(
       SyncIds.create({
         syncIds,
-      })
+      }),
     );
   }
 

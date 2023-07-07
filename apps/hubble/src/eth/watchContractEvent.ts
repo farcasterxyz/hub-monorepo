@@ -1,6 +1,6 @@
-import { Abi } from 'abitype';
-import { PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from 'viem';
-import { logger, Logger } from '../utils/logger.js';
+import { Abi } from "abitype";
+import { PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
+import { logger, Logger } from "../utils/logger.js";
 
 /**
  * Wrapper around watchContractEvent that restarts when an error
@@ -11,7 +11,7 @@ import { logger, Logger } from '../utils/logger.js';
 export class WatchContractEvent<
   TAbi extends Abi | readonly unknown[] = readonly unknown[],
   TEventName extends string = string,
-  TStrict extends boolean | undefined = undefined
+  TStrict extends boolean | undefined = undefined,
 > {
   private _publicClient: PublicClient;
   private _params: WatchContractEventParameters<TAbi, TEventName, TStrict>;
@@ -21,12 +21,12 @@ export class WatchContractEvent<
   constructor(
     publicClient: PublicClient,
     params: WatchContractEventParameters<TAbi, TEventName, TStrict>,
-    key: string
+    key: string,
   ) {
     this._publicClient = publicClient;
     this._params = params;
     this._log = logger.child({
-      component: 'WatchContractEvent',
+      component: "WatchContractEvent",
       eventName: params.eventName,
       key,
     });
@@ -42,12 +42,12 @@ export class WatchContractEvent<
       },
     });
 
-    this._log.info(`Started watching contract events`);
+    this._log.info("Started watching contract events");
   }
 
   public stop() {
     if (this._unwatch) this._unwatch();
-    this._log.info(`Stopped watching contract events`);
+    this._log.info("Stopped watching contract events");
   }
 
   public restart() {

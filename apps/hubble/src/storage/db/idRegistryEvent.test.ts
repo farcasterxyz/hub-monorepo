@@ -1,13 +1,13 @@
-import { IdRegistryEvent, bytesCompare, Factories, HubError } from '@farcaster/hub-nodejs';
-import { jestRocksDB } from './jestUtils.js';
+import { IdRegistryEvent, bytesCompare, Factories, HubError } from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "./jestUtils.js";
 import {
   getIdRegistryEvent,
   getIdRegistryEventByCustodyAddress,
   makeIdRegistryEventPrimaryKey,
   putIdRegistryEvent,
-} from './idRegistryEvent.js';
+} from "./idRegistryEvent.js";
 
-const db = jestRocksDB('storage.db.idRegistryEvent.test');
+const db = jestRocksDB("storage.db.idRegistryEvent.test");
 const custodySigner = Factories.Eip712Signer.build();
 let custodySignerKey: Uint8Array;
 let idRegistryEvent: IdRegistryEvent;
@@ -17,8 +17,8 @@ beforeAll(async () => {
   idRegistryEvent = Factories.IdRegistryEvent.build({ to: custodySignerKey });
 });
 
-describe('makeIdRegistryEventPrimaryKey', () => {
-  test('orders keys by fid', () => {
+describe("makeIdRegistryEventPrimaryKey", () => {
+  test("orders keys by fid", () => {
     const key1 = makeIdRegistryEventPrimaryKey(1_000);
     const key2 = makeIdRegistryEventPrimaryKey(1_001);
     const key3 = makeIdRegistryEventPrimaryKey(1_000_000);
@@ -27,26 +27,26 @@ describe('makeIdRegistryEventPrimaryKey', () => {
   });
 });
 
-describe('putIdRegistryEvent', () => {
-  test('succeeds', async () => {
+describe("putIdRegistryEvent", () => {
+  test("succeeds", async () => {
     await expect(putIdRegistryEvent(db, idRegistryEvent)).resolves.toEqual(undefined);
     await expect(getIdRegistryEvent(db, idRegistryEvent.fid)).resolves.toEqual(idRegistryEvent);
   });
 });
 
-describe('getIdRegistryEvent', () => {
-  test('succeeds when event exists', async () => {
+describe("getIdRegistryEvent", () => {
+  test("succeeds when event exists", async () => {
     await putIdRegistryEvent(db, idRegistryEvent);
     await expect(getIdRegistryEvent(db, idRegistryEvent.fid)).resolves.toEqual(idRegistryEvent);
   });
 
-  test('fails when event not found', async () => {
+  test("fails when event not found", async () => {
     await expect(getIdRegistryEvent(db, idRegistryEvent.fid)).rejects.toThrow(HubError);
   });
 });
 
-describe('getIdRegistryEventByCustodyAddress', () => {
-  test('succeeds when event exists', async () => {
+describe("getIdRegistryEventByCustodyAddress", () => {
+  test("succeeds when event exists", async () => {
     await putIdRegistryEvent(db, idRegistryEvent);
     await expect(getIdRegistryEventByCustodyAddress(db, custodySignerKey)).resolves.toEqual(idRegistryEvent);
   });

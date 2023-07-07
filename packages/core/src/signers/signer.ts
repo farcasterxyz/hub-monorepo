@@ -1,5 +1,5 @@
-import { SignatureScheme } from '../protobufs';
-import { HubAsyncResult } from '../errors';
+import { SignatureScheme } from "../protobufs";
+import { HubAsyncResult } from "../errors";
 
 export interface Signer {
   readonly scheme: SignatureScheme;

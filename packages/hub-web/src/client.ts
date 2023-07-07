@@ -5,44 +5,43 @@ import {
   GrpcWebImpl,
   AdminService,
   AdminServiceClientImpl,
-} from './generated/rpc';
+} from "./generated/rpc";
 
-import grpcWeb from '@improbable-eng/grpc-web';
-import { err, ok } from 'neverthrow';
-import { HubError, HubErrorCode, HubResult } from '@farcaster/core';
-import { Observable } from 'rxjs';
+import grpcWeb from "@improbable-eng/grpc-web";
+import { err, ok } from "neverthrow";
+import { HubError, HubErrorCode, HubResult } from "@farcaster/core";
+import { Observable } from "rxjs";
 
-export { Observable } from 'rxjs';
+export { Observable } from "rxjs";
 
 const grpcCodeToHubErrorCode = (code: grpcWeb.grpc.Code): HubErrorCode => {
   switch (code) {
     case grpcWeb.grpc.Code.Unauthenticated:
-      return 'unauthenticated';
+      return "unauthenticated";
     case grpcWeb.grpc.Code.PermissionDenied:
-      return 'unauthorized';
+      return "unauthorized";
     case grpcWeb.grpc.Code.InvalidArgument:
-      return 'bad_request';
+      return "bad_request";
     case grpcWeb.grpc.Code.NotFound:
-      return 'not_found';
+      return "not_found";
     case grpcWeb.grpc.Code.Unavailable:
-      return 'unavailable';
+      return "unavailable";
     default:
-      return 'unknown';
+      return "unknown";
   }
 };
 
 const fromServiceError = (err: GrpcWebError): HubError => {
-  let context = err['message'];
+  let context = err["message"];
 
   // due to envoy, the error for no connection is Response closed without headers
-  if (err.code === 2 && context === 'Response closed without headers') {
-    context =
-      'Connection failed: please check that the hub’s address, ports and authentication config are correct. ' + context;
-    return new HubError('unavailable' as HubErrorCode, context);
+  if (err.code === 2 && context === "Response closed without headers") {
+    context = `Connection failed: please check that the hub’s address, ports and authentication config are correct. ${context}`;
+    return new HubError("unavailable" as HubErrorCode, context);
   }
 
   // derive from grpc error code as fallback
-  return new HubError((err.metadata?.get('errcode')[0] as HubErrorCode) || grpcCodeToHubErrorCode(err.code), context);
+  return new HubError((err.metadata?.get("errcode")[0] as HubErrorCode) || grpcCodeToHubErrorCode(err.code), context);
 };
 
 // wrap grpc-web client with HubResult to make sure APIs are consistent with hub-nodejs
@@ -67,17 +66,17 @@ const wrapClient = <C extends object>(client: C) => {
     get: (target, descriptor) => {
       const key = descriptor as keyof WrappedClient<C>;
 
-      if (key === '$') return target;
+      if (key === "$") return target;
 
-      // eslint-disable-next-line security/detect-object-injection
       const func = target[key];
-      if (typeof func === 'function') {
+      if (typeof func === "function") {
         return (...args: unknown[]) => {
           const result = func.call(target, ...args);
           if (result instanceof Promise) {
+            // rome-ignore lint/suspicious/noExplicitAny: legacy from eslint migration
             return (result as Promise<any>).then(
               (res) => ok(res),
-              (e) => err(fromServiceError(e as GrpcWebError))
+              (e) => err(fromServiceError(e as GrpcWebError)),
             );
           }
 
@@ -107,12 +106,12 @@ const getRpcWebClient = (...args: ConstructorParameters<typeof GrpcWebImpl>): Gr
 
 export const getAuthMetadata = (username: string, password: string): grpcWeb.grpc.Metadata => {
   const metadata = new grpcWeb.grpc.Metadata();
-  if (typeof btoa === 'undefined') {
+  if (typeof btoa === "undefined") {
     // nodejs
-    metadata.set('authorization', `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`);
+    metadata.set("authorization", `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`);
   } else {
     // browser
-    metadata.set('authorization', `Basic ${btoa(`${username}:${password}`)}`);
+    metadata.set("authorization", `Basic ${btoa(`${username}:${password}`)}`);
   }
   return metadata;
 };

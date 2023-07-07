@@ -1,5 +1,5 @@
-import { ServerWritableStream, HubEvent, SubscribeRequest, HubError, HubResult } from '@farcaster/hub-nodejs';
-import { err, ok } from 'neverthrow';
+import { ServerWritableStream, HubEvent, SubscribeRequest, HubError, HubResult } from "@farcaster/hub-nodejs";
+import { err, ok } from "neverthrow";
 
 export const STREAM_DRAIN_TIMEOUT_MS = 10_000;
 export const SLOW_CLIENT_GRACE_PERIOD_MS = 60_000;
@@ -14,6 +14,7 @@ export const STREAM_MESSAGE_BUFFER_SIZE = 1000;
 export class BufferedStreamWriter {
   private streamIsBackedUp = false;
   private stream: ServerWritableStream<SubscribeRequest, HubEvent>;
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   private dataWaitingForDrain: any[] = [];
 
   constructor(stream: ServerWritableStream<SubscribeRequest, HubEvent>) {
@@ -26,6 +27,7 @@ export class BufferedStreamWriter {
    * ok(false) if the message was buffered because the stream is full
    * err if the stream can't be written to any more and will be closed.
    */
+  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   public writeToStream(message: any): HubResult<boolean> {
     if (this.streamIsBackedUp) {
       this.dataWaitingForDrain.push(message);
@@ -33,7 +35,7 @@ export class BufferedStreamWriter {
       if (this.dataWaitingForDrain.length > STREAM_MESSAGE_BUFFER_SIZE) {
         this.destroyStream();
 
-        return err(new HubError('unavailable.network_failure', 'Stream is backed up and cache is full'));
+        return err(new HubError("unavailable.network_failure", "Stream is backed up and cache is full"));
       }
 
       return ok(false);
@@ -48,7 +50,7 @@ export class BufferedStreamWriter {
       // We'll wait only for 10 seconds before destroying the stream
       const timeout = setTimeout(() => this.destroyStream(), STREAM_DRAIN_TIMEOUT_MS);
 
-      this.stream.once('drain', () => {
+      this.stream.once("drain", () => {
         this.streamIsBackedUp = false;
         clearTimeout(timeout);
 
@@ -69,7 +71,7 @@ export class BufferedStreamWriter {
 
   private destroyStream() {
     this.dataWaitingForDrain = [];
-    this.stream.destroy(new Error('Stream is backed up, please consume events faster. Closing stream.'));
+    this.stream.destroy(new Error("Stream is backed up, please consume events faster. Closing stream."));
   }
 
   public getCacheSize(): number {

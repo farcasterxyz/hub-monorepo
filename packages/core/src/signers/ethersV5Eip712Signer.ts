@@ -1,14 +1,14 @@
-import { ResultAsync } from 'neverthrow';
-import { Eip712Signer } from './eip712Signer';
+import { ResultAsync } from "neverthrow";
+import { Eip712Signer } from "./eip712Signer";
 import type {
   Signer as EthersAbstractSigner,
   TypedDataSigner as EthersTypedDataSigner,
-} from '@ethersproject/abstract-signer';
-import { HubAsyncResult, HubError } from '../errors';
-import { eip712 } from '../crypto';
-import { hexStringToBytes } from '../bytes';
-import { VerificationEthAddressClaim } from '../verifications';
-import { UserNameProofClaim } from '../userNameProof';
+} from "@ethersproject/abstract-signer";
+import { HubAsyncResult, HubError } from "../errors";
+import { eip712 } from "../crypto";
+import { hexStringToBytes } from "../bytes";
+import { VerificationEthAddressClaim } from "../verifications";
+import { UserNameProofClaim } from "../userNameProof";
 
 export type TypedDataSigner = EthersAbstractSigner & EthersTypedDataSigner;
 
@@ -23,7 +23,7 @@ export class EthersV5Eip712Signer extends Eip712Signer {
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
     return ResultAsync.fromPromise(
       this._typedDataSigner.getAddress(),
-      (e) => new HubError('unknown', e as Error)
+      (e) => new HubError("unknown", e as Error),
     ).andThen(hexStringToBytes);
   }
 
@@ -32,9 +32,9 @@ export class EthersV5Eip712Signer extends Eip712Signer {
       this._typedDataSigner._signTypedData(
         eip712.EIP_712_FARCASTER_DOMAIN,
         { MessageData: [...eip712.EIP_712_FARCASTER_MESSAGE_DATA] },
-        { hash }
+        { hash },
       ),
-      (e) => new HubError('bad_request.invalid_param', e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
@@ -44,9 +44,9 @@ export class EthersV5Eip712Signer extends Eip712Signer {
       this._typedDataSigner._signTypedData(
         eip712.EIP_712_FARCASTER_DOMAIN,
         { VerificationClaim: [...eip712.EIP_712_FARCASTER_VERIFICATION_CLAIM] },
-        claim
+        claim,
       ),
-      (e) => new HubError('bad_request.invalid_param', e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
@@ -56,9 +56,9 @@ export class EthersV5Eip712Signer extends Eip712Signer {
       this._typedDataSigner._signTypedData(
         eip712.EIP_712_USERNAME_DOMAIN,
         { UserNameProof: [...eip712.EIP_712_USERNAME_PROOF] },
-        usernameProof
+        usernameProof,
       ),
-      (e) => new HubError('bad_request.invalid_param', e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }

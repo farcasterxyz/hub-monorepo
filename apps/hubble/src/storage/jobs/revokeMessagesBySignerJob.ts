@@ -4,14 +4,14 @@ import {
   HubError,
   HubResult,
   RevokeMessagesBySignerJobPayload,
-} from '@farcaster/hub-nodejs';
-import { blake3 } from '@noble/hashes/blake3';
-import { err, ok, Result, ResultAsync } from 'neverthrow';
-import { TypedEmitter } from 'tiny-typed-emitter';
-import RocksDB, { Iterator } from '../db/rocksdb.js';
-import { logger } from '../../utils/logger.js';
-import { RootPrefix } from '../db/types.js';
-import Engine from '../engine/index.js';
+} from "@farcaster/hub-nodejs";
+import { blake3 } from "@noble/hashes/blake3";
+import { err, ok, Result, ResultAsync } from "neverthrow";
+import { TypedEmitter } from "tiny-typed-emitter";
+import RocksDB, { Iterator } from "../db/rocksdb.js";
+import { logger } from "../../utils/logger.js";
+import { RootPrefix } from "../db/types.js";
+import Engine from "../engine/index.js";
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;
@@ -21,34 +21,34 @@ export class RevokeMessagesBySignerJobWorker {
   private _queue: RevokeMessagesBySignerJobQueue;
   private _db: RocksDB;
   private _engine: Engine;
-  private _status: 'working' | 'waiting';
+  private _status: "working" | "waiting";
 
   constructor(queue: RevokeMessagesBySignerJobQueue, db: RocksDB, engine: Engine) {
     this._queue = queue;
     this._db = db;
     this._engine = engine;
-    this._status = 'waiting';
+    this._status = "waiting";
 
     this.processJobs = this.processJobs.bind(this);
   }
 
   start() {
-    this._queue.on('enqueueJob', this.processJobs);
+    this._queue.on("enqueueJob", this.processJobs);
   }
 
   stop() {
-    this._queue.off('enqueueJob', this.processJobs);
+    this._queue.off("enqueueJob", this.processJobs);
   }
 
   async processJobs(): HubAsyncResult<void> {
-    if (this._status === 'working') {
-      return err(new HubError('unavailable', 'worker is already processing jobs'));
+    if (this._status === "working") {
+      return err(new HubError("unavailable", "worker is already processing jobs"));
     }
 
-    const log = logger.child({ component: 'RevokeMessagesBySignerJobWorker' });
-    log.info('RevokeMessagesBySignerJobWorker starting');
+    const log = logger.child({ component: "RevokeMessagesBySignerJobWorker" });
+    log.info("RevokeMessagesBySignerJobWorker starting");
 
-    this._status = 'working';
+    this._status = "working";
 
     let nextJob = await this._queue.popNextJob();
     while (nextJob.isOk()) {
@@ -57,8 +57,8 @@ export class RevokeMessagesBySignerJobWorker {
       nextJob = await this._queue.popNextJob();
     }
 
-    this._status = 'waiting';
-    log.info('RevokeMessagesBySignerJobWorker stopping');
+    this._status = "waiting";
+    log.info("RevokeMessagesBySignerJobWorker stopping");
     return ok(undefined);
   }
 
@@ -90,10 +90,10 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     doAtBuffer.writeBigUInt64BE(BigInt(doAt));
 
     if (hash && hash.length !== 4) {
-      return err(new HubError('bad_request.invalid_param', 'hash must be 4 bytes'));
+      return err(new HubError("bad_request.invalid_param", "hash must be 4 bytes"));
     }
 
-    return ok(Buffer.concat([RevokeMessagesBySignerJobQueue.jobKeyPrefix(), doAtBuffer, Buffer.from(hash ?? '')]));
+    return ok(Buffer.concat([RevokeMessagesBySignerJobQueue.jobKeyPrefix(), doAtBuffer, Buffer.from(hash ?? "")]));
   }
 
   /** Return rocksdb iterator for revoke signer jobs. If doBefore timestamp is missing, iterate over all jobs  */
@@ -119,9 +119,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
 
   async enqueueJob(payload: RevokeMessagesBySignerJobPayload, doAt?: number): HubAsyncResult<Buffer> {
     // If doAt timestamp is missing, use current timestamp
-    if (!doAt) {
-      doAt = Date.now();
-    }
+    const doAtTimestamp = doAt ? doAt : Date.now();
 
     const payloadBytes = RevokeMessagesBySignerJobPayload.encode(payload).finish();
 
@@ -129,7 +127,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     const hash = blake3(Uint8Array.from(payloadBytes), { dkLen: 4 });
 
     // Create job key
-    const key = RevokeMessagesBySignerJobQueue.makeJobKey(doAt, hash);
+    const key = RevokeMessagesBySignerJobQueue.makeJobKey(doAtTimestamp, hash);
     if (key.isErr()) {
       return err(key.error);
     }
@@ -137,14 +135,14 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     // Save to rocksdb
     const result = await ResultAsync.fromPromise(
       this._db.put(key.value, Buffer.from(payloadBytes)),
-      (e) => e as HubError
+      (e) => e as HubError,
     );
 
     if (result.isErr()) {
       return err(result.error);
     }
 
-    this.emit('enqueueJob', key.value);
+    this.emit("enqueueJob", key.value);
 
     return ok(key.value);
   }
@@ -166,10 +164,10 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     const payload = Result.fromThrowable(
       () => RevokeMessagesBySignerJobPayload.decode(Uint8Array.from(value as Buffer)),
       (err) =>
-        new HubError('bad_request.parse_failure', {
+        new HubError("bad_request.parse_failure", {
           cause: err as Error,
-          message: `Failed to parse RevokeMessagesBySignerJobPayload`,
-        })
+          message: "Failed to parse RevokeMessagesBySignerJobPayload",
+        }),
     )();
 
     // clear rocksdb iterator

@@ -1,4 +1,4 @@
-export { Metadata, Server, ServerCredentials, status } from '@grpc/grpc-js';
+export { Metadata, Server, ServerCredentials, status } from "@grpc/grpc-js";
 export type {
   CallOptions,
   Client,
@@ -6,9 +6,9 @@ export type {
   ClientUnaryCall,
   ServiceError,
   ServerWritableStream,
-} from '@grpc/grpc-js';
+} from "@grpc/grpc-js";
 
-export * from '@farcaster/core';
+export * from "@farcaster/core";
 
-export * from './generated/rpc';
-export * from './client';
+export * from "./generated/rpc";
+export * from "./client";

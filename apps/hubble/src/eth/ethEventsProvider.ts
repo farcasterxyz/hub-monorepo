@@ -8,29 +8,29 @@ import {
   NameRegistryEvent,
   NameRegistryEventType,
   toFarcasterTime,
-} from '@farcaster/hub-nodejs';
-import { createPublicClient, http, Log, PublicClient } from 'viem';
-import { goerli } from 'viem/chains';
-import { err, ok, Result, ResultAsync } from 'neverthrow';
-import { IdRegistry, NameRegistry } from './abis.js';
-import { bytes32ToBytes, bytesToBytes32 } from './utils.js';
-import { HubInterface } from '../hubble.js';
-import { logger } from '../utils/logger.js';
-import { WatchContractEvent } from './watchContractEvent.js';
-import { WatchBlockNumber } from './watchBlockNumber.js';
+} from "@farcaster/hub-nodejs";
+import { createPublicClient, http, Log, PublicClient } from "viem";
+import { goerli } from "viem/chains";
+import { err, ok, Result, ResultAsync } from "neverthrow";
+import { IdRegistry, NameRegistry } from "./abis.js";
+import { bytes32ToBytes, bytesToBytes32 } from "./utils.js";
+import { HubInterface } from "../hubble.js";
+import { logger } from "../utils/logger.js";
+import { WatchContractEvent } from "./watchContractEvent.js";
+import { WatchBlockNumber } from "./watchBlockNumber.js";
 
 const log = logger.child({
-  component: 'EthEventsProvider',
+  component: "EthEventsProvider",
 });
 
 export class GoerliEthConstants {
-  public static IdRegistryAddress = '0xda107a1caf36d198b12c16c7b6a1d1c795978c42' as const;
-  public static NameRegistryAddress = '0xe3be01d99baa8db9905b33a3ca391238234b79d1' as const;
+  public static IdRegistryAddress = "0xda107a1caf36d198b12c16c7b6a1d1c795978c42" as const;
+  public static NameRegistryAddress = "0xe3be01d99baa8db9905b33a3ca391238234b79d1" as const;
   public static FirstBlock = 7648795;
   public static ChunkSize = 10000;
 }
 
-type NameRegistryRenewEvent = Omit<NameRegistryEvent, 'to' | 'from'>;
+type NameRegistryRenewEvent = Omit<NameRegistryEvent, "to" | "from">;
 
 /**
  * Class that follows the Ethereum chain to handle on-chain events from the ID
@@ -51,10 +51,10 @@ export class EthEventsProvider {
 
   private _lastBlockNumber: number;
 
-  private _watchNameRegistryTransfers: WatchContractEvent<typeof NameRegistry.abi, 'Transfer', true>;
-  private _watchNameRegistryRenews: WatchContractEvent<typeof NameRegistry.abi, 'Renew', true>;
-  private _watchIdRegistryRegisters: WatchContractEvent<typeof IdRegistry.abi, 'Register', true>;
-  private _watchIdRegistryTransfers: WatchContractEvent<typeof IdRegistry.abi, 'Transfer', true>;
+  private _watchNameRegistryTransfers: WatchContractEvent<typeof NameRegistry.abi, "Transfer", true>;
+  private _watchNameRegistryRenews: WatchContractEvent<typeof NameRegistry.abi, "Renew", true>;
+  private _watchIdRegistryRegisters: WatchContractEvent<typeof IdRegistry.abi, "Register", true>;
+  private _watchIdRegistryTransfers: WatchContractEvent<typeof IdRegistry.abi, "Transfer", true>;
   private _watchBlockNumber: WatchBlockNumber;
 
   // Whether the historical events have been synced. This is used to avoid
@@ -80,7 +80,7 @@ export class EthEventsProvider {
     nameRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
-    resyncEvents: boolean
+    resyncEvents: boolean,
   ) {
     this._hub = hub;
     this._publicClient = publicClient;
@@ -103,12 +103,12 @@ export class EthEventsProvider {
       {
         address: idRegistryAddress,
         abi: IdRegistry.abi,
-        eventName: 'Register',
+        eventName: "Register",
         onLogs: this.processIdRegisterEvents.bind(this),
         pollingInterval: EthEventsProvider.eventPollingInterval,
         strict: true,
       },
-      'IdRegistry Register'
+      "IdRegistry Register",
     );
 
     this._watchIdRegistryTransfers = new WatchContractEvent(
@@ -116,12 +116,12 @@ export class EthEventsProvider {
       {
         address: idRegistryAddress,
         abi: IdRegistry.abi,
-        eventName: 'Transfer',
+        eventName: "Transfer",
         onLogs: this.processIdTransferEvents.bind(this),
         pollingInterval: EthEventsProvider.eventPollingInterval,
         strict: true,
       },
-      'IdRegistry Transfer'
+      "IdRegistry Transfer",
     );
 
     // Setup NameRegistry contract
@@ -130,12 +130,12 @@ export class EthEventsProvider {
       {
         address: nameRegistryAddress,
         abi: NameRegistry.abi,
-        eventName: 'Transfer' as const,
+        eventName: "Transfer" as const,
         onLogs: this.processNameTransferEvents.bind(this),
         pollingInterval: EthEventsProvider.eventPollingInterval,
         strict: true,
       },
-      'NameRegistry Transfer'
+      "NameRegistry Transfer",
     );
 
     this._watchNameRegistryRenews = new WatchContractEvent(
@@ -143,12 +143,12 @@ export class EthEventsProvider {
       {
         address: nameRegistryAddress,
         abi: NameRegistry.abi,
-        eventName: 'Renew',
+        eventName: "Renew",
         onLogs: this.processNameRenewEvents.bind(this),
         pollingInterval: EthEventsProvider.eventPollingInterval,
         strict: true,
       },
-      'NameRegistry Renew'
+      "NameRegistry Renew",
     );
 
     this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
@@ -167,11 +167,11 @@ export class EthEventsProvider {
     nameRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
-    resyncEvents: boolean
+    resyncEvents: boolean,
   ): EthEventsProvider {
     const publicClient = createPublicClient({
       chain: goerli,
-      transport: http(ethRpcUrl, { retryCount: 10 }),
+      transport: http(ethRpcUrl, { retryCount: 5 }),
     });
 
     const provider = new EthEventsProvider(
@@ -181,7 +181,7 @@ export class EthEventsProvider {
       nameRegistryAddress,
       firstBlock,
       chunkSize,
-      resyncEvents
+      resyncEvents,
     );
 
     return provider;
@@ -225,10 +225,10 @@ export class EthEventsProvider {
       this._publicClient.readContract({
         address: GoerliEthConstants.NameRegistryAddress,
         abi: NameRegistry.abi,
-        functionName: 'expiryOf',
+        functionName: "expiryOf",
         args: [encodedFnameResult.value],
       }),
-      (err) => new HubError('unavailable.network_failure', err as Error)
+      (err) => new HubError("unavailable.network_failure", err as Error),
     );
 
     return expiryResult.map((expiry) => Number(expiry) * 1000);
@@ -242,21 +242,22 @@ export class EthEventsProvider {
   private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
-      log.error(
-        { err: latestBlockResult.error },
-        'failed to connect to ethereum node. Check your eth RPC URL (e.g. --eth-rpc-url)'
-      );
-      return;
+      logger.fatal(latestBlockResult.error);
+      logger.fatal("Failed to connect to ethereum node. Check your eth RPC URL (e.g. --eth-rpc-url)");
+      throw new HubError("unknown", {
+        message: "Failed to connect to ethereum node.",
+        cause: latestBlockResult.error as Error,
+      });
     }
 
     const latestBlock = Number(latestBlockResult.value);
 
     if (!latestBlock) {
-      log.error('failed to get the latest block from the RPC provider');
+      log.error("failed to get the latest block from the RPC provider");
       return;
     }
 
-    log.info({ latestBlock: latestBlock }, 'connected to ethereum node');
+    log.info({ latestBlock: latestBlock }, "connected to ethereum node");
 
     // Find how how much we need to sync
     let lastSyncedBlock = this._firstBlock;
@@ -271,11 +272,11 @@ export class EthEventsProvider {
       lastSyncedBlock = this._firstBlock;
     }
 
-    log.info({ lastSyncedBlock }, 'last synced block');
+    log.info({ lastSyncedBlock }, "last synced block");
     const toBlock = latestBlock;
 
     if (lastSyncedBlock < toBlock) {
-      log.info({ fromBlock: lastSyncedBlock, toBlock }, 'syncing events from missed blocks');
+      log.info({ fromBlock: lastSyncedBlock, toBlock }, "syncing events from missed blocks");
 
       // Sync old Id events
       await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, lastSyncedBlock, toBlock, this._chunkSize);
@@ -316,7 +317,7 @@ export class EthEventsProvider {
     type: IdRegistryEventType,
     fromBlock: number,
     toBlock: number,
-    batchSize: number
+    batchSize: number,
   ) {
     /*
      * How querying blocks in batches works
@@ -343,7 +344,7 @@ export class EthEventsProvider {
         const filter = await this._publicClient.createContractEventFilter({
           address: GoerliEthConstants.IdRegistryAddress,
           abi: IdRegistry.abi,
-          eventName: 'Register',
+          eventName: "Register",
           fromBlock: BigInt(nextFromBlock),
           toBlock: BigInt(nextToBlock),
           strict: true,
@@ -355,7 +356,7 @@ export class EthEventsProvider {
         const filter = await this._publicClient.createContractEventFilter({
           address: GoerliEthConstants.IdRegistryAddress,
           abi: IdRegistry.abi,
-          eventName: 'Transfer',
+          eventName: "Transfer",
           fromBlock: BigInt(nextFromBlock),
           toBlock: BigInt(nextToBlock),
           strict: true,
@@ -375,7 +376,7 @@ export class EthEventsProvider {
     type: NameRegistryEventType,
     fromBlock: number,
     toBlock: number,
-    batchSize: number
+    batchSize: number,
   ) {
     /*
      * Querying Blocks in Batches
@@ -410,7 +411,7 @@ export class EthEventsProvider {
         const filter = await this._publicClient.createContractEventFilter({
           address: GoerliEthConstants.NameRegistryAddress,
           abi: NameRegistry.abi,
-          eventName: 'Transfer',
+          eventName: "Transfer",
           fromBlock: BigInt(nextFromBlock),
           toBlock: BigInt(nextToBlock),
           strict: true,
@@ -423,7 +424,7 @@ export class EthEventsProvider {
   }
 
   private async processIdTransferEvents(
-    logs: Log<bigint, number, undefined, true, typeof IdRegistry.abi, 'Transfer'>[]
+    logs: Log<bigint, number, undefined, true, typeof IdRegistry.abi, "Transfer">[],
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
@@ -443,16 +444,16 @@ export class EthEventsProvider {
           Number(blockNumber),
           blockHash,
           transactionHash,
-          Number(transactionIndex)
+          Number(transactionIndex),
         );
       } catch (e) {
-        log.error({ event }, 'failed to parse event args');
+        log.error({ event }, "failed to parse event args");
       }
     }
   }
 
   private async processIdRegisterEvents(
-    logs: Log<bigint, number, undefined, true, typeof IdRegistry.abi, 'Register'>[]
+    logs: Log<bigint, number, undefined, true, typeof IdRegistry.abi, "Register">[],
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
@@ -472,16 +473,16 @@ export class EthEventsProvider {
           Number(blockNumber),
           blockHash,
           transactionHash,
-          Number(transactionIndex)
+          Number(transactionIndex),
         );
       } catch (e) {
-        log.error({ event }, 'failed to parse event args');
+        log.error({ event }, "failed to parse event args");
       }
     }
   }
 
   private async processNameTransferEvents(
-    logs: Log<bigint, number, undefined, true, typeof NameRegistry.abi, 'Transfer'>[]
+    logs: Log<bigint, number, undefined, true, typeof NameRegistry.abi, "Transfer">[],
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
@@ -500,15 +501,15 @@ export class EthEventsProvider {
           Number(blockNumber),
           blockHash,
           transactionHash,
-          Number(transactionIndex)
+          Number(transactionIndex),
         );
       } catch (e) {
-        log.error({ event }, 'failed to parse event args');
+        log.error({ event }, "failed to parse event args");
       }
     }
   }
 
-  private async processNameRenewEvents(logs: Log<bigint, number, undefined, true, typeof NameRegistry.abi, 'Renew'>[]) {
+  private async processNameRenewEvents(logs: Log<bigint, number, undefined, true, typeof NameRegistry.abi, "Renew">[]) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
 
@@ -525,10 +526,10 @@ export class EthEventsProvider {
           Number(blockNumber),
           blockHash,
           transactionHash,
-          Number(transactionIndex)
+          Number(transactionIndex),
         );
       } catch (e) {
-        log.error({ event }, 'failed to parse event args');
+        log.error({ event }, "failed to parse event args");
       }
     }
   }
@@ -553,7 +554,7 @@ export class EthEventsProvider {
 
         if (idEvents) {
           for (const idEvent of idEvents) {
-            await this._hub.submitIdRegistryEvent(idEvent, 'eth-provider');
+            await this._hub.submitIdRegistryEvent(idEvent, "eth-provider");
           }
         }
 
@@ -562,7 +563,7 @@ export class EthEventsProvider {
 
         if (nameEvents) {
           for (const nameEvent of nameEvents) {
-            await this._hub.submitNameRegistryEvent(nameEvent, 'eth-provider');
+            await this._hub.submitNameRegistryEvent(nameEvent, "eth-provider");
           }
         }
 
@@ -571,13 +572,13 @@ export class EthEventsProvider {
 
         if (renewEvents) {
           for (const renewEvent of renewEvents) {
-            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent['fname']);
+            const nameRegistryEvent = await this._hub.engine.getNameRegistryEvent(renewEvent["fname"]);
             if (nameRegistryEvent.isErr()) {
               log.error(
                 { blockNumber, errCode: nameRegistryEvent.error.errCode },
                 `failed to get event for fname ${bytesToUtf8String(
-                  renewEvent['fname']
-                )._unsafeUnwrap()} from renew event: ${nameRegistryEvent.error.message}`
+                  renewEvent["fname"],
+                )._unsafeUnwrap()} from renew event: ${nameRegistryEvent.error.message}`,
               );
               continue;
             }
@@ -617,7 +618,7 @@ export class EthEventsProvider {
     blockNumber: number,
     blockHash: string,
     transactionHash: string,
-    index: number
+    index: number,
   ): HubAsyncResult<void> {
     const logEvent = log.child({ event: { to, id: id.toString(), blockNumber } });
 
@@ -657,7 +658,7 @@ export class EthEventsProvider {
 
     log.info(
       { event: { to, id: id.toString(), blockNumber } },
-      `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`
+      `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`,
     );
 
     return ok(undefined);
@@ -670,7 +671,7 @@ export class EthEventsProvider {
     blockNumber: number,
     blockHash: string,
     transactionHash: string,
-    index: number
+    index: number,
   ): HubAsyncResult<void> {
     const logEvent = log.child({ event: { to, blockNumber } });
 
@@ -685,7 +686,7 @@ export class EthEventsProvider {
     if (serialized.isErr()) {
       logEvent.error(
         { errCode: serialized.error.errCode },
-        `cacheNameRegistryEvent error: ${serialized.error.message}`
+        `cacheNameRegistryEvent error: ${serialized.error.message}`,
       );
       return err(serialized.error);
     }
@@ -722,7 +723,7 @@ export class EthEventsProvider {
     blockNumber: number,
     blockHash: string,
     transactionHash: string,
-    index: number
+    index: number,
   ): HubAsyncResult<void> {
     const logEvent = log.child({ event: { blockNumber } });
 

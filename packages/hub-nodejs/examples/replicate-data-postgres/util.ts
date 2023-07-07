@@ -1,6 +1,4 @@
-/* eslint-disable prefer-arrow-functions/prefer-arrow-functions */
-
-import { fromFarcasterTime } from '@farcaster/hub-nodejs';
+import { fromFarcasterTime } from "@farcaster/hub-nodejs";
 
 export function farcasterTimeToDate(time: undefined): undefined;
 export function farcasterTimeToDate(time: null): null;
@@ -20,5 +18,5 @@ export function bytesToHex(bytes: Uint8Array): string;
 export function bytesToHex(bytes: Uint8Array | null | undefined): string | null | undefined {
   if (bytes === undefined) return undefined;
   if (bytes === null) return null;
-  return '0x' + Buffer.from(bytes).toString('hex');
+  return `0x${Buffer.from(bytes).toString("hex")}`;
 }

@@ -1,17 +1,16 @@
-/* eslint-disable security/detect-object-injection */
-import { err, ok, Result } from 'neverthrow';
-import { bytesToHex, hexToBytes } from 'viem';
-import { HubError, HubResult } from './errors';
+import { err, ok, Result } from "neverthrow";
+import { bytesToHex, hexToBytes } from "viem";
+import { HubError, HubResult } from "./errors";
 
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   const aValue = a[0];
   const bValue = b[0];
 
-  if (typeof aValue !== 'number' && typeof bValue !== 'number') {
+  if (typeof aValue !== "number" && typeof bValue !== "number") {
     return 0;
-  } else if (typeof aValue !== 'number') {
+  } else if (typeof aValue !== "number") {
     return -1;
-  } else if (typeof bValue !== 'number') {
+  } else if (typeof bValue !== "number") {
     return 1;
   }
 
@@ -53,7 +52,7 @@ export const bytesDecrement = (inputBytes: Uint8Array): HubResult<Uint8Array> =>
       return ok(bytes);
     } else {
       if (i === 0) {
-        return err(new HubError('bad_request.invalid_param', 'Cannot decrement zero'));
+        return err(new HubError("bad_request.invalid_param", "Cannot decrement zero"));
       }
 
       bytes[i] = 255;
@@ -67,14 +66,14 @@ export const bytesDecrement = (inputBytes: Uint8Array): HubResult<Uint8Array> =>
 export const bytesToHexString = (bytes: Uint8Array): HubResult<`0x${string}`> => {
   return Result.fromThrowable(
     (bytes: Uint8Array) => bytesToHex(bytes),
-    (e) => new HubError('unknown', e as Error)
+    (e) => new HubError("unknown", e as Error),
   )(bytes);
 };
 
 export const hexStringToBytes = (hex: string): HubResult<Uint8Array> => {
   return Result.fromThrowable(
-    (hex: string) => hexToBytes(hex.startsWith('0x') ? (hex as `0x${string}`) : `0x${hex}`),
-    (e) => new HubError('unknown', e as Error)
+    (hex: string) => hexToBytes(hex.startsWith("0x") ? (hex as `0x${string}`) : `0x${hex}`),
+    (e) => new HubError("unknown", e as Error),
   )(hex);
 };
 
@@ -92,7 +91,7 @@ export const bigIntToBytes = (value: bigint): HubResult<Uint8Array> => {
   let hexValue = value.toString(16);
 
   // Prefix odd-length hex values with a 0 since hexStringToBytes requires even-length hex values
-  hexValue = hexValue.length % 2 == 0 ? hexValue : '0' + hexValue;
+  hexValue = hexValue.length % 2 === 0 ? hexValue : `0${hexValue}`;
 
   return hexStringToBytes(hexValue);
 };

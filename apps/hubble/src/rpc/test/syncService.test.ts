@@ -1,4 +1,4 @@
-import { jestRocksDB } from '../../storage/db/jestUtils.js';
+import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import {
   CastAddMessage,
   Factories,
@@ -9,17 +9,17 @@ import {
   IdRegistryEvent,
   SignerAddMessage,
   SyncStatusRequest,
-} from '@farcaster/hub-nodejs';
-import Engine from '../../storage/engine/index.js';
-import { MockHub } from '../../test/mocks.js';
-import Server from '../server.js';
-import SyncEngine from '../../network/sync/syncEngine.js';
-import { GossipNode } from '../../network/p2p/gossipNode.js';
+} from "@farcaster/hub-nodejs";
+import Engine from "../../storage/engine/index.js";
+import { MockHub } from "../../test/mocks.js";
+import Server from "../server.js";
+import SyncEngine from "../../network/sync/syncEngine.js";
+import { GossipNode } from "../../network/p2p/gossipNode.js";
 
-const db = jestRocksDB('protobufs.rpc.syncService.test');
+const db = jestRocksDB("protobufs.rpc.syncService.test");
 const network = FarcasterNetwork.TESTNET;
 const mockGossipNode = {
-  allPeerIds: () => ['test'],
+  allPeerIds: () => ["test"],
 } as unknown as GossipNode;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine, mockGossipNode);
@@ -54,14 +54,14 @@ beforeAll(async () => {
 
   signerAdd = await Factories.SignerAddMessage.create(
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } }
+    { transient: { signer: custodySigner } },
   );
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
-describe('getInfo', () => {
-  test('succeeds', async () => {
+describe("getInfo", () => {
+  test("succeeds", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);
@@ -74,8 +74,8 @@ describe('getInfo', () => {
   });
 });
 
-describe('getSyncStatus', () => {
-  test('succeeds', async () => {
+describe("getSyncStatus", () => {
+  test("succeeds", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
     await engine.mergeMessage(signerAdd);
     await engine.mergeMessage(castAdd);

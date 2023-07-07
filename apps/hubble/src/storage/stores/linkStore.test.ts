@@ -12,15 +12,15 @@ import {
   LinkBody,
   LinkRemoveMessage,
   RevokeMessageHubEvent,
-} from '@farcaster/hub-nodejs';
-import { err, ok } from 'neverthrow';
-import { jestRocksDB } from '../db/jestUtils.js';
-import { getMessage, makeTsHash } from '../db/message.js';
-import { UserPostfix } from '../db/types.js';
-import LinkStore from './linkStore.js';
-import StoreEventHandler from './storeEventHandler.js';
+} from "@farcaster/hub-nodejs";
+import { err, ok } from "neverthrow";
+import { jestRocksDB } from "../db/jestUtils.js";
+import { getMessage, makeTsHash } from "../db/message.js";
+import { UserPostfix } from "../db/types.js";
+import LinkStore from "./linkStore.js";
+import StoreEventHandler from "./storeEventHandler.js";
 
-const db = jestRocksDB('protobufs.linkStore.test');
+const db = jestRocksDB("protobufs.linkStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new LinkStore(db, eventHandler);
 const fid = Factories.Fid.build();
@@ -33,7 +33,7 @@ let linkRemoveEndorse: LinkRemoveMessage;
 
 beforeAll(async () => {
   const likeBody = Factories.LinkBody.build({
-    type: 'follow',
+    type: "follow",
     targetFid: targetFid,
   });
 
@@ -46,7 +46,7 @@ beforeAll(async () => {
   });
 
   const endorseBody = Factories.LinkBody.build({
-    type: 'endorse',
+    type: "endorse",
     targetFid: targetFid,
   });
 
@@ -63,74 +63,74 @@ beforeEach(async () => {
   await eventHandler.syncCache();
 });
 
-describe('getLinkAdd', () => {
-  test('fails if no LinkAdd is present', async () => {
+describe("getLinkAdd", () => {
+  test("fails if no LinkAdd is present", async () => {
     await expect(set.getLinkAdd(fid, linkAdd.data.linkBody.type, targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if only LinkRemove exists for the target', async () => {
+  test("fails if only LinkRemove exists for the target", async () => {
     await set.merge(linkRemove);
     await expect(set.getLinkAdd(fid, linkAdd.data.linkBody.type, targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if the wrong fid is provided', async () => {
+  test("fails if the wrong fid is provided", async () => {
     const unknownFid = Factories.Fid.build();
     await set.merge(linkAdd);
     await expect(set.getLinkAdd(unknownFid, linkAdd.data.linkBody.type, targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if the wrong link type is provided', async () => {
+  test("fails if the wrong link type is provided", async () => {
     await set.merge(linkAdd);
-    await expect(set.getLinkAdd(fid, 'endorse', targetFid)).rejects.toThrow(HubError);
+    await expect(set.getLinkAdd(fid, "endorse", targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if the wrong target is provided', async () => {
+  test("fails if the wrong target is provided", async () => {
     await set.merge(linkAdd);
     const unknownFid = Factories.Fid.build();
     await expect(set.getLinkAdd(fid, linkAdd.data.linkBody.type, unknownFid)).rejects.toThrow(HubError);
   });
 
-  test('returns message if it exists for the target', async () => {
+  test("returns message if it exists for the target", async () => {
     await set.merge(linkAdd);
     await expect(set.getLinkAdd(fid, linkAdd.data.linkBody.type, targetFid)).resolves.toEqual(linkAdd);
   });
 });
 
-describe('getLinkRemove', () => {
-  test('fails if no LinkRemove is present', async () => {
+describe("getLinkRemove", () => {
+  test("fails if no LinkRemove is present", async () => {
     await expect(set.getLinkRemove(fid, linkRemove.data.linkBody.type, targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if only LinkAdd exists for the target', async () => {
+  test("fails if only LinkAdd exists for the target", async () => {
     await set.merge(linkAdd);
     await expect(set.getLinkRemove(fid, linkAdd.data.linkBody.type, targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if the wrong fid is provided', async () => {
+  test("fails if the wrong fid is provided", async () => {
     await set.merge(linkRemove);
     const unknownFid = Factories.Fid.build();
     await expect(set.getLinkRemove(unknownFid, linkRemove.data.linkBody.type, targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if the wrong link type is provided', async () => {
+  test("fails if the wrong link type is provided", async () => {
     await set.merge(linkRemove);
-    await expect(set.getLinkRemove(fid, 'endorse', targetFid)).rejects.toThrow(HubError);
+    await expect(set.getLinkRemove(fid, "endorse", targetFid)).rejects.toThrow(HubError);
   });
 
-  test('fails if the wrong target is provided', async () => {
+  test("fails if the wrong target is provided", async () => {
     await set.merge(linkRemove);
     const unknownFid = Factories.Fid.build();
     await expect(set.getLinkRemove(fid, linkRemove.data.linkBody.type, unknownFid)).rejects.toThrow(HubError);
   });
 
-  test('returns message if it exists for the target', async () => {
+  test("returns message if it exists for the target", async () => {
     await set.merge(linkRemove);
     await expect(set.getLinkRemove(fid, linkRemove.data.linkBody.type, targetFid)).resolves.toEqual(linkRemove);
   });
 });
 
-describe('getLinkAddsByFid', () => {
-  test('returns LinkAdd messages in chronological order according to pageOptions', async () => {
+describe("getLinkAddsByFid", () => {
+  test("returns LinkAdd messages in chronological order according to pageOptions", async () => {
     const linkAdd2 = await Factories.LinkAddMessage.create({
       data: { fid, timestamp: linkAdd.data.timestamp + 2 },
     });
@@ -149,31 +149,31 @@ describe('getLinkAddsByFid', () => {
     expect(results2).toEqual({ messages: [linkAddEndorse, linkAdd2], nextPageToken: undefined });
   });
 
-  test('returns LinkAdd messages by type', async () => {
+  test("returns LinkAdd messages by type", async () => {
     await set.merge(linkAdd);
     await set.merge(linkAddEndorse);
-    await expect(set.getLinkAddsByFid(fid, 'follow')).resolves.toEqual({
+    await expect(set.getLinkAddsByFid(fid, "follow")).resolves.toEqual({
       messages: [linkAdd],
       nextPageToken: undefined,
     });
-    await expect(set.getLinkAddsByFid(fid, 'endorse')).resolves.toEqual({
+    await expect(set.getLinkAddsByFid(fid, "endorse")).resolves.toEqual({
       messages: [linkAddEndorse],
       nextPageToken: undefined,
     });
   });
 
-  test('returns empty array if no LinkAdd exists', async () => {
+  test("returns empty array if no LinkAdd exists", async () => {
     await expect(set.getLinkAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns empty array if no LinkAdd exists, even if LinkRemove exists', async () => {
+  test("returns empty array if no LinkAdd exists, even if LinkRemove exists", async () => {
     await set.merge(linkRemove);
     await expect(set.getLinkAddsByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
-describe('getLinkRemovesByFid', () => {
-  test('returns LinkRemove if it exists', async () => {
+describe("getLinkRemovesByFid", () => {
+  test("returns LinkRemove if it exists", async () => {
     await set.merge(linkRemove);
     await set.merge(linkRemoveEndorse);
     await expect(set.getLinkRemovesByFid(fid)).resolves.toEqual({
@@ -182,18 +182,18 @@ describe('getLinkRemovesByFid', () => {
     });
   });
 
-  test('returns empty array if no LinkRemove exists', async () => {
+  test("returns empty array if no LinkRemove exists", async () => {
     await expect(set.getLinkRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns empty array if no LinkRemove exists, even if LinkAdds exists', async () => {
+  test("returns empty array if no LinkRemove exists, even if LinkAdds exists", async () => {
     await set.merge(linkAdd);
     await expect(set.getLinkRemovesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
-describe('getAllLinkMessagesByFid', () => {
-  test('returns LinkRemove if it exists', async () => {
+describe("getAllLinkMessagesByFid", () => {
+  test("returns LinkRemove if it exists", async () => {
     await set.merge(linkAdd);
     await set.merge(linkRemoveEndorse);
     await expect(set.getAllLinkMessagesByFid(fid)).resolves.toEqual({
@@ -202,18 +202,18 @@ describe('getAllLinkMessagesByFid', () => {
     });
   });
 
-  test('returns empty array if no messages exist', async () => {
+  test("returns empty array if no messages exist", async () => {
     await expect(set.getAllLinkMessagesByFid(fid)).resolves.toEqual({ messages: [], nextPageToken: undefined });
   });
 });
 
-describe('getLinksByTarget', () => {
-  test('returns empty array if no links exist', async () => {
+describe("getLinksByTarget", () => {
+  test("returns empty array if no links exist", async () => {
     const byFid = await set.getLinksByTarget(targetFid);
     expect(byFid).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test('returns links if they exist for a target in chronological order and according to pageOptions', async () => {
+  test("returns links if they exist for a target in chronological order and according to pageOptions", async () => {
     const linkSameTarget = await Factories.LinkAddMessage.create({
       data: { timestamp: linkAddEndorse.data.timestamp + 1, linkBody: { targetFid: targetFid } },
     });
@@ -240,7 +240,7 @@ describe('getLinksByTarget', () => {
     });
   });
 
-  test('returns empty array if links exist for a different target', async () => {
+  test("returns empty array if links exist for a different target", async () => {
     await set.merge(linkAdd);
 
     const unknownFid = Factories.Fid.build();
@@ -248,57 +248,57 @@ describe('getLinksByTarget', () => {
     expect(byFid).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  describe('with type', () => {
-    test('returns empty array if no links exist', async () => {
-      const byFid = await set.getLinksByTarget(targetFid, 'follow');
+  describe("with type", () => {
+    test("returns empty array if no links exist", async () => {
+      const byFid = await set.getLinksByTarget(targetFid, "follow");
       expect(byFid).toEqual({ messages: [], nextPageToken: undefined });
     });
 
-    test('returns empty array if links exist for the target with different type', async () => {
+    test("returns empty array if links exist for the target with different type", async () => {
       await set.merge(linkAddEndorse);
-      const byFid = await set.getLinksByTarget(targetFid, 'follow');
+      const byFid = await set.getLinksByTarget(targetFid, "follow");
       expect(byFid).toEqual({ messages: [], nextPageToken: undefined });
     });
 
-    test('returns empty array if links exist for the type with different target', async () => {
+    test("returns empty array if links exist for the type with different target", async () => {
       await set.merge(linkAdd);
       const unknownFid = Factories.Fid.build();
-      const byFid = await set.getLinksByTarget(unknownFid, 'follow');
+      const byFid = await set.getLinksByTarget(unknownFid, "follow");
       expect(byFid).toEqual({ messages: [], nextPageToken: undefined });
     });
 
-    test('returns links if they exist for the target and type', async () => {
+    test("returns links if they exist for the target and type", async () => {
       const linkLike2 = await Factories.LinkAddMessage.create({
         data: {
           timestamp: linkAddEndorse.data.timestamp + 1,
-          linkBody: { type: 'follow', targetFid: targetFid },
+          linkBody: { type: "follow", targetFid: targetFid },
         },
       });
       await set.merge(linkLike2);
       await set.merge(linkAdd);
       await set.merge(linkAddEndorse);
-      const results1 = await set.getLinksByTarget(targetFid, 'follow');
+      const results1 = await set.getLinksByTarget(targetFid, "follow");
       expect(results1).toEqual({ messages: [linkAdd, linkLike2], nextPageToken: undefined });
 
-      const results2 = await set.getLinksByTarget(targetFid, 'follow', {
+      const results2 = await set.getLinksByTarget(targetFid, "follow", {
         reverse: true,
         pageSize: 1,
       });
       expect(results2.messages).toEqual([linkLike2]);
 
-      const results3 = await set.getLinksByTarget(targetFid, 'follow', {
+      const results3 = await set.getLinksByTarget(targetFid, "follow", {
         reverse: true,
         pageToken: results2.nextPageToken,
       });
       expect(results3).toEqual({ messages: [linkAdd], nextPageToken: undefined });
 
-      const results4 = await set.getLinksByTarget(targetFid, 'endorse');
+      const results4 = await set.getLinksByTarget(targetFid, "endorse");
       expect(results4).toEqual({ messages: [linkAddEndorse], nextPageToken: undefined });
     });
   });
 });
 
-describe('merge', () => {
+describe("merge", () => {
   let mergeEvents: [Message | undefined, Message[]][] = [];
 
   const mergeMessageHandler = (event: MergeMessageHubEvent) => {
@@ -307,7 +307,7 @@ describe('merge', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('mergeMessage', mergeMessageHandler);
+    eventHandler.on("mergeMessage", mergeMessageHandler);
   });
 
   beforeEach(() => {
@@ -315,7 +315,7 @@ describe('merge', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('mergeMessage', mergeMessageHandler);
+    eventHandler.off("mergeMessage", mergeMessageHandler);
   });
 
   const assertLinkExists = async (message: LinkAddMessage | LinkRemoveMessage) => {
@@ -331,38 +331,38 @@ describe('merge', () => {
   const assertLinkAddWins = async (message: LinkAddMessage) => {
     await assertLinkExists(message);
     await expect(
-      set.getLinkAdd(fid, message.data.linkBody.type, message.data.linkBody.targetFid as number)
+      set.getLinkAdd(fid, message.data.linkBody.type, message.data.linkBody.targetFid as number),
     ).resolves.toEqual(message);
     await expect(set.getLinksByTarget(message.data.linkBody.targetFid as number)).resolves.toEqual({
       messages: [message],
       nextPageToken: undefined,
     });
     await expect(
-      set.getLinkRemove(fid, message.data.linkBody.type, message.data.linkBody.targetFid as number)
+      set.getLinkRemove(fid, message.data.linkBody.type, message.data.linkBody.targetFid as number),
     ).rejects.toThrow(HubError);
   };
 
   const assertLinkRemoveWins = async (message: LinkRemoveMessage) => {
     await assertLinkExists(message);
     await expect(
-      set.getLinkRemove(fid, message.data.linkBody.type, message.data.linkBody.targetFid as number)
+      set.getLinkRemove(fid, message.data.linkBody.type, message.data.linkBody.targetFid as number),
     ).resolves.toEqual(message);
     await expect(set.getLinksByTarget(message.data.linkBody.targetFid as number)).resolves.toEqual({
       messages: [],
       nextPageToken: undefined,
     });
     await expect(
-      set.getLinkAdd(fid, linkAdd.data.linkBody.type, message.data.linkBody.targetFid as number)
+      set.getLinkAdd(fid, linkAdd.data.linkBody.type, message.data.linkBody.targetFid as number),
     ).rejects.toThrow(HubError);
   };
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const message = await Factories.CastAddMessage.create();
     await expect(set.merge(message)).rejects.toThrow(HubError);
   });
 
-  describe('LinkAdd', () => {
-    test('succeeds', async () => {
+  describe("LinkAdd", () => {
+    test("succeeds", async () => {
       await expect(set.merge(linkAdd)).resolves.toBeGreaterThan(0);
 
       await assertLinkAddWins(linkAdd);
@@ -370,10 +370,10 @@ describe('merge', () => {
       expect(mergeEvents).toEqual([[linkAdd, []]]);
     });
 
-    test('fails if merged twice', async () => {
+    test("fails if merged twice", async () => {
       await expect(set.merge(linkAdd)).resolves.toBeGreaterThan(0);
       await expect(set.merge(linkAdd)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
 
       await assertLinkAddWins(linkAdd);
@@ -381,7 +381,7 @@ describe('merge', () => {
       expect(mergeEvents).toEqual([[linkAdd, []]]);
     });
 
-    describe('with a conflicting LinkAdd with different timestamps', () => {
+    describe("with a conflicting LinkAdd with different timestamps", () => {
       let linkAddLater: LinkAddMessage;
 
       beforeAll(async () => {
@@ -390,7 +390,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a later timestamp', async () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(linkAdd);
         await expect(set.merge(linkAddLater)).resolves.toBeGreaterThan(0);
 
@@ -403,10 +403,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(linkAddLater);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
 
         await assertLinkDoesNotExist(linkAdd);
@@ -414,7 +414,7 @@ describe('merge', () => {
       });
     });
 
-    describe('with a conflicting LinkAdd with identical timestamps', () => {
+    describe("with a conflicting LinkAdd with identical timestamps", () => {
       let linkAddLater: LinkAddMessage;
 
       beforeAll(async () => {
@@ -424,7 +424,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         await set.merge(linkAdd);
         await expect(set.merge(linkAddLater)).resolves.toBeGreaterThan(0);
 
@@ -437,10 +437,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with a lower hash', async () => {
+      test("fails with a lower hash", async () => {
         await set.merge(linkAddLater);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
 
         await assertLinkDoesNotExist(linkAdd);
@@ -448,8 +448,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting LinkRemove with different timestamps', () => {
-      test('succeeds with a later timestamp', async () => {
+    describe("with conflicting LinkRemove with different timestamps", () => {
+      test("succeeds with a later timestamp", async () => {
         const linkRemoveEarlier = await Factories.LinkRemoveMessage.create({
           data: { ...linkRemove.data, timestamp: linkAdd.data.timestamp - 1 },
         });
@@ -466,10 +466,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(linkRemove);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertLinkRemoveWins(linkRemove);
@@ -477,8 +477,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting LinkRemove with identical timestamps', () => {
-      test('fails if remove has a higher hash', async () => {
+    describe("with conflicting LinkRemove with identical timestamps", () => {
+      test("fails if remove has a higher hash", async () => {
         const linkRemoveLater = await Factories.LinkRemoveMessage.create({
           data: {
             ...linkRemove.data,
@@ -489,14 +489,14 @@ describe('merge', () => {
 
         await set.merge(linkRemoveLater);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertLinkRemoveWins(linkRemoveLater);
         await assertLinkDoesNotExist(linkAdd);
       });
 
-      test('fails if remove has a lower hash', async () => {
+      test("fails if remove has a lower hash", async () => {
         const linkRemoveEarlier = await Factories.LinkRemoveMessage.create({
           data: {
             ...linkRemove.data,
@@ -507,7 +507,7 @@ describe('merge', () => {
 
         await set.merge(linkRemoveEarlier);
         await expect(set.merge(linkAdd)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertLinkRemoveWins(linkRemoveEarlier);
@@ -516,8 +516,8 @@ describe('merge', () => {
     });
   });
 
-  describe('LinkRemove', () => {
-    test('succeeds', async () => {
+  describe("LinkRemove", () => {
+    test("succeeds", async () => {
       await expect(set.merge(linkRemove)).resolves.toBeGreaterThan(0);
 
       await assertLinkRemoveWins(linkRemove);
@@ -525,16 +525,16 @@ describe('merge', () => {
       expect(mergeEvents).toEqual([[linkRemove, []]]);
     });
 
-    test('fails if merged twice', async () => {
+    test("fails if merged twice", async () => {
       await expect(set.merge(linkRemove)).resolves.toBeGreaterThan(0);
       await expect(set.merge(linkRemove)).rejects.toEqual(
-        new HubError('bad_request.duplicate', 'message has already been merged')
+        new HubError("bad_request.duplicate", "message has already been merged"),
       );
 
       await assertLinkRemoveWins(linkRemove);
     });
 
-    describe('with a conflicting LinkRemove with different timestamps', () => {
+    describe("with a conflicting LinkRemove with different timestamps", () => {
       let linkRemoveLater: LinkRemoveMessage;
 
       beforeAll(async () => {
@@ -543,7 +543,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a later timestamp', async () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(linkRemove);
         await expect(set.merge(linkRemoveLater)).resolves.toBeGreaterThan(0);
 
@@ -556,10 +556,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         await set.merge(linkRemoveLater);
         await expect(set.merge(linkRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertLinkDoesNotExist(linkRemove);
@@ -567,7 +567,7 @@ describe('merge', () => {
       });
     });
 
-    describe('with a conflicting LinkRemove with identical timestamps', () => {
+    describe("with a conflicting LinkRemove with identical timestamps", () => {
       let linkRemoveLater: LinkRemoveMessage;
 
       beforeAll(async () => {
@@ -577,7 +577,7 @@ describe('merge', () => {
         });
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         await set.merge(linkRemove);
         await expect(set.merge(linkRemoveLater)).resolves.toBeGreaterThan(0);
 
@@ -590,10 +590,10 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with a lower hash', async () => {
+      test("fails with a lower hash", async () => {
         await set.merge(linkRemoveLater);
         await expect(set.merge(linkRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent remove')
+          new HubError("bad_request.conflict", "message conflicts with a more recent remove"),
         );
 
         await assertLinkDoesNotExist(linkRemove);
@@ -601,8 +601,8 @@ describe('merge', () => {
       });
     });
 
-    describe('with conflicting LinkAdd with different timestamps', () => {
-      test('succeeds with a later timestamp', async () => {
+    describe("with conflicting LinkAdd with different timestamps", () => {
+      test("succeeds with a later timestamp", async () => {
         await set.merge(linkAdd);
         await expect(set.merge(linkRemove)).resolves.toBeGreaterThan(0);
         await assertLinkRemoveWins(linkRemove);
@@ -614,7 +614,7 @@ describe('merge', () => {
         ]);
       });
 
-      test('fails with an earlier timestamp', async () => {
+      test("fails with an earlier timestamp", async () => {
         const linkAddLater = await Factories.LinkAddMessage.create({
           data: {
             ...linkRemove.data,
@@ -625,15 +625,15 @@ describe('merge', () => {
 
         await set.merge(linkAddLater);
         await expect(set.merge(linkRemove)).rejects.toEqual(
-          new HubError('bad_request.conflict', 'message conflicts with a more recent add')
+          new HubError("bad_request.conflict", "message conflicts with a more recent add"),
         );
         await assertLinkAddWins(linkAddLater);
         await assertLinkDoesNotExist(linkRemove);
       });
     });
 
-    describe('with conflicting LinkAdd with identical timestamps', () => {
-      test('succeeds with a lower hash', async () => {
+    describe("with conflicting LinkAdd with identical timestamps", () => {
+      test("succeeds with a lower hash", async () => {
         const linkAddLater = await Factories.LinkAddMessage.create({
           data: { ...linkRemove.data, type: MessageType.LINK_ADD },
           hash: bytesIncrement(linkRemove.hash)._unsafeUnwrap(),
@@ -651,7 +651,7 @@ describe('merge', () => {
         ]);
       });
 
-      test('succeeds with a higher hash', async () => {
+      test("succeeds with a higher hash", async () => {
         const linkAddEarlier = await Factories.LinkAddMessage.create({
           data: { ...linkRemove.data, type: MessageType.LINK_ADD },
           hash: bytesDecrement(linkRemove.hash)._unsafeUnwrap(),
@@ -672,7 +672,7 @@ describe('merge', () => {
   });
 });
 
-describe('revoke', () => {
+describe("revoke", () => {
   let revokedMessages: Message[] = [];
 
   const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
@@ -680,7 +680,7 @@ describe('revoke', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('revokeMessage', revokeMessageHandler);
+    eventHandler.on("revokeMessage", revokeMessageHandler);
   });
 
   beforeEach(() => {
@@ -688,17 +688,17 @@ describe('revoke', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('revokeMessage', revokeMessageHandler);
+    eventHandler.off("revokeMessage", revokeMessageHandler);
   });
 
-  test('fails with invalid message type', async () => {
+  test("fails with invalid message type", async () => {
     const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
     const result = await set.revoke(castAdd);
-    expect(result).toEqual(err(new HubError('bad_request.invalid_param', 'invalid message type')));
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "invalid message type")));
     expect(revokedMessages).toEqual([]);
   });
 
-  test('deletes all keys relating to the link', async () => {
+  test("deletes all keys relating to the link", async () => {
     await set.merge(linkAdd);
     const linkKeys: Buffer[] = [];
     for await (const [key] of db.iterator()) {
@@ -714,40 +714,40 @@ describe('revoke', () => {
     expect(linkKeysAfterRevoke.length).toEqual(2);
   });
 
-  test('succeeds with LinkAdd', async () => {
+  test("succeeds with LinkAdd", async () => {
     await expect(set.merge(linkAdd)).resolves.toBeGreaterThan(0);
     const result = await set.revoke(linkAdd);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getLinkAdd(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number)
+      set.getLinkAdd(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([linkAdd]);
   });
 
-  test('succeeds with LinkRemove', async () => {
+  test("succeeds with LinkRemove", async () => {
     await expect(set.merge(linkRemove)).resolves.toBeGreaterThan(0);
     const result = await set.revoke(linkRemove);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getLinkRemove(fid, linkRemove.data.linkBody.type, linkRemove.data.linkBody.targetFid as number)
+      set.getLinkRemove(fid, linkRemove.data.linkBody.type, linkRemove.data.linkBody.targetFid as number),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([linkRemove]);
   });
 
-  test('succeeds with unmerged message', async () => {
+  test("succeeds with unmerged message", async () => {
     const result = await set.revoke(linkAdd);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getLinkAdd(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number)
+      set.getLinkAdd(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([linkAdd]);
   });
 });
 
-describe('pruneMessages', () => {
+describe("pruneMessages", () => {
   let prunedMessages: Message[];
 
   const pruneMessageListener = (event: PruneMessageHubEvent) => {
@@ -755,7 +755,7 @@ describe('pruneMessages', () => {
   };
 
   beforeAll(() => {
-    eventHandler.on('pruneMessage', pruneMessageListener);
+    eventHandler.on("pruneMessage", pruneMessageListener);
   });
 
   beforeEach(() => {
@@ -763,7 +763,7 @@ describe('pruneMessages', () => {
   });
 
   afterAll(() => {
-    eventHandler.off('pruneMessage', pruneMessageListener);
+    eventHandler.off("pruneMessage", pruneMessageListener);
   });
 
   let add1: LinkAddMessage;
@@ -786,7 +786,7 @@ describe('pruneMessages', () => {
   const generateRemoveWithTimestamp = async (
     fid: number,
     timestamp: number,
-    addBody?: LinkBody
+    addBody?: LinkBody,
   ): Promise<LinkRemoveMessage> => {
     return Factories.LinkRemoveMessage.create({
       data: {
@@ -813,16 +813,16 @@ describe('pruneMessages', () => {
     remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.linkBody);
   });
 
-  describe('with size limit', () => {
+  describe("with size limit", () => {
     const sizePrunedStore = new LinkStore(db, eventHandler, { pruneSizeLimit: 3 });
 
-    test('no-ops when no messages have been merged', async () => {
+    test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result._unsafeUnwrap()).toEqual([]);
       expect(prunedMessages).toEqual([]);
     });
 
-    test('prunes earliest add messages', async () => {
+    test("prunes earliest add messages", async () => {
       const messages = [add1, add2, add3, add4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -839,13 +839,13 @@ describe('pruneMessages', () => {
           sizePrunedStore.getLinkAdd(
             fid,
             message.data.linkBody.type,
-            message.data.linkBody.targetFid ?? Factories.Fid.build()
+            message.data.linkBody.targetFid ?? Factories.Fid.build(),
           );
         await expect(getAdd()).rejects.toThrow(HubError);
       }
     });
 
-    test('prunes earliest remove messages', async () => {
+    test("prunes earliest remove messages", async () => {
       const messages = [remove1, remove2, remove3, remove4, remove5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -862,13 +862,13 @@ describe('pruneMessages', () => {
           sizePrunedStore.getLinkRemove(
             fid,
             message.data.linkBody.type,
-            message.data.linkBody.targetFid ?? Factories.Fid.build()
+            message.data.linkBody.targetFid ?? Factories.Fid.build(),
           );
         await expect(getRemove()).rejects.toThrow(HubError);
       }
     });
 
-    test('prunes earliest messages', async () => {
+    test("prunes earliest messages", async () => {
       const messages = [add1, remove2, add3, remove4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -881,7 +881,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([add1, remove2]);
     });
 
-    test('no-ops when adds have been removed', async () => {
+    test("no-ops when adds have been removed", async () => {
       const messages = [add1, remove1, add2, remove2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -893,7 +893,7 @@ describe('pruneMessages', () => {
       expect(prunedMessages).toEqual([]);
     });
 
-    test('fails to add messages older than the earliest message', async () => {
+    test("fails to add messages older than the earliest message", async () => {
       const messages = [add1, add2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
@@ -901,7 +901,7 @@ describe('pruneMessages', () => {
 
       // Older messages are rejected
       await expect(sizePrunedStore.merge(addOld1)).rejects.toEqual(
-        new HubError('bad_request.prunable', 'message would be pruned')
+        new HubError("bad_request.prunable", "message would be pruned"),
       );
 
       // newer messages can still be added

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Factories,
   toFarcasterTime,
@@ -7,18 +6,18 @@ import {
   Metadata,
   FarcasterNetwork,
   UserDataType,
-} from '@farcaster/hub-nodejs';
-import { ConsoleCommandInterface } from './console.js';
+} from "@farcaster/hub-nodejs";
+import { ConsoleCommandInterface } from "./console.js";
 
 export class WarpcastTestCommand implements ConsoleCommandInterface {
   constructor(private readonly rpcClient: HubRpcClient, private readonly adminClient: AdminRpcClient) {}
 
   commandName(): string {
-    return 'warpcast';
+    return "warpcast";
   }
 
   shortHelp(): string {
-    return 'Setup a hub instance with Fids for test with the warpcast client';
+    return "Setup a hub instance with Fids for test with the warpcast client";
   }
 
   help(): string {
@@ -34,7 +33,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         await this.highVolumeActions();
         await this.revokeSignerWithData();
 
-        return 'Done';
+        return "Done";
       },
     };
   }
@@ -52,7 +51,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       {
         data: { fid, network, signerAddBody: { signer: signerKey } },
       },
-      { transient: { signer: custodySigner } }
+      { transient: { signer: custodySigner } },
     );
     const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
 
@@ -69,19 +68,19 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
     for (let i = 0; i < 100; i++) {
       const castAdd = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
 
       const castAddReaction = await Factories.ReactionAddMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const _castAddReactionResult = await this.rpcClient.submitMessage(castAddReaction, new Metadata());
 
       const userDataAdd = await Factories.UserDataAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const _userDataAddResult = await this.rpcClient.submitMessage(userDataAdd, new Metadata());
     }
@@ -95,13 +94,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
         {
           data: { fid, network, signerAddBody: { signer: signerKey } },
         },
-        { transient: { signer: custodySigner } }
+        { transient: { signer: custodySigner } },
       );
       const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
 
       const verification = await Factories.VerificationAddEthAddressMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const _verificationResult = await this.rpcClient.submitMessage(verification, new Metadata());
     }
@@ -109,7 +108,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
     // And then revoke the signer
     const signerRevoke = await Factories.SignerRemoveMessage.create(
       { data: { fid, network, signerAddBody: { signer: signerKey } } },
-      { transient: { signer: custodySigner } }
+      { transient: { signer: custodySigner } },
     );
     const _msgResult = await this.rpcClient.submitMessage(signerRevoke, new Metadata());
   }
@@ -125,13 +124,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       for (let i = 0; i < 10_000; i++) {
         const castAdd = await Factories.CastAddMessage.create(
           { data: { fid, network } },
-          { transient: { signer: signer } }
+          { transient: { signer: signer } },
         );
         const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
 
         const castAddReaction = await Factories.ReactionAddMessage.create(
           { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-          { transient: { signer: signer } }
+          { transient: { signer: signer } },
         );
         const _castAddReactionResult = await this.rpcClient.submitMessage(castAddReaction, new Metadata());
       }
@@ -146,13 +145,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
           {
             data: { fid, network, signerAddBody: { signer: signerKey } },
           },
-          { transient: { signer: custodySigner } }
+          { transient: { signer: custodySigner } },
         );
         const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
 
         const verification = await Factories.VerificationAddEthAddressMessage.create(
           { data: { fid, network } },
-          { transient: { signer: signer } }
+          { transient: { signer: signer } },
         );
         const _verificationResult = await this.rpcClient.submitMessage(verification, new Metadata());
       }
@@ -163,7 +162,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       for (let i = 0; i < 100; i++) {
         const userData = await Factories.UserDataAddMessage.create(
           { data: { fid, network } },
-          { transient: { signer: signer } }
+          { transient: { signer: signer } },
         );
         const _userDataResult = await this.rpcClient.submitMessage(userData, new Metadata());
       }
@@ -187,13 +186,13 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castAdd = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
 
       const castRemove = await Factories.CastRemoveMessage.create(
         { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const _castRemoveResult = await this.rpcClient.submitMessage(castRemove, new Metadata());
     }
@@ -204,12 +203,12 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castAdd = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const castRemove = await Factories.CastRemoveMessage.create(
         { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       // remove first
@@ -223,11 +222,11 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castParent = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const castChild = await Factories.CastAddMessage.create(
         { data: { fid, network, castAddBody: { parentCastId: { fid, hash: castParent.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const _castChildResult = await this.rpcClient.submitMessage(castChild, new Metadata());
@@ -239,12 +238,12 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castParent = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const castChild = await Factories.CastAddMessage.create(
         { data: { fid, network, castAddBody: { parentCastId: { fid, hash: castParent.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const _castChildResult = await this.rpcClient.submitMessage(castChild, new Metadata());
@@ -257,17 +256,17 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castParent = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const castRemove = await Factories.CastRemoveMessage.create(
         { data: { fid, network, castRemoveBody: { targetHash: castParent.hash } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const castChild = await Factories.CastAddMessage.create(
         { data: { fid, network, castAddBody: { parentCastId: { fid, hash: castParent.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const _castAddResult = await this.rpcClient.submitMessage(castParent, new Metadata());
@@ -281,17 +280,17 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castAdd = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const reactionAdd = await Factories.ReactionAddMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const reactionRemove = await Factories.ReactionRemoveMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
@@ -305,17 +304,17 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castAdd = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const reactionAdd = await Factories.ReactionAddMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const reactionRemove = await Factories.ReactionRemoveMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
@@ -329,17 +328,17 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const castAdd = await Factories.CastAddMessage.create(
         { data: { fid, network } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const reactionAdd = await Factories.ReactionAddMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const reactionRemove = await Factories.ReactionRemoveMessage.create(
         { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const _castAddResult = await this.rpcClient.submitMessage(castAdd, new Metadata());
@@ -356,7 +355,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const userDataT = await Factories.UserDataAddMessage.create(
         { data: { timestamp, fid, network, userDataBody: { type: UserDataType.BIO } } },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
       const userDataT1 = await Factories.UserDataAddMessage.create(
         {
@@ -367,7 +366,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
             userDataBody: { type: UserDataType.BIO },
           },
         },
-        { transient: { signer: signer } }
+        { transient: { signer: signer } },
       );
 
       const _userDataT1Result = await this.rpcClient.submitMessage(userDataT1, new Metadata());
@@ -381,7 +380,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const verificationRemove = await Factories.VerificationRemoveMessage.create(
         { data: { fid, network, verificationRemoveBody: { address: custodySignerKey } } },
-        { transient: { signer } }
+        { transient: { signer } },
       );
 
       const _verificationRemoveResult = await this.rpcClient.submitMessage(verificationRemove, new Metadata());
@@ -393,7 +392,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
 
       const verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
         { data: { fid, network } },
-        { transient: { signer } }
+        { transient: { signer } },
       );
       const verificationRemove = await Factories.VerificationRemoveMessage.create(
         {
@@ -403,7 +402,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
             verificationRemoveBody: { address: verificationAdd.data.verificationAddEthAddressBody.address },
           },
         },
-        { transient: { signer } }
+        { transient: { signer } },
       );
 
       const _verificationRemoveResult = await this.rpcClient.submitMessage(verificationRemove, new Metadata());
