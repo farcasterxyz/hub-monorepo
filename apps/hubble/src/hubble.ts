@@ -16,6 +16,8 @@ import {
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
   UserNameProof,
+  AckMessageBody,
+  NetworkLatencyMessage,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
@@ -62,6 +64,7 @@ import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJ
 import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
+import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "sync" | "fname-registry";
 
@@ -184,6 +187,9 @@ export interface HubOptions {
 
   /** Cron schedule for prune events job */
   pruneEventsJobCron?: string;
+
+  /** Periodically send network latency ping messages to the gossip network and log metrics */
+  gossipMetricsEnabled?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -222,7 +228,7 @@ export class Hub implements HubInterface {
   constructor(options: HubOptions) {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.options.network);
+    this.gossipNode = new GossipNode(this.rocksDB, this.options.network, this.options.gossipMetricsEnabled);
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
@@ -550,6 +556,8 @@ export class Hub implements HubInterface {
       return Promise.resolve(err(peerIdResult.error));
     }
 
+    this.gossipNode.recordMessageReceipt(gossipMessage);
+
     if (gossipMessage.message) {
       const message = gossipMessage.message;
 
@@ -564,12 +572,18 @@ export class Hub implements HubInterface {
       }
 
       // Merge the message
+      const submitStartTimestamp = Date.now();
       const result = await this.submitMessage(message, "gossip");
+      if (result.isOk()) {
+        const submitEndTimestamp = Date.now();
+        this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
+      }
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
-      if (peerIdResult.isOk()) {
-        await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
-      }
+      await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
+      return ok(undefined);
+    } else if (gossipMessage.networkLatencyMessage) {
+      await this.handleNetworkLatencyMessage(gossipMessage.networkLatencyMessage);
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -637,6 +651,35 @@ export class Hub implements HubInterface {
       if (syncResult.isErr()) {
         log.error({ error: syncResult.error, peerId }, "failed to sync with new peer");
       }
+    }
+  }
+
+  private async handleNetworkLatencyMessage(message: NetworkLatencyMessage) {
+    if (!this.gossipNode.peerId) {
+      log.error("gossipNode has no peerId");
+      return;
+    }
+    // Respond to ping message with an ack message
+    if (message.ackMessage) {
+      this.gossipNode.recordLatencyAckMessageReceipt(message.ackMessage);
+    } else if (message.pingMessage) {
+      const pingMessage = message.pingMessage;
+      const ackMessage = AckMessageBody.create({
+        pingOriginPeerId: pingMessage.pingOriginPeerId,
+        ackOriginPeerId: this.gossipNode.peerId.toBytes(),
+        pingTimestamp: pingMessage.pingTimestamp,
+        ackTimestamp: Date.now(),
+      });
+      const networkLatencyMessage = NetworkLatencyMessage.create({
+        ackMessage,
+      });
+      const ackGossipMessage = GossipMessage.create({
+        networkLatencyMessage,
+        topics: [this.gossipNode.primaryTopic()],
+        peerId: this.gossipNode.peerId.toBytes(),
+        version: GOSSIP_PROTOCOL_VERSION,
+      });
+      await this.gossipNode.publish(ackGossipMessage);
     }
   }
 

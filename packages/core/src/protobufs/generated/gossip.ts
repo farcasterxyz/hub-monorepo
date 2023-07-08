@@ -1,7 +1,8 @@
 /* eslint-disable */
-import _m0 from 'protobufjs/minimal';
-import { IdRegistryEvent } from './id_registry_event';
-import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON, Message } from './message';
+import Long from "long";
+import _m0 from "protobufjs/minimal";
+import { IdRegistryEvent } from "./id_registry_event";
+import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON, Message } from "./message";
 
 export enum GossipVersion {
   V1 = 0,
@@ -11,24 +12,24 @@ export enum GossipVersion {
 export function gossipVersionFromJSON(object: any): GossipVersion {
   switch (object) {
     case 0:
-    case 'GOSSIP_VERSION_V1':
+    case "GOSSIP_VERSION_V1":
       return GossipVersion.V1;
     case 1:
-    case 'GOSSIP_VERSION_V1_1':
+    case "GOSSIP_VERSION_V1_1":
       return GossipVersion.V1_1;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum GossipVersion');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum GossipVersion");
   }
 }
 
 export function gossipVersionToJSON(object: GossipVersion): string {
   switch (object) {
     case GossipVersion.V1:
-      return 'GOSSIP_VERSION_V1';
+      return "GOSSIP_VERSION_V1";
     case GossipVersion.V1_1:
-      return 'GOSSIP_VERSION_V1_1';
+      return "GOSSIP_VERSION_V1_1";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum GossipVersion');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum GossipVersion");
   }
 }
 
@@ -49,22 +50,40 @@ export interface ContactInfoContent {
   appVersion: string;
 }
 
+export interface PingMessageBody {
+  pingOriginPeerId: Uint8Array;
+  pingTimestamp: number;
+}
+
+export interface AckMessageBody {
+  pingOriginPeerId: Uint8Array;
+  ackOriginPeerId: Uint8Array;
+  pingTimestamp: number;
+  ackTimestamp: number;
+}
+
+export interface NetworkLatencyMessage {
+  pingMessage?: PingMessageBody | undefined;
+  ackMessage?: AckMessageBody | undefined;
+}
+
 export interface GossipMessage {
   message?: Message | undefined;
   idRegistryEvent?: IdRegistryEvent | undefined;
   contactInfoContent?: ContactInfoContent | undefined;
+  networkLatencyMessage?: NetworkLatencyMessage | undefined;
   topics: string[];
   peerId: Uint8Array;
   version: GossipVersion;
 }
 
 function createBaseGossipAddressInfo(): GossipAddressInfo {
-  return { address: '', family: 0, port: 0, dnsName: '' };
+  return { address: "", family: 0, port: 0, dnsName: "" };
 }
 
 export const GossipAddressInfo = {
   encode(message: GossipAddressInfo, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.address !== '') {
+    if (message.address !== "") {
       writer.uint32(10).string(message.address);
     }
     if (message.family !== 0) {
@@ -73,7 +92,7 @@ export const GossipAddressInfo = {
     if (message.port !== 0) {
       writer.uint32(24).uint32(message.port);
     }
-    if (message.dnsName !== '') {
+    if (message.dnsName !== "") {
       writer.uint32(34).string(message.dnsName);
     }
     return writer;
@@ -125,10 +144,10 @@ export const GossipAddressInfo = {
 
   fromJSON(object: any): GossipAddressInfo {
     return {
-      address: isSet(object.address) ? String(object.address) : '',
+      address: isSet(object.address) ? String(object.address) : "",
       family: isSet(object.family) ? Number(object.family) : 0,
       port: isSet(object.port) ? Number(object.port) : 0,
-      dnsName: isSet(object.dnsName) ? String(object.dnsName) : '',
+      dnsName: isSet(object.dnsName) ? String(object.dnsName) : "",
     };
   },
 
@@ -147,10 +166,10 @@ export const GossipAddressInfo = {
 
   fromPartial<I extends Exact<DeepPartial<GossipAddressInfo>, I>>(object: I): GossipAddressInfo {
     const message = createBaseGossipAddressInfo();
-    message.address = object.address ?? '';
+    message.address = object.address ?? "";
     message.family = object.family ?? 0;
     message.port = object.port ?? 0;
-    message.dnsName = object.dnsName ?? '';
+    message.dnsName = object.dnsName ?? "";
     return message;
   },
 };
@@ -161,9 +180,9 @@ function createBaseContactInfoContent(): ContactInfoContent {
     rpcAddress: undefined,
     excludedHashes: [],
     count: 0,
-    hubVersion: '',
+    hubVersion: "",
     network: 0,
-    appVersion: '',
+    appVersion: "",
   };
 }
 
@@ -181,13 +200,13 @@ export const ContactInfoContent = {
     if (message.count !== 0) {
       writer.uint32(32).uint32(message.count);
     }
-    if (message.hubVersion !== '') {
+    if (message.hubVersion !== "") {
       writer.uint32(42).string(message.hubVersion);
     }
     if (message.network !== 0) {
       writer.uint32(48).int32(message.network);
     }
-    if (message.appVersion !== '') {
+    if (message.appVersion !== "") {
       writer.uint32(58).string(message.appVersion);
     }
     return writer;
@@ -264,9 +283,9 @@ export const ContactInfoContent = {
       rpcAddress: isSet(object.rpcAddress) ? GossipAddressInfo.fromJSON(object.rpcAddress) : undefined,
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       count: isSet(object.count) ? Number(object.count) : 0,
-      hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : '',
+      hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : "",
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
-      appVersion: isSet(object.appVersion) ? String(object.appVersion) : '',
+      appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
     };
   },
 
@@ -294,19 +313,271 @@ export const ContactInfoContent = {
 
   fromPartial<I extends Exact<DeepPartial<ContactInfoContent>, I>>(object: I): ContactInfoContent {
     const message = createBaseContactInfoContent();
-    message.gossipAddress =
-      object.gossipAddress !== undefined && object.gossipAddress !== null
-        ? GossipAddressInfo.fromPartial(object.gossipAddress)
-        : undefined;
-    message.rpcAddress =
-      object.rpcAddress !== undefined && object.rpcAddress !== null
-        ? GossipAddressInfo.fromPartial(object.rpcAddress)
-        : undefined;
+    message.gossipAddress = (object.gossipAddress !== undefined && object.gossipAddress !== null)
+      ? GossipAddressInfo.fromPartial(object.gossipAddress)
+      : undefined;
+    message.rpcAddress = (object.rpcAddress !== undefined && object.rpcAddress !== null)
+      ? GossipAddressInfo.fromPartial(object.rpcAddress)
+      : undefined;
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.count = object.count ?? 0;
-    message.hubVersion = object.hubVersion ?? '';
+    message.hubVersion = object.hubVersion ?? "";
     message.network = object.network ?? 0;
-    message.appVersion = object.appVersion ?? '';
+    message.appVersion = object.appVersion ?? "";
+    return message;
+  },
+};
+
+function createBasePingMessageBody(): PingMessageBody {
+  return { pingOriginPeerId: new Uint8Array(), pingTimestamp: 0 };
+}
+
+export const PingMessageBody = {
+  encode(message: PingMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pingOriginPeerId.length !== 0) {
+      writer.uint32(10).bytes(message.pingOriginPeerId);
+    }
+    if (message.pingTimestamp !== 0) {
+      writer.uint32(16).uint64(message.pingTimestamp);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): PingMessageBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePingMessageBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.pingOriginPeerId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pingTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PingMessageBody {
+    return {
+      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(),
+      pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
+    };
+  },
+
+  toJSON(message: PingMessageBody): unknown {
+    const obj: any = {};
+    message.pingOriginPeerId !== undefined &&
+      (obj.pingOriginPeerId = base64FromBytes(
+        message.pingOriginPeerId !== undefined ? message.pingOriginPeerId : new Uint8Array(),
+      ));
+    message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PingMessageBody>, I>>(base?: I): PingMessageBody {
+    return PingMessageBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PingMessageBody>, I>>(object: I): PingMessageBody {
+    const message = createBasePingMessageBody();
+    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array();
+    message.pingTimestamp = object.pingTimestamp ?? 0;
+    return message;
+  },
+};
+
+function createBaseAckMessageBody(): AckMessageBody {
+  return { pingOriginPeerId: new Uint8Array(), ackOriginPeerId: new Uint8Array(), pingTimestamp: 0, ackTimestamp: 0 };
+}
+
+export const AckMessageBody = {
+  encode(message: AckMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pingOriginPeerId.length !== 0) {
+      writer.uint32(10).bytes(message.pingOriginPeerId);
+    }
+    if (message.ackOriginPeerId.length !== 0) {
+      writer.uint32(18).bytes(message.ackOriginPeerId);
+    }
+    if (message.pingTimestamp !== 0) {
+      writer.uint32(24).uint64(message.pingTimestamp);
+    }
+    if (message.ackTimestamp !== 0) {
+      writer.uint32(32).uint64(message.ackTimestamp);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): AckMessageBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAckMessageBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.pingOriginPeerId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.ackOriginPeerId = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.pingTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.ackTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AckMessageBody {
+    return {
+      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(),
+      ackOriginPeerId: isSet(object.ackOriginPeerId) ? bytesFromBase64(object.ackOriginPeerId) : new Uint8Array(),
+      pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
+      ackTimestamp: isSet(object.ackTimestamp) ? Number(object.ackTimestamp) : 0,
+    };
+  },
+
+  toJSON(message: AckMessageBody): unknown {
+    const obj: any = {};
+    message.pingOriginPeerId !== undefined &&
+      (obj.pingOriginPeerId = base64FromBytes(
+        message.pingOriginPeerId !== undefined ? message.pingOriginPeerId : new Uint8Array(),
+      ));
+    message.ackOriginPeerId !== undefined &&
+      (obj.ackOriginPeerId = base64FromBytes(
+        message.ackOriginPeerId !== undefined ? message.ackOriginPeerId : new Uint8Array(),
+      ));
+    message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
+    message.ackTimestamp !== undefined && (obj.ackTimestamp = Math.round(message.ackTimestamp));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AckMessageBody>, I>>(base?: I): AckMessageBody {
+    return AckMessageBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<AckMessageBody>, I>>(object: I): AckMessageBody {
+    const message = createBaseAckMessageBody();
+    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array();
+    message.ackOriginPeerId = object.ackOriginPeerId ?? new Uint8Array();
+    message.pingTimestamp = object.pingTimestamp ?? 0;
+    message.ackTimestamp = object.ackTimestamp ?? 0;
+    return message;
+  },
+};
+
+function createBaseNetworkLatencyMessage(): NetworkLatencyMessage {
+  return { pingMessage: undefined, ackMessage: undefined };
+}
+
+export const NetworkLatencyMessage = {
+  encode(message: NetworkLatencyMessage, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pingMessage !== undefined) {
+      PingMessageBody.encode(message.pingMessage, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.ackMessage !== undefined) {
+      AckMessageBody.encode(message.ackMessage, writer.uint32(26).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): NetworkLatencyMessage {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseNetworkLatencyMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.pingMessage = PingMessageBody.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.ackMessage = AckMessageBody.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): NetworkLatencyMessage {
+    return {
+      pingMessage: isSet(object.pingMessage) ? PingMessageBody.fromJSON(object.pingMessage) : undefined,
+      ackMessage: isSet(object.ackMessage) ? AckMessageBody.fromJSON(object.ackMessage) : undefined,
+    };
+  },
+
+  toJSON(message: NetworkLatencyMessage): unknown {
+    const obj: any = {};
+    message.pingMessage !== undefined &&
+      (obj.pingMessage = message.pingMessage ? PingMessageBody.toJSON(message.pingMessage) : undefined);
+    message.ackMessage !== undefined &&
+      (obj.ackMessage = message.ackMessage ? AckMessageBody.toJSON(message.ackMessage) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<NetworkLatencyMessage>, I>>(base?: I): NetworkLatencyMessage {
+    return NetworkLatencyMessage.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<NetworkLatencyMessage>, I>>(object: I): NetworkLatencyMessage {
+    const message = createBaseNetworkLatencyMessage();
+    message.pingMessage = (object.pingMessage !== undefined && object.pingMessage !== null)
+      ? PingMessageBody.fromPartial(object.pingMessage)
+      : undefined;
+    message.ackMessage = (object.ackMessage !== undefined && object.ackMessage !== null)
+      ? AckMessageBody.fromPartial(object.ackMessage)
+      : undefined;
     return message;
   },
 };
@@ -316,6 +587,7 @@ function createBaseGossipMessage(): GossipMessage {
     message: undefined,
     idRegistryEvent: undefined,
     contactInfoContent: undefined,
+    networkLatencyMessage: undefined,
     topics: [],
     peerId: new Uint8Array(),
     version: 0,
@@ -332,6 +604,9 @@ export const GossipMessage = {
     }
     if (message.contactInfoContent !== undefined) {
       ContactInfoContent.encode(message.contactInfoContent, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.networkLatencyMessage !== undefined) {
+      NetworkLatencyMessage.encode(message.networkLatencyMessage, writer.uint32(58).fork()).ldelim();
     }
     for (const v of message.topics) {
       writer.uint32(34).string(v!);
@@ -373,6 +648,13 @@ export const GossipMessage = {
 
           message.contactInfoContent = ContactInfoContent.decode(reader, reader.uint32());
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.networkLatencyMessage = NetworkLatencyMessage.decode(reader, reader.uint32());
+          continue;
         case 4:
           if (tag != 34) {
             break;
@@ -410,6 +692,9 @@ export const GossipMessage = {
       contactInfoContent: isSet(object.contactInfoContent)
         ? ContactInfoContent.fromJSON(object.contactInfoContent)
         : undefined,
+      networkLatencyMessage: isSet(object.networkLatencyMessage)
+        ? NetworkLatencyMessage.fromJSON(object.networkLatencyMessage)
+        : undefined,
       topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => String(e)) : [],
       peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
       version: isSet(object.version) ? gossipVersionFromJSON(object.version) : 0,
@@ -421,10 +706,12 @@ export const GossipMessage = {
     message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
     message.idRegistryEvent !== undefined &&
       (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
-    message.contactInfoContent !== undefined &&
-      (obj.contactInfoContent = message.contactInfoContent
-        ? ContactInfoContent.toJSON(message.contactInfoContent)
-        : undefined);
+    message.contactInfoContent !== undefined && (obj.contactInfoContent = message.contactInfoContent
+      ? ContactInfoContent.toJSON(message.contactInfoContent)
+      : undefined);
+    message.networkLatencyMessage !== undefined && (obj.networkLatencyMessage = message.networkLatencyMessage
+      ? NetworkLatencyMessage.toJSON(message.networkLatencyMessage)
+      : undefined);
     if (message.topics) {
       obj.topics = message.topics.map((e) => e);
     } else {
@@ -442,15 +729,18 @@ export const GossipMessage = {
 
   fromPartial<I extends Exact<DeepPartial<GossipMessage>, I>>(object: I): GossipMessage {
     const message = createBaseGossipMessage();
-    message.message =
-      object.message !== undefined && object.message !== null ? Message.fromPartial(object.message) : undefined;
-    message.idRegistryEvent =
-      object.idRegistryEvent !== undefined && object.idRegistryEvent !== null
-        ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
-        : undefined;
-    message.contactInfoContent =
-      object.contactInfoContent !== undefined && object.contactInfoContent !== null
-        ? ContactInfoContent.fromPartial(object.contactInfoContent)
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
+      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
+      : undefined;
+    message.contactInfoContent = (object.contactInfoContent !== undefined && object.contactInfoContent !== null)
+      ? ContactInfoContent.fromPartial(object.contactInfoContent)
+      : undefined;
+    message.networkLatencyMessage =
+      (object.networkLatencyMessage !== undefined && object.networkLatencyMessage !== null)
+        ? NetworkLatencyMessage.fromPartial(object.networkLatencyMessage)
         : undefined;
     message.topics = object.topics?.map((e) => e) || [];
     message.peerId = object.peerId ?? new Uint8Array();
@@ -463,24 +753,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -493,32 +783,38 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(''));
+    return tsProtoGlobalThis.btoa(bin.join(""));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function longToNumber(long: Long): number {
+  if (long.gt(Number.MAX_SAFE_INTEGER)) {
+    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  return long.toNumber();
+}
+
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

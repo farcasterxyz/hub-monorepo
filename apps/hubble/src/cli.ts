@@ -94,6 +94,7 @@ app
   .option("--commit-lock-max-pending <number>", "Commit lock max pending jobs (default: 1000)", parseNumber)
   .option("-i, --id <filepath>", "Path to the PeerId file")
   .option("-n --network <network>", "Farcaster network ID", parseNetwork)
+  .option("--gossip-metrics-enabled", "Enable gossip network tracing and metrics. (default: disabled)")
   .option("--process-file-prefix <prefix>", 'Prefix for file to which hub process number is written. (default: "")')
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
@@ -325,7 +326,8 @@ app
       commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
-      testUsers,
+      testUsers: testUsers,
+      gossipMetricsEnabled: cliOptions.gossipMetricsEnabled ?? false,
     };
 
     const hubResult = Result.fromThrowable(
