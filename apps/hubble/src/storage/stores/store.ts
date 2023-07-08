@@ -475,7 +475,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
-  private async getMergeConflicts(message: TAdd | TRemove): HubAsyncResult<(TAdd | TRemove)[]> {
+  protected async getMergeConflicts(message: TAdd | TRemove): HubAsyncResult<(TAdd | TRemove)[]> {
     const validateResult = await (this._isAddType(message) ? this.validateAdd(message) : this.validateRemove(message));
 
     if (validateResult.isErr()) {

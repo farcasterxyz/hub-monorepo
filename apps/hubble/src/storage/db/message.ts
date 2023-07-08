@@ -12,6 +12,10 @@ export const makeFidKey = (fid: number): Buffer => {
   return buffer;
 };
 
+export const readFidKey = (buffer: Buffer): number => {
+  return buffer.readUInt32BE(0);
+};
+
 /** <user prefix byte, fid> */
 export const makeUserKey = (fid: number): Buffer => {
   return Buffer.concat([Buffer.from([RootPrefix.User]), makeFidKey(fid)]);
@@ -93,6 +97,10 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
 
   if (type === MessageType.LINK_ADD || type === MessageType.LINK_REMOVE) {
     return UserPostfix.LinkMessage;
+  }
+
+  if (type === MessageType.USERNAME_PROOF) {
+    return UserPostfix.UsernameProofMessage;
   }
 
   throw new Error("invalid type");

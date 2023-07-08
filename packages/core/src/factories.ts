@@ -560,7 +560,7 @@ const UsernameProofMessageFactory = Factory.define<protobufs.UsernameProofMessag
     });
 
     return MessageFactory.build(
-      { data: UserDataAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { data: UsernameProofDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
       { transient: transientParams },
     ) as protobufs.UsernameProofMessage;
   },
