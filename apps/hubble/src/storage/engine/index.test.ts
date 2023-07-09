@@ -1,10 +1,14 @@
 import {
+  bytesToHexString,
   bytesToUtf8String,
   CastAddMessage,
   CastId,
   CastRemoveMessage,
   Factories,
   FarcasterNetwork,
+  fromFarcasterTime,
+  getFarcasterTime,
+  hexStringToBytes,
   HubError,
   HubEvent,
   HubEventType,
@@ -14,6 +18,7 @@ import {
   MergeMessageHubEvent,
   Message,
   MessageData,
+  MessageType,
   NameRegistryEvent,
   NameRegistryEventType,
   PruneMessageHubEvent,
@@ -25,6 +30,8 @@ import {
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
+  UserNameType,
+  utf8StringToBytes,
   VerificationAddEthAddressMessage,
 } from "@farcaster/hub-nodejs";
 import { err, Ok, ok } from "neverthrow";
@@ -37,10 +44,12 @@ import { StoreEvents } from "../stores/storeEventHandler.js";
 import { makeVerificationEthAddressClaim } from "@farcaster/core";
 import { setReferenceDateForTest } from "../../utils/versions.js";
 import { getUserNameProof } from "../db/nameRegistryEvent.js";
+import { publicClient } from "../../test/utils.js";
+import { jest } from "@jest/globals";
 
 const db = jestRocksDB("protobufs.engine.test");
 const network = FarcasterNetwork.TESTNET;
-const engine = new Engine(db, network);
+const engine = new Engine(db, network, undefined, publicClient);
 
 // init signer store for checking state changes from engine
 const signerStore = new SignerStore(db, engine.eventHandler);
@@ -442,6 +451,105 @@ describe("mergeMessage", () => {
     );
     await mainnetEngine.stop();
   });
+
+  describe("UsernameProof messages", () => {
+    const randomEthAddress = bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
+    beforeEach(async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeMessage(signerAdd);
+    });
+
+    afterEach(async () => {
+      jest.restoreAllMocks();
+    });
+
+    const createProof = async (name: string, timestamp?: number | null, owner?: string | null) => {
+      const ts = timestamp ?? getFarcasterTime()._unsafeUnwrap();
+      const ownerAsBytes = owner ? hexStringToBytes(owner)._unsafeUnwrap() : Factories.EthAddress.build();
+      return await Factories.UsernameProofMessage.create(
+        {
+          data: {
+            fid,
+            usernameProofBody: Factories.UserNameProof.build({
+              name: utf8StringToBytes(name)._unsafeUnwrap(),
+              fid,
+              owner: ownerAsBytes,
+              timestamp: fromFarcasterTime(ts)._unsafeUnwrap(),
+              type: UserNameType.USERNAME_TYPE_ENS_L1,
+            }),
+            timestamp: ts,
+            type: MessageType.USERNAME_PROOF,
+          },
+        },
+        { transient: { signer } },
+      );
+    };
+
+    test("fails when not a valid ens name", async () => {
+      const result = await engine.mergeMessage(await createProof("no_dot_eth"));
+      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+      expect(result._unsafeUnwrapErr().message).toMatch("invalid ens name");
+    });
+    test("fails gracefully when resolving throws an error", async () => {
+      const result = await engine.mergeMessage(await createProof("test.eth"));
+      expect(result).toMatchObject(err({ errCode: "unavailable.network_failure" }));
+      expect(result._unsafeUnwrapErr().message).toMatch("failed to resolve ens name");
+    });
+    test("fails gracefully when resolving an unregistered name", async () => {
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(null);
+      });
+      const result = await engine.mergeMessage(await createProof("akjsdhkhaasd.eth"));
+      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+      expect(result._unsafeUnwrapErr().message).toMatch("no valid address for akjsdhkhaasd.eth");
+    });
+    test("fails when resolved address does not match proof", async () => {
+      const message = await createProof("test.eth");
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(randomEthAddress);
+      });
+      const result = await engine.mergeMessage(message);
+      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+      expect(result._unsafeUnwrapErr().message).toMatch(`resolved address ${randomEthAddress} does not match proof`);
+    });
+    test("fails when resolved address does not match custody address or verification address", async () => {
+      await engine.mergeMessage(verificationAdd);
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(randomEthAddress);
+      });
+      const message = await createProof("test.eth", null, randomEthAddress);
+      const result = await engine.mergeMessage(message);
+      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+      expect(result._unsafeUnwrapErr().message).toMatch("ens name does not belong to fid");
+    });
+    test("fails when proof timestamp does not match message timestamp", async () => {});
+    test("succeeds for valid proof for custody address", async () => {
+      const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(custodyAddress);
+      });
+      const message = await createProof("test.eth", null, custodyAddress);
+      const result = await engine.mergeMessage(message);
+      expect(result.isOk()).toBeTruthy();
+    });
+    test("succeeds for valid proof for verified eth address", async () => {
+      await engine.mergeMessage(verificationAdd);
+      const verificationAddress = bytesToHexString(
+        verificationAdd.data.verificationAddEthAddressBody.address,
+      )._unsafeUnwrap();
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(verificationAddress);
+      });
+      const message = await createProof("test.eth", null, verificationAddress);
+      const result = await engine.mergeMessage(message);
+      expect(result.isOk()).toBeTruthy();
+    });
+  });
+});
+
+describe("validateOrRevokeMessage", () => {
+  test("revokes an ens message when ens is no longer valid", async () => {});
+  test("does not revoke a message when address resolution temporarily fails", async () => {});
 });
 
 describe("mergeMessages", () => {

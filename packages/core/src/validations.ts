@@ -221,6 +221,8 @@ export const validateMessageData = async <T extends protobufs.MessageData>(data:
     );
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
+  } else if (validType.value === protobufs.MessageType.USERNAME_PROOF && !!data.usernameProofBody) {
+    bodyResult = validateUsernameProofBody(data.usernameProofBody);
   } else {
     return err(new HubError("bad_request.invalid_param", "bodyType is invalid"));
   }
@@ -514,6 +516,10 @@ export const validateVerificationRemoveBody = (
   body: protobufs.VerificationRemoveBody,
 ): HubResult<protobufs.VerificationRemoveBody> => {
   return validateEthAddress(body.address).map(() => body);
+};
+
+export const validateUsernameProofBody = (body: protobufs.UserNameProof): HubResult<protobufs.UserNameProof> => {
+  return ok(body);
 };
 
 export const validateSignerAddBody = (body: protobufs.SignerAddBody): HubResult<protobufs.SignerAddBody> => {

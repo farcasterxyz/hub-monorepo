@@ -66,6 +66,8 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import packageJson from "./package.json" assert { type: "json" };
+import { createPublicClient, http } from "viem";
+import { mainnet } from "viem/chains";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "sync" | "fname-registry";
 
@@ -261,7 +263,13 @@ export class Hub implements HubInterface {
       lockMaxPending: options.commitLockMaxPending,
       lockTimeout: options.commitLockTimeout,
     });
-    this.engine = new Engine(this.rocksDB, options.network, eventHandler);
+    const publicClient = createPublicClient({
+      chain: mainnet,
+      // TODO: This should be the mainnet rpc url (ENS resolution is against mainnet)
+      transport: http(options.ethRpcUrl, { retryCount: 2 }),
+    });
+
+    this.engine = new Engine(this.rocksDB, options.network, eventHandler, publicClient);
     this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider);
 
     this.rpcServer = new Server(
