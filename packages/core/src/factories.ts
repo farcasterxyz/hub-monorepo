@@ -5,11 +5,12 @@ import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "@noble/hashes/utils";
 import * as protobufs from "./protobufs";
-import { bytesToHexString } from "./bytes";
+import { bytesToHexString, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, ViemLocalEip712Signer, Signer } from "./signers";
-import { getFarcasterTime } from "./time";
+import { getFarcasterTime, toFarcasterTime } from "./time";
 import { VerificationEthAddressClaim } from "./verifications";
 import { LocalAccount } from "viem";
+import { UserNameType } from "./protobufs";
 
 /** Scalars */
 
@@ -56,6 +57,11 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
   }
 
   return bytes;
+});
+
+const EnsNameFactory = Factory.define<Uint8Array>(() => {
+  const fname = FnameFactory.build();
+  return utf8StringToBytes(bytesToUtf8String(fname)._unsafeUnwrap().concat(".eth"))._unsafeUnwrap();
 });
 
 /** Eth */
@@ -547,9 +553,15 @@ const UserDataAddMessageFactory = Factory.define<protobufs.UserDataAddMessage, {
 );
 
 const UsernameProofDataFactory = Factory.define<protobufs.UsernameProofData>(() => {
+  const proofBody = UserNameProofFactory.build({
+    type: UserNameType.USERNAME_TYPE_ENS_L1,
+    name: EnsNameFactory.build(),
+  });
   return MessageDataFactory.build({
-    usernameProofBody: UserNameProofFactory.build(),
+    usernameProofBody: proofBody,
     type: protobufs.MessageType.USERNAME_PROOF,
+    timestamp: toFarcasterTime(proofBody.timestamp)._unsafeUnwrap(),
+    fid: proofBody.fid,
   }) as protobufs.UsernameProofData;
 });
 
@@ -621,6 +633,7 @@ export const Factories = {
   MessageHash: MessageHashFactory,
   BlockHash: BlockHashFactory,
   EthAddress: EthAddressFactory,
+  EnsName: EnsNameFactory,
   TransactionHash: TransactionHashFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
   Ed25519PPublicKey: Ed25519PPublicKeyFactory,

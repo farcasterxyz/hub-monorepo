@@ -2,7 +2,6 @@ import { jestRocksDB } from "../db/jestUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import { Factories, getFarcasterTime, MessageType, UsernameProofMessage, UserNameType } from "@farcaster/hub-nodejs";
 import UsernameProofStore from "./usernameProofStore.js";
-import { mainnetPublicClient, publicClient, testClient } from "../../test/utils.js";
 
 const db = jestRocksDB("protobufs.usernameProofSet.test");
 const eventHandler = new StoreEventHandler(db);

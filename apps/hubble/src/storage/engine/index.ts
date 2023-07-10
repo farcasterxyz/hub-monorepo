@@ -381,7 +381,11 @@ class Engine {
           return this._verificationStore.revoke(message);
         }
         case UserPostfix.UsernameProofMessage: {
-          return this._usernameProofStore.revoke(message);
+          if (isValid.error.errCode === "unavailable.network_failure") {
+            return err(isValid.error);
+          } else {
+            return this._usernameProofStore.revoke(message);
+          }
         }
         default: {
           return err(new HubError("bad_request.invalid_param", "invalid message type"));

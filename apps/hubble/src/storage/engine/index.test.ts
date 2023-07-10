@@ -27,6 +27,7 @@ import {
   RevokeMessageHubEvent,
   SignerAddMessage,
   SignerRemoveMessage,
+  toFarcasterTime,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -522,7 +523,6 @@ describe("mergeMessage", () => {
       expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
       expect(result._unsafeUnwrapErr().message).toMatch("ens name does not belong to fid");
     });
-    test("fails when proof timestamp does not match message timestamp", async () => {});
     test("succeeds for valid proof for custody address", async () => {
       const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
       jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -544,12 +544,35 @@ describe("mergeMessage", () => {
       const result = await engine.mergeMessage(message);
       expect(result.isOk()).toBeTruthy();
     });
-  });
-});
 
-describe("validateOrRevokeMessage", () => {
-  test("revokes an ens message when ens is no longer valid", async () => {});
-  test("does not revoke a message when address resolution temporarily fails", async () => {});
+    describe("validateOrRevokeMessage", () => {
+      let mergedMessage: Message;
+      beforeEach(async () => {
+        const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
+        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+          return Promise.resolve(custodyAddress);
+        });
+        mergedMessage = await createProof("test.eth", null, custodyAddress);
+        const result = await engine.mergeMessage(mergedMessage);
+        expect(result.isOk()).toBeTruthy();
+      });
+      test("revokes an ens message when ens is no longer valid", async () => {
+        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+          return Promise.resolve(randomEthAddress);
+        });
+        const result = await engine.validateOrRevokeMessage(mergedMessage);
+        expect(result.isOk()).toBeTruthy();
+      });
+      test("does not revoke a message when address resolution temporarily fails", async () => {
+        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+          throw new Error("test");
+        });
+        const result = await engine.validateOrRevokeMessage(mergedMessage);
+        expect(result._unsafeUnwrapErr().errCode).toEqual("unavailable.network_failure");
+        expect(result._unsafeUnwrapErr().message).toMatch("failed to resolve ens name");
+      });
+    });
+  });
 });
 
 describe("mergeMessages", () => {
