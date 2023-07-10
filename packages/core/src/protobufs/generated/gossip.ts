@@ -1,5 +1,4 @@
 /* eslint-disable */
-/* rome-ignore */
 import Long from "long";
 import _m0 from "protobufjs/minimal";
 import { IdRegistryEvent } from "./id_registry_event";

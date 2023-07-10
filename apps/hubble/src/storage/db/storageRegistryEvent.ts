@@ -1,7 +1,7 @@
-import { RentRegistryEvent, StorageAdminRegistryEvent } from '@farcaster/hub-nodejs';
-import RocksDB, { Iterator, Transaction } from '../db/rocksdb.js';
-import { FID_BYTES, RootPrefix } from '../db/types.js';
-import { makeTsHash } from './message.js';
+import { RentRegistryEvent, StorageAdminRegistryEvent } from "@farcaster/hub-nodejs";
+import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import { FID_BYTES, RootPrefix } from "../db/types.js";
+import { makeTsHash } from "./message.js";
 
 const EXPIRY_BYTES = 4;
 
@@ -34,7 +34,7 @@ export const getRentRegistryEventsIterator = (db: RocksDB, fid: number): Iterato
 
 export const getStorageAdminRegistryEvent = async (
   db: RocksDB,
-  tsHash: Uint8Array
+  tsHash: Uint8Array,
 ): Promise<StorageAdminRegistryEvent> => {
   const key = makeStorageAdminRegistryEventPrimaryKey(tsHash);
   return StorageAdminRegistryEvent.decode(await db.get(key));
@@ -51,7 +51,7 @@ export const getStorageAdminRegistryEventsIterator = (db: RocksDB): Iterator => 
 };
 
 export const getNextRentRegistryEventFromIterator = async (
-  iterator: Iterator
+  iterator: Iterator,
 ): Promise<RentRegistryEvent | undefined> => {
   try {
     const [, value] = await iterator.next();
@@ -62,7 +62,7 @@ export const getNextRentRegistryEventFromIterator = async (
 };
 
 export const getNextStorageAdminRegistryEventFromIterator = async (
-  iterator: Iterator
+  iterator: Iterator,
 ): Promise<StorageAdminRegistryEvent | undefined> => {
   try {
     const [, value] = await iterator.next();
@@ -91,43 +91,44 @@ export const putRentRegistryEventTransaction = (txn: Transaction, event: RentReg
   const eventBuffer = Buffer.from(RentRegistryEvent.encode(event).finish());
 
   const primaryKey = makeRentRegistryEventPrimaryKey(event.fid, event.expiry);
-  txn = txn.put(primaryKey, eventBuffer);
+  let putTxn = txn.put(primaryKey, eventBuffer);
 
   if (event.expiry) {
     const byExpiryKey = makeRentRegistryEventByExpiryKey(event.expiry, event.fid);
-    txn = txn.put(byExpiryKey, eventBuffer);
+    putTxn = txn.put(byExpiryKey, eventBuffer);
   }
 
-  return txn;
+  return putTxn;
 };
 
 export const putStorageAdminRegistryEventTransaction = (
   txn: Transaction,
-  event: StorageAdminRegistryEvent
+  event: StorageAdminRegistryEvent,
 ): Transaction => {
   const eventBuffer = Buffer.from(StorageAdminRegistryEvent.encode(event).finish());
   const tsHash = makeTsHash(event.timestamp, event.transactionHash);
   if (tsHash.isErr()) throw tsHash.error;
   const primaryKey = makeStorageAdminRegistryEventPrimaryKey(tsHash.value);
-  txn = txn.put(primaryKey, eventBuffer);
+  const putTxn = txn.put(primaryKey, eventBuffer);
 
-  return txn;
+  return putTxn;
 };
 
 export const deleteRentRegistryEventTransaction = (txn: Transaction, event: RentRegistryEvent): Transaction => {
+  let putTxn = txn;
   if (event.expiry) {
     const byExpiryKey = makeRentRegistryEventByExpiryKey(event.expiry, event.fid);
-    txn = txn.del(byExpiryKey);
+    putTxn = putTxn.del(byExpiryKey);
   }
 
   const primaryKey = makeRentRegistryEventPrimaryKey(event.fid, event.expiry);
 
-  return txn.del(primaryKey);
+  return putTxn.del(primaryKey);
 };
 
 export const deleteStorageAdminRegistryEventTransaction = (
   txn: Transaction,
-  event: StorageAdminRegistryEvent
+  event: StorageAdminRegistryEvent,
 ): Transaction => {
   const tsHash = makeTsHash(event.timestamp, event.transactionHash);
   if (tsHash.isErr()) throw tsHash.error;
