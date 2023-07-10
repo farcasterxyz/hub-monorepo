@@ -86,7 +86,7 @@ export class SyncEngineProfiler {
 
     this._rpcMethodProfiles.set("getSyncMetadataByPrefix", new RpcMethodProfile("getSyncMetadataByPrefix"));
     this._rpcMethodProfiles.set("getAllSyncIdsByPrefix", new RpcMethodProfile("getAllSyncIdsByPrefix"));
-    this._rpcMethodProfiles.set("getSyncDataByPrefix", new RpcMethodProfile("getSyncDataByPrefix"));
+    this._rpcMethodProfiles.set("getAllMessagesBySyncIds", new RpcMethodProfile("getAllMessagesBySyncIds"));
 
     this._syncStartTime = 0;
   }
