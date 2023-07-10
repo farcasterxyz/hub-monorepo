@@ -190,22 +190,22 @@ export const isMergeNameRegistryEventHubEvent = (
 };
 
 export const isMergeRentRegistryEventHubEvent = (
-  event: hubEventProtobufs.HubEvent
+  event: hubEventProtobufs.HubEvent,
 ): event is types.MergeRentRegistryEventHubEvent => {
   return (
     event.type === hubEventProtobufs.HubEventType.MERGE_RENT_REGISTRY_EVENT &&
-    typeof event.mergeRentRegistryEventBody !== 'undefined' &&
-    typeof event.mergeRentRegistryEventBody.rentRegistryEvent !== 'undefined'
+    typeof event.mergeRentRegistryEventBody !== "undefined" &&
+    typeof event.mergeRentRegistryEventBody.rentRegistryEvent !== "undefined"
   );
 };
 
 export const isMergeStorageAdminRegistryEventHubEvent = (
-  event: hubEventProtobufs.HubEvent
+  event: hubEventProtobufs.HubEvent,
 ): event is types.MergeStorageAdminRegistryEventHubEvent => {
   return (
     event.type === hubEventProtobufs.HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT &&
-    typeof event.mergeStorageAdminRegistryEventBody !== 'undefined' &&
-    typeof event.mergeStorageAdminRegistryEventBody.storageAdminRegistryEvent !== 'undefined'
+    typeof event.mergeStorageAdminRegistryEventBody !== "undefined" &&
+    typeof event.mergeStorageAdminRegistryEventBody.storageAdminRegistryEvent !== "undefined"
   );
 };
 
