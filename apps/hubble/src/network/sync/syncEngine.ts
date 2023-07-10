@@ -35,6 +35,7 @@ import { fromFarcasterTime } from "@farcaster/core";
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 256;
+const SYNC_PARALLELISM = 4; // Fetch upto 4 leaf nodes in parallel
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
@@ -636,12 +637,24 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         await onMissingHashes(result.value.syncIds);
       }
     } else if (theirNode.children) {
+      const promises = [];
+
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
         // recursively fetch hashes for every node where the hashes don't match
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-          await this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes);
+          const r = this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes);
+
+          // If we're fetching more than HASHES_PER_FETCH, we'll wait for the first batch to finish before starting
+          // the next.
+          if (theirNode.numMessages < HASHES_PER_FETCH * SYNC_PARALLELISM) {
+            promises.push(r);
+          } else {
+            await r;
+          }
         }
       }
+
+      await Promise.all(promises);
     } else {
       log.error(
         { theirNode, ourNode },
