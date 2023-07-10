@@ -30,6 +30,7 @@ import { sleepWhile } from "../../utils/crypto.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { fromFarcasterTime } from "@farcaster/core";
+import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -89,6 +90,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   private _isSyncing = false;
   private _interruptSync = false;
+  private _syncProfiler?: SyncEngineProfiler;
 
   private currentHubPeerContacts: Map<string, PeerContact> = new Map();
   // Map of peerId to last time we attempted to sync with them without merging any new messages succesfully
@@ -102,12 +104,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Number of messages since last compaction
   private _messagesSinceLastCompaction = 0;
 
-  constructor(hub: HubInterface, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider) {
+  constructor(hub: HubInterface, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider, profileSync = false) {
     super();
 
     this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
     this._ethEventsProvider = ethEventsProvider;
+
+    if (profileSync) {
+      this._syncProfiler = new SyncEngineProfiler();
+    }
 
     this._hub = hub;
 
@@ -196,6 +202,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._interruptSync = false;
   }
 
+  public getSyncProfile(): SyncEngineProfiler | undefined {
+    return this._syncProfiler;
+  }
+
   public isSyncing(): boolean {
     return this._isSyncing;
   }
@@ -257,7 +267,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const updatedPeerIdString = peerId.toString();
-    const rpcClient = await hub.getRPCClientForPeer(peerId, peerContact);
+    let rpcClient = await hub.getRPCClientForPeer(peerId, peerContact);
     if (!rpcClient) {
       log.warn("Diffsync: Failed to get RPC client for peer, skipping sync");
       // If we're unable to reach the peer, remove it from our contact list. We'll retry when it's added back by
@@ -266,6 +276,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this.emit("syncComplete", false);
       return;
     }
+
+    // If a sync profile is enabled, wrap the rpcClient in a profiler
+    if (this._syncProfiler) {
+      rpcClient = this._syncProfiler.profiledRpcClient(rpcClient);
+    }
+
     try {
       // First, get the latest state from the peer
       const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
@@ -312,18 +328,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (syncStatus.shouldSync === true) {
         log.info({ peerId }, "Diffsync: Syncing with peer");
         await this.performSync(updatedPeerIdString, peerState, rpcClient);
+
+        log.info({ peerId }, "Diffsync: complete");
+        this.emit("syncComplete", true);
+        return;
       } else {
         log.info({ peerId }, "No need to sync");
         this.emit("syncComplete", false);
         return;
       }
-
-      log.info({ peerId }, "Diffsync: complete");
-      this.emit("syncComplete", false);
-      return;
     } finally {
       const closeResult = Result.fromThrowable(
-        () => rpcClient.close(),
+        () => rpcClient?.close(),
         (e) => e as Error,
       )();
       if (closeResult.isErr()) {

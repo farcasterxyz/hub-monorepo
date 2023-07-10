@@ -157,6 +157,9 @@ export interface HubOptions {
   /** Resets the DB on start, if true */
   resetDB?: boolean;
 
+  /** Profile the sync and exit after done */
+  profileSync?: boolean;
+
   /** Rebuild the sync trie from messages in the DB on startup */
   rebuildSyncTrie?: boolean;
 
@@ -261,7 +264,32 @@ export class Hub implements HubInterface {
       lockTimeout: options.commitLockTimeout,
     });
     this.engine = new Engine(this.rocksDB, options.network, eventHandler);
-    this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider);
+
+    const profileSync = options.profileSync ?? false;
+    this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider, profileSync);
+
+    // If profileSync is true, exit after sync is complete
+    if (profileSync) {
+      this.syncEngine.on("syncComplete", async (success) => {
+        if (success) {
+          log.info("Sync complete, exiting (profileSync=true)");
+
+          const profileLog = logger.child({ component: "SyncProfile" });
+
+          const profile = this.syncEngine.getSyncProfile();
+          if (profile) {
+            profileLog.info({ wallTimeMs: profile.getSyncDuration() });
+
+            for (const [method, p] of profile.getRpcMethodProfiles()) {
+              profileLog.info({ method, p, profileStr: JSON.stringify(p, null, 2) });
+            }
+          }
+
+          await this.stop();
+          process.exit(0);
+        }
+      });
+    }
 
     this.rpcServer = new Server(
       this,
