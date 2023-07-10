@@ -6,7 +6,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWN9ztVoHYi26NwTDDLNjgBozz479br3pwBuy3oLQVQmhz", // @cassie
   "12D3KooWBJnUaDeM1bm5CYQSKqBN7yKJZoF5E85SDYDiMKHr9UwA", // @roadz
   "12D3KooWHiyvASqvhGn9kqsLBemPTAF6UYEaFGaLUpPxnM54KFbG", // @deodad
-  "12D3KooWKXAG1Z212HHrwYaW5NnwBxoXkk3Sr7USzRxMzS9pieZi", // @paden
+  // "12D3KooWKXAG1Z212HHrwYaW5NnwBxoXkk3Sr7USzRxMzS9pieZi", // @paden (Add back once version updated to 1.3.3 or newer)
   "12D3KooWFbnaXtbD5fwbMGq2JRjPaj7C6EpZRgaxC8jdtcX7FJbZ", // @v
   "12D3KooWDYihZomibY21nh3hLRWBF6ExLLQ8xaBRaFBVwATHDsuG", // @woj
   "12D3KooWNr294AH1fviDQxRmQ4K79iFSGoRCWzGspVxPprJUKN47", // @adityapk
@@ -16,7 +16,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWFoPsstYWVH3a4uFpmxksF6nDEsgYizHnPpd9Atw9DRbH", // @gavi
   "12D3KooWKYqmj1bQJChn4hCAhsneg9sRKRd6Zzp3DkVMUL2pjyAB", // @16
   "12D3KooWReH654LePzAE4shSw6wuWqP3i9jSN2jBNswWJu2kiPQ5", // @vern
-  "12D3KooWRxgeFVLTAxeVgj4QHPzuT6HaV3Hj93LNZQeRi7gAwUVk", // @stout
+  // "12D3KooWRxgeFVLTAxeVgj4QHPzuT6HaV3Hj93LNZQeRi7gAwUVk", // @stout (Add back once version updated to 1.3.3 or newer)
   "12D3KooWSii9GJheDmFRBzii43fpzvb3WkmPn62QSoJ8MjvGKMxr", // @mp
   "12D3KooWQ76P8kBUvjNx2Q8EpYDL1BsqXdqZmAkHzTxE1uruuwRd", // @brianjckim
   "12D3KooWRrFF356RALgsPwQQpg68reJL2y94VwKZFogUkM9der1V", // @lndnnft
@@ -41,11 +41,11 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWDXSemEhSAidFCZT1HyRhTHayunCokg68VSuwStf8UEU5", // @98967eth
   "12D3KooWHcViME8KUZXo1wStoRF2jmg4edWidexGy5utVyoxNNnn", // @parthkohli
   "12D3KooWJtEEh7Bcx9T2oKUpcMb9K8xuMFFk5BQNNdJ63Rsx853C", // Jam.so Hub 4
-  "12D3KooWH3FAGri9Ki4j7xBBjghav9nRTyu8jVVBsRh55odGxraM", // @kencodes
+  // "12D3KooWH3FAGri9Ki4j7xBBjghav9nRTyu8jVVBsRh55odGxraM", // @kencodes (Add back once version updated to 1.3.3 or newer)
   "12D3KooWQ8fFUMipLC4Fm6DLN9vWQLX5XBbiewM1N5Vt6QxsPVxn", // @thezluf
   "12D3KooWPsSJu7jPS2UcroV4R1Ed1VJKVBxBkuNs4haDTEUnYBvm", // @sheldon
   "12D3KooWR5qBN6GraBd4DzAJVaGzVk9TZgUYFusoPhxt5suPFtqH", // @silent
-  "12D3KooWRDvjugV5fhkTA2BBmrLXmKyBXLe4V7YJyMXyLQGj1PAM", // @rysiman
+  // "12D3KooWRDvjugV5fhkTA2BBmrLXmKyBXLe4V7YJyMXyLQGj1PAM", // @rysiman (Add back once version updated to 1.3.3 or newer)
   "12D3KooWNLshuXk4x2gacFTMEJjMGGFxPjpHg5KcV88KoqJP7dDR", // @bhgomes
   "12D3KooWS39hrt41rMuD5ZfPFMxUVycxVwz7w15CxZVhxP4AZDGr", // @rozhnovskiyigor
   "12D3KooWHXZkdEYWb5RCajv7YbffasjYNSEP1U68DMR1JeZ4QiXH", // @fedecastelli
@@ -54,7 +54,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWDfxjnmTTk2nb89dBZZrCQ7g71BoJELKnVpUQUTt4YcL4", // @razzle
   "12D3KooWEoXRpLMjiRo9KxVHqg8Ng5gJxkJdd9uDotSNfYy8jFNv", // @pseudobun
   "12D3KooWPcrf4XYUQrxsLniTJR4u4roQJre2T6ev14JeJcAFzZZv", // airstack.xyz
-  "12D3KooWLCAqhHempm8C8ZCLMMnK4pBPAyjS3HM2BMBopsC2HZDS", // airstack.xyz
+  // "12D3KooWLCAqhHempm8C8ZCLMMnK4pBPAyjS3HM2BMBopsC2HZDS", // airstack.xyz (add back once version updated to 1.3.3 or newer)
   "12D3KooWCDxDVkirzdV6Ze8zgDq2i1X3tQLGgwTGRxwuYeHD6XDE", // @wrdwccz
   "12D3KooWHkYUwM3PeRqdYniuxAGXWhPYx6EzPhDY39J3cyNciQhE", // @naratech-eng
   "12D3KooWGU1ebBRwdTBrfb2jQniip7FsWfr22PJhZQwwAf4d8jgX", // Gvozdaryova43654.telegram
