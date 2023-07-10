@@ -55,6 +55,8 @@ export enum RootPrefix {
   Network = 16,
   /* Used to store name proofs */
   UserNameProof = 17,
+  /* Used to store gossip network metrics */
+  GossipMetrics = 18,
   /* Used to store rent registry events */
   RentRegistryEvent = 18,
   /* Index rent registry events by expiry */

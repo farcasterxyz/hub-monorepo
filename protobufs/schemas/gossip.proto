@@ -25,11 +25,31 @@ message ContactInfoContent {
   string app_version = 7;
 }
 
+message PingMessageBody {
+    bytes ping_origin_peer_id = 1;
+    uint64 ping_timestamp = 2;
+}
+
+message AckMessageBody {
+    bytes ping_origin_peer_id = 1;
+    bytes ack_origin_peer_id = 2;
+    uint64 ping_timestamp = 3;
+    uint64 ack_timestamp = 4;
+}
+
+message NetworkLatencyMessage {
+    oneof body {
+        PingMessageBody ping_message = 2;
+        AckMessageBody ack_message = 3;
+    }
+}
+
 message GossipMessage {
   oneof content {
     Message message = 1;
     IdRegistryEvent id_registry_event = 2;
     ContactInfoContent contact_info_content = 3;
+    NetworkLatencyMessage network_latency_message = 7;
   }
   repeated string topics = 4;
   bytes peer_id = 5;

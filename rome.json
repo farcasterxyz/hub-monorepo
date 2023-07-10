@@ -8,13 +8,13 @@
     "indentSize": 2,
     "indentStyle": "space",
     "lineWidth": 120,
-    "ignore": ["src/abstract-leveldown.d.ts", "src/rocksdb.d.ts"]
+    "ignore": ["src/abstract-leveldown.d.ts", "src/rocksdb.d.ts", "src/protobufs/generated/gossip.ts"]
   },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true
     },
-    "ignore": ["src/abstract-leveldown.d.ts", "src/rocksdb.d.ts"]
+    "ignore": ["src/abstract-leveldown.d.ts", "src/rocksdb.d.ts", "src/protobufs/generated/gossip.ts"]
   }
 }
