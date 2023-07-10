@@ -65,6 +65,7 @@ import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
+import { prettyPrintTable } from "./profile.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "sync" | "fname-registry";
 
@@ -281,8 +282,15 @@ export class Hub implements HubInterface {
             profileLog.info({ wallTimeMs: profile.getSyncDuration() });
 
             for (const [method, p] of profile.getRpcMethodProfiles()) {
-              profileLog.info({ method, p, profileStr: JSON.stringify(p, null, 2) });
+              profileLog.info({ method, p });
             }
+
+            // Also write to console for easy copy/paste
+            console.log("\nLatencies\n");
+            console.log(prettyPrintTable(profile.latenciesToPrettyPrintObject()));
+
+            console.log("\nResult Bytes\n");
+            console.log(prettyPrintTable(profile.resultBytesToPrettyPrintObject()));
           }
 
           await this.stop();

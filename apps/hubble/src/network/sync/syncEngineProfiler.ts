@@ -1,4 +1,5 @@
 import { HubRpcClient } from "@farcaster/hub-nodejs";
+import { formatNumber } from "../../profile.js";
 
 export class MethodCallProfile {
   min: number;
@@ -101,6 +102,54 @@ export class SyncEngineProfiler {
 
   public getSyncDuration(): number {
     return Date.now() - this._syncStartTime;
+  }
+
+  public latenciesToPrettyPrintObject(): string[][] {
+    const data = [];
+
+    // First, write the headers
+    const headers = ["Method", "Count", "Min", "Max", "Avg ", "Median"];
+    data.push(headers);
+
+    // Then, write the data for each method
+    for (const [method, profile] of this._rpcMethodProfiles) {
+      const row = [
+        method,
+        formatNumber(profile.numCalls),
+        formatNumber(profile.latency.min),
+        formatNumber(profile.latency.max),
+        formatNumber(profile.latency.avg),
+        formatNumber(profile.latency.median),
+      ];
+      data.push(row);
+    }
+
+    return data;
+  }
+
+  public resultBytesToPrettyPrintObject(): string[][] {
+    const data = [];
+
+    // First, write the headers
+    const headers = ["Method", "Count", "Objects", "Total", "Min", "Max", "Avg", "Median"];
+    data.push(headers);
+
+    // Then, write the data for each method
+    for (const [method, profile] of this._rpcMethodProfiles) {
+      const row = [
+        method,
+        formatNumber(profile.numCalls),
+        formatNumber(profile.payloadNum),
+        formatNumber(profile.totalBytes),
+        formatNumber(profile.resultBytes.min),
+        formatNumber(profile.resultBytes.max),
+        formatNumber(profile.resultBytes.avg),
+        formatNumber(profile.resultBytes.median),
+      ];
+      data.push(row);
+    }
+
+    return data;
   }
 
   public profiledRpcClient(rpcClient: HubRpcClient): HubRpcClient {
