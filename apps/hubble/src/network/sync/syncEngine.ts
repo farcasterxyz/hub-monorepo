@@ -633,7 +633,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (result.isErr()) {
         log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
       } else {
-        await onMissingHashes(result.value.syncIds);
+        // Strip out all syncIds that we already have. This can happen if our node has more messages than the other
+        // hub at this node.
+        const missingHashes = result.value.syncIds.filter(
+          async (syncId: Uint8Array) => !(await this._trie.existsByBytes(syncId)),
+        );
+        await onMissingHashes(missingHashes);
       }
     } else if (theirNode.children) {
       for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
