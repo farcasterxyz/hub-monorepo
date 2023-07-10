@@ -50,15 +50,15 @@ const app = new Command();
 app.name("hub").description("Farcaster Hub").version(APP_VERSION);
 
 app
-  .command('start')
-  .description('Start a Hub')
-  .option('-e, --eth-rpc-url <url>', 'RPC URL of a Goerli Ethereum Node')
-  .option('-l, --l2-rpc-url <url>', 'RPC URL of a Goerli Optimism Node')
-  .option('-c, --config <filepath>', 'Path to a config file with options')
-  .option('--fir-address <address>', 'The address of the Farcaster ID Registry contract')
-  .option('--fnr-address <address>', 'The address of the Farcaster Name Registry contract')
-  .option('--first-block <number>', 'The block number to begin syncing events from Farcaster contracts', parseNumber)
-  .option('--fname-server-url <url>', 'The URL for the FName registry server')
+  .command("start")
+  .description("Start a Hub")
+  .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli Ethereum Node")
+  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node")
+  .option("-c, --config <filepath>", "Path to a config file with options")
+  .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
+  .option("--fnr-address <address>", "The address of the Farcaster Name Registry contract")
+  .option("--first-block <number>", "The block number to begin syncing events from Farcaster contracts", parseNumber)
+  .option("--fname-server-url <url>", "The URL for the FName registry server")
   .option(
     "--chunk-size <number>",
     "The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)",

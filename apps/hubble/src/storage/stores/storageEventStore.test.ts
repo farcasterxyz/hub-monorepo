@@ -5,12 +5,12 @@ import {
   RentRegistryEvent,
   StorageAdminRegistryEvent,
   StorageRegistryEventType,
-} from '@farcaster/hub-nodejs';
-import { jestRocksDB } from '../db/jestUtils.js';
-import StorageEventStore from './storageEventStore.js';
-import StoreEventHandler from './storeEventHandler.js';
+} from "@farcaster/hub-nodejs";
+import { jestRocksDB } from "../db/jestUtils.js";
+import StorageEventStore from "./storageEventStore.js";
+import StoreEventHandler from "./storeEventHandler.js";
 
-const db = jestRocksDB('protobufs.signerStore.test');
+const db = jestRocksDB("protobufs.signerStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new StorageEventStore(db, eventHandler);
 // const signer = Factories.Ed25519Signer.build();
@@ -52,19 +52,19 @@ beforeEach(async () => {
   await eventHandler.syncCache();
 });
 
-describe('getRentRegistryEvent', () => {
-  test('returns contract event if it exists', async () => {
+describe("getRentRegistryEvent", () => {
+  test("returns contract event if it exists", async () => {
     await set.mergeRentRegistryEvent(rentEvent);
     await expect(set.getRentRegistryEvents(fid)).resolves.toEqual([rentEvent]);
   });
 
-  test('fails if event is missing', async () => {
+  test("fails if event is missing", async () => {
     await expect(set.getRentRegistryEvents(fid)).rejects.toThrow(HubError);
   });
 });
 
-describe('getStorageAdminRegistryEvent', () => {
-  test('returns contract event if it exists', async () => {
+describe("getStorageAdminRegistryEvent", () => {
+  test("returns contract event if it exists", async () => {
     await set.mergeStorageAdminRegistryEvent(setDeprecationTimestampEvent);
     await set.mergeStorageAdminRegistryEvent(setGracePeriodEvent);
     await set.mergeStorageAdminRegistryEvent(setMaxUnitsEvent);
@@ -75,7 +75,7 @@ describe('getStorageAdminRegistryEvent', () => {
     await expect(set.getStorageAdminRegistryEvents()).resolves.toContainEqual(setPriceEvent);
   });
 
-  test('fails if event is missing', async () => {
+  test("fails if event is missing", async () => {
     await expect(set.getStorageAdminRegistryEvents()).rejects.toThrow(HubError);
   });
 });

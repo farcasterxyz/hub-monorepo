@@ -1,7 +1,7 @@
-import { HubError, HubEventType, RentRegistryEvent, StorageAdminRegistryEvent } from '@farcaster/hub-nodejs';
-import RocksDB from '../db/rocksdb.js';
-import StoreEventHandler from './storeEventHandler.js';
-import AsyncLock from 'async-lock';
+import { HubError, HubEventType, RentRegistryEvent, StorageAdminRegistryEvent } from "@farcaster/hub-nodejs";
+import RocksDB from "../db/rocksdb.js";
+import StoreEventHandler from "./storeEventHandler.js";
+import AsyncLock from "async-lock";
 import {
   getNextRentRegistryEventFromIterator,
   getNextStorageAdminRegistryEventFromIterator,
@@ -9,7 +9,7 @@ import {
   getStorageAdminRegistryEventsIterator,
   putRentRegistryEventTransaction,
   putStorageAdminRegistryEventTransaction,
-} from '../db/storageRegistryEvent.js';
+} from "../db/storageRegistryEvent.js";
 
 /**
  * StorageEventStore persists Storage Event messages in RocksDB using two grow only CRDT sets
@@ -46,11 +46,14 @@ class StorageEventStore {
     const events: RentRegistryEvent[] = [];
     let event: RentRegistryEvent | undefined;
 
-    while (iterator.isOpen && (event = await getNextRentRegistryEventFromIterator(iterator))) {
+    while (iterator.isOpen) {
+      event = await getNextRentRegistryEventFromIterator(iterator);
+      if (!event) break;
+
       events.push(event);
     }
 
-    if (events.length === 0) throw new HubError('not_found', 'record not found');
+    if (events.length === 0) throw new HubError("not_found", "record not found");
 
     return events;
   }
@@ -61,11 +64,14 @@ class StorageEventStore {
     const events: StorageAdminRegistryEvent[] = [];
     let event: StorageAdminRegistryEvent | undefined;
 
-    while (iterator.isOpen && (event = await getNextStorageAdminRegistryEventFromIterator(iterator))) {
+    while (iterator.isOpen) {
+      event = await getNextStorageAdminRegistryEventFromIterator(iterator);
+      if (!event) break;
+
       events.push(event);
     }
 
-    if (events.length === 0) throw new HubError('not_found', 'record not found');
+    if (events.length === 0) throw new HubError("not_found", "record not found");
 
     return events;
   }
