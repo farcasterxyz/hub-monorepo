@@ -1,6 +1,7 @@
 import {
   HubAsyncResult,
   HubError,
+  HubEventType,
   isUsernameProofMessage,
   MessageType,
   UsernameProofMessage,
@@ -12,6 +13,7 @@ import { MessagesPage, PageOptions } from "../stores/types.js";
 import { Store } from "./store.js";
 import { Transaction } from "../db/rocksdb.js";
 import { makeFidKey, makeTsHash, makeUserKey, readFidKey } from "../db/message.js";
+import { HubEventArgs } from "./storeEventHandler.js";
 
 const PRUNE_SIZE_LIMIT_DEFAULT = 10;
 
@@ -139,7 +141,10 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
       const fid = readFidKey(fidResult.value);
       if (fid !== undefined) {
         const existingMessage = await this.getAdd({
-          data: { fid, usernameProofBody: { name: message.data.usernameProofBody.name } },
+          data: {
+            fid,
+            usernameProofBody: { name: message.data.usernameProofBody.name },
+          },
         });
         const tsHash = makeTsHash(message.data.timestamp, message.hash);
         const existingTsHash = makeTsHash(existingMessage.data.timestamp, existingMessage.hash);
@@ -164,6 +169,45 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
       }
     }
     return ok(conflicts);
+  }
+
+  protected override mergeEventArgs(
+    mergedMessage: UsernameProofMessage,
+    mergeConflicts: UsernameProofMessage[],
+  ): HubEventArgs {
+    return {
+      type: HubEventType.MERGE_USERNAME_PROOF,
+      mergeUsernameProofBody: {
+        usernameProof: mergedMessage.data.usernameProofBody,
+        deletedUsernameProof: mergeConflicts[0]?.data.usernameProofBody,
+        usernameProofMessage: mergedMessage,
+        deletedUsernameProofMessage: mergeConflicts[0],
+      },
+    };
+  }
+
+  protected override pruneEventArgs(prunedMessage: UsernameProofMessage): HubEventArgs {
+    return {
+      type: HubEventType.MERGE_USERNAME_PROOF,
+      mergeUsernameProofBody: {
+        usernameProof: undefined,
+        deletedUsernameProof: prunedMessage.data.usernameProofBody,
+        usernameProofMessage: undefined,
+        deletedUsernameProofMessage: prunedMessage,
+      },
+    };
+  }
+
+  protected override revokeEventArgs(message: UsernameProofMessage): HubEventArgs {
+    return {
+      type: HubEventType.MERGE_USERNAME_PROOF,
+      mergeUsernameProofBody: {
+        usernameProof: undefined,
+        deletedUsernameProof: message.data.usernameProofBody,
+        usernameProofMessage: undefined,
+        deletedUsernameProofMessage: message,
+      },
+    };
   }
 }
 

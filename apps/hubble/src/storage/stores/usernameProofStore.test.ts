@@ -1,6 +1,15 @@
 import { jestRocksDB } from "../db/jestUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
-import { Factories, getFarcasterTime, MessageType, UsernameProofMessage, UserNameType } from "@farcaster/hub-nodejs";
+import {
+  Factories,
+  getFarcasterTime,
+  HubError,
+  MergeUsernameProofHubEvent,
+  MessageType,
+  UserNameProof,
+  UsernameProofMessage,
+  UserNameType,
+} from "@farcaster/hub-nodejs";
 import UsernameProofStore from "./usernameProofStore.js";
 
 const db = jestRocksDB("protobufs.usernameProofSet.test");
@@ -97,13 +106,6 @@ describe("usernameProofStore", () => {
       await set.merge(ensProof);
       await expect(set.merge(ensProof)).rejects.toThrowError("message has already been merged");
     });
-
-    test("does not merge fname proofs", async () => {});
-  });
-
-  describe("events", () => {
-    test("should emit username proof event on merge", async () => {});
-    test("should include deleted proof on merge conflict", async () => {});
   });
 
   describe("getUsernameProof", () => {
@@ -119,7 +121,91 @@ describe("usernameProofStore", () => {
     test("should return all proofs for fid", async () => {});
   });
 
-  describe("prune", () => {
-    test("should prune messages beyond size limit", async () => {});
+  describe("pruneMessages", () => {
+    let prunedMessages: UserNameProof[];
+    let addedMessages: UserNameProof[];
+    const pruneMessageListener = (event: MergeUsernameProofHubEvent) => {
+      if (event.mergeUsernameProofBody.deletedUsernameProof) {
+        prunedMessages.push(event.mergeUsernameProofBody.deletedUsernameProof);
+      } else if (event.mergeUsernameProofBody.usernameProof) {
+        addedMessages.push(event.mergeUsernameProofBody.usernameProof);
+      }
+    };
+
+    beforeAll(() => {
+      eventHandler.on("mergeUsernameProofEvent", pruneMessageListener);
+    });
+
+    beforeEach(() => {
+      prunedMessages = [];
+      addedMessages = [];
+    });
+
+    afterAll(() => {
+      eventHandler.off("mergeUsernameProofEvent", pruneMessageListener);
+    });
+
+    let add1: UsernameProofMessage;
+    let add2: UsernameProofMessage;
+    let add3: UsernameProofMessage;
+    let add4: UsernameProofMessage;
+    let addOld1: UsernameProofMessage;
+
+    const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<UsernameProofMessage> => {
+      return Factories.UsernameProofMessage.create({ data: { fid, timestamp } });
+    };
+
+    beforeAll(async () => {
+      const time = getFarcasterTime()._unsafeUnwrap() - 10;
+      add1 = await generateAddWithTimestamp(fid, time + 1);
+      add2 = await generateAddWithTimestamp(fid, time + 2);
+      add3 = await generateAddWithTimestamp(fid, time + 3);
+      add4 = await generateAddWithTimestamp(fid, time + 5);
+      addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
+    });
+
+    describe("with size limit", () => {
+      const sizePrunedStore = new UsernameProofStore(db, eventHandler, { pruneSizeLimit: 2 });
+
+      test("defaults size limit", async () => {
+        expect(set.pruneSizeLimit).toEqual(10);
+        expect(set.pruneTimeLimit).toBeUndefined();
+      });
+
+      test("no-ops when no messages have been merged", async () => {
+        const result = await sizePrunedStore.pruneMessages(fid);
+        expect(result._unsafeUnwrap()).toEqual([]);
+        expect(prunedMessages).toEqual([]);
+      });
+
+      test("prunes earliest add messages", async () => {
+        const messages = [add1, add2, add3, add4];
+        for (const message of messages) {
+          await sizePrunedStore.merge(message);
+        }
+
+        const result = await sizePrunedStore.pruneMessages(fid);
+        expect(result.isOk()).toBeTruthy();
+
+        expect(prunedMessages).toEqual([add1.data.usernameProofBody, add2.data.usernameProofBody]);
+
+        for (const message of prunedMessages) {
+          const getAdd = () => sizePrunedStore.getUsernameProof(message.name, message.type);
+          await expect(getAdd()).rejects.toThrow(HubError);
+        }
+      });
+
+      test("fails to add messages older than the earliest message", async () => {
+        const messages = [add1, add2, add3];
+        for (const message of messages) {
+          await sizePrunedStore.merge(message);
+        }
+
+        // Older messages are rejected
+        await expect(sizePrunedStore.merge(addOld1)).rejects.toEqual(
+          new HubError("bad_request.prunable", "message would be pruned"),
+        );
+      });
+    });
   });
 });

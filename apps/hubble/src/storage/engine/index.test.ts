@@ -16,6 +16,8 @@ import {
   IdRegistryEventType,
   LinkAddMessage,
   MergeMessageHubEvent,
+  MergeUserNameProofBody,
+  MergeUsernameProofHubEvent,
   Message,
   MessageData,
   MessageType,
@@ -455,13 +457,22 @@ describe("mergeMessage", () => {
 
   describe("UsernameProof messages", () => {
     const randomEthAddress = bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
+    let usernameProofEvents: MergeUserNameProofBody[] = [];
+
+    const handleUsernameProofEvent = (event: MergeUsernameProofHubEvent) => {
+      usernameProofEvents.push(event.mergeUsernameProofBody);
+    };
+
     beforeEach(async () => {
+      usernameProofEvents = [];
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
+      engine.eventHandler.on("mergeUsernameProofEvent", handleUsernameProofEvent);
     });
 
     afterEach(async () => {
       jest.restoreAllMocks();
+      engine.eventHandler.off("mergeUsernameProofEvent", handleUsernameProofEvent);
     });
 
     const createProof = async (name: string, timestamp?: number | null, owner?: string | null) => {
@@ -531,6 +542,10 @@ describe("mergeMessage", () => {
       const message = await createProof("test.eth", null, custodyAddress);
       const result = await engine.mergeMessage(message);
       expect(result.isOk()).toBeTruthy();
+
+      expect(usernameProofEvents.length).toBe(1);
+      expect(usernameProofEvents[0]?.usernameProof).toMatchObject(message.data.usernameProofBody);
+      expect(usernameProofEvents[0]?.deletedUsernameProof).toBeUndefined();
     });
     test("succeeds for valid proof for verified eth address", async () => {
       await engine.mergeMessage(verificationAdd);
@@ -543,6 +558,10 @@ describe("mergeMessage", () => {
       const message = await createProof("test.eth", null, verificationAddress);
       const result = await engine.mergeMessage(message);
       expect(result.isOk()).toBeTruthy();
+
+      expect(usernameProofEvents.length).toBe(1);
+      expect(usernameProofEvents[0]?.usernameProof).toMatchObject(message.data.usernameProofBody);
+      expect(usernameProofEvents[0]?.deletedUsernameProof).toBeUndefined();
     });
 
     describe("validateOrRevokeMessage", () => {
@@ -555,6 +574,7 @@ describe("mergeMessage", () => {
         mergedMessage = await createProof("test.eth", null, custodyAddress);
         const result = await engine.mergeMessage(mergedMessage);
         expect(result.isOk()).toBeTruthy();
+        usernameProofEvents = [];
       });
       test("revokes an ens message when ens is no longer valid", async () => {
         jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -562,6 +582,11 @@ describe("mergeMessage", () => {
         });
         const result = await engine.validateOrRevokeMessage(mergedMessage);
         expect(result.isOk()).toBeTruthy();
+
+        expect(usernameProofEvents.length).toBe(1);
+        expect(usernameProofEvents[0]?.deletedUsernameProof).toBeDefined();
+        expect(usernameProofEvents[0]?.deletedUsernameProof).toMatchObject(mergedMessage.data.usernameProofBody);
+        expect(usernameProofEvents[0]?.usernameProof).toBeUndefined();
       });
       test("does not revoke a message when address resolution temporarily fails", async () => {
         jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -570,6 +595,8 @@ describe("mergeMessage", () => {
         const result = await engine.validateOrRevokeMessage(mergedMessage);
         expect(result._unsafeUnwrapErr().errCode).toEqual("unavailable.network_failure");
         expect(result._unsafeUnwrapErr().message).toMatch("failed to resolve ens name");
+
+        expect(usernameProofEvents.length).toBe(0);
       });
     });
   });

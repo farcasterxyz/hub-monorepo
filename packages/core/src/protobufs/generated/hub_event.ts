@@ -89,6 +89,8 @@ export interface MergeNameRegistryEventBody {
 export interface MergeUserNameProofBody {
   usernameProof: UserNameProof | undefined;
   deletedUsernameProof: UserNameProof | undefined;
+  usernameProofMessage: Message | undefined;
+  deletedUsernameProofMessage: Message | undefined;
 }
 
 export interface HubEvent {
@@ -423,7 +425,12 @@ export const MergeNameRegistryEventBody = {
 };
 
 function createBaseMergeUserNameProofBody(): MergeUserNameProofBody {
-  return { usernameProof: undefined, deletedUsernameProof: undefined };
+  return {
+    usernameProof: undefined,
+    deletedUsernameProof: undefined,
+    usernameProofMessage: undefined,
+    deletedUsernameProofMessage: undefined,
+  };
 }
 
 export const MergeUserNameProofBody = {
@@ -433,6 +440,12 @@ export const MergeUserNameProofBody = {
     }
     if (message.deletedUsernameProof !== undefined) {
       UserNameProof.encode(message.deletedUsernameProof, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.usernameProofMessage !== undefined) {
+      Message.encode(message.usernameProofMessage, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.deletedUsernameProofMessage !== undefined) {
+      Message.encode(message.deletedUsernameProofMessage, writer.uint32(34).fork()).ldelim();
     }
     return writer;
   },
@@ -458,6 +471,20 @@ export const MergeUserNameProofBody = {
 
           message.deletedUsernameProof = UserNameProof.decode(reader, reader.uint32());
           continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.usernameProofMessage = Message.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.deletedUsernameProofMessage = Message.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -473,6 +500,12 @@ export const MergeUserNameProofBody = {
       deletedUsernameProof: isSet(object.deletedUsernameProof)
         ? UserNameProof.fromJSON(object.deletedUsernameProof)
         : undefined,
+      usernameProofMessage: isSet(object.usernameProofMessage)
+        ? Message.fromJSON(object.usernameProofMessage)
+        : undefined,
+      deletedUsernameProofMessage: isSet(object.deletedUsernameProofMessage)
+        ? Message.fromJSON(object.deletedUsernameProofMessage)
+        : undefined,
     };
   },
 
@@ -483,6 +516,13 @@ export const MergeUserNameProofBody = {
     message.deletedUsernameProof !== undefined && (obj.deletedUsernameProof = message.deletedUsernameProof
       ? UserNameProof.toJSON(message.deletedUsernameProof)
       : undefined);
+    message.usernameProofMessage !== undefined && (obj.usernameProofMessage = message.usernameProofMessage
+      ? Message.toJSON(message.usernameProofMessage)
+      : undefined);
+    message.deletedUsernameProofMessage !== undefined &&
+      (obj.deletedUsernameProofMessage = message.deletedUsernameProofMessage
+        ? Message.toJSON(message.deletedUsernameProofMessage)
+        : undefined);
     return obj;
   },
 
@@ -498,6 +538,13 @@ export const MergeUserNameProofBody = {
     message.deletedUsernameProof = (object.deletedUsernameProof !== undefined && object.deletedUsernameProof !== null)
       ? UserNameProof.fromPartial(object.deletedUsernameProof)
       : undefined;
+    message.usernameProofMessage = (object.usernameProofMessage !== undefined && object.usernameProofMessage !== null)
+      ? Message.fromPartial(object.usernameProofMessage)
+      : undefined;
+    message.deletedUsernameProofMessage =
+      (object.deletedUsernameProofMessage !== undefined && object.deletedUsernameProofMessage !== null)
+        ? Message.fromPartial(object.deletedUsernameProofMessage)
+        : undefined;
     return message;
   },
 };

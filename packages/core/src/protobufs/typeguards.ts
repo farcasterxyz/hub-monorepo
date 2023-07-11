@@ -207,6 +207,7 @@ export const isMergeUsernameProofHubEvent = (
   return (
     event.type === hubEventProtobufs.HubEventType.MERGE_USERNAME_PROOF &&
     typeof event.mergeUsernameProofBody !== "undefined" &&
-    typeof event.mergeUsernameProofBody.usernameProof !== "undefined"
+    (typeof event.mergeUsernameProofBody.usernameProof !== "undefined" ||
+      typeof event.mergeUsernameProofBody.deletedUsernameProof !== "undefined")
   );
 };
