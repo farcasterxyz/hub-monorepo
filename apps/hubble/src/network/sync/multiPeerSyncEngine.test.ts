@@ -303,6 +303,33 @@ describe("Multi peer sync engine", () => {
     await engine2.stop();
   });
 
+  test("shouldn't fetch messages that already exist", async () => {
+    // Engine1 has 1 message
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeMessage(signerAdd);
+
+    const engine2 = new Engine(testDb2, network);
+    const hub2 = new MockHub(testDb2, engine2);
+    const syncEngine2 = new SyncEngine(hub2, testDb2);
+
+    // Engine2 has 2 messages
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine2.mergeMessage(signerAdd);
+    await addMessagesWithTimeDelta(engine2, [167]);
+
+    // Syncing engine2 --> engine1 should not fetch any additional messages, since engine2 already
+    // has all the messages
+    {
+      const fetchMessagesSpy = jest.spyOn(syncEngine1, "getAllMessagesBySyncIds");
+      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+      expect(fetchMessagesSpy).not.toHaveBeenCalled();
+    }
+
+    await syncEngine2.stop();
+    await engine2.stop();
+  });
+
   test("retries the id registry event if it is missing", async () => {
     await engine1.mergeIdRegistryEvent(custodyEvent);
     await engine1.mergeMessage(signerAdd);
