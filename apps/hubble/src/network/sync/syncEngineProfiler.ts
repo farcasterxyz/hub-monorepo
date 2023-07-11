@@ -153,8 +153,13 @@ export class SyncEngineProfiler {
   }
 
   public profiledRpcClient(rpcClient: HubRpcClient): HubRpcClient {
+    // Be careful not to overwrite the start time
+    if (this._syncStartTime === 0) {
+      this._syncStartTime = Date.now();
+    }
+
+    // Capture the "this" context
     const me = this;
-    this._syncStartTime = Date.now();
 
     return new Proxy(rpcClient, {
       get: function (target, prop, receiver) {

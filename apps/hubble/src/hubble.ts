@@ -286,10 +286,10 @@ export class Hub implements HubInterface {
             }
 
             // Also write to console for easy copy/paste
-            console.log("\nLatencies\n");
+            console.log("\nLatencies (ms)\n");
             console.log(prettyPrintTable(profile.latenciesToPrettyPrintObject()));
 
-            console.log("\nResult Bytes\n");
+            console.log("\nData Fetched (bytes)\n");
             console.log(prettyPrintTable(profile.resultBytesToPrettyPrintObject()));
           }
 
