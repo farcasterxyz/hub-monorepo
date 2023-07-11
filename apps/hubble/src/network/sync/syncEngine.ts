@@ -650,7 +650,17 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (result.isErr()) {
         log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
       } else {
-        await onMissingHashes(result.value.syncIds);
+        // Strip out all syncIds that we already have. This can happen if our node has more messages than the other
+        // hub at this node.
+        // Note that we can optimize this check for the common case of a single missing syncId, since the diff
+        // algorithm will drill down right to the missing syncId.
+        let missingHashes = result.value.syncIds;
+        if (result.value.syncIds.length === 1) {
+          if (await this._trie.existsByBytes(missingHashes[0] as Uint8Array)) {
+            missingHashes = [];
+          }
+        }
+        await onMissingHashes(missingHashes);
       }
     } else if (theirNode.children) {
       const promises = [];

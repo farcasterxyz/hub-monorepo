@@ -162,13 +162,27 @@ class MerkleTrie {
 
   /**
    * Check if the SyncId exists in the trie.
-   *
-   * Note: This method is only used in tests and benchmarks, and should not be needed in production.
    */
   public async exists(id: SyncId): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
         const r = await this._root.exists(id.syncId(), this._db);
+
+        await this._unloadFromMemory(false);
+
+        resolve(r);
+        release();
+      });
+    });
+  }
+
+  /**
+   * Check if we already have this syncID (expressed as bytes)
+   */
+  public async existsByBytes(id: Uint8Array): Promise<boolean> {
+    return new Promise((resolve) => {
+      this._lock.readLock(async (release) => {
+        const r = await this._root.exists(id, this._db);
 
         await this._unloadFromMemory(false);
 
