@@ -133,6 +133,9 @@ export interface HubOptions {
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
+  /** ETH mainnet RPC URL */
+  ethMainnetRpcUrl?: string;
+
   /** FName Registry Server URL */
   fnameServerUrl?: string;
 
@@ -249,6 +252,10 @@ export class Hub implements HubInterface {
       log.warn("No ETH RPC URL provided, not syncing with ETH contract events");
     }
 
+    if (!options.ethMainnetRpcUrl || options.ethMainnetRpcUrl === "") {
+      log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
+    }
+
     if (options.fnameServerUrl && options.fnameServerUrl !== "") {
       this.fNameRegistryEventsProvider = new FNameRegistryEventsProvider(
         new FNameRegistryClient(options.fnameServerUrl),
@@ -263,13 +270,12 @@ export class Hub implements HubInterface {
       lockMaxPending: options.commitLockMaxPending,
       lockTimeout: options.commitLockTimeout,
     });
-    const publicClient = createPublicClient({
+    const mainnetClient = createPublicClient({
       chain: mainnet,
-      // TODO: This should be the mainnet rpc url (ENS resolution is against mainnet)
-      transport: http(options.ethRpcUrl, { retryCount: 2 }),
+      transport: http(options.ethMainnetRpcUrl, { retryCount: 2 }),
     });
 
-    this.engine = new Engine(this.rocksDB, options.network, eventHandler, publicClient);
+    this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
     this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider);
 
     this.rpcServer = new Server(
