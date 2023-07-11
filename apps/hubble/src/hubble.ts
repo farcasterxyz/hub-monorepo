@@ -65,6 +65,7 @@ import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
+import { prettyPrintTable } from "./profile.js";
 import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
@@ -162,6 +163,9 @@ export interface HubOptions {
 
   /** Resets the DB on start, if true */
   resetDB?: boolean;
+
+  /** Profile the sync and exit after done */
+  profileSync?: boolean;
 
   /** Rebuild the sync trie from messages in the DB on startup */
   rebuildSyncTrie?: boolean;
@@ -271,13 +275,46 @@ export class Hub implements HubInterface {
       lockMaxPending: options.commitLockMaxPending,
       lockTimeout: options.commitLockTimeout,
     });
+
     const mainnetClient = createPublicClient({
       chain: mainnet,
       transport: http(options.ethMainnetRpcUrl, { retryCount: 2 }),
     });
 
     this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
-    this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider);
+
+    const profileSync = options.profileSync ?? false;
+    this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider, profileSync);
+
+    // If profileSync is true, exit after sync is complete
+    if (profileSync) {
+      this.syncEngine.on("syncComplete", async (success) => {
+        if (success) {
+          log.info("Sync complete, exiting (profileSync=true)");
+
+          const profileLog = logger.child({ component: "SyncProfile" });
+
+          const profile = this.syncEngine.getSyncProfile();
+          if (profile) {
+            profileLog.info({ wallTimeMs: profile.getSyncDuration() });
+
+            for (const [method, p] of profile.getRpcMethodProfiles()) {
+              profileLog.info({ method, p });
+            }
+
+            // Also write to console for easy copy/paste
+            console.log("\nLatencies (ms)\n");
+            console.log(prettyPrintTable(profile.latenciesToPrettyPrintObject()));
+
+            console.log("\nData Fetched (bytes)\n");
+            console.log(prettyPrintTable(profile.resultBytesToPrettyPrintObject()));
+          }
+
+          await this.stop();
+          process.exit(0);
+        }
+      });
+    }
 
     this.rpcServer = new Server(
       this,

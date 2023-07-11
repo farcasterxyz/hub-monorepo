@@ -15,7 +15,7 @@ function getMaxValue(enumType: any): number {
 }
 
 // Pretty print a number with K/M/B/T suffixes
-function formatNumber(num?: number): string {
+export function formatNumber(num?: number): string {
   if (num === undefined) return "";
 
   if (Math.abs(num) >= 1.0e12) return `${(Math.abs(num) / 1.0e12).toFixed(1)}T`;
@@ -115,7 +115,7 @@ class ValueStats {
 }
 
 // Return a string that can printed to console of a table with the data
-function prettyPrintTable(data: (string | number)[][]): string {
+export function prettyPrintTable(data: (string | number)[][]): string {
   // First, calculate the maximum width of each column
   const columnWidths =
     data[0]?.map((_, columnIndex) => Math.max(...data.map((row) => row[columnIndex]?.toString().length || 0))) || [];

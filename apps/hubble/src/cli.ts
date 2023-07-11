@@ -88,6 +88,7 @@ app
   .option("--admin-server-enabled", "Enable the admin server. (default: disabled)")
   .option("--admin-server-host <host>", "The host the admin server should listen on. (default: '127.0.0.1')")
   .option("--db-name <name>", "The name of the RocksDB instance")
+  .option("--profile-sync", "Profile the sync. Will sync the node and exit. (default: disabled)")
   .option("--rebuild-sync-trie", "Rebuilds the sync trie before starting")
   .option("--resync-eth-events", "Resyncs events from the Farcaster contracts before starting")
   .option("--resync-name-events", "Resyncs events from the FName registry server before starting")
@@ -299,6 +300,7 @@ app
       .map((a) => a._unsafeUnwrap());
 
     const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
+    const profileSync = cliOptions.profileSync ?? hubConfig.profileSync ?? false;
 
     const options: HubOptions = {
       peerId,
@@ -322,6 +324,7 @@ app
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB,
       rebuildSyncTrie,
+      profileSync,
       resyncEthEvents: cliOptions.resyncEthEvents ?? hubConfig.resyncEthEvents ?? false,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
