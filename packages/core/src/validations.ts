@@ -8,6 +8,7 @@ import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
+import { normalize } from "viem/ens";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -622,7 +623,9 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
       // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
       if (value !== "") {
         const validatedFname = validateFname(value);
-        if (validatedFname.isErr()) {
+        const validatedEnsName = validateEnsName(value);
+        // At least one of fname or ensName must be valid
+        if (validatedFname.isErr() && validatedEnsName.isErr()) {
           return err(validatedFname.error);
         }
       }
@@ -685,6 +688,12 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
 
   if (ensName === undefined || ensName === null || ensName === "") {
     return err(new HubError("bad_request.validation_failure", "ensName is missing"));
+  }
+
+  try {
+    normalize(ensName);
+  } catch (e) {
+    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" is not a valid ENS name`));
   }
 
   if (!ensName.endsWith(".eth")) {

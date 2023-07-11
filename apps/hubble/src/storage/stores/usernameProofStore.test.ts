@@ -109,16 +109,30 @@ describe("usernameProofStore", () => {
   });
 
   describe("getUsernameProof", () => {
-    test("succeeds for an ens name", async () => {});
-    test("succeeds for a fname name", async () => {});
     test("fails if not found", async () => {
       await expect(set.getUsernameProof(fname, UserNameType.USERNAME_TYPE_ENS_L1)).rejects.toThrowError("NotFound");
     });
   });
 
   describe("getUsernameProofsByFid", () => {
-    test("should return empty array if no proofs", async () => {});
-    test("should return all proofs for fid", async () => {});
+    test("should return empty array if no proofs", async () => {
+      expect(await set.getUsernameProofsByFid(fid)).toEqual([]);
+    });
+    test("should return all proofs for fid", async () => {
+      const anotherFid = Factories.Fid.build();
+      const proof1 = await Factories.UsernameProofMessage.create({ data: { fid } });
+      const proof2 = await Factories.UsernameProofMessage.create({ data: { fid } });
+      const proofAnotherFid = await Factories.UsernameProofMessage.create({ data: { fid: anotherFid } });
+      await set.merge(proof1);
+      await set.merge(proof2);
+      await set.merge(proofAnotherFid);
+
+      const proofsForFid = await set.getUsernameProofsByFid(fid);
+      expect(proofsForFid).toHaveLength(2);
+      expect(proofsForFid).toContainEqual(proof1.data.usernameProofBody);
+      expect(proofsForFid).toContainEqual(proof2.data.usernameProofBody);
+      expect(await set.getUsernameProofsByFid(anotherFid)).toEqual([proofAnotherFid.data.usernameProofBody]);
+    });
   });
 
   describe("pruneMessages", () => {

@@ -5,7 +5,7 @@ import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "@noble/hashes/utils";
 import * as protobufs from "./protobufs";
-import { bytesToHexString, bytesToUtf8String, utf8StringToBytes } from "./bytes";
+import { bytesToHexString, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, ViemLocalEip712Signer, Signer } from "./signers";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { VerificationEthAddressClaim } from "./verifications";
@@ -60,8 +60,8 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
 });
 
 const EnsNameFactory = Factory.define<Uint8Array>(() => {
-  const fname = FnameFactory.build();
-  return utf8StringToBytes(bytesToUtf8String(fname)._unsafeUnwrap().concat(".eth"))._unsafeUnwrap();
+  const ensName = faker.random.alphaNumeric(faker.datatype.number({ min: 3, max: 16 }));
+  return utf8StringToBytes(ensName.concat(".eth"))._unsafeUnwrap();
 });
 
 /** Eth */

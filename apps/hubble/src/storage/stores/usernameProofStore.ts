@@ -4,12 +4,12 @@ import {
   HubEventType,
   isUsernameProofMessage,
   MessageType,
+  UserNameProof,
   UsernameProofMessage,
   UserNameType,
 } from "@farcaster/hub-nodejs";
 import { err, ok, ResultAsync } from "neverthrow";
 import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { MessagesPage, PageOptions } from "../stores/types.js";
 import { Store } from "./store.js";
 import { Transaction } from "../db/rocksdb.js";
 import { makeFidKey, makeTsHash, makeUserKey, readFidKey } from "../db/message.js";
@@ -80,11 +80,13 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
   }
 
   /** Finds all UserNameProof messages for an fid */
-  async getUsernameProofsByFid(
-    fid: number,
-    pageOptions: PageOptions = {},
-  ): Promise<MessagesPage<UsernameProofMessage>> {
-    return await this.getAddsByFid({ data: { fid } }, pageOptions);
+  async getUsernameProofsByFid(fid: number): Promise<UserNameProof[]> {
+    const proofMessages = await this.getAddsByFid({ data: { fid } }, { pageSize: 25 });
+    const result: UserNameProof[] = [];
+    for (const proofMessage of proofMessages.messages) {
+      result.push(proofMessage.data.usernameProofBody);
+    }
+    return result;
   }
 
   override async buildSecondaryIndices(txn: Transaction, message: UsernameProofMessage): HubAsyncResult<void> {

@@ -7,7 +7,7 @@ import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationEthAddressClaim } from "./verifications";
-import { UserNameType } from "@farcaster/hub-nodejs";
+import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 
 const signer = Factories.Ed25519Signer.build();
 const ethSigner = Factories.Eip712Signer.build();
@@ -83,6 +83,13 @@ describe("validateFname", () => {
       err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`)),
     );
   });
+
+  test("does not allow names ending with .eth", () => {
+    const fname = "fname.eth";
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`)),
+    );
+  });
 });
 
 describe("validateENSname", () => {
@@ -117,7 +124,7 @@ describe("validateENSname", () => {
   });
 
   test("fails with invalid characters", () => {
-    const ensName = "@fname.eth";
+    const ensName = "-fname.eth";
     expect(validations.validateEnsName(ensName)).toEqual(
       err(
         new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't match ${validations.FNAME_REGEX}`),
@@ -136,6 +143,13 @@ describe("validateENSname", () => {
     const ensName = "abc.def.eth";
     expect(validations.validateEnsName(ensName)).toEqual(
       err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`)),
+    );
+  });
+
+  test("fails when unable to normalize ens names", () => {
+    const ensName = "2l--3-6b-mi-d-b.eth";
+    expect(validations.validateEnsName(ensName)).toEqual(
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" is not a valid ENS name`)),
     );
   });
 });
@@ -778,6 +792,11 @@ describe("validateSignerRemoveBody", () => {
 describe("validateUserDataAddBody", () => {
   test("succeeds", async () => {
     const body = Factories.UserDataBody.build();
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+  });
+
+  test("succeeds for ens names", async () => {
+    const body = Factories.UserDataBody.build({ type: UserDataType.FNAME, value: "averylongensname.eth" });
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
