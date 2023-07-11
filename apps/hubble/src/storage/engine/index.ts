@@ -1,10 +1,12 @@
 import {
   bytesCompare,
   bytesToHexString,
+  bytesToUtf8String,
   CastAddMessage,
   CastId,
   CastRemoveMessage,
   FarcasterNetwork,
+  hexStringToBytes,
   HubAsyncResult,
   HubError,
   HubEvent,
@@ -14,13 +16,14 @@ import {
   isSignerAddMessage,
   isSignerRemoveMessage,
   isUserDataAddMessage,
+  isUsernameProofMessage,
   LinkAddMessage,
   LinkRemoveMessage,
   MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
+  MergeUsernameProofHubEvent,
   Message,
   NameRegistryEvent,
-  UserNameProof,
   NameRegistryEventType,
   PruneMessageHubEvent,
   ReactionAddMessage,
@@ -32,11 +35,12 @@ import {
   SignerRemoveMessage,
   UserDataAddMessage,
   UserDataType,
+  UserNameProof,
+  UserNameType,
   utf8StringToBytes,
   validations,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-  MergeUsernameProofHubEvent,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import fs from "fs";
@@ -54,8 +58,10 @@ import UserDataStore from "../stores/userDataStore.js";
 import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
-import { getIdRegistryEventByCustodyAddress } from "../db/idRegistryEvent.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
+import { PublicClient } from "viem";
+import { normalize } from "viem/ens";
+import UsernameProofStore from "../stores/usernameProofStore.js";
 
 const log = logger.child({
   component: "Engine",
@@ -66,6 +72,7 @@ class Engine {
 
   private _db: RocksDB;
   private _network: FarcasterNetwork;
+  private _publicClient: PublicClient | undefined;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -73,6 +80,7 @@ class Engine {
   private _castStore: CastStore;
   private _userDataStore: UserDataStore;
   private _verificationStore: VerificationStore;
+  private _usernameProofStore: UsernameProofStore;
 
   private _validationWorker: Worker | undefined;
   private _validationWorkerJobId = 0;
@@ -81,9 +89,10 @@ class Engine {
   private _revokeSignerQueue: RevokeMessagesBySignerJobQueue;
   private _revokeSignerWorker: RevokeMessagesBySignerJobWorker;
 
-  constructor(db: RocksDB, network: FarcasterNetwork, eventHandler?: StoreEventHandler) {
+  constructor(db: RocksDB, network: FarcasterNetwork, eventHandler?: StoreEventHandler, publicClient?: PublicClient) {
     this._db = db;
     this._network = network;
+    this._publicClient = publicClient;
 
     this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
@@ -93,6 +102,7 @@ class Engine {
     this._castStore = new CastStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
+    this._usernameProofStore = new UsernameProofStore(db, this.eventHandler);
 
     this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
     this._revokeSignerWorker = new RevokeMessagesBySignerJobWorker(this._revokeSignerQueue, db, this);
@@ -204,6 +214,9 @@ class Engine {
       case UserPostfix.VerificationMessage: {
         return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
       }
+      case UserPostfix.UsernameProofMessage: {
+        return ResultAsync.fromPromise(this._usernameProofStore.merge(message), (e) => e as HubError);
+      }
       default: {
         return err(new HubError("bad_request.validation_failure", "invalid message type"));
       }
@@ -272,6 +285,9 @@ class Engine {
         }
         case UserPostfix.VerificationMessage: {
           return this._verificationStore.revoke(message.value);
+        }
+        case UserPostfix.UsernameProofMessage: {
+          return this._usernameProofStore.revoke(message.value);
         }
         default: {
           return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -361,6 +377,13 @@ class Engine {
         }
         case UserPostfix.VerificationMessage: {
           return this._verificationStore.revoke(message);
+        }
+        case UserPostfix.UsernameProofMessage: {
+          if (isValid.error.errCode === "unavailable.network_failure") {
+            return err(isValid.error);
+          } else {
+            return this._usernameProofStore.revoke(message);
+          }
         }
         default: {
           return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -628,12 +651,38 @@ class Engine {
   }
 
   async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {
-    const validatedFname = validations.validateFname(name);
-    if (validatedFname.isErr()) {
-      return err(validatedFname.error);
+    const nameString = bytesToUtf8String(name);
+    if (nameString.isErr()) {
+      return err(nameString.error);
+    }
+    if (nameString.value.endsWith(".eth")) {
+      const validatedEnsName = validations.validateEnsName(name);
+      if (validatedEnsName.isErr()) {
+        return err(validatedEnsName.error);
+      }
+      return ResultAsync.fromPromise(
+        this._usernameProofStore.getUsernameProof(name, UserNameType.USERNAME_TYPE_ENS_L1).then((proof) => {
+          return proof.data.usernameProofBody;
+        }),
+        (e) => e as HubError,
+      );
+    } else {
+      const validatedFname = validations.validateFname(name);
+      if (validatedFname.isErr()) {
+        return err(validatedFname.error);
+      }
+
+      return ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
+    }
+  }
+
+  async getUserNameProofsByFid(fid: number): HubAsyncResult<UserNameProof[]> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._usernameProofStore.getUsernameProofsByFid(fid), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -796,21 +845,38 @@ class Engine {
           return err(nameProof.error);
         }
 
-        // Check that the custody address for the fname and fid are the same
-        if (bytesCompare(custodyEvent.value.to, nameProof.value.owner) !== 0) {
-          const hex = Result.combine([
-            bytesToHexString(custodyEvent.value.to),
-            bytesToHexString(nameProof.value.owner),
-          ]);
-          return hex.andThen(([custodySignerHex, fnameOwnerHex]) => {
-            return err(
-              new HubError(
-                "bad_request.validation_failure",
-                `fname custody address ${fnameOwnerHex} does not match custody address ${custodySignerHex} for fid ${message.data.fid}`,
-              ),
-            );
-          });
+        if (nameProof.value.type === UserNameType.USERNAME_TYPE_FNAME) {
+          // Check that the custody address for the fname and fid are the same
+          if (bytesCompare(custodyEvent.value.to, nameProof.value.owner) !== 0) {
+            const hex = Result.combine([
+              bytesToHexString(custodyEvent.value.to),
+              bytesToHexString(nameProof.value.owner),
+            ]);
+            return hex.andThen(([custodySignerHex, fnameOwnerHex]) => {
+              return err(
+                new HubError(
+                  "bad_request.validation_failure",
+                  `fname custody address ${fnameOwnerHex} does not match custody address ${custodySignerHex} for fid ${message.data.fid}`,
+                ),
+              );
+            });
+          }
+        } else if (nameProof.value.type === UserNameType.USERNAME_TYPE_ENS_L1) {
+          const result = await this.validateEnsUsernameProof(nameProof.value, custodyEvent.value.to);
+          if (result.isErr()) {
+            return err(result.error);
+          }
+        } else {
+          return err(new HubError("bad_request.validation_failure", "invalid username type"));
         }
+      }
+    }
+
+    // For username proof messages, make sure the name resolves to the users custody address or a connected address actually owns the ens name
+    if (isUsernameProofMessage(message) && message.data.usernameProofBody.type === UserNameType.USERNAME_TYPE_ENS_L1) {
+      const result = await this.validateEnsUsernameProof(message.data.usernameProofBody, custodyEvent.value.to);
+      if (result.isErr()) {
+        return err(result.error);
       }
     }
 
@@ -825,6 +891,45 @@ class Engine {
     } else {
       return validations.validateMessage(message);
     }
+  }
+
+  private async validateEnsUsernameProof(
+    nameProof: UserNameProof,
+    custodyAddress: Uint8Array,
+  ): HubAsyncResult<undefined> {
+    const nameResult = bytesToUtf8String(nameProof.name);
+    if (nameResult.isErr() || !nameResult.value.endsWith(".eth")) {
+      return err(new HubError("bad_request.validation_failure", `invalid ens name: ${nameProof.name}`));
+    }
+    let resolvedAddress;
+    let resolvedAddressString;
+    try {
+      resolvedAddressString = await this._publicClient?.getEnsAddress({ name: normalize(nameResult.value) });
+      const resolvedAddressBytes = hexStringToBytes(resolvedAddressString || "");
+      if (resolvedAddressBytes.isErr() || resolvedAddressBytes.value.length === 0) {
+        return err(new HubError("bad_request.validation_failure", `no valid address for ${nameResult.value}`));
+      }
+      resolvedAddress = resolvedAddressBytes.value;
+    } catch (e) {
+      return err(new HubError("unavailable.network_failure", `failed to resolve ens name ${nameResult.value}: ${e}`));
+    }
+
+    if (bytesCompare(resolvedAddress, nameProof.owner) !== 0) {
+      return err(
+        new HubError(
+          "bad_request.validation_failure",
+          `resolved address ${resolvedAddressString} does not match proof`,
+        ),
+      );
+    }
+    // If resolved address does not match custody address then check if we have an eth verification for it
+    if (bytesCompare(resolvedAddress, custodyAddress) !== 0) {
+      const verificationResult = await this.getVerification(nameProof.fid, resolvedAddress);
+      if (verificationResult.isErr()) {
+        return err(new HubError("bad_request.validation_failure", `ens name does not belong to fid: ${nameProof.fid}`));
+      }
+    }
+    return ok(undefined);
   }
 
   private async handleMergeIdRegistryEvent(event: MergeIdRegistryEventHubEvent): HubAsyncResult<void> {
@@ -879,37 +984,27 @@ class Engine {
     // When there is a UserNameProof, we need to check if we need to revoke UserDataAdd messages from the
     // previous owner of the name.
     if (deletedUsernameProof && deletedUsernameProof.owner.length > 0) {
-      // Check to see if the from address has an fid
-      const idRegistryEvent = await ResultAsync.fromPromise(
-        getIdRegistryEventByCustodyAddress(this._db, deletedUsernameProof.owner),
+      const fid = deletedUsernameProof.fid;
+
+      // Check if this fid assigned the fname with a UserDataAdd message
+      const fnameAdd = await ResultAsync.fromPromise(
+        this._userDataStore.getUserDataAdd(fid, UserDataType.FNAME),
         () => undefined,
       );
-
-      if (idRegistryEvent.isOk()) {
-        const { fid } = idRegistryEvent.value;
-
-        // Check if this fid assigned the fname with a UserDataAdd message
-        const fnameAdd = await ResultAsync.fromPromise(
-          this._userDataStore.getUserDataAdd(fid, UserDataType.FNAME),
-          () => undefined,
+      if (fnameAdd.isOk()) {
+        const revokeResult = await this._userDataStore.revoke(fnameAdd.value);
+        const fnameAddHex = bytesToHexString(fnameAdd.value.hash);
+        revokeResult.match(
+          () =>
+            log.info(`revoked message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation`),
+          (e) =>
+            log.error(
+              { errCode: e.errCode },
+              `failed to revoke message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation: ${
+                e.message
+              }`,
+            ),
         );
-        if (fnameAdd.isOk()) {
-          const revokeResult = await this._userDataStore.revoke(fnameAdd.value);
-          const fnameAddHex = bytesToHexString(fnameAdd.value.hash);
-          revokeResult.match(
-            () =>
-              log.info(
-                `revoked message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to NameRegistryEvent transfer`,
-              ),
-            (e) =>
-              log.error(
-                { errCode: e.errCode },
-                `failed to revoke message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to NameRegistryEvent transfer: ${
-                  e.message
-                }`,
-              ),
-          );
-        }
       }
     }
 

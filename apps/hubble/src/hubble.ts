@@ -66,10 +66,13 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import { prettyPrintTable } from "./profile.js";
+import packageJson from "./package.json" assert { type: "json" };
+import { createPublicClient, http } from "viem";
+import { mainnet } from "viem/chains";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "sync" | "fname-registry";
 
-export const APP_VERSION = process.env["npm_package_version"] ?? "1.0.0";
+export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
 export const FARCASTER_VERSION = "2023.5.31";
@@ -130,6 +133,9 @@ export interface HubOptions {
 
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
+
+  /** ETH mainnet RPC URL */
+  ethMainnetRpcUrl?: string;
 
   /** FName Registry Server URL */
   fnameServerUrl?: string;
@@ -213,6 +219,7 @@ export class Hub implements HubInterface {
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
+  private allowedPeerIds: string[] = [];
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -250,6 +257,10 @@ export class Hub implements HubInterface {
       log.warn("No ETH RPC URL provided, not syncing with ETH contract events");
     }
 
+    if (!options.ethMainnetRpcUrl || options.ethMainnetRpcUrl === "") {
+      log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
+    }
+
     if (options.fnameServerUrl && options.fnameServerUrl !== "") {
       this.fNameRegistryEventsProvider = new FNameRegistryEventsProvider(
         new FNameRegistryClient(options.fnameServerUrl),
@@ -264,7 +275,13 @@ export class Hub implements HubInterface {
       lockMaxPending: options.commitLockMaxPending,
       lockTimeout: options.commitLockTimeout,
     });
-    this.engine = new Engine(this.rocksDB, options.network, eventHandler);
+
+    const mainnetClient = createPublicClient({
+      chain: mainnet,
+      transport: http(options.ethMainnetRpcUrl, { retryCount: 2 }),
+    });
+
+    this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
 
     const profileSync = options.profileSync ?? false;
     this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider, profileSync);
@@ -330,6 +347,13 @@ export class Hub implements HubInterface {
         this.rocksDB,
         this.ethRegistryProvider,
       );
+    }
+
+    this.allowedPeerIds = this.options.allowedPeers || [];
+    if (this.options.network === FarcasterNetwork.MAINNET) {
+      // Mainnet is right now resitrcited to a few peers
+      // Append and de-dup the allowed peers
+      this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...MAINNET_ALLOWED_PEERS])];
     }
   }
 
@@ -439,19 +463,12 @@ export class Hub implements HubInterface {
       this.updateNameRegistryEventExpiryJobWorker.start();
     }
 
-    let allowedPeerIdStrs = this.options.allowedPeers;
-    if (this.options.network === FarcasterNetwork.MAINNET) {
-      // Mainnet is right now resitrcited to a few peers
-      // Append and de-dup the allowed peers
-      allowedPeerIdStrs = [...new Set([...(allowedPeerIdStrs ?? []), ...MAINNET_ALLOWED_PEERS])];
-    }
-
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
-      allowedPeerIdStrs,
+      allowedPeerIdStrs: this.allowedPeerIds,
     });
 
     this.registerEventHandlers();
@@ -981,6 +998,12 @@ export class Hub implements HubInterface {
   }
 
   async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
+    const peerId = ourPeerId.toString();
+    if (this.allowedPeerIds?.length && !this.allowedPeerIds.includes(peerId)) {
+      log.warn(`Peer ${ourPeerId.toString()} is not in the allowed peers list`);
+      return false;
+    }
+
     const theirVersion = message.hubVersion;
     const theirNetwork = message.network;
 
