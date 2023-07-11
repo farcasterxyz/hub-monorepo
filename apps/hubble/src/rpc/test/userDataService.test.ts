@@ -1,19 +1,23 @@
 import {
-  Message,
-  FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
-  UserDataAddMessage,
-  UserDataType,
-  UserDataRequest,
-  FidRequest,
+  bytesToHexString,
   bytesToUtf8String,
   Factories,
-  HubError,
+  FarcasterNetwork,
+  FidRequest,
   getInsecureHubRpcClient,
+  HubError,
   HubRpcClient,
-  UsernameProofRequest,
+  IdRegistryEvent,
+  Message,
+  SignerAddMessage,
+  UserDataAddMessage,
+  UserDataRequest,
+  UserDataType,
   UserNameProof,
+  UsernameProofMessage,
+  UsernameProofRequest,
+  UsernameProofsResponse,
+  UserNameType,
 } from "@farcaster/hub-nodejs";
 import { Ok } from "neverthrow";
 import SyncEngine from "../../network/sync/syncEngine.js";
@@ -21,10 +25,12 @@ import Server from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
+import { jest } from "@jest/globals";
+import { publicClient } from "../../test/utils.js";
 
 const db = jestRocksDB("protobufs.rpc.userdataservice.test");
 const network = FarcasterNetwork.TESTNET;
-const engine = new Engine(db, network);
+const engine = new Engine(db, network, undefined, publicClient);
 const hub = new MockHub(db, engine);
 
 let server: Server;
@@ -54,6 +60,9 @@ let signerAdd: SignerAddMessage;
 let pfpAdd: UserDataAddMessage;
 let displayAdd: UserDataAddMessage;
 let addFname: UserDataAddMessage;
+
+let ensNameProof: UsernameProofMessage;
+let addEnsName: UserDataAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -88,6 +97,39 @@ beforeAll(async () => {
     },
     { transient: { signer } },
   );
+
+  const custodySignerAddress = bytesToHexString(custodySignerKey)._unsafeUnwrap();
+
+  jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+    return Promise.resolve(custodySignerAddress);
+  });
+  ensNameProof = await Factories.UsernameProofMessage.create(
+    {
+      data: {
+        fid,
+        usernameProofBody: Factories.UserNameProof.build({
+          fid,
+          owner: custodySignerKey,
+          name: Factories.EnsName.build(),
+          type: UserNameType.USERNAME_TYPE_ENS_L1,
+        }),
+      },
+    },
+    { transient: { signer } },
+  );
+  addEnsName = await Factories.UserDataAddMessage.create(
+    {
+      data: {
+        fid,
+        userDataBody: {
+          type: UserDataType.FNAME,
+          value: bytesToUtf8String(ensNameProof.data.usernameProofBody.name)._unsafeUnwrap(),
+        },
+        timestamp: addFname.data.timestamp + 2,
+      },
+    },
+    { transient: { signer } },
+  );
 });
 
 describe("getUserData", () => {
@@ -106,15 +148,25 @@ describe("getUserData", () => {
     const display = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.DISPLAY }));
     expect(Message.toJSON(display._unsafeUnwrap())).toEqual(Message.toJSON(displayAdd));
 
-    const nameProof = Factories.UserNameProof.build({ name: fname, owner: custodySignerKey });
-    await engine.mergeUserNameProof(nameProof);
+    const fnameProof = Factories.UserNameProof.build({ name: fname, owner: custodySignerKey });
+    await engine.mergeUserNameProof(fnameProof);
 
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);
     const fnameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
     expect(Message.toJSON(fnameData._unsafeUnwrap())).toEqual(Message.toJSON(addFname));
 
-    const usernameProof = await client.getUsernameProof(UsernameProofRequest.create({ name: nameProof.name }));
-    expect(UserNameProof.toJSON(usernameProof._unsafeUnwrap())).toEqual(UserNameProof.toJSON(nameProof));
+    const usernameProof = await client.getUsernameProof(UsernameProofRequest.create({ name: fnameProof.name }));
+    expect(UserNameProof.toJSON(usernameProof._unsafeUnwrap())).toEqual(UserNameProof.toJSON(fnameProof));
+
+    expect(await engine.mergeMessage(ensNameProof)).toBeInstanceOf(Ok);
+    const usernameProofs = await client.getUserNameProofsByFid(FidRequest.create({ fid }));
+    expect(UsernameProofsResponse.toJSON(usernameProofs._unsafeUnwrap())).toEqual(
+      UsernameProofsResponse.toJSON({ proofs: [ensNameProof.data.usernameProofBody] }),
+    );
+
+    expect(await engine.mergeMessage(addEnsName)).toBeInstanceOf(Ok);
+    const ensNameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
+    expect(Message.toJSON(ensNameData._unsafeUnwrap())).toEqual(Message.toJSON(addEnsName));
   });
 
   test("fails when user data is missing", async () => {

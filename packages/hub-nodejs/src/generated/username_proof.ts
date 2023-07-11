@@ -1,33 +1,39 @@
 /* eslint-disable */
-import Long from 'long';
-import _m0 from 'protobufjs/minimal';
+import Long from "long";
+import _m0 from "protobufjs/minimal";
 
 export enum UserNameType {
   USERNAME_TYPE_NONE = 0,
   USERNAME_TYPE_FNAME = 1,
+  USERNAME_TYPE_ENS_L1 = 2,
 }
 
 export function userNameTypeFromJSON(object: any): UserNameType {
   switch (object) {
     case 0:
-    case 'USERNAME_TYPE_NONE':
+    case "USERNAME_TYPE_NONE":
       return UserNameType.USERNAME_TYPE_NONE;
     case 1:
-    case 'USERNAME_TYPE_FNAME':
+    case "USERNAME_TYPE_FNAME":
       return UserNameType.USERNAME_TYPE_FNAME;
+    case 2:
+    case "USERNAME_TYPE_ENS_L1":
+      return UserNameType.USERNAME_TYPE_ENS_L1;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum UserNameType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserNameType");
   }
 }
 
 export function userNameTypeToJSON(object: UserNameType): string {
   switch (object) {
     case UserNameType.USERNAME_TYPE_NONE:
-      return 'USERNAME_TYPE_NONE';
+      return "USERNAME_TYPE_NONE";
     case UserNameType.USERNAME_TYPE_FNAME:
-      return 'USERNAME_TYPE_FNAME';
+      return "USERNAME_TYPE_FNAME";
+    case UserNameType.USERNAME_TYPE_ENS_L1:
+      return "USERNAME_TYPE_ENS_L1";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum UserNameType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserNameType");
   }
 }
 
@@ -177,24 +183,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -207,36 +213,30 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(''));
+    return tsProtoGlobalThis.btoa(bin.join(""));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
+    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
   }
   return long.toNumber();
 }

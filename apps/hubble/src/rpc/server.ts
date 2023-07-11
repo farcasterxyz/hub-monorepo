@@ -36,6 +36,7 @@ import {
   SyncStatusResponse,
   SyncStatus,
   UserNameProof,
+  UsernameProofsResponse,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -649,6 +650,19 @@ export default class Server {
         usernameProofResult?.match(
           (usernameProof: UserNameProof) => {
             callback(null, usernameProof);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      getUserNameProofsByFid: async (call, callback) => {
+        const request = call.request;
+
+        const usernameProofResult = await this.engine?.getUserNameProofsByFid(request.fid);
+        usernameProofResult?.match(
+          (usernameProofs: UserNameProof[]) => {
+            callback(null, UsernameProofsResponse.create({ proofs: usernameProofs }));
           },
           (err: HubError) => {
             callback(toServiceError(err));

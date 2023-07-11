@@ -5,8 +5,10 @@ import { err, ok, Result } from "neverthrow";
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
-import { getFarcasterTime } from "./time";
+import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
+import { UserNameType } from "./protobufs";
+import { normalize } from "viem/ens";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -221,6 +223,8 @@ export const validateMessageData = async <T extends protobufs.MessageData>(data:
     );
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
+  } else if (validType.value === protobufs.MessageType.USERNAME_PROOF && !!data.usernameProofBody) {
+    bodyResult = validateUsernameProofBody(data.usernameProofBody, data);
   } else {
     return err(new HubError("bad_request.invalid_param", "bodyType is invalid"));
   }
@@ -516,6 +520,39 @@ export const validateVerificationRemoveBody = (
   return validateEthAddress(body.address).map(() => body);
 };
 
+export const validateUsernameProofBody = (
+  body: protobufs.UserNameProof,
+  data: protobufs.MessageData,
+): HubResult<protobufs.UserNameProof> => {
+  // Gossiped username proofs must only have an ENS type
+  if (body.type !== UserNameType.USERNAME_TYPE_ENS_L1) {
+    return err(new HubError("bad_request.validation_failure", `invalid username type: ${body.type}`));
+  }
+  const validateName = validateEnsName(body.name);
+  if (validateName.isErr()) {
+    return err(validateName.error);
+  }
+  if (body.fid !== data.fid) {
+    return err(
+      new HubError("bad_request.validation_failure", "fid in username proof does not match fid in message data"),
+    );
+  }
+
+  const proofFarcasterTimestamp = toFarcasterTime(body.timestamp);
+  if (proofFarcasterTimestamp.isErr()) {
+    return err(proofFarcasterTimestamp.error);
+  }
+  if (proofFarcasterTimestamp.value !== data.timestamp) {
+    return err(
+      new HubError(
+        "bad_request.validation_failure",
+        "timestamp in username proof does not match timestamp in message data",
+      ),
+    );
+  }
+  return ok(body);
+};
+
 export const validateSignerAddBody = (body: protobufs.SignerAddBody): HubResult<protobufs.SignerAddBody> => {
   if (body.name !== undefined) {
     const textUtf8BytesResult = utf8StringToBytes(body.name);
@@ -586,7 +623,9 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
       // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
       if (value !== "") {
         const validatedFname = validateFname(value);
-        if (validatedFname.isErr()) {
+        const validatedEnsName = validateEnsName(value);
+        // At least one of fname or ensName must be valid
+        if (validatedFname.isErr() && validatedEnsName.isErr()) {
           return err(validatedFname.error);
         }
       }
@@ -629,4 +668,51 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
   }
 
   return ok(fnameP);
+};
+
+export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | null): HubResult<T> => {
+  if (ensNameP === undefined || ensNameP === null || ensNameP === "") {
+    return err(new HubError("bad_request.validation_failure", "ensName is missing"));
+  }
+
+  let ensName;
+  if (ensNameP instanceof Uint8Array) {
+    const fromBytes = bytesToUtf8String(ensNameP);
+    if (fromBytes.isErr()) {
+      return err(fromBytes.error);
+    }
+    ensName = fromBytes.value;
+  } else {
+    ensName = ensNameP;
+  }
+
+  if (ensName === undefined || ensName === null || ensName === "") {
+    return err(new HubError("bad_request.validation_failure", "ensName is missing"));
+  }
+
+  try {
+    normalize(ensName);
+  } catch (e) {
+    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" is not a valid ENS name`));
+  }
+
+  if (!ensName.endsWith(".eth")) {
+    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't end with .eth`));
+  }
+
+  const nameParts = ensName.split(".");
+  if (nameParts[0] === undefined || nameParts.length !== 2) {
+    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`));
+  }
+
+  if (ensName.length > 20) {
+    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`));
+  }
+
+  const hasValidChars = FNAME_REGEX.test(nameParts[0]);
+  if (!hasValidChars) {
+    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't match ${FNAME_REGEX}`));
+  }
+
+  return ok(ensNameP);
 };

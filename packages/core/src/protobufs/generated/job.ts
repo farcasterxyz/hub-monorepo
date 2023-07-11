@@ -1,5 +1,5 @@
 /* eslint-disable */
-import _m0 from 'protobufjs/minimal';
+import _m0 from "protobufjs/minimal";
 
 export interface RevokeMessagesBySignerJobPayload {
   fid: number;
@@ -71,13 +71,13 @@ export const RevokeMessagesBySignerJobPayload = {
   },
 
   create<I extends Exact<DeepPartial<RevokeMessagesBySignerJobPayload>, I>>(
-    base?: I
+    base?: I,
   ): RevokeMessagesBySignerJobPayload {
     return RevokeMessagesBySignerJobPayload.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<RevokeMessagesBySignerJobPayload>, I>>(
-    object: I
+    object: I,
   ): RevokeMessagesBySignerJobPayload {
     const message = createBaseRevokeMessagesBySignerJobPayload();
     message.fid = object.fid ?? 0;
@@ -133,13 +133,13 @@ export const UpdateNameRegistryEventExpiryJobPayload = {
   },
 
   create<I extends Exact<DeepPartial<UpdateNameRegistryEventExpiryJobPayload>, I>>(
-    base?: I
+    base?: I,
   ): UpdateNameRegistryEventExpiryJobPayload {
     return UpdateNameRegistryEventExpiryJobPayload.fromPartial(base ?? {});
   },
 
   fromPartial<I extends Exact<DeepPartial<UpdateNameRegistryEventExpiryJobPayload>, I>>(
-    object: I
+    object: I,
   ): UpdateNameRegistryEventExpiryJobPayload {
     const message = createBaseUpdateNameRegistryEventExpiryJobPayload();
     message.fname = object.fname ?? new Uint8Array();
@@ -151,24 +151,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -181,31 +181,25 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(''));
+    return tsProtoGlobalThis.btoa(bin.join(""));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function isSet(value: any): boolean {

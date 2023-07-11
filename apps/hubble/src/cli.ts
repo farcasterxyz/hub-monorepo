@@ -53,6 +53,7 @@ app
   .command("start")
   .description("Start a Hub")
   .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli Ethereum Node")
+  .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a mainnet Ethereum Node")
   .option("-c, --config <filepath>", "Path to a config file with options")
   .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
   .option("--fnr-address <address>", "The address of the Farcaster Name Registry contract")
@@ -87,6 +88,7 @@ app
   .option("--admin-server-enabled", "Enable the admin server. (default: disabled)")
   .option("--admin-server-host <host>", "The host the admin server should listen on. (default: '127.0.0.1')")
   .option("--db-name <name>", "The name of the RocksDB instance")
+  .option("--profile-sync", "Profile the sync. Will sync the node and exit. (default: disabled)")
   .option("--rebuild-sync-trie", "Rebuilds the sync trie before starting")
   .option("--resync-eth-events", "Resyncs events from the Farcaster contracts before starting")
   .option("--resync-name-events", "Resyncs events from the FName registry server before starting")
@@ -298,6 +300,7 @@ app
       .map((a) => a._unsafeUnwrap());
 
     const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
+    const profileSync = cliOptions.profileSync ?? hubConfig.profileSync ?? false;
 
     const options: HubOptions = {
       peerId,
@@ -308,6 +311,7 @@ app
       gossipPort: hubAddressInfo.value.port,
       network,
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
+      ethMainnetRpcUrl: cliOptions.ethMainnetRpcUrl ?? hubConfig.ethMainnetRpcUrl,
       fnameServerUrl: cliOptions.fnameServerUrl ?? hubConfig.fnameServerUrl ?? DEFAULT_FNAME_SERVER_URL,
       idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
@@ -320,6 +324,7 @@ app
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB,
       rebuildSyncTrie,
+      profileSync,
       resyncEthEvents: cliOptions.resyncEthEvents ?? hubConfig.resyncEthEvents ?? false,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,

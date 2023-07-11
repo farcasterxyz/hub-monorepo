@@ -24,7 +24,8 @@ Testnet is a sandboxed environment where you can read and write messages without
 
 1. Create a `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
    ```
-   ETH_RPC_URL=your-ETH-RPC-URL
+   ETH_RPC_URL=your-ETH-goerli-RPC-URL
+   ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
    FC_NETWORK_ID=2
    BOOTSTRAP_NODE=/dns/testnet1.farcaster.xyz/tcp/2282
    ```
@@ -52,7 +53,8 @@ Mainnet is Farcaster's production environment apps use and writing a message her
 1. Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
    ```
    # Note: this should still point to goerli and not eth mainnet
-   ETH_RPC_URL=your-ETH-RPC-URL
+   ETH_RPC_URL=your-ETH-goerli-RPC-URL
+   ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
    FC_NETWORK_ID=1
    BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
    ```
@@ -93,6 +95,7 @@ Create a `.env` file in your `apps/hubble` directory, substituting the relevant 
 
 ```
 ETH_RPC_URL=your-ETH-RPC-URL
+ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
 FC_NETWORK_ID=2
 BOOTSTRAP_NODE=/dns/testnet1.farcaster.xyz/tcp/2282
 ```
@@ -122,6 +125,7 @@ Mainnet is Farcaster's production environment apps use and writing a message her
    ```
    # Note: this should still point to goerli and not eth mainnet
    ETH_RPC_URL=your-ETH-RPC-URL
+   ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
    FC_NETWORK_ID=1
    BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
    ```
@@ -150,7 +154,8 @@ Fetching data from Hubble requires communicating with its [gRPC](https://grpc.io
 1. Go to `apps/hubble` in this repo
 2. Pull the latest image: `docker pull farcasterxyz/hubble:latest`
 3. Run `docker compose stop && docker compose up -d --force-recreate`
-4. If you are upgrading from a non-docker deployment to docker, make sure the `.hub` and `.rocks` directories are writable for all users. 
+4. If you are upgrading from a non-docker deployment to docker, make sure the `.hub` and `.rocks` directories are writable for all users.
+5. If you're upgrading from 1.3.3 or below, please set `ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL` (if using docker) or provide the `--eth-mainnet-rpc-url` flag (if not using docker)
 
 Check the logs to ensure your hub is running successfully:
 ```sh

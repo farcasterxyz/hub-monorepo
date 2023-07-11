@@ -1,5 +1,5 @@
 /* eslint-disable */
-import _m0 from 'protobufjs/minimal';
+import _m0 from "protobufjs/minimal";
 
 export enum NameRegistryEventType {
   NONE = 0,
@@ -10,29 +10,29 @@ export enum NameRegistryEventType {
 export function nameRegistryEventTypeFromJSON(object: any): NameRegistryEventType {
   switch (object) {
     case 0:
-    case 'NAME_REGISTRY_EVENT_TYPE_NONE':
+    case "NAME_REGISTRY_EVENT_TYPE_NONE":
       return NameRegistryEventType.NONE;
     case 1:
-    case 'NAME_REGISTRY_EVENT_TYPE_TRANSFER':
+    case "NAME_REGISTRY_EVENT_TYPE_TRANSFER":
       return NameRegistryEventType.TRANSFER;
     case 2:
-    case 'NAME_REGISTRY_EVENT_TYPE_RENEW':
+    case "NAME_REGISTRY_EVENT_TYPE_RENEW":
       return NameRegistryEventType.RENEW;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NameRegistryEventType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum NameRegistryEventType");
   }
 }
 
 export function nameRegistryEventTypeToJSON(object: NameRegistryEventType): string {
   switch (object) {
     case NameRegistryEventType.NONE:
-      return 'NAME_REGISTRY_EVENT_TYPE_NONE';
+      return "NAME_REGISTRY_EVENT_TYPE_NONE";
     case NameRegistryEventType.TRANSFER:
-      return 'NAME_REGISTRY_EVENT_TYPE_TRANSFER';
+      return "NAME_REGISTRY_EVENT_TYPE_TRANSFER";
     case NameRegistryEventType.RENEW:
-      return 'NAME_REGISTRY_EVENT_TYPE_RENEW';
+      return "NAME_REGISTRY_EVENT_TYPE_RENEW";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum NameRegistryEventType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum NameRegistryEventType");
   }
 }
 
@@ -194,7 +194,7 @@ export const NameRegistryEvent = {
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
     message.transactionHash !== undefined &&
       (obj.transactionHash = base64FromBytes(
-        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array()
+        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array(),
       ));
     message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
     message.fname !== undefined &&
@@ -230,24 +230,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -260,31 +260,25 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(''));
+    return tsProtoGlobalThis.btoa(bin.join(""));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function isSet(value: any): boolean {
