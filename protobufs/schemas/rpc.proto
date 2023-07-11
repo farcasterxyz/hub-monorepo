@@ -31,7 +31,10 @@ service HubService {
   rpc GetUserData(UserDataRequest) returns (Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
   rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
+
+  // Username Proof
   rpc GetUsernameProof(UsernameProofRequest) returns (UserNameProof);
+  rpc GetUserNameProofsByFid(FidRequest) returns (UsernameProofsResponse);
 
   // Verifications
   rpc GetVerification(VerificationRequest) returns (Message);

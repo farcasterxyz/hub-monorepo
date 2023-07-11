@@ -8,8 +8,8 @@ export const makeNameRegistryEventPrimaryKey = (fname: Uint8Array): Buffer => {
   return Buffer.concat([Buffer.from([RootPrefix.NameRegistryEvent]), Buffer.from(fname)]);
 };
 
-export const makeUserNameProofPrimaryKey = (name: Uint8Array): Buffer => {
-  return Buffer.concat([Buffer.from([RootPrefix.UserNameProof]), Buffer.from(name)]);
+export const makeFNameUserNameProofKey = (name: Uint8Array): Buffer => {
+  return Buffer.concat([Buffer.from([RootPrefix.FNameUserNameProof]), Buffer.from(name)]);
 };
 
 export const makeNameRegistryEventByExpiryKey = (expiry: number, fname?: Uint8Array): Buffer => {
@@ -29,7 +29,7 @@ export const getNameRegistryEvent = async (db: RocksDB, fname: Uint8Array): Prom
 };
 
 export const getUserNameProof = async (db: RocksDB, name: Uint8Array): Promise<UserNameProof> => {
-  const primaryKey = makeUserNameProofPrimaryKey(name);
+  const primaryKey = makeFNameUserNameProofKey(name);
   const buffer = await db.get(primaryKey);
   return UserNameProof.decode(new Uint8Array(buffer));
 };
@@ -71,14 +71,14 @@ export const putNameRegistryEventTransaction = (txn: Transaction, event: NameReg
 export const putUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
   const proofBuffer = Buffer.from(UserNameProof.encode(usernameProof).finish());
 
-  const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
+  const primaryKey = makeFNameUserNameProofKey(usernameProof.name);
   const putTxn = txn.put(primaryKey, proofBuffer);
 
   return putTxn;
 };
 
 export const deleteUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
-  const primaryKey = makeUserNameProofPrimaryKey(usernameProof.name);
+  const primaryKey = makeFNameUserNameProofKey(usernameProof.name);
   const deleteTxn = txn.del(primaryKey);
 
   return deleteTxn;

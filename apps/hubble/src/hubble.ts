@@ -66,6 +66,8 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import packageJson from "./package.json" assert { type: "json" };
+import { createPublicClient, http } from "viem";
+import { mainnet } from "viem/chains";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "sync" | "fname-registry";
 
@@ -130,6 +132,9 @@ export interface HubOptions {
 
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
+
+  /** ETH mainnet RPC URL */
+  ethMainnetRpcUrl?: string;
 
   /** FName Registry Server URL */
   fnameServerUrl?: string;
@@ -247,6 +252,10 @@ export class Hub implements HubInterface {
       log.warn("No ETH RPC URL provided, not syncing with ETH contract events");
     }
 
+    if (!options.ethMainnetRpcUrl || options.ethMainnetRpcUrl === "") {
+      log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
+    }
+
     if (options.fnameServerUrl && options.fnameServerUrl !== "") {
       this.fNameRegistryEventsProvider = new FNameRegistryEventsProvider(
         new FNameRegistryClient(options.fnameServerUrl),
@@ -261,7 +270,12 @@ export class Hub implements HubInterface {
       lockMaxPending: options.commitLockMaxPending,
       lockTimeout: options.commitLockTimeout,
     });
-    this.engine = new Engine(this.rocksDB, options.network, eventHandler);
+    const mainnetClient = createPublicClient({
+      chain: mainnet,
+      transport: http(options.ethMainnetRpcUrl, { retryCount: 2 }),
+    });
+
+    this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
     this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider);
 
     this.rpcServer = new Server(

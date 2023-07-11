@@ -3,8 +3,10 @@ import {
   HubEvent,
   HubResult,
   isMergeMessageHubEvent,
+  isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
+  isUsernameProofMessage,
   Message,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
@@ -117,6 +119,12 @@ export class StorageCache {
       this.removeMessage(event.pruneMessageBody.message);
     } else if (isRevokeMessageHubEvent(event)) {
       this.removeMessage(event.revokeMessageBody.message);
+    } else if (isMergeUsernameProofHubEvent(event)) {
+      if (event.mergeUsernameProofBody.usernameProofMessage) {
+        this.addMessage(event.mergeUsernameProofBody.usernameProofMessage);
+      } else if (event.mergeUsernameProofBody.deletedUsernameProofMessage) {
+        this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
+      }
     }
     return ok(undefined);
   }

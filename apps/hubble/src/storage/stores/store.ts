@@ -237,10 +237,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
 
-    return this._eventHandler.commitTransaction(txn, {
-      type: HubEventType.REVOKE_MESSAGE,
-      revokeMessageBody: { message },
-    });
+    return this._eventHandler.commitTransaction(txn, this.revokeEventArgs(message));
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
@@ -303,10 +300,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         return err(new HubError("unknown", "invalid message type"));
       }
 
-      return this._eventHandler.commitTransaction(txn, {
-        type: HubEventType.PRUNE_MESSAGE,
-        pruneMessageBody: { message: nextMessage.value },
-      });
+      return this._eventHandler.commitTransaction(txn, this.pruneEventArgs(nextMessage.value));
     };
 
     let pruneResult = await pruneNextMessage();
@@ -344,6 +338,25 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
   protected get PRUNE_TIME_LIMIT_DEFAULT(): number | undefined {
     return undefined;
+  }
+
+  protected mergeEventArgs(mergedMessage: TAdd | TRemove, mergeConflicts: (TAdd | TRemove)[]): HubEventArgs {
+    return {
+      type: HubEventType.MERGE_MESSAGE,
+      mergeMessageBody: { message: mergedMessage, deletedMessages: mergeConflicts },
+    };
+  }
+  protected revokeEventArgs(message: TAdd | TRemove): HubEventArgs {
+    return {
+      type: HubEventType.REVOKE_MESSAGE,
+      revokeMessageBody: { message },
+    };
+  }
+  protected pruneEventArgs(prunedMessage: TAdd | TRemove): HubEventArgs {
+    return {
+      type: HubEventType.PRUNE_MESSAGE,
+      pruneMessageBody: { message: prunedMessage },
+    };
   }
 
   protected async getBySecondaryIndex(prefix: Buffer, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {
@@ -407,13 +420,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     txn = addTxn.value;
 
-    const hubEvent: HubEventArgs = {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
-    };
-
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
+    const result = await this._eventHandler.commitTransaction(txn, this.mergeEventArgs(message, mergeConflicts.value));
     if (result.isErr()) {
       throw result.error;
     }
@@ -438,13 +446,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     txn = txnRemove.value;
 
-    const hubEvent: HubEventArgs = {
-      type: HubEventType.MERGE_MESSAGE,
-      mergeMessageBody: { message, deletedMessages: mergeConflicts.value },
-    };
-
     // Commit the RocksDB transaction
-    const result = await this._eventHandler.commitTransaction(txn, hubEvent);
+    const result = await this._eventHandler.commitTransaction(txn, this.mergeEventArgs(message, mergeConflicts.value));
     if (result.isErr()) {
       throw result.error;
     }
@@ -475,7 +478,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
    *
    * @returns a RocksDB transaction if keys must be added or removed, undefined otherwise
    */
-  private async getMergeConflicts(message: TAdd | TRemove): HubAsyncResult<(TAdd | TRemove)[]> {
+  protected async getMergeConflicts(message: TAdd | TRemove): HubAsyncResult<(TAdd | TRemove)[]> {
     const validateResult = await (this._isAddType(message) ? this.validateAdd(message) : this.validateRemove(message));
 
     if (validateResult.isErr()) {
