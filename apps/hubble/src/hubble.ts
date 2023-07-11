@@ -215,6 +215,7 @@ export class Hub implements HubInterface {
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
+  private allowedPeerIds: string[] = [];
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -309,6 +310,13 @@ export class Hub implements HubInterface {
         this.rocksDB,
         this.ethRegistryProvider,
       );
+    }
+
+    this.allowedPeerIds = this.options.allowedPeers || [];
+    if (this.options.network === FarcasterNetwork.MAINNET) {
+      // Mainnet is right now resitrcited to a few peers
+      // Append and de-dup the allowed peers
+      this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...MAINNET_ALLOWED_PEERS])];
     }
   }
 
@@ -418,19 +426,12 @@ export class Hub implements HubInterface {
       this.updateNameRegistryEventExpiryJobWorker.start();
     }
 
-    let allowedPeerIdStrs = this.options.allowedPeers;
-    if (this.options.network === FarcasterNetwork.MAINNET) {
-      // Mainnet is right now resitrcited to a few peers
-      // Append and de-dup the allowed peers
-      allowedPeerIdStrs = [...new Set([...(allowedPeerIdStrs ?? []), ...MAINNET_ALLOWED_PEERS])];
-    }
-
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
-      allowedPeerIdStrs,
+      allowedPeerIdStrs: this.allowedPeerIds,
     });
 
     this.registerEventHandlers();
@@ -961,7 +962,7 @@ export class Hub implements HubInterface {
 
   async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
     const peerId = ourPeerId.toString();
-    if (MAINNET_ALLOWED_PEERS?.length && !MAINNET_ALLOWED_PEERS.includes(peerId)) {
+    if (this.allowedPeerIds?.length && !this.allowedPeerIds.includes(peerId)) {
       log.warn(`Peer ${ourPeerId.toString()} is not in the allowed peers list`);
       return false;
     }
