@@ -8,7 +8,7 @@ import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from "../../utils/cry
 import { NodeMetadata } from "./merkleTrie.js";
 
 export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString("hex");
-export const MAX_VALUES_RETURNED_PER_CALL = 1000;
+export const MAX_VALUES_RETURNED_PER_CALL = 1024;
 
 /**
  * A snapshot of the trie at a particular timestamp which can be used to determine if two
@@ -299,9 +299,8 @@ class TrieNode {
   }
 
   public async getNodeMetadata(prefix: Uint8Array, db: RocksDB): Promise<NodeMetadata> {
-    const children = this.children || new Map();
     const result = new Map<number, NodeMetadata>();
-    for (const [char] of children) {
+    for (const [char] of this.children) {
       const child = await this._getOrLoadChild(prefix, char, db);
       const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
       result.set(char, {
@@ -328,7 +327,7 @@ class TrieNode {
       values.push(...(await child.getAllValues(Buffer.concat([prefix, Buffer.from([char])]), db)));
 
       // Prevent this from growing indefinitely, since it could potentially load the whole trie.
-      // Limit to 1000 values.
+      // Limit to 1024 values.
       if (values.length > MAX_VALUES_RETURNED_PER_CALL) {
         break;
       }
