@@ -92,9 +92,12 @@ class RocksDB {
    */
   private _openIterators: Set<{
     iterator: Iterator;
+    id: number;
     openTimestamp: number;
     options: AbstractRocksDB.IteratorOptions | undefined;
+    stackTrace: string;
   }>;
+  private _openIteratorId = 0;
   private _iteratorCheckTimer?: NodeJS.Timer;
 
   constructor(name?: string) {
@@ -108,7 +111,12 @@ class RocksDB {
         } else {
           if (now - entry.openTimestamp >= MAX_DB_ITERATOR_OPEN_MILLISECONDS) {
             log.warn(
-              entry.options,
+              {
+                options: entry.options,
+                openSecs: now - entry.openTimestamp,
+                stackTrace: entry.stackTrace,
+                id: entry.id,
+              },
               `RocksDB iterator open
                 for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`,
             );
@@ -226,8 +234,16 @@ class RocksDB {
   }
 
   iterator(options?: AbstractRocksDB.IteratorOptions): Iterator {
+    const stackTrace = new Error().stack || "<no stacktrace>";
+
     const iterator = new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
-    this._openIterators.add({ iterator: iterator, openTimestamp: Date.now(), options: options });
+    this._openIterators.add({
+      id: this._openIteratorId++,
+      iterator: iterator,
+      openTimestamp: Date.now(),
+      options: options,
+      stackTrace,
+    });
     return iterator;
   }
 
