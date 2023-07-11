@@ -946,6 +946,12 @@ export class Hub implements HubInterface {
   }
 
   async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
+    const peerId = ourPeerId.toString();
+    if (MAINNET_ALLOWED_PEERS?.length && !MAINNET_ALLOWED_PEERS.includes(peerId)) {
+      log.warn(`Peer ${ourPeerId.toString()} is not in the allowed peers list`);
+      return false;
+    }
+
     const theirVersion = message.hubVersion;
     const theirNetwork = message.network;
 
