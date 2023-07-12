@@ -103,7 +103,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   // 1. Create a mapping of fids to fnames, which we'll need later to display messages
   const fidToFname = new Map<number, string>();
 
-  const fnameResultPromises = FIDS.map((fid) => client.getUserData({ fid, userDataType: UserDataType.USERNAME }));
+  const fnameResultPromises = FIDS.map((fid) => client.getUserData({ fid, userDataType: UserDataType.FNAME }));
   const fnameResults = Result.combine(await Promise.all(fnameResultPromises));
 
   if (fnameResults.isErr()) {
