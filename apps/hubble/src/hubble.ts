@@ -258,7 +258,7 @@ export class Hub implements HubInterface {
       throw new HubError("bad_request.invalid_param", "Invalid eth testnet rpc url");
     }
 
-    if (!options.ethMainnetRpcUrl || options.ethMainnetRpcUrl === "") {
+    if (!options.ethMainnetRpcUrl) {
       log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
       throw new HubError("bad_request.invalid_param", "Invalid eth mainnet rpc url");
     }
