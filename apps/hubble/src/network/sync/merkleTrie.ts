@@ -7,6 +7,8 @@ import RocksDB from "../../storage/db/rocksdb.js";
 import { FID_BYTES, RootPrefix, UserMessagePostfixMax } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
 
+// The number of messages to process before unloading the trie from memory
+// Approx 25k * 10 nodes * 65 bytes per node = approx 16MB of cached data
 const TRIE_UNLOAD_THRESHOLD = 25_000;
 
 /**
@@ -318,7 +320,7 @@ class MerkleTrie {
   private async _unloadFromMemory(writeLocked: boolean, force = false) {
     // Every TRIE_UNLOAD_THRESHOLD calls, we unload the trie from memory to avoid memory leaks.
     // Every call in this class usually loads one root-to-leaf path of the trie, so
-    // we unload the trie from memory every 1000 calls. This allows us to keep the
+    // we unload the trie from memory every TRIE_UNLOAD_THRESHOLD calls. This allows us to keep the
     // most recently used parts of the trie in memory, while still "garbage collecting"
     // the rest of the trie.
 
@@ -327,9 +329,9 @@ class MerkleTrie {
       this._callsSinceLastUnload = 0;
       logger.info("Unloading trie from memory");
 
-      // First, we need to commit any pending db updates.
       const txn = this._db.transaction();
 
+      // Collect all the pending DB updates into a single transaction batch
       for (const [key, value] of this._pendingDbUpdates) {
         if (value && value.length > 0) {
           txn.put(key, value);

@@ -298,11 +298,14 @@ export class Hub implements HubInterface {
           if (profile) {
             profileLog.info({ wallTimeMs: profile.getSyncDuration() });
 
-            for (const [method, p] of profile.getRpcMethodProfiles()) {
+            for (const [method, p] of profile.getAllMethodProfiles()) {
               profileLog.info({ method, p });
             }
 
             // Also write to console for easy copy/paste
+            console.log("\nTotal Time\n");
+            console.log(prettyPrintTable(profile.durationToPrettyPrintObject()));
+
             console.log("\nLatencies (ms)\n");
             console.log(prettyPrintTable(profile.latenciesToPrettyPrintObject()));
 
@@ -864,7 +867,7 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logMessage.info(
+        logMessage.debug(
           `submitMessage success ${eventId}: fid ${message.data?.fid} merged ${messageTypeToName(
             message.data?.type,
           )} ${bytesToHexString(message.hash)._unsafeUnwrap()}`,

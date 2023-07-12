@@ -35,8 +35,8 @@ import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
-const HASHES_PER_FETCH = 256;
-const SYNC_PARALLELISM = 4; // Fetch upto 4 leaf nodes in parallel
+const HASHES_PER_FETCH = 128;
+const SYNC_PARALLELISM = 16; // Fetch upto 16 leaf nodes in parallel
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
@@ -417,11 +417,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let success = false;
     try {
       this._isSyncing = true;
+
+      // Get the snapshot of our trie, at the same prefix as the peer's snapshot
       const snapshot = await this.getSnapshot(otherSnapshot.prefix);
       if (snapshot.isErr()) {
         log.warn({ errCode: snapshot.error.errCode }, `Error performing sync: ${snapshot.error.message}}`);
       } else {
         const ourSnapshot = snapshot.value;
+
         const divergencePrefix = this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
         log.info(
           {
@@ -523,6 +526,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     await this.compactDbIfRequired(messages.length);
 
+    const startTime = Date.now();
     for (const msg of messages) {
       const result = await this._hub.submitMessage(msg, "sync");
 
@@ -531,8 +535,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           if (result.error.message.startsWith("invalid signer")) {
             // The user's signer was not found. So fetch all signers from the peer and retry.
             log.warn(
-              { fid: msg.data?.fid, err: result.error.message },
-              `Invalid signer ${bytesToHexString(msg.signer)._unsafeUnwrap()}, fetching signers from peer`,
+              { fid: msg.data?.fid, err: result.error.message, signer: bytesToHexString(msg.signer)._unsafeUnwrap() },
+              "Invalid signer error, fetching all signers from peer",
             );
             const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
             mergeResults.push(retryResult);
@@ -567,6 +571,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
     this._syncMergeQ -= messages.length;
 
+    if (this._syncProfiler) {
+      this._syncProfiler.getMethodProfile("mergeMessages").addCall(Date.now() - startTime, 0, messages.length);
+    }
+
     const successCount = mergeResults.filter((r) => r.isOk()).length;
     if (mergeResults.length > 0) {
       log.info(
@@ -576,7 +584,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           deferred: deferredCount,
           errored: errCount,
         },
-        `Merged ${successCount} messages during sync with ${mergeResults.length - successCount} failures`,
+        "Merged messages during sync",
       );
     }
 
