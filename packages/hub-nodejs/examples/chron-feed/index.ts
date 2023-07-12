@@ -40,7 +40,7 @@ const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient): HubAsync
 };
 
 const getFnameFromFid = async (fid: number, client: HubRpcClient): HubAsyncResult<string> => {
-  const result = await client.getUserData({ fid: fid, userDataType: UserDataType.FNAME });
+  const result = await client.getUserData({ fid: fid, userDataType: UserDataType.USERNAME });
   return result.map((message) => {
     if (isUserDataAddMessage(message)) {
       return message.data.userDataBody.value;
@@ -103,7 +103,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   // 1. Create a mapping of fids to fnames, which we'll need later to display messages
   const fidToFname = new Map<number, string>();
 
-  const fnameResultPromises = FIDS.map((fid) => client.getUserData({ fid, userDataType: UserDataType.FNAME }));
+  const fnameResultPromises = FIDS.map((fid) => client.getUserData({ fid, userDataType: UserDataType.USERNAME }));
   const fnameResults = Result.combine(await Promise.all(fnameResultPromises));
 
   if (fnameResults.isErr()) {

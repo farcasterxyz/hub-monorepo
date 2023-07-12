@@ -236,8 +236,8 @@ export enum UserDataType {
   BIO = 3,
   /** URL - URL of the user */
   URL = 5,
-  /** FNAME - Preferred Farcaster Name for the user */
-  FNAME = 6,
+  /** USERNAME - Preferred Name for the user */
+  USERNAME = 6,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
@@ -258,8 +258,8 @@ export function userDataTypeFromJSON(object: any): UserDataType {
     case "USER_DATA_TYPE_URL":
       return UserDataType.URL;
     case 6:
-    case "USER_DATA_TYPE_FNAME":
-      return UserDataType.FNAME;
+    case "USER_DATA_TYPE_USERNAME":
+      return UserDataType.USERNAME;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
@@ -277,8 +277,8 @@ export function userDataTypeToJSON(object: UserDataType): string {
       return "USER_DATA_TYPE_BIO";
     case UserDataType.URL:
       return "USER_DATA_TYPE_URL";
-    case UserDataType.FNAME:
-      return "USER_DATA_TYPE_FNAME";
+    case UserDataType.USERNAME:
+      return "USER_DATA_TYPE_USERNAME";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }

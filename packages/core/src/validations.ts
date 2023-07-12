@@ -619,7 +619,7 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
         return err(new HubError("bad_request.validation_failure", "url value > 256"));
       }
       break;
-    case protobufs.UserDataType.FNAME: {
+    case protobufs.UserDataType.USERNAME: {
       // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
       if (value !== "") {
         const validatedFname = validateFname(value);

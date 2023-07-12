@@ -99,7 +99,7 @@ enum UserDataType {
   USER_DATA_TYPE_DISPLAY = 2; // Display Name for the user
   USER_DATA_TYPE_BIO = 3; // Bio for the user
   USER_DATA_TYPE_URL = 5; // URL of the user
-  USER_DATA_TYPE_FNAME = 6; // Preferred Farcaster Name for the user
+  USER_DATA_TYPE_USERNAME = 6; // Preferred Name for the user
 }
 
 message Embed {

@@ -250,7 +250,7 @@ describe("mergeMessage", () => {
               data: {
                 fid,
                 network,
-                userDataBody: { type: UserDataType.FNAME, value: nameString },
+                userDataBody: { type: UserDataType.USERNAME, value: nameString },
               },
             },
             { transient: { signer } },
@@ -595,7 +595,7 @@ describe("mergeMessage", () => {
             data: {
               fid,
               userDataBody: {
-                type: UserDataType.FNAME,
+                type: UserDataType.USERNAME,
                 value: "test.eth",
               },
             },
@@ -607,7 +607,7 @@ describe("mergeMessage", () => {
             data: {
               fid,
               userDataBody: {
-                type: UserDataType.FNAME,
+                type: UserDataType.USERNAME,
                 value: "test123.eth",
               },
             },
@@ -619,12 +619,12 @@ describe("mergeMessage", () => {
       test("succeeds setting name when name is owned by custody address", async () => {
         const result = await engine.mergeMessage(userDataAdd);
         expect(result.isOk()).toBeTruthy();
-        expect((await engine.getUserData(fid, UserDataType.FNAME))._unsafeUnwrap()).toMatchObject(userDataAdd);
+        expect((await engine.getUserData(fid, UserDataType.USERNAME))._unsafeUnwrap()).toMatchObject(userDataAdd);
       });
       test("succeeds setting name when name is owned by verified address", async () => {
         const result = await engine.mergeMessage(userDataAdd2);
         expect(result.isOk()).toBeTruthy();
-        expect((await engine.getUserData(fid, UserDataType.FNAME))._unsafeUnwrap()).toMatchObject(userDataAdd2);
+        expect((await engine.getUserData(fid, UserDataType.USERNAME))._unsafeUnwrap()).toMatchObject(userDataAdd2);
       });
       test("fails when custody address no longer owns the ens", async () => {
         jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -665,7 +665,7 @@ describe("mergeMessage", () => {
       test("revokes the user data add when the username proof is revoked", async () => {
         const result = await engine.mergeMessage(userDataAdd);
         expect(result.isOk()).toBeTruthy();
-        expect((await engine.getUserData(fid, UserDataType.FNAME))._unsafeUnwrap()).toMatchObject(userDataAdd);
+        expect((await engine.getUserData(fid, UserDataType.USERNAME))._unsafeUnwrap()).toMatchObject(userDataAdd);
 
         jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
           return Promise.resolve(randomEthAddress);
@@ -673,7 +673,7 @@ describe("mergeMessage", () => {
         const revokeResult = await engine.validateOrRevokeMessage(test1Message);
         expect(revokeResult.isOk()).toBeTruthy();
 
-        expect((await engine.getUserData(fid, UserDataType.FNAME))._unsafeUnwrap()).toMatchObject(userDataAdd);
+        expect((await engine.getUserData(fid, UserDataType.USERNAME))._unsafeUnwrap()).toMatchObject(userDataAdd);
       });
     });
 
@@ -907,7 +907,7 @@ describe("with listeners and workers", () => {
       const fnameAdd = await Factories.UserDataAddMessage.create(
         {
           data: {
-            userDataBody: { type: UserDataType.FNAME, value: bytesToUtf8String(fname)._unsafeUnwrap() },
+            userDataBody: { type: UserDataType.USERNAME, value: bytesToUtf8String(fname)._unsafeUnwrap() },
             fid,
           },
         },
@@ -936,7 +936,7 @@ describe("with listeners and workers", () => {
       const fnameAdd = await Factories.UserDataAddMessage.create(
         {
           data: {
-            userDataBody: { type: UserDataType.FNAME, value: bytesToUtf8String(fname)._unsafeUnwrap() },
+            userDataBody: { type: UserDataType.USERNAME, value: bytesToUtf8String(fname)._unsafeUnwrap() },
             fid,
           },
         },
