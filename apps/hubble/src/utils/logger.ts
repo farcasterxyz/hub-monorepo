@@ -5,6 +5,9 @@ import {
   Message,
   MessageType,
   NameRegistryEvent,
+  RentRegistryEvent,
+  StorageAdminRegistryEvent,
+  storageRegistryEventTypeToJSON,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
 import pino from "pino";
@@ -78,6 +81,22 @@ export const nameRegistryEventToLog = (event: NameRegistryEvent) => {
     blockNumber: event.blockNumber,
     fname: Buffer.from(event.fname).toString("utf-8").replace(/\0/g, ""),
     to: bytesToHexString(event.to)._unsafeUnwrap(),
+  };
+};
+
+export const rentRegistryEventToLog = (event: RentRegistryEvent) => {
+  return {
+    blockNumber: event.blockNumber,
+    fid: event.fid,
+    units: event.units,
+  };
+};
+
+export const storageAdminRegistryEventToLog = (event: StorageAdminRegistryEvent) => {
+  return {
+    blockNumber: event.blockNumber,
+    from: bytesToHexString(event.from)._unsafeUnwrap(),
+    type: storageRegistryEventTypeToJSON(event.type),
   };
 };
 

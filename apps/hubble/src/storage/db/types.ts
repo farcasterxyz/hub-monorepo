@@ -59,6 +59,12 @@ export enum RootPrefix {
   GossipMetrics = 18,
   /* Used to index user submited username proofs */
   UserNameProofByName = 19,
+  /* Used to store rent registry events */
+  RentRegistryEvent = 20,
+  /* Index rent registry events by expiry */
+  RentRegistryEventsByExpiry = 21,
+  /* Used to store storage admin registry events */
+  StorageAdminRegistryEvent = 22,
 }
 
 /**

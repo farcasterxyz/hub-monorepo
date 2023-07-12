@@ -53,6 +53,7 @@ app
   .command("start")
   .description("Start a Hub")
   .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli Ethereum Node")
+  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node")
   .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a mainnet Ethereum Node")
   .option("-c, --config <filepath>", "Path to a config file with options")
   .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
@@ -313,6 +314,7 @@ app
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       ethMainnetRpcUrl: cliOptions.ethMainnetRpcUrl ?? hubConfig.ethMainnetRpcUrl,
       fnameServerUrl: cliOptions.fnameServerUrl ?? hubConfig.fnameServerUrl ?? DEFAULT_FNAME_SERVER_URL,
+      l2RpcUrl: cliOptions.l2RpcUrl ?? hubConfig.l2RpcUrl,
       idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
       firstBlock: cliOptions.firstBlock ?? hubConfig.firstBlock,

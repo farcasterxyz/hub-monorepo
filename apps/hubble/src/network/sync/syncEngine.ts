@@ -30,6 +30,7 @@ import { sleepWhile } from "../../utils/crypto.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { fromFarcasterTime } from "@farcaster/core";
+import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
@@ -88,6 +89,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _db: RocksDB;
   private readonly _hub: HubInterface;
   private readonly _ethEventsProvider: EthEventsProvider | undefined;
+  private readonly _l2EventsProvider: L2EventsProvider | undefined;
 
   private _isSyncing = false;
   private _interruptSync = false;
@@ -106,12 +108,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _messagesSinceLastCompaction = 0;
   private _isCompacting = false;
 
-  constructor(hub: HubInterface, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider, profileSync = false) {
+  constructor(
+    hub: HubInterface,
+    rocksDb: RocksDB,
+    ethEventsProvider?: EthEventsProvider,
+    l2EventsProvider?: L2EventsProvider,
+    profileSync = false,
+  ) {
     super();
 
     this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
     this._ethEventsProvider = ethEventsProvider;
+    this._l2EventsProvider = l2EventsProvider;
 
     if (profileSync) {
       this._syncProfiler = new SyncEngineProfiler();

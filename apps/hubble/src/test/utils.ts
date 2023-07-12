@@ -3,7 +3,7 @@ import { Chain, localhost } from "viem/chains";
 import { createPublicClient, http } from "viem";
 import { Abi } from "abitype";
 import { accounts, localHttpUrl } from "./constants.js";
-import { IdRegistry, NameRegistry } from "../eth/abis.js";
+import { IdRegistry, NameRegistry, StorageRegistry } from "../eth/abis.js";
 
 export const anvilChain = {
   ...localhost,
@@ -91,6 +91,12 @@ export const walletClientWithAccount = createWalletClient({
   transport: custom(provider),
 });
 
+export const walletClientWithAccount2 = createWalletClient({
+  account: accounts[1].address,
+  chain: anvilChain,
+  transport: custom(provider),
+});
+
 export const deploy = async <TAbi extends Abi | readonly unknown[]>(
   args: DeployContractParameters<
     TAbi,
@@ -99,12 +105,13 @@ export const deploy = async <TAbi extends Abi | readonly unknown[]>(
   >,
 ) => {
   const hash = await walletClientWithAccount.deployContract(args);
+
   await testClient.mine({ blocks: 1 });
-  const { contractAddress } = await publicClient.getTransactionReceipt({
+  const obj = await publicClient.getTransactionReceipt({
     hash,
   });
 
-  return { contractAddress };
+  return { contractAddress: obj.contractAddress };
 };
 
 export const deployIdRegistry = async () => {
@@ -122,5 +129,27 @@ export const deployNameRegistry = async () => {
     bytecode: NameRegistry.bytecode,
     account: accounts[0].address,
     args: [accounts[0].address],
+  });
+};
+
+export const deployStorageRegistry = async () => {
+  return deploy({
+    abi: StorageRegistry.abi,
+    account: accounts[0].address,
+    bytecode: StorageRegistry.bytecode,
+    args: [
+      accounts[0].address,
+      accounts[0].address,
+      BigInt(0),
+      BigInt(0),
+      BigInt(10000),
+      BigInt(0),
+      BigInt(0),
+      accounts[0].address,
+      accounts[0].address,
+      accounts[0].address,
+      accounts[0].address,
+      accounts[0].address,
+    ],
   });
 };

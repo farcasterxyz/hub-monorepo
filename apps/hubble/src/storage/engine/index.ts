@@ -29,10 +29,13 @@ import {
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
+  RentRegistryEvent,
   RevokeMessageHubEvent,
   RevokeMessagesBySignerJobPayload,
   SignerAddMessage,
   SignerRemoveMessage,
+  StorageAdminRegistryEvent,
+  StorageRegistryEventType,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -59,6 +62,8 @@ import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
+import StorageEventStore from "../stores/storageEventStore.js";
+import { RentRegistryEventsResponse } from "@farcaster/hub-nodejs";
 import { PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
@@ -80,6 +85,7 @@ class Engine {
   private _castStore: CastStore;
   private _userDataStore: UserDataStore;
   private _verificationStore: VerificationStore;
+  private _storageEventsDataStore: StorageEventStore;
   private _usernameProofStore: UsernameProofStore;
 
   private _validationWorker: Worker | undefined;
@@ -102,6 +108,7 @@ class Engine {
     this._castStore = new CastStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
+    this._storageEventsDataStore = new StorageEventStore(db, this.eventHandler);
     this._usernameProofStore = new UsernameProofStore(db, this.eventHandler);
 
     this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
@@ -234,6 +241,30 @@ class Engine {
   async mergeNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
     if (event.type === NameRegistryEventType.TRANSFER || event.type === NameRegistryEventType.RENEW) {
       return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
+    }
+
+    return err(new HubError("bad_request.validation_failure", "invalid event type"));
+  }
+
+  async mergeRentRegistryEvent(event: RentRegistryEvent): HubAsyncResult<number> {
+    if (event.type === StorageRegistryEventType.RENT) {
+      return ResultAsync.fromPromise(this._storageEventsDataStore.mergeRentRegistryEvent(event), (e) => e as HubError);
+    }
+
+    return err(new HubError("bad_request.validation_failure", "invalid event type"));
+  }
+
+  async mergeStorageAdminRegistryEvent(event: StorageAdminRegistryEvent): HubAsyncResult<number> {
+    if (
+      event.type === StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP ||
+      event.type === StorageRegistryEventType.SET_GRACE_PERIOD ||
+      event.type === StorageRegistryEventType.SET_MAX_UNITS ||
+      event.type === StorageRegistryEventType.SET_PRICE
+    ) {
+      return ResultAsync.fromPromise(
+        this._storageEventsDataStore.mergeStorageAdminRegistryEvent(event),
+        (e) => e as HubError,
+      );
     }
 
     return err(new HubError("bad_request.validation_failure", "invalid event type"));
@@ -648,6 +679,17 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
+  }
+
+  async getRentRegistryEvents(fid: number): HubAsyncResult<RentRegistryEventsResponse> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._storageEventsDataStore.getRentRegistryEvents(fid), (e) => e as HubError).map(
+      (events) => RentRegistryEventsResponse.create({ events }),
+    );
   }
 
   async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {

@@ -615,6 +615,46 @@ const NameRegistryEventFactory = Factory.define<protobufs.NameRegistryEvent>(() 
   });
 });
 
+const RentRegistryEventTypeFactory = Factory.define<protobufs.StorageRegistryEventType>(() => {
+  return faker.helpers.arrayElement([protobufs.StorageRegistryEventType.RENT]);
+});
+
+const RentRegistryEventFactory = Factory.define<protobufs.RentRegistryEvent>(() => {
+  return protobufs.RentRegistryEvent.create({
+    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
+    blockHash: BlockHashFactory.build(),
+    transactionHash: TransactionHashFactory.build(),
+    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
+    payer: EthAddressFactory.build(),
+    fid: FidFactory.build(),
+    type: RentRegistryEventTypeFactory.build(),
+    units: faker.datatype.number({ min: 1, max: 1_000 }),
+    expiry: getFarcasterTime()._unsafeUnwrap() + 60 * 60 * 24 * 365, // a year
+  });
+});
+
+const StorageAdminRegistryEventTypeFactory = Factory.define<protobufs.StorageRegistryEventType>(() => {
+  return faker.helpers.arrayElement([
+    protobufs.StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
+    protobufs.StorageRegistryEventType.SET_GRACE_PERIOD,
+    protobufs.StorageRegistryEventType.SET_MAX_UNITS,
+    protobufs.StorageRegistryEventType.SET_PRICE,
+  ]);
+});
+
+const StorageAdminRegistryEventFactory = Factory.define<protobufs.StorageAdminRegistryEvent>(() => {
+  return protobufs.StorageAdminRegistryEvent.create({
+    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
+    blockHash: BlockHashFactory.build(),
+    transactionHash: TransactionHashFactory.build(),
+    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
+    timestamp: faker.datatype.number({ min: 0, max: 1_000 }),
+    from: EthAddressFactory.build(),
+    type: RentRegistryEventTypeFactory.build(),
+    value: BytesFactory.build({}, { transient: { length: 4 } }),
+  });
+});
+
 const UserNameProofFactory = Factory.define<protobufs.UserNameProof>(() => {
   return protobufs.UserNameProof.create({
     timestamp: Date.now(),
@@ -689,4 +729,8 @@ export const Factories = {
   UserNameProof: UserNameProofFactory,
   UsernameProofData: UsernameProofDataFactory,
   UsernameProofMessage: UsernameProofMessageFactory,
+  RentRegistryEventType: RentRegistryEventTypeFactory,
+  RentRegistryEvent: RentRegistryEventFactory,
+  StorageAdminRegistryEventType: StorageAdminRegistryEventTypeFactory,
+  StorageAdminRegistryEvent: StorageAdminRegistryEventFactory,
 };
