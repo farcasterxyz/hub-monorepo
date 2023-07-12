@@ -117,8 +117,7 @@ class RocksDB {
                 stackTrace: entry.stackTrace,
                 id: entry.id,
               },
-              `RocksDB iterator open
-                for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`,
+              `RocksDB iterator open for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`,
             );
           }
           return [entry];
