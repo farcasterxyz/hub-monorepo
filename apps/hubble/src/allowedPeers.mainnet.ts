@@ -20,6 +20,11 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWSii9GJheDmFRBzii43fpzvb3WkmPn62QSoJ8MjvGKMxr", // @mp
   "12D3KooWQ76P8kBUvjNx2Q8EpYDL1BsqXdqZmAkHzTxE1uruuwRd", // @brianjckim
   "12D3KooWRrFF356RALgsPwQQpg68reJL2y94VwKZFogUkM9der1V", // @lndnnft
+  "12D3KooWAr5LEwhSU1vNsgBQhkrLxZUKspag2CrwH5AYWu451Auj", // @withportals Shared Hub 1 (@lndnnft)
+  "12D3KooWAPgyKfRPYXfJvUa2YmW1ZnFCs4Sx1m9WmEKxNn8mEXkJ", // @withportals Shared Hub 2 (@lndnnft)
+  "12D3KooWCx2XRmiMoQKFRALhbet21ezvgChbJ9PtVSFatYfUpUhX", // @withportals Dedicated Hub 1 (@lndnnft)
+  "12D3KooWATFp6YuGXGZrCMcm9JWCsnZxeYSJZ7ExzENFn3S4MExG", // @withportals Dedicated Hub 2 (@lndnnft)
+  "12D3KooWKxHRB3K9JSpRba9hPd2e1zzmdgPH35qcf7yKMjFBcBuE", // @withportals Dedicated Hub 3 (@lndnnft)
   "12D3KooWPNDmUeNiGdCdoHp8iAf8Uay3c2C9n5QVygd3J1hfv65w", // @sanjay
   "12D3KooWFZwTP5bUZbQViTk79i2DZujHBBjPpAZyDwyrkPb79eAL", // @molo
   "12D3KooWHK4EXZ33nVFLSCLRuFNUK74v72eZEcRKoHTPbX9Nove7", // @neynar
