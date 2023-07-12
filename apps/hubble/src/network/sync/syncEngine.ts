@@ -212,6 +212,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._isSyncing;
   }
 
+  public getPeerCount(): number {
+    return this.currentHubPeerContacts.size;
+  }
+
   public getContactInfoForPeerId(peerId: string): PeerContact | undefined {
     return this.currentHubPeerContacts.get(peerId);
   }
@@ -264,8 +268,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.warn({ peerContact, peerId }, "Diffsync: No contact info for peer, skipping sync");
       this.emit("syncComplete", false);
       return;
-    } else {
-      log.info({ peerId, peerContact }, "Diffsync: Starting diff sync with peer");
     }
 
     const updatedPeerIdString = peerId.toString();
@@ -324,7 +326,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           divergenceSeconds: syncStatus.divergenceSecondsAgo,
           lastBadSync: syncStatus.lastBadSync,
         },
-        "SyncStatus", // Search for this string in the logs to get summary of sync status
+        "DiffSync: SyncStatus", // Search for this string in the logs to get summary of sync status
       );
 
       if (syncStatus.shouldSync === true) {
@@ -335,7 +337,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         this.emit("syncComplete", true);
         return;
       } else {
-        log.info({ peerId }, "No need to sync");
+        log.info({ peerId }, "DiffSync: No need to sync");
         this.emit("syncComplete", false);
         return;
       }
@@ -412,7 +414,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
-    log.info("Perform sync: Start");
+    log.debug("Perform sync: Start");
 
     let success = false;
     try {
@@ -429,7 +431,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         log.info(
           {
             divergencePrefix: Buffer.from(divergencePrefix).toString("ascii"),
+            divergencePrefixBuffer: divergencePrefix,
             prefix: Buffer.from(ourSnapshot.prefix).toString("ascii"),
+            prefixBuffer: ourSnapshot.prefix,
           },
           "Divergence prefix",
         );
@@ -442,7 +446,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           fullSyncResult.deferredCount += result.deferredCount;
           fullSyncResult.errCount += result.errCount;
         });
-        log.info({ syncResult: fullSyncResult }, "Fetched missing hashes");
+        log.info({ syncResult: fullSyncResult }, "Sync Complete");
 
         // If we did not merge any messages and didn't defer any. Then this peer only had old messages.
         if (
@@ -454,7 +458,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           this._unproductivePeers.set(peerId, new Date());
         }
 
-        log.info("Sync complete");
         success = true;
       }
     } catch (e) {
@@ -534,11 +537,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         if (result.error.errCode === "bad_request.validation_failure") {
           if (result.error.message.startsWith("invalid signer")) {
             // The user's signer was not found. So fetch all signers from the peer and retry.
-            log.warn(
-              { fid: msg.data?.fid, err: result.error.message, signer: bytesToHexString(msg.signer)._unsafeUnwrap() },
-              "Invalid signer error, fetching all signers from peer",
-            );
+
             const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
+            log.warn(
+              {
+                fid: msg.data?.fid,
+                err: result.error.message,
+                signer: bytesToHexString(msg.signer)._unsafeUnwrap(),
+                retryResult,
+              },
+              "Unknown signer, fetched all signers from peer",
+            );
+
             mergeResults.push(retryResult);
           } else if (result.error.message.startsWith("unknown fid")) {
             // We've missed this user's ID registry event? This is somewhat unlikely, but possible
@@ -643,7 +653,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     let fetchMessagesThreshold = HASHES_PER_FETCH;
     // If we have more messages but the hashes still mismatch, we need to find the exact message that's missing.
-    if (ourNode && ourNode.numMessages >= theirNode.numMessages) {
+    if (ourNode && ourNode.numMessages >= 1) {
       fetchMessagesThreshold = 1;
     }
 
