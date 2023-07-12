@@ -89,7 +89,7 @@ beforeAll(async () => {
       data: {
         fid,
         userDataBody: {
-          type: UserDataType.FNAME,
+          type: UserDataType.USERNAME,
           value: bytesToUtf8String(fname)._unsafeUnwrap(),
         },
         timestamp: pfpAdd.data.timestamp + 2,
@@ -122,7 +122,7 @@ beforeAll(async () => {
       data: {
         fid,
         userDataBody: {
-          type: UserDataType.FNAME,
+          type: UserDataType.USERNAME,
           value: bytesToUtf8String(ensNameProof.data.usernameProofBody.name)._unsafeUnwrap(),
         },
         timestamp: addFname.data.timestamp + 2,
@@ -152,7 +152,7 @@ describe("getUserData", () => {
     await engine.mergeUserNameProof(fnameProof);
 
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);
-    const fnameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
+    const fnameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.USERNAME }));
     expect(Message.toJSON(fnameData._unsafeUnwrap())).toEqual(Message.toJSON(addFname));
 
     const usernameProof = await client.getUsernameProof(UsernameProofRequest.create({ name: fnameProof.name }));
@@ -165,14 +165,14 @@ describe("getUserData", () => {
     );
 
     expect(await engine.mergeMessage(addEnsName)).toBeInstanceOf(Ok);
-    const ensNameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
+    const ensNameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.USERNAME }));
     expect(Message.toJSON(ensNameData._unsafeUnwrap())).toEqual(Message.toJSON(addEnsName));
   });
 
   test("fails when user data is missing", async () => {
     const pfp = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.PFP }));
     expect(pfp._unsafeUnwrapErr().errCode).toEqual("not_found");
-    const fname = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.FNAME }));
+    const fname = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.USERNAME }));
     expect(fname._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
 

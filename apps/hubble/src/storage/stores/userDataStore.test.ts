@@ -41,7 +41,7 @@ beforeEach(async () => {
 describe("getUserDataAdd", () => {
   test("fails if missing", async () => {
     await expect(set.getUserDataAdd(fid, UserDataType.PFP)).rejects.toThrow(HubError);
-    await expect(set.getUserDataAdd(fid, UserDataType.FNAME)).rejects.toThrow(HubError);
+    await expect(set.getUserDataAdd(fid, UserDataType.USERNAME)).rejects.toThrow(HubError);
   });
 
   test("fails if the wrong fid or datatype is provided", async () => {

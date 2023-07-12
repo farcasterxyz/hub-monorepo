@@ -822,7 +822,7 @@ class Engine {
     }
 
     // 5. For fname add UserDataAdd messages, check that the user actually owns the fname
-    if (isUserDataAddMessage(message) && message.data.userDataBody.type === UserDataType.FNAME) {
+    if (isUserDataAddMessage(message) && message.data.userDataBody.type === UserDataType.USERNAME) {
       // For fname messages, check if the user actually owns the fname.
       const nameBytes = utf8StringToBytes(message.data.userDataBody.value);
       if (nameBytes.isErr()) {
@@ -951,7 +951,7 @@ class Engine {
 
       // Revoke UserDataAdd fname messages
       const fnameAdd = await ResultAsync.fromPromise(
-        this._userDataStore.getUserDataAdd(idRegistryEvent.fid, UserDataType.FNAME),
+        this._userDataStore.getUserDataAdd(idRegistryEvent.fid, UserDataType.USERNAME),
         () => undefined,
       );
       if (fnameAdd.isOk()) {
@@ -986,21 +986,21 @@ class Engine {
     if (deletedUsernameProof && deletedUsernameProof.owner.length > 0) {
       const fid = deletedUsernameProof.fid;
 
-      // Check if this fid assigned the fname with a UserDataAdd message
-      const fnameAdd = await ResultAsync.fromPromise(
-        this._userDataStore.getUserDataAdd(fid, UserDataType.FNAME),
+      // Check if this fid assigned the name with a UserDataAdd message
+      const usernameAdd = await ResultAsync.fromPromise(
+        this._userDataStore.getUserDataAdd(fid, UserDataType.USERNAME),
         () => undefined,
       );
-      if (fnameAdd.isOk()) {
-        const revokeResult = await this._userDataStore.revoke(fnameAdd.value);
-        const fnameAddHex = bytesToHexString(fnameAdd.value.hash);
+      if (usernameAdd.isOk()) {
+        const revokeResult = await this._userDataStore.revoke(usernameAdd.value);
+        const usernameAddHex = bytesToHexString(usernameAdd.value.hash);
         revokeResult.match(
           () =>
-            log.info(`revoked message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation`),
+            log.info(`revoked message ${usernameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation`),
           (e) =>
             log.error(
               { errCode: e.errCode },
-              `failed to revoke message ${fnameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation: ${
+              `failed to revoke message ${usernameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation: ${
                 e.message
               }`,
             ),

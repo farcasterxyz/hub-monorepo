@@ -131,7 +131,7 @@ const UserDataTypeFactory = Factory.define<protobufs.UserDataType>(() => {
   return faker.helpers.arrayElement([
     protobufs.UserDataType.BIO,
     protobufs.UserDataType.DISPLAY,
-    protobufs.UserDataType.FNAME,
+    protobufs.UserDataType.USERNAME,
     protobufs.UserDataType.PFP,
     protobufs.UserDataType.URL,
   ]);

@@ -117,14 +117,14 @@ Adds metadata about a user
 
 Type of UserData
 
-| Name                   | Number | Description                           |
-| ---------------------- | ------ | ------------------------------------- |
-| USER_DATA_TYPE_NONE    | 0      | Invalid default value                 |
-| USER_DATA_TYPE_PFP     | 1      | Profile Picture for the user          |
-| USER_DATA_TYPE_DISPLAY | 2      | Display Name for the user             |
-| USER_DATA_TYPE_BIO     | 3      | Bio for the user                      |
-| USER_DATA_TYPE_URL     | 5      | URL of the user                       |
-| USER_DATA_TYPE_FNAME   | 6      | Preferred Farcaster Name for the user |
+| Name                    | Number | Description                           |
+|-------------------------| ------ | ------------------------------------- |
+| USER_DATA_TYPE_NONE     | 0      | Invalid default value                 |
+| USER_DATA_TYPE_PFP      | 1      | Profile Picture for the user          |
+| USER_DATA_TYPE_DISPLAY  | 2      | Display Name for the user             |
+| USER_DATA_TYPE_BIO      | 3      | Bio for the user                      |
+| USER_DATA_TYPE_URL      | 5      | URL of the user                       |
+| USER_DATA_TYPE_USERNAME | 6      | Preferred Farcaster Name for the user |
 
 ## 4. Cast
 

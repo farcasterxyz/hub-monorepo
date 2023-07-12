@@ -796,7 +796,7 @@ describe("validateUserDataAddBody", () => {
   });
 
   test("succeeds for ens names", async () => {
-    const body = Factories.UserDataBody.build({ type: UserDataType.FNAME, value: "averylongensname.eth" });
+    const body = Factories.UserDataBody.build({ type: UserDataType.USERNAME, value: "averylongensname.eth" });
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
