@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.4.0
+
+### Minor Changes
+
+- a38720b: chore: Hard fail on missing RPC urls.
+
+### Patch Changes
+
+- 2817141: perf: Tune sync parameters and add mergeMessages profile
+- b5becd9: fix: Improve logging for open iterators and add hub events timeout
+
 ## 1.3.4
 
 ### Patch Changes
