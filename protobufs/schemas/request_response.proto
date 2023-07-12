@@ -3,6 +3,7 @@ syntax = "proto3";
 import "message.proto";
 import "storage_event.proto";
 import "hub_event.proto";
+import "username_proof.proto";
 
 message Empty {}
 
@@ -160,6 +161,10 @@ message StorageAdminRegistryEventRequest {
 
 message UsernameProofRequest {
   bytes name = 1;
+}
+
+message UsernameProofsResponse {
+  repeated UserNameProof proofs = 1;
 }
 
 message VerificationRequest {

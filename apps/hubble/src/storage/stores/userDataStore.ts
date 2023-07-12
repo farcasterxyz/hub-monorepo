@@ -155,6 +155,8 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
       mergeUsernameProofBody: {
         usernameProof: usernameProof,
         deletedUsernameProof: existingProof.isOk() ? existingProof.value : undefined,
+        usernameProofMessage: undefined,
+        deletedUsernameProofMessage: undefined,
       },
     });
 

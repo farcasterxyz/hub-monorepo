@@ -621,6 +621,7 @@ export class HubReplicator {
       .insertInto("links")
       .values(
         messages.map((message) => ({
+          hash: message.hash,
           timestamp: farcasterTimeToDate(message.data.timestamp),
           // type assertion due to a problem with the type definitions. This field is infact required and present in all valid messages
           // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code

@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.4.2
+
+### Patch Changes
+
+- cd0ddd6: feat: Add support for ens names
+- 4fa7a56: rename UserDataType.FNAME to UserDataType.USERNAME
+- Updated dependencies [cd0ddd6]
+- Updated dependencies [4fa7a56]
+  - @farcaster/core@0.10.2
+
 ## 0.4.1
 
 ### Patch Changes

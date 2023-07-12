@@ -14,6 +14,8 @@ export const Config = {
   id: "./.hub/default_id.protobuf",
   /** Network URL of the IdRegistry Contract */
   // ethRpcUrl: '',
+  /** ETH mainnet RPC URL */
+  // ethMainnetRpcUrl: '',
   /** FName Registry Server URL */
   // fnameServerUrl: '';
   /** Network URL of the StorageRegistry Contract */

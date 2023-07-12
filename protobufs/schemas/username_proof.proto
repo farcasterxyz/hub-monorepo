@@ -3,6 +3,7 @@ syntax = "proto3";
 enum UserNameType {
   USERNAME_TYPE_NONE = 0;
   USERNAME_TYPE_FNAME = 1;
+  USERNAME_TYPE_ENS_L1 = 2;
 }
 
 message UserNameProof {

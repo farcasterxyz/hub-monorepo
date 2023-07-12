@@ -143,6 +143,18 @@ export const isUserDataAddMessage = (message: protobufs.Message): message is typ
   );
 };
 
+export const isUsernameProofData = (data: protobufs.MessageData): data is types.UsernameProofData => {
+  return data.type === protobufs.MessageType.USERNAME_PROOF && typeof data.usernameProofBody !== "undefined";
+};
+
+export const isUsernameProofMessage = (message: protobufs.Message): message is types.UsernameProofMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== "undefined" &&
+    isUsernameProofData(message.data)
+  );
+};
+
 /** Hub event typeguards */
 
 export const isMergeMessageHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeMessageHubEvent => {
@@ -215,6 +227,7 @@ export const isMergeUsernameProofHubEvent = (
   return (
     event.type === hubEventProtobufs.HubEventType.MERGE_USERNAME_PROOF &&
     typeof event.mergeUsernameProofBody !== "undefined" &&
-    typeof event.mergeUsernameProofBody.usernameProof !== "undefined"
+    (typeof event.mergeUsernameProofBody.usernameProof !== "undefined" ||
+      typeof event.mergeUsernameProofBody.deletedUsernameProof !== "undefined")
   );
 };

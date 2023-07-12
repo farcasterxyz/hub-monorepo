@@ -1,5 +1,36 @@
 # @farcaster/hubble
 
+## 1.4.0
+
+### Minor Changes
+
+- a38720b: chore: Hard fail on missing RPC urls.
+
+### Patch Changes
+
+- 2817141: perf: Tune sync parameters and add mergeMessages profile
+- b5becd9: fix: Improve logging for open iterators and add hub events timeout
+
+## 1.3.4
+
+### Patch Changes
+
+- d5d65bd: Prevent connecting to peers not in allowed peer list
+- 1d07446: Display correct app version when run in Docker container
+- f9c978a: Include bad_request.prunable in list of INVALID_ARGUMENT errors
+- f54185f: Updated EthEventProviders to hard fail unable to connect to eth RPC provider
+- e513a3f: fix: Prevent unnecessary sync and log messages by filtering out SyncIDs our node already has
+- 6e7ce94: perf: Fetch upto 4 leaf nodes at a time during sync
+- dbe6074: Allow log level to be configured via environment variable
+- cd0ddd6: feat: Add support for ens names
+- a08bff3: Better error messages for config file
+- 850f82f: perf: Add a sync profiler
+- 229b806: Add a "yarn profile storage" command that prints the usage of the RocksDB database
+- 4fa7a56: rename UserDataType.FNAME to UserDataType.USERNAME
+- Updated dependencies [cd0ddd6]
+- Updated dependencies [4fa7a56]
+  - @farcaster/hub-nodejs@0.8.4
+
 ## 1.3.3
 
 ### Patch Changes

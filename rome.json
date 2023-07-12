@@ -8,13 +8,25 @@
     "indentSize": 2,
     "indentStyle": "space",
     "lineWidth": 120,
-    "ignore": ["src/abstract-leveldown.d.ts", "src/rocksdb.d.ts", "src/protobufs/generated/*"]
+    "ignore": [
+      "src/abstract-leveldown.d.ts",
+      "src/rocksdb.d.ts",
+      "packages/core/src/protobufs/generated/*",
+      "packages/hub-nodejs/src/generated/*",
+      "packages/hub-web/src/generated/*"
+    ]
   },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true
     },
-    "ignore": ["src/abstract-leveldown.d.ts", "src/rocksdb.d.ts", "src/protobufs/generated/*"]
+    "ignore": [
+      "src/abstract-leveldown.d.ts",
+      "src/rocksdb.d.ts",
+      "packages/core/src/protobufs/generated/*",
+      "packages/hub-nodejs/src/generated/*",
+      "packages/hub-web/src/generated/*"
+    ]
   }
 }

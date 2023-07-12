@@ -71,17 +71,22 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OPGoerliEthConstants } from "./eth/l2EventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
+import { prettyPrintTable } from "./profile.js";
+import packageJson from "./package.json" assert { type: "json" };
+import { createPublicClient, http } from "viem";
+import { mainnet } from "viem/chains";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
-export const APP_VERSION = process.env["npm_package_version"] ?? "1.0.0";
+export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
-export const FARCASTER_VERSION = "2023.5.31";
+export const FARCASTER_VERSION = "2023.7.12";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
   { version: "2023.5.31", expiresAt: 1690329600000 }, // expires at 7/26/23 00:00 UTC
+  { version: "2023.7.12", expiresAt: 1693958400000 }, // expires at 9/6/23 00:00 UTC
 ];
 
 export interface HubInterface {
@@ -138,6 +143,9 @@ export interface HubOptions {
   /** Network URL of the IdRegistry Contract */
   ethRpcUrl?: string;
 
+  /** ETH mainnet RPC URL */
+  ethMainnetRpcUrl?: string;
+
   /** FName Registry Server URL */
   fnameServerUrl?: string;
 
@@ -176,6 +184,9 @@ export interface HubOptions {
 
   /** Resets the DB on start, if true */
   resetDB?: boolean;
+
+  /** Profile the sync and exit after done */
+  profileSync?: boolean;
 
   /** Rebuild the sync trie from messages in the DB on startup */
   rebuildSyncTrie?: boolean;
@@ -229,6 +240,7 @@ export class Hub implements HubInterface {
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
+  private allowedPeerIds: string[] = [];
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -264,7 +276,13 @@ export class Hub implements HubInterface {
         options.resyncEthEvents ?? false,
       );
     } else {
-      log.warn("No ETH RPC URL provided, not syncing with ETH contract events");
+      log.warn("No ETH RPC URL provided, unable to sync ETH contract events");
+      throw new HubError("bad_request.invalid_param", "Invalid eth testnet rpc url");
+    }
+
+    if (!options.ethMainnetRpcUrl) {
+      log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
+      throw new HubError("bad_request.invalid_param", "Invalid eth mainnet rpc url");
     }
 
     // Create the L2 registry provider, which will fetch L2 events and push them into the engine.
@@ -289,15 +307,63 @@ export class Hub implements HubInterface {
         options.resyncNameEvents ?? false,
       );
     } else {
-      log.warn("No FName Registry URL provided, not syncing with fname events");
+      log.warn("No FName Registry URL provided, unable to sync fname events");
+      throw new HubError("bad_request.invalid_param", "Invalid fname server url");
     }
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
       lockMaxPending: options.commitLockMaxPending,
       lockTimeout: options.commitLockTimeout,
     });
-    this.engine = new Engine(this.rocksDB, options.network, eventHandler);
-    this.syncEngine = new SyncEngine(this, this.rocksDB, this.ethRegistryProvider, this.l2RegistryProvider);
+
+    const mainnetClient = createPublicClient({
+      chain: mainnet,
+      transport: http(options.ethMainnetRpcUrl, { retryCount: 2 }),
+    });
+
+    this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
+
+    const profileSync = options.profileSync ?? false;
+    this.syncEngine = new SyncEngine(
+      this,
+      this.rocksDB,
+      this.ethRegistryProvider,
+      this.l2RegistryProvider,
+      profileSync,
+    );
+
+    // If profileSync is true, exit after sync is complete
+    if (profileSync) {
+      this.syncEngine.on("syncComplete", async (success) => {
+        if (success) {
+          log.info("Sync complete, exiting (profileSync=true)");
+
+          const profileLog = logger.child({ component: "SyncProfile" });
+
+          const profile = this.syncEngine.getSyncProfile();
+          if (profile) {
+            profileLog.info({ wallTimeMs: profile.getSyncDuration() });
+
+            for (const [method, p] of profile.getAllMethodProfiles()) {
+              profileLog.info({ method, p });
+            }
+
+            // Also write to console for easy copy/paste
+            console.log("\nTotal Time\n");
+            console.log(prettyPrintTable(profile.durationToPrettyPrintObject()));
+
+            console.log("\nLatencies (ms)\n");
+            console.log(prettyPrintTable(profile.latenciesToPrettyPrintObject()));
+
+            console.log("\nData Fetched (bytes)\n");
+            console.log(prettyPrintTable(profile.resultBytesToPrettyPrintObject()));
+          }
+
+          await this.stop();
+          process.exit(0);
+        }
+      });
+    }
 
     this.rpcServer = new Server(
       this,
@@ -339,6 +405,13 @@ export class Hub implements HubInterface {
     //     this.l2RegistryProvider
     //   );
     // }
+
+    this.allowedPeerIds = this.options.allowedPeers || [];
+    if (this.options.network === FarcasterNetwork.MAINNET) {
+      // Mainnet is right now resitrcited to a few peers
+      // Append and de-dup the allowed peers
+      this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...MAINNET_ALLOWED_PEERS])];
+    }
   }
 
   get rpcAddress() {
@@ -452,19 +525,12 @@ export class Hub implements HubInterface {
       this.updateNameRegistryEventExpiryJobWorker.start();
     }
 
-    let allowedPeerIdStrs = this.options.allowedPeers;
-    if (this.options.network === FarcasterNetwork.MAINNET) {
-      // Mainnet is right now resitrcited to a few peers
-      // Append and de-dup the allowed peers
-      allowedPeerIdStrs = [...new Set([...(allowedPeerIdStrs ?? []), ...MAINNET_ALLOWED_PEERS])];
-    }
-
     await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
-      allowedPeerIdStrs,
+      allowedPeerIdStrs: this.allowedPeerIds,
     });
 
     this.registerEventHandlers();
@@ -865,7 +931,7 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logMessage.info(
+        logMessage.debug(
           `submitMessage success ${eventId}: fid ${message.data?.fid} merged ${messageTypeToName(
             message.data?.type,
           )} ${bytesToHexString(message.hash)._unsafeUnwrap()}`,
@@ -1049,6 +1115,12 @@ export class Hub implements HubInterface {
   }
 
   async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
+    const peerId = ourPeerId.toString();
+    if (this.allowedPeerIds?.length && !this.allowedPeerIds.includes(peerId)) {
+      log.warn(`Peer ${ourPeerId.toString()} is not in the allowed peers list`);
+      return false;
+    }
+
     const theirVersion = message.hubVersion;
     const theirNetwork = message.network;
 

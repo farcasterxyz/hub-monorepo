@@ -313,14 +313,12 @@ export const ContactInfoContent = {
 
   fromPartial<I extends Exact<DeepPartial<ContactInfoContent>, I>>(object: I): ContactInfoContent {
     const message = createBaseContactInfoContent();
-    message.gossipAddress =
-      object.gossipAddress !== undefined && object.gossipAddress !== null
-        ? GossipAddressInfo.fromPartial(object.gossipAddress)
-        : undefined;
-    message.rpcAddress =
-      object.rpcAddress !== undefined && object.rpcAddress !== null
-        ? GossipAddressInfo.fromPartial(object.rpcAddress)
-        : undefined;
+    message.gossipAddress = (object.gossipAddress !== undefined && object.gossipAddress !== null)
+      ? GossipAddressInfo.fromPartial(object.gossipAddress)
+      : undefined;
+    message.rpcAddress = (object.rpcAddress !== undefined && object.rpcAddress !== null)
+      ? GossipAddressInfo.fromPartial(object.rpcAddress)
+      : undefined;
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.count = object.count ?? 0;
     message.hubVersion = object.hubVersion ?? "";
@@ -574,14 +572,12 @@ export const NetworkLatencyMessage = {
 
   fromPartial<I extends Exact<DeepPartial<NetworkLatencyMessage>, I>>(object: I): NetworkLatencyMessage {
     const message = createBaseNetworkLatencyMessage();
-    message.pingMessage =
-      object.pingMessage !== undefined && object.pingMessage !== null
-        ? PingMessageBody.fromPartial(object.pingMessage)
-        : undefined;
-    message.ackMessage =
-      object.ackMessage !== undefined && object.ackMessage !== null
-        ? AckMessageBody.fromPartial(object.ackMessage)
-        : undefined;
+    message.pingMessage = (object.pingMessage !== undefined && object.pingMessage !== null)
+      ? PingMessageBody.fromPartial(object.pingMessage)
+      : undefined;
+    message.ackMessage = (object.ackMessage !== undefined && object.ackMessage !== null)
+      ? AckMessageBody.fromPartial(object.ackMessage)
+      : undefined;
     return message;
   },
 };
@@ -710,14 +706,12 @@ export const GossipMessage = {
     message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
     message.idRegistryEvent !== undefined &&
       (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
-    message.contactInfoContent !== undefined &&
-      (obj.contactInfoContent = message.contactInfoContent
-        ? ContactInfoContent.toJSON(message.contactInfoContent)
-        : undefined);
-    message.networkLatencyMessage !== undefined &&
-      (obj.networkLatencyMessage = message.networkLatencyMessage
-        ? NetworkLatencyMessage.toJSON(message.networkLatencyMessage)
-        : undefined);
+    message.contactInfoContent !== undefined && (obj.contactInfoContent = message.contactInfoContent
+      ? ContactInfoContent.toJSON(message.contactInfoContent)
+      : undefined);
+    message.networkLatencyMessage !== undefined && (obj.networkLatencyMessage = message.networkLatencyMessage
+      ? NetworkLatencyMessage.toJSON(message.networkLatencyMessage)
+      : undefined);
     if (message.topics) {
       obj.topics = message.topics.map((e) => e);
     } else {
@@ -735,18 +729,17 @@ export const GossipMessage = {
 
   fromPartial<I extends Exact<DeepPartial<GossipMessage>, I>>(object: I): GossipMessage {
     const message = createBaseGossipMessage();
-    message.message =
-      object.message !== undefined && object.message !== null ? Message.fromPartial(object.message) : undefined;
-    message.idRegistryEvent =
-      object.idRegistryEvent !== undefined && object.idRegistryEvent !== null
-        ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
-        : undefined;
-    message.contactInfoContent =
-      object.contactInfoContent !== undefined && object.contactInfoContent !== null
-        ? ContactInfoContent.fromPartial(object.contactInfoContent)
-        : undefined;
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
+      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
+      : undefined;
+    message.contactInfoContent = (object.contactInfoContent !== undefined && object.contactInfoContent !== null)
+      ? ContactInfoContent.fromPartial(object.contactInfoContent)
+      : undefined;
     message.networkLatencyMessage =
-      object.networkLatencyMessage !== undefined && object.networkLatencyMessage !== null
+      (object.networkLatencyMessage !== undefined && object.networkLatencyMessage !== null)
         ? NetworkLatencyMessage.fromPartial(object.networkLatencyMessage)
         : undefined;
     message.topics = object.topics?.map((e) => e) || [];
@@ -802,19 +795,13 @@ function base64FromBytes(arr: Uint8Array): string {
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(long: Long): number {

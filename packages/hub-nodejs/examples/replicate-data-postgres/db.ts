@@ -119,6 +119,7 @@ export interface Database {
   };
 
   links: {
+    hash: Uint8Array;
     id: GeneratedAlways<string>;
     fid: number;
     targetFid: number | null;

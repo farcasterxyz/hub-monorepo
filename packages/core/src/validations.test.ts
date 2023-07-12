@@ -1,12 +1,13 @@
 import { faker } from "@faker-js/faker";
 import * as protobufs from "./protobufs";
 import { err, ok } from "neverthrow";
-import { bytesToUtf8String } from "./bytes";
+import { bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { HubError } from "./errors";
 import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationEthAddressClaim } from "./verifications";
+import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 
 const signer = Factories.Ed25519Signer.build();
 const ethSigner = Factories.Eip712Signer.build();
@@ -80,6 +81,75 @@ describe("validateFname", () => {
     const fname = "@fname";
     expect(validations.validateFname(fname)).toEqual(
       err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`)),
+    );
+  });
+
+  test("does not allow names ending with .eth", () => {
+    const fname = "fname.eth";
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`)),
+    );
+  });
+});
+
+describe("validateENSname", () => {
+  test("succeeds with valid byte array input", () => {
+    const ensName = Factories.EnsName.build();
+    expect(validations.validateEnsName(ensName)).toEqual(ok(ensName));
+  });
+
+  test("succeeds with valid string input", () => {
+    const ensName = bytesToUtf8String(Factories.EnsName.build())._unsafeUnwrap();
+    expect(validations.validateEnsName(ensName)).toEqual(ok(ensName));
+  });
+
+  test("fails when greater than 20 characters", () => {
+    const ensName = faker.random.alpha(17).concat(".eth");
+    expect(validations.validateEnsName(ensName)).toEqual(
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`)),
+    );
+  });
+
+  test("fails with an empty string", () => {
+    const ensName = "";
+    expect(validations.validateEnsName(ensName)).toEqual(
+      err(new HubError("bad_request.validation_failure", "ensName is missing")),
+    );
+  });
+
+  test("fails when undefined", () => {
+    expect(validations.validateEnsName(undefined)).toEqual(
+      err(new HubError("bad_request.validation_failure", "ensName is missing")),
+    );
+  });
+
+  test("fails with invalid characters", () => {
+    const ensName = "-fname.eth";
+    expect(validations.validateEnsName(ensName)).toEqual(
+      err(
+        new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't match ${validations.FNAME_REGEX}`),
+      ),
+    );
+  });
+
+  test("fails when name does not end with .eth", () => {
+    const ensName = "ensname";
+    expect(validations.validateEnsName(ensName)).toEqual(
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't end with .eth`)),
+    );
+  });
+
+  test("fails with subdomains", () => {
+    const ensName = "abc.def.eth";
+    expect(validations.validateEnsName(ensName)).toEqual(
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`)),
+    );
+  });
+
+  test("fails when unable to normalize ens names", () => {
+    const ensName = "2l--3-6b-mi-d-b.eth";
+    expect(validations.validateEnsName(ensName)).toEqual(
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" is not a valid ENS name`)),
     );
   });
 });
@@ -725,6 +795,11 @@ describe("validateUserDataAddBody", () => {
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
+  test("succeeds for ens names", async () => {
+    const body = Factories.UserDataBody.build({ type: UserDataType.USERNAME, value: "averylongensname.eth" });
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+  });
+
   describe("fails", () => {
     let body: protobufs.UserDataBody;
     let hubErrorMessage: string;
@@ -766,6 +841,52 @@ describe("validateUserDataAddBody", () => {
       });
       hubErrorMessage = "url value > 256";
     });
+  });
+});
+
+describe("validateUsernameProof", () => {
+  test("when timestamp does not match message timestamp", async () => {
+    const proof = await Factories.UsernameProofMessage.create();
+    proof.data.timestamp = proof.data.timestamp + 10;
+    const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError(
+        "bad_request.validation_failure",
+        "timestamp in username proof does not match timestamp in message data",
+      ),
+    );
+  });
+  test("when name does not end with .eth", async () => {
+    const proof = await Factories.UsernameProofMessage.create({
+      data: { usernameProofBody: { name: utf8StringToBytes("aname")._unsafeUnwrap() } },
+    });
+    const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
+    const hubError = result._unsafeUnwrapErr();
+    expect(hubError.errCode).toEqual("bad_request.validation_failure");
+    expect(hubError.message).toMatch("doesn't end with .eth");
+  });
+  test("when type is unsupported", async () => {
+    const proof = await Factories.UsernameProofMessage.create({
+      data: { usernameProofBody: { type: UserNameType.USERNAME_TYPE_NONE } },
+    });
+    const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", "invalid username type: 0"),
+    );
+  });
+  test("when type is fname", async () => {
+    const proof = await Factories.UsernameProofMessage.create({
+      data: { usernameProofBody: { type: UserNameType.USERNAME_TYPE_FNAME } },
+    });
+    const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", "invalid username type: 1"),
+    );
+  });
+  test("succeeds for a valid message", async () => {
+    const proof = await Factories.UsernameProofMessage.create();
+    const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
+    expect(result.isOk()).toBeTruthy();
   });
 });
 

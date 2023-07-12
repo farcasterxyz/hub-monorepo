@@ -1,6 +1,6 @@
 /* eslint-disable */
-import Long from 'long';
-import _m0 from 'protobufjs/minimal';
+import Long from "long";
+import _m0 from "protobufjs/minimal";
 
 export enum StorageRegistryEventType {
   NONE = 0,
@@ -14,44 +14,44 @@ export enum StorageRegistryEventType {
 export function storageRegistryEventTypeFromJSON(object: any): StorageRegistryEventType {
   switch (object) {
     case 0:
-    case 'STORAGE_REGISTRY_EVENT_TYPE_NONE':
+    case "STORAGE_REGISTRY_EVENT_TYPE_NONE":
       return StorageRegistryEventType.NONE;
     case 1:
-    case 'STORAGE_REGISTRY_EVENT_TYPE_RENT':
+    case "STORAGE_REGISTRY_EVENT_TYPE_RENT":
       return StorageRegistryEventType.RENT;
     case 2:
-    case 'STORAGE_REGISTRY_EVENT_TYPE_SET_PRICE':
+    case "STORAGE_REGISTRY_EVENT_TYPE_SET_PRICE":
       return StorageRegistryEventType.SET_PRICE;
     case 3:
-    case 'STORAGE_REGISTRY_EVENT_TYPE_SET_MAX_UNITS':
+    case "STORAGE_REGISTRY_EVENT_TYPE_SET_MAX_UNITS":
       return StorageRegistryEventType.SET_MAX_UNITS;
     case 4:
-    case 'STORAGE_REGISTRY_EVENT_TYPE_SET_DEPRECATION_TIMESTAMP':
+    case "STORAGE_REGISTRY_EVENT_TYPE_SET_DEPRECATION_TIMESTAMP":
       return StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP;
     case 5:
-    case 'STORAGE_REGISTRY_EVENT_TYPE_SET_GRACE_PERIOD':
+    case "STORAGE_REGISTRY_EVENT_TYPE_SET_GRACE_PERIOD":
       return StorageRegistryEventType.SET_GRACE_PERIOD;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum StorageRegistryEventType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageRegistryEventType");
   }
 }
 
 export function storageRegistryEventTypeToJSON(object: StorageRegistryEventType): string {
   switch (object) {
     case StorageRegistryEventType.NONE:
-      return 'STORAGE_REGISTRY_EVENT_TYPE_NONE';
+      return "STORAGE_REGISTRY_EVENT_TYPE_NONE";
     case StorageRegistryEventType.RENT:
-      return 'STORAGE_REGISTRY_EVENT_TYPE_RENT';
+      return "STORAGE_REGISTRY_EVENT_TYPE_RENT";
     case StorageRegistryEventType.SET_PRICE:
-      return 'STORAGE_REGISTRY_EVENT_TYPE_SET_PRICE';
+      return "STORAGE_REGISTRY_EVENT_TYPE_SET_PRICE";
     case StorageRegistryEventType.SET_MAX_UNITS:
-      return 'STORAGE_REGISTRY_EVENT_TYPE_SET_MAX_UNITS';
+      return "STORAGE_REGISTRY_EVENT_TYPE_SET_MAX_UNITS";
     case StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP:
-      return 'STORAGE_REGISTRY_EVENT_TYPE_SET_DEPRECATION_TIMESTAMP';
+      return "STORAGE_REGISTRY_EVENT_TYPE_SET_DEPRECATION_TIMESTAMP";
     case StorageRegistryEventType.SET_GRACE_PERIOD:
-      return 'STORAGE_REGISTRY_EVENT_TYPE_SET_GRACE_PERIOD';
+      return "STORAGE_REGISTRY_EVENT_TYPE_SET_GRACE_PERIOD";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum StorageRegistryEventType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageRegistryEventType");
   }
 }
 
@@ -224,7 +224,7 @@ export const RentRegistryEvent = {
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
     message.transactionHash !== undefined &&
       (obj.transactionHash = base64FromBytes(
-        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array()
+        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array(),
       ));
     message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
     message.payer !== undefined &&
@@ -389,7 +389,7 @@ export const StorageAdminRegistryEvent = {
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
     message.transactionHash !== undefined &&
       (obj.transactionHash = base64FromBytes(
-        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array()
+        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array(),
       ));
     message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
@@ -423,24 +423,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -453,36 +453,30 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(''));
+    return tsProtoGlobalThis.btoa(bin.join(""));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
+    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
   }
   return long.toNumber();
 }

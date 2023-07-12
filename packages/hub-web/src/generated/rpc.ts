@@ -1,12 +1,12 @@
 /* eslint-disable */
-import { grpc } from '@improbable-eng/grpc-web';
-import { BrowserHeaders } from 'browser-headers';
-import { Observable } from 'rxjs';
-import { share } from 'rxjs/operators';
-import { HubEvent } from './hub_event';
-import { IdRegistryEvent } from './id_registry_event';
-import { CastId, Message } from './message';
-import { NameRegistryEvent } from './name_registry_event';
+import { grpc } from "@improbable-eng/grpc-web";
+import { BrowserHeaders } from "browser-headers";
+import { Observable } from "rxjs";
+import { share } from "rxjs/operators";
+import { HubEvent } from "./hub_event";
+import { IdRegistryEvent } from "./id_registry_event";
+import { CastId, Message } from "./message";
+import { NameRegistryEvent } from "./name_registry_event";
 import {
   CastsByParentRequest,
   Empty,
@@ -38,10 +38,11 @@ import {
   TrieNodeSnapshotResponse,
   UserDataRequest,
   UsernameProofRequest,
+  UsernameProofsResponse,
   VerificationRequest,
-} from './request_response';
-import { RentRegistryEvent, StorageAdminRegistryEvent } from './storage_event';
-import { UserNameProof } from './username_proof';
+} from "./request_response";
+import { RentRegistryEvent, StorageAdminRegistryEvent } from "./storage_event";
+import { UserNameProof } from "./username_proof";
 
 export interface HubService {
   /** Submit Methods */
@@ -60,24 +61,26 @@ export interface HubService {
   /** To be deprecated */
   getReactionsByCast(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<MessagesResponse>;
   getReactionsByTarget(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<MessagesResponse>;
   /** User Data */
   getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpc.Metadata): Promise<Message>;
   getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   getNameRegistryEvent(
     request: DeepPartial<NameRegistryEventRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<NameRegistryEvent>;
   getRentRegistryEvents(
     request: DeepPartial<RentRegistryEventsRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<RentRegistryEventsResponse>;
+  /** Username Proof */
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpc.Metadata): Promise<UserNameProof>;
+  getUserNameProofsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<UsernameProofsResponse>;
   /** Verifications */
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message>;
   getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
@@ -87,7 +90,7 @@ export interface HubService {
   getIdRegistryEvent(request: DeepPartial<IdRegistryEventRequest>, metadata?: grpc.Metadata): Promise<IdRegistryEvent>;
   getIdRegistryEventByAddress(
     request: DeepPartial<IdRegistryEventByAddressRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<IdRegistryEvent>;
   getFids(request: DeepPartial<FidsRequest>, metadata?: grpc.Metadata): Promise<FidsResponse>;
   /** Links */
@@ -99,7 +102,7 @@ export interface HubService {
   getAllReactionMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   getAllVerificationMessagesByFid(
     request: DeepPartial<FidRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<MessagesResponse>;
   getAllSignerMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   getAllUserDataMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
@@ -111,11 +114,11 @@ export interface HubService {
   getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
   getSyncMetadataByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<TrieNodeMetadataResponse>;
   getSyncSnapshotByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<TrieNodeSnapshotResponse>;
 }
 
@@ -140,6 +143,7 @@ export class HubServiceClientImpl implements HubService {
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
     this.getRentRegistryEvents = this.getRentRegistryEvents.bind(this);
     this.getUsernameProof = this.getUsernameProof.bind(this);
+    this.getUserNameProofsByFid = this.getUserNameProofsByFid.bind(this);
     this.getVerification = this.getVerification.bind(this);
     this.getVerificationsByFid = this.getVerificationsByFid.bind(this);
     this.getSigner = this.getSigner.bind(this);
@@ -202,14 +206,14 @@ export class HubServiceClientImpl implements HubService {
 
   getReactionsByCast(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetReactionsByCastDesc, ReactionsByTargetRequest.fromPartial(request), metadata);
   }
 
   getReactionsByTarget(
     request: DeepPartial<ReactionsByTargetRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetReactionsByTargetDesc, ReactionsByTargetRequest.fromPartial(request), metadata);
   }
@@ -224,24 +228,28 @@ export class HubServiceClientImpl implements HubService {
 
   getNameRegistryEvent(
     request: DeepPartial<NameRegistryEventRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<NameRegistryEvent> {
     return this.rpc.unary(HubServiceGetNameRegistryEventDesc, NameRegistryEventRequest.fromPartial(request), metadata);
   }
 
   getRentRegistryEvents(
     request: DeepPartial<RentRegistryEventsRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<RentRegistryEventsResponse> {
     return this.rpc.unary(
       HubServiceGetRentRegistryEventsDesc,
       RentRegistryEventsRequest.fromPartial(request),
-      metadata
+      metadata,
     );
   }
 
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpc.Metadata): Promise<UserNameProof> {
     return this.rpc.unary(HubServiceGetUsernameProofDesc, UsernameProofRequest.fromPartial(request), metadata);
+  }
+
+  getUserNameProofsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<UsernameProofsResponse> {
+    return this.rpc.unary(HubServiceGetUserNameProofsByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpc.Metadata): Promise<Message> {
@@ -266,12 +274,12 @@ export class HubServiceClientImpl implements HubService {
 
   getIdRegistryEventByAddress(
     request: DeepPartial<IdRegistryEventByAddressRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<IdRegistryEvent> {
     return this.rpc.unary(
       HubServiceGetIdRegistryEventByAddressDesc,
       IdRegistryEventByAddressRequest.fromPartial(request),
-      metadata
+      metadata,
     );
   }
 
@@ -301,7 +309,7 @@ export class HubServiceClientImpl implements HubService {
 
   getAllVerificationMessagesByFid(
     request: DeepPartial<FidRequest>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllVerificationMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
   }
@@ -336,23 +344,23 @@ export class HubServiceClientImpl implements HubService {
 
   getSyncMetadataByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<TrieNodeMetadataResponse> {
     return this.rpc.unary(HubServiceGetSyncMetadataByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
   }
 
   getSyncSnapshotByPrefix(
     request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<TrieNodeSnapshotResponse> {
     return this.rpc.unary(HubServiceGetSyncSnapshotByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
   }
 }
 
-export const HubServiceDesc = { serviceName: 'HubService' };
+export const HubServiceDesc = { serviceName: "HubService" };
 
 export const HubServiceSubmitMessageDesc: UnaryMethodDefinitionish = {
-  methodName: 'SubmitMessage',
+  methodName: "SubmitMessage",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -375,7 +383,7 @@ export const HubServiceSubmitMessageDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceSubscribeDesc: UnaryMethodDefinitionish = {
-  methodName: 'Subscribe',
+  methodName: "Subscribe",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: true,
@@ -398,7 +406,7 @@ export const HubServiceSubscribeDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetEvent',
+  methodName: "GetEvent",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -421,7 +429,7 @@ export const HubServiceGetEventDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetCastDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetCast',
+  methodName: "GetCast",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -444,7 +452,7 @@ export const HubServiceGetCastDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetCastsByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetCastsByFid',
+  methodName: "GetCastsByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -467,7 +475,7 @@ export const HubServiceGetCastsByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetCastsByParentDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetCastsByParent',
+  methodName: "GetCastsByParent",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -490,7 +498,7 @@ export const HubServiceGetCastsByParentDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetCastsByMentionDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetCastsByMention',
+  methodName: "GetCastsByMention",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -513,7 +521,7 @@ export const HubServiceGetCastsByMentionDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetReactionDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetReaction',
+  methodName: "GetReaction",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -536,7 +544,7 @@ export const HubServiceGetReactionDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetReactionsByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetReactionsByFid',
+  methodName: "GetReactionsByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -559,7 +567,7 @@ export const HubServiceGetReactionsByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetReactionsByCastDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetReactionsByCast',
+  methodName: "GetReactionsByCast",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -582,7 +590,7 @@ export const HubServiceGetReactionsByCastDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetReactionsByTargetDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetReactionsByTarget',
+  methodName: "GetReactionsByTarget",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -605,7 +613,7 @@ export const HubServiceGetReactionsByTargetDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetUserDataDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetUserData',
+  methodName: "GetUserData",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -628,7 +636,7 @@ export const HubServiceGetUserDataDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetUserDataByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetUserDataByFid',
+  methodName: "GetUserDataByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -651,7 +659,7 @@ export const HubServiceGetUserDataByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetNameRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetNameRegistryEvent',
+  methodName: "GetNameRegistryEvent",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -674,7 +682,7 @@ export const HubServiceGetNameRegistryEventDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetRentRegistryEventsDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetRentRegistryEvents',
+  methodName: "GetRentRegistryEvents",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -697,7 +705,7 @@ export const HubServiceGetRentRegistryEventsDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetUsernameProofDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetUsernameProof',
+  methodName: "GetUsernameProof",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -719,8 +727,31 @@ export const HubServiceGetUsernameProofDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
+export const HubServiceGetUserNameProofsByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetUserNameProofsByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = UsernameProofsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
 export const HubServiceGetVerificationDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetVerification',
+  methodName: "GetVerification",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -743,7 +774,7 @@ export const HubServiceGetVerificationDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetVerificationsByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetVerificationsByFid',
+  methodName: "GetVerificationsByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -766,7 +797,7 @@ export const HubServiceGetVerificationsByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetSignerDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetSigner',
+  methodName: "GetSigner",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -789,7 +820,7 @@ export const HubServiceGetSignerDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetSignersByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetSignersByFid',
+  methodName: "GetSignersByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -812,7 +843,7 @@ export const HubServiceGetSignersByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetIdRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetIdRegistryEvent',
+  methodName: "GetIdRegistryEvent",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -835,7 +866,7 @@ export const HubServiceGetIdRegistryEventDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetIdRegistryEventByAddressDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetIdRegistryEventByAddress',
+  methodName: "GetIdRegistryEventByAddress",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -858,7 +889,7 @@ export const HubServiceGetIdRegistryEventByAddressDesc: UnaryMethodDefinitionish
 };
 
 export const HubServiceGetFidsDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetFids',
+  methodName: "GetFids",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -881,7 +912,7 @@ export const HubServiceGetFidsDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetLinkDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetLink',
+  methodName: "GetLink",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -904,7 +935,7 @@ export const HubServiceGetLinkDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetLinksByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetLinksByFid',
+  methodName: "GetLinksByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -927,7 +958,7 @@ export const HubServiceGetLinksByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetLinksByTargetDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetLinksByTarget',
+  methodName: "GetLinksByTarget",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -950,7 +981,7 @@ export const HubServiceGetLinksByTargetDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetAllCastMessagesByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllCastMessagesByFid',
+  methodName: "GetAllCastMessagesByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -973,7 +1004,7 @@ export const HubServiceGetAllCastMessagesByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetAllReactionMessagesByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllReactionMessagesByFid',
+  methodName: "GetAllReactionMessagesByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -996,7 +1027,7 @@ export const HubServiceGetAllReactionMessagesByFidDesc: UnaryMethodDefinitionish
 };
 
 export const HubServiceGetAllVerificationMessagesByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllVerificationMessagesByFid',
+  methodName: "GetAllVerificationMessagesByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1019,7 +1050,7 @@ export const HubServiceGetAllVerificationMessagesByFidDesc: UnaryMethodDefinitio
 };
 
 export const HubServiceGetAllSignerMessagesByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllSignerMessagesByFid',
+  methodName: "GetAllSignerMessagesByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1042,7 +1073,7 @@ export const HubServiceGetAllSignerMessagesByFidDesc: UnaryMethodDefinitionish =
 };
 
 export const HubServiceGetAllUserDataMessagesByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllUserDataMessagesByFid',
+  methodName: "GetAllUserDataMessagesByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1065,7 +1096,7 @@ export const HubServiceGetAllUserDataMessagesByFidDesc: UnaryMethodDefinitionish
 };
 
 export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllLinkMessagesByFid',
+  methodName: "GetAllLinkMessagesByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1088,7 +1119,7 @@ export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetInfoDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetInfo',
+  methodName: "GetInfo",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1111,7 +1142,7 @@ export const HubServiceGetInfoDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetSyncStatusDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetSyncStatus',
+  methodName: "GetSyncStatus",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1134,7 +1165,7 @@ export const HubServiceGetSyncStatusDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetAllSyncIdsByPrefixDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllSyncIdsByPrefix',
+  methodName: "GetAllSyncIdsByPrefix",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1157,7 +1188,7 @@ export const HubServiceGetAllSyncIdsByPrefixDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetAllMessagesBySyncIdsDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetAllMessagesBySyncIds',
+  methodName: "GetAllMessagesBySyncIds",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1180,7 +1211,7 @@ export const HubServiceGetAllMessagesBySyncIdsDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetSyncMetadataByPrefixDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetSyncMetadataByPrefix',
+  methodName: "GetSyncMetadataByPrefix",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1203,7 +1234,7 @@ export const HubServiceGetSyncMetadataByPrefixDesc: UnaryMethodDefinitionish = {
 };
 
 export const HubServiceGetSyncSnapshotByPrefixDesc: UnaryMethodDefinitionish = {
-  methodName: 'GetSyncSnapshotByPrefix',
+  methodName: "GetSyncSnapshotByPrefix",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1231,15 +1262,15 @@ export interface AdminService {
   submitIdRegistryEvent(request: DeepPartial<IdRegistryEvent>, metadata?: grpc.Metadata): Promise<IdRegistryEvent>;
   submitNameRegistryEvent(
     request: DeepPartial<NameRegistryEvent>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<NameRegistryEvent>;
   submitRentRegistryEvent(
     request: DeepPartial<RentRegistryEvent>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<RentRegistryEvent>;
   submitStorageAdminRegistryEvent(
     request: DeepPartial<StorageAdminRegistryEvent>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<StorageAdminRegistryEvent>;
 }
 
@@ -1270,34 +1301,34 @@ export class AdminServiceClientImpl implements AdminService {
 
   submitNameRegistryEvent(
     request: DeepPartial<NameRegistryEvent>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<NameRegistryEvent> {
     return this.rpc.unary(AdminServiceSubmitNameRegistryEventDesc, NameRegistryEvent.fromPartial(request), metadata);
   }
 
   submitRentRegistryEvent(
     request: DeepPartial<RentRegistryEvent>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<RentRegistryEvent> {
     return this.rpc.unary(AdminServiceSubmitRentRegistryEventDesc, RentRegistryEvent.fromPartial(request), metadata);
   }
 
   submitStorageAdminRegistryEvent(
     request: DeepPartial<StorageAdminRegistryEvent>,
-    metadata?: grpc.Metadata
+    metadata?: grpc.Metadata,
   ): Promise<StorageAdminRegistryEvent> {
     return this.rpc.unary(
       AdminServiceSubmitStorageAdminRegistryEventDesc,
       StorageAdminRegistryEvent.fromPartial(request),
-      metadata
+      metadata,
     );
   }
 }
 
-export const AdminServiceDesc = { serviceName: 'AdminService' };
+export const AdminServiceDesc = { serviceName: "AdminService" };
 
 export const AdminServiceRebuildSyncTrieDesc: UnaryMethodDefinitionish = {
-  methodName: 'RebuildSyncTrie',
+  methodName: "RebuildSyncTrie",
   service: AdminServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1320,7 +1351,7 @@ export const AdminServiceRebuildSyncTrieDesc: UnaryMethodDefinitionish = {
 };
 
 export const AdminServiceDeleteAllMessagesFromDbDesc: UnaryMethodDefinitionish = {
-  methodName: 'DeleteAllMessagesFromDb',
+  methodName: "DeleteAllMessagesFromDb",
   service: AdminServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1343,7 +1374,7 @@ export const AdminServiceDeleteAllMessagesFromDbDesc: UnaryMethodDefinitionish =
 };
 
 export const AdminServiceSubmitIdRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'SubmitIdRegistryEvent',
+  methodName: "SubmitIdRegistryEvent",
   service: AdminServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1366,7 +1397,7 @@ export const AdminServiceSubmitIdRegistryEventDesc: UnaryMethodDefinitionish = {
 };
 
 export const AdminServiceSubmitNameRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'SubmitNameRegistryEvent',
+  methodName: "SubmitNameRegistryEvent",
   service: AdminServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1389,7 +1420,7 @@ export const AdminServiceSubmitNameRegistryEventDesc: UnaryMethodDefinitionish =
 };
 
 export const AdminServiceSubmitRentRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'SubmitRentRegistryEvent',
+  methodName: "SubmitRentRegistryEvent",
   service: AdminServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1412,7 +1443,7 @@ export const AdminServiceSubmitRentRegistryEventDesc: UnaryMethodDefinitionish =
 };
 
 export const AdminServiceSubmitStorageAdminRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: 'SubmitStorageAdminRegistryEvent',
+  methodName: "SubmitStorageAdminRegistryEvent",
   service: AdminServiceDesc,
   requestStream: false,
   responseStream: false,
@@ -1445,12 +1476,12 @@ interface Rpc {
   unary<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     request: any,
-    metadata: grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined,
   ): Promise<any>;
   invoke<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     request: any,
-    metadata: grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined,
   ): Observable<any>;
 }
 
@@ -1472,7 +1503,7 @@ export class GrpcWebImpl {
       debug?: boolean;
       metadata?: grpc.Metadata;
       upStreamRetryCodes?: number[];
-    }
+    },
   ) {
     this.host = host;
     this.options = options;
@@ -1481,13 +1512,12 @@ export class GrpcWebImpl {
   unary<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     _request: any,
-    metadata: grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined,
   ): Promise<any> {
     const request = { ..._request, ...methodDesc.requestType };
-    const maybeCombinedMetadata =
-      metadata && this.options.metadata
-        ? new BrowserHeaders({ ...this.options?.metadata.headersMap, ...metadata?.headersMap })
-        : metadata || this.options.metadata;
+    const maybeCombinedMetadata = metadata && this.options.metadata
+      ? new BrowserHeaders({ ...this.options?.metadata.headersMap, ...metadata?.headersMap })
+      : metadata || this.options.metadata;
     return new Promise((resolve, reject) => {
       grpc.unary(methodDesc, {
         request,
@@ -1510,17 +1540,16 @@ export class GrpcWebImpl {
   invoke<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     _request: any,
-    metadata: grpc.Metadata | undefined
+    metadata: grpc.Metadata | undefined,
   ): Observable<any> {
     const upStreamCodes = this.options.upStreamRetryCodes || [];
     const DEFAULT_TIMEOUT_TIME: number = 3_000;
     const request = { ..._request, ...methodDesc.requestType };
-    const maybeCombinedMetadata =
-      metadata && this.options.metadata
-        ? new BrowserHeaders({ ...this.options?.metadata.headersMap, ...metadata?.headersMap })
-        : metadata || this.options.metadata;
+    const maybeCombinedMetadata = metadata && this.options.metadata
+      ? new BrowserHeaders({ ...this.options?.metadata.headersMap, ...metadata?.headersMap })
+      : metadata || this.options.metadata;
     return new Observable((observer) => {
-      const upStream = () => {
+      const upStream = (() => {
         const client = grpc.invoke(methodDesc, {
           host: this.host,
           request,
@@ -1546,7 +1575,7 @@ export class GrpcWebImpl {
             return client.close();
           }
         });
-      };
+      });
       upStream();
     }).pipe(share());
   }
@@ -1556,31 +1585,26 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 export class GrpcWebError extends tsProtoGlobalThis.Error {

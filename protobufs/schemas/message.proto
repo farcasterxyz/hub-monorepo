@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "username_proof.proto";
 
 /** 
   * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope 
@@ -32,6 +33,7 @@ message MessageData {
     UserDataBody user_data_body = 12;
     SignerRemoveBody signer_remove_body = 13;
     LinkBody link_body = 14;
+    UserNameProof username_proof_body = 15;
   } // Properties specific to the MessageType
 }
 
@@ -62,6 +64,7 @@ enum MessageType {
   MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
   MESSAGE_TYPE_SIGNER_REMOVE = 10; // Remove an Ed25519 key pair that signs messages for a user
   MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
+  MESSAGE_TYPE_USERNAME_PROOF = 12; // Add or replace a username proof
 }
 
 /** Farcaster network the message is intended for */
@@ -96,7 +99,7 @@ enum UserDataType {
   USER_DATA_TYPE_DISPLAY = 2; // Display Name for the user
   USER_DATA_TYPE_BIO = 3; // Bio for the user
   USER_DATA_TYPE_URL = 5; // URL of the user
-  USER_DATA_TYPE_FNAME = 6; // Preferred Farcaster Name for the user
+  USER_DATA_TYPE_USERNAME = 6; // Preferred Name for the user
 }
 
 message Embed {

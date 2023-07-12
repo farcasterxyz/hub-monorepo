@@ -1,6 +1,7 @@
 /* eslint-disable */
-import Long from 'long';
-import _m0 from 'protobufjs/minimal';
+import Long from "long";
+import _m0 from "protobufjs/minimal";
+import { UserNameProof } from "./username_proof";
 
 /** Type of hashing scheme used to produce a digest of MessageData */
 export enum HashScheme {
@@ -12,24 +13,24 @@ export enum HashScheme {
 export function hashSchemeFromJSON(object: any): HashScheme {
   switch (object) {
     case 0:
-    case 'HASH_SCHEME_NONE':
+    case "HASH_SCHEME_NONE":
       return HashScheme.NONE;
     case 1:
-    case 'HASH_SCHEME_BLAKE3':
+    case "HASH_SCHEME_BLAKE3":
       return HashScheme.BLAKE3;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum HashScheme');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
   }
 }
 
 export function hashSchemeToJSON(object: HashScheme): string {
   switch (object) {
     case HashScheme.NONE:
-      return 'HASH_SCHEME_NONE';
+      return "HASH_SCHEME_NONE";
     case HashScheme.BLAKE3:
-      return 'HASH_SCHEME_BLAKE3';
+      return "HASH_SCHEME_BLAKE3";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum HashScheme');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HashScheme");
   }
 }
 
@@ -45,29 +46,29 @@ export enum SignatureScheme {
 export function signatureSchemeFromJSON(object: any): SignatureScheme {
   switch (object) {
     case 0:
-    case 'SIGNATURE_SCHEME_NONE':
+    case "SIGNATURE_SCHEME_NONE":
       return SignatureScheme.NONE;
     case 1:
-    case 'SIGNATURE_SCHEME_ED25519':
+    case "SIGNATURE_SCHEME_ED25519":
       return SignatureScheme.ED25519;
     case 2:
-    case 'SIGNATURE_SCHEME_EIP712':
+    case "SIGNATURE_SCHEME_EIP712":
       return SignatureScheme.EIP712;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum SignatureScheme');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
   }
 }
 
 export function signatureSchemeToJSON(object: SignatureScheme): string {
   switch (object) {
     case SignatureScheme.NONE:
-      return 'SIGNATURE_SCHEME_NONE';
+      return "SIGNATURE_SCHEME_NONE";
     case SignatureScheme.ED25519:
-      return 'SIGNATURE_SCHEME_ED25519';
+      return "SIGNATURE_SCHEME_ED25519";
     case SignatureScheme.EIP712:
-      return 'SIGNATURE_SCHEME_EIP712';
+      return "SIGNATURE_SCHEME_EIP712";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum SignatureScheme');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignatureScheme");
   }
 }
 
@@ -96,79 +97,86 @@ export enum MessageType {
   SIGNER_REMOVE = 10,
   /** USER_DATA_ADD - Add metadata about a user */
   USER_DATA_ADD = 11,
+  /** USERNAME_PROOF - Add or replace a username proof */
+  USERNAME_PROOF = 12,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
   switch (object) {
     case 0:
-    case 'MESSAGE_TYPE_NONE':
+    case "MESSAGE_TYPE_NONE":
       return MessageType.NONE;
     case 1:
-    case 'MESSAGE_TYPE_CAST_ADD':
+    case "MESSAGE_TYPE_CAST_ADD":
       return MessageType.CAST_ADD;
     case 2:
-    case 'MESSAGE_TYPE_CAST_REMOVE':
+    case "MESSAGE_TYPE_CAST_REMOVE":
       return MessageType.CAST_REMOVE;
     case 3:
-    case 'MESSAGE_TYPE_REACTION_ADD':
+    case "MESSAGE_TYPE_REACTION_ADD":
       return MessageType.REACTION_ADD;
     case 4:
-    case 'MESSAGE_TYPE_REACTION_REMOVE':
+    case "MESSAGE_TYPE_REACTION_REMOVE":
       return MessageType.REACTION_REMOVE;
     case 5:
-    case 'MESSAGE_TYPE_LINK_ADD':
+    case "MESSAGE_TYPE_LINK_ADD":
       return MessageType.LINK_ADD;
     case 6:
-    case 'MESSAGE_TYPE_LINK_REMOVE':
+    case "MESSAGE_TYPE_LINK_REMOVE":
       return MessageType.LINK_REMOVE;
     case 7:
-    case 'MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS':
+    case "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS":
       return MessageType.VERIFICATION_ADD_ETH_ADDRESS;
     case 8:
-    case 'MESSAGE_TYPE_VERIFICATION_REMOVE':
+    case "MESSAGE_TYPE_VERIFICATION_REMOVE":
       return MessageType.VERIFICATION_REMOVE;
     case 9:
-    case 'MESSAGE_TYPE_SIGNER_ADD':
+    case "MESSAGE_TYPE_SIGNER_ADD":
       return MessageType.SIGNER_ADD;
     case 10:
-    case 'MESSAGE_TYPE_SIGNER_REMOVE':
+    case "MESSAGE_TYPE_SIGNER_REMOVE":
       return MessageType.SIGNER_REMOVE;
     case 11:
-    case 'MESSAGE_TYPE_USER_DATA_ADD':
+    case "MESSAGE_TYPE_USER_DATA_ADD":
       return MessageType.USER_DATA_ADD;
+    case 12:
+    case "MESSAGE_TYPE_USERNAME_PROOF":
+      return MessageType.USERNAME_PROOF;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum MessageType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
 }
 
 export function messageTypeToJSON(object: MessageType): string {
   switch (object) {
     case MessageType.NONE:
-      return 'MESSAGE_TYPE_NONE';
+      return "MESSAGE_TYPE_NONE";
     case MessageType.CAST_ADD:
-      return 'MESSAGE_TYPE_CAST_ADD';
+      return "MESSAGE_TYPE_CAST_ADD";
     case MessageType.CAST_REMOVE:
-      return 'MESSAGE_TYPE_CAST_REMOVE';
+      return "MESSAGE_TYPE_CAST_REMOVE";
     case MessageType.REACTION_ADD:
-      return 'MESSAGE_TYPE_REACTION_ADD';
+      return "MESSAGE_TYPE_REACTION_ADD";
     case MessageType.REACTION_REMOVE:
-      return 'MESSAGE_TYPE_REACTION_REMOVE';
+      return "MESSAGE_TYPE_REACTION_REMOVE";
     case MessageType.LINK_ADD:
-      return 'MESSAGE_TYPE_LINK_ADD';
+      return "MESSAGE_TYPE_LINK_ADD";
     case MessageType.LINK_REMOVE:
-      return 'MESSAGE_TYPE_LINK_REMOVE';
+      return "MESSAGE_TYPE_LINK_REMOVE";
     case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
-      return 'MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS';
+      return "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS";
     case MessageType.VERIFICATION_REMOVE:
-      return 'MESSAGE_TYPE_VERIFICATION_REMOVE';
+      return "MESSAGE_TYPE_VERIFICATION_REMOVE";
     case MessageType.SIGNER_ADD:
-      return 'MESSAGE_TYPE_SIGNER_ADD';
+      return "MESSAGE_TYPE_SIGNER_ADD";
     case MessageType.SIGNER_REMOVE:
-      return 'MESSAGE_TYPE_SIGNER_REMOVE';
+      return "MESSAGE_TYPE_SIGNER_REMOVE";
     case MessageType.USER_DATA_ADD:
-      return 'MESSAGE_TYPE_USER_DATA_ADD';
+      return "MESSAGE_TYPE_USER_DATA_ADD";
+    case MessageType.USERNAME_PROOF:
+      return "MESSAGE_TYPE_USERNAME_PROOF";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum MessageType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
 }
 
@@ -186,34 +194,34 @@ export enum FarcasterNetwork {
 export function farcasterNetworkFromJSON(object: any): FarcasterNetwork {
   switch (object) {
     case 0:
-    case 'FARCASTER_NETWORK_NONE':
+    case "FARCASTER_NETWORK_NONE":
       return FarcasterNetwork.NONE;
     case 1:
-    case 'FARCASTER_NETWORK_MAINNET':
+    case "FARCASTER_NETWORK_MAINNET":
       return FarcasterNetwork.MAINNET;
     case 2:
-    case 'FARCASTER_NETWORK_TESTNET':
+    case "FARCASTER_NETWORK_TESTNET":
       return FarcasterNetwork.TESTNET;
     case 3:
-    case 'FARCASTER_NETWORK_DEVNET':
+    case "FARCASTER_NETWORK_DEVNET":
       return FarcasterNetwork.DEVNET;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum FarcasterNetwork');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
   }
 }
 
 export function farcasterNetworkToJSON(object: FarcasterNetwork): string {
   switch (object) {
     case FarcasterNetwork.NONE:
-      return 'FARCASTER_NETWORK_NONE';
+      return "FARCASTER_NETWORK_NONE";
     case FarcasterNetwork.MAINNET:
-      return 'FARCASTER_NETWORK_MAINNET';
+      return "FARCASTER_NETWORK_MAINNET";
     case FarcasterNetwork.TESTNET:
-      return 'FARCASTER_NETWORK_TESTNET';
+      return "FARCASTER_NETWORK_TESTNET";
     case FarcasterNetwork.DEVNET:
-      return 'FARCASTER_NETWORK_DEVNET';
+      return "FARCASTER_NETWORK_DEVNET";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum FarcasterNetwork');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
   }
 }
 
@@ -228,51 +236,51 @@ export enum UserDataType {
   BIO = 3,
   /** URL - URL of the user */
   URL = 5,
-  /** FNAME - Preferred Farcaster Name for the user */
-  FNAME = 6,
+  /** USERNAME - Preferred Name for the user */
+  USERNAME = 6,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
   switch (object) {
     case 0:
-    case 'USER_DATA_TYPE_NONE':
+    case "USER_DATA_TYPE_NONE":
       return UserDataType.NONE;
     case 1:
-    case 'USER_DATA_TYPE_PFP':
+    case "USER_DATA_TYPE_PFP":
       return UserDataType.PFP;
     case 2:
-    case 'USER_DATA_TYPE_DISPLAY':
+    case "USER_DATA_TYPE_DISPLAY":
       return UserDataType.DISPLAY;
     case 3:
-    case 'USER_DATA_TYPE_BIO':
+    case "USER_DATA_TYPE_BIO":
       return UserDataType.BIO;
     case 5:
-    case 'USER_DATA_TYPE_URL':
+    case "USER_DATA_TYPE_URL":
       return UserDataType.URL;
     case 6:
-    case 'USER_DATA_TYPE_FNAME':
-      return UserDataType.FNAME;
+    case "USER_DATA_TYPE_USERNAME":
+      return UserDataType.USERNAME;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum UserDataType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
 }
 
 export function userDataTypeToJSON(object: UserDataType): string {
   switch (object) {
     case UserDataType.NONE:
-      return 'USER_DATA_TYPE_NONE';
+      return "USER_DATA_TYPE_NONE";
     case UserDataType.PFP:
-      return 'USER_DATA_TYPE_PFP';
+      return "USER_DATA_TYPE_PFP";
     case UserDataType.DISPLAY:
-      return 'USER_DATA_TYPE_DISPLAY';
+      return "USER_DATA_TYPE_DISPLAY";
     case UserDataType.BIO:
-      return 'USER_DATA_TYPE_BIO';
+      return "USER_DATA_TYPE_BIO";
     case UserDataType.URL:
-      return 'USER_DATA_TYPE_URL';
-    case UserDataType.FNAME:
-      return 'USER_DATA_TYPE_FNAME';
+      return "USER_DATA_TYPE_URL";
+    case UserDataType.USERNAME:
+      return "USER_DATA_TYPE_USERNAME";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum UserDataType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
 }
 
@@ -288,29 +296,29 @@ export enum ReactionType {
 export function reactionTypeFromJSON(object: any): ReactionType {
   switch (object) {
     case 0:
-    case 'REACTION_TYPE_NONE':
+    case "REACTION_TYPE_NONE":
       return ReactionType.NONE;
     case 1:
-    case 'REACTION_TYPE_LIKE':
+    case "REACTION_TYPE_LIKE":
       return ReactionType.LIKE;
     case 2:
-    case 'REACTION_TYPE_RECAST':
+    case "REACTION_TYPE_RECAST":
       return ReactionType.RECAST;
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum ReactionType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
 }
 
 export function reactionTypeToJSON(object: ReactionType): string {
   switch (object) {
     case ReactionType.NONE:
-      return 'REACTION_TYPE_NONE';
+      return "REACTION_TYPE_NONE";
     case ReactionType.LIKE:
-      return 'REACTION_TYPE_LIKE';
+      return "REACTION_TYPE_LIKE";
     case ReactionType.RECAST:
-      return 'REACTION_TYPE_RECAST';
+      return "REACTION_TYPE_RECAST";
     default:
-      throw new tsProtoGlobalThis.Error('Unrecognized enum value ' + object + ' for enum ReactionType');
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
 }
 
@@ -320,7 +328,9 @@ export function reactionTypeToJSON(object: ReactionType): string {
  */
 export interface Message {
   /** Contents of the message */
-  data: MessageData | undefined;
+  data:
+    | MessageData
+    | undefined;
   /** Hash digest of data */
   hash: Uint8Array;
   /** Hash scheme that produced the hash digest */
@@ -355,6 +365,7 @@ export interface MessageData {
   userDataBody?: UserDataBody | undefined;
   signerRemoveBody?: SignerRemoveBody | undefined;
   linkBody?: LinkBody | undefined;
+  usernameProofBody?: UserNameProof | undefined;
 }
 
 /** Adds an Ed25519 key pair that signs messages for a user */
@@ -391,9 +402,13 @@ export interface CastAddBody {
   /** Fids mentioned in the cast */
   mentions: number[];
   /** Parent cast of the cast */
-  parentCastId?: CastId | undefined;
+  parentCastId?:
+    | CastId
+    | undefined;
   /** Parent URL */
-  parentUrl?: string | undefined;
+  parentUrl?:
+    | string
+    | undefined;
   /** Text of the cast */
   text: string;
   /** Positions of the mentions in the text */
@@ -421,7 +436,9 @@ export interface ReactionBody {
   /** Type of reaction */
   type: ReactionType;
   /** CastId of the Cast to react to */
-  targetCastId?: CastId | undefined;
+  targetCastId?:
+    | CastId
+    | undefined;
   /** URL to react to */
   targetUrl?: string | undefined;
 }
@@ -447,7 +464,9 @@ export interface LinkBody {
   /** Type of link, <= 8 characters */
   type: string;
   /** User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction */
-  displayTimestamp?: number | undefined;
+  displayTimestamp?:
+    | number
+    | undefined;
   /** The fid the link relates to */
   targetFid?: number | undefined;
 }
@@ -575,7 +594,9 @@ export const Message = {
 
   fromPartial<I extends Exact<DeepPartial<Message>, I>>(object: I): Message {
     const message = createBaseMessage();
-    message.data = object.data !== undefined && object.data !== null ? MessageData.fromPartial(object.data) : undefined;
+    message.data = (object.data !== undefined && object.data !== null)
+      ? MessageData.fromPartial(object.data)
+      : undefined;
     message.hash = object.hash ?? new Uint8Array();
     message.hashScheme = object.hashScheme ?? 0;
     message.signature = object.signature ?? new Uint8Array();
@@ -600,6 +621,7 @@ function createBaseMessageData(): MessageData {
     userDataBody: undefined,
     signerRemoveBody: undefined,
     linkBody: undefined,
+    usernameProofBody: undefined,
   };
 }
 
@@ -643,6 +665,9 @@ export const MessageData = {
     }
     if (message.linkBody !== undefined) {
       LinkBody.encode(message.linkBody, writer.uint32(114).fork()).ldelim();
+    }
+    if (message.usernameProofBody !== undefined) {
+      UserNameProof.encode(message.usernameProofBody, writer.uint32(122).fork()).ldelim();
     }
     return writer;
   },
@@ -745,6 +770,13 @@ export const MessageData = {
 
           message.linkBody = LinkBody.decode(reader, reader.uint32());
           continue;
+        case 15:
+          if (tag != 122) {
+            break;
+          }
+
+          message.usernameProofBody = UserNameProof.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -773,6 +805,7 @@ export const MessageData = {
       userDataBody: isSet(object.userDataBody) ? UserDataBody.fromJSON(object.userDataBody) : undefined,
       signerRemoveBody: isSet(object.signerRemoveBody) ? SignerRemoveBody.fromJSON(object.signerRemoveBody) : undefined,
       linkBody: isSet(object.linkBody) ? LinkBody.fromJSON(object.linkBody) : undefined,
+      usernameProofBody: isSet(object.usernameProofBody) ? UserNameProof.fromJSON(object.usernameProofBody) : undefined,
     };
   },
 
@@ -792,10 +825,9 @@ export const MessageData = {
       (obj.verificationAddEthAddressBody = message.verificationAddEthAddressBody
         ? VerificationAddEthAddressBody.toJSON(message.verificationAddEthAddressBody)
         : undefined);
-    message.verificationRemoveBody !== undefined &&
-      (obj.verificationRemoveBody = message.verificationRemoveBody
-        ? VerificationRemoveBody.toJSON(message.verificationRemoveBody)
-        : undefined);
+    message.verificationRemoveBody !== undefined && (obj.verificationRemoveBody = message.verificationRemoveBody
+      ? VerificationRemoveBody.toJSON(message.verificationRemoveBody)
+      : undefined);
     message.signerAddBody !== undefined &&
       (obj.signerAddBody = message.signerAddBody ? SignerAddBody.toJSON(message.signerAddBody) : undefined);
     message.userDataBody !== undefined &&
@@ -803,6 +835,8 @@ export const MessageData = {
     message.signerRemoveBody !== undefined &&
       (obj.signerRemoveBody = message.signerRemoveBody ? SignerRemoveBody.toJSON(message.signerRemoveBody) : undefined);
     message.linkBody !== undefined && (obj.linkBody = message.linkBody ? LinkBody.toJSON(message.linkBody) : undefined);
+    message.usernameProofBody !== undefined &&
+      (obj.usernameProofBody = message.usernameProofBody ? UserNameProof.toJSON(message.usernameProofBody) : undefined);
     return obj;
   },
 
@@ -816,40 +850,38 @@ export const MessageData = {
     message.fid = object.fid ?? 0;
     message.timestamp = object.timestamp ?? 0;
     message.network = object.network ?? 0;
-    message.castAddBody =
-      object.castAddBody !== undefined && object.castAddBody !== null
-        ? CastAddBody.fromPartial(object.castAddBody)
-        : undefined;
-    message.castRemoveBody =
-      object.castRemoveBody !== undefined && object.castRemoveBody !== null
-        ? CastRemoveBody.fromPartial(object.castRemoveBody)
-        : undefined;
-    message.reactionBody =
-      object.reactionBody !== undefined && object.reactionBody !== null
-        ? ReactionBody.fromPartial(object.reactionBody)
-        : undefined;
+    message.castAddBody = (object.castAddBody !== undefined && object.castAddBody !== null)
+      ? CastAddBody.fromPartial(object.castAddBody)
+      : undefined;
+    message.castRemoveBody = (object.castRemoveBody !== undefined && object.castRemoveBody !== null)
+      ? CastRemoveBody.fromPartial(object.castRemoveBody)
+      : undefined;
+    message.reactionBody = (object.reactionBody !== undefined && object.reactionBody !== null)
+      ? ReactionBody.fromPartial(object.reactionBody)
+      : undefined;
     message.verificationAddEthAddressBody =
-      object.verificationAddEthAddressBody !== undefined && object.verificationAddEthAddressBody !== null
+      (object.verificationAddEthAddressBody !== undefined && object.verificationAddEthAddressBody !== null)
         ? VerificationAddEthAddressBody.fromPartial(object.verificationAddEthAddressBody)
         : undefined;
     message.verificationRemoveBody =
-      object.verificationRemoveBody !== undefined && object.verificationRemoveBody !== null
+      (object.verificationRemoveBody !== undefined && object.verificationRemoveBody !== null)
         ? VerificationRemoveBody.fromPartial(object.verificationRemoveBody)
         : undefined;
-    message.signerAddBody =
-      object.signerAddBody !== undefined && object.signerAddBody !== null
-        ? SignerAddBody.fromPartial(object.signerAddBody)
-        : undefined;
-    message.userDataBody =
-      object.userDataBody !== undefined && object.userDataBody !== null
-        ? UserDataBody.fromPartial(object.userDataBody)
-        : undefined;
-    message.signerRemoveBody =
-      object.signerRemoveBody !== undefined && object.signerRemoveBody !== null
-        ? SignerRemoveBody.fromPartial(object.signerRemoveBody)
-        : undefined;
-    message.linkBody =
-      object.linkBody !== undefined && object.linkBody !== null ? LinkBody.fromPartial(object.linkBody) : undefined;
+    message.signerAddBody = (object.signerAddBody !== undefined && object.signerAddBody !== null)
+      ? SignerAddBody.fromPartial(object.signerAddBody)
+      : undefined;
+    message.userDataBody = (object.userDataBody !== undefined && object.userDataBody !== null)
+      ? UserDataBody.fromPartial(object.userDataBody)
+      : undefined;
+    message.signerRemoveBody = (object.signerRemoveBody !== undefined && object.signerRemoveBody !== null)
+      ? SignerRemoveBody.fromPartial(object.signerRemoveBody)
+      : undefined;
+    message.linkBody = (object.linkBody !== undefined && object.linkBody !== null)
+      ? LinkBody.fromPartial(object.linkBody)
+      : undefined;
+    message.usernameProofBody = (object.usernameProofBody !== undefined && object.usernameProofBody !== null)
+      ? UserNameProof.fromPartial(object.usernameProofBody)
+      : undefined;
     return message;
   },
 };
@@ -984,7 +1016,7 @@ export const SignerRemoveBody = {
 };
 
 function createBaseUserDataBody(): UserDataBody {
-  return { type: 0, value: '' };
+  return { type: 0, value: "" };
 }
 
 export const UserDataBody = {
@@ -992,7 +1024,7 @@ export const UserDataBody = {
     if (message.type !== 0) {
       writer.uint32(8).int32(message.type);
     }
-    if (message.value !== '') {
+    if (message.value !== "") {
       writer.uint32(18).string(message.value);
     }
     return writer;
@@ -1031,7 +1063,7 @@ export const UserDataBody = {
   fromJSON(object: any): UserDataBody {
     return {
       type: isSet(object.type) ? userDataTypeFromJSON(object.type) : 0,
-      value: isSet(object.value) ? String(object.value) : '',
+      value: isSet(object.value) ? String(object.value) : "",
     };
   },
 
@@ -1049,7 +1081,7 @@ export const UserDataBody = {
   fromPartial<I extends Exact<DeepPartial<UserDataBody>, I>>(object: I): UserDataBody {
     const message = createBaseUserDataBody();
     message.type = object.type ?? 0;
-    message.value = object.value ?? '';
+    message.value = object.value ?? "";
     return message;
   },
 };
@@ -1120,8 +1152,9 @@ export const Embed = {
   fromPartial<I extends Exact<DeepPartial<Embed>, I>>(object: I): Embed {
     const message = createBaseEmbed();
     message.url = object.url ?? undefined;
-    message.castId =
-      object.castId !== undefined && object.castId !== null ? CastId.fromPartial(object.castId) : undefined;
+    message.castId = (object.castId !== undefined && object.castId !== null)
+      ? CastId.fromPartial(object.castId)
+      : undefined;
     return message;
   },
 };
@@ -1132,7 +1165,7 @@ function createBaseCastAddBody(): CastAddBody {
     mentions: [],
     parentCastId: undefined,
     parentUrl: undefined,
-    text: '',
+    text: "",
     mentionsPositions: [],
     embeds: [],
   };
@@ -1154,7 +1187,7 @@ export const CastAddBody = {
     if (message.parentUrl !== undefined) {
       writer.uint32(58).string(message.parentUrl);
     }
-    if (message.text !== '') {
+    if (message.text !== "") {
       writer.uint32(34).string(message.text);
     }
     writer.uint32(42).fork();
@@ -1259,7 +1292,7 @@ export const CastAddBody = {
       mentions: Array.isArray(object?.mentions) ? object.mentions.map((e: any) => Number(e)) : [],
       parentCastId: isSet(object.parentCastId) ? CastId.fromJSON(object.parentCastId) : undefined,
       parentUrl: isSet(object.parentUrl) ? String(object.parentUrl) : undefined,
-      text: isSet(object.text) ? String(object.text) : '',
+      text: isSet(object.text) ? String(object.text) : "",
       mentionsPositions: Array.isArray(object?.mentionsPositions)
         ? object.mentionsPositions.map((e: any) => Number(e))
         : [],
@@ -1289,7 +1322,7 @@ export const CastAddBody = {
       obj.mentionsPositions = [];
     }
     if (message.embeds) {
-      obj.embeds = message.embeds.map((e) => (e ? Embed.toJSON(e) : undefined));
+      obj.embeds = message.embeds.map((e) => e ? Embed.toJSON(e) : undefined);
     } else {
       obj.embeds = [];
     }
@@ -1304,12 +1337,11 @@ export const CastAddBody = {
     const message = createBaseCastAddBody();
     message.embedsDeprecated = object.embedsDeprecated?.map((e) => e) || [];
     message.mentions = object.mentions?.map((e) => e) || [];
-    message.parentCastId =
-      object.parentCastId !== undefined && object.parentCastId !== null
-        ? CastId.fromPartial(object.parentCastId)
-        : undefined;
+    message.parentCastId = (object.parentCastId !== undefined && object.parentCastId !== null)
+      ? CastId.fromPartial(object.parentCastId)
+      : undefined;
     message.parentUrl = object.parentUrl ?? undefined;
-    message.text = object.text ?? '';
+    message.text = object.text ?? "";
     message.mentionsPositions = object.mentionsPositions?.map((e) => e) || [];
     message.embeds = object.embeds?.map((e) => Embed.fromPartial(e)) || [];
     return message;
@@ -1524,10 +1556,9 @@ export const ReactionBody = {
   fromPartial<I extends Exact<DeepPartial<ReactionBody>, I>>(object: I): ReactionBody {
     const message = createBaseReactionBody();
     message.type = object.type ?? 0;
-    message.targetCastId =
-      object.targetCastId !== undefined && object.targetCastId !== null
-        ? CastId.fromPartial(object.targetCastId)
-        : undefined;
+    message.targetCastId = (object.targetCastId !== undefined && object.targetCastId !== null)
+      ? CastId.fromPartial(object.targetCastId)
+      : undefined;
     message.targetUrl = object.targetUrl ?? undefined;
     return message;
   },
@@ -1602,7 +1633,7 @@ export const VerificationAddEthAddressBody = {
       (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
     message.ethSignature !== undefined &&
       (obj.ethSignature = base64FromBytes(
-        message.ethSignature !== undefined ? message.ethSignature : new Uint8Array()
+        message.ethSignature !== undefined ? message.ethSignature : new Uint8Array(),
       ));
     message.blockHash !== undefined &&
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
@@ -1614,7 +1645,7 @@ export const VerificationAddEthAddressBody = {
   },
 
   fromPartial<I extends Exact<DeepPartial<VerificationAddEthAddressBody>, I>>(
-    object: I
+    object: I,
   ): VerificationAddEthAddressBody {
     const message = createBaseVerificationAddEthAddressBody();
     message.address = object.address ?? new Uint8Array();
@@ -1682,12 +1713,12 @@ export const VerificationRemoveBody = {
 };
 
 function createBaseLinkBody(): LinkBody {
-  return { type: '', displayTimestamp: undefined, targetFid: undefined };
+  return { type: "", displayTimestamp: undefined, targetFid: undefined };
 }
 
 export const LinkBody = {
   encode(message: LinkBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.type !== '') {
+    if (message.type !== "") {
       writer.uint32(10).string(message.type);
     }
     if (message.displayTimestamp !== undefined) {
@@ -1738,7 +1769,7 @@ export const LinkBody = {
 
   fromJSON(object: any): LinkBody {
     return {
-      type: isSet(object.type) ? String(object.type) : '',
+      type: isSet(object.type) ? String(object.type) : "",
       displayTimestamp: isSet(object.displayTimestamp) ? Number(object.displayTimestamp) : undefined,
       targetFid: isSet(object.targetFid) ? Number(object.targetFid) : undefined,
     };
@@ -1758,7 +1789,7 @@ export const LinkBody = {
 
   fromPartial<I extends Exact<DeepPartial<LinkBody>, I>>(object: I): LinkBody {
     const message = createBaseLinkBody();
-    message.type = object.type ?? '';
+    message.type = object.type ?? "";
     message.displayTimestamp = object.displayTimestamp ?? undefined;
     message.targetFid = object.targetFid ?? undefined;
     return message;
@@ -1769,24 +1800,24 @@ declare var self: any | undefined;
 declare var window: any | undefined;
 declare var global: any | undefined;
 var tsProtoGlobalThis: any = (() => {
-  if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis !== "undefined") {
     return globalThis;
   }
-  if (typeof self !== 'undefined') {
+  if (typeof self !== "undefined") {
     return self;
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window;
   }
-  if (typeof global !== 'undefined') {
+  if (typeof global !== "undefined") {
     return global;
   }
-  throw 'Unable to locate global object';
+  throw "Unable to locate global object";
 })();
 
 function bytesFromBase64(b64: string): Uint8Array {
   if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, 'base64'));
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
   } else {
     const bin = tsProtoGlobalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -1799,36 +1830,30 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString('base64');
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(String.fromCharCode(byte));
     });
-    return tsProtoGlobalThis.btoa(bin.join(''));
+    return tsProtoGlobalThis.btoa(bin.join(""));
   }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-type DeepPartial<T> = T extends Builtin
-  ? T
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
+type DeepPartial<T> = T extends Builtin ? T
+  : T extends Array<infer U> ? Array<DeepPartial<U>> : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-type Exact<P, I extends P> = P extends Builtin
-  ? P
+type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {
-    throw new tsProtoGlobalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
+    throw new tsProtoGlobalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
   }
   return long.toNumber();
 }

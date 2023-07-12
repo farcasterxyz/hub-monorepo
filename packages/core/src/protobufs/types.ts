@@ -117,6 +117,16 @@ export type UserDataAddMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type UsernameProofData = protobufs.MessageData & {
+  type: protobufs.MessageType.USERNAME_PROOF;
+  usernameProofBody: UserNameProof;
+};
+
+export type UsernameProofMessage = protobufs.Message & {
+  data: UsernameProofData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
 /** Hub event types */
 
 export type MergeMessageHubEvent = hubEventProtobufs.HubEvent & {
