@@ -254,11 +254,13 @@ export class Hub implements HubInterface {
         options.resyncEthEvents ?? false,
       );
     } else {
-      log.warn("No ETH RPC URL provided, not syncing with ETH contract events");
+      log.warn("No ETH RPC URL provided, unable to sync ETH contract events");
+      throw new HubError("bad_request.invalid_param", "Invalid eth testnet rpc url");
     }
 
     if (!options.ethMainnetRpcUrl || options.ethMainnetRpcUrl === "") {
       log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
+      throw new HubError("bad_request.invalid_param", "Invalid eth mainnet rpc url");
     }
 
     if (options.fnameServerUrl && options.fnameServerUrl !== "") {
@@ -268,7 +270,8 @@ export class Hub implements HubInterface {
         options.resyncNameEvents ?? false,
       );
     } else {
-      log.warn("No FName Registry URL provided, not syncing with fname events");
+      log.warn("No FName Registry URL provided, unable to sync fname events");
+      throw new HubError("bad_request.invalid_param", "Invalid fname server url");
     }
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
