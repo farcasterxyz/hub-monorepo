@@ -414,7 +414,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<boolean> {
-    log.debug("Perform sync: Start");
+    log.debug({ peerId }, "Perform sync: Start");
 
     let success = false;
     try {
@@ -423,7 +423,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // Get the snapshot of our trie, at the same prefix as the peer's snapshot
       const snapshot = await this.getSnapshot(otherSnapshot.prefix);
       if (snapshot.isErr()) {
-        log.warn({ errCode: snapshot.error.errCode }, `Error performing sync: ${snapshot.error.message}}`);
+        log.warn({ errCode: snapshot.error.errCode, errorMessage: snapshot.error.message }, "Perform sync: Error");
       } else {
         const ourSnapshot = snapshot.value;
 
@@ -446,7 +446,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           fullSyncResult.deferredCount += result.deferredCount;
           fullSyncResult.errCount += result.errCount;
         });
-        log.info({ syncResult: fullSyncResult }, "Sync Complete");
+        log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
 
         // If we did not merge any messages and didn't defer any. Then this peer only had old messages.
         if (
@@ -454,14 +454,17 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           fullSyncResult.successCount === 0 &&
           fullSyncResult.deferredCount === 0
         ) {
-          log.warn("No messages were successfully fetched");
+          log.warn(
+            { peerId },
+            "Perform sync: No messages were successfully fetched. Peer will be blocked for a while.",
+          );
           this._unproductivePeers.set(peerId, new Date());
         }
 
         success = true;
       }
     } catch (e) {
-      log.warn(e, "Error performing sync");
+      log.warn(e, "Perform sync: Error");
     } finally {
       this._isSyncing = false;
     }

@@ -327,7 +327,11 @@ class MerkleTrie {
     // Fn that does the actual unloading
     const doUnload = async () => {
       this._callsSinceLastUnload = 0;
-      logger.info("Unloading trie from memory");
+
+      if (this._pendingDbUpdates.size === 0) {
+        // Trie has no pending DB updates, skipping unload
+        return;
+      }
 
       const txn = this._db.transaction();
 
@@ -341,7 +345,7 @@ class MerkleTrie {
       }
 
       await this._db.commit(txn);
-      logger.info({ numDbUpdates: this._pendingDbUpdates.size }, "Trie committed pending DB updates");
+      logger.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
 
       this._pendingDbUpdates.clear();
       this._root.unloadChildren();
