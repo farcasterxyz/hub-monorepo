@@ -104,6 +104,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   // Number of messages since last compaction
   private _messagesSinceLastCompaction = 0;
+  private _isCompacting = false;
 
   constructor(hub: HubInterface, rocksDb: RocksDB, ethEventsProvider?: EthEventsProvider, profileSync = false) {
     super();
@@ -722,11 +723,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async compactDbIfRequired(messagesLength: number): Promise<boolean> {
     this._messagesSinceLastCompaction += messagesLength;
-    if (this.shouldCompactDb) {
+    if (this.shouldCompactDb && !this._isCompacting) {
+      this._isCompacting = true;
       logger.info("Starting DB compaction");
+
       await this._db.compact().catch((e) => log.warn(e, `Error compacting DB: ${e.message}`));
+
       logger.info("Completed DB compaction");
       this._messagesSinceLastCompaction = 0;
+      this._isCompacting = false;
       return true;
     }
     return false;

@@ -952,6 +952,22 @@ export default class Server {
             return;
           }
 
+          // We'll set a timeout of 1 hour, after which we'll stop writing to the stream
+          // This is to prevent a situation where we're writing to the stream, but the client
+          // is not reading it.
+          const timeout = setTimeout(async () => {
+            logger.warn(
+              { timeout: 1 * 60 * 60 * 1000, peer: stream.getPeer() },
+              "HubEvents subscribe: timeout, stopping stream",
+            );
+
+            // If the iterator throws, it is already closed, so it doesn't matter.
+            await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
+
+            const error = new HubError("unavailable.network_failure", `stream timeout for peer: ${stream.getPeer()}`);
+            stream.destroy(error);
+          }, 1 * 60 * 60 * 1000);
+
           // Track our RSS usage, to detect a situation where we're writing a lot of data to the stream,
           // but the client is not reading it. If we detect this, we'll stop writing to the stream.
           // Right now, we don't act on it, but we'll log it for now. We could potentially
@@ -989,7 +1005,7 @@ export default class Server {
                   // We'll destroy the stream.
                   const error = new HubError(
                     "unavailable.network_failure",
-                    `stream memory usage too for peer: ${stream.getPeer()}`,
+                    `stream memory usage too much for peer: ${stream.getPeer()}`,
                   );
                   logger.error({ errCode: error.errCode }, error.message);
                   stream.destroy(error);
@@ -1002,6 +1018,9 @@ export default class Server {
               }
             }
           }
+
+          // If we reach here, the iterator has ended, so we'll clear the timeout
+          clearTimeout(timeout);
         }
 
         // if no type filters are provided, subscribe to all event types and start streaming events
