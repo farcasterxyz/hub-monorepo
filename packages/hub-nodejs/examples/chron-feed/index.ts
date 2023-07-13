@@ -41,13 +41,18 @@ const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient): HubAsync
 
 const getFnameFromFid = async (fid: number, client: HubRpcClient): HubAsyncResult<string> => {
   const result = await client.getUserData({ fid: fid, userDataType: UserDataType.USERNAME });
-  return result.map((message) => {
-    if (isUserDataAddMessage(message)) {
-      return message.data.userDataBody.value;
-    } else {
-      return "";
-    }
-  });
+  return ok(
+    result.match(
+      (message) => {
+        if (isUserDataAddMessage(message)) {
+          return message.data.userDataBody.value;
+        } else {
+          return "";
+        }
+      },
+      () => `${fid}!`, // fallback to FID if no username is set
+    ),
+  );
 };
 
 /**
@@ -67,7 +72,7 @@ const compareCasts = (a: CastAddMessage, b: CastAddMessage) => {
  * Converts a CastAddMessage into a printable string representation.
  */
 const castToString = async (cast: CastAddMessage, nameMapping: Map<number, string>, client: HubRpcClient) => {
-  const fname = nameMapping.get(cast.data.fid);
+  const fname = nameMapping.get(cast.data.fid) ?? `${cast.data.fid}!`; // if the user doesn't have a username set, use their FID
 
   // Convert the timestamp to a human readable string
   // Safety: OK to do this since we know the timestamp coming from the Hub must be in the valid range
@@ -104,13 +109,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   const fidToFname = new Map<number, string>();
 
   const fnameResultPromises = FIDS.map((fid) => client.getUserData({ fid, userDataType: UserDataType.USERNAME }));
-  const fnameResults = Result.combine(await Promise.all(fnameResultPromises));
-
-  if (fnameResults.isErr()) {
-    console.error("Fetching fnames failed");
-    console.error(fnameResults.error);
-    return;
-  }
+  const fnameResults = await Promise.all(fnameResultPromises);
 
   fnameResults.map((result) =>
     result.map((uData) => {

@@ -5,13 +5,14 @@
   "version": "0.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "tsx index.ts"
+    "start": "tsx index.ts",
+    "typecheck": "yarn tsc --noEmit"
   },
   "engines": {
     "node": ">=16"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.8.0",
+    "@farcaster/hub-nodejs": "^0.8.4",
     "fastq": "^1.15.0",
     "kysely": "^0.24.2",
     "kysely-postgres-js": "^1.1.1",
