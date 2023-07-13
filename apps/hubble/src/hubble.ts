@@ -73,7 +73,7 @@ import { L2EventsProvider, OPGoerliEthConstants } from "./eth/l2EventsProvider.j
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import { prettyPrintTable } from "./profile.js";
 import packageJson from "./package.json" assert { type: "json" };
-import { createPublicClient, http } from "viem";
+import { createPublicClient, fallback, http } from "viem";
 import { mainnet } from "viem/chains";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
@@ -140,16 +140,19 @@ export interface HubOptions {
   /** Enable IP Rate limiting */
   rpcRateLimit?: number;
 
-  /** Network URL of the IdRegistry Contract */
+  /** Rank RPCs and use the ones with best stability and latency */
+  rankRpcs?: boolean;
+
+  /** Network URL(s) of the IdRegistry Contract */
   ethRpcUrl?: string;
 
-  /** ETH mainnet RPC URL */
+  /** ETH mainnet RPC URL(s) */
   ethMainnetRpcUrl?: string;
 
   /** FName Registry Server URL */
   fnameServerUrl?: string;
 
-  /** Network URL of the StorageRegistry Contract */
+  /** Network URL(s) of the StorageRegistry Contract */
   l2RpcUrl?: string;
 
   /** Address of the IdRegistry contract  */
@@ -269,6 +272,7 @@ export class Hub implements HubInterface {
       this.ethRegistryProvider = EthEventsProvider.build(
         this,
         options.ethRpcUrl,
+        options.rankRpcs ?? false,
         options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
         options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
         options.firstBlock ?? GoerliEthConstants.FirstBlock,
@@ -291,6 +295,7 @@ export class Hub implements HubInterface {
       this.l2RegistryProvider = L2EventsProvider.build(
         this,
         options.l2RpcUrl,
+        options.rankRpcs ?? false,
         options.storageRegistryAddress ?? OPGoerliEthConstants.StorageRegistryAddress,
         options.l2FirstBlock ?? OPGoerliEthConstants.FirstBlock,
         options.l2ChunkSize ?? OPGoerliEthConstants.ChunkSize,
@@ -316,9 +321,11 @@ export class Hub implements HubInterface {
       lockTimeout: options.commitLockTimeout,
     });
 
+    const ethMainnetRpcUrls = options.ethMainnetRpcUrl.split(",");
+    const transports = ethMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
     const mainnetClient = createPublicClient({
       chain: mainnet,
-      transport: http(options.ethMainnetRpcUrl, { retryCount: 2 }),
+      transport: fallback(transports, { rank: options.rankRpcs ?? false }),
     });
 
     this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);

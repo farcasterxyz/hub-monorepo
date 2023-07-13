@@ -7,7 +7,7 @@ import {
   NameRegistryEventType,
   HubError,
 } from "@farcaster/hub-nodejs";
-import { createPublicClient, http, parseEther, toHex } from "viem";
+import { Transport, createPublicClient, http, parseEther, toHex } from "viem";
 import { IdRegistry, NameRegistry } from "./abis.js";
 import { EthEventsProvider } from "./ethEventsProvider.js";
 import { getIdRegistryEvent } from "../storage/db/idRegistryEvent.js";
@@ -64,6 +64,44 @@ describe("EthEventsProvider", () => {
       );
 
       await expect(ethEventsProvider.start()).rejects.toThrowError(HubError);
+    });
+  });
+
+  describe("build", () => {
+    test("handles single RPC URL", () => {
+      const ethEventsProvider = EthEventsProvider.build(
+        hub,
+        "http://some-url",
+        false,
+        idRegistryAddress,
+        nameRegistryAddress,
+        1,
+        10000,
+        false,
+      );
+
+      const transports = (ethEventsProvider["_publicClient"].transport as unknown as { transports: Transport[] })
+        .transports;
+
+      expect(transports.length).toBe(1);
+    });
+
+    test("handles multiple RPC URLs", () => {
+      const ethEventsProvider = EthEventsProvider.build(
+        hub,
+        "http://some-url,http://some-other-url",
+        false,
+        idRegistryAddress,
+        nameRegistryAddress,
+        1,
+        10000,
+        false,
+      );
+
+      const transports = (ethEventsProvider["_publicClient"].transport as unknown as { transports: Transport[] })
+        .transports;
+
+      expect(transports.length).toBe(2);
     });
   });
 

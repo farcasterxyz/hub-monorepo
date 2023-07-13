@@ -9,7 +9,7 @@ import {
   NameRegistryEventType,
   toFarcasterTime,
 } from "@farcaster/hub-nodejs";
-import { createPublicClient, http, Log, PublicClient } from "viem";
+import { createPublicClient, fallback, http, Log, PublicClient } from "viem";
 import { goerli } from "viem/chains";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { IdRegistry, NameRegistry } from "./abis.js";
@@ -163,15 +163,19 @@ export class EthEventsProvider {
   public static build(
     hub: HubInterface,
     ethRpcUrl: string,
+    rankRpcs: boolean,
     idRegistryAddress: `0x${string}`,
     nameRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
   ): EthEventsProvider {
+    const ethRpcUrls = ethRpcUrl.split(",");
+    const transports = ethRpcUrls.map((url) => http(url, { retryCount: 5 }));
+
     const publicClient = createPublicClient({
       chain: goerli,
-      transport: http(ethRpcUrl, { retryCount: 5 }),
+      transport: fallback(transports, { rank: rankRpcs }),
     });
 
     const provider = new EthEventsProvider(
