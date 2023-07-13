@@ -24,7 +24,7 @@ const log = logger.child({
 export class OPGoerliEthConstants {
   public static StorageRegistryAddress = "0xa89cC9427335da6E8138517419FCB3c9c37d1604" as const;
   public static FirstBlock = 11183461;
-  public static ChunkSize = 10000;
+  public static ChunkSize = 1000;
   public static chainId = BigInt(420); // OP Goerli
 }
 
