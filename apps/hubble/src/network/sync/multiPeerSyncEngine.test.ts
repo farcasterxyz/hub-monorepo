@@ -330,6 +330,36 @@ describe("Multi peer sync engine", () => {
     await engine2.stop();
   });
 
+  test("should fetch only the exact missing message", async () => {
+    // Engine1 has 2 message
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeMessage(signerAdd);
+    const msgs = await addMessagesWithTimeDelta(engine1, [167]);
+
+    const engine2 = new Engine(testDb2, network);
+    const hub2 = new MockHub(testDb2, engine2);
+    const syncEngine2 = new SyncEngine(hub2, testDb2);
+
+    // Engine2 has 1 messages
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine2.mergeMessage(signerAdd);
+
+    // Syncing engine2 --> engine1 should fetch only the missing message
+    {
+      const fetchMessagesSpy = jest.spyOn(syncEngine1, "getAllMessagesBySyncIds");
+      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+      expect(fetchMessagesSpy).toHaveBeenCalledTimes(1);
+      expect(fetchMessagesSpy).toHaveBeenCalledWith([new SyncId(msgs[0] as Message).syncId()]);
+
+      // Also assert the root hashes are the same
+      expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
+    }
+
+    await syncEngine2.stop();
+    await engine2.stop();
+  });
+
   test("retries the id registry event if it is missing", async () => {
     await engine1.mergeIdRegistryEvent(custodyEvent);
     await engine1.mergeMessage(signerAdd);
