@@ -3,7 +3,7 @@ import { TIMESTAMP_LENGTH } from "./syncId.js";
 import { EMPTY_HASH, TrieNode } from "./trieNode.js";
 import { NetworkFactories } from "../utils/factories.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
-import { RootPrefix } from "storage/db/types.js";
+import { RootPrefix } from "../../storage/db/types.js";
 
 // Safety: fs inputs are always safe in tests
 

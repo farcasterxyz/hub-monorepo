@@ -15,7 +15,7 @@ import { MockHub } from "../../test/mocks.js";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { GossipNode } from "../../network/p2p/gossipNode.js";
-import { RootPrefix } from "storage/db/types.js";
+import { RootPrefix } from "../../storage/db/types.js";
 
 const db = jestRocksDB("protobufs.rpc.syncService.test");
 const network = FarcasterNetwork.TESTNET;
