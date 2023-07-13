@@ -547,7 +547,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
                 fid: msg.data?.fid,
                 err: result.error.message,
                 signer: bytesToHexString(msg.signer)._unsafeUnwrap(),
-                retryResult,
+                retryResult: retryResult.isOk() ? "ok" : "err",
               },
               "Unknown signer, fetched all signers from peer",
             );
