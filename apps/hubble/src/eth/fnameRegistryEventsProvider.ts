@@ -8,6 +8,7 @@ import {
   UserNameType,
   utf8StringToBytes,
   makeUserNameProofClaim,
+  HubError,
 } from "@farcaster/hub-nodejs";
 import { Result } from "neverthrow";
 
@@ -61,6 +62,7 @@ export class FNameRegistryEventsProvider {
   private resyncEvents: boolean;
   private pollTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private serverSignerAddress: Uint8Array;
+  private shouldStop = false;
 
   constructor(fnameRegistryClient: FNameRegistryClientInterface, hub: HubInterface, resyncEvents = false) {
     this.client = fnameRegistryClient;
@@ -83,14 +85,18 @@ export class FNameRegistryEventsProvider {
     }
     const rawAddress = await this.client.getSigner();
     const signerAddress = hexStringToBytes(rawAddress);
-    if (signerAddress.isOk()) {
+    if (signerAddress.isOk() && signerAddress.value.length > 0) {
       this.serverSignerAddress = signerAddress.value;
+    } else {
+      log.error(`Failed to parse server address: ${signerAddress}`);
+      throw new HubError("bad_request.invalid_param", `Failed to parse server address: ${signerAddress}`);
     }
     log.info(`Starting fname events provider from ${this.lastTransferId} using signer: ${rawAddress}`);
     return this.pollForNewEvents();
   }
 
   public async stop() {
+    this.shouldStop = true;
     if (this.pollTimeoutId) {
       clearTimeout(this.pollTimeoutId);
     }
@@ -102,10 +108,15 @@ export class FNameRegistryEventsProvider {
   }
 
   private async fetchAndMergeTransfers(fromId: number) {
+    if (this.serverSignerAddress.length === 0) {
+      log.warn("No signer address, unable to merge name proofs");
+      return;
+    }
+
     this.lastTransferId = fromId;
     let transfers = await this.safeGetTransfers(fromId);
     let transfersCount = 0;
-    while (transfers.length > 0) {
+    while (transfers.length > 0 && !this.shouldStop) {
       transfersCount += transfers.length;
       await this.mergeTransfers(transfers);
       const lastTransfer = transfers[transfers.length - 1];
@@ -135,11 +146,6 @@ export class FNameRegistryEventsProvider {
   }
 
   private async mergeTransfers(transfers: FNameTransfer[]) {
-    if (this.serverSignerAddress.length === 0) {
-      log.warn("No signer address, unable to merge name proofs");
-      return;
-    }
-
     for (const transfer of transfers) {
       const serialized = Result.combine([
         utf8StringToBytes(transfer.username),
@@ -172,7 +178,15 @@ export class FNameRegistryEventsProvider {
       if (verificationResult.isOk() && verificationResult.value) {
         await this.hub.submitUserNameProof(usernameProof, "fname-registry");
       } else {
-        log.warn(`Failed to verify username proof for ${transfer.username} id: ${transfer.id}`);
+        const context: Record<string, string> = { signature: serverSignature.toString() };
+        if (verificationResult.isErr()) {
+          context["errCode"] = verificationResult.error.errCode;
+          context["errMsg"] = verificationResult.error.message;
+        }
+        log.warn(
+          context,
+          `Failed to verify username proof for ${transfer.username} for fid ${transfer.to} id: ${transfer.id} with address: ${this.serverSignerAddress}`,
+        );
       }
     }
   }
