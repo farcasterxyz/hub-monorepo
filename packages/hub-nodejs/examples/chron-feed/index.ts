@@ -67,7 +67,7 @@ const compareCasts = (a: CastAddMessage, b: CastAddMessage) => {
  * Converts a CastAddMessage into a printable string representation.
  */
 const castToString = async (cast: CastAddMessage, nameMapping: Map<number, string>, client: HubRpcClient) => {
-  const fname = nameMapping.get(cast.data.fid);
+  const fname = nameMapping.get(cast.data.fid) ?? `${cast.data.fid}!`; // if the user doesn't have a username set, use their FID
 
   // Convert the timestamp to a human readable string
   // Safety: OK to do this since we know the timestamp coming from the Hub must be in the valid range
@@ -104,13 +104,7 @@ const castToString = async (cast: CastAddMessage, nameMapping: Map<number, strin
   const fidToFname = new Map<number, string>();
 
   const fnameResultPromises = FIDS.map((fid) => client.getUserData({ fid, userDataType: UserDataType.USERNAME }));
-  const fnameResults = Result.combine(await Promise.all(fnameResultPromises));
-
-  if (fnameResults.isErr()) {
-    console.error("Fetching fnames failed");
-    console.error(fnameResults.error);
-    return;
-  }
+  const fnameResults = await Promise.all(fnameResultPromises);
 
   fnameResults.map((result) =>
     result.map((uData) => {
