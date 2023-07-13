@@ -753,23 +753,23 @@ export class Hub implements HubInterface {
       await this.gossipNode.addPeerToAddressBook(peerId, multiaddrValue);
     }
 
-    log.info({ identity: this.identity, peer: peerId, message }, "received a Contact Info for sync");
+    log.debug({ identity: this.identity, peer: peerId, message }, "received peer ContactInfo");
 
     // Check if we already have this client
     const peerInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
     if (peerInfo) {
-      log.info({ peerInfo }, "Already have this peer, skipping sync");
+      log.debug({ peerInfo }, "Already have this peer, skipping sync");
       return;
     } else {
       // If it is a new client, we do a sync against it
-      log.info({ peerInfo }, "New Peer Contact Info, syncing");
+      log.info({ peerInfo, connectedPeers: this.syncEngine.getPeerCount() }, "New Peer ContactInfo");
       this.syncEngine.addContactInfoForPeerId(peerId, message);
       const syncResult = await ResultAsync.fromPromise(
         this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
         (e) => e,
       );
       if (syncResult.isErr()) {
-        log.error({ error: syncResult.error, peerId }, "failed to sync with new peer");
+        log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
       }
     }
   }
@@ -931,11 +931,19 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logMessage.debug(
-          `submitMessage success ${eventId}: fid ${message.data?.fid} merged ${messageTypeToName(
-            message.data?.type,
-          )} ${bytesToHexString(message.hash)._unsafeUnwrap()}`,
-        );
+        const logData = {
+          eventId,
+          fid: message.data?.fid,
+          type: messageTypeToName(message.data?.type),
+          hash: bytesToHexString(message.hash)._unsafeUnwrap(),
+        };
+        const msg = "submitMessage success";
+
+        if (source === "sync") {
+          log.debug(logData, msg);
+        } else {
+          log.info(logData, msg);
+        }
       },
       (e) => {
         logMessage.warn({ errCode: e.errCode }, `submitMessage error: ${e.message}`);
