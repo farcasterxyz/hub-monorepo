@@ -2,6 +2,7 @@
 import Long from "long";
 import _m0 from "protobufjs/minimal";
 import { HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
+import { IdRegistryEvent } from "./id_registry_event";
 import {
   CastId,
   Message,
@@ -12,6 +13,7 @@ import {
   userDataTypeFromJSON,
   userDataTypeToJSON,
 } from "./message";
+import { NameRegistryEvent } from "./name_registry_event";
 import { RentRegistryEvent } from "./storage_event";
 import { UserNameProof } from "./username_proof";
 
@@ -48,11 +50,13 @@ export interface DbStats {
 
 export interface SyncStatusRequest {
   peerId?: string | undefined;
+  syncTrieRootPrefix?: Uint8Array | undefined;
 }
 
 export interface SyncStatusResponse {
   isSyncing: boolean;
   syncStatus: SyncStatus[];
+  syncTrieRootPrefix?: Uint8Array | undefined;
 }
 
 export interface SyncStatus {
@@ -64,6 +68,7 @@ export interface SyncStatus {
   theirMessages: number;
   ourMessages: number;
   lastBadSync: number;
+  syncTrieRootPrefix?: Uint8Array | undefined;
 }
 
 export interface TrieNodeMetadataResponse {
@@ -71,6 +76,7 @@ export interface TrieNodeMetadataResponse {
   numMessages: number;
   hash: string;
   children: TrieNodeMetadataResponse[];
+  syncTrieRootPrefix?: Uint8Array | undefined;
 }
 
 export interface TrieNodeSnapshotResponse {
@@ -78,10 +84,12 @@ export interface TrieNodeSnapshotResponse {
   excludedHashes: string[];
   numMessages: number;
   rootHash: string;
+  syncTrieRootPrefix?: Uint8Array | undefined;
 }
 
 export interface TrieNodePrefix {
   prefix: Uint8Array;
+  syncTrieRootPrefix?: Uint8Array | undefined;
 }
 
 export interface SyncIds {
@@ -109,6 +117,17 @@ export interface FidsResponse {
 export interface MessagesResponse {
   messages: Message[];
   nextPageToken?: Uint8Array | undefined;
+}
+
+export interface EthEventsResponse {
+  ethEvents: EthEvent[];
+  nextPageToken?: Uint8Array | undefined;
+}
+
+export interface EthEvent {
+  idRegistryEvent?: IdRegistryEvent | undefined;
+  nameRegistryEvent?: NameRegistryEvent | undefined;
+  userNameProof?: UserNameProof | undefined;
 }
 
 export interface CastsByParentRequest {
@@ -651,13 +670,16 @@ export const DbStats = {
 };
 
 function createBaseSyncStatusRequest(): SyncStatusRequest {
-  return { peerId: undefined };
+  return { peerId: undefined, syncTrieRootPrefix: undefined };
 }
 
 export const SyncStatusRequest = {
   encode(message: SyncStatusRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.peerId !== undefined) {
       writer.uint32(10).string(message.peerId);
+    }
+    if (message.syncTrieRootPrefix !== undefined) {
+      writer.uint32(18).bytes(message.syncTrieRootPrefix);
     }
     return writer;
   },
@@ -676,6 +698,13 @@ export const SyncStatusRequest = {
 
           message.peerId = reader.string();
           continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.syncTrieRootPrefix = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -686,12 +715,18 @@ export const SyncStatusRequest = {
   },
 
   fromJSON(object: any): SyncStatusRequest {
-    return { peerId: isSet(object.peerId) ? String(object.peerId) : undefined };
+    return {
+      peerId: isSet(object.peerId) ? String(object.peerId) : undefined,
+      syncTrieRootPrefix: isSet(object.syncTrieRootPrefix) ? bytesFromBase64(object.syncTrieRootPrefix) : undefined,
+    };
   },
 
   toJSON(message: SyncStatusRequest): unknown {
     const obj: any = {};
     message.peerId !== undefined && (obj.peerId = message.peerId);
+    message.syncTrieRootPrefix !== undefined && (obj.syncTrieRootPrefix = message.syncTrieRootPrefix !== undefined
+      ? base64FromBytes(message.syncTrieRootPrefix)
+      : undefined);
     return obj;
   },
 
@@ -702,12 +737,13 @@ export const SyncStatusRequest = {
   fromPartial<I extends Exact<DeepPartial<SyncStatusRequest>, I>>(object: I): SyncStatusRequest {
     const message = createBaseSyncStatusRequest();
     message.peerId = object.peerId ?? undefined;
+    message.syncTrieRootPrefix = object.syncTrieRootPrefix ?? undefined;
     return message;
   },
 };
 
 function createBaseSyncStatusResponse(): SyncStatusResponse {
-  return { isSyncing: false, syncStatus: [] };
+  return { isSyncing: false, syncStatus: [], syncTrieRootPrefix: undefined };
 }
 
 export const SyncStatusResponse = {
@@ -717,6 +753,9 @@ export const SyncStatusResponse = {
     }
     for (const v of message.syncStatus) {
       SyncStatus.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.syncTrieRootPrefix !== undefined) {
+      writer.uint32(26).bytes(message.syncTrieRootPrefix);
     }
     return writer;
   },
@@ -742,6 +781,13 @@ export const SyncStatusResponse = {
 
           message.syncStatus.push(SyncStatus.decode(reader, reader.uint32()));
           continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.syncTrieRootPrefix = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -755,6 +801,7 @@ export const SyncStatusResponse = {
     return {
       isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
       syncStatus: Array.isArray(object?.syncStatus) ? object.syncStatus.map((e: any) => SyncStatus.fromJSON(e)) : [],
+      syncTrieRootPrefix: isSet(object.syncTrieRootPrefix) ? bytesFromBase64(object.syncTrieRootPrefix) : undefined,
     };
   },
 
@@ -766,6 +813,9 @@ export const SyncStatusResponse = {
     } else {
       obj.syncStatus = [];
     }
+    message.syncTrieRootPrefix !== undefined && (obj.syncTrieRootPrefix = message.syncTrieRootPrefix !== undefined
+      ? base64FromBytes(message.syncTrieRootPrefix)
+      : undefined);
     return obj;
   },
 
@@ -777,6 +827,7 @@ export const SyncStatusResponse = {
     const message = createBaseSyncStatusResponse();
     message.isSyncing = object.isSyncing ?? false;
     message.syncStatus = object.syncStatus?.map((e) => SyncStatus.fromPartial(e)) || [];
+    message.syncTrieRootPrefix = object.syncTrieRootPrefix ?? undefined;
     return message;
   },
 };
@@ -791,6 +842,7 @@ function createBaseSyncStatus(): SyncStatus {
     theirMessages: 0,
     ourMessages: 0,
     lastBadSync: 0,
+    syncTrieRootPrefix: undefined,
   };
 }
 
@@ -819,6 +871,9 @@ export const SyncStatus = {
     }
     if (message.lastBadSync !== 0) {
       writer.uint32(64).int64(message.lastBadSync);
+    }
+    if (message.syncTrieRootPrefix !== undefined) {
+      writer.uint32(74).bytes(message.syncTrieRootPrefix);
     }
     return writer;
   },
@@ -886,6 +941,13 @@ export const SyncStatus = {
 
           message.lastBadSync = longToNumber(reader.int64() as Long);
           continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.syncTrieRootPrefix = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -905,6 +967,7 @@ export const SyncStatus = {
       theirMessages: isSet(object.theirMessages) ? Number(object.theirMessages) : 0,
       ourMessages: isSet(object.ourMessages) ? Number(object.ourMessages) : 0,
       lastBadSync: isSet(object.lastBadSync) ? Number(object.lastBadSync) : 0,
+      syncTrieRootPrefix: isSet(object.syncTrieRootPrefix) ? bytesFromBase64(object.syncTrieRootPrefix) : undefined,
     };
   },
 
@@ -918,6 +981,9 @@ export const SyncStatus = {
     message.theirMessages !== undefined && (obj.theirMessages = Math.round(message.theirMessages));
     message.ourMessages !== undefined && (obj.ourMessages = Math.round(message.ourMessages));
     message.lastBadSync !== undefined && (obj.lastBadSync = Math.round(message.lastBadSync));
+    message.syncTrieRootPrefix !== undefined && (obj.syncTrieRootPrefix = message.syncTrieRootPrefix !== undefined
+      ? base64FromBytes(message.syncTrieRootPrefix)
+      : undefined);
     return obj;
   },
 
@@ -935,12 +1001,13 @@ export const SyncStatus = {
     message.theirMessages = object.theirMessages ?? 0;
     message.ourMessages = object.ourMessages ?? 0;
     message.lastBadSync = object.lastBadSync ?? 0;
+    message.syncTrieRootPrefix = object.syncTrieRootPrefix ?? undefined;
     return message;
   },
 };
 
 function createBaseTrieNodeMetadataResponse(): TrieNodeMetadataResponse {
-  return { prefix: new Uint8Array(), numMessages: 0, hash: "", children: [] };
+  return { prefix: new Uint8Array(), numMessages: 0, hash: "", children: [], syncTrieRootPrefix: undefined };
 }
 
 export const TrieNodeMetadataResponse = {
@@ -956,6 +1023,9 @@ export const TrieNodeMetadataResponse = {
     }
     for (const v of message.children) {
       TrieNodeMetadataResponse.encode(v!, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.syncTrieRootPrefix !== undefined) {
+      writer.uint32(42).bytes(message.syncTrieRootPrefix);
     }
     return writer;
   },
@@ -995,6 +1065,13 @@ export const TrieNodeMetadataResponse = {
 
           message.children.push(TrieNodeMetadataResponse.decode(reader, reader.uint32()));
           continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.syncTrieRootPrefix = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1012,6 +1089,7 @@ export const TrieNodeMetadataResponse = {
       children: Array.isArray(object?.children)
         ? object.children.map((e: any) => TrieNodeMetadataResponse.fromJSON(e))
         : [],
+      syncTrieRootPrefix: isSet(object.syncTrieRootPrefix) ? bytesFromBase64(object.syncTrieRootPrefix) : undefined,
     };
   },
 
@@ -1026,6 +1104,9 @@ export const TrieNodeMetadataResponse = {
     } else {
       obj.children = [];
     }
+    message.syncTrieRootPrefix !== undefined && (obj.syncTrieRootPrefix = message.syncTrieRootPrefix !== undefined
+      ? base64FromBytes(message.syncTrieRootPrefix)
+      : undefined);
     return obj;
   },
 
@@ -1039,12 +1120,13 @@ export const TrieNodeMetadataResponse = {
     message.numMessages = object.numMessages ?? 0;
     message.hash = object.hash ?? "";
     message.children = object.children?.map((e) => TrieNodeMetadataResponse.fromPartial(e)) || [];
+    message.syncTrieRootPrefix = object.syncTrieRootPrefix ?? undefined;
     return message;
   },
 };
 
 function createBaseTrieNodeSnapshotResponse(): TrieNodeSnapshotResponse {
-  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: "" };
+  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: "", syncTrieRootPrefix: undefined };
 }
 
 export const TrieNodeSnapshotResponse = {
@@ -1060,6 +1142,9 @@ export const TrieNodeSnapshotResponse = {
     }
     if (message.rootHash !== "") {
       writer.uint32(34).string(message.rootHash);
+    }
+    if (message.syncTrieRootPrefix !== undefined) {
+      writer.uint32(42).bytes(message.syncTrieRootPrefix);
     }
     return writer;
   },
@@ -1099,6 +1184,13 @@ export const TrieNodeSnapshotResponse = {
 
           message.rootHash = reader.string();
           continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.syncTrieRootPrefix = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1114,6 +1206,7 @@ export const TrieNodeSnapshotResponse = {
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
       rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
+      syncTrieRootPrefix: isSet(object.syncTrieRootPrefix) ? bytesFromBase64(object.syncTrieRootPrefix) : undefined,
     };
   },
 
@@ -1128,6 +1221,9 @@ export const TrieNodeSnapshotResponse = {
     }
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
     message.rootHash !== undefined && (obj.rootHash = message.rootHash);
+    message.syncTrieRootPrefix !== undefined && (obj.syncTrieRootPrefix = message.syncTrieRootPrefix !== undefined
+      ? base64FromBytes(message.syncTrieRootPrefix)
+      : undefined);
     return obj;
   },
 
@@ -1141,18 +1237,22 @@ export const TrieNodeSnapshotResponse = {
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.numMessages = object.numMessages ?? 0;
     message.rootHash = object.rootHash ?? "";
+    message.syncTrieRootPrefix = object.syncTrieRootPrefix ?? undefined;
     return message;
   },
 };
 
 function createBaseTrieNodePrefix(): TrieNodePrefix {
-  return { prefix: new Uint8Array() };
+  return { prefix: new Uint8Array(), syncTrieRootPrefix: undefined };
 }
 
 export const TrieNodePrefix = {
   encode(message: TrieNodePrefix, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.prefix.length !== 0) {
       writer.uint32(10).bytes(message.prefix);
+    }
+    if (message.syncTrieRootPrefix !== undefined) {
+      writer.uint32(18).bytes(message.syncTrieRootPrefix);
     }
     return writer;
   },
@@ -1171,6 +1271,13 @@ export const TrieNodePrefix = {
 
           message.prefix = reader.bytes();
           continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.syncTrieRootPrefix = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1181,13 +1288,19 @@ export const TrieNodePrefix = {
   },
 
   fromJSON(object: any): TrieNodePrefix {
-    return { prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array() };
+    return {
+      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
+      syncTrieRootPrefix: isSet(object.syncTrieRootPrefix) ? bytesFromBase64(object.syncTrieRootPrefix) : undefined,
+    };
   },
 
   toJSON(message: TrieNodePrefix): unknown {
     const obj: any = {};
     message.prefix !== undefined &&
       (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
+    message.syncTrieRootPrefix !== undefined && (obj.syncTrieRootPrefix = message.syncTrieRootPrefix !== undefined
+      ? base64FromBytes(message.syncTrieRootPrefix)
+      : undefined);
     return obj;
   },
 
@@ -1198,6 +1311,7 @@ export const TrieNodePrefix = {
   fromPartial<I extends Exact<DeepPartial<TrieNodePrefix>, I>>(object: I): TrieNodePrefix {
     const message = createBaseTrieNodePrefix();
     message.prefix = object.prefix ?? new Uint8Array();
+    message.syncTrieRootPrefix = object.syncTrieRootPrefix ?? undefined;
     return message;
   },
 };
@@ -1604,6 +1718,178 @@ export const MessagesResponse = {
     const message = createBaseMessagesResponse();
     message.messages = object.messages?.map((e) => Message.fromPartial(e)) || [];
     message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseEthEventsResponse(): EthEventsResponse {
+  return { ethEvents: [], nextPageToken: undefined };
+}
+
+export const EthEventsResponse = {
+  encode(message: EthEventsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.ethEvents) {
+      EthEvent.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): EthEventsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEthEventsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.ethEvents.push(EthEvent.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EthEventsResponse {
+    return {
+      ethEvents: Array.isArray(object?.ethEvents) ? object.ethEvents.map((e: any) => EthEvent.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
+  },
+
+  toJSON(message: EthEventsResponse): unknown {
+    const obj: any = {};
+    if (message.ethEvents) {
+      obj.ethEvents = message.ethEvents.map((e) => e ? EthEvent.toJSON(e) : undefined);
+    } else {
+      obj.ethEvents = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EthEventsResponse>, I>>(base?: I): EthEventsResponse {
+    return EthEventsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<EthEventsResponse>, I>>(object: I): EthEventsResponse {
+    const message = createBaseEthEventsResponse();
+    message.ethEvents = object.ethEvents?.map((e) => EthEvent.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseEthEvent(): EthEvent {
+  return { idRegistryEvent: undefined, nameRegistryEvent: undefined, userNameProof: undefined };
+}
+
+export const EthEvent = {
+  encode(message: EthEvent, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.idRegistryEvent !== undefined) {
+      IdRegistryEvent.encode(message.idRegistryEvent, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nameRegistryEvent !== undefined) {
+      NameRegistryEvent.encode(message.nameRegistryEvent, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.userNameProof !== undefined) {
+      UserNameProof.encode(message.userNameProof, writer.uint32(26).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): EthEvent {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEthEvent();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.idRegistryEvent = IdRegistryEvent.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nameRegistryEvent = NameRegistryEvent.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.userNameProof = UserNameProof.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EthEvent {
+    return {
+      idRegistryEvent: isSet(object.idRegistryEvent) ? IdRegistryEvent.fromJSON(object.idRegistryEvent) : undefined,
+      nameRegistryEvent: isSet(object.nameRegistryEvent)
+        ? NameRegistryEvent.fromJSON(object.nameRegistryEvent)
+        : undefined,
+      userNameProof: isSet(object.userNameProof) ? UserNameProof.fromJSON(object.userNameProof) : undefined,
+    };
+  },
+
+  toJSON(message: EthEvent): unknown {
+    const obj: any = {};
+    message.idRegistryEvent !== undefined &&
+      (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
+    message.nameRegistryEvent !== undefined && (obj.nameRegistryEvent = message.nameRegistryEvent
+      ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
+      : undefined);
+    message.userNameProof !== undefined &&
+      (obj.userNameProof = message.userNameProof ? UserNameProof.toJSON(message.userNameProof) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EthEvent>, I>>(base?: I): EthEvent {
+    return EthEvent.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<EthEvent>, I>>(object: I): EthEvent {
+    const message = createBaseEthEvent();
+    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
+      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
+      : undefined;
+    message.nameRegistryEvent = (object.nameRegistryEvent !== undefined && object.nameRegistryEvent !== null)
+      ? NameRegistryEvent.fromPartial(object.nameRegistryEvent)
+      : undefined;
+    message.userNameProof = (object.userNameProof !== undefined && object.userNameProof !== null)
+      ? UserNameProof.fromPartial(object.userNameProof)
+      : undefined;
     return message;
   },
 };

@@ -65,6 +65,8 @@ export enum RootPrefix {
   RentRegistryEventsByExpiry = 21,
   /* Used to store storage admin registry events */
   StorageAdminRegistryEvent = 22,
+  /* Sync Eth Events Merkle Trie Node */
+  SyncEthEventsMerkleTrieNode = 23,
 }
 
 /**

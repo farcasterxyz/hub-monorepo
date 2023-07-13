@@ -37,6 +37,7 @@ import {
   SyncStatus,
   UserNameProof,
   UsernameProofsResponse,
+  EthEventsResponse,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -176,6 +177,7 @@ export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
   private syncEngine: SyncEngine | undefined;
+  private ethSyncEngine: SyncEngine | undefined;
   private gossipNode: GossipNode | undefined;
 
   private grpcServer: GrpcServer;
@@ -190,6 +192,7 @@ export default class Server {
     hub?: HubInterface,
     engine?: Engine,
     syncEngine?: SyncEngine,
+    ethSyncEngine?: SyncEngine,
     gossipNode?: GossipNode,
     rpcAuth?: string,
     rpcRateLimit?: number,
@@ -197,6 +200,7 @@ export default class Server {
     this.hub = hub;
     this.engine = engine;
     this.syncEngine = syncEngine;
+    this.ethSyncEngine = ethSyncEngine;
     this.gossipNode = gossipNode;
 
     this.grpcServer = getServer();
@@ -282,7 +286,7 @@ export default class Server {
         (async () => {
           const info = HubInfoResponse.create({
             version: APP_VERSION,
-            isSyncing: !this.syncEngine?.isSyncing(),
+            isSyncing: !this.syncEngine?.isSyncing() && !this.ethSyncEngine?.isSyncing(),
             nickname: APP_NICKNAME,
             rootHash: (await this.syncEngine?.trie.rootHash()) ?? "",
           });
@@ -301,7 +305,7 @@ export default class Server {
       },
       getSyncStatus: (call, callback) => {
         (async () => {
-          if (!this.gossipNode || !this.syncEngine || !this.hub) {
+          if (!this.gossipNode || !this.syncEngine || !this.ethSyncEngine || !this.hub) {
             callback(toServiceError(new HubError("bad_request", "Hub isn't initialized")));
             return;
           }
@@ -368,6 +372,41 @@ export default class Server {
             }
 
             callback(null, MessagesResponse.create({ messages }));
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      getAllEthEventsBySyncIds: async (call, callback) => {
+        const request = call.request;
+
+        const eventsResult = await this.ethSyncEngine?.getAllEthEventsBySyncIds(request.syncIds);
+        eventsResult?.match(
+          (events) => {
+            let returnedEvents = events;
+            // Check the events for corruption. If a message is blank, that means it was present
+            // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
+            const corruptedEvents = events.filter(
+              (ev) =>
+                ev.idRegistryEvent === undefined &&
+                ev.nameRegistryEvent === undefined &&
+                ev.userNameProof === undefined,
+            );
+
+            if (corruptedEvents.length > 0) {
+              log.warn({ num: corruptedEvents.length }, "Found corrupted events, rebuilding some syncIDs");
+              // Don't wait for this to finish, just return the messages we have.
+              this.ethSyncEngine?.rebuildSyncIds(request.syncIds);
+              returnedEvents = returnedEvents.filter(
+                (ev) =>
+                  ev.idRegistryEvent !== undefined ||
+                  ev.nameRegistryEvent !== undefined ||
+                  ev.userNameProof !== undefined,
+              );
+            }
+
+            callback(null, EthEventsResponse.create({ ethEvents: returnedEvents }));
           },
           (err: HubError) => {
             callback(toServiceError(err));

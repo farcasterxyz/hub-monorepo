@@ -19,6 +19,7 @@ import SyncEngine from "../sync/syncEngine.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { sleep } from "../../utils/crypto.js";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
+import { RootPrefix } from "storage/db/types.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const db = jestRocksDB("network.p2p.gossipNode.test");
@@ -166,7 +167,17 @@ describe("GossipNode", () => {
       const hub = new MockHub(db, undefined, mockGossipNode);
 
       const syncEngine = new SyncEngine(hub, db);
-      server = new Server(hub, hub.engine, syncEngine, mockGossipNode);
+      const ethSyncEngine = new SyncEngine(
+        hub,
+        db,
+        undefined,
+        undefined,
+        false,
+        RootPrefix.SyncEthEventsMerkleTrieNode,
+        [RootPrefix.IdRegistryEvent, RootPrefix.NameRegistryEvent, RootPrefix.FNameUserNameProof],
+        ["mergeIdRegistryEvent", "mergeNameRegistryEvent", "mergeUsernameProofEvent"],
+      );
+      server = new Server(hub, hub.engine, syncEngine, ethSyncEngine, mockGossipNode);
       const port = await server.start();
       client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 

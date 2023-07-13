@@ -15,6 +15,7 @@ import { MockHub } from "../../test/mocks.js";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { GossipNode } from "../../network/p2p/gossipNode.js";
+import { RootPrefix } from "storage/db/types.js";
 
 const db = jestRocksDB("protobufs.rpc.syncService.test");
 const network = FarcasterNetwork.TESTNET;
@@ -28,7 +29,22 @@ let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(hub, db), mockGossipNode);
+  server = new Server(
+    hub,
+    engine,
+    new SyncEngine(hub, db),
+    new SyncEngine(
+      hub,
+      db,
+      undefined,
+      undefined,
+      false,
+      RootPrefix.SyncEthEventsMerkleTrieNode,
+      [RootPrefix.IdRegistryEvent, RootPrefix.NameRegistryEvent, RootPrefix.FNameUserNameProof],
+      ["mergeIdRegistryEvent", "mergeNameRegistryEvent", "mergeUsernameProofEvent"],
+    ),
+    mockGossipNode,
+  );
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });

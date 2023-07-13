@@ -20,6 +20,7 @@ import { NameRegistryEvent } from "./name_registry_event";
 import {
   CastsByParentRequest,
   Empty,
+  EthEventsResponse,
   EventRequest,
   FidRequest,
   FidsRequest,
@@ -404,6 +405,15 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
+  getAllEthEventsBySyncIds: {
+    path: "/HubService/GetAllEthEventsBySyncIds",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SyncIds) => Buffer.from(SyncIds.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SyncIds.decode(value),
+    responseSerialize: (value: EthEventsResponse) => Buffer.from(EthEventsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => EthEventsResponse.decode(value),
+  },
   getSyncMetadataByPrefix: {
     path: "/HubService/GetSyncMetadataByPrefix",
     requestStream: false,
@@ -476,6 +486,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getSyncStatus: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   getAllSyncIdsByPrefix: handleUnaryCall<TrieNodePrefix, SyncIds>;
   getAllMessagesBySyncIds: handleUnaryCall<SyncIds, MessagesResponse>;
+  getAllEthEventsBySyncIds: handleUnaryCall<SyncIds, EthEventsResponse>;
   getSyncMetadataByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeMetadataResponse>;
   getSyncSnapshotByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeSnapshotResponse>;
 }
@@ -1023,6 +1034,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllEthEventsBySyncIds(
+    request: SyncIds,
+    callback: (error: ServiceError | null, response: EthEventsResponse) => void,
+  ): ClientUnaryCall;
+  getAllEthEventsBySyncIds(
+    request: SyncIds,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: EthEventsResponse) => void,
+  ): ClientUnaryCall;
+  getAllEthEventsBySyncIds(
+    request: SyncIds,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: EthEventsResponse) => void,
   ): ClientUnaryCall;
   getSyncMetadataByPrefix(
     request: TrieNodePrefix,

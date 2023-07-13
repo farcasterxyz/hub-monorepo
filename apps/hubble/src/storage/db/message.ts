@@ -1,4 +1,4 @@
-import { bytesIncrement, CastId, HubError, HubResult, Message, MessageType } from "@farcaster/hub-nodejs";
+import { bytesIncrement, CastId, EthEvent, HubError, HubResult, Message, MessageType } from "@farcaster/hub-nodejs";
 import { err, ok, ResultAsync } from "neverthrow";
 import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserMessagePostfix, UserMessagePostfixMax, UserPostfix } from "./types.js";
@@ -129,6 +129,11 @@ export const deleteMessage = (db: RocksDB, message: Message): Promise<void> => {
 export const getManyMessages = async <T extends Message>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> => {
   const buffers = await db.getMany(primaryKeys);
   return buffers.map((buffer) => Message.decode(new Uint8Array(buffer)) as T);
+};
+
+export const getManyEvents = async <T extends EthEvent>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> => {
+  const buffers = await db.getMany(primaryKeys);
+  return buffers.map((buffer) => EthEvent.decode(new Uint8Array(buffer)) as T);
 };
 
 export const getManyMessagesByFid = async <T extends Message>(

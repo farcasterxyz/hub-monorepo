@@ -3,6 +3,7 @@ import { TIMESTAMP_LENGTH } from "./syncId.js";
 import { EMPTY_HASH, TrieNode } from "./trieNode.js";
 import { NetworkFactories } from "../utils/factories.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { RootPrefix } from "storage/db/types.js";
 
 // Safety: fs inputs are always safe in tests
 
@@ -28,7 +29,7 @@ describe("TrieNode", () => {
 
   describe("insert", () => {
     test("succeeds inserting a single item", async () => {
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       const id = await NetworkFactories.SyncId.create();
 
       expect(root.items).toEqual(0);
@@ -41,7 +42,7 @@ describe("TrieNode", () => {
     });
 
     test("inserting the same item twice is idempotent", async () => {
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       const id = await NetworkFactories.SyncId.create();
 
       await root.insert(id.syncId(), db, new Map());
@@ -54,7 +55,7 @@ describe("TrieNode", () => {
     });
 
     test("value is always undefined for non-leaf nodes", async () => {
-      const trie = new TrieNode();
+      const trie = new TrieNode(RootPrefix.User);
       const syncId = await NetworkFactories.SyncId.create();
 
       await trie.insert(syncId.syncId(), db, new Map());
@@ -63,7 +64,7 @@ describe("TrieNode", () => {
     });
 
     test("insert compacts hashstring component of syncid to single node for efficiency", async () => {
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       const id = await NetworkFactories.SyncId.create();
 
       await root.insert(id.syncId(), db, new Map());
@@ -96,7 +97,7 @@ describe("TrieNode", () => {
       // The node at which the trie splits should be the first character that differs between the two hashes
       const firstDiffPos = hash1.findIndex((c, i) => c !== hash2[i]);
 
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
 
       await root.insert(id1.syncId(), db, new Map());
       await root.insert(id2.syncId(), db, new Map());
@@ -120,7 +121,7 @@ describe("TrieNode", () => {
 
   describe("delete", () => {
     test("deleting a single item removes the node", async () => {
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       const id = await NetworkFactories.SyncId.create();
 
       await root.insert(id.syncId(), db, new Map());
@@ -132,7 +133,7 @@ describe("TrieNode", () => {
     });
 
     test("deleting a single item from a node with multiple items removes the item", async () => {
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       const id1 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
       const id2 = await NetworkFactories.SyncId.create(undefined, { transient: { date: sharedDate } });
 
@@ -155,7 +156,7 @@ describe("TrieNode", () => {
         transient: { date: sharedDate, hash: sharedPrefixHashB },
       });
 
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       await root.insert(id1.syncId(), db, new Map());
       const previousRootHash = root.hash;
       const leafNode = traverse(root);
@@ -177,7 +178,7 @@ describe("TrieNode", () => {
         `${"0".padStart(TIMESTAMP_LENGTH * 2, "0")}05d220`,
       ].map((id) => hexStringToBytes(id)._unsafeUnwrap());
 
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
 
       for (let i = 0; i < ids.length; i++) {
         // Safety: i is controlled by the loop and cannot be used to inject
@@ -197,7 +198,7 @@ describe("TrieNode", () => {
       const ids = ["0030662167axxxx", "0030662167bcdxxxx", "0035059000xxxx"].map((id) =>
         utf8StringToBytes(id)._unsafeUnwrap(),
       );
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
 
       for (let i = 0; i < ids.length; i++) {
         // Safety: i is controlled by the loop and cannot be used to inject
@@ -220,7 +221,7 @@ describe("TrieNode", () => {
 
   describe("get", () => {
     test("getting a single item returns the value", async () => {
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       const id = await NetworkFactories.SyncId.create();
 
       await root.insert(id.syncId(), db, new Map());
@@ -230,7 +231,7 @@ describe("TrieNode", () => {
     });
 
     test("getting an item after deleting it returns undefined", async () => {
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       const id = await NetworkFactories.SyncId.create();
 
       await root.insert(id.syncId(), db, new Map());
@@ -249,7 +250,7 @@ describe("TrieNode", () => {
         transient: { date: sharedDate, hash: sharedPrefixHashB },
       });
 
-      const root = new TrieNode();
+      const root = new TrieNode(RootPrefix.User);
       await root.insert(id1.syncId(), db, new Map());
 
       // id2 shares the same prefix, but doesn't exist, so it should return undefined

@@ -21,6 +21,7 @@ import {
   storageRegistryEventTypeToJSON,
   AckMessageBody,
   NetworkLatencyMessage,
+  HubResult,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
@@ -240,10 +241,12 @@ export class Hub implements HubInterface {
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
+  private ethSyncEngine: SyncEngine;
   private allowedPeerIds: string[] = [];
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
+  private periodEthSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
   private testDataJobScheduler?: PeriodicTestDataJobScheduler;
   private checkFarcasterVersionJobScheduler: CheckFarcasterVersionJobScheduler;
@@ -330,6 +333,19 @@ export class Hub implements HubInterface {
       this.ethRegistryProvider,
       this.l2RegistryProvider,
       profileSync,
+      RootPrefix.SyncMerkleTrieNode,
+      [RootPrefix.User],
+      ["mergeMessage", "pruneMessage", "revokeMessage"],
+    );
+    this.ethSyncEngine = new SyncEngine(
+      this,
+      this.rocksDB,
+      this.ethRegistryProvider,
+      this.l2RegistryProvider,
+      profileSync,
+      RootPrefix.SyncEthEventsMerkleTrieNode,
+      [RootPrefix.IdRegistryEvent, RootPrefix.NameRegistryEvent, RootPrefix.FNameUserNameProof],
+      ["mergeIdRegistryEvent", "mergeNameRegistryEvent", "mergeUsernameProofEvent"],
     );
 
     // If profileSync is true, exit after sync is complete
@@ -369,6 +385,7 @@ export class Hub implements HubInterface {
       this,
       this.engine,
       this.syncEngine,
+      this.ethSyncEngine,
       this.gossipNode,
       options.rpcAuth,
       options.rpcRateLimit,
@@ -381,6 +398,7 @@ export class Hub implements HubInterface {
     // Setup job schedulers/workers
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
+    this.periodEthSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.ethSyncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
     this.validateOrRevokeMessagesJobScheduler = new ValidateOrRevokeMessagesJobScheduler(this.rocksDB, this.engine);
@@ -520,6 +538,7 @@ export class Hub implements HubInterface {
 
     // Start the sync engine
     await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
+    await this.ethSyncEngine.initialize(this.options.rebuildSyncTrie ?? false);
 
     if (this.updateNameRegistryEventExpiryJobWorker) {
       this.updateNameRegistryEventExpiryJobWorker.start();
@@ -538,6 +557,7 @@ export class Hub implements HubInterface {
     // Start cron tasks
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
     this.periodSyncJobScheduler.start();
+    this.periodEthSyncJobScheduler.start();
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
     this.checkFarcasterVersionJobScheduler.start();
     this.validateOrRevokeMessagesJobScheduler.start();
@@ -567,15 +587,18 @@ export class Hub implements HubInterface {
     });
 
     const snapshot = await this.syncEngine.getSnapshot();
-    return snapshot.map((snapshot) => {
-      return ContactInfoContent.create({
-        gossipAddress: gossipAddressContactInfo,
-        rpcAddress: rpcAddressContactInfo,
-        excludedHashes: snapshot.excludedHashes,
-        count: snapshot.numMessages,
-        hubVersion: FARCASTER_VERSION,
-        network: this.options.network,
-        appVersion: APP_VERSION,
+    const ethSnapshot = await this.ethSyncEngine.getSnapshot();
+    return ethSnapshot.andThen((ethSnapshot) => {
+      return snapshot.map((snapshot) => {
+        return ContactInfoContent.create({
+          gossipAddress: gossipAddressContactInfo,
+          rpcAddress: rpcAddressContactInfo,
+          excludedHashes: snapshot.excludedHashes.concat(ethSnapshot.excludedHashes),
+          count: snapshot.numMessages + ethSnapshot.numMessages,
+          hubVersion: FARCASTER_VERSION,
+          network: this.options.network,
+          appVersion: APP_VERSION,
+        });
       });
     });
   }
@@ -589,7 +612,12 @@ export class Hub implements HubInterface {
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine
-    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(), this.syncEngine.stop()]);
+    await Promise.all([
+      this.adminServer.stop(),
+      this.gossipNode.stop(),
+      this.syncEngine.stop(),
+      this.ethSyncEngine.stop(),
+    ]);
 
     if (this.updateNameRegistryEventExpiryJobWorker) {
       this.updateNameRegistryEventExpiryJobWorker.stop();
@@ -598,6 +626,7 @@ export class Hub implements HubInterface {
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
+    this.periodEthSyncJobScheduler.stop();
     this.pruneEventsJobScheduler.stop();
     this.checkFarcasterVersionJobScheduler.stop();
     this.testDataJobScheduler?.stop();
@@ -679,26 +708,9 @@ export class Hub implements HubInterface {
     this.gossipNode.recordMessageReceipt(gossipMessage);
 
     if (gossipMessage.message) {
-      const message = gossipMessage.message;
-
-      if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
-        // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
-        // will eventually re-fetch and merge this message in anyway.
-        log.warn(
-          { syncTrieQ: this.syncEngine.syncTrieQSize, syncMergeQ: this.syncEngine.syncMergeQSize },
-          "Sync queue is full, dropping gossip message",
-        );
-        return err(new HubError("unavailable", "Sync queue is full"));
-      }
-
-      // Merge the message
-      const submitStartTimestamp = Date.now();
-      const result = await this.submitMessage(message, "gossip");
-      if (result.isOk()) {
-        const submitEndTimestamp = Date.now();
-        this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
-      }
-      return result.map(() => undefined);
+      return await this.handleSyncMessage(gossipMessage.message);
+    } else if (gossipMessage.idRegistryEvent || gossipMessage.nameRegistryEvent || gossipMessage.userNameProof) {
+      return await this.handleEthSyncMessage(gossipMessage);
     } else if (gossipMessage.contactInfoContent) {
       await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
       return ok(undefined);
@@ -708,6 +720,62 @@ export class Hub implements HubInterface {
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
+  }
+
+  private async handleSyncMessage(message: Message): HubAsyncResult<void> {
+    if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
+      // will eventually re-fetch and merge this message in anyway.
+      log.warn(
+        { syncTrieQ: this.syncEngine.syncTrieQSize, syncMergeQ: this.syncEngine.syncMergeQSize },
+        "Sync queue is full, dropping gossip message",
+      );
+      return err(new HubError("unavailable", "Sync queue is full"));
+    }
+
+    // Merge the message
+    const submitStartTimestamp = Date.now();
+    const result = await this.submitMessage(message, "gossip");
+    if (result.isOk()) {
+      const submitEndTimestamp = Date.now();
+      this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
+    }
+    return result.map(() => undefined);
+  }
+
+  private async handleEthSyncMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
+    const idRegistryEvent = gossipMessage.idRegistryEvent;
+    const nameRegistryEvent = gossipMessage.nameRegistryEvent;
+    const userNameProof = gossipMessage.userNameProof;
+
+    if (this.ethSyncEngine.syncMergeQSize + this.ethSyncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
+      // will eventually re-fetch and merge this message in anyway.
+      log.warn(
+        { syncTrieQ: this.ethSyncEngine.syncTrieQSize, syncMergeQ: this.ethSyncEngine.syncMergeQSize },
+        "Sync queue is full, dropping gossip message",
+      );
+      return err(new HubError("unavailable", "Sync queue is full"));
+    }
+
+    // Merge the message
+    const submitStartTimestamp = Date.now();
+    let result: HubResult<number>;
+    if (idRegistryEvent) {
+      result = await this.submitIdRegistryEvent(idRegistryEvent, "gossip");
+    } else if (nameRegistryEvent) {
+      result = await this.submitNameRegistryEvent(nameRegistryEvent, "gossip");
+    } else if (userNameProof) {
+      result = await this.submitUserNameProof(userNameProof, "gossip");
+    } else {
+      result = err(new HubError("bad_request.invalid_param", "eth event not supported"));
+    }
+
+    if (result.isOk()) {
+      const submitEndTimestamp = Date.now();
+      this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
+    }
+    return result.map(() => undefined);
   }
 
   private async handleContactInfo(peerId: PeerId, message: ContactInfoContent): Promise<void> {
@@ -746,6 +814,7 @@ export class Hub implements HubInterface {
       if (!(await this.isValidPeer(peerId, message))) {
         await this.gossipNode.removePeerFromAddressBook(peerId);
         this.syncEngine.removeContactInfoForPeerId(peerId.toString());
+        this.ethSyncEngine.removeContactInfoForPeerId(peerId.toString());
         return;
       }
 
@@ -764,12 +833,20 @@ export class Hub implements HubInterface {
       // If it is a new client, we do a sync against it
       log.info({ peerInfo, connectedPeers: this.syncEngine.getPeerCount() }, "New Peer ContactInfo");
       this.syncEngine.addContactInfoForPeerId(peerId, message);
+      this.ethSyncEngine.addContactInfoForPeerId(peerId, message);
       const syncResult = await ResultAsync.fromPromise(
         this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
         (e) => e,
       );
       if (syncResult.isErr()) {
         log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
+      }
+      const ethSyncResult = await ResultAsync.fromPromise(
+        this.ethSyncEngine.diffSyncIfRequired(this, peerId.toString()),
+        (e) => e,
+      );
+      if (ethSyncResult.isErr()) {
+        log.error({ error: ethSyncResult.error, peerId }, "Failed to sync eth events with new peer");
       }
     }
   }
@@ -911,6 +988,7 @@ export class Hub implements HubInterface {
     this.gossipNode.on("peerDisconnect", async (connection) => {
       // Remove this peer's connection
       this.syncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
+      this.ethSyncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
     });
   }
 
@@ -961,6 +1039,11 @@ export class Hub implements HubInterface {
   async submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
     const logEvent = log.child({ event: idRegistryEventToLog(event), source });
 
+    if (this.ethSyncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      log.warn({ syncTrieQSize: this.ethSyncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
+      return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
+    }
+
     const mergeResult = await this.engine.mergeIdRegistryEvent(event);
 
     mergeResult.match(
@@ -981,6 +1064,11 @@ export class Hub implements HubInterface {
 
   async submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
     const logEvent = log.child({ event: nameRegistryEventToLog(event), source });
+
+    if (this.ethSyncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      log.warn({ syncTrieQSize: this.ethSyncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
+      return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
+    }
 
     const mergeResult = await this.engine.mergeNameRegistryEvent(event);
 
@@ -1007,6 +1095,11 @@ export class Hub implements HubInterface {
 
   async submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number> {
     const logEvent = log.child({ event: usernameProofToLog(usernameProof), source });
+
+    if (this.ethSyncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      log.warn({ syncTrieQSize: this.ethSyncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
+      return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
+    }
 
     const mergeResult = await this.engine.mergeUserNameProof(usernameProof);
 

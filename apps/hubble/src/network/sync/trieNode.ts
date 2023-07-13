@@ -49,12 +49,14 @@ class TrieNode {
   private _items: number;
   private _children: Map<number, TrieNode | SerializedTrieNode>;
   private _key: Uint8Array | undefined;
+  private _trieRootPrefix: RootPrefix;
 
-  constructor() {
+  constructor(trieRootPrefix: RootPrefix) {
     this._hash = new Uint8Array();
     this._items = 0;
     this._children = new Map();
     this._key = undefined;
+    this._trieRootPrefix = trieRootPrefix;
   }
 
   /**
@@ -349,14 +351,14 @@ class TrieNode {
     this._children = new Map([...this._children.entries()].sort());
   }
 
-  static makePrimaryKey(prefix: Uint8Array): Buffer {
-    return Buffer.concat([Buffer.from([RootPrefix.SyncMerkleTrieNode]), prefix]);
+  static makePrimaryKey(trieRootPrefix: RootPrefix, prefix: Uint8Array): Buffer {
+    return Buffer.concat([Buffer.from([trieRootPrefix]), prefix]);
   }
 
-  static deserialize(serialized: Uint8Array): TrieNode {
+  static deserialize(trieRootPrefix: RootPrefix, serialized: Uint8Array): TrieNode {
     const dbtrieNode = DbTrieNode.decode(serialized);
 
-    const trieNode = new TrieNode();
+    const trieNode = new TrieNode(trieRootPrefix);
     trieNode._key = dbtrieNode.key.length === 0 ? undefined : dbtrieNode.key;
     trieNode._items = dbtrieNode.items;
     trieNode._hash = dbtrieNode.hash;
@@ -382,12 +384,12 @@ class TrieNode {
   }
 
   private saveToDBTx(dbUpdatesMap: Map<Buffer, Buffer>, prefix: Uint8Array): Map<Buffer, Buffer> {
-    dbUpdatesMap.set(TrieNode.makePrimaryKey(prefix), this.serialize());
+    dbUpdatesMap.set(TrieNode.makePrimaryKey(this._trieRootPrefix, prefix), this.serialize());
     return dbUpdatesMap;
   }
 
   private deleteFromDbTx(dbUpdatesMap: Map<Buffer, Buffer>, prefix: Uint8Array): Map<Buffer, Buffer> {
-    dbUpdatesMap.set(TrieNode.makePrimaryKey(prefix), Buffer.from([]));
+    dbUpdatesMap.set(TrieNode.makePrimaryKey(this._trieRootPrefix, prefix), Buffer.from([]));
     return dbUpdatesMap;
   }
 
@@ -398,7 +400,7 @@ class TrieNode {
     } else {
       // The key to load is this node's key + the char
       const childPrefix = Buffer.concat([prefix, Buffer.from([char])]);
-      const childKey = TrieNode.makePrimaryKey(childPrefix);
+      const childKey = TrieNode.makePrimaryKey(this._trieRootPrefix, childPrefix);
       const childBytes = await ResultAsync.fromPromise(db.get(childKey), (e) => {
         return new Error(`Failed to load child node: ${e}. Prefix: ${prefix.toString()}, char: ${char}`);
       });
@@ -406,7 +408,7 @@ class TrieNode {
         // TODO: Should we throw here?
         throw childBytes.error;
       } else {
-        const childNode = TrieNode.deserialize(childBytes.value);
+        const childNode = TrieNode.deserialize(this._trieRootPrefix, childBytes.value);
         this._children.set(char, childNode);
 
         // Sort the child chars
@@ -440,7 +442,7 @@ class TrieNode {
   }
 
   private _addChild(char: number) {
-    this._children.set(char, new TrieNode());
+    this._children.set(char, new TrieNode(this._trieRootPrefix));
     // The hash requires the children to be sorted, and sorting on insert/update is cheaper than
     // sorting each time we need to update the hash
     this._children = new Map([...this._children.entries()].sort());

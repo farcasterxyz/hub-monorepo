@@ -1,5 +1,6 @@
 import {
   getFarcasterTime,
+  EthEvent,
   HubAsyncResult,
   HubError,
   HubResult,
@@ -24,14 +25,23 @@ import { Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata } from "../../network/sync/merkleTrie.js";
 import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "../../network/sync/syncId.js";
 import { TrieSnapshot } from "./trieNode.js";
-import { getManyMessages } from "../../storage/db/message.js";
+import { getManyEvents, getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../../storage/db/types.js";
-import { fromFarcasterTime } from "@farcaster/core";
+import {
+  IdRegistryEvent,
+  MergeIdRegistryEventHubEvent,
+  MergeNameRegistryEventHubEvent,
+  MergeUsernameProofHubEvent,
+  NameRegistryEvent,
+  UserNameProof,
+  fromFarcasterTime,
+} from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
+import { StoreEvents } from "../../storage/stores/storeEventHandler.js";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -90,6 +100,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _hub: HubInterface;
   private readonly _ethEventsProvider: EthEventsProvider | undefined;
   private readonly _l2EventsProvider: L2EventsProvider | undefined;
+  private readonly _trieRootPrefix: RootPrefix;
 
   private _isSyncing = false;
   private _interruptSync = false;
@@ -108,19 +119,24 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _messagesSinceLastCompaction = 0;
   private _isCompacting = false;
 
+  // rome-ignore lint/correctness/noUnreachableSuper: Rome is wrong. Super is reachable.
   constructor(
     hub: HubInterface,
     rocksDb: RocksDB,
     ethEventsProvider?: EthEventsProvider,
     l2EventsProvider?: L2EventsProvider,
     profileSync = false,
+    trieRootPrefix = RootPrefix.SyncMerkleTrieNode,
+    trieScanPrefixes = [RootPrefix.User],
+    mergeEvents: (keyof StoreEvents)[] = ["mergeMessage", "pruneMessage", "revokeMessage"],
   ) {
     super();
 
     this._db = rocksDb;
-    this._trie = new MerkleTrie(rocksDb);
+    this._trie = new MerkleTrie(rocksDb, trieRootPrefix, trieScanPrefixes);
     this._ethEventsProvider = ethEventsProvider;
     this._l2EventsProvider = l2EventsProvider;
+    this._trieRootPrefix = trieRootPrefix;
 
     if (profileSync) {
       this._syncProfiler = new SyncEngineProfiler();
@@ -128,33 +144,72 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     this._hub = hub;
 
-    this._hub.engine.eventHandler.on("mergeMessage", async (event: MergeMessageHubEvent) => {
-      const { message, deletedMessages } = event.mergeMessageBody;
-      const totalMessages = 1 + (deletedMessages?.length ?? 0);
-      this._syncTrieQ += totalMessages;
+    for (const mergeEvent of mergeEvents) {
+      switch (mergeEvent) {
+        case "mergeMessage":
+          this._hub.engine.eventHandler.on("mergeMessage", async (event: MergeMessageHubEvent) => {
+            const { message, deletedMessages } = event.mergeMessageBody;
+            const totalMessages = 1 + (deletedMessages?.length ?? 0);
+            this._syncTrieQ += totalMessages;
 
-      await this.addMessage(message);
+            await this.addMessage(message);
 
-      for (const deletedMessage of deletedMessages ?? []) {
-        await this.removeMessage(deletedMessage);
+            for (const deletedMessage of deletedMessages ?? []) {
+              await this.removeMessage(deletedMessage);
+            }
+            this._syncTrieQ -= totalMessages;
+          });
+          break;
+        case "mergeIdRegistryEvent":
+          this._hub.engine.eventHandler.on("mergeIdRegistryEvent", async (event: MergeIdRegistryEventHubEvent) => {
+            const { idRegistryEvent } = event.mergeIdRegistryEventBody;
+            this._syncTrieQ += 1;
+
+            await this.addMessage(idRegistryEvent);
+
+            this._syncTrieQ -= 1;
+          });
+          break;
+        case "mergeNameRegistryEvent":
+          this._hub.engine.eventHandler.on("mergeNameRegistryEvent", async (event: MergeNameRegistryEventHubEvent) => {
+            const { nameRegistryEvent } = event.mergeNameRegistryEventBody;
+            this._syncTrieQ += 1;
+
+            await this.addMessage(nameRegistryEvent);
+
+            this._syncTrieQ -= 1;
+          });
+          break;
+        case "mergeUsernameProofEvent":
+          this._hub.engine.eventHandler.on("mergeUsernameProofEvent", async (event: MergeUsernameProofHubEvent) => {
+            const { usernameProof } = event.mergeUsernameProofBody;
+            this._syncTrieQ += 1;
+
+            await this.addMessage(usernameProof);
+
+            this._syncTrieQ -= 1;
+          });
+          break;
+        case "pruneMessage":
+          // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
+          // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
+          // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
+          // Order of events does not matter. The trie will always converge to the same state.
+          this._hub.engine.eventHandler.on("pruneMessage", async (event: PruneMessageHubEvent) => {
+            this._syncTrieQ += 1;
+            await this.removeMessage(event.pruneMessageBody.message);
+            this._syncTrieQ -= 1;
+          });
+          break;
+        case "revokeMessage":
+          this._hub.engine.eventHandler.on("revokeMessage", async (event: RevokeMessageHubEvent) => {
+            this._syncTrieQ += 1;
+            await this.removeMessage(event.revokeMessageBody.message);
+            this._syncTrieQ -= 1;
+          });
+          break;
       }
-      this._syncTrieQ -= totalMessages;
-    });
-
-    // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
-    // This is fine, because we'll just end up syncing the message again. It's much worse to miss a removal and cause
-    // the trie to diverge in a way that's not recoverable without reconstructing it from the db.
-    // Order of events does not matter. The trie will always converge to the same state.
-    this._hub.engine.eventHandler.on("pruneMessage", async (event: PruneMessageHubEvent) => {
-      this._syncTrieQ += 1;
-      await this.removeMessage(event.pruneMessageBody.message);
-      this._syncTrieQ -= 1;
-    });
-    this._hub.engine.eventHandler.on("revokeMessage", async (event: RevokeMessageHubEvent) => {
-      this._syncTrieQ += 1;
-      await this.removeMessage(event.revokeMessageBody.message);
-      this._syncTrieQ -= 1;
-    });
+    }
   }
 
   public get syncTrieQSize(): number {
@@ -296,9 +351,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     try {
+      const syncTrieRootPrefix = Buffer.from([this._trieRootPrefix]);
       // First, get the latest state from the peer
       const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
-        TrieNodePrefix.create({ prefix: new Uint8Array() }),
+        TrieNodePrefix.create({ prefix: new Uint8Array(), syncTrieRootPrefix }),
         new Metadata(),
         rpcDeadline(),
       );
@@ -312,6 +368,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       }
 
       const peerState = peerStateResult.value;
+
+      if (Buffer.compare(peerState.syncTrieRootPrefix || Buffer.from([RootPrefix.User]), syncTrieRootPrefix) !== 0) {
+        log.info(
+          { peerId, peerContact, syncTrieRootPrefix },
+          "Diffsync: Peer does not support sync trie root prefix, skipping sync",
+        );
+        this.emit("syncComplete", false);
+        return;
+      }
+
       const syncStatusResult = await this.syncStatus(updatedPeerIdString, peerState);
       if (syncStatusResult.isErr()) {
         log.warn("Diffsync: Failed to get shouldSync");
@@ -334,6 +400,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           divergencePrefix: syncStatus.divergencePrefix,
           divergenceSeconds: syncStatus.divergenceSecondsAgo,
           lastBadSync: syncStatus.lastBadSync,
+          syncTrieRootPrefix,
         },
         "DiffSync: SyncStatus", // Search for this string in the logs to get summary of sync status
       );
@@ -486,6 +553,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
   }
 
+  async getAllEthEventsBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<EthEvent[]> {
+    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
+    return ResultAsync.fromPromise(getManyEvents(this._db, hashesBuf), (e) => e as HubError);
+  }
+
   /**
    * Returns the subset of the prefix common to two different tries by comparing excluded hashes.
    *
@@ -512,20 +584,37 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     let result = empty;
-    const messagesResult = await rpcClient.getAllMessagesBySyncIds(
-      SyncIds.create({ syncIds }),
-      new Metadata(),
-      rpcDeadline(),
-    );
-    await messagesResult.match(
-      async (msgs) => {
-        result = await this.mergeMessages(msgs.messages, rpcClient);
-      },
-      async (err) => {
-        // e.g. Node goes down while we're performing the sync. No need to handle it, the next round of sync will retry.
-        log.warn(err, "Error fetching messages for sync");
-      },
-    );
+    if (this._trieRootPrefix === RootPrefix.User) {
+      const messagesResult = await rpcClient.getAllMessagesBySyncIds(
+        SyncIds.create({ syncIds }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+      await messagesResult.match(
+        async (msgs) => {
+          result = await this.mergeMessages(msgs.messages, rpcClient);
+        },
+        async (err) => {
+          // e.g. Node goes down while we're performing the sync. No need to handle it, the next round of sync will retry.
+          log.warn(err, "Error fetching messages for sync");
+        },
+      );
+    } else {
+      const eventsResult = await rpcClient.getAllEthEventsBySyncIds(
+        SyncIds.create({ syncIds }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+      await eventsResult.match(
+        async (events) => {
+          result = await this.mergeEvents(events.ethEvents);
+        },
+        async (err) => {
+          // e.g. Node goes down while we're performing the sync. No need to handle it, the next round of sync will retry.
+          log.warn(err, "Error fetching events for sync");
+        },
+      );
+    }
     return result;
   }
 
@@ -613,6 +702,68 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return { total: mergeResults.length, successCount, deferredCount, errCount };
   }
 
+  public async mergeEvents(events: EthEvent[]): Promise<MergeResult> {
+    const mergeResults: HubResult<number>[] = [];
+    const deferredCount = 0;
+    let errCount = 0;
+    // First, sort the messages by timestamp to reduce thrashing and refetching
+    events.sort(
+      (a, b) =>
+        (a.idRegistryEvent?.blockNumber || a.nameRegistryEvent?.blockNumber || a.userNameProof?.timestamp || 0) -
+        (b.idRegistryEvent?.blockNumber || b.nameRegistryEvent?.blockNumber || b.userNameProof?.timestamp || 0),
+    );
+
+    // Merge messages sequentially, so we can handle missing users.
+    this._syncMergeQ += events.length;
+
+    await this.compactDbIfRequired(events.length);
+
+    const startTime = Date.now();
+    for (const ev of events) {
+      const result = ev.idRegistryEvent
+        ? await this._hub.submitIdRegistryEvent(ev.idRegistryEvent, "sync")
+        : ev.nameRegistryEvent
+        ? await this._hub.submitNameRegistryEvent(ev.nameRegistryEvent, "sync")
+        : ev.userNameProof
+        ? await this._hub.submitUserNameProof(ev.userNameProof, "sync")
+        : err(new HubError("bad_request.invalid_param", "eth event not supported"));
+
+      if (result.isErr()) {
+        if (result.error.errCode === "bad_request.duplicate") {
+          // This message has been merged into the DB, but for some reason is not in the Trie.
+          // Just update the trie.
+          // rome-ignore lint/style/noNonNullAssertion: guaranteed non-null
+          await this.trie.insert(new SyncId(ev.idRegistryEvent ?? ev.nameRegistryEvent ?? ev.userNameProof!));
+          mergeResults.push(result);
+        }
+
+        errCount += 1;
+      } else {
+        mergeResults.push(result);
+      }
+    }
+    this._syncMergeQ -= events.length;
+
+    if (this._syncProfiler) {
+      this._syncProfiler.getMethodProfile("mergeEvents").addCall(Date.now() - startTime, 0, events.length);
+    }
+
+    const successCount = mergeResults.filter((r) => r.isOk()).length;
+    if (mergeResults.length > 0) {
+      log.info(
+        {
+          total: mergeResults.length,
+          success: successCount,
+          deferred: deferredCount,
+          errored: errCount,
+        },
+        "Merged events during sync",
+      );
+    }
+
+    return { total: mergeResults.length, successCount, deferredCount, errCount };
+  }
+
   async fetchMissingHashesByPrefix(
     prefix: Uint8Array,
     rpcClient: HubRpcClient,
@@ -624,16 +775,26 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     }
 
+    const syncTrieRootPrefix = Buffer.from([this._trieRootPrefix]);
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(
-      TrieNodePrefix.create({ prefix }),
+      TrieNodePrefix.create({
+        prefix,
+        syncTrieRootPrefix,
+      }),
       new Metadata(),
       rpcDeadline(),
     );
 
     if (theirNodeResult.isErr()) {
       log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
-    } else if (theirNodeResult.value.numMessages === 0) {
+    } else if (
+      theirNodeResult.value.numMessages === 0 ||
+      // Need to coalesce compare for backwards compatibility – older nodes will return wildly wrong
+      // numbers for eth sync
+      Buffer.compare(theirNodeResult.value.syncTrieRootPrefix || Buffer.from([RootPrefix.User]), syncTrieRootPrefix) !==
+        0
+    ) {
       // If there are no messages, we're done, but something is probably wrong, since we should never have
       // a node with no messages.
       log.warn({ prefix }, "No messages for prefix, skipping");
@@ -669,11 +830,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       fetchMessagesThreshold = 1;
     }
 
+    const syncTrieRootPrefix = Buffer.from([this._trieRootPrefix]);
+
     // If the other hub's node has fewer than the fetchMessagesThreshold, just fetch them all in go, otherwise, iterate through
     // the node's children and fetch them in batches.
     if (theirNode.numMessages <= fetchMessagesThreshold) {
       const result = await rpcClient.getAllSyncIdsByPrefix(
-        TrieNodePrefix.create({ prefix: theirNode.prefix }),
+        TrieNodePrefix.create({ prefix: theirNode.prefix, syncTrieRootPrefix }),
         new Metadata(),
         rpcDeadline(),
       );
@@ -723,7 +886,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   /** ---------------------------------------------------------------------------------- */
   /**                                      Trie Methods                                  */
   /** ---------------------------------------------------------------------------------- */
-  public async addMessage(message: Message): Promise<void> {
+  public async addMessage(message: Message | IdRegistryEvent | NameRegistryEvent | UserNameProof): Promise<void> {
     await this._trie.insert(new SyncId(message));
   }
 
@@ -801,8 +964,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     if (!rpcClient) {
       return err(new HubError("unavailable.network_failure", `Could not create a RPC client for peer ${peerId}`));
     }
+
+    const syncTrieRootPrefix = Buffer.from([this._trieRootPrefix]);
+
     const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
-      TrieNodePrefix.create({ prefix: new Uint8Array() }),
+      TrieNodePrefix.create({ prefix: new Uint8Array(), syncTrieRootPrefix }),
       new Metadata(),
       rpcDeadline(),
     );

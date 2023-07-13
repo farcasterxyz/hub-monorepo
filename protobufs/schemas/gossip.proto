@@ -2,6 +2,8 @@ syntax = "proto3";
 
 import "message.proto";
 import "id_registry_event.proto";
+import "name_registry_event.proto";
+import "username_proof.proto";
 
 enum GossipVersion {
   GOSSIP_VERSION_V1 = 0;
@@ -50,6 +52,8 @@ message GossipMessage {
     IdRegistryEvent id_registry_event = 2;
     ContactInfoContent contact_info_content = 3;
     NetworkLatencyMessage network_latency_message = 7;
+    NameRegistryEvent name_registry_event = 8;
+    UserNameProof user_name_proof = 9;
   }
   repeated string topics = 4;
   bytes peer_id = 5;

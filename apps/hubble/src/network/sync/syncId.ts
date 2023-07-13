@@ -1,6 +1,6 @@
 import { makeMessagePrimaryKey, typeToSetPostfix } from "../../storage/db/message.js";
 import { FID_BYTES, HASH_LENGTH } from "../../storage/db/types.js";
-import { Message } from "@farcaster/hub-nodejs";
+import { IdRegistryEvent, Message, NameRegistryEvent, UserNameProof, isCastAddMessage } from "@farcaster/hub-nodejs";
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp
 
@@ -18,11 +18,32 @@ class SyncId {
   private readonly _timestamp: number;
   private readonly _type: number;
 
-  constructor(message: Message) {
-    this._fid = message.data?.fid || 0;
-    this._hash = message.hash;
-    this._timestamp = message.data?.timestamp || 0;
-    this._type = message.data?.type || 0;
+  constructor(message: Message | IdRegistryEvent | NameRegistryEvent | UserNameProof) {
+    if ((message as Message).data) {
+      const deltaMessage = message as Message;
+      this._fid = deltaMessage.data?.fid || 0;
+      this._hash = deltaMessage.hash;
+      this._timestamp = deltaMessage.data?.timestamp || 0;
+      this._type = deltaMessage.data?.type || 0;
+    } else if ((message as UserNameProof).owner) {
+      const userNameProofMessage = message as UserNameProof;
+      this._fid = userNameProofMessage.fid;
+      this._hash = userNameProofMessage.signature;
+      this._timestamp = userNameProofMessage.timestamp;
+      this._type = userNameProofMessage.type;
+    } else if ((message as IdRegistryEvent).fid) {
+      const idRegistryEventMessage = message as IdRegistryEvent;
+      this._fid = idRegistryEventMessage.fid;
+      this._hash = idRegistryEventMessage.transactionHash;
+      this._timestamp = idRegistryEventMessage.blockNumber;
+      this._type = idRegistryEventMessage.type;
+    } else {
+      const nameRegistryEventMessage = message as NameRegistryEvent;
+      this._fid = 0;
+      this._hash = nameRegistryEventMessage.transactionHash;
+      this._timestamp = nameRegistryEventMessage.blockNumber;
+      this._type = nameRegistryEventMessage.type;
+    }
   }
 
   /** Returns a byte array that represents a SyncId */

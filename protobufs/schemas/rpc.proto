@@ -67,6 +67,7 @@ service HubService {
   rpc GetSyncStatus(SyncStatusRequest) returns (SyncStatusResponse);
   rpc GetAllSyncIdsByPrefix(TrieNodePrefix) returns (SyncIds);
   rpc GetAllMessagesBySyncIds(SyncIds) returns (MessagesResponse);
+  rpc GetAllEthEventsBySyncIds(SyncIds) returns (EthEventsResponse);
   rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);
   rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);
 }

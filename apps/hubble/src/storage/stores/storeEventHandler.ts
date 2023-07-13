@@ -17,7 +17,6 @@ import {
   MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-  MessageType,
 } from "@farcaster/hub-nodejs";
 import AsyncLock from "async-lock";
 import { err, ok, ResultAsync } from "neverthrow";

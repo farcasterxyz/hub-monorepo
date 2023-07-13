@@ -3,6 +3,8 @@ import Long from "long";
 import _m0 from "protobufjs/minimal";
 import { IdRegistryEvent } from "./id_registry_event";
 import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON, Message } from "./message";
+import { NameRegistryEvent } from "./name_registry_event";
+import { UserNameProof } from "./username_proof";
 
 export enum GossipVersion {
   V1 = 0,
@@ -72,6 +74,8 @@ export interface GossipMessage {
   idRegistryEvent?: IdRegistryEvent | undefined;
   contactInfoContent?: ContactInfoContent | undefined;
   networkLatencyMessage?: NetworkLatencyMessage | undefined;
+  nameRegistryEvent?: NameRegistryEvent | undefined;
+  userNameProof?: UserNameProof | undefined;
   topics: string[];
   peerId: Uint8Array;
   version: GossipVersion;
@@ -588,6 +592,8 @@ function createBaseGossipMessage(): GossipMessage {
     idRegistryEvent: undefined,
     contactInfoContent: undefined,
     networkLatencyMessage: undefined,
+    nameRegistryEvent: undefined,
+    userNameProof: undefined,
     topics: [],
     peerId: new Uint8Array(),
     version: 0,
@@ -607,6 +613,12 @@ export const GossipMessage = {
     }
     if (message.networkLatencyMessage !== undefined) {
       NetworkLatencyMessage.encode(message.networkLatencyMessage, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.nameRegistryEvent !== undefined) {
+      NameRegistryEvent.encode(message.nameRegistryEvent, writer.uint32(66).fork()).ldelim();
+    }
+    if (message.userNameProof !== undefined) {
+      UserNameProof.encode(message.userNameProof, writer.uint32(74).fork()).ldelim();
     }
     for (const v of message.topics) {
       writer.uint32(34).string(v!);
@@ -655,6 +667,20 @@ export const GossipMessage = {
 
           message.networkLatencyMessage = NetworkLatencyMessage.decode(reader, reader.uint32());
           continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.nameRegistryEvent = NameRegistryEvent.decode(reader, reader.uint32());
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.userNameProof = UserNameProof.decode(reader, reader.uint32());
+          continue;
         case 4:
           if (tag != 34) {
             break;
@@ -695,6 +721,10 @@ export const GossipMessage = {
       networkLatencyMessage: isSet(object.networkLatencyMessage)
         ? NetworkLatencyMessage.fromJSON(object.networkLatencyMessage)
         : undefined,
+      nameRegistryEvent: isSet(object.nameRegistryEvent)
+        ? NameRegistryEvent.fromJSON(object.nameRegistryEvent)
+        : undefined,
+      userNameProof: isSet(object.userNameProof) ? UserNameProof.fromJSON(object.userNameProof) : undefined,
       topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => String(e)) : [],
       peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
       version: isSet(object.version) ? gossipVersionFromJSON(object.version) : 0,
@@ -712,6 +742,11 @@ export const GossipMessage = {
     message.networkLatencyMessage !== undefined && (obj.networkLatencyMessage = message.networkLatencyMessage
       ? NetworkLatencyMessage.toJSON(message.networkLatencyMessage)
       : undefined);
+    message.nameRegistryEvent !== undefined && (obj.nameRegistryEvent = message.nameRegistryEvent
+      ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
+      : undefined);
+    message.userNameProof !== undefined &&
+      (obj.userNameProof = message.userNameProof ? UserNameProof.toJSON(message.userNameProof) : undefined);
     if (message.topics) {
       obj.topics = message.topics.map((e) => e);
     } else {
@@ -742,6 +777,12 @@ export const GossipMessage = {
       (object.networkLatencyMessage !== undefined && object.networkLatencyMessage !== null)
         ? NetworkLatencyMessage.fromPartial(object.networkLatencyMessage)
         : undefined;
+    message.nameRegistryEvent = (object.nameRegistryEvent !== undefined && object.nameRegistryEvent !== null)
+      ? NameRegistryEvent.fromPartial(object.nameRegistryEvent)
+      : undefined;
+    message.userNameProof = (object.userNameProof !== undefined && object.userNameProof !== null)
+      ? UserNameProof.fromPartial(object.userNameProof)
+      : undefined;
     message.topics = object.topics?.map((e) => e) || [];
     message.peerId = object.peerId ?? new Uint8Array();
     message.version = object.version ?? 0;

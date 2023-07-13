@@ -10,6 +10,7 @@ import { NameRegistryEvent } from "./name_registry_event";
 import {
   CastsByParentRequest,
   Empty,
+  EthEventsResponse,
   EventRequest,
   FidRequest,
   FidsRequest,
@@ -112,6 +113,7 @@ export interface HubService {
   getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpc.Metadata): Promise<SyncStatusResponse>;
   getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpc.Metadata): Promise<SyncIds>;
   getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpc.Metadata): Promise<MessagesResponse>;
+  getAllEthEventsBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpc.Metadata): Promise<EthEventsResponse>;
   getSyncMetadataByPrefix(
     request: DeepPartial<TrieNodePrefix>,
     metadata?: grpc.Metadata,
@@ -164,6 +166,7 @@ export class HubServiceClientImpl implements HubService {
     this.getSyncStatus = this.getSyncStatus.bind(this);
     this.getAllSyncIdsByPrefix = this.getAllSyncIdsByPrefix.bind(this);
     this.getAllMessagesBySyncIds = this.getAllMessagesBySyncIds.bind(this);
+    this.getAllEthEventsBySyncIds = this.getAllEthEventsBySyncIds.bind(this);
     this.getSyncMetadataByPrefix = this.getSyncMetadataByPrefix.bind(this);
     this.getSyncSnapshotByPrefix = this.getSyncSnapshotByPrefix.bind(this);
   }
@@ -340,6 +343,10 @@ export class HubServiceClientImpl implements HubService {
 
   getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllMessagesBySyncIdsDesc, SyncIds.fromPartial(request), metadata);
+  }
+
+  getAllEthEventsBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpc.Metadata): Promise<EthEventsResponse> {
+    return this.rpc.unary(HubServiceGetAllEthEventsBySyncIdsDesc, SyncIds.fromPartial(request), metadata);
   }
 
   getSyncMetadataByPrefix(
@@ -1200,6 +1207,29 @@ export const HubServiceGetAllMessagesBySyncIdsDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetAllEthEventsBySyncIdsDesc: UnaryMethodDefinitionish = {
+  methodName: "GetAllEthEventsBySyncIds",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SyncIds.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = EthEventsResponse.decode(data);
       return {
         ...value,
         toObject() {

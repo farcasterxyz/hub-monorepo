@@ -47,25 +47,28 @@ class MerkleTrie {
   private _root: TrieNode;
   private _db: RocksDB;
   private _lock: ReadWriteLock;
+  private _trieRootPrefix: RootPrefix;
+  private _trieScanPrefixes: RootPrefix[];
 
   private _pendingDbUpdates = new Map<Buffer, Buffer>();
 
   private _callsSinceLastUnload = 0;
 
-  constructor(rocksDb: RocksDB) {
+  constructor(rocksDb: RocksDB, trieRootPrefix = RootPrefix.SyncMerkleTrieNode, trieScanPrefixes = [RootPrefix.User]) {
     this._db = rocksDb;
     this._lock = new ReadWriteLock();
-
-    this._root = new TrieNode();
+    this._trieRootPrefix = trieRootPrefix;
+    this._trieScanPrefixes = trieScanPrefixes;
+    this._root = new TrieNode(this._trieRootPrefix);
   }
 
   public async initialize(): Promise<void> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
         try {
-          const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
+          const rootBytes = await this._db.get(TrieNode.makePrimaryKey(this._trieRootPrefix, new Uint8Array()));
           if (rootBytes && rootBytes.length > 0) {
-            this._root = TrieNode.deserialize(rootBytes);
+            this._root = TrieNode.deserialize(this._trieRootPrefix, rootBytes);
             log.info(
               { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this.items },
               "Merkle Trie loaded from DB",
@@ -84,7 +87,7 @@ class MerkleTrie {
   public async rebuild(): Promise<void> {
     // First, delete the root node
     const dbStatus = await ResultAsync.fromPromise(
-      this._db.del(TrieNode.makePrimaryKey(new Uint8Array())),
+      this._db.del(TrieNode.makePrimaryKey(this._trieRootPrefix, new Uint8Array())),
       (e) => e as HubError,
     );
     if (dbStatus.isErr()) {
@@ -92,24 +95,27 @@ class MerkleTrie {
     }
 
     // Brand new empty root node
-    this._root = new TrieNode();
+    this._root = new TrieNode(this._trieRootPrefix);
 
     // Rebuild the trie by iterating over all the messages in the db
-    const prefix = Buffer.from([RootPrefix.User]);
-    const iterator = this._db.iteratorByPrefix(prefix);
     let count = 0;
-    for await (const [key, value] of iterator) {
-      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-      if (postfix < UserMessagePostfixMax) {
-        const message = Result.fromThrowable(
-          () => Message.decode(new Uint8Array(value as Buffer)),
-          (e) => e as HubError,
-        )();
-        if (message.isOk()) {
-          await this.insert(new SyncId(message.value));
-          count += 1;
-          if (count % 10_000 === 0) {
-            log.info({ count }, "Rebuilding Merkle Trie");
+
+    for (const rootPrefix of this._trieScanPrefixes) {
+      const prefix = Buffer.from([rootPrefix]);
+      const iterator = this._db.iteratorByPrefix(prefix);
+      for await (const [key, value] of iterator) {
+        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+        if (postfix < UserMessagePostfixMax) {
+          const message = Result.fromThrowable(
+            () => Message.decode(new Uint8Array(value as Buffer)),
+            (e) => e as HubError,
+          )();
+          if (message.isOk()) {
+            await this.insert(new SyncId(message.value));
+            count += 1;
+            if (count % 10_000 === 0) {
+              log.info({ count }, "Rebuilding Merkle Trie");
+            }
           }
         }
       }

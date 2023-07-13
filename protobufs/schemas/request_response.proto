@@ -1,6 +1,8 @@
 syntax = "proto3";
 
 import "message.proto";
+import "id_registry_event.proto";
+import "name_registry_event.proto";
 import "storage_event.proto";
 import "hub_event.proto";
 import "username_proof.proto";
@@ -37,11 +39,13 @@ message DbStats {
 
 message SyncStatusRequest {
   optional string peerId = 1;
+  optional bytes sync_trie_root_prefix = 2;
 }
 
 message SyncStatusResponse {
   bool is_syncing = 1;
   repeated SyncStatus sync_status = 2;
+  optional bytes sync_trie_root_prefix = 3;
 }
 
 message SyncStatus {
@@ -53,6 +57,7 @@ message SyncStatus {
   uint64 theirMessages = 6;
   uint64 ourMessages = 7;
   int64 lastBadSync = 8;
+  optional bytes sync_trie_root_prefix = 9;
 }
 
 message TrieNodeMetadataResponse {
@@ -60,6 +65,7 @@ message TrieNodeMetadataResponse {
   uint64 num_messages = 2;
   string hash = 3;
   repeated TrieNodeMetadataResponse children = 4;
+  optional bytes sync_trie_root_prefix = 5;
 }
 
 message TrieNodeSnapshotResponse {
@@ -67,10 +73,12 @@ message TrieNodeSnapshotResponse {
   repeated string excluded_hashes = 2;
   uint64 num_messages = 3;
   string root_hash = 4;
+  optional bytes sync_trie_root_prefix = 5;
 }
 
 message TrieNodePrefix {
   bytes prefix = 1;
+  optional bytes sync_trie_root_prefix = 2;
 }
 
 message SyncIds {
@@ -98,6 +106,19 @@ message FidsResponse {
 message MessagesResponse {
   repeated Message messages = 1;
   optional bytes next_page_token = 2;
+}
+
+message EthEventsResponse {
+  repeated EthEvent eth_events = 1;
+  optional bytes next_page_token = 2;
+}
+
+message EthEvent {
+  oneof eth_event {
+    IdRegistryEvent id_registry_event = 1;
+    NameRegistryEvent name_registry_event = 2;
+    UserNameProof user_name_proof = 3;
+  }
 }
 
 message CastsByParentRequest {
