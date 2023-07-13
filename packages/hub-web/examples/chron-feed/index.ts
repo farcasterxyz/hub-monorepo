@@ -41,14 +41,18 @@ const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient): HubAsync
 
 const getFnameFromFid = async (fid: number, client: HubRpcClient): HubAsyncResult<string> => {
   const result = await client.getUserData({ fid: fid, userDataType: UserDataType.USERNAME });
-  return ok(result.match((message) => {
-    if (isUserDataAddMessage(message)) {
-      return message.data.userDataBody.value;
-    } else {
-      return "";
-    }
-  }, () => `${fid}!` // fallback to FID if no username is set
-  ))
+  return ok(
+    result.match(
+      (message) => {
+        if (isUserDataAddMessage(message)) {
+          return message.data.userDataBody.value;
+        } else {
+          return "";
+        }
+      },
+      () => `${fid}!`, // fallback to FID if no username is set
+    ),
+  );
 };
 
 /**
