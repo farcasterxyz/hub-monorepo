@@ -5,10 +5,11 @@
   "version": "0.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "tsx index.ts"
+    "start": "tsx index.ts",
+    "typecheck": "yarn tsc --noEmit"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.7.0",
+    "@farcaster/hub-nodejs": "^0.8.4",
     "ethers": "^6.2.0"
   },
   "devDependencies": {
