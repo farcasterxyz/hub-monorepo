@@ -1034,6 +1034,20 @@ class Engine {
         () => undefined,
       );
       if (usernameAdd.isOk()) {
+        const nameBytes = utf8StringToBytes(usernameAdd.value.data.userDataBody.value);
+        if (!nameBytes.isOk()) {
+          log.error(
+            `failed to convert username add message ${bytesToHexString(
+              usernameAdd.value.hash,
+            )} for fid ${fid} to utf8 string`,
+          );
+          return err(nameBytes.error);
+        }
+        if (bytesCompare(nameBytes.value, deletedUsernameProof.name) !== 0) {
+          log.debug(`deleted name proof for ${fid} does not match current user name, skipping revoke`);
+          return ok(undefined);
+        }
+
         const revokeResult = await this._userDataStore.revoke(usernameAdd.value);
         const usernameAddHex = bytesToHexString(usernameAdd.value.hash);
         revokeResult.match(
