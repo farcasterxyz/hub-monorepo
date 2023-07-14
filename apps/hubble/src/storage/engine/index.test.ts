@@ -903,7 +903,13 @@ describe("with listeners and workers", () => {
         fid,
         owner: custodyEvent.to,
       });
+      const anotherNameProof = Factories.UserNameProof.build({
+        name: Factories.Fname.build(),
+        fid,
+        owner: custodyEvent.to,
+      });
       await expect(liveEngine.mergeUserNameProof(nameProof)).resolves.toBeInstanceOf(Ok);
+      await expect(liveEngine.mergeUserNameProof(anotherNameProof)).resolves.toBeInstanceOf(Ok);
       const fnameAdd = await Factories.UserDataAddMessage.create(
         {
           data: {
@@ -920,6 +926,18 @@ describe("with listeners and workers", () => {
         owner: Factories.EthAddress.build(),
         timestamp: nameProof.timestamp + 1,
       });
+      const anotherNameTransfer = Factories.UserNameProof.build({
+        name: anotherNameProof.name,
+        fid,
+        owner: Factories.EthAddress.build(),
+        timestamp: anotherNameProof.timestamp + 1,
+      });
+      await expect(liveEngine.mergeUserNameProof(anotherNameTransfer)).resolves.toBeInstanceOf(Ok);
+      expect(revokedMessages).toEqual([]);
+      await sleep(200); // Wait for engine to revoke messages
+      // Does not revoke name because current username has not been transferred yet
+      expect(revokedMessages).toEqual([]);
+
       await expect(liveEngine.mergeUserNameProof(nameTransfer)).resolves.toBeInstanceOf(Ok);
       expect(revokedMessages).toEqual([]);
       await sleep(200); // Wait for engine to revoke messages
