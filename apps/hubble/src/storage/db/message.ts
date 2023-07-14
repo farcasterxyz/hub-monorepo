@@ -152,10 +152,12 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<Mes
     gte: userPrefix,
     lt: maxPrefix,
   };
-  const messages = [];
-  for await (const [, buffer] of db.iterator(iteratorOptions)) {
+
+  const messages: Message[] = [];
+  await db.forEachIterator((_key, buffer) => {
     messages.push(Message.decode(new Uint8Array(buffer as Buffer)));
-  }
+  }, iteratorOptions);
+
   return messages;
 };
 

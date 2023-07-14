@@ -202,6 +202,11 @@ class RocksDB {
   }
 
   close(): Promise<void> {
+    // Close the iterator check timer
+    if (this._iteratorCheckTimer) {
+      clearInterval(this._iteratorCheckTimer);
+    }
+
     return new Promise((resolve, reject) => {
       this._db.close((e?: Error) => {
         e ? reject(parseError(e)) : resolve(undefined);
@@ -279,6 +284,87 @@ class RocksDB {
       prefixOptions.lt = Buffer.from(nextPrefix.value);
     }
     return this.iterator({ ...options, ...prefixOptions });
+  }
+
+  /**
+   * An iterator that implements a callback. If the callback
+   * 1. returns true/value
+   * 2. returns a promise that resolves to true/value
+   * 3. throws an error
+   * 4. Finishes iterating
+   * 5. Times out
+   *
+   * We'll close the iterator
+   */
+  async forEachIterator<T>(
+    callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<T> | T,
+    options: AbstractRocksDB.IteratorOptions = {},
+    timeout = MAX_DB_ITERATOR_OPEN_MILLISECONDS,
+  ): Promise<T | undefined> {
+    const iterator = this.iterator(options);
+    const timeoutId = setTimeout(async () => {
+      await iterator.end();
+    }, timeout);
+
+    let returnValue: T | undefined | void;
+    // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+    let caughtError: any;
+
+    // The try/catch is outside the for loop so that we can catch errors thrown by the iterator
+    // the most common error is "cannot call next() after end()", which is when the iterator has timed out
+    try {
+      for await (const [key, value] of iterator) {
+        returnValue = await callback(key, value);
+        if (returnValue) {
+          await iterator.end();
+          break;
+        }
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message === "cannot call next() after end()") {
+        // The iterator timed out
+        log.warn({ options, timeout }, "forEachIterator: iterator timed out");
+      } else {
+        await iterator.end();
+        caughtError = e;
+      }
+    }
+
+    // The iterator should be closed here, but log an error if it isn't
+    if (iterator.isOpen) {
+      // Find the iterator entry in the iterators set
+      const iteratorEntry = [...this._openIterators].find((entry) => {
+        return entry.iterator === iterator;
+      });
+
+      if (iteratorEntry) {
+        const logOpts = {
+          options: iteratorEntry.options,
+          openSecs: Date.now() - iteratorEntry.openTimestamp,
+          stackTrace: iteratorEntry.stackTrace,
+          id: iteratorEntry.id,
+        };
+
+        logger.error(logOpts, "forEachIterator: iterator was not closed");
+        iterator.end();
+      } else {
+        logger.error("forEachIterator: iterator was not closed and could not find iterator entry");
+      }
+    }
+
+    clearTimeout(timeoutId);
+
+    // If we caught and error, throw it
+    if (caughtError) {
+      throw caughtError;
+    }
+
+    // If the callback returned a value, return it
+    if (returnValue) {
+      return returnValue;
+    } else {
+      return undefined;
+    }
   }
 
   async compact(): Promise<void> {

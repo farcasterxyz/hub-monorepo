@@ -4,6 +4,8 @@ import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
 import RocksDB, { MAX_DB_ITERATOR_OPEN_MILLISECONDS } from "./rocksdb.js";
 import { jest } from "@jest/globals";
+import { ResultAsync } from "neverthrow";
+import { sleep } from "../../utils/crypto.js";
 
 //Safety: fs is safe to use in tests
 
@@ -56,6 +58,9 @@ describe("destroy", () => {
     const db = new RocksDB(randomDbName());
     expect(db.status).toEqual("new");
     await expect(db.destroy()).rejects.toThrow(new Error("db never opened"));
+
+    // Call close to clear the open iterator timers that might still be open
+    await db.close();
   });
 
   test("succeeds when db is open", async () => {
@@ -221,6 +226,120 @@ describe("with db", () => {
         values.push(value);
       }
       expect(values).toEqual([Buffer.from("a"), Buffer.from("b")]);
+    });
+  });
+
+  describe("forEachIterator", () => {
+    test("succeeds", async () => {
+      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
+      await db.put(Buffer.from("allison"), Buffer.from("oops"));
+      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
+      const output = [];
+      await db.forEachIterator((key, value) => {
+        output.push([key, value]);
+      });
+
+      expect(output.length).toEqual(5);
+
+      // All iterators are closed
+      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
+    });
+
+    test("fails when iterator throws", async () => {
+      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
+      await db.put(Buffer.from("allison"), Buffer.from("oops"));
+      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
+
+      const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
+      const result = await ResultAsync.fromPromise(
+        db.forEachIterator((key, value) => {
+          output.push([key, value]);
+          if (key?.toString() === "allison") {
+            throw new Error("oops");
+          }
+        }),
+        (err) => err as Error,
+      );
+
+      expect(result.isErr()).toEqual(true);
+      expect(result._unsafeUnwrapErr().message).toEqual("oops");
+      expect(output.length).toEqual(3);
+      // All iterators are closed
+      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
+    });
+
+    test("fails when iterator throws async", async () => {
+      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
+      await db.put(Buffer.from("allison"), Buffer.from("oops"));
+      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
+
+      const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
+      const result = await ResultAsync.fromPromise(
+        db.forEachIterator(async (key, value) => {
+          output.push([key, value]);
+          if (key?.toString() === "allison") {
+            throw new Error("oops");
+          }
+        }),
+        (err) => err as Error,
+      );
+
+      expect(result.isErr()).toEqual(true);
+      expect(result._unsafeUnwrapErr().message).toEqual("oops");
+      expect(output.length).toEqual(3);
+      // All iterators are closed
+      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
+    });
+
+    test("fails when returning to break", async () => {
+      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
+      await db.put(Buffer.from("allison"), Buffer.from("oops"));
+      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
+
+      const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
+      const result = await db.forEachIterator((key, value) => {
+        output.push([key, value]);
+        if (key?.toString() === "allison") {
+          return "break";
+        } else {
+          return false;
+        }
+      });
+
+      expect(result).toEqual("break");
+      expect(output.length).toEqual(3);
+      // All iterators are closed
+      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
+    });
+
+    test("force closes open iterators after timeout", async () => {
+      const timeout = 1;
+
+      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
+      await db.put(Buffer.from("allison"), Buffer.from("oops"));
+      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
+
+      // Start iterating, but stall on the first item
+      await db.forEachIterator(
+        async (key, value) => {
+          await sleep(timeout * 100);
+        },
+        {},
+        timeout,
+      );
+
+      await sleep(timeout * 2);
+
+      // All iterators are closed
+      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
   });
 

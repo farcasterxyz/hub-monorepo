@@ -184,6 +184,10 @@ class Engine {
     log.info("engine stopped");
   }
 
+  getDb(): RocksDB {
+    return this._db;
+  }
+
   async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
