@@ -208,4 +208,9 @@ describe("fnameRegistryEventsProvider", () => {
       expect(await getUserNameProof(db, utf8ToBytes("farcaster"))).toBeTruthy();
     });
   });
+
+  test("throws for invalid signer", async () => {
+    mockFnameRegistryClient.setSignerAddress("0x");
+    await expect(provider.start()).rejects.toThrowError("Failed to parse server address");
+  });
 });
