@@ -5,6 +5,7 @@ import {
   HubInfoRequest,
   SyncStatusRequest,
 } from "@farcaster/hub-nodejs";
+import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Command } from "commander";
@@ -22,6 +23,7 @@ import { parseNetwork } from "./utils/command.js";
 import { sleep } from "./utils/crypto.js";
 import { Config as DefaultConfig } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile.js";
+import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -99,6 +101,7 @@ app
   .option("-n --network <network>", "Farcaster network ID", parseNetwork)
   .option("--gossip-metrics-enabled", "Enable gossip network tracing and metrics. (default: disabled)")
   .option("--process-file-prefix <prefix>", 'Prefix for file to which hub process number is written. (default: "")')
+  .option("--direct-peers <peer-multiaddrs...>", "A list of peers for libp2p to directly peer with (default: [])")
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
@@ -300,6 +303,32 @@ app
       .filter((a) => a.isOk())
       .map((a) => a._unsafeUnwrap());
 
+    const directPeers = ((cliOptions.directPeers ?? hubConfig.directPeers ?? []) as string[])
+      .map((a) => parseAddress(a))
+      .map((a) => {
+        if (a.isErr()) {
+          logger.warn(
+            { errorCode: a.error.errCode, message: a.error.message },
+            "Couldn't parse direct peer address, ignoring",
+          );
+        } else if (a.value.getPeerId()) {
+          logger.warn(
+            { errorCode: "unavailable", message: "peer id missing from direct peer" },
+            "Direct peer missing peer id, ignoring",
+          );
+        }
+
+        return a;
+      })
+      .filter((a) => a.isOk() && a.value.getPeerId())
+      .map((a) => a._unsafeUnwrap())
+      .map((a) => {
+        return {
+          id: peerIdFromString(a.getPeerId() ?? ""),
+          addrs: [a],
+        } as AddrInfo;
+      });
+
     const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
     const profileSync = cliOptions.profileSync ?? hubConfig.profileSync ?? false;
 
@@ -335,6 +364,7 @@ app
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
       testUsers: testUsers,
       gossipMetricsEnabled: cliOptions.gossipMetricsEnabled ?? false,
+      directPeers,
     };
 
     const hubResult = Result.fromThrowable(
