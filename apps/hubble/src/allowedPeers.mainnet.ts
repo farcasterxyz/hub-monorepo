@@ -27,7 +27,11 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWKxHRB3K9JSpRba9hPd2e1zzmdgPH35qcf7yKMjFBcBuE", // @withportals Dedicated Hub 3 (@lndnnft)
   "12D3KooWPNDmUeNiGdCdoHp8iAf8Uay3c2C9n5QVygd3J1hfv65w", // @sanjay
   "12D3KooWFZwTP5bUZbQViTk79i2DZujHBBjPpAZyDwyrkPb79eAL", // @molo
-  "12D3KooWHK4EXZ33nVFLSCLRuFNUK74v72eZEcRKoHTPbX9Nove7", // @neynar
+  "12D3KooWHK4EXZ33nVFLSCLRuFNUK74v72eZEcRKoHTPbX9Nove7", // @neynar Hub 1
+  "12D3KooWB17LnSuiMuRAfGbsEky1JV2cdN2FnafdPtz2C5sdE991", // @neynar Hub 2
+  "12D3KooWDWmbsoWZf3edTqJHbx3sZStbgoARKXVQ2zBDUL1BcVLw", // @neynar Hub 3
+  "12D3KooWE7qQ6D216GkZX65ihbzJk2YMYsy35sqe7dmi3nDafRBK", // @neynar Hub 4
+  "12D3KooWLqpt1MJXVTWUFCWWJS5xA9gN9DNnCRv5YgT3PKeNhz8z", // @neynar Hub 5
   "12D3KooWDMXc4uVXr8zWGujaRuzhDnTBBHkTsJ58WimB8QU4cgos", // @nj
   "12D3KooWCZBZAirRXA2cecgud2zC7T5iN4hwr9nf7VAn9d8u9px2", // @rss3
   "12D3KooWJwBPFDdCkxWqVE6tCWPs4sDx2t4Pgy2cCewqKzLTRHgr", // @cryptobenkei
