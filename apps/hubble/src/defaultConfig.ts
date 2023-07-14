@@ -57,4 +57,6 @@ export const Config = {
   adminServerEnabled: false,
   /** The admin server bind host */
   adminServerHost: "127.0.0.1",
+  /** A list of addresses the node directly peers with, provided in MultiAddr format */
+  directPeers: [],
 };

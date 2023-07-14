@@ -75,6 +75,7 @@ import { prettyPrintTable } from "./profile.js";
 import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, fallback, http } from "viem";
 import { mainnet } from "viem/chains";
+import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -224,6 +225,9 @@ export interface HubOptions {
 
   /** Periodically send network latency ping messages to the gossip network and log metrics */
   gossipMetricsEnabled?: boolean;
+
+  /** A list of addresses the node directly peers with, provided in MultiAddr format */
+  directPeers?: AddrInfo[];
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -538,6 +542,7 @@ export class Hub implements HubInterface {
       announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
       allowedPeerIdStrs: this.allowedPeerIds,
+      directPeers: this.options.directPeers,
     });
 
     this.registerEventHandlers();

@@ -29,6 +29,7 @@ import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
 import { GossipMetricsRecorder } from "./gossipMetricsRecorder.js";
 import RocksDB from "storage/db/rocksdb.js";
+import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
@@ -57,8 +58,10 @@ interface NodeOptions {
   announceIp?: string | undefined;
   /** A port used to listen for gossip messages. A random value is selected if not specified */
   gossipPort?: number | undefined;
-  /** A list of PeedIds that are allowed to connect to this node */
+  /** A list of PeerIds that are allowed to connect to this node */
   allowedPeerIdStrs?: string[] | undefined;
+  /** A list of addresses the node directly peers with, provided in MultiAddr format */
+  directPeers?: AddrInfo[] | undefined;
 }
 
 /**
@@ -463,6 +466,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       allowPublishToZeroPeers: true,
       globalSignaturePolicy: "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
+      directPeers: options.directPeers || [],
     });
 
     if (options.allowedPeerIdStrs) {
