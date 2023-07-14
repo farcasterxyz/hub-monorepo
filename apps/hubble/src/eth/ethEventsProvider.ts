@@ -62,10 +62,11 @@ export class EthEventsProvider {
   private _isHistoricalSyncDone = false;
 
   // Number of blocks to wait before processing an event. This is hardcoded to
-  // 6 for now, because that's the threshold beyond which blocks are unlikely
-  // to reorg anymore. 6 blocks represents ~72 seconds on Goerli, so the delay
-  // is not too long.
-  static numConfirmations = 6;
+  // 3 for now, since we're on testnet and we want to recognize user
+  // registration events as quickly as possible without introducing too much
+  // risk due to block reorganization.
+  // Once we move registration to an L2 this will be less of a concern.
+  static numConfirmations = 3;
 
   // Events are only processed after 6 blocks have been confirmed; poll less
   // frequently while ensuring events are available the moment they are
