@@ -294,44 +294,48 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
   const valueStats = Array.from({ length: 7 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
 
   // Iterate over all the keys in the DB
-  await rocksDB.forEachIterator((key, value) => {
-    allKeys.count++;
-    allKeys.keyBytes += key?.length || 0;
-    allKeys.valueBytes += value?.length || 0;
+  await rocksDB.forEachIterator(
+    (key, value) => {
+      allKeys.count++;
+      allKeys.keyBytes += key?.length || 0;
+      allKeys.valueBytes += value?.length || 0;
 
-    if (key && key.length > 0) {
-      const prefix = key[0] as number;
+      if (key && key.length > 0) {
+        const prefix = key[0] as number;
 
-      if (prefix > 0 && prefix < prefixKeys.length) {
-        (prefixKeys[prefix] as KeysProfile).count++;
-        (prefixKeys[prefix] as KeysProfile).keyBytes += key?.length || 0;
-        (prefixKeys[prefix] as KeysProfile).valueBytes += value?.length || 0;
+        if (prefix > 0 && prefix < prefixKeys.length) {
+          (prefixKeys[prefix] as KeysProfile).count++;
+          (prefixKeys[prefix] as KeysProfile).keyBytes += key?.length || 0;
+          (prefixKeys[prefix] as KeysProfile).valueBytes += value?.length || 0;
 
-        // Further categorize user data into user postfixes
-        if (prefix === RootPrefix.User) {
-          const postfix = key[1 + 4] as number;
+          // Further categorize user data into user postfixes
+          if (prefix === RootPrefix.User) {
+            const postfix = key[1 + 4] as number;
 
-          if (postfix > 0 && postfix < userPostfixKeys.length) {
-            (userPostfixKeys[postfix] as KeysProfile).count++;
-            (userPostfixKeys[postfix] as KeysProfile).keyBytes += key?.length || 0;
-            (userPostfixKeys[postfix] as KeysProfile).valueBytes += value?.length || 0;
+            if (postfix > 0 && postfix < userPostfixKeys.length) {
+              (userPostfixKeys[postfix] as KeysProfile).count++;
+              (userPostfixKeys[postfix] as KeysProfile).keyBytes += key?.length || 0;
+              (userPostfixKeys[postfix] as KeysProfile).valueBytes += value?.length || 0;
 
-            if (postfix <= UserPostfix.UserDataMessage) {
-              (valueStats[postfix] as ValueStats).addValue(value?.length || 0);
+              if (postfix <= UserPostfix.UserDataMessage) {
+                (valueStats[postfix] as ValueStats).addValue(value?.length || 0);
+              }
+            } else {
+              logger.error(`Invalid postfix ${postfix} for key ${key.toString("hex")}`);
             }
-          } else {
-            logger.error(`Invalid postfix ${postfix} for key ${key.toString("hex")}`);
           }
+        } else {
+          logger.error(`Invalid prefix ${prefix} for key ${key.toString("hex")}`);
         }
-      } else {
-        logger.error(`Invalid prefix ${prefix} for key ${key.toString("hex")}`);
       }
-    }
 
-    if (allKeys.count % 1_000_000 === 0) {
-      logger.info(`Read ${formatNumber(allKeys.count)} keys`);
-    }
-  });
+      if (allKeys.count % 1_000_000 === 0) {
+        logger.info(`Read ${formatNumber(allKeys.count)} keys`);
+      }
+    },
+    {},
+    1 * 60 * 60 * 1000, // 1 hour timeout
+  );
 
   logger.info(`RocksDB contains ${allKeys.toString()}`);
 
