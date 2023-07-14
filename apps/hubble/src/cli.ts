@@ -52,9 +52,10 @@ app.name("hub").description("Farcaster Hub").version(APP_VERSION);
 app
   .command("start")
   .description("Start a Hub")
-  .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli Ethereum Node")
-  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node")
-  .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a mainnet Ethereum Node")
+  .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli Ethereum Node (or comma separated list of URLs)")
+  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node (or comma separated list of URLs)")
+  .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a mainnet Ethereum Node (or comma separated list of URLs)")
+  .option("--rank-rpcs", "Rank the RPCs by latency/stability and use the fastest one (default: disabled)")
   .option("-c, --config <filepath>", "Path to a config file with options")
   .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
   .option("--fnr-address <address>", "The address of the Farcaster Name Registry contract")
@@ -315,6 +316,7 @@ app
       ethMainnetRpcUrl: cliOptions.ethMainnetRpcUrl ?? hubConfig.ethMainnetRpcUrl,
       fnameServerUrl: cliOptions.fnameServerUrl ?? hubConfig.fnameServerUrl ?? DEFAULT_FNAME_SERVER_URL,
       l2RpcUrl: cliOptions.l2RpcUrl ?? hubConfig.l2RpcUrl,
+      rankRpcs: cliOptions.rankRpcs ?? hubConfig.rankRpcs ?? false,
       idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
       firstBlock: cliOptions.firstBlock ?? hubConfig.firstBlock,

@@ -13,7 +13,7 @@ import {
   getRentRegistryEventsIterator,
   getStorageAdminRegistryEventsIterator,
 } from "../storage/db/storageRegistryEvent.js";
-import { toBytes } from "viem";
+import { Transport, toBytes } from "viem";
 
 const db = jestRocksDB("protobufs.l2EventsProvider.test");
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
@@ -30,6 +30,42 @@ beforeAll(() => {
 
 afterAll(async () => {
   await engine.stop();
+});
+
+describe("build", () => {
+  test("handles single RPC URL", () => {
+    const l2EventsProvider = L2EventsProvider.build(
+      hub,
+      "http://some-url",
+      false,
+      storageRegistryAddress,
+      1,
+      10000,
+      false,
+    );
+
+    const transports = (l2EventsProvider["_publicClient"].transport as unknown as { transports: Transport[] })
+      .transports;
+
+    expect(transports.length).toBe(1);
+  });
+
+  test("handles multiple RPC URLs", () => {
+    const l2EventsProvider = L2EventsProvider.build(
+      hub,
+      "http://some-url,http://some-other-url",
+      false,
+      storageRegistryAddress,
+      1,
+      10000,
+      false,
+    );
+
+    const transports = (l2EventsProvider["_publicClient"].transport as unknown as { transports: Transport[] })
+      .transports;
+
+    expect(transports.length).toBe(2);
+  });
 });
 
 describe("process events", () => {
