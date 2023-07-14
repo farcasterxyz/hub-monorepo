@@ -10,7 +10,7 @@ import { jestRocksDB } from "../db/jestUtils.js";
 import StorageEventStore from "./storageEventStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
 
-const db = jestRocksDB("protobufs.signerStore.test");
+const db = jestRocksDB("protobufs.storageEventStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new StorageEventStore(db, eventHandler);
 // const signer = Factories.Ed25519Signer.build();

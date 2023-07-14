@@ -56,6 +56,8 @@ import {
 import { sleep } from "../utils/crypto.js";
 import { RentRegistryEventsResponse } from "@farcaster/hub-nodejs";
 
+const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
+
 export type RpcUsers = Map<string, string[]>;
 
 const log = logger.child({ component: "rpcServer" });
@@ -959,9 +961,9 @@ export default class Server {
 
         // If the user wants to start from a specific event, we'll start from there first
         if (this.engine && request.fromId !== undefined && request.fromId >= 0) {
-          const eventsIterator = this.engine.eventHandler.getEventsIterator({ fromId: request.fromId });
-          if (eventsIterator.isErr()) {
-            stream.destroy(eventsIterator.error);
+          const eventsIteratorOpts = this.engine.eventHandler.getEventsIteratorOpts({ fromId: request.fromId });
+          if (eventsIteratorOpts.isErr()) {
+            stream.destroy(eventsIteratorOpts.error);
             return;
           }
 
@@ -970,16 +972,13 @@ export default class Server {
           // is not reading it.
           const timeout = setTimeout(async () => {
             logger.warn(
-              { timeout: 1 * 60 * 60 * 1000, peer: stream.getPeer() },
+              { timeout: HUBEVENTS_READER_TIMEOUT, peer: stream.getPeer() },
               "HubEvents subscribe: timeout, stopping stream",
             );
 
-            // If the iterator throws, it is already closed, so it doesn't matter.
-            await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
-
             const error = new HubError("unavailable.network_failure", `stream timeout for peer: ${stream.getPeer()}`);
             stream.destroy(error);
-          }, 1 * 60 * 60 * 1000);
+          }, HUBEVENTS_READER_TIMEOUT);
 
           // Track our RSS usage, to detect a situation where we're writing a lot of data to the stream,
           // but the client is not reading it. If we detect this, we'll stop writing to the stream.
@@ -988,49 +987,49 @@ export default class Server {
           const rssUsage = process.memoryUsage().rss;
           const RSS_USAGE_THRESHOLD = 1_000_000_000; // 1G
 
-          for await (const [, value] of eventsIterator.value) {
-            const event = HubEvent.decode(Uint8Array.from(value as Buffer));
-            if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
-              const writeResult = bufferedStreamWriter.writeToStream(event);
+          await this.engine.getDb().forEachIterator(
+            async (_key, value) => {
+              const event = HubEvent.decode(Uint8Array.from(value as Buffer));
+              if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
+                const writeResult = bufferedStreamWriter.writeToStream(event);
 
-              if (writeResult.isErr()) {
-                logger.warn(
-                  { err: writeResult.error },
-                  `subscribe: failed to write to stream while returning events ${request.fromId}`,
-                );
-
-                // If the iterator throws, it is already closed, so it doesn't matter.
-                await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
-
-                return;
-              } else {
-                if (writeResult.value === false) {
-                  // If the stream was buffered, we can wait for a bit before continuing
-                  // to allow the client to read the data. If this happens too much, the bufferedStreamWriter
-                  // will timeout and destroy the stream.
-                  // The buffered writer is not async to make it easier to preserve ordering guarantees. So, we sleep here
-                  await sleep(SLOW_CLIENT_GRACE_PERIOD_MS / STREAM_MESSAGE_BUFFER_SIZE);
-                }
-
-                // Write was successful, check the RSS usage
-                if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
-                  // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
-                  // We'll destroy the stream.
-                  const error = new HubError(
-                    "unavailable.network_failure",
-                    `stream memory usage too much for peer: ${stream.getPeer()}`,
+                if (writeResult.isErr()) {
+                  logger.warn(
+                    { err: writeResult.error },
+                    `subscribe: failed to write to stream while returning events ${request.fromId}`,
                   );
-                  logger.error({ errCode: error.errCode }, error.message);
-                  stream.destroy(error);
 
-                  // If the iterator throws, it is already closed, so it doesn't matter.
-                  await ResultAsync.fromPromise(eventsIterator.value.end(), (e) => e as Error);
+                  return true;
+                } else {
+                  if (writeResult.value === false) {
+                    // If the stream was buffered, we can wait for a bit before continuing
+                    // to allow the client to read the data. If this happens too much, the bufferedStreamWriter
+                    // will timeout and destroy the stream.
+                    // The buffered writer is not async to make it easier to preserve ordering guarantees. So, we sleep here
+                    await sleep(SLOW_CLIENT_GRACE_PERIOD_MS / STREAM_MESSAGE_BUFFER_SIZE);
+                  }
 
-                  return;
+                  // Write was successful, check the RSS usage
+                  if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
+                    // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
+                    // We'll destroy the stream.
+                    const error = new HubError(
+                      "unavailable.network_failure",
+                      `stream memory usage too much for peer: ${stream.getPeer()}`,
+                    );
+                    logger.error({ errCode: error.errCode }, error.message);
+                    stream.destroy(error);
+
+                    return true;
+                  }
                 }
               }
-            }
-          }
+
+              return false;
+            },
+            eventsIteratorOpts.value,
+            HUBEVENTS_READER_TIMEOUT,
+          );
 
           // If we reach here, the iterator has ended, so we'll clear the timeout
           clearTimeout(timeout);

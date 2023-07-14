@@ -19,6 +19,7 @@ import {
   RevokeMessageHubEvent,
   MessageType,
 } from "@farcaster/hub-nodejs";
+import AbstractRocksDB from "@farcaster/rocksdb";
 import AsyncLock from "async-lock";
 import { err, ok, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
@@ -207,25 +208,29 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return result.map((buffer) => HubEvent.decode(new Uint8Array(buffer as Buffer)));
   }
 
-  getEventsIterator(options: { fromId?: number | undefined; toId?: number | undefined } = {}): HubResult<Iterator> {
+  getEventsIteratorOpts(
+    options: { fromId?: number | undefined; toId?: number | undefined } = {},
+  ): HubResult<AbstractRocksDB.IteratorOptions> {
     const minKey = makeEventKey(options.fromId);
     const maxKey = options.toId ? ok(makeEventKey(options.toId)) : bytesIncrement(Uint8Array.from(makeEventKey()));
     if (maxKey.isErr()) {
       return err(maxKey.error);
     }
-    return ok(this._db.iterator({ gte: minKey, lt: Buffer.from(maxKey.value) }));
+    return ok({ gte: minKey, lt: Buffer.from(maxKey.value) });
   }
 
   async getEvents(fromId?: number): HubAsyncResult<HubEvent[]> {
     const events: HubEvent[] = [];
-    const iterator = this.getEventsIterator({ fromId });
-    if (iterator.isErr()) {
-      return err(iterator.error);
+    const iteratorOpts = this.getEventsIteratorOpts({ fromId });
+    if (iteratorOpts.isErr()) {
+      return err(iteratorOpts.error);
     }
-    for await (const [, value] of iterator.value) {
+
+    await this._db.forEachIterator((_key, value) => {
       const event = HubEvent.decode(Uint8Array.from(value as Buffer));
       events.push(event);
-    }
+    }, iteratorOpts.value);
+
     return ok(events);
   }
 
@@ -303,21 +308,25 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
     const toId = makeEventId(Date.now() - FARCASTER_EPOCH - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
 
-    const iterator = this.getEventsIterator({ toId });
+    const iteratorOpts = this.getEventsIteratorOpts({ toId });
 
-    if (iterator.isErr()) {
-      return err(iterator.error);
+    if (iteratorOpts.isErr()) {
+      return err(iteratorOpts.error);
     }
 
-    for await (const [key] of iterator.value) {
+    const result = await this._db.forEachIterator(async (key, _value) => {
       const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
       if (result.isErr()) {
-        await iterator.value.end();
         return err(result.error);
       }
-    }
+      return false;
+    }, iteratorOpts.value);
 
-    return ok(undefined);
+    if (result) {
+      return err(result.error);
+    } else {
+      return ok(undefined);
+    }
   }
 
   private broadcastEvent(event: HubEvent): HubResult<void> {

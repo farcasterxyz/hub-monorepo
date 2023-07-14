@@ -279,9 +279,6 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
 
 // Main function to print the usage profile of the DB
 export async function profileStorageUsed(rocksDB: RocksDB) {
-  // Iterate over all the keys in the DB
-  const iterator = rocksDB.iterator();
-
   const allKeys = new KeysProfile("All Keys");
   const prefixKeys = Array.from(
     { length: getMaxValue(RootPrefix) + 1 },
@@ -296,7 +293,8 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
   // Caclulate the individual message sizes
   const valueStats = Array.from({ length: 7 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
 
-  for await (const [key, value] of iterator) {
+  // Iterate over all the keys in the DB
+  await rocksDB.forEachIterator((key, value) => {
     allKeys.count++;
     allKeys.keyBytes += key?.length || 0;
     allKeys.valueBytes += value?.length || 0;
@@ -333,7 +331,7 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
     if (allKeys.count % 1_000_000 === 0) {
       logger.info(`Read ${formatNumber(allKeys.count)} keys`);
     }
-  }
+  });
 
   logger.info(`RocksDB contains ${allKeys.toString()}`);
 
