@@ -2843,11 +2843,6 @@ aes-js@3.0.0:
   resolved "https://registry.npmjs.org/aes-js/-/aes-js-3.0.0.tgz#e21df10ad6c2053295bcbb8dab40b09dbea87e4d"
   integrity sha512-H7wUZRn8WpTq9jocdxQ2c8x2sKo9ZVmzfRE13GiNJXfp7NcKYEdvl3vspKjXox6RIG2VtaRe4JFvxG4rqp2Zuw==
 
-aes-js@4.0.0-beta.3:
-  version "4.0.0-beta.3"
-  resolved "https://registry.npmjs.org/aes-js/-/aes-js-4.0.0-beta.3.tgz#da2253f0ff03a0b3a9e445c8cbdf78e7fda7d48c"
-  integrity sha512-/xJX0/VTPcbc5xQE2VUP91y1xN8q/rDfhEzLm+vLc3hYvb5+qHCnpJRuFcrKn63zumK/sCwYYzhG8HP78JYSTA==
-
 aes-js@4.0.0-beta.5:
   version "4.0.0-beta.5"
   resolved "https://registry.npmjs.org/aes-js/-/aes-js-4.0.0-beta.5.tgz#8d2452c52adedebc3a3e28465d858c11ca315873"
@@ -4223,18 +4218,6 @@ ethers@^6.6.1:
     "@noble/secp256k1" "1.7.1"
     "@types/node" "18.15.13"
     aes-js "4.0.0-beta.5"
-    tslib "2.4.0"
-    ws "8.5.0"
-
-ethers@~6.2.1:
-  version "6.2.1"
-  resolved "https://registry.npmjs.org/ethers/-/ethers-6.2.1.tgz#3ba2c4ff02e6131828bd8b6bfa0885d112bd43b4"
-  integrity sha512-bwDC1A6a0NlokpjzYGnKSVo68eBNsTRdzN0nHgmpTsvowEuRDHorhMiFg/tx/7WMl2bGESfABsfH0MPZUp+EJQ==
-  dependencies:
-    "@adraffy/ens-normalize" "1.9.0"
-    "@noble/hashes" "1.1.2"
-    "@noble/secp256k1" "1.7.1"
-    aes-js "4.0.0-beta.3"
     tslib "2.4.0"
     ws "8.5.0"
 
