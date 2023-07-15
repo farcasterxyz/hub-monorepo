@@ -20,6 +20,7 @@ export const MAINNET_ALLOWED_PEERS = [
   // "12D3KooWRxgeFVLTAxeVgj4QHPzuT6HaV3Hj93LNZQeRi7gAwUVk", // @stout (Add back once version updated to 1.3.3 or newer)
   "12D3KooWSii9GJheDmFRBzii43fpzvb3WkmPn62QSoJ8MjvGKMxr", // @mp
   "12D3KooWQ76P8kBUvjNx2Q8EpYDL1BsqXdqZmAkHzTxE1uruuwRd", // @brianjckim
+  "12D3KooWMZFw3bxWbU3RghVfr4yWHFZc8p5gymTkTaJqgqJ2EJ4r", // raei.eth
   "12D3KooWRrFF356RALgsPwQQpg68reJL2y94VwKZFogUkM9der1V", // @lndnnft
   "12D3KooWAr5LEwhSU1vNsgBQhkrLxZUKspag2CrwH5AYWu451Auj", // @withportals Shared Hub 1 (@lndnnft)
   "12D3KooWAPgyKfRPYXfJvUa2YmW1ZnFCs4Sx1m9WmEKxNn8mEXkJ", // @withportals Shared Hub 2 (@lndnnft)
