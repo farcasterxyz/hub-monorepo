@@ -11,3 +11,8 @@ services:
     volumes:
       - ./.hub:/home/node/app/apps/hubble/.hub
       - ./.rocks:/home/node/app/apps/hubble/.rocks
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1g"
+        max-file: "2"
