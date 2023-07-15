@@ -1,5 +1,16 @@
 # @farcaster/hub-web
 
+## 0.5.0
+
+### Minor Changes
+
+- 2391c3a5: Adds support for storage events
+
+### Patch Changes
+
+- Updated dependencies [2391c3a5]
+  - @farcaster/core@0.11.0
+
 ## 0.4.2
 
 ### Patch Changes

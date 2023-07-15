@@ -1,5 +1,22 @@
 # @farcaster/hubble
 
+## 1.4.1
+
+### Minor Changes
+
+- 2391c3a5: Adds support for storage events
+- 15d43931: feat: support fallback RPC providers
+- 3dfc29de: fix: throw error if unable to fetch fname server signature
+- 71558f87: Reduce number of confirmations for ETH blocks from 6 to 3
+- 8d0d87dc: Add support for direct peering
+- f179dd6a: fix: Add managed iterator that will close the iterator under all conditions
+- 6042e957: fix: only revoke the username if the nameproof matches
+- 728a557a: Adjust chunk size to 1000 from 10000
+- a0dbfbd8: perf: Improve incremental sync performance
+- Updated dependencies [57235761]
+- Updated dependencies [2391c3a5]
+  - @farcaster/hub-nodejs@0.9.0
+
 ## 1.4.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.11.0
+
+### Minor Changes
+
+- 2391c3a5: Adds support for storage events
+
 ## 0.10.2
 
 ### Patch Changes
