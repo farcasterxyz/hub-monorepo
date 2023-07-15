@@ -1,13 +1,22 @@
-# Hub Monorepo
+# Hubble Monorepo
 
-A monorepo codebase that implements the [Farcaster Hub specification](https://github.com/farcasterxyz/protocol#4-hubs) in Typescript and Protocol Buffers.
+This monorepo contains Hubble, an official Farcaster Hub implementation, and other packages used to communicate with Hubble.
+
+
+## Getting Started
+
+1. To run Hubble, see the [Hubble docs](https://www.thehubble.xyz/).
+1. To use Hubble, see the [hub-nodejs docs](./packages/hub-nodejs/docs/README.md).
+
+## Packages
 
 | Package Name                                  | Description                                                                    |
 | --------------------------------------------- | ------------------------------------------------------------------------------ |
-| [@farcaster/hubble](./apps/hubble)             | A Hub, which can be run as a stand-alone application.                          |
-| [@farcaster/core](./packages/core)             | Protobuf definitions and shared utility functions.                             |
-| [@farcaster/hub-nodejs](./packages/hub-nodejs) | Node.js package exporting `@farcaster/core` and gRPC client implementation     |
-| [@farcaster/hub-web](./packages/hub-web)      | Browser package exporting `@farcaster/core` and gRPC-Web client implementation |
+| [@farcaster/hubble](./apps/hubble)             | A Farcaster Hub implementation |
+| [@farcaster/hub-nodejs](./packages/hub-nodejs) | A Node.js client library for Hubble |
+| [@farcaster/hub-web](./packages/hub-web)       | A Browser client library for Hubble |
+| [@farcaster/core](./packages/core)             | Shared code between all packages |
+
 
 ## Contributing
 
