@@ -8,18 +8,18 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /intro/introduction
+      link: /intro/hubble
     - theme: alt
       text: See on Github
-      link: https://github.com/farcasterxyz/hub-monorepo/
+      link: https://github.com/farcasterxyz/hub-monorepo/tree/main/apps/hubble
 
 features:
   - icon: 🌍
-    title: Fast Setup
-    details: Get Hubble running in the cloud of your choice in under 5 minutes with our docker image.
+    title: Fast
+    details: Get Hubble set up in under 30 minutes with our docker image.
   - icon: 🏎️
     title: Powerful
-    details: Hubble can sync the entire Farcaster network to your server in a couple of hours. 
+    details: Sync the entire Farcaster network to your server in a few hours. 
   - icon: 📖
     title: Open Source
     details: Hubble is built in public by and MIT licensed. Contributions of all kinds are welcome.

@@ -5,32 +5,27 @@ export default defineConfig({
   title: "Hubble",
   description: "Documentation for Hubble",
   themeConfig: {
-    nav: [
-      { text: "Home", link: "/" },
-      { text: "Examples", link: "/developers/examples" },
-    ],
+    nav: [{ text: "Home", link: "/" }],
     search: {
       provider: "local",
     },
     sidebar: [
       {
-        text: "Introduction",
-        items: [{ text: "Introduction", link: "/intro/introduction" }],
-      },
-      {
-        text: "Installation",
+        text: "Get Started",
         items: [
-          { text: "Docker", link: "/installation/docker" },
-          { text: "From Source", link: "/installation/source" },
-          { text: "Upgrading", link: "/installation/upgrades" },
+          { text: "Hubble", link: "/intro/hubble" },
+          { text: "Installation", link: "/intro/install" },
+          { text: "Networks", link: "/intro/networks" },
+          { text: "Tutorials", link: "/intro/tutorials" },
         ],
       },
       {
-        text: "Syncing",
+        text: "Documentation",
         items: [
-          { text: "Mainnet", link: "/syncing/mainnet" },
-          { text: "Testnet", link: "/syncing/testnet" },
-          { text: "Troubleshooting", link: "/syncing/troubleshooting" },
+          { text: "CLI", link: "/docs/cli" },
+          { text: "APIs", link: "/docs/api" },
+          { text: "Messages", link: "/docs/messages" },
+          { text: "Architecture", link: "/docs/architecture" },
         ],
       },
     ],
