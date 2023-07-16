@@ -31,10 +31,10 @@ docker compose run hubble yarn identity create
 
 ```bash
 # Set to to your L1 Goerli ETH RPC URL
-ETH_RPC_URL=your-ETH-RPC-URL
+ETH_L1_GOERLI_RPC_URL=your-ETH-RPC-URL
 
 # Set this to you L1 Mainnet ETH RPC URL
-ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
+ETH_L1_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
 ```
 
 5. Follow the instructions to set [connect to a network](./networks.md).
@@ -80,7 +80,7 @@ docker compose exec hubble
 
 - If upgrading from a non-docker deployment, make sure `.hub` and `.rocks` directories are writable for all users.
 
-- If upgrading from 1.3.3 or below, please set `ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL` (if using docker) or provide the `--eth-mainnet-rpc-url` flag (if not using docker)
+- If upgrading from 1.3.3 or below, please set `ETH_L1_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL` (if using docker) or provide the `--eth-mainnet-rpc-url` flag (if not using docker)
 
 - If you're changing your Hub from one network to another, you'll need to reset your database with:  
 
