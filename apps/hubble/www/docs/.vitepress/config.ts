@@ -4,6 +4,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "Hubble",
   description: "Documentation for Hubble",
+  head: [["script", { src: "/_vercel/insights/script.js", defer: "true" }]],
   themeConfig: {
     nav: [{ text: "Home", link: "/" }],
     search: {
