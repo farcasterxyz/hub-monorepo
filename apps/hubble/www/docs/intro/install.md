@@ -52,6 +52,7 @@ Docker compose will start a Hubble container that exposes ports for networking a
 Navigate to `apps/hubble` in hub-monorepo and run: 
 
 ```bash
+ git checkout main && git pull
 docker compose stop && docker compose up -d --force-recreate --pull always
 ```
 
