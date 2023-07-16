@@ -1,5 +1,9 @@
 # @farcaster/hubble
 
+## 1.4.2
+
+- 1d9c34af: Testnet should not require allow listed peers
+
 ## 1.4.1
 
 ### Minor Changes
