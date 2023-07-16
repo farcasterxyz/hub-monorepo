@@ -98,7 +98,9 @@ All changes that involve features or bugfixes should be accompanied by tests, an
 
 ### 3.2 Writing Docs
 
-All changes should have supporting documentation that makes reviewing and understanding the code easy. You should:
+If your PR has changes to gRPC or protobuf files, you must update the [public documentation website](./apps/hubble/www/). See the [Protobuf README](./protobufs/README.md) for instructions on how to auto-gen the documentation.
+
+All PR's should have supporting documentation that makes reviewing and understanding the code easy. You should:
 
 - Update high-level changes in the [contract docs](docs/docs.md).
 - Always use TSDoc style comments for functions, variables, constants, events and params.
