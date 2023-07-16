@@ -25,34 +25,47 @@ Usage: yarn start [options]
 
 Start a Hub
 
-Options:
-  -e, --eth-rpc-url <url>               RPC URL of a Goerli Ethereum Node
-  -c, --config <filepath>               Path to a config file with options
-  --fir-address <address>               The address of the Farcaster ID Registry contract
-  --fnr-address <address>               The address of the Farcaster Name Registry contract
-  --first-block <number>                The block number to begin syncing events from Farcaster contracts
-  --fname-server-url <url>              The URL for the FName registry server
-  --chunk-size <number>                 The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)
-  -b, --bootstrap <peer-multiaddrs...>  A list of peer multiaddrs to bootstrap libp2p
-  -a, --allowed-peers <peerIds...>      An allow-list of peer ids permitted to connect to the hub
-  --ip <ip-address>                     The IP address libp2p should listen on. (default: "127.0.0.1")
-  --announce-ip <ip-address>            The IP address libp2p should announce to other peers. If not provided, the IP address will be fetched from an external service
-  --announce-server-name <name>         The name of the server to announce to peers. This is useful if you have SSL/TLS enabled. (default: "none")
-  -g, --gossip-port <port>              The tcp port libp2p should gossip over. (default: 2282)
-  -r, --rpc-port <port>                 The tcp port that the rpc server should listen on.  (default: 2283)
-  --rpc-auth <username:password,...>    Enable Auth for RPC submit methods with the username and password. (default: disabled)
-  --rpc-rate-limit <number>             Impose a Per IP rate limit per minute. Set to -1 for no rate limits (default: 20k/min)
+Hubble Options:
+  -n --network <network>                ID of the Farcaster Network (default: 3 (devnet))
+  -i, --id <filepath>                   Path to the PeerId file.
+  -c, --config <filepath>               Path to the config file.
+  --db-name <name>                      The name of the RocksDB instance. (default: rocks.hub._default)
   --admin-server-enabled                Enable the admin server. (default: disabled)
   --admin-server-host <host>            The host the admin server should listen on. (default: '127.0.0.1')
-  --db-name <name>                      The name of the RocksDB instance
-  --rebuild-sync-trie                   Rebuilds the sync trie before starting
-  --resync-eth-events                   Resyncs events from the Farcaster contracts before starting
-  --resync-name-events                  Resyncs events from the FName registry server before starting
-  --commit-lock-timeout <number>        Commit lock timeout in milliseconds (default: 500)
-  --commit-lock-max-pending <number>    Commit lock max pending jobs (default: 1000)
-  -i, --id <filepath>                   Path to the PeerId file
-  -n --network <network>                Farcaster network ID
   --process-file-prefix <prefix>        Prefix for file to which hub process number is written. (default: "")
+
+Ethereum Options:
+  -m, --eth-mainnet-rpc-url <url>       RPC URL of a Mainnet ETH Node (or comma separated list of URLs)
+  -e, --eth-rpc-url <url>               RPC URL of a Goerli ETH Node (or comma separated list of URLs)
+  -l, --l2-rpc-url <url>                RPC URL of a Goerli Optimism Node (or comma separated list of URLs)
+  --rank-rpcs                           Rank the RPCs by latency/stability and use the fastest one (default: disabled)
+  --fname-server-url <url>              The URL for the FName registry server (default: https://fnames.farcaster.xyz
+  --fir-address <address>               The address of the Farcaster ID Registry contract
+  --first-block <number>                The block number to begin syncing events from Farcaster contracts
+
+Networking Options:
+  -a, --allowed-peers <peerIds...>      Only peer with specific peer ids. (default: all peers allowed)
+  -b, --bootstrap <peer-multiaddrs...>  Peers to bootstrap gossip and sync from. (default: none)
+  -g, --gossip-port <port>              Port to use for gossip (default: 2282)
+  -r, --rpc-port <port>                 Port to use for gRPC  (default: 2283)
+  --ip <ip-address>                     IP address to listen on (default: "127.0.0.1")
+  --announce-ip <ip-address>            Public IP address announced to peers (default: fetched with external service)
+  --announce-server-name <name>         Server name announced to peers, useful if SSL/TLS enabled. (default: "none")
+  --direct-peers <peer-multiaddrs...>   A list of peers for libp2p to directly peer with (default: [])
+  --rpc-rate-limit <number>             RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)
+
+Debugging Options:
+  --gossip-metrics-enabled              Generate tracing and metrics for the gossip network. (default: disabled)
+  --profile-sync                        Profile a full hub sync and exit. (default: disabled)
+  --rebuild-sync-trie                   Rebuild the sync trie before starting (default: disabled)
+  --resync-eth-events                   Resync events from the Farcaster contracts before starting (default: disabled)
+  --resync-name-events                  Resync events from the Fname server before starting (default: disabled)
+  --chunk-size <number>                 The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)
+  --commit-lock-timeout <number>        Rocks DB commit lock timeout in milliseconds (default: 500)
+  --commit-lock-max-pending <number>    Rocks DB commit lock max pending jobs (default: 1000)
+  --rpc-auth <username:password,...>    Require username-password auth for RPC submit. (default: disabled)
+
+  --fnr-address <address>               The address of the Farcaster Name Registry contract
   -h, --help                            display help for command
   ```
 

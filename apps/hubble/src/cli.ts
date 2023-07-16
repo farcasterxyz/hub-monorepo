@@ -51,58 +51,67 @@ const parseNumber = (string: string) => {
 const app = new Command();
 app.name("hub").description("Farcaster Hub").version(APP_VERSION);
 
+/*//////////////////////////////////////////////////////////////
+                          START COMMAND
+//////////////////////////////////////////////////////////////*/
+
 app
   .command("start")
   .description("Start a Hub")
-  .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli Ethereum Node (or comma separated list of URLs)")
-  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node (or comma separated list of URLs)")
-  .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a mainnet Ethereum Node (or comma separated list of URLs)")
-  .option("--rank-rpcs", "Rank the RPCs by latency/stability and use the fastest one (default: disabled)")
-  .option("-c, --config <filepath>", "Path to a config file with options")
-  .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
-  .option("--fnr-address <address>", "The address of the Farcaster Name Registry contract")
-  .option("--first-block <number>", "The block number to begin syncing events from Farcaster contracts", parseNumber)
-  .option("--fname-server-url <url>", "The URL for the FName registry server")
-  .option(
-    "--chunk-size <number>",
-    "The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)",
-    parseNumber,
-  )
-  .option("-b, --bootstrap <peer-multiaddrs...>", "A list of peer multiaddrs to bootstrap libp2p")
-  .option("-a, --allowed-peers <peerIds...>", "An allow-list of peer ids permitted to connect to the hub")
-  .option("--ip <ip-address>", 'The IP address libp2p should listen on. (default: "127.0.0.1")')
-  .option(
-    "--announce-ip <ip-address>",
-    "The IP address libp2p should announce to other peers. If not provided, the IP address will be fetched from an external service",
-  )
-  .option(
-    "--announce-server-name <name>",
-    'The name of the server to announce to peers. This is useful if you have SSL/TLS enabled. (default: "none")',
-  )
-  .option("-g, --gossip-port <port>", "The tcp port libp2p should gossip over. (default: 2282)")
-  .option("-r, --rpc-port <port>", "The tcp port that the rpc server should listen on.  (default: 2283)")
-  .option(
-    "--rpc-auth <username:password,...>",
-    "Enable Auth for RPC submit methods with the username and password. (default: disabled)",
-  )
-  .option(
-    "--rpc-rate-limit <number>",
-    "Impose a Per IP rate limit per minute. Set to -1 for no rate limits (default: 20k/min)",
-  )
+
+  // Hubble Options
+  .option("-n --network <network>", "ID of the Farcaster Network (default: 3 (devnet))", parseNetwork)
+  .option("-i, --id <filepath>", "Path to the PeerId file.")
+  .option("-c, --config <filepath>", "Path to the config file.")
+  .option("--db-name <name>", "The name of the RocksDB instance. (default: rocks.hub._default)")
   .option("--admin-server-enabled", "Enable the admin server. (default: disabled)")
   .option("--admin-server-host <host>", "The host the admin server should listen on. (default: '127.0.0.1')")
-  .option("--db-name <name>", "The name of the RocksDB instance")
-  .option("--profile-sync", "Profile the sync. Will sync the node and exit. (default: disabled)")
-  .option("--rebuild-sync-trie", "Rebuilds the sync trie before starting")
-  .option("--resync-eth-events", "Resyncs events from the Farcaster contracts before starting")
-  .option("--resync-name-events", "Resyncs events from the FName registry server before starting")
-  .option("--commit-lock-timeout <number>", "Commit lock timeout in milliseconds (default: 500)", parseNumber)
-  .option("--commit-lock-max-pending <number>", "Commit lock max pending jobs (default: 1000)", parseNumber)
-  .option("-i, --id <filepath>", "Path to the PeerId file")
-  .option("-n --network <network>", "Farcaster network ID", parseNetwork)
-  .option("--gossip-metrics-enabled", "Enable gossip network tracing and metrics. (default: disabled)")
   .option("--process-file-prefix <prefix>", 'Prefix for file to which hub process number is written. (default: "")')
+
+  // Ethereum Options
+  .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a Mainnet ETH Node (or comma separated list of URLs)")
+  .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli ETH Node (or comma separated list of URLs)")
+  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node (or comma separated list of URLs)")
+  .option("--rank-rpcs", "Rank the RPCs by latency/stability and use the fastest one (default: disabled)")
+  .option("--fname-server-url <url>", `The URL for the FName registry server (default: ${DEFAULT_FNAME_SERVER_URL}`)
+  .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
+  .option("--first-block <number>", "The block number to begin syncing events from Farcaster contracts", parseNumber)
+
+  // Networking Options
+  .option("-a, --allowed-peers <peerIds...>", "Only peer with specific peer ids. (default: all peers allowed)")
+  .option("-b, --bootstrap <peer-multiaddrs...>", "Peers to bootstrap gossip and sync from. (default: none)")
+  .option("-g, --gossip-port <port>", `Port to use for gossip (default: ${DEFAULT_GOSSIP_PORT})`)
+  .option("-r, --rpc-port <port>", `Port to use for gRPC  (default: ${DEFAULT_RPC_PORT})`)
+  .option("--ip <ip-address>", 'IP address to listen on (default: "127.0.0.1")')
+  .option("--announce-ip <ip-address>", "Public IP address announced to peers (default: fetched with external service)")
+  .option(
+    "--announce-server-name <name>",
+    'Server name announced to peers, useful if SSL/TLS enabled. (default: "none")',
+  )
   .option("--direct-peers <peer-multiaddrs...>", "A list of peers for libp2p to directly peer with (default: [])")
+  .option(
+    "--rpc-rate-limit <number>",
+    "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
+  )
+
+  // Debugging options
+  .option("--gossip-metrics-enabled", "Generate tracing and metrics for the gossip network. (default: disabled)")
+  .option("--profile-sync", "Profile a full hub sync and exit. (default: disabled)")
+  .option("--rebuild-sync-trie", "Rebuild the sync trie before starting (default: disabled)")
+  .option("--resync-eth-events", "Resync events from the Farcaster contracts before starting (default: disabled)")
+  .option("--resync-name-events", "Resync events from the Fname server before starting (default: disabled)")
+  .option(
+    "--chunk-size <number>",
+    `The number of blocks to batch when syncing historical events from Farcaster contracts. (default: ${DEFAULT_CHUNK_SIZE})`,
+    parseNumber,
+  )
+  .option("--commit-lock-timeout <number>", "Rocks DB commit lock timeout in milliseconds (default: 500)", parseNumber)
+  .option("--commit-lock-max-pending <number>", "Rocks DB commit lock max pending jobs (default: 1000)", parseNumber)
+  .option("--rpc-auth <username:password,...>", "Require username-password auth for RPC submit. (default: disabled)")
+
+  // To be deprecated
+  .option("--fnr-address <address>", "The address of the Farcaster Name Registry contract")
+
   .action(async (cliOptions) => {
     const teardown = async (hub: Hub) => {
       await hub.stop();
@@ -424,6 +433,10 @@ app
     });
   });
 
+/*//////////////////////////////////////////////////////////////
+                        IDENTITY COMMAND
+//////////////////////////////////////////////////////////////*/
+
 /** Write a given PeerId to a file */
 const writePeerId = async (peerId: PeerId, filepath: string) => {
   const directory = dirname(filepath);
@@ -447,7 +460,7 @@ const createIdCommand = new Command("create")
   .description(
     "Create a new peerId and write it to a file.\n\nNote: This command will always overwrite the default PeerId file.",
   )
-  .option("-O, --output <directory>", "Path to where the generated PeerId/s should be stored", DEFAULT_PEER_ID_DIR)
+  .option("-O, --output <directory>", "Path to where the generated PeerIds should be stored", DEFAULT_PEER_ID_DIR)
   .option("-N, --count <number>", "Number of PeerIds to generate", parseNumber, 1)
   .action(async (options) => {
     for (let i = 0; i < options.count; i++) {
@@ -462,40 +475,6 @@ const createIdCommand = new Command("create")
       await writePeerId(peerId, resolve(path));
     }
 
-    exit(0);
-  });
-
-app
-  .command("dbreset")
-  .description("Completely remove the database")
-  .option("--db-name <name>", "The name of the RocksDB instance")
-  .option("-c, --config <filepath>", "Path to a config file with options")
-  .action(async (cliOptions) => {
-    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
-    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
-
-    if (!rocksDBName) throw new Error("No RocksDB name provided.");
-
-    const rocksDB = new RocksDB(rocksDBName);
-    const fallback = () => {
-      fs.rmSync(rocksDB.location, { recursive: true, force: true });
-    };
-
-    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
-    if (dbResult.isErr()) {
-      logger.warn({ rocksDBName }, "Failed to open RocksDB, falling back to rm");
-      fallback();
-    } else {
-      const clearResult = await ResultAsync.fromPromise(rocksDB.clear(), (e) => e as Error);
-      if (clearResult.isErr()) {
-        logger.warn({ rocksDBName }, "Failed to open RocksDB, falling back to rm");
-        fallback();
-      }
-
-      await rocksDB.close();
-    }
-
-    logger.info({ rocksDBName }, "Database cleared.");
     exit(0);
   });
 
@@ -514,28 +493,9 @@ app
   .addCommand(createIdCommand)
   .addCommand(verifyIdCommand);
 
-const storageProfileCommand = new Command("storage")
-  .description("Profile the storage layout of the hub, accounting for all the storage")
-  .option("--db-name <name>", "The name of the RocksDB instance")
-  .option("-c, --config <filepath>", "Path to a config file with options")
-  .action(async (cliOptions) => {
-    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
-    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
-    const rocksDB = new RocksDB(rocksDBName);
-
-    if (!rocksDBName) throw new Error("No RocksDB name provided.");
-    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
-    if (dbResult.isErr()) {
-      logger.warn({ rocksDBName }, "Failed to open RocksDB. The Hub needs to be stopped to run this command.");
-    } else {
-      await profileStorageUsed(rocksDB);
-    }
-
-    await rocksDB.close();
-    exit(0);
-  });
-
-app.command("profile").description("Profile various resources used by the hub").addCommand(storageProfileCommand);
+/*//////////////////////////////////////////////////////////////
+                          STATUS COMMAND
+//////////////////////////////////////////////////////////////*/
 
 app
   .command("status")
@@ -611,6 +571,75 @@ app
     }
     exit(0);
   });
+
+/*//////////////////////////////////////////////////////////////
+                          PROFILE COMMAND
+//////////////////////////////////////////////////////////////*/
+
+const storageProfileCommand = new Command("storage")
+  .description("Profile the storage layout of the hub, accounting for all the storage")
+  .option("--db-name <name>", "The name of the RocksDB instance")
+  .option("-c, --config <filepath>", "Path to a config file with options")
+  .action(async (cliOptions) => {
+    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
+    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
+    const rocksDB = new RocksDB(rocksDBName);
+
+    if (!rocksDBName) throw new Error("No RocksDB name provided.");
+    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
+    if (dbResult.isErr()) {
+      logger.warn({ rocksDBName }, "Failed to open RocksDB. The Hub needs to be stopped to run this command.");
+    } else {
+      await profileStorageUsed(rocksDB);
+    }
+
+    await rocksDB.close();
+    exit(0);
+  });
+
+app.command("profile").description("Profile various resources used by the hub").addCommand(storageProfileCommand);
+
+/*//////////////////////////////////////////////////////////////
+                          DBRESET COMMAND
+//////////////////////////////////////////////////////////////*/
+
+app
+  .command("dbreset")
+  .description("Completely remove the database")
+  .option("--db-name <name>", "The name of the RocksDB instance")
+  .option("-c, --config <filepath>", "Path to a config file with options")
+  .action(async (cliOptions) => {
+    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
+    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
+
+    if (!rocksDBName) throw new Error("No RocksDB name provided.");
+
+    const rocksDB = new RocksDB(rocksDBName);
+    const fallback = () => {
+      fs.rmSync(rocksDB.location, { recursive: true, force: true });
+    };
+
+    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
+    if (dbResult.isErr()) {
+      logger.warn({ rocksDBName }, "Failed to open RocksDB, falling back to rm");
+      fallback();
+    } else {
+      const clearResult = await ResultAsync.fromPromise(rocksDB.clear(), (e) => e as Error);
+      if (clearResult.isErr()) {
+        logger.warn({ rocksDBName }, "Failed to open RocksDB, falling back to rm");
+        fallback();
+      }
+
+      await rocksDB.close();
+    }
+
+    logger.info({ rocksDBName }, "Database cleared.");
+    exit(0);
+  });
+
+/*//////////////////////////////////////////////////////////////
+                          CONSOLE COMMAND
+//////////////////////////////////////////////////////////////*/
 
 app
   .command("console")
