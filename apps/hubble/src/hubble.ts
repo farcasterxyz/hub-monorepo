@@ -247,7 +247,7 @@ export class Hub implements HubInterface {
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
-  private allowedPeerIds: string[] = [];
+  private allowedPeerIds: string[] | undefined;
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -417,7 +417,7 @@ export class Hub implements HubInterface {
     //   );
     // }
 
-    this.allowedPeerIds = this.options.allowedPeers || [];
+    this.allowedPeerIds = this.options.allowedPeers;
     if (this.options.network === FarcasterNetwork.MAINNET) {
       // Mainnet is right now resitrcited to a few peers
       // Append and de-dup the allowed peers
