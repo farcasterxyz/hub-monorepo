@@ -80,8 +80,6 @@
 
 ### NameRegistryEvent
 
-
-
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | block_number | [uint32](#uint32) |  |  |
@@ -95,6 +93,19 @@
 | expiry | [uint32](#uint32) |  |  |
 
 
+<a name="-NameRegistryEventType"></a>
+
+### NameRegistryEventType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NAME_REGISTRY_EVENT_TYPE_NONE | 0 |  |
+| NAME_REGISTRY_EVENT_TYPE_TRANSFER | 1 |  |
+| NAME_REGISTRY_EVENT_TYPE_RENEW | 2 |  |
+
+
+ 
 
 <a name="-MergeRentRegistryEventBody"></a>
 

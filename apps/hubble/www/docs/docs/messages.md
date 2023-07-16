@@ -25,7 +25,7 @@ A MessageData object contains properties common to all MessagesTypes and wraps a
 | fid       | uint64                                                                                                                                                                                                                                                                                                                                                 |       | Farcaster ID of the user producing the message |
 | timestamp | uint32                                                                                                                                                                                                                                                                                                                                                 |       | Farcaster epoch timestamp in seconds           |
 | network   | [FarcasterNetwork](#FarcasterNetwork)                                                                                                                                                                                                                                                                                                                  |       | Farcaster network the message is intended for  |
-| body      | [CastAddBody](#CastAddBody), <br> [CastRemoveBody](#CastRemoveBody), <br> [ReactionBody](#ReactionBody), <br>[VerificationAddEthAddressBody](#VerificationAddEthAddressBody), <br>[VerificationRemoveBody](#VerificationRemoveBody), <br>[SignerAddBody](#SignerAddBody), <br>[SignerRemoveBody](#SignerRemoveBody),<br> [UserDataBody](#UserDataBody) | oneOf | Properties specific to the MessageType         |
+| body      | [CastAddBody](#CastAddBody), <br> [CastRemoveBody](#CastRemoveBody), <br> [ReactionBody](#ReactionBody), <br>[VerificationAddEthAddressBody](#VerificationAddEthAddressBody), <br>[VerificationRemoveBody](#VerificationRemoveBody), <br>[SignerAddBody](#SignerAddBody), <br>[SignerRemoveBody](#SignerRemoveBody),<br> [UserDataBody](#UserDataBody), ,<br> [LinkBody](#LinkBody), ,<br> [UserNameProof](#UserNameProof) | oneOf | Properties specific to the MessageType         |
 
 ### 1.2 HashScheme
 
@@ -57,11 +57,14 @@ Type of the MessageBody
 | MESSAGE_TYPE_CAST_REMOVE                  | 2      | Remove an existing Cast                                   |
 | MESSAGE_TYPE_REACTION_ADD                 | 3      | Add a Reaction to a Cast                                  |
 | MESSAGE_TYPE_REACTION_REMOVE              | 4      | Remove a Reaction from a Cast                             |
+| MESSAGE_TYPE_LINK_ADD                     | 5      | Add a Link to a target                                    |
+| MESSAGE_TYPE_LINK_REMOVE                  | 6      | Remove a Link from a target                               |
 | MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS | 7      | Add a Verification of an Ethereum Address                 |
 | MESSAGE_TYPE_VERIFICATION_REMOVE          | 8      | Remove a Verification                                     |
 | MESSAGE_TYPE_SIGNER_ADD                   | 9      | Add a new Ed25519 key pair that signs messages for a user |
 | MESSAGE_TYPE_SIGNER_REMOVE                | 10     | Remove an Ed25519 key pair that signs messages for a user |
 | MESSAGE_TYPE_USER_DATA_ADD                | 11     | Add metadata about a user                                 |
+| MESSAGE_TYPE_USERNAME_PROOF               | 12     | Add or replace a username proof                           |
 
 ### 1.5 Farcaster Network
 
@@ -129,13 +132,23 @@ A Cast is a delta that represents a new public update from a user. Casts can be 
 
 Adds a new Cast
 
-| Field              | Type              | Label    | Description                           |
-| ------------------ | ----------------- | -------- | ------------------------------------- |
-| embeds             | string            | repeated | URLs to be embedded in the cast       |
-| mentions           | uint64            | repeated | Fids mentioned in the cast            |
-| parent_cast_id     | [CastId](#CastId) |          | Parent cast of the cast               |
-| text               | string            |          | Text of the cast                      |
-| mentions_positions | uint32            | repeated | Positions of the mentions in the text |
+| Field              | Type              | Label    | Description                                 |
+| ------------------ | ----------------- | -------- | ------------------------------------------- |
+| embeds_deprecated  | string            | repeated | URLs to be embedded in the cast             |
+| mentions           | uint64            | repeated | Fids mentioned in the cast                  |
+| parent_cast_id     | [CastId](#CastId) |          | Parent cast of the cast                     |
+| parent_url         | string |          | Parent URL of the cast                                 |
+| text               | string            |          | Text of the cast                            |
+| mentions_positions | uint32            | repeated | Positions of the mentions in the text       |
+| embeds             | [Embed](#Embed)   | repeated | URLs or cast ids to be embedded in the cast |
+
+#### Embed
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+| cast_id | [CastId](#CastId) |  |  |
+
 
 ### 4.2 CastRemoveBody
 
@@ -166,6 +179,7 @@ Adds or removes a Reaction from a Cast
 | -------------- | ----------------------------- | ----- | ------------------------------ |
 | type           | [ReactionType](#ReactionType) |       | Type of reaction               |
 | target_cast_id | [CastId](#CastId)             |       | CastId of the Cast to react to |
+| target_url     | [string](#string)             |       | URL to react to                |
 
 ### 5.2 ReactionType
 
@@ -177,21 +191,36 @@ Type of Reaction
 | REACTION_TYPE_LIKE   | 1      | Like the target cast                         |
 | REACTION_TYPE_RECAST | 2      | Share target cast to the user&#39;s audience |
 
-## 6. Verification
+
+## 6. Link
+
+
+### 6.1 LinkBody
+
+Adds or removes a Link
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [string](#string) |  | Type of link, &lt;= 8 characters |
+| displayTimestamp | [uint32](#uint32) | optional | User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction |
+| target_fid | [uint64](#uint64) |  | The fid the link relates to |
+
+
+## 7. Verification
 
 A Verification is a delta that contains a bi-directional signature proving that an fid has control over an Ethereum address.
 
-### 6.1 VerificationAddEthAddressBody
+### 7.1 VerificationAddEthAddressBody
 
 Adds a Verification of ownership of an Ethereum Address
 
 | Field         | Type  | Label | Description                                                   |
 | ------------- | ----- | ----- | ------------------------------------------------------------- |
 | address       | bytes |       | Ethereum address being verified                               |
-| block_hash    | bytes |       | Hash of the latest Ethereum block when the claim was produced |
 | eth_signature | bytes |       | Signature produced by the user&#39;s Ethereum address         |
+| block_hash    | bytes |       | Hash of the latest Ethereum block when the claim was produced |
 
-### 6.2 VerificationRemoveBody
+### 7.2 VerificationRemoveBody
 
 Removes a Verification of any type
 
