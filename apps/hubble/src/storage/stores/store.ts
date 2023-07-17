@@ -281,6 +281,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
           return true; // Can't continue pruning
         }
 
+        // Since the TS hash has the first 4 bytes be the timestamp (bigendian), we can use it to prune
+        // since the iteration will be implicitly sorted by timestamp
         if (
           count.value <= this._pruneSizeLimit &&
           (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))

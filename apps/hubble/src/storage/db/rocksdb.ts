@@ -332,6 +332,7 @@ class RocksDB {
     const iterator = this.iterator(options, timeoutMs);
     const timeoutId = setTimeout(async () => {
       await iterator.end();
+      log.warn(options, "forEachIterator timed out. Was force closed");
     }, timeoutMs);
 
     let returnValue: T | undefined | void;
@@ -357,7 +358,7 @@ class RocksDB {
     } catch (e) {
       if (e instanceof Error && e.message === "cannot call next() after end()") {
         // The iterator timed out
-        log.warn({ options, timeout: timeoutMs }, "forEachIterator: iterator timed out");
+        log.warn(options, "forEachIterator: iterator timed out");
       } else {
         await iterator.end();
         caughtError = e;

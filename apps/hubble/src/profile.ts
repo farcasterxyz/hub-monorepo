@@ -1,4 +1,4 @@
-import { RootPrefix, UserPostfix } from "./storage/db/types.js";
+import { RootPrefix, UserMessagePostfixMax, UserPostfix } from "./storage/db/types.js";
 import { logger } from "./utils/logger.js";
 import RocksDB from "./storage/db/rocksdb.js";
 
@@ -261,7 +261,7 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
   for (let i = 0; i < userPostfixKeys.length; i++) {
     const kp = userPostfixKeys[i] as KeysProfile;
 
-    if (i >= 86) {
+    if (i > UserMessagePostfixMax) {
       // This is index data, so remove it from the UserData
       (dataTypePrefixes[0] as KeysProfile).count -= kp.count;
       (dataTypePrefixes[0] as KeysProfile).keyBytes -= kp.keyBytes;
