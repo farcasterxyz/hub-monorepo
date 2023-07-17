@@ -83,7 +83,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         }
       },
       {},
-      1 * 60 * 60 * 1000, // 1 hour
+      3 * 60 * 60 * 1000, // 3 hours
     );
 
     log.info({ timeTakenMs: Date.now() - start }, "finished ValidateOrRevokeMessagesJob");

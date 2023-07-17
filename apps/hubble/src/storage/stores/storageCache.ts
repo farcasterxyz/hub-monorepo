@@ -13,13 +13,7 @@ import { err, ok } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
 import { logger } from "../../utils/logger.js";
-import {
-  getMessagesPruneIterator,
-  makeFidKey,
-  makeMessagePrimaryKey,
-  makeTsHash,
-  typeToSetPostfix,
-} from "../db/message.js";
+import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from "../db/message.js";
 import { bytesCompare, HubAsyncResult } from "@farcaster/core";
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
@@ -72,11 +66,14 @@ export class StorageCache {
   async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
     const key = makeKey(fid, set);
     if (this._counts.get(key) === undefined) {
-      const iterator = getMessagesPruneIterator(this._db, fid, set);
-      for await (const [,] of iterator) {
-        const count = this._counts.get(key) ?? 0;
-        this._counts.set(key, count + 1);
-      }
+      await this._db.forEachIteratorByPrefix(
+        makeMessagePrimaryKey(fid, set),
+        () => {
+          const count = this._counts.get(key) ?? 0;
+          this._counts.set(key, count + 1);
+        },
+        { keys: false, valueAsBuffer: true },
+      );
     }
     return ok(this._counts.get(key) ?? 0);
   }

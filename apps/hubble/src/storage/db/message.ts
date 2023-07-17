@@ -258,11 +258,11 @@ export const getAllMessagesBySigner = async <T extends Message>(
   // Loop through all keys that start with the given prefix
   await db.forEachIteratorByPrefix(
     prefix,
-    (key, _value) => {
+    (key) => {
       // Get the tsHash for the message using its position in the key relative to the prefix
       // If the prefix did not include type, add an extra byte to the tsHash offset
       const tsHashOffset = prefix.length + (type ? 0 : 1);
-      const tsHash = new Uint8Array((key as Buffer).slice(tsHashOffset));
+      const tsHash = new Uint8Array(key as Buffer).slice(tsHashOffset);
 
       // Get the type for the message, either from the predefined type variable or by looking at the byte
       // prior to the tsHash in the key
@@ -280,16 +280,6 @@ export const getAllMessagesBySigner = async <T extends Message>(
 
   // Look up many messages using the array of primaryKeys
   return getManyMessages(db, primaryKeys);
-};
-
-export const getMessagesPruneIterator = (db: RocksDB, fid: number, setPostfix: UserMessagePostfix): Iterator => {
-  const prefix = makeMessagePrimaryKey(fid, setPostfix);
-  return db.iteratorByPrefix(prefix, { keys: false, valueAsBuffer: true });
-};
-
-export const getNextMessageFromIterator = async (iterator: Iterator): Promise<Message> => {
-  const [, value] = await iterator.next();
-  return Message.decode(new Uint8Array(value as Buffer));
 };
 
 export const putMessageTransaction = (txn: Transaction, message: Message): Transaction => {

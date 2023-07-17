@@ -110,16 +110,18 @@ class RocksDB {
         if (!entry.iterator.isOpen) {
           return [];
         } else {
-          if (now - entry.openTimestamp >= MAX_DB_ITERATOR_OPEN_MILLISECONDS) {
+          const timeout = entry.timeoutMs ?? MAX_DB_ITERATOR_OPEN_MILLISECONDS;
+          const openFor = now - entry.openTimestamp;
+          if (openFor >= timeout) {
             log.warn(
               {
                 options: entry.options,
-                openSecs: now - entry.openTimestamp,
+                openForMs: openFor,
                 stackTrace: entry.stackTrace,
                 id: entry.id,
                 timeoutMs: entry.timeoutMs,
               },
-              `RocksDB iterator open for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`,
+              "RocksDB iterator open for longer than timeout",
             );
           }
           return [entry];

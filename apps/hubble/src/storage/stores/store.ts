@@ -13,8 +13,6 @@ import {
   getManyMessages,
   getMessage,
   getMessagesPageByPrefix,
-  getMessagesPruneIterator,
-  getNextMessageFromIterator,
   getPageIteratorByPrefix,
   makeMessagePrimaryKey,
   makeTsHash,
@@ -25,7 +23,7 @@ import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
 import AsyncLock from "async-lock";
 import { TSHASH_LENGTH, UserMessagePostfix } from "../db/types.js";
-import { ResultAsync, err, ok } from "neverthrow";
+import { Result, ResultAsync, err, ok } from "neverthrow";
 import { logger } from "../../utils/logger.js";
 
 export type DeepPartial<T> = T extends object
@@ -264,62 +262,57 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     const timestampToPrune =
       this._pruneTimeLimit === undefined ? undefined : farcasterTime.value - this._pruneTimeLimit;
 
-    // Create a rocksdb iterator for all messages with the given prefix
-    const pruneIterator = getMessagesPruneIterator(this._db, fid, this._postfix);
+    // Go over all messages for this fid and postfix
+    await this._db.forEachIteratorByPrefix(
+      makeMessagePrimaryKey(fid, this._postfix),
+      async (_key, value) => {
+        const message = Result.fromThrowable(
+          () => Message.decode(new Uint8Array(value as Buffer)),
+          (e) => e,
+        )();
 
-    const pruneNextMessage = async (): HubAsyncResult<number | undefined> => {
-      const nextMessage = await ResultAsync.fromPromise(getNextMessageFromIterator(pruneIterator), () => undefined);
-      if (nextMessage.isErr()) {
-        return ok(undefined); // Nothing left to prune
-      }
+        if (message.isErr()) {
+          return; // Ignore invalid messages
+        }
 
-      const count = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
-      if (count.isErr()) {
-        return err(count.error);
-      }
+        const count = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
+        if (count.isErr()) {
+          logger.error({ err: count.error, fid }, "failed to get message count for pruning");
+          return;
+        }
 
-      if (
-        count.value <= this._pruneSizeLimit &&
-        (timestampToPrune === undefined ||
-          (nextMessage.value.data && nextMessage.value.data.timestamp >= timestampToPrune))
-      ) {
-        return ok(undefined);
-      }
+        if (
+          count.value <= this._pruneSizeLimit &&
+          (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
+        ) {
+          return; // Don't prune this message
+        }
 
-      let txn = this._db.transaction();
+        let txn = this._db.transaction();
 
-      if (this._isAddType(nextMessage.value)) {
-        const txnMaybe = await this.deleteAddTransaction(txn, nextMessage.value);
-        if (txnMaybe.isErr()) throw txnMaybe.error;
-        txn = txnMaybe.value;
-      } else if (this._isRemoveType?.(nextMessage.value)) {
-        const txnMaybe = await this.deleteRemoveTransaction(txn, nextMessage.value);
-        if (txnMaybe.isErr()) throw txnMaybe.error;
-        txn = txnMaybe.value;
-      } else {
-        return err(new HubError("unknown", "invalid message type"));
-      }
+        if (this._isAddType(message.value)) {
+          const txnMaybe = await this.deleteAddTransaction(txn, message.value);
+          if (txnMaybe.isErr()) throw txnMaybe.error;
+          txn = txnMaybe.value;
+        } else if (this._isRemoveType?.(message.value)) {
+          const txnMaybe = await this.deleteRemoveTransaction(txn, message.value);
+          if (txnMaybe.isErr()) throw txnMaybe.error;
+          txn = txnMaybe.value;
+        } else {
+          logger.error("invalid message type while pruning");
+          return;
+        }
 
-      return this._eventHandler.commitTransaction(txn, this.pruneEventArgs(nextMessage.value));
-    };
-
-    let pruneResult = await pruneNextMessage();
-    while (!(pruneResult.isOk() && pruneResult.value === undefined)) {
-      pruneResult.match(
-        (commit) => {
-          if (commit) {
-            commits.push(commit);
-          }
-        },
-        (e) => {
-          logger.error({ errCode: e.errCode }, `error pruning message for fid ${fid}: ${e.message}`);
-        },
-      );
-
-      pruneResult = await pruneNextMessage();
-    }
-
-    await pruneIterator.end();
+        const commit = await this._eventHandler.commitTransaction(txn, this.pruneEventArgs(message.value));
+        if (commit.isErr()) {
+          logger.error({ errCode: commit.error.errCode, message: commit.error.message, fid }, "error pruning message");
+        } else {
+          commits.push(commit.value);
+        }
+      },
+      { keys: false, valueAsBuffer: true },
+      1 * 60 * 60 * 1000, // 1 hour
+    );
 
     return ok(commits);
   }
