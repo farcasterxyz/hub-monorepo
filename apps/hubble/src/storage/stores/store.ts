@@ -272,20 +272,20 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         )();
 
         if (message.isErr()) {
-          return; // Ignore invalid messages
+          return false; // Ignore invalid messages
         }
 
         const count = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
         if (count.isErr()) {
           logger.error({ err: count.error, fid }, "failed to get message count for pruning");
-          return;
+          return false; // Ignore invalid messages and continue
         }
 
         if (
           count.value <= this._pruneSizeLimit &&
           (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
         ) {
-          return; // Don't prune this message
+          return true; // Nothing left to prune
         }
 
         let txn = this._db.transaction();
@@ -300,7 +300,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
           txn = txnMaybe.value;
         } else {
           logger.error("invalid message type while pruning");
-          return;
+          return false; // Ignore invalid messages and continue
         }
 
         const commit = await this._eventHandler.commitTransaction(txn, this.pruneEventArgs(message.value));
@@ -309,6 +309,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         } else {
           commits.push(commit.value);
         }
+
+        return false; // Continue pruning
       },
       { keys: false, valueAsBuffer: true },
       1 * 60 * 60 * 1000, // 1 hour
