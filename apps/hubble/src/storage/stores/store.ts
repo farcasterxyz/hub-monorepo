@@ -277,8 +277,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
         const count = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
         if (count.isErr()) {
-          logger.error({ err: count.error, fid }, "failed to get message count for pruning");
-          return false; // Ignore invalid messages and continue
+          logger.error({ err: count.error, fid, postfix: this._postfix }, "failed to get message count for pruning");
+          return true; // Can't continue pruning
         }
 
         if (
