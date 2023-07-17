@@ -28,9 +28,6 @@ export class ValidateOrRevokeMessagesJobScheduler {
 
   start(cronSchedule?: string) {
     this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON, () => this.doJobs());
-
-    // TEMP: run once on startup
-    setTimeout(async () => await this.doJobs(), 20 * 1000);
   }
 
   stop() {
