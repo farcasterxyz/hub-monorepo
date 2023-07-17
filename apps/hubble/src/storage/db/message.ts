@@ -256,22 +256,27 @@ export const getAllMessagesBySigner = async <T extends Message>(
   const primaryKeys: Buffer[] = [];
 
   // Loop through all keys that start with the given prefix
-  for await (const [key] of db.iteratorByPrefix(prefix, { keyAsBuffer: true, values: false })) {
-    // Get the tsHash for the message using its position in the key relative to the prefix
-    // If the prefix did not include type, add an extra byte to the tsHash offset
-    const tsHashOffset = prefix.length + (type ? 0 : 1);
-    const tsHash = new Uint8Array((key as Buffer).slice(tsHashOffset));
+  await db.forEachIteratorByPrefix(
+    prefix,
+    (key, _value) => {
+      // Get the tsHash for the message using its position in the key relative to the prefix
+      // If the prefix did not include type, add an extra byte to the tsHash offset
+      const tsHashOffset = prefix.length + (type ? 0 : 1);
+      const tsHash = new Uint8Array((key as Buffer).slice(tsHashOffset));
 
-    // Get the type for the message, either from the predefined type variable or by looking at the byte
-    // prior to the tsHash in the key
-    const messageType = type ?? (new Uint8Array(key as Buffer).slice(tsHashOffset - 1, tsHashOffset)[0] as MessageType);
+      // Get the type for the message, either from the predefined type variable or by looking at the byte
+      // prior to the tsHash in the key
+      const messageType =
+        type ?? (new Uint8Array(key as Buffer).slice(tsHashOffset - 1, tsHashOffset)[0] as MessageType);
 
-    // Convert the message type to a set postfix
-    const setPostfix = typeToSetPostfix(messageType);
+      // Convert the message type to a set postfix
+      const setPostfix = typeToSetPostfix(messageType);
 
-    // Use the fid, setPostfix, and tsHash to generate the primaryKey for the message and store it
-    primaryKeys.push(makeMessagePrimaryKey(fid, setPostfix, tsHash));
-  }
+      // Use the fid, setPostfix, and tsHash to generate the primaryKey for the message and store it
+      primaryKeys.push(makeMessagePrimaryKey(fid, setPostfix, tsHash));
+    },
+    { keyAsBuffer: true, values: false },
+  );
 
   // Look up many messages using the array of primaryKeys
   return getManyMessages(db, primaryKeys);

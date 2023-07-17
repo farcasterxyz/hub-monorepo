@@ -43,26 +43,30 @@ export class StorageCache {
     log.info("starting storage cache sync");
     const usage = new Map<string, number>();
 
+    const start = Date.now();
+
     const prefix = Buffer.from([RootPrefix.User]);
-
-    const iterator = this._db.iteratorByPrefix(prefix);
-
-    for await (const [key] of iterator) {
-      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-      if (postfix < UserMessagePostfixMax) {
-        const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString("hex");
-        const count = usage.get(lookupKey) ?? 0;
-        if (this._earliestTsHashes.get(lookupKey) === undefined) {
-          const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
-          this._earliestTsHashes.set(lookupKey, tsHash);
+    await this._db.forEachIteratorByPrefix(
+      prefix,
+      async (key) => {
+        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+        if (postfix < UserMessagePostfixMax) {
+          const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString("hex");
+          const count = usage.get(lookupKey) ?? 0;
+          if (this._earliestTsHashes.get(lookupKey) === undefined) {
+            const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
+            this._earliestTsHashes.set(lookupKey, tsHash);
+          }
+          usage.set(lookupKey, count + 1);
         }
-        usage.set(lookupKey, count + 1);
-      }
-    }
+      },
+      { values: false },
+      15 * 60 * 1000, // 15 minutes
+    );
 
     this._counts = usage;
     this._earliestTsHashes = new Map();
-    log.info("storage cache synced");
+    log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
   }
 
   async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {

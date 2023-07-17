@@ -96,6 +96,7 @@ class RocksDB {
     openTimestamp: number;
     options: AbstractRocksDB.IteratorOptions | undefined;
     stackTrace: string;
+    timeoutMs: number;
   }>;
   private _openIteratorId = 0;
   private _iteratorCheckTimer?: NodeJS.Timer;
@@ -116,6 +117,7 @@ class RocksDB {
                 openSecs: now - entry.openTimestamp,
                 stackTrace: entry.stackTrace,
                 id: entry.id,
+                timeoutMs: entry.timeoutMs,
               },
               `RocksDB iterator open for more than ${MAX_DB_ITERATOR_OPEN_MILLISECONDS} ms`,
             );
@@ -237,7 +239,7 @@ class RocksDB {
     });
   }
 
-  iterator(options?: AbstractRocksDB.IteratorOptions): Iterator {
+  iterator(options?: AbstractRocksDB.IteratorOptions, timeoutMs = MAX_DB_ITERATOR_OPEN_MILLISECONDS): Iterator {
     const stackTrace = new Error().stack || "<no stacktrace>";
 
     const iterator = new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
@@ -247,6 +249,7 @@ class RocksDB {
       openTimestamp: Date.now(),
       options: options,
       stackTrace,
+      timeoutMs,
     });
     return iterator;
   }
@@ -287,6 +290,29 @@ class RocksDB {
   }
 
   /**
+   * forEach iterator, but with a prefix. See @forEachITerator for more details
+   */
+  async forEachIteratorByPrefix<T>(
+    prefix: Buffer,
+    callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<T> | T,
+    options: AbstractRocksDB.IteratorOptions = {},
+    timeout = MAX_DB_ITERATOR_OPEN_MILLISECONDS,
+  ): Promise<T | undefined> {
+    const prefixOptions: AbstractRocksDB.IteratorOptions = {
+      gte: prefix,
+    };
+    const nextPrefix = bytesIncrement(new Uint8Array(prefix));
+    if (nextPrefix.isErr()) {
+      throw nextPrefix.error;
+    }
+    if (nextPrefix.value.length === prefix.length) {
+      prefixOptions.lt = Buffer.from(nextPrefix.value);
+    }
+
+    return this.forEachIterator(callback, { ...options, ...prefixOptions }, timeout);
+  }
+
+  /**
    * An iterator that implements a callback. If the callback
    * 1. returns true/value
    * 2. returns a promise that resolves to true/value
@@ -299,12 +325,12 @@ class RocksDB {
   async forEachIterator<T>(
     callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<T> | T,
     options: AbstractRocksDB.IteratorOptions = {},
-    timeout = MAX_DB_ITERATOR_OPEN_MILLISECONDS,
+    timeoutMs = MAX_DB_ITERATOR_OPEN_MILLISECONDS,
   ): Promise<T | undefined> {
-    const iterator = this.iterator(options);
+    const iterator = this.iterator(options, timeoutMs);
     const timeoutId = setTimeout(async () => {
       await iterator.end();
-    }, timeout);
+    }, timeoutMs);
 
     let returnValue: T | undefined | void;
     // rome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -314,16 +340,22 @@ class RocksDB {
     // the most common error is "cannot call next() after end()", which is when the iterator has timed out
     try {
       for await (const [key, value] of iterator) {
-        returnValue = await callback(key, value);
-        if (returnValue) {
+        try {
+          returnValue = await callback(key, value);
+          if (returnValue) {
+            await iterator.end();
+            break;
+          }
+        } catch (e) {
           await iterator.end();
+          caughtError = e;
           break;
         }
       }
     } catch (e) {
       if (e instanceof Error && e.message === "cannot call next() after end()") {
         // The iterator timed out
-        log.warn({ options, timeout }, "forEachIterator: iterator timed out");
+        log.warn({ options, timeout: timeoutMs }, "forEachIterator: iterator timed out");
       } else {
         await iterator.end();
         caughtError = e;
@@ -345,7 +377,7 @@ class RocksDB {
           id: iteratorEntry.id,
         };
 
-        logger.error(logOpts, "forEachIterator: iterator was not closed");
+        logger.error(logOpts, "forEachIterator: iterator was not closed. Force closing");
         iterator.end();
       } else {
         logger.error("forEachIterator: iterator was not closed and could not find iterator entry");
