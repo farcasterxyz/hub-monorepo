@@ -771,19 +771,21 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let numFids = 0;
     let numFnames = 0;
 
-    for await (const [,] of this._db.iteratorByPrefix(Buffer.from([RootPrefix.IdRegistryEvent]), {
-      keys: false,
-      values: false,
-    })) {
-      numFids += 1;
-    }
+    await this._db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.IdRegistryEvent]),
+      () => {
+        numFids += 1;
+      },
+      { keys: false, values: false },
+    );
 
-    for await (const [,] of this._db.iteratorByPrefix(Buffer.from([RootPrefix.NameRegistryEvent]), {
-      keys: false,
-      values: false,
-    })) {
-      numFnames += 1;
-    }
+    await this._db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.NameRegistryEvent]),
+      () => {
+        numFnames += 1;
+      },
+      { keys: false, values: false },
+    );
 
     return {
       numMessages: await this._trie.items(),

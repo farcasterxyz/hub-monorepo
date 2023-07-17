@@ -96,24 +96,29 @@ class MerkleTrie {
 
     // Rebuild the trie by iterating over all the messages in the db
     const prefix = Buffer.from([RootPrefix.User]);
-    const iterator = this._db.iteratorByPrefix(prefix);
     let count = 0;
-    for await (const [key, value] of iterator) {
-      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-      if (postfix < UserMessagePostfixMax) {
-        const message = Result.fromThrowable(
-          () => Message.decode(new Uint8Array(value as Buffer)),
-          (e) => e as HubError,
-        )();
-        if (message.isOk()) {
-          await this.insert(new SyncId(message.value));
-          count += 1;
-          if (count % 10_000 === 0) {
-            log.info({ count }, "Rebuilding Merkle Trie");
+
+    await this._db.forEachIteratorByPrefix(
+      prefix,
+      async (key, value) => {
+        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+        if (postfix < UserMessagePostfixMax) {
+          const message = Result.fromThrowable(
+            () => Message.decode(new Uint8Array(value as Buffer)),
+            (e) => e as HubError,
+          )();
+          if (message.isOk()) {
+            await this.insert(new SyncId(message.value));
+            count += 1;
+            if (count % 10_000 === 0) {
+              log.info({ count }, "Rebuilding Merkle Trie");
+            }
           }
         }
-      }
-    }
+      },
+      {},
+      1 * 60 * 60 * 1000,
+    );
   }
 
   public async insert(id: SyncId): Promise<boolean> {

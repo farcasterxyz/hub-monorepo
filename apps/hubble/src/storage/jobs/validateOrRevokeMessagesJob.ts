@@ -41,46 +41,52 @@ export class ValidateOrRevokeMessagesJobScheduler {
   async doJobs(): HubAsyncResult<void> {
     log.info({}, "starting ValidateOrRevokeMessagesJob");
 
+    const start = Date.now();
+
     const allUserPrefix = Buffer.from([RootPrefix.User]);
+    await this._db.forEachIteratorByPrefix(
+      allUserPrefix,
+      async (key, value) => {
+        if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
+          // Not a message key, so we can skip it.
+          return; // continue
+        }
 
-    for await (const [key, value] of this._db.iteratorByPrefix(allUserPrefix)) {
-      if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
-        // Not a message key, so we can skip it.
-        continue;
-      }
+        // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
+        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+        if (postfix > UserMessagePostfixMax) {
+          // Not a message key, so we can skip it.
+          return; // continue
+        }
 
-      // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
-      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-      if (postfix > UserMessagePostfixMax) {
-        // Not a message key, so we can skip it.
-        continue;
-      }
+        const message = Result.fromThrowable(
+          () => Message.decode(new Uint8Array(value as Buffer)),
+          (e) => e as HubError,
+        )();
 
-      const message = Result.fromThrowable(
-        () => Message.decode(new Uint8Array(value as Buffer)),
-        (e) => e as HubError,
-      )();
+        if (message.isOk()) {
+          const result = await this._engine.validateOrRevokeMessage(message.value);
+          result.match(
+            (result) => {
+              if (result !== undefined) {
+                log.info(
+                  `revoked message ${bytesToHexString(message.value.hash)._unsafeUnwrap()} from fid ${
+                    message.value.data?.fid
+                  }`,
+                );
+              }
+            },
+            (e) => {
+              log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
+            },
+          );
+        }
+      },
+      {},
+      3 * 60 * 60 * 1000, // 3 hours
+    );
 
-      if (message.isOk()) {
-        const result = await this._engine.validateOrRevokeMessage(message.value);
-        result.match(
-          (result) => {
-            if (result !== undefined) {
-              log.info(
-                `revoked message ${bytesToHexString(message.value.hash)._unsafeUnwrap()} from fid ${
-                  message.value.data?.fid
-                }`,
-              );
-            }
-          },
-          (e) => {
-            log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
-          },
-        );
-      }
-    }
-
-    log.info({}, "finished ValidateOrRevokeMessagesJob");
+    log.info({ timeTakenMs: Date.now() - start }, "finished ValidateOrRevokeMessagesJob");
 
     return ok(undefined);
   }

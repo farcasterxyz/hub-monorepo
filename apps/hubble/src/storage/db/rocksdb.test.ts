@@ -320,6 +320,29 @@ describe("with db", () => {
       expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
+    test("fails when returning to break async", async () => {
+      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
+      await db.put(Buffer.from("allison"), Buffer.from("oops"));
+      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
+      await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
+
+      const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
+      const result = await db.forEachIterator(async (key, value) => {
+        output.push([key, value]);
+        if (key?.toString() === "allison") {
+          return Promise.resolve("break");
+        } else {
+          return false;
+        }
+      });
+
+      expect(result).toEqual("break");
+      expect(output.length).toEqual(3);
+      // All iterators are closed
+      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
+    });
+
     test("force closes open iterators after timeout", async () => {
       const timeout = 1;
 

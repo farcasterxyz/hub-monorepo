@@ -15,6 +15,7 @@ type SchedulerStatus = "started" | "stopped";
 export class PruneMessagesJobScheduler {
   private _engine: Engine;
   private _cronTask?: cron.ScheduledTask;
+  private _running = false;
 
   constructor(engine: Engine) {
     this._engine = engine;
@@ -35,7 +36,14 @@ export class PruneMessagesJobScheduler {
   }
 
   async doJobs(): HubAsyncResult<void> {
+    if (this._running) {
+      log.info({}, "prune messages job already running, skipping");
+      return ok(undefined);
+    }
+
     log.info({}, "starting prune messages job");
+    const start = Date.now();
+    this._running = true;
 
     let finished = false;
     let pageToken: Uint8Array | undefined;
@@ -56,8 +64,9 @@ export class PruneMessagesJobScheduler {
       }
     } while (!finished);
 
-    log.info({}, "finished prune messages job");
+    log.info({ timeTakenMs: Date.now() - start }, "finished prune messages job");
 
+    this._running = false;
     return ok(undefined);
   }
 }
