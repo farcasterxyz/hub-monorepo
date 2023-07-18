@@ -76,6 +76,7 @@ import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, fallback, http } from "viem";
 import { mainnet } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
+import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -256,6 +257,7 @@ export class Hub implements HubInterface {
   private checkFarcasterVersionJobScheduler: CheckFarcasterVersionJobScheduler;
   private validateOrRevokeMessagesJobScheduler: ValidateOrRevokeMessagesJobScheduler;
   private gossipContactInfoJobScheduler: GossipContactInfoJobScheduler;
+  private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
 
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
@@ -396,6 +398,7 @@ export class Hub implements HubInterface {
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
     this.validateOrRevokeMessagesJobScheduler = new ValidateOrRevokeMessagesJobScheduler(this.rocksDB, this.engine);
     this.gossipContactInfoJobScheduler = new GossipContactInfoJobScheduler(this);
+    this.checkIncomingPortsJobScheduler = new CheckIncomingPortsJobScheduler(this.rpcServer, this.gossipNode);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
