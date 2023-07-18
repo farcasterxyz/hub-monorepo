@@ -80,7 +80,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
 
       // If we are running ahead of schedule, sleep for a bit to let the other jobs catch up.
       if (Date.now() - start < (i + 1) * scheduledTimePerFidMs) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, scheduledTimePerFidMs));
       }
     }
 
@@ -132,7 +132,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         }
       },
       {},
-      15 * 60 * 1000, // 15 minutes
+      5 * 60 * 1000, // 5 minutes
     );
 
     return ok(count);
