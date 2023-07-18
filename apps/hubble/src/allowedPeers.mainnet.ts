@@ -67,7 +67,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWCDxDVkirzdV6Ze8zgDq2i1X3tQLGgwTGRxwuYeHD6XDE", // @wrdwccz
   "12D3KooWHkYUwM3PeRqdYniuxAGXWhPYx6EzPhDY39J3cyNciQhE", // @naratech-eng
   "12D3KooWGU1ebBRwdTBrfb2jQniip7FsWfr22PJhZQwwAf4d8jgX", // Gvozdaryova43654.telegram
-  "12D3KooWJEGQp3k3Zv87shripoWRcQUAMZmyWR5HoWzdEE1aKrXF", // @franceschina 
+  "12D3KooWJEGQp3k3Zv87shripoWRcQUAMZmyWR5HoWzdEE1aKrXF", // @franceschina
   /*
    * Add a new entry by adding your peerId and a comment with your farcaster username. To ensure a
    * fast merge, add your name randomly in the middle of the list, since adding at the end creates
