@@ -948,6 +948,7 @@ export class Hub implements HubInterface {
           fid: message.data?.fid,
           type: messageTypeToName(message.data?.type),
           hash: bytesToHexString(message.hash)._unsafeUnwrap(),
+          source,
         };
         const msg = "submitMessage success";
 
