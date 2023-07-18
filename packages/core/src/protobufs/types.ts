@@ -180,7 +180,5 @@ export type MergeStorageAdminRegistryEventHubEvent = hubEventProtobufs.HubEvent 
 
 export type MergeUsernameProofHubEvent = hubEventProtobufs.HubEvent & {
   type: hubEventProtobufs.HubEventType.MERGE_USERNAME_PROOF;
-  mergeUsernameProofBody: hubEventProtobufs.MergeUserNameProofBody & {
-    usernameProof: UserNameProof;
-  };
+  mergeUsernameProofBody: hubEventProtobufs.MergeUserNameProofBody;
 };
