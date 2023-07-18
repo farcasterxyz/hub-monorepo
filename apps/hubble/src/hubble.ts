@@ -556,6 +556,8 @@ export class Hub implements HubInterface {
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
     this.checkFarcasterVersionJobScheduler.start();
     this.validateOrRevokeMessagesJobScheduler.start();
+    this.gossipContactInfoJobScheduler.start();
+    this.checkIncomingPortsJobScheduler.start();
 
     // Start the test data generator
     this.testDataJobScheduler?.start();
@@ -618,6 +620,8 @@ export class Hub implements HubInterface {
     this.testDataJobScheduler?.stop();
     this.updateNameRegistryEventExpiryJobWorker?.stop();
     this.validateOrRevokeMessagesJobScheduler.stop();
+    this.gossipContactInfoJobScheduler.stop();
+    this.checkIncomingPortsJobScheduler.stop();
 
     // Stop the ETH registry provider
     if (this.ethRegistryProvider) {

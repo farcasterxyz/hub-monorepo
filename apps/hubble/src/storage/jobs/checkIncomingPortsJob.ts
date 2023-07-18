@@ -23,8 +23,7 @@ export class CheckIncomingPortsJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    const randomSecond = Math.floor(Math.random() * 59);
-    const defaultSchedule = `${randomSecond} 0 * * *`; // Random second (avoid stampede) every hour
+    const defaultSchedule = "15 * * * *"; // Every hour at :15
     this._cronTask = cron.schedule(cronSchedule ?? defaultSchedule, () => this.doJobs());
   }
 
