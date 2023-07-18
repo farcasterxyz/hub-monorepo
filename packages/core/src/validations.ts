@@ -538,7 +538,8 @@ export const validateUsernameProofBody = (
     );
   }
 
-  const proofFarcasterTimestamp = toFarcasterTime(body.timestamp);
+  // Proof time is in Unix seconds
+  const proofFarcasterTimestamp = toFarcasterTime(body.timestamp * 1000);
   if (proofFarcasterTimestamp.isErr()) {
     return err(proofFarcasterTimestamp.error);
   }

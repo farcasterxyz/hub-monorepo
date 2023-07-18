@@ -29,6 +29,7 @@ import {
   RevokeMessageHubEvent,
   SignerAddMessage,
   SignerRemoveMessage,
+  toFarcasterTime,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -476,7 +477,8 @@ describe("mergeMessage", () => {
     });
 
     const createProof = async (name: string, timestamp?: number | null, owner?: string | null) => {
-      const ts = timestamp ?? getFarcasterTime()._unsafeUnwrap();
+      // Proof time is in Unix seconds and should match the message time which is in Farcaster milliseconds
+      const timestampSec = Math.floor((timestamp || Date.now()) / 1000);
       const ownerAsBytes = owner ? hexStringToBytes(owner)._unsafeUnwrap() : Factories.EthAddress.build();
       return await Factories.UsernameProofMessage.create(
         {
@@ -486,10 +488,10 @@ describe("mergeMessage", () => {
               name: utf8StringToBytes(name)._unsafeUnwrap(),
               fid,
               owner: ownerAsBytes,
-              timestamp: fromFarcasterTime(ts)._unsafeUnwrap(),
+              timestamp: timestampSec,
               type: UserNameType.USERNAME_TYPE_ENS_L1,
             }),
-            timestamp: ts,
+            timestamp: toFarcasterTime(timestampSec * 1000)._unsafeUnwrap(),
             type: MessageType.USERNAME_PROOF,
           },
         },
