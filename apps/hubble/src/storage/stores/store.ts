@@ -242,6 +242,18 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     const commits: number[] = [];
 
     const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
+    const units = this._eventHandler.getCurrentStorageUnitsForFid(fid);
+
+    if (units.isErr()) {
+      return err(units.error);
+    }
+
+    if (units.value === 0) {
+      logger.warn({ fid }, "fid has no registered storage, would be pruned");
+    }
+
+    // This is temporary, when all fids are migrated to using storage rent, we'll just use the units directly.
+    const unitsMultiplier = units.value > 0 ? units.value : 1;
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
@@ -282,7 +294,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         }
 
         if (
-          count.value <= this._pruneSizeLimit &&
+          count.value <= this._pruneSizeLimit * unitsMultiplier &&
           (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
         ) {
           return true; // Nothing left to prune

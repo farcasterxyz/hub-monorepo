@@ -17,13 +17,12 @@ import {
   MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-  MessageType,
 } from "@farcaster/hub-nodejs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import AsyncLock from "async-lock";
 import { err, ok, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import RocksDB, { Transaction } from "../db/rocksdb.js";
 import { RootPrefix, UserMessagePostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
 import { makeTsHash } from "../db/message.js";
@@ -188,6 +187,10 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     });
 
     this._storageCache = new StorageCache(this._db);
+  }
+
+  getCurrentStorageUnitsForFid(fid: number): HubResult<number> {
+    return this._storageCache.getCurrentStorageUnitsForFid(fid);
   }
 
   async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {

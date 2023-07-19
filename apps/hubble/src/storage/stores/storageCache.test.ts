@@ -1,9 +1,10 @@
 import { ok } from "neverthrow";
-import { Factories, HubEvent, HubEventType } from "@farcaster/hub-nodejs";
+import { Factories, HubEvent, HubEventType, getFarcasterTime } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { makeTsHash, putMessage } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
+import { putRentRegistryEvent } from "../db/storageRegistryEvent.js";
 
 const db = jestRocksDB("engine.storageCache.test");
 
@@ -16,8 +17,14 @@ beforeEach(() => {
 describe("syncFromDb", () => {
   test("populates cache with messages from db", async () => {
     const usage = [
-      { fid: Factories.Fid.build(), usage: { cast: 3, reaction: 2, verification: 4, userData: 1, signer: 0 } },
-      { fid: Factories.Fid.build(), usage: { cast: 2, reaction: 3, verification: 0, userData: 2, signer: 5 } },
+      {
+        fid: Factories.Fid.build(),
+        usage: { cast: 3, reaction: 2, verification: 4, userData: 1, signer: 0, storage: 2 },
+      },
+      {
+        fid: Factories.Fid.build(),
+        usage: { cast: 2, reaction: 3, verification: 0, userData: 2, signer: 5, storage: 2 },
+      },
     ];
     for (const fidUsage of usage) {
       for (let i = 0; i < fidUsage.usage.cast; i++) {
@@ -44,6 +51,15 @@ describe("syncFromDb", () => {
         const message = await Factories.SignerAddMessage.create({ data: { fid: fidUsage.fid } });
         await putMessage(db, message);
       }
+
+      for (let i = 0; i < fidUsage.usage.storage; i++) {
+        const message = await Factories.RentRegistryEvent.create({
+          fid: fidUsage.fid,
+          expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60 - i,
+          units: 2,
+        });
+        await putRentRegistryEvent(db, message);
+      }
     }
     await cache.syncFromDb();
     for (const fidUsage of usage) {
@@ -62,6 +78,7 @@ describe("syncFromDb", () => {
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.SignerMessage)).resolves.toEqual(
         ok(fidUsage.usage.signer),
       );
+      expect(cache.getCurrentStorageUnitsForFid(fidUsage.fid)).toEqual(ok(4));
     }
   });
 });

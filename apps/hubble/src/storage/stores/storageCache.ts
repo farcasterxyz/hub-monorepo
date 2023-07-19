@@ -6,7 +6,6 @@ import {
   isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
-  isUsernameProofMessage,
   Message,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
@@ -14,7 +13,14 @@ import RocksDB from "../db/rocksdb.js";
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
 import { logger } from "../../utils/logger.js";
 import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from "../db/message.js";
-import { bytesCompare, HubAsyncResult } from "@farcaster/core";
+import {
+  bytesCompare,
+  getFarcasterTime,
+  HubAsyncResult,
+  isMergeRentRegistryEventHubEvent,
+  RentRegistryEvent,
+  StorageRegistryEventType,
+} from "@farcaster/core";
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
@@ -22,14 +28,22 @@ const makeKey = (fid: number, set: UserMessagePostfix): string => {
 
 const log = logger.child({ component: "StorageCache" });
 
+type StorageSlot = {
+  from: number;
+  to: number;
+  units: number;
+};
+
 export class StorageCache {
   private _db: RocksDB;
   private _counts: Map<string, number>;
   private _earliestTsHashes: Map<string, Uint8Array>;
+  private _activeStorageSlots: Map<number, StorageSlot[]>;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
     this._earliestTsHashes = new Map();
+    this._activeStorageSlots = new Map();
     this._db = db;
   }
 
@@ -58,6 +72,30 @@ export class StorageCache {
       15 * 60 * 1000, // 15 minutes
     );
 
+    await this._db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.RentRegistryEvent]),
+      async (_, value) => {
+        if (!value) {
+          return;
+        }
+
+        const event = RentRegistryEvent.decode(value);
+        const existingSlots = this._activeStorageSlots.get(event.fid) ?? [];
+        if (event.type === StorageRegistryEventType.RENT) {
+          this._activeStorageSlots.set(event.fid, [
+            ...existingSlots,
+            {
+              from: event.expiry - 365 * 24 * 60 * 60,
+              to: event.expiry,
+              units: event.units,
+            },
+          ]);
+        }
+      },
+      { values: true },
+      15 * 60 * 1000,
+    );
+
     this._counts = usage;
     this._earliestTsHashes = new Map();
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
@@ -76,6 +114,22 @@ export class StorageCache {
       );
     }
     return ok(this._counts.get(key) ?? 0);
+  }
+
+  getCurrentStorageUnitsForFid(fid: number): HubResult<number> {
+    const slots = this._activeStorageSlots.get(fid);
+
+    if (!slots) {
+      return ok(0);
+    }
+
+    const time = getFarcasterTime();
+
+    if (time.isErr()) {
+      return err(time.error);
+    }
+
+    return ok(slots.filter((s) => s.from <= time.value && s.to >= time.value).reduce((accum, s) => accum + s.units, 0));
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
@@ -126,6 +180,8 @@ export class StorageCache {
       } else if (event.mergeUsernameProofBody.deletedUsernameProofMessage) {
         this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
       }
+    } else if (isMergeRentRegistryEventHubEvent(event)) {
+      this.addRent(event.mergeRentRegistryEventBody.rentRegistryEvent);
     }
     return ok(undefined);
   }
@@ -171,6 +227,20 @@ export class StorageCache {
       if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) === 0) {
         this._earliestTsHashes.delete(key);
       }
+    }
+  }
+
+  private addRent(event: RentRegistryEvent): void {
+    if (event !== undefined) {
+      const slots = this._activeStorageSlots.get(event.fid) ?? [];
+      this._activeStorageSlots.set(event.fid, [
+        ...slots,
+        {
+          from: event.expiry - 365 * 24 * 60 * 60,
+          to: event.expiry,
+          units: event.units,
+        },
+      ]);
     }
   }
 }
