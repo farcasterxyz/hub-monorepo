@@ -560,7 +560,8 @@ const UsernameProofDataFactory = Factory.define<protobufs.UsernameProofData>(() 
   return MessageDataFactory.build({
     usernameProofBody: proofBody,
     type: protobufs.MessageType.USERNAME_PROOF,
-    timestamp: toFarcasterTime(proofBody.timestamp)._unsafeUnwrap(),
+    // Proof timestamp is in Unix seconds
+    timestamp: toFarcasterTime(proofBody.timestamp * 1000)._unsafeUnwrap(),
     fid: proofBody.fid,
   }) as protobufs.UsernameProofData;
 });
@@ -657,7 +658,7 @@ const StorageAdminRegistryEventFactory = Factory.define<protobufs.StorageAdminRe
 
 const UserNameProofFactory = Factory.define<protobufs.UserNameProof>(() => {
   return protobufs.UserNameProof.create({
-    timestamp: Date.now(),
+    timestamp: Math.floor(Date.now() / 1000),
     signature: Eip712SignatureFactory.build(),
     owner: EthAddressFactory.build(),
     name: FnameFactory.build(),

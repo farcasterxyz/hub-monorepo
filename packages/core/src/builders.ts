@@ -25,6 +25,7 @@ type MessageBodyOptions = Pick<
   | "signerRemoveBody"
   | "userDataBody"
   | "linkBody"
+  | "usernameProofBody"
 >;
 
 /** Generic Methods */
@@ -333,4 +334,23 @@ export const makeUserDataAddData = (
   dataOptions: MessageDataOptions,
 ): HubAsyncResult<protobufs.UserDataAddData> => {
   return makeMessageData({ userDataBody: body }, protobufs.MessageType.USER_DATA_ADD, dataOptions);
+};
+
+export const makeUsernameProof = async (
+  body: protobufs.UserNameProof,
+  dataOptions: MessageDataOptions,
+  signer: Signer,
+): HubAsyncResult<protobufs.UsernameProofMessage> => {
+  const data = await makeUsernameProofData(body, dataOptions);
+  if (data.isErr()) {
+    return err(data.error);
+  }
+  return makeMessage(data.value, signer);
+};
+
+export const makeUsernameProofData = (
+  body: protobufs.UserNameProof,
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.UsernameProofData> => {
+  return makeMessageData({ usernameProofBody: body }, protobufs.MessageType.USERNAME_PROOF, dataOptions);
 };

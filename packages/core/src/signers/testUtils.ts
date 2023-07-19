@@ -72,7 +72,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     beforeAll(async () => {
       claim = makeUserNameProofClaim({
         name: "0x000",
-        timestamp: Date.now(),
+        timestamp: Math.floor(Date.now() / 1000),
         owner: bytesToHex(signerKey),
       });
       const signatureResult = await signer.signUserNameProofClaim(claim);
