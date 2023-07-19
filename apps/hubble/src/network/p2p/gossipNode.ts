@@ -313,9 +313,17 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return err(new HubError("unavailable", { message: `cannot connect to peer: ${address}` }));
   }
 
+  /** Return if we have any inbound P2P connections */
+  hasInboundConnections(): boolean {
+    return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
+  }
+
   registerListeners() {
     this._node?.addEventListener("peer:connect", (event) => {
-      log.info({ peer: event.detail.remotePeer }, "P2P Connection established");
+      log.info(
+        { peer: event.detail.remotePeer, addrs: event.detail.remoteAddr, type: event.detail.stat.direction },
+        "P2P Connection established",
+      );
       this.emit("peerConnect", event.detail);
     });
     this._node?.addEventListener("peer:disconnect", (event) => {

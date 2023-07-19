@@ -184,8 +184,9 @@ export default class Server {
   private listenIp: string;
   private port: number;
 
-  private rpcUsers: RpcUsers;
+  private incomingConnections = 0;
 
+  private rpcUsers: RpcUsers;
   private submitMessageRateLimiter: RateLimiterMemory;
 
   constructor(
@@ -276,6 +277,10 @@ export default class Server {
 
   get listenPort() {
     return this.port;
+  }
+
+  public hasInboundConnections() {
+    return this.incomingConnections > 0;
   }
 
   getImpl = (): HubServiceServer => {
@@ -415,6 +420,10 @@ export default class Server {
         })();
       },
       getSyncSnapshotByPrefix: (call, callback) => {
+        // If someone is asking for our sync snapshot, that means we're getting incoming
+        // connections
+        this.incomingConnections += 1;
+
         const request = call.request;
 
         (async () => {
