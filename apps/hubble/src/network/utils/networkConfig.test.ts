@@ -10,7 +10,7 @@ describe("networkConfig", () => {
 
     const networkConfig = {
       network,
-      allowedPeers: ["1", "2", "3"],
+      allowedPeers: [],
       deniedPeers: [],
       minAppVersion: APP_VERSION,
     };
