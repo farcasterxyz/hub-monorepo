@@ -24,6 +24,10 @@ export class ConnectionFilter implements ConnectionGater {
     this.allowedPeers = addrs;
   }
 
+  updateAllowedPeers(addrs: string[]) {
+    this.allowedPeers = addrs;
+  }
+
   denyDialPeer = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {

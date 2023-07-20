@@ -77,6 +77,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _network: FarcasterNetwork;
   private _metricsRecorder?: GossipMetricsRecorder;
 
+  private _connectionGater?: ConnectionFilter;
+
   constructor(db: RocksDB, network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
@@ -387,6 +389,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.getPeers()?.map((peer) => peer.toString()) ?? [];
   }
 
+  updateAllowedPeerIds(peerIds: string[]) {
+    this._connectionGater?.updateAllowedPeers(peerIds);
+  }
+
   //TODO: Needs better typesafety
   static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
     return ok(GossipMessage.encode(message).finish());
@@ -483,13 +489,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         "!!! PEER-ID RESTRICTIONS ENABLED !!!",
       );
     }
-    const connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
+    this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
 
     return ResultAsync.fromPromise(
       createLibp2p({
         // Only set optional fields if defined to avoid errors
         ...(options.peerId && { peerId: options.peerId }),
-        connectionGater,
+        connectionGater: this._connectionGater,
         addresses: {
           listen: [listenMultiAddrStr],
           announce: announceMultiAddrStrList,
