@@ -892,20 +892,14 @@ class Engine {
         }
 
         if (nameProof.value.type === UserNameType.USERNAME_TYPE_FNAME) {
-          // Check that the custody address for the fname and fid are the same
-          if (bytesCompare(custodyEvent.value.to, nameProof.value.owner) !== 0) {
-            const hex = Result.combine([
-              bytesToHexString(custodyEvent.value.to),
-              bytesToHexString(nameProof.value.owner),
-            ]);
-            return hex.andThen(([custodySignerHex, fnameOwnerHex]) => {
-              return err(
-                new HubError(
-                  "bad_request.validation_failure",
-                  `fname custody address ${fnameOwnerHex} does not match custody address ${custodySignerHex} for fid ${message.data.fid}`,
-                ),
-              );
-            });
+          // Check that the fid for the fname and message are the same
+          if (nameProof.value.fid !== message.data.fid) {
+            return err(
+              new HubError(
+                "bad_request.validation_failure",
+                `fname fid ${nameProof.value.fid} does not match message fid ${message.data.fid}`,
+              ),
+            );
           }
         } else if (nameProof.value.type === UserNameType.USERNAME_TYPE_ENS_L1) {
           const result = await this.validateEnsUsernameProof(nameProof.value, custodyEvent.value.to);
@@ -994,42 +988,25 @@ class Engine {
           `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
         );
       }
-
-      // Revoke UserDataAdd fname messages
-      const fnameAdd = await ResultAsync.fromPromise(
-        this._userDataStore.getUserDataAdd(idRegistryEvent.fid, UserDataType.USERNAME),
-        () => undefined,
-      );
-      if (fnameAdd.isOk()) {
-        const revokeResult = await this._userDataStore.revoke(fnameAdd.value);
-        const fnameAddHex = bytesToHexString(fnameAdd.value.hash);
-        revokeResult.match(
-          () =>
-            log.info(
-              `revoked message ${fnameAddHex._unsafeUnwrap()} for fid ${
-                idRegistryEvent.fid
-              } due to IdRegistryEvent transfer`,
-            ),
-          (e) =>
-            log.error(
-              { errCode: e.errCode },
-              `failed to revoke message ${fnameAddHex._unsafeUnwrap()} for fid ${
-                idRegistryEvent.fid
-              } due to IdRegistryEvent transfer: ${e.message}`,
-            ),
-        );
-      }
     }
 
     return ok(undefined);
   }
 
   private async handleMergeUsernameProofEvent(event: MergeUsernameProofHubEvent): HubAsyncResult<void> {
-    const { deletedUsernameProof } = event.mergeUsernameProofBody;
+    const { deletedUsernameProof, usernameProof } = event.mergeUsernameProofBody;
 
     // When there is a UserNameProof, we need to check if we need to revoke UserDataAdd messages from the
     // previous owner of the name.
     if (deletedUsernameProof && deletedUsernameProof.owner.length > 0) {
+      // If the name and the fid are the same (proof just has a newer timestamp or different owner address) then we don't need to revoke
+      if (
+        usernameProof &&
+        bytesCompare(deletedUsernameProof.name, usernameProof.name) === 0 &&
+        deletedUsernameProof.fid === usernameProof.fid
+      ) {
+        return ok(undefined);
+      }
       const fid = deletedUsernameProof.fid;
 
       // Check if this fid assigned the name with a UserDataAdd message
