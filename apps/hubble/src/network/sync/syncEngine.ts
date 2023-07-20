@@ -563,12 +563,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           if (result.error.message.startsWith("invalid signer")) {
             // The user's signer was not found. So fetch all signers from the peer and retry.
             const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
+            const retryResultErrorMessage = retryResult.isErr() ? retryResult.error.message : "";
             log.warn(
               {
                 fid: msg.data?.fid,
                 err: result.error.message,
                 signer: bytesToHexString(msg.signer)._unsafeUnwrap(),
-                retryResult,
+                retryResult: { ...retryResult, retryResultErrorMessage },
               },
               "Unknown signer, fetched all signers from peer",
             );

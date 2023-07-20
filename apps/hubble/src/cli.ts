@@ -113,15 +113,12 @@ app
   .option("--fnr-address <address>", "The address of the Farcaster Name Registry contract")
 
   .action(async (cliOptions) => {
-    const teardown = async (hub: Hub) => {
-      await hub.stop();
-    };
-
     const handleShutdownSignal = (signalName: string) => {
       logger.warn(`${signalName} received`);
       if (!isExiting) {
         isExiting = true;
-        teardown(hub)
+        hub
+          .teardown()
           .then(() => {
             logger.info("Hub stopped gracefully");
             process.exit(0);
@@ -398,7 +395,7 @@ app
       logger.fatal(startResult.error);
       logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
       try {
-        await teardown(hub);
+        await hub.teardown();
       } finally {
         process.exit(1);
       }

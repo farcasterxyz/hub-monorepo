@@ -26,6 +26,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
+import semver from "semver";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { EthEventsProvider, GoerliEthConstants } from "./eth/ethEventsProvider.js";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
@@ -77,6 +78,8 @@ import { createPublicClient, fallback, http } from "viem";
 import { mainnet } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
+import { NetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
+import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -258,6 +261,7 @@ export class Hub implements HubInterface {
   private validateOrRevokeMessagesJobScheduler: ValidateOrRevokeMessagesJobScheduler;
   private gossipContactInfoJobScheduler: GossipContactInfoJobScheduler;
   private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
+  private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
 
   private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
   private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
@@ -399,6 +403,7 @@ export class Hub implements HubInterface {
     this.validateOrRevokeMessagesJobScheduler = new ValidateOrRevokeMessagesJobScheduler(this.rocksDB, this.engine);
     this.gossipContactInfoJobScheduler = new GossipContactInfoJobScheduler(this);
     this.checkIncomingPortsJobScheduler = new CheckIncomingPortsJobScheduler(this.rpcServer, this.gossipNode);
+    this.updateNetworkConfigJobScheduler = new UpdateNetworkConfigJobScheduler(this);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -512,6 +517,19 @@ export class Hub implements HubInterface {
       `starting hub with Farcaster version ${FARCASTER_VERSION}, app version ${APP_VERSION} and network ${this.options.network}`,
     );
 
+    // Fetch network config
+    const networkConfig = await fetchNetworkConfig();
+    if (networkConfig.isErr()) {
+      log.error("failed to fetch network config", { error: networkConfig.error });
+    } else {
+      const errMsg = this.applyNetworkConfig(networkConfig.value);
+      if (errMsg) {
+        throw new HubError("unavailable", errMsg);
+      }
+
+      log.info({}, "Network config applied");
+    }
+
     await this.engine.start();
 
     // Start the RPC server
@@ -558,6 +576,7 @@ export class Hub implements HubInterface {
     this.validateOrRevokeMessagesJobScheduler.start();
     this.gossipContactInfoJobScheduler.start();
     this.checkIncomingPortsJobScheduler.start();
+    this.updateNetworkConfigJobScheduler.start();
 
     // Start the test data generator
     this.testDataJobScheduler?.start();
@@ -566,6 +585,43 @@ export class Hub implements HubInterface {
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
     // This way, when starting up, we'll know if the previous shutdown was clean or not.
     await this.writeHubCleanShutdown(false);
+  }
+
+  /** Apply the new the network config. Will return true if the Hub should exit */
+  public applyNetworkConfig(networkConfig: NetworkConfig): string | void {
+    if (networkConfig.network !== this.options.network) {
+      log.error({ networkConfig, network: this.options.network }, "network config mismatch");
+      return;
+    }
+
+    // Refuse to start if we are below the minAppVersion
+    const minAppVersion = networkConfig.minAppVersion;
+
+    if (semver.valid(minAppVersion)) {
+      if (semver.lt(APP_VERSION, minAppVersion)) {
+        const errMsg = "Hubble version is too old too start. Please update your node.";
+        log.fatal({ minAppVersion, ourVersion: APP_VERSION }, errMsg);
+        return errMsg;
+      }
+    } else {
+      log.error({ networkConfig }, "invalid minAppVersion");
+    }
+
+    if (networkConfig.allowedPeers) {
+      // Add the network.allowedPeers to the list of allowed peers
+      this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...networkConfig.allowedPeers])];
+    } else {
+      log.error({ networkConfig }, "network config does not contain 'allowedPeers'");
+    }
+
+    // Then remove the denied peers from this list
+    if (networkConfig.deniedPeers) {
+      this.allowedPeerIds = this.allowedPeerIds?.filter((peerId) => !networkConfig.deniedPeers.includes(peerId));
+    } else {
+      log.error({ networkConfig }, "network config does not contain 'deniedPeers'");
+    }
+
+    this.gossipNode.updateAllowedPeerIds(this.allowedPeerIds ?? []);
   }
 
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
@@ -597,6 +653,10 @@ export class Hub implements HubInterface {
     });
   }
 
+  async teardown() {
+    await this.stop();
+  }
+
   /** Stop the GossipNode and RPC Server */
   async stop() {
     log.info("Stopping Hubble...");
@@ -622,6 +682,7 @@ export class Hub implements HubInterface {
     this.validateOrRevokeMessagesJobScheduler.stop();
     this.gossipContactInfoJobScheduler.stop();
     this.checkIncomingPortsJobScheduler.stop();
+    this.updateNetworkConfigJobScheduler.stop();
 
     // Stop the ETH registry provider
     if (this.ethRegistryProvider) {
