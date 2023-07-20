@@ -1022,10 +1022,7 @@ export default class Server {
                   if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
                     // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
                     // We'll destroy the stream.
-                    const error = new HubError(
-                      "unavailable.network_failure",
-                      `stream memory usage too much for peer: ${stream.getPeer()}`,
-                    );
+                    const error = new HubError("unavailable.network_failure", "stream memory usage too much");
                     logger.error({ errCode: error.errCode }, error.message);
                     stream.destroy(error);
 

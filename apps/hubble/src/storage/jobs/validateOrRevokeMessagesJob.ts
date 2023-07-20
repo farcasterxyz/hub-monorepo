@@ -72,11 +72,16 @@ export class ValidateOrRevokeMessagesJobScheduler {
 
     const numFids = allFids.length;
     const scheduledTimePerFidMs = (6 * 60 * 60 * 1000) / numFids; // 6 hours for all FIDs
+    log.info({ numFids, scheduledTimePerFidMs }, "ValidateOrRevokeMessagesJob: got FIDs");
 
     for (let i = 0; i < numFids; i++) {
       const fid = allFids[i] as number;
       const numChecked = await this.doJobForFid(fid);
       totalMessagesChecked += numChecked.unwrapOr(0);
+
+      if (i % 1000 === 0) {
+        log.info({ fid, totalMessagesChecked }, "ValidateOrRevokeMessagesJob: progress");
+      }
 
       // If we are running ahead of schedule, sleep for a bit to let the other jobs catch up.
       if (Date.now() - start < (i + 1) * scheduledTimePerFidMs) {
@@ -132,7 +137,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         }
       },
       {},
-      5 * 60 * 1000, // 5 minutes
+      15 * 60 * 1000, // 15 minutes
     );
 
     return ok(count);
