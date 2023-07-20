@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.4.3
+
+### Patch Changes
+
+- f00d7d2: fix: Move validatorOrRevokeMessage and storageCache iterators to be managed
+- 115f1b5: feat: Do the validateOrRevokeMessages job fid-by-fid
+- 998979d: feat: Warn if there are no incoming connections
+- c1bb21c: fix: When retring messages due to failed signers, use a queue
+- 376ae0f: feat: Use a web based network config for hubble
+  - @farcaster/hub-nodejs@0.9.1
+
 ## 1.4.2
 
 - 1d9c34af: Testnet should not require allow listed peers

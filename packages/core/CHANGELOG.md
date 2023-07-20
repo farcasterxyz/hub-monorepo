@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.11.1
+
+### Patch Changes
+
+- e36fcae: Fix username proof timestamp validation + add builders for UsernameProofData and UsernameProofMessage
+- 88f31f2: fix: Fix typing for merge username proof events
+
 ## 0.11.0
 
 ### Minor Changes
