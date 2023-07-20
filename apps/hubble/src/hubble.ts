@@ -26,7 +26,6 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
-import semver from "semver";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { EthEventsProvider, GoerliEthConstants } from "./eth/ethEventsProvider.js";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
@@ -78,7 +77,7 @@ import { createPublicClient, fallback, http } from "viem";
 import { mainnet } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
-import { NetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
+import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
@@ -522,9 +521,9 @@ export class Hub implements HubInterface {
     if (networkConfig.isErr()) {
       log.error("failed to fetch network config", { error: networkConfig.error });
     } else {
-      const errMsg = this.applyNetworkConfig(networkConfig.value);
-      if (errMsg) {
-        throw new HubError("unavailable", errMsg);
+      const shouldExit = this.applyNetworkConfig(networkConfig.value);
+      if (shouldExit) {
+        throw new HubError("unavailable", "Exiting due to network config");
       }
 
       log.info({}, "Network config applied");
@@ -588,40 +587,20 @@ export class Hub implements HubInterface {
   }
 
   /** Apply the new the network config. Will return true if the Hub should exit */
-  public applyNetworkConfig(networkConfig: NetworkConfig): string | void {
-    if (networkConfig.network !== this.options.network) {
-      log.error({ networkConfig, network: this.options.network }, "network config mismatch");
-      return;
-    }
+  public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
+    const { allowedPeerIds, shouldExit } = applyNetworkConfig(
+      networkConfig,
+      this.allowedPeerIds ?? [],
+      this.options.network,
+    );
 
-    // Refuse to start if we are below the minAppVersion
-    const minAppVersion = networkConfig.minAppVersion;
-
-    if (semver.valid(minAppVersion)) {
-      if (semver.lt(APP_VERSION, minAppVersion)) {
-        const errMsg = "Hubble version is too old too start. Please update your node.";
-        log.fatal({ minAppVersion, ourVersion: APP_VERSION }, errMsg);
-        return errMsg;
-      }
+    if (shouldExit) {
+      return true;
     } else {
-      log.error({ networkConfig }, "invalid minAppVersion");
+      this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
+      this.allowedPeerIds = allowedPeerIds;
+      return false;
     }
-
-    if (networkConfig.allowedPeers) {
-      // Add the network.allowedPeers to the list of allowed peers
-      this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...networkConfig.allowedPeers])];
-    } else {
-      log.error({ networkConfig }, "network config does not contain 'allowedPeers'");
-    }
-
-    // Then remove the denied peers from this list
-    if (networkConfig.deniedPeers) {
-      this.allowedPeerIds = this.allowedPeerIds?.filter((peerId) => !networkConfig.deniedPeers.includes(peerId));
-    } else {
-      log.error({ networkConfig }, "network config does not contain 'deniedPeers'");
-    }
-
-    this.gossipNode.updateAllowedPeerIds(this.allowedPeerIds ?? []);
   }
 
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
