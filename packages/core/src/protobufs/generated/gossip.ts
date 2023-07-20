@@ -106,35 +106,35 @@ export const GossipAddressInfo = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.address = reader.string();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.family = reader.uint32();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.port = reader.uint32();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.dnsName = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -153,10 +153,18 @@ export const GossipAddressInfo = {
 
   toJSON(message: GossipAddressInfo): unknown {
     const obj: any = {};
-    message.address !== undefined && (obj.address = message.address);
-    message.family !== undefined && (obj.family = Math.round(message.family));
-    message.port !== undefined && (obj.port = Math.round(message.port));
-    message.dnsName !== undefined && (obj.dnsName = message.dnsName);
+    if (message.address !== "") {
+      obj.address = message.address;
+    }
+    if (message.family !== 0) {
+      obj.family = Math.round(message.family);
+    }
+    if (message.port !== 0) {
+      obj.port = Math.round(message.port);
+    }
+    if (message.dnsName !== "") {
+      obj.dnsName = message.dnsName;
+    }
     return obj;
   },
 
@@ -220,56 +228,56 @@ export const ContactInfoContent = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.gossipAddress = GossipAddressInfo.decode(reader, reader.uint32());
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.rpcAddress = GossipAddressInfo.decode(reader, reader.uint32());
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.excludedHashes.push(reader.string());
           continue;
         case 4:
-          if (tag != 32) {
+          if (tag !== 32) {
             break;
           }
 
           message.count = reader.uint32();
           continue;
         case 5:
-          if (tag != 42) {
+          if (tag !== 42) {
             break;
           }
 
           message.hubVersion = reader.string();
           continue;
         case 6:
-          if (tag != 48) {
+          if (tag !== 48) {
             break;
           }
 
           message.network = reader.int32() as any;
           continue;
         case 7:
-          if (tag != 58) {
+          if (tag !== 58) {
             break;
           }
 
           message.appVersion = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -291,19 +299,27 @@ export const ContactInfoContent = {
 
   toJSON(message: ContactInfoContent): unknown {
     const obj: any = {};
-    message.gossipAddress !== undefined &&
-      (obj.gossipAddress = message.gossipAddress ? GossipAddressInfo.toJSON(message.gossipAddress) : undefined);
-    message.rpcAddress !== undefined &&
-      (obj.rpcAddress = message.rpcAddress ? GossipAddressInfo.toJSON(message.rpcAddress) : undefined);
-    if (message.excludedHashes) {
-      obj.excludedHashes = message.excludedHashes.map((e) => e);
-    } else {
-      obj.excludedHashes = [];
+    if (message.gossipAddress !== undefined) {
+      obj.gossipAddress = GossipAddressInfo.toJSON(message.gossipAddress);
     }
-    message.count !== undefined && (obj.count = Math.round(message.count));
-    message.hubVersion !== undefined && (obj.hubVersion = message.hubVersion);
-    message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
-    message.appVersion !== undefined && (obj.appVersion = message.appVersion);
+    if (message.rpcAddress !== undefined) {
+      obj.rpcAddress = GossipAddressInfo.toJSON(message.rpcAddress);
+    }
+    if (message.excludedHashes?.length) {
+      obj.excludedHashes = message.excludedHashes;
+    }
+    if (message.count !== 0) {
+      obj.count = Math.round(message.count);
+    }
+    if (message.hubVersion !== "") {
+      obj.hubVersion = message.hubVersion;
+    }
+    if (message.network !== 0) {
+      obj.network = farcasterNetworkToJSON(message.network);
+    }
+    if (message.appVersion !== "") {
+      obj.appVersion = message.appVersion;
+    }
     return obj;
   },
 
@@ -329,7 +345,7 @@ export const ContactInfoContent = {
 };
 
 function createBasePingMessageBody(): PingMessageBody {
-  return { pingOriginPeerId: new Uint8Array(), pingTimestamp: 0 };
+  return { pingOriginPeerId: new Uint8Array(0), pingTimestamp: 0 };
 }
 
 export const PingMessageBody = {
@@ -351,21 +367,21 @@ export const PingMessageBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.pingOriginPeerId = reader.bytes();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.pingTimestamp = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -375,18 +391,19 @@ export const PingMessageBody = {
 
   fromJSON(object: any): PingMessageBody {
     return {
-      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(),
+      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(0),
       pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
     };
   },
 
   toJSON(message: PingMessageBody): unknown {
     const obj: any = {};
-    message.pingOriginPeerId !== undefined &&
-      (obj.pingOriginPeerId = base64FromBytes(
-        message.pingOriginPeerId !== undefined ? message.pingOriginPeerId : new Uint8Array(),
-      ));
-    message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
+    if (message.pingOriginPeerId.length !== 0) {
+      obj.pingOriginPeerId = base64FromBytes(message.pingOriginPeerId);
+    }
+    if (message.pingTimestamp !== 0) {
+      obj.pingTimestamp = Math.round(message.pingTimestamp);
+    }
     return obj;
   },
 
@@ -396,14 +413,14 @@ export const PingMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<PingMessageBody>, I>>(object: I): PingMessageBody {
     const message = createBasePingMessageBody();
-    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array();
+    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array(0);
     message.pingTimestamp = object.pingTimestamp ?? 0;
     return message;
   },
 };
 
 function createBaseAckMessageBody(): AckMessageBody {
-  return { pingOriginPeerId: new Uint8Array(), ackOriginPeerId: new Uint8Array(), pingTimestamp: 0, ackTimestamp: 0 };
+  return { pingOriginPeerId: new Uint8Array(0), ackOriginPeerId: new Uint8Array(0), pingTimestamp: 0, ackTimestamp: 0 };
 }
 
 export const AckMessageBody = {
@@ -431,35 +448,35 @@ export const AckMessageBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.pingOriginPeerId = reader.bytes();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.ackOriginPeerId = reader.bytes();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.pingTimestamp = longToNumber(reader.uint64() as Long);
           continue;
         case 4:
-          if (tag != 32) {
+          if (tag !== 32) {
             break;
           }
 
           message.ackTimestamp = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -469,8 +486,8 @@ export const AckMessageBody = {
 
   fromJSON(object: any): AckMessageBody {
     return {
-      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(),
-      ackOriginPeerId: isSet(object.ackOriginPeerId) ? bytesFromBase64(object.ackOriginPeerId) : new Uint8Array(),
+      pingOriginPeerId: isSet(object.pingOriginPeerId) ? bytesFromBase64(object.pingOriginPeerId) : new Uint8Array(0),
+      ackOriginPeerId: isSet(object.ackOriginPeerId) ? bytesFromBase64(object.ackOriginPeerId) : new Uint8Array(0),
       pingTimestamp: isSet(object.pingTimestamp) ? Number(object.pingTimestamp) : 0,
       ackTimestamp: isSet(object.ackTimestamp) ? Number(object.ackTimestamp) : 0,
     };
@@ -478,16 +495,18 @@ export const AckMessageBody = {
 
   toJSON(message: AckMessageBody): unknown {
     const obj: any = {};
-    message.pingOriginPeerId !== undefined &&
-      (obj.pingOriginPeerId = base64FromBytes(
-        message.pingOriginPeerId !== undefined ? message.pingOriginPeerId : new Uint8Array(),
-      ));
-    message.ackOriginPeerId !== undefined &&
-      (obj.ackOriginPeerId = base64FromBytes(
-        message.ackOriginPeerId !== undefined ? message.ackOriginPeerId : new Uint8Array(),
-      ));
-    message.pingTimestamp !== undefined && (obj.pingTimestamp = Math.round(message.pingTimestamp));
-    message.ackTimestamp !== undefined && (obj.ackTimestamp = Math.round(message.ackTimestamp));
+    if (message.pingOriginPeerId.length !== 0) {
+      obj.pingOriginPeerId = base64FromBytes(message.pingOriginPeerId);
+    }
+    if (message.ackOriginPeerId.length !== 0) {
+      obj.ackOriginPeerId = base64FromBytes(message.ackOriginPeerId);
+    }
+    if (message.pingTimestamp !== 0) {
+      obj.pingTimestamp = Math.round(message.pingTimestamp);
+    }
+    if (message.ackTimestamp !== 0) {
+      obj.ackTimestamp = Math.round(message.ackTimestamp);
+    }
     return obj;
   },
 
@@ -497,8 +516,8 @@ export const AckMessageBody = {
 
   fromPartial<I extends Exact<DeepPartial<AckMessageBody>, I>>(object: I): AckMessageBody {
     const message = createBaseAckMessageBody();
-    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array();
-    message.ackOriginPeerId = object.ackOriginPeerId ?? new Uint8Array();
+    message.pingOriginPeerId = object.pingOriginPeerId ?? new Uint8Array(0);
+    message.ackOriginPeerId = object.ackOriginPeerId ?? new Uint8Array(0);
     message.pingTimestamp = object.pingTimestamp ?? 0;
     message.ackTimestamp = object.ackTimestamp ?? 0;
     return message;
@@ -528,21 +547,21 @@ export const NetworkLatencyMessage = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.pingMessage = PingMessageBody.decode(reader, reader.uint32());
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.ackMessage = AckMessageBody.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -559,10 +578,12 @@ export const NetworkLatencyMessage = {
 
   toJSON(message: NetworkLatencyMessage): unknown {
     const obj: any = {};
-    message.pingMessage !== undefined &&
-      (obj.pingMessage = message.pingMessage ? PingMessageBody.toJSON(message.pingMessage) : undefined);
-    message.ackMessage !== undefined &&
-      (obj.ackMessage = message.ackMessage ? AckMessageBody.toJSON(message.ackMessage) : undefined);
+    if (message.pingMessage !== undefined) {
+      obj.pingMessage = PingMessageBody.toJSON(message.pingMessage);
+    }
+    if (message.ackMessage !== undefined) {
+      obj.ackMessage = AckMessageBody.toJSON(message.ackMessage);
+    }
     return obj;
   },
 
@@ -589,7 +610,7 @@ function createBaseGossipMessage(): GossipMessage {
     contactInfoContent: undefined,
     networkLatencyMessage: undefined,
     topics: [],
-    peerId: new Uint8Array(),
+    peerId: new Uint8Array(0),
     version: 0,
   };
 }
@@ -628,56 +649,56 @@ export const GossipMessage = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.message = Message.decode(reader, reader.uint32());
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.idRegistryEvent = IdRegistryEvent.decode(reader, reader.uint32());
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.contactInfoContent = ContactInfoContent.decode(reader, reader.uint32());
           continue;
         case 7:
-          if (tag != 58) {
+          if (tag !== 58) {
             break;
           }
 
           message.networkLatencyMessage = NetworkLatencyMessage.decode(reader, reader.uint32());
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.topics.push(reader.string());
           continue;
         case 5:
-          if (tag != 42) {
+          if (tag !== 42) {
             break;
           }
 
           message.peerId = reader.bytes();
           continue;
         case 6:
-          if (tag != 48) {
+          if (tag !== 48) {
             break;
           }
 
           message.version = reader.int32() as any;
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -696,30 +717,34 @@ export const GossipMessage = {
         ? NetworkLatencyMessage.fromJSON(object.networkLatencyMessage)
         : undefined,
       topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => String(e)) : [],
-      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
+      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(0),
       version: isSet(object.version) ? gossipVersionFromJSON(object.version) : 0,
     };
   },
 
   toJSON(message: GossipMessage): unknown {
     const obj: any = {};
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
-    message.idRegistryEvent !== undefined &&
-      (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
-    message.contactInfoContent !== undefined && (obj.contactInfoContent = message.contactInfoContent
-      ? ContactInfoContent.toJSON(message.contactInfoContent)
-      : undefined);
-    message.networkLatencyMessage !== undefined && (obj.networkLatencyMessage = message.networkLatencyMessage
-      ? NetworkLatencyMessage.toJSON(message.networkLatencyMessage)
-      : undefined);
-    if (message.topics) {
-      obj.topics = message.topics.map((e) => e);
-    } else {
-      obj.topics = [];
+    if (message.message !== undefined) {
+      obj.message = Message.toJSON(message.message);
     }
-    message.peerId !== undefined &&
-      (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
-    message.version !== undefined && (obj.version = gossipVersionToJSON(message.version));
+    if (message.idRegistryEvent !== undefined) {
+      obj.idRegistryEvent = IdRegistryEvent.toJSON(message.idRegistryEvent);
+    }
+    if (message.contactInfoContent !== undefined) {
+      obj.contactInfoContent = ContactInfoContent.toJSON(message.contactInfoContent);
+    }
+    if (message.networkLatencyMessage !== undefined) {
+      obj.networkLatencyMessage = NetworkLatencyMessage.toJSON(message.networkLatencyMessage);
+    }
+    if (message.topics?.length) {
+      obj.topics = message.topics;
+    }
+    if (message.peerId.length !== 0) {
+      obj.peerId = base64FromBytes(message.peerId);
+    }
+    if (message.version !== 0) {
+      obj.version = gossipVersionToJSON(message.version);
+    }
     return obj;
   },
 
@@ -743,16 +768,16 @@ export const GossipMessage = {
         ? NetworkLatencyMessage.fromPartial(object.networkLatencyMessage)
         : undefined;
     message.topics = object.topics?.map((e) => e) || [];
-    message.peerId = object.peerId ?? new Uint8Array();
+    message.peerId = object.peerId ?? new Uint8Array(0);
     message.version = object.version ?? 0;
     return message;
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

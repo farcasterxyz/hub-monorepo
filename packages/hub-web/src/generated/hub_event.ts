@@ -150,21 +150,21 @@ export const MergeMessageBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.message = Message.decode(reader, reader.uint32());
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.deletedMessages.push(Message.decode(reader, reader.uint32()));
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -183,11 +183,11 @@ export const MergeMessageBody = {
 
   toJSON(message: MergeMessageBody): unknown {
     const obj: any = {};
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
-    if (message.deletedMessages) {
-      obj.deletedMessages = message.deletedMessages.map((e) => e ? Message.toJSON(e) : undefined);
-    } else {
-      obj.deletedMessages = [];
+    if (message.message !== undefined) {
+      obj.message = Message.toJSON(message.message);
+    }
+    if (message.deletedMessages?.length) {
+      obj.deletedMessages = message.deletedMessages.map((e) => Message.toJSON(e));
     }
     return obj;
   },
@@ -226,14 +226,14 @@ export const PruneMessageBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.message = Message.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -247,7 +247,9 @@ export const PruneMessageBody = {
 
   toJSON(message: PruneMessageBody): unknown {
     const obj: any = {};
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    if (message.message !== undefined) {
+      obj.message = Message.toJSON(message.message);
+    }
     return obj;
   },
 
@@ -284,14 +286,14 @@ export const RevokeMessageBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.message = Message.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -305,7 +307,9 @@ export const RevokeMessageBody = {
 
   toJSON(message: RevokeMessageBody): unknown {
     const obj: any = {};
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    if (message.message !== undefined) {
+      obj.message = Message.toJSON(message.message);
+    }
     return obj;
   },
 
@@ -342,14 +346,14 @@ export const MergeIdRegistryEventBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.idRegistryEvent = IdRegistryEvent.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -365,8 +369,9 @@ export const MergeIdRegistryEventBody = {
 
   toJSON(message: MergeIdRegistryEventBody): unknown {
     const obj: any = {};
-    message.idRegistryEvent !== undefined &&
-      (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
+    if (message.idRegistryEvent !== undefined) {
+      obj.idRegistryEvent = IdRegistryEvent.toJSON(message.idRegistryEvent);
+    }
     return obj;
   },
 
@@ -403,14 +408,14 @@ export const MergeNameRegistryEventBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.nameRegistryEvent = NameRegistryEvent.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -428,9 +433,9 @@ export const MergeNameRegistryEventBody = {
 
   toJSON(message: MergeNameRegistryEventBody): unknown {
     const obj: any = {};
-    message.nameRegistryEvent !== undefined && (obj.nameRegistryEvent = message.nameRegistryEvent
-      ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
-      : undefined);
+    if (message.nameRegistryEvent !== undefined) {
+      obj.nameRegistryEvent = NameRegistryEvent.toJSON(message.nameRegistryEvent);
+    }
     return obj;
   },
 
@@ -467,14 +472,14 @@ export const MergeRentRegistryEventBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.rentRegistryEvent = RentRegistryEvent.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -492,9 +497,9 @@ export const MergeRentRegistryEventBody = {
 
   toJSON(message: MergeRentRegistryEventBody): unknown {
     const obj: any = {};
-    message.rentRegistryEvent !== undefined && (obj.rentRegistryEvent = message.rentRegistryEvent
-      ? RentRegistryEvent.toJSON(message.rentRegistryEvent)
-      : undefined);
+    if (message.rentRegistryEvent !== undefined) {
+      obj.rentRegistryEvent = RentRegistryEvent.toJSON(message.rentRegistryEvent);
+    }
     return obj;
   },
 
@@ -531,14 +536,14 @@ export const MergeStorageAdminRegistryEventBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.storageAdminRegistryEvent = StorageAdminRegistryEvent.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -556,10 +561,9 @@ export const MergeStorageAdminRegistryEventBody = {
 
   toJSON(message: MergeStorageAdminRegistryEventBody): unknown {
     const obj: any = {};
-    message.storageAdminRegistryEvent !== undefined &&
-      (obj.storageAdminRegistryEvent = message.storageAdminRegistryEvent
-        ? StorageAdminRegistryEvent.toJSON(message.storageAdminRegistryEvent)
-        : undefined);
+    if (message.storageAdminRegistryEvent !== undefined) {
+      obj.storageAdminRegistryEvent = StorageAdminRegistryEvent.toJSON(message.storageAdminRegistryEvent);
+    }
     return obj;
   },
 
@@ -615,35 +619,35 @@ export const MergeUserNameProofBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.usernameProof = UserNameProof.decode(reader, reader.uint32());
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.deletedUsernameProof = UserNameProof.decode(reader, reader.uint32());
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.usernameProofMessage = Message.decode(reader, reader.uint32());
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.deletedUsernameProofMessage = Message.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -668,18 +672,18 @@ export const MergeUserNameProofBody = {
 
   toJSON(message: MergeUserNameProofBody): unknown {
     const obj: any = {};
-    message.usernameProof !== undefined &&
-      (obj.usernameProof = message.usernameProof ? UserNameProof.toJSON(message.usernameProof) : undefined);
-    message.deletedUsernameProof !== undefined && (obj.deletedUsernameProof = message.deletedUsernameProof
-      ? UserNameProof.toJSON(message.deletedUsernameProof)
-      : undefined);
-    message.usernameProofMessage !== undefined && (obj.usernameProofMessage = message.usernameProofMessage
-      ? Message.toJSON(message.usernameProofMessage)
-      : undefined);
-    message.deletedUsernameProofMessage !== undefined &&
-      (obj.deletedUsernameProofMessage = message.deletedUsernameProofMessage
-        ? Message.toJSON(message.deletedUsernameProofMessage)
-        : undefined);
+    if (message.usernameProof !== undefined) {
+      obj.usernameProof = UserNameProof.toJSON(message.usernameProof);
+    }
+    if (message.deletedUsernameProof !== undefined) {
+      obj.deletedUsernameProof = UserNameProof.toJSON(message.deletedUsernameProof);
+    }
+    if (message.usernameProofMessage !== undefined) {
+      obj.usernameProofMessage = Message.toJSON(message.usernameProofMessage);
+    }
+    if (message.deletedUsernameProofMessage !== undefined) {
+      obj.deletedUsernameProofMessage = Message.toJSON(message.deletedUsernameProofMessage);
+    }
     return obj;
   },
 
@@ -765,70 +769,70 @@ export const HubEvent = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.type = reader.int32() as any;
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.id = longToNumber(reader.uint64() as Long);
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.mergeMessageBody = MergeMessageBody.decode(reader, reader.uint32());
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.pruneMessageBody = PruneMessageBody.decode(reader, reader.uint32());
           continue;
         case 5:
-          if (tag != 42) {
+          if (tag !== 42) {
             break;
           }
 
           message.revokeMessageBody = RevokeMessageBody.decode(reader, reader.uint32());
           continue;
         case 6:
-          if (tag != 50) {
+          if (tag !== 50) {
             break;
           }
 
           message.mergeIdRegistryEventBody = MergeIdRegistryEventBody.decode(reader, reader.uint32());
           continue;
         case 7:
-          if (tag != 58) {
+          if (tag !== 58) {
             break;
           }
 
           message.mergeNameRegistryEventBody = MergeNameRegistryEventBody.decode(reader, reader.uint32());
           continue;
         case 8:
-          if (tag != 66) {
+          if (tag !== 66) {
             break;
           }
 
           message.mergeUsernameProofBody = MergeUserNameProofBody.decode(reader, reader.uint32());
           continue;
         case 9:
-          if (tag != 74) {
+          if (tag !== 74) {
             break;
           }
 
           message.mergeRentRegistryEventBody = MergeRentRegistryEventBody.decode(reader, reader.uint32());
           continue;
         case 10:
-          if (tag != 82) {
+          if (tag !== 82) {
             break;
           }
 
@@ -838,7 +842,7 @@ export const HubEvent = {
           );
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -875,33 +879,38 @@ export const HubEvent = {
 
   toJSON(message: HubEvent): unknown {
     const obj: any = {};
-    message.type !== undefined && (obj.type = hubEventTypeToJSON(message.type));
-    message.id !== undefined && (obj.id = Math.round(message.id));
-    message.mergeMessageBody !== undefined &&
-      (obj.mergeMessageBody = message.mergeMessageBody ? MergeMessageBody.toJSON(message.mergeMessageBody) : undefined);
-    message.pruneMessageBody !== undefined &&
-      (obj.pruneMessageBody = message.pruneMessageBody ? PruneMessageBody.toJSON(message.pruneMessageBody) : undefined);
-    message.revokeMessageBody !== undefined && (obj.revokeMessageBody = message.revokeMessageBody
-      ? RevokeMessageBody.toJSON(message.revokeMessageBody)
-      : undefined);
-    message.mergeIdRegistryEventBody !== undefined && (obj.mergeIdRegistryEventBody = message.mergeIdRegistryEventBody
-      ? MergeIdRegistryEventBody.toJSON(message.mergeIdRegistryEventBody)
-      : undefined);
-    message.mergeNameRegistryEventBody !== undefined &&
-      (obj.mergeNameRegistryEventBody = message.mergeNameRegistryEventBody
-        ? MergeNameRegistryEventBody.toJSON(message.mergeNameRegistryEventBody)
-        : undefined);
-    message.mergeUsernameProofBody !== undefined && (obj.mergeUsernameProofBody = message.mergeUsernameProofBody
-      ? MergeUserNameProofBody.toJSON(message.mergeUsernameProofBody)
-      : undefined);
-    message.mergeRentRegistryEventBody !== undefined &&
-      (obj.mergeRentRegistryEventBody = message.mergeRentRegistryEventBody
-        ? MergeRentRegistryEventBody.toJSON(message.mergeRentRegistryEventBody)
-        : undefined);
-    message.mergeStorageAdminRegistryEventBody !== undefined &&
-      (obj.mergeStorageAdminRegistryEventBody = message.mergeStorageAdminRegistryEventBody
-        ? MergeStorageAdminRegistryEventBody.toJSON(message.mergeStorageAdminRegistryEventBody)
-        : undefined);
+    if (message.type !== 0) {
+      obj.type = hubEventTypeToJSON(message.type);
+    }
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    if (message.mergeMessageBody !== undefined) {
+      obj.mergeMessageBody = MergeMessageBody.toJSON(message.mergeMessageBody);
+    }
+    if (message.pruneMessageBody !== undefined) {
+      obj.pruneMessageBody = PruneMessageBody.toJSON(message.pruneMessageBody);
+    }
+    if (message.revokeMessageBody !== undefined) {
+      obj.revokeMessageBody = RevokeMessageBody.toJSON(message.revokeMessageBody);
+    }
+    if (message.mergeIdRegistryEventBody !== undefined) {
+      obj.mergeIdRegistryEventBody = MergeIdRegistryEventBody.toJSON(message.mergeIdRegistryEventBody);
+    }
+    if (message.mergeNameRegistryEventBody !== undefined) {
+      obj.mergeNameRegistryEventBody = MergeNameRegistryEventBody.toJSON(message.mergeNameRegistryEventBody);
+    }
+    if (message.mergeUsernameProofBody !== undefined) {
+      obj.mergeUsernameProofBody = MergeUserNameProofBody.toJSON(message.mergeUsernameProofBody);
+    }
+    if (message.mergeRentRegistryEventBody !== undefined) {
+      obj.mergeRentRegistryEventBody = MergeRentRegistryEventBody.toJSON(message.mergeRentRegistryEventBody);
+    }
+    if (message.mergeStorageAdminRegistryEventBody !== undefined) {
+      obj.mergeStorageAdminRegistryEventBody = MergeStorageAdminRegistryEventBody.toJSON(
+        message.mergeStorageAdminRegistryEventBody,
+      );
+    }
     return obj;
   },
 
@@ -946,10 +955,10 @@ export const HubEvent = {
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

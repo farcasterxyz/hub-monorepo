@@ -30,21 +30,21 @@ export const HubState = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.lastEthBlock = reader.uint32();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.lastFnameProof = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -61,8 +61,12 @@ export const HubState = {
 
   toJSON(message: HubState): unknown {
     const obj: any = {};
-    message.lastEthBlock !== undefined && (obj.lastEthBlock = Math.round(message.lastEthBlock));
-    message.lastFnameProof !== undefined && (obj.lastFnameProof = Math.round(message.lastFnameProof));
+    if (message.lastEthBlock !== 0) {
+      obj.lastEthBlock = Math.round(message.lastEthBlock);
+    }
+    if (message.lastFnameProof !== 0) {
+      obj.lastFnameProof = Math.round(message.lastFnameProof);
+    }
     return obj;
   },
 
@@ -78,10 +82,10 @@ export const HubState = {
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

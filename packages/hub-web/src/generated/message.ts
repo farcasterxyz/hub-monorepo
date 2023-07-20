@@ -474,11 +474,11 @@ export interface LinkBody {
 function createBaseMessage(): Message {
   return {
     data: undefined,
-    hash: new Uint8Array(),
+    hash: new Uint8Array(0),
     hashScheme: 0,
-    signature: new Uint8Array(),
+    signature: new Uint8Array(0),
     signatureScheme: 0,
-    signer: new Uint8Array(),
+    signer: new Uint8Array(0),
   };
 }
 
@@ -513,49 +513,49 @@ export const Message = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.data = MessageData.decode(reader, reader.uint32());
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.hash = reader.bytes();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.hashScheme = reader.int32() as any;
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.signature = reader.bytes();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.signatureScheme = reader.int32() as any;
           continue;
         case 6:
-          if (tag != 50) {
+          if (tag !== 50) {
             break;
           }
 
           message.signer = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -566,25 +566,34 @@ export const Message = {
   fromJSON(object: any): Message {
     return {
       data: isSet(object.data) ? MessageData.fromJSON(object.data) : undefined,
-      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
+      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(0),
       hashScheme: isSet(object.hashScheme) ? hashSchemeFromJSON(object.hashScheme) : 0,
-      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
+      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
       signatureScheme: isSet(object.signatureScheme) ? signatureSchemeFromJSON(object.signatureScheme) : 0,
-      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(0),
     };
   },
 
   toJSON(message: Message): unknown {
     const obj: any = {};
-    message.data !== undefined && (obj.data = message.data ? MessageData.toJSON(message.data) : undefined);
-    message.hash !== undefined &&
-      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
-    message.hashScheme !== undefined && (obj.hashScheme = hashSchemeToJSON(message.hashScheme));
-    message.signature !== undefined &&
-      (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
-    message.signatureScheme !== undefined && (obj.signatureScheme = signatureSchemeToJSON(message.signatureScheme));
-    message.signer !== undefined &&
-      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    if (message.data !== undefined) {
+      obj.data = MessageData.toJSON(message.data);
+    }
+    if (message.hash.length !== 0) {
+      obj.hash = base64FromBytes(message.hash);
+    }
+    if (message.hashScheme !== 0) {
+      obj.hashScheme = hashSchemeToJSON(message.hashScheme);
+    }
+    if (message.signature.length !== 0) {
+      obj.signature = base64FromBytes(message.signature);
+    }
+    if (message.signatureScheme !== 0) {
+      obj.signatureScheme = signatureSchemeToJSON(message.signatureScheme);
+    }
+    if (message.signer.length !== 0) {
+      obj.signer = base64FromBytes(message.signer);
+    }
     return obj;
   },
 
@@ -597,11 +606,11 @@ export const Message = {
     message.data = (object.data !== undefined && object.data !== null)
       ? MessageData.fromPartial(object.data)
       : undefined;
-    message.hash = object.hash ?? new Uint8Array();
+    message.hash = object.hash ?? new Uint8Array(0);
     message.hashScheme = object.hashScheme ?? 0;
-    message.signature = object.signature ?? new Uint8Array();
+    message.signature = object.signature ?? new Uint8Array(0);
     message.signatureScheme = object.signatureScheme ?? 0;
-    message.signer = object.signer ?? new Uint8Array();
+    message.signer = object.signer ?? new Uint8Array(0);
     return message;
   },
 };
@@ -680,105 +689,105 @@ export const MessageData = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.type = reader.int32() as any;
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.timestamp = reader.uint32();
           continue;
         case 4:
-          if (tag != 32) {
+          if (tag !== 32) {
             break;
           }
 
           message.network = reader.int32() as any;
           continue;
         case 5:
-          if (tag != 42) {
+          if (tag !== 42) {
             break;
           }
 
           message.castAddBody = CastAddBody.decode(reader, reader.uint32());
           continue;
         case 6:
-          if (tag != 50) {
+          if (tag !== 50) {
             break;
           }
 
           message.castRemoveBody = CastRemoveBody.decode(reader, reader.uint32());
           continue;
         case 7:
-          if (tag != 58) {
+          if (tag !== 58) {
             break;
           }
 
           message.reactionBody = ReactionBody.decode(reader, reader.uint32());
           continue;
         case 9:
-          if (tag != 74) {
+          if (tag !== 74) {
             break;
           }
 
           message.verificationAddEthAddressBody = VerificationAddEthAddressBody.decode(reader, reader.uint32());
           continue;
         case 10:
-          if (tag != 82) {
+          if (tag !== 82) {
             break;
           }
 
           message.verificationRemoveBody = VerificationRemoveBody.decode(reader, reader.uint32());
           continue;
         case 11:
-          if (tag != 90) {
+          if (tag !== 90) {
             break;
           }
 
           message.signerAddBody = SignerAddBody.decode(reader, reader.uint32());
           continue;
         case 12:
-          if (tag != 98) {
+          if (tag !== 98) {
             break;
           }
 
           message.userDataBody = UserDataBody.decode(reader, reader.uint32());
           continue;
         case 13:
-          if (tag != 106) {
+          if (tag !== 106) {
             break;
           }
 
           message.signerRemoveBody = SignerRemoveBody.decode(reader, reader.uint32());
           continue;
         case 14:
-          if (tag != 114) {
+          if (tag !== 114) {
             break;
           }
 
           message.linkBody = LinkBody.decode(reader, reader.uint32());
           continue;
         case 15:
-          if (tag != 122) {
+          if (tag !== 122) {
             break;
           }
 
           message.usernameProofBody = UserNameProof.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -811,32 +820,48 @@ export const MessageData = {
 
   toJSON(message: MessageData): unknown {
     const obj: any = {};
-    message.type !== undefined && (obj.type = messageTypeToJSON(message.type));
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
-    message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
-    message.castAddBody !== undefined &&
-      (obj.castAddBody = message.castAddBody ? CastAddBody.toJSON(message.castAddBody) : undefined);
-    message.castRemoveBody !== undefined &&
-      (obj.castRemoveBody = message.castRemoveBody ? CastRemoveBody.toJSON(message.castRemoveBody) : undefined);
-    message.reactionBody !== undefined &&
-      (obj.reactionBody = message.reactionBody ? ReactionBody.toJSON(message.reactionBody) : undefined);
-    message.verificationAddEthAddressBody !== undefined &&
-      (obj.verificationAddEthAddressBody = message.verificationAddEthAddressBody
-        ? VerificationAddEthAddressBody.toJSON(message.verificationAddEthAddressBody)
-        : undefined);
-    message.verificationRemoveBody !== undefined && (obj.verificationRemoveBody = message.verificationRemoveBody
-      ? VerificationRemoveBody.toJSON(message.verificationRemoveBody)
-      : undefined);
-    message.signerAddBody !== undefined &&
-      (obj.signerAddBody = message.signerAddBody ? SignerAddBody.toJSON(message.signerAddBody) : undefined);
-    message.userDataBody !== undefined &&
-      (obj.userDataBody = message.userDataBody ? UserDataBody.toJSON(message.userDataBody) : undefined);
-    message.signerRemoveBody !== undefined &&
-      (obj.signerRemoveBody = message.signerRemoveBody ? SignerRemoveBody.toJSON(message.signerRemoveBody) : undefined);
-    message.linkBody !== undefined && (obj.linkBody = message.linkBody ? LinkBody.toJSON(message.linkBody) : undefined);
-    message.usernameProofBody !== undefined &&
-      (obj.usernameProofBody = message.usernameProofBody ? UserNameProof.toJSON(message.usernameProofBody) : undefined);
+    if (message.type !== 0) {
+      obj.type = messageTypeToJSON(message.type);
+    }
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.timestamp !== 0) {
+      obj.timestamp = Math.round(message.timestamp);
+    }
+    if (message.network !== 0) {
+      obj.network = farcasterNetworkToJSON(message.network);
+    }
+    if (message.castAddBody !== undefined) {
+      obj.castAddBody = CastAddBody.toJSON(message.castAddBody);
+    }
+    if (message.castRemoveBody !== undefined) {
+      obj.castRemoveBody = CastRemoveBody.toJSON(message.castRemoveBody);
+    }
+    if (message.reactionBody !== undefined) {
+      obj.reactionBody = ReactionBody.toJSON(message.reactionBody);
+    }
+    if (message.verificationAddEthAddressBody !== undefined) {
+      obj.verificationAddEthAddressBody = VerificationAddEthAddressBody.toJSON(message.verificationAddEthAddressBody);
+    }
+    if (message.verificationRemoveBody !== undefined) {
+      obj.verificationRemoveBody = VerificationRemoveBody.toJSON(message.verificationRemoveBody);
+    }
+    if (message.signerAddBody !== undefined) {
+      obj.signerAddBody = SignerAddBody.toJSON(message.signerAddBody);
+    }
+    if (message.userDataBody !== undefined) {
+      obj.userDataBody = UserDataBody.toJSON(message.userDataBody);
+    }
+    if (message.signerRemoveBody !== undefined) {
+      obj.signerRemoveBody = SignerRemoveBody.toJSON(message.signerRemoveBody);
+    }
+    if (message.linkBody !== undefined) {
+      obj.linkBody = LinkBody.toJSON(message.linkBody);
+    }
+    if (message.usernameProofBody !== undefined) {
+      obj.usernameProofBody = UserNameProof.toJSON(message.usernameProofBody);
+    }
     return obj;
   },
 
@@ -887,7 +912,7 @@ export const MessageData = {
 };
 
 function createBaseSignerAddBody(): SignerAddBody {
-  return { signer: new Uint8Array(), name: undefined };
+  return { signer: new Uint8Array(0), name: undefined };
 }
 
 export const SignerAddBody = {
@@ -909,21 +934,21 @@ export const SignerAddBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.signer = reader.bytes();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.name = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -933,16 +958,19 @@ export const SignerAddBody = {
 
   fromJSON(object: any): SignerAddBody {
     return {
-      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(0),
       name: isSet(object.name) ? String(object.name) : undefined,
     };
   },
 
   toJSON(message: SignerAddBody): unknown {
     const obj: any = {};
-    message.signer !== undefined &&
-      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
-    message.name !== undefined && (obj.name = message.name);
+    if (message.signer.length !== 0) {
+      obj.signer = base64FromBytes(message.signer);
+    }
+    if (message.name !== undefined) {
+      obj.name = message.name;
+    }
     return obj;
   },
 
@@ -952,14 +980,14 @@ export const SignerAddBody = {
 
   fromPartial<I extends Exact<DeepPartial<SignerAddBody>, I>>(object: I): SignerAddBody {
     const message = createBaseSignerAddBody();
-    message.signer = object.signer ?? new Uint8Array();
+    message.signer = object.signer ?? new Uint8Array(0);
     message.name = object.name ?? undefined;
     return message;
   },
 };
 
 function createBaseSignerRemoveBody(): SignerRemoveBody {
-  return { signer: new Uint8Array() };
+  return { signer: new Uint8Array(0) };
 }
 
 export const SignerRemoveBody = {
@@ -978,14 +1006,14 @@ export const SignerRemoveBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.signer = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -994,13 +1022,14 @@ export const SignerRemoveBody = {
   },
 
   fromJSON(object: any): SignerRemoveBody {
-    return { signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array() };
+    return { signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(0) };
   },
 
   toJSON(message: SignerRemoveBody): unknown {
     const obj: any = {};
-    message.signer !== undefined &&
-      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    if (message.signer.length !== 0) {
+      obj.signer = base64FromBytes(message.signer);
+    }
     return obj;
   },
 
@@ -1010,7 +1039,7 @@ export const SignerRemoveBody = {
 
   fromPartial<I extends Exact<DeepPartial<SignerRemoveBody>, I>>(object: I): SignerRemoveBody {
     const message = createBaseSignerRemoveBody();
-    message.signer = object.signer ?? new Uint8Array();
+    message.signer = object.signer ?? new Uint8Array(0);
     return message;
   },
 };
@@ -1038,21 +1067,21 @@ export const UserDataBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.type = reader.int32() as any;
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.value = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1069,8 +1098,12 @@ export const UserDataBody = {
 
   toJSON(message: UserDataBody): unknown {
     const obj: any = {};
-    message.type !== undefined && (obj.type = userDataTypeToJSON(message.type));
-    message.value !== undefined && (obj.value = message.value);
+    if (message.type !== 0) {
+      obj.type = userDataTypeToJSON(message.type);
+    }
+    if (message.value !== "") {
+      obj.value = message.value;
+    }
     return obj;
   },
 
@@ -1109,21 +1142,21 @@ export const Embed = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.url = reader.string();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.castId = CastId.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1140,8 +1173,12 @@ export const Embed = {
 
   toJSON(message: Embed): unknown {
     const obj: any = {};
-    message.url !== undefined && (obj.url = message.url);
-    message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
+    if (message.url !== undefined) {
+      obj.url = message.url;
+    }
+    if (message.castId !== undefined) {
+      obj.castId = CastId.toJSON(message.castId);
+    }
     return obj;
   },
 
@@ -1209,19 +1246,20 @@ export const CastAddBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.embedsDeprecated.push(reader.string());
           continue;
         case 2:
-          if (tag == 16) {
+          if (tag === 16) {
             message.mentions.push(longToNumber(reader.uint64() as Long));
+
             continue;
           }
 
-          if (tag == 18) {
+          if (tag === 18) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.mentions.push(longToNumber(reader.uint64() as Long));
@@ -1232,33 +1270,34 @@ export const CastAddBody = {
 
           break;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.parentCastId = CastId.decode(reader, reader.uint32());
           continue;
         case 7:
-          if (tag != 58) {
+          if (tag !== 58) {
             break;
           }
 
           message.parentUrl = reader.string();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.text = reader.string();
           continue;
         case 5:
-          if (tag == 40) {
+          if (tag === 40) {
             message.mentionsPositions.push(reader.uint32());
+
             continue;
           }
 
-          if (tag == 42) {
+          if (tag === 42) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.mentionsPositions.push(reader.uint32());
@@ -1269,14 +1308,14 @@ export const CastAddBody = {
 
           break;
         case 6:
-          if (tag != 50) {
+          if (tag !== 50) {
             break;
           }
 
           message.embeds.push(Embed.decode(reader, reader.uint32()));
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1302,29 +1341,26 @@ export const CastAddBody = {
 
   toJSON(message: CastAddBody): unknown {
     const obj: any = {};
-    if (message.embedsDeprecated) {
-      obj.embedsDeprecated = message.embedsDeprecated.map((e) => e);
-    } else {
-      obj.embedsDeprecated = [];
+    if (message.embedsDeprecated?.length) {
+      obj.embedsDeprecated = message.embedsDeprecated;
     }
-    if (message.mentions) {
+    if (message.mentions?.length) {
       obj.mentions = message.mentions.map((e) => Math.round(e));
-    } else {
-      obj.mentions = [];
     }
-    message.parentCastId !== undefined &&
-      (obj.parentCastId = message.parentCastId ? CastId.toJSON(message.parentCastId) : undefined);
-    message.parentUrl !== undefined && (obj.parentUrl = message.parentUrl);
-    message.text !== undefined && (obj.text = message.text);
-    if (message.mentionsPositions) {
+    if (message.parentCastId !== undefined) {
+      obj.parentCastId = CastId.toJSON(message.parentCastId);
+    }
+    if (message.parentUrl !== undefined) {
+      obj.parentUrl = message.parentUrl;
+    }
+    if (message.text !== "") {
+      obj.text = message.text;
+    }
+    if (message.mentionsPositions?.length) {
       obj.mentionsPositions = message.mentionsPositions.map((e) => Math.round(e));
-    } else {
-      obj.mentionsPositions = [];
     }
-    if (message.embeds) {
-      obj.embeds = message.embeds.map((e) => e ? Embed.toJSON(e) : undefined);
-    } else {
-      obj.embeds = [];
+    if (message.embeds?.length) {
+      obj.embeds = message.embeds.map((e) => Embed.toJSON(e));
     }
     return obj;
   },
@@ -1349,7 +1385,7 @@ export const CastAddBody = {
 };
 
 function createBaseCastRemoveBody(): CastRemoveBody {
-  return { targetHash: new Uint8Array() };
+  return { targetHash: new Uint8Array(0) };
 }
 
 export const CastRemoveBody = {
@@ -1368,14 +1404,14 @@ export const CastRemoveBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.targetHash = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1384,13 +1420,14 @@ export const CastRemoveBody = {
   },
 
   fromJSON(object: any): CastRemoveBody {
-    return { targetHash: isSet(object.targetHash) ? bytesFromBase64(object.targetHash) : new Uint8Array() };
+    return { targetHash: isSet(object.targetHash) ? bytesFromBase64(object.targetHash) : new Uint8Array(0) };
   },
 
   toJSON(message: CastRemoveBody): unknown {
     const obj: any = {};
-    message.targetHash !== undefined &&
-      (obj.targetHash = base64FromBytes(message.targetHash !== undefined ? message.targetHash : new Uint8Array()));
+    if (message.targetHash.length !== 0) {
+      obj.targetHash = base64FromBytes(message.targetHash);
+    }
     return obj;
   },
 
@@ -1400,13 +1437,13 @@ export const CastRemoveBody = {
 
   fromPartial<I extends Exact<DeepPartial<CastRemoveBody>, I>>(object: I): CastRemoveBody {
     const message = createBaseCastRemoveBody();
-    message.targetHash = object.targetHash ?? new Uint8Array();
+    message.targetHash = object.targetHash ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseCastId(): CastId {
-  return { fid: 0, hash: new Uint8Array() };
+  return { fid: 0, hash: new Uint8Array(0) };
 }
 
 export const CastId = {
@@ -1428,21 +1465,21 @@ export const CastId = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.hash = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1453,15 +1490,18 @@ export const CastId = {
   fromJSON(object: any): CastId {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
+      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(0),
     };
   },
 
   toJSON(message: CastId): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.hash !== undefined &&
-      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.hash.length !== 0) {
+      obj.hash = base64FromBytes(message.hash);
+    }
     return obj;
   },
 
@@ -1472,7 +1512,7 @@ export const CastId = {
   fromPartial<I extends Exact<DeepPartial<CastId>, I>>(object: I): CastId {
     const message = createBaseCastId();
     message.fid = object.fid ?? 0;
-    message.hash = object.hash ?? new Uint8Array();
+    message.hash = object.hash ?? new Uint8Array(0);
     return message;
   },
 };
@@ -1503,28 +1543,28 @@ export const ReactionBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.type = reader.int32() as any;
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.targetCastId = CastId.decode(reader, reader.uint32());
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.targetUrl = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1542,10 +1582,15 @@ export const ReactionBody = {
 
   toJSON(message: ReactionBody): unknown {
     const obj: any = {};
-    message.type !== undefined && (obj.type = reactionTypeToJSON(message.type));
-    message.targetCastId !== undefined &&
-      (obj.targetCastId = message.targetCastId ? CastId.toJSON(message.targetCastId) : undefined);
-    message.targetUrl !== undefined && (obj.targetUrl = message.targetUrl);
+    if (message.type !== 0) {
+      obj.type = reactionTypeToJSON(message.type);
+    }
+    if (message.targetCastId !== undefined) {
+      obj.targetCastId = CastId.toJSON(message.targetCastId);
+    }
+    if (message.targetUrl !== undefined) {
+      obj.targetUrl = message.targetUrl;
+    }
     return obj;
   },
 
@@ -1565,7 +1610,7 @@ export const ReactionBody = {
 };
 
 function createBaseVerificationAddEthAddressBody(): VerificationAddEthAddressBody {
-  return { address: new Uint8Array(), ethSignature: new Uint8Array(), blockHash: new Uint8Array() };
+  return { address: new Uint8Array(0), ethSignature: new Uint8Array(0), blockHash: new Uint8Array(0) };
 }
 
 export const VerificationAddEthAddressBody = {
@@ -1590,28 +1635,28 @@ export const VerificationAddEthAddressBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.address = reader.bytes();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.ethSignature = reader.bytes();
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.blockHash = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1621,22 +1666,23 @@ export const VerificationAddEthAddressBody = {
 
   fromJSON(object: any): VerificationAddEthAddressBody {
     return {
-      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
-      ethSignature: isSet(object.ethSignature) ? bytesFromBase64(object.ethSignature) : new Uint8Array(),
-      blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
+      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(0),
+      ethSignature: isSet(object.ethSignature) ? bytesFromBase64(object.ethSignature) : new Uint8Array(0),
+      blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(0),
     };
   },
 
   toJSON(message: VerificationAddEthAddressBody): unknown {
     const obj: any = {};
-    message.address !== undefined &&
-      (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
-    message.ethSignature !== undefined &&
-      (obj.ethSignature = base64FromBytes(
-        message.ethSignature !== undefined ? message.ethSignature : new Uint8Array(),
-      ));
-    message.blockHash !== undefined &&
-      (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
+    if (message.address.length !== 0) {
+      obj.address = base64FromBytes(message.address);
+    }
+    if (message.ethSignature.length !== 0) {
+      obj.ethSignature = base64FromBytes(message.ethSignature);
+    }
+    if (message.blockHash.length !== 0) {
+      obj.blockHash = base64FromBytes(message.blockHash);
+    }
     return obj;
   },
 
@@ -1648,15 +1694,15 @@ export const VerificationAddEthAddressBody = {
     object: I,
   ): VerificationAddEthAddressBody {
     const message = createBaseVerificationAddEthAddressBody();
-    message.address = object.address ?? new Uint8Array();
-    message.ethSignature = object.ethSignature ?? new Uint8Array();
-    message.blockHash = object.blockHash ?? new Uint8Array();
+    message.address = object.address ?? new Uint8Array(0);
+    message.ethSignature = object.ethSignature ?? new Uint8Array(0);
+    message.blockHash = object.blockHash ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseVerificationRemoveBody(): VerificationRemoveBody {
-  return { address: new Uint8Array() };
+  return { address: new Uint8Array(0) };
 }
 
 export const VerificationRemoveBody = {
@@ -1675,14 +1721,14 @@ export const VerificationRemoveBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.address = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1691,13 +1737,14 @@ export const VerificationRemoveBody = {
   },
 
   fromJSON(object: any): VerificationRemoveBody {
-    return { address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array() };
+    return { address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(0) };
   },
 
   toJSON(message: VerificationRemoveBody): unknown {
     const obj: any = {};
-    message.address !== undefined &&
-      (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
+    if (message.address.length !== 0) {
+      obj.address = base64FromBytes(message.address);
+    }
     return obj;
   },
 
@@ -1707,7 +1754,7 @@ export const VerificationRemoveBody = {
 
   fromPartial<I extends Exact<DeepPartial<VerificationRemoveBody>, I>>(object: I): VerificationRemoveBody {
     const message = createBaseVerificationRemoveBody();
-    message.address = object.address ?? new Uint8Array();
+    message.address = object.address ?? new Uint8Array(0);
     return message;
   },
 };
@@ -1738,28 +1785,28 @@ export const LinkBody = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.type = reader.string();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.displayTimestamp = reader.uint32();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.targetFid = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1777,9 +1824,15 @@ export const LinkBody = {
 
   toJSON(message: LinkBody): unknown {
     const obj: any = {};
-    message.type !== undefined && (obj.type = message.type);
-    message.displayTimestamp !== undefined && (obj.displayTimestamp = Math.round(message.displayTimestamp));
-    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
+    if (message.type !== "") {
+      obj.type = message.type;
+    }
+    if (message.displayTimestamp !== undefined) {
+      obj.displayTimestamp = Math.round(message.displayTimestamp);
+    }
+    if (message.targetFid !== undefined) {
+      obj.targetFid = Math.round(message.targetFid);
+    }
     return obj;
   },
 
@@ -1796,10 +1849,10 @@ export const LinkBody = {
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

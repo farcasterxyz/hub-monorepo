@@ -26,7 +26,7 @@
   "devDependencies": {
     "eslint-config-custom": "*",
     "rome-config-custom": "*",
-    "ts-proto": "^1.146.0"
+    "ts-proto": "^1.156.0"
   },
   "dependencies": {
     "@farcaster/core": "^0.11.0",

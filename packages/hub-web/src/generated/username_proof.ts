@@ -49,9 +49,9 @@ export interface UserNameProof {
 function createBaseUserNameProof(): UserNameProof {
   return {
     timestamp: 0,
-    name: new Uint8Array(),
-    owner: new Uint8Array(),
-    signature: new Uint8Array(),
+    name: new Uint8Array(0),
+    owner: new Uint8Array(0),
+    signature: new Uint8Array(0),
     fid: 0,
     type: 0,
   };
@@ -88,49 +88,49 @@ export const UserNameProof = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.timestamp = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.name = reader.bytes();
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.owner = reader.bytes();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.signature = reader.bytes();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 6:
-          if (tag != 48) {
+          if (tag !== 48) {
             break;
           }
 
           message.type = reader.int32() as any;
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -141,9 +141,9 @@ export const UserNameProof = {
   fromJSON(object: any): UserNameProof {
     return {
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
-      name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array(),
-      owner: isSet(object.owner) ? bytesFromBase64(object.owner) : new Uint8Array(),
-      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
+      name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array(0),
+      owner: isSet(object.owner) ? bytesFromBase64(object.owner) : new Uint8Array(0),
+      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       type: isSet(object.type) ? userNameTypeFromJSON(object.type) : 0,
     };
@@ -151,15 +151,24 @@ export const UserNameProof = {
 
   toJSON(message: UserNameProof): unknown {
     const obj: any = {};
-    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
-    message.name !== undefined &&
-      (obj.name = base64FromBytes(message.name !== undefined ? message.name : new Uint8Array()));
-    message.owner !== undefined &&
-      (obj.owner = base64FromBytes(message.owner !== undefined ? message.owner : new Uint8Array()));
-    message.signature !== undefined &&
-      (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.type !== undefined && (obj.type = userNameTypeToJSON(message.type));
+    if (message.timestamp !== 0) {
+      obj.timestamp = Math.round(message.timestamp);
+    }
+    if (message.name.length !== 0) {
+      obj.name = base64FromBytes(message.name);
+    }
+    if (message.owner.length !== 0) {
+      obj.owner = base64FromBytes(message.owner);
+    }
+    if (message.signature.length !== 0) {
+      obj.signature = base64FromBytes(message.signature);
+    }
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.type !== 0) {
+      obj.type = userNameTypeToJSON(message.type);
+    }
     return obj;
   },
 
@@ -170,19 +179,19 @@ export const UserNameProof = {
   fromPartial<I extends Exact<DeepPartial<UserNameProof>, I>>(object: I): UserNameProof {
     const message = createBaseUserNameProof();
     message.timestamp = object.timestamp ?? 0;
-    message.name = object.name ?? new Uint8Array();
-    message.owner = object.owner ?? new Uint8Array();
-    message.signature = object.signature ?? new Uint8Array();
+    message.name = object.name ?? new Uint8Array(0);
+    message.owner = object.owner ?? new Uint8Array(0);
+    message.signature = object.signature ?? new Uint8Array(0);
     message.fid = object.fid ?? 0;
     message.type = object.type ?? 0;
     return message;
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

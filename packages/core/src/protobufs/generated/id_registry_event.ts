@@ -51,13 +51,13 @@ export interface IdRegistryEvent {
 function createBaseIdRegistryEvent(): IdRegistryEvent {
   return {
     blockNumber: 0,
-    blockHash: new Uint8Array(),
-    transactionHash: new Uint8Array(),
+    blockHash: new Uint8Array(0),
+    transactionHash: new Uint8Array(0),
     logIndex: 0,
     fid: 0,
-    to: new Uint8Array(),
+    to: new Uint8Array(0),
     type: 0,
-    from: new Uint8Array(),
+    from: new Uint8Array(0),
   };
 }
 
@@ -98,63 +98,63 @@ export const IdRegistryEvent = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.blockNumber = reader.uint32();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.blockHash = reader.bytes();
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.transactionHash = reader.bytes();
           continue;
         case 4:
-          if (tag != 32) {
+          if (tag !== 32) {
             break;
           }
 
           message.logIndex = reader.uint32();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 6:
-          if (tag != 50) {
+          if (tag !== 50) {
             break;
           }
 
           message.to = reader.bytes();
           continue;
         case 7:
-          if (tag != 56) {
+          if (tag !== 56) {
             break;
           }
 
           message.type = reader.int32() as any;
           continue;
         case 8:
-          if (tag != 66) {
+          if (tag !== 66) {
             break;
           }
 
           message.from = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -165,31 +165,42 @@ export const IdRegistryEvent = {
   fromJSON(object: any): IdRegistryEvent {
     return {
       blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
-      blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
-      transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
+      blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(0),
+      transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(0),
       logIndex: isSet(object.logIndex) ? Number(object.logIndex) : 0,
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      to: isSet(object.to) ? bytesFromBase64(object.to) : new Uint8Array(),
+      to: isSet(object.to) ? bytesFromBase64(object.to) : new Uint8Array(0),
       type: isSet(object.type) ? idRegistryEventTypeFromJSON(object.type) : 0,
-      from: isSet(object.from) ? bytesFromBase64(object.from) : new Uint8Array(),
+      from: isSet(object.from) ? bytesFromBase64(object.from) : new Uint8Array(0),
     };
   },
 
   toJSON(message: IdRegistryEvent): unknown {
     const obj: any = {};
-    message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
-    message.blockHash !== undefined &&
-      (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
-    message.transactionHash !== undefined &&
-      (obj.transactionHash = base64FromBytes(
-        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array(),
-      ));
-    message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.to !== undefined && (obj.to = base64FromBytes(message.to !== undefined ? message.to : new Uint8Array()));
-    message.type !== undefined && (obj.type = idRegistryEventTypeToJSON(message.type));
-    message.from !== undefined &&
-      (obj.from = base64FromBytes(message.from !== undefined ? message.from : new Uint8Array()));
+    if (message.blockNumber !== 0) {
+      obj.blockNumber = Math.round(message.blockNumber);
+    }
+    if (message.blockHash.length !== 0) {
+      obj.blockHash = base64FromBytes(message.blockHash);
+    }
+    if (message.transactionHash.length !== 0) {
+      obj.transactionHash = base64FromBytes(message.transactionHash);
+    }
+    if (message.logIndex !== 0) {
+      obj.logIndex = Math.round(message.logIndex);
+    }
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.to.length !== 0) {
+      obj.to = base64FromBytes(message.to);
+    }
+    if (message.type !== 0) {
+      obj.type = idRegistryEventTypeToJSON(message.type);
+    }
+    if (message.from.length !== 0) {
+      obj.from = base64FromBytes(message.from);
+    }
     return obj;
   },
 
@@ -200,21 +211,21 @@ export const IdRegistryEvent = {
   fromPartial<I extends Exact<DeepPartial<IdRegistryEvent>, I>>(object: I): IdRegistryEvent {
     const message = createBaseIdRegistryEvent();
     message.blockNumber = object.blockNumber ?? 0;
-    message.blockHash = object.blockHash ?? new Uint8Array();
-    message.transactionHash = object.transactionHash ?? new Uint8Array();
+    message.blockHash = object.blockHash ?? new Uint8Array(0);
+    message.transactionHash = object.transactionHash ?? new Uint8Array(0);
     message.logIndex = object.logIndex ?? 0;
     message.fid = object.fid ?? 0;
-    message.to = object.to ?? new Uint8Array();
+    message.to = object.to ?? new Uint8Array(0);
     message.type = object.type ?? 0;
-    message.from = object.from ?? new Uint8Array();
+    message.from = object.from ?? new Uint8Array(0);
     return message;
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

@@ -229,7 +229,7 @@ export const Empty = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -281,12 +281,13 @@ export const SubscribeRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag == 8) {
+          if (tag === 8) {
             message.eventTypes.push(reader.int32() as any);
+
             continue;
           }
 
-          if (tag == 10) {
+          if (tag === 10) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.eventTypes.push(reader.int32() as any);
@@ -297,14 +298,14 @@ export const SubscribeRequest = {
 
           break;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.fromId = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -321,12 +322,12 @@ export const SubscribeRequest = {
 
   toJSON(message: SubscribeRequest): unknown {
     const obj: any = {};
-    if (message.eventTypes) {
+    if (message.eventTypes?.length) {
       obj.eventTypes = message.eventTypes.map((e) => hubEventTypeToJSON(e));
-    } else {
-      obj.eventTypes = [];
     }
-    message.fromId !== undefined && (obj.fromId = Math.round(message.fromId));
+    if (message.fromId !== undefined) {
+      obj.fromId = Math.round(message.fromId);
+    }
     return obj;
   },
 
@@ -362,14 +363,14 @@ export const EventRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.id = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -383,7 +384,9 @@ export const EventRequest = {
 
   toJSON(message: EventRequest): unknown {
     const obj: any = {};
-    message.id !== undefined && (obj.id = Math.round(message.id));
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
     return obj;
   },
 
@@ -418,14 +421,14 @@ export const HubInfoRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.dbStats = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -439,7 +442,9 @@ export const HubInfoRequest = {
 
   toJSON(message: HubInfoRequest): unknown {
     const obj: any = {};
-    message.dbStats !== undefined && (obj.dbStats = message.dbStats);
+    if (message.dbStats === true) {
+      obj.dbStats = message.dbStats;
+    }
     return obj;
   },
 
@@ -486,42 +491,42 @@ export const HubInfoResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.version = reader.string();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.isSyncing = reader.bool();
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.nickname = reader.string();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.rootHash = reader.string();
           continue;
         case 5:
-          if (tag != 42) {
+          if (tag !== 42) {
             break;
           }
 
           message.dbStats = DbStats.decode(reader, reader.uint32());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -541,11 +546,21 @@ export const HubInfoResponse = {
 
   toJSON(message: HubInfoResponse): unknown {
     const obj: any = {};
-    message.version !== undefined && (obj.version = message.version);
-    message.isSyncing !== undefined && (obj.isSyncing = message.isSyncing);
-    message.nickname !== undefined && (obj.nickname = message.nickname);
-    message.rootHash !== undefined && (obj.rootHash = message.rootHash);
-    message.dbStats !== undefined && (obj.dbStats = message.dbStats ? DbStats.toJSON(message.dbStats) : undefined);
+    if (message.version !== "") {
+      obj.version = message.version;
+    }
+    if (message.isSyncing === true) {
+      obj.isSyncing = message.isSyncing;
+    }
+    if (message.nickname !== "") {
+      obj.nickname = message.nickname;
+    }
+    if (message.rootHash !== "") {
+      obj.rootHash = message.rootHash;
+    }
+    if (message.dbStats !== undefined) {
+      obj.dbStats = DbStats.toJSON(message.dbStats);
+    }
     return obj;
   },
 
@@ -592,28 +607,28 @@ export const DbStats = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.numMessages = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.numFidEvents = longToNumber(reader.uint64() as Long);
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.numFnameEvents = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -631,9 +646,15 @@ export const DbStats = {
 
   toJSON(message: DbStats): unknown {
     const obj: any = {};
-    message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.numFidEvents !== undefined && (obj.numFidEvents = Math.round(message.numFidEvents));
-    message.numFnameEvents !== undefined && (obj.numFnameEvents = Math.round(message.numFnameEvents));
+    if (message.numMessages !== 0) {
+      obj.numMessages = Math.round(message.numMessages);
+    }
+    if (message.numFidEvents !== 0) {
+      obj.numFidEvents = Math.round(message.numFidEvents);
+    }
+    if (message.numFnameEvents !== 0) {
+      obj.numFnameEvents = Math.round(message.numFnameEvents);
+    }
     return obj;
   },
 
@@ -670,14 +691,14 @@ export const SyncStatusRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.peerId = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -691,7 +712,9 @@ export const SyncStatusRequest = {
 
   toJSON(message: SyncStatusRequest): unknown {
     const obj: any = {};
-    message.peerId !== undefined && (obj.peerId = message.peerId);
+    if (message.peerId !== undefined) {
+      obj.peerId = message.peerId;
+    }
     return obj;
   },
 
@@ -729,21 +752,21 @@ export const SyncStatusResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.isSyncing = reader.bool();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.syncStatus.push(SyncStatus.decode(reader, reader.uint32()));
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -760,11 +783,11 @@ export const SyncStatusResponse = {
 
   toJSON(message: SyncStatusResponse): unknown {
     const obj: any = {};
-    message.isSyncing !== undefined && (obj.isSyncing = message.isSyncing);
-    if (message.syncStatus) {
-      obj.syncStatus = message.syncStatus.map((e) => e ? SyncStatus.toJSON(e) : undefined);
-    } else {
-      obj.syncStatus = [];
+    if (message.isSyncing === true) {
+      obj.isSyncing = message.isSyncing;
+    }
+    if (message.syncStatus?.length) {
+      obj.syncStatus = message.syncStatus.map((e) => SyncStatus.toJSON(e));
     }
     return obj;
   },
@@ -831,63 +854,63 @@ export const SyncStatus = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.peerId = reader.string();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.inSync = reader.string();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.shouldSync = reader.bool();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.divergencePrefix = reader.string();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.divergenceSecondsAgo = reader.int32();
           continue;
         case 6:
-          if (tag != 48) {
+          if (tag !== 48) {
             break;
           }
 
           message.theirMessages = longToNumber(reader.uint64() as Long);
           continue;
         case 7:
-          if (tag != 56) {
+          if (tag !== 56) {
             break;
           }
 
           message.ourMessages = longToNumber(reader.uint64() as Long);
           continue;
         case 8:
-          if (tag != 64) {
+          if (tag !== 64) {
             break;
           }
 
           message.lastBadSync = longToNumber(reader.int64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -910,14 +933,30 @@ export const SyncStatus = {
 
   toJSON(message: SyncStatus): unknown {
     const obj: any = {};
-    message.peerId !== undefined && (obj.peerId = message.peerId);
-    message.inSync !== undefined && (obj.inSync = message.inSync);
-    message.shouldSync !== undefined && (obj.shouldSync = message.shouldSync);
-    message.divergencePrefix !== undefined && (obj.divergencePrefix = message.divergencePrefix);
-    message.divergenceSecondsAgo !== undefined && (obj.divergenceSecondsAgo = Math.round(message.divergenceSecondsAgo));
-    message.theirMessages !== undefined && (obj.theirMessages = Math.round(message.theirMessages));
-    message.ourMessages !== undefined && (obj.ourMessages = Math.round(message.ourMessages));
-    message.lastBadSync !== undefined && (obj.lastBadSync = Math.round(message.lastBadSync));
+    if (message.peerId !== "") {
+      obj.peerId = message.peerId;
+    }
+    if (message.inSync !== "") {
+      obj.inSync = message.inSync;
+    }
+    if (message.shouldSync === true) {
+      obj.shouldSync = message.shouldSync;
+    }
+    if (message.divergencePrefix !== "") {
+      obj.divergencePrefix = message.divergencePrefix;
+    }
+    if (message.divergenceSecondsAgo !== 0) {
+      obj.divergenceSecondsAgo = Math.round(message.divergenceSecondsAgo);
+    }
+    if (message.theirMessages !== 0) {
+      obj.theirMessages = Math.round(message.theirMessages);
+    }
+    if (message.ourMessages !== 0) {
+      obj.ourMessages = Math.round(message.ourMessages);
+    }
+    if (message.lastBadSync !== 0) {
+      obj.lastBadSync = Math.round(message.lastBadSync);
+    }
     return obj;
   },
 
@@ -940,7 +979,7 @@ export const SyncStatus = {
 };
 
 function createBaseTrieNodeMetadataResponse(): TrieNodeMetadataResponse {
-  return { prefix: new Uint8Array(), numMessages: 0, hash: "", children: [] };
+  return { prefix: new Uint8Array(0), numMessages: 0, hash: "", children: [] };
 }
 
 export const TrieNodeMetadataResponse = {
@@ -968,35 +1007,35 @@ export const TrieNodeMetadataResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.prefix = reader.bytes();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.numMessages = longToNumber(reader.uint64() as Long);
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.hash = reader.string();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.children.push(TrieNodeMetadataResponse.decode(reader, reader.uint32()));
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1006,7 +1045,7 @@ export const TrieNodeMetadataResponse = {
 
   fromJSON(object: any): TrieNodeMetadataResponse {
     return {
-      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
+      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(0),
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
       hash: isSet(object.hash) ? String(object.hash) : "",
       children: Array.isArray(object?.children)
@@ -1017,14 +1056,17 @@ export const TrieNodeMetadataResponse = {
 
   toJSON(message: TrieNodeMetadataResponse): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
-    message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.hash !== undefined && (obj.hash = message.hash);
-    if (message.children) {
-      obj.children = message.children.map((e) => e ? TrieNodeMetadataResponse.toJSON(e) : undefined);
-    } else {
-      obj.children = [];
+    if (message.prefix.length !== 0) {
+      obj.prefix = base64FromBytes(message.prefix);
+    }
+    if (message.numMessages !== 0) {
+      obj.numMessages = Math.round(message.numMessages);
+    }
+    if (message.hash !== "") {
+      obj.hash = message.hash;
+    }
+    if (message.children?.length) {
+      obj.children = message.children.map((e) => TrieNodeMetadataResponse.toJSON(e));
     }
     return obj;
   },
@@ -1035,7 +1077,7 @@ export const TrieNodeMetadataResponse = {
 
   fromPartial<I extends Exact<DeepPartial<TrieNodeMetadataResponse>, I>>(object: I): TrieNodeMetadataResponse {
     const message = createBaseTrieNodeMetadataResponse();
-    message.prefix = object.prefix ?? new Uint8Array();
+    message.prefix = object.prefix ?? new Uint8Array(0);
     message.numMessages = object.numMessages ?? 0;
     message.hash = object.hash ?? "";
     message.children = object.children?.map((e) => TrieNodeMetadataResponse.fromPartial(e)) || [];
@@ -1044,7 +1086,7 @@ export const TrieNodeMetadataResponse = {
 };
 
 function createBaseTrieNodeSnapshotResponse(): TrieNodeSnapshotResponse {
-  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: "" };
+  return { prefix: new Uint8Array(0), excludedHashes: [], numMessages: 0, rootHash: "" };
 }
 
 export const TrieNodeSnapshotResponse = {
@@ -1072,35 +1114,35 @@ export const TrieNodeSnapshotResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.prefix = reader.bytes();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.excludedHashes.push(reader.string());
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.numMessages = longToNumber(reader.uint64() as Long);
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.rootHash = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1110,7 +1152,7 @@ export const TrieNodeSnapshotResponse = {
 
   fromJSON(object: any): TrieNodeSnapshotResponse {
     return {
-      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
+      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(0),
       excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
       rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
@@ -1119,15 +1161,18 @@ export const TrieNodeSnapshotResponse = {
 
   toJSON(message: TrieNodeSnapshotResponse): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
-    if (message.excludedHashes) {
-      obj.excludedHashes = message.excludedHashes.map((e) => e);
-    } else {
-      obj.excludedHashes = [];
+    if (message.prefix.length !== 0) {
+      obj.prefix = base64FromBytes(message.prefix);
     }
-    message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.rootHash !== undefined && (obj.rootHash = message.rootHash);
+    if (message.excludedHashes?.length) {
+      obj.excludedHashes = message.excludedHashes;
+    }
+    if (message.numMessages !== 0) {
+      obj.numMessages = Math.round(message.numMessages);
+    }
+    if (message.rootHash !== "") {
+      obj.rootHash = message.rootHash;
+    }
     return obj;
   },
 
@@ -1137,7 +1182,7 @@ export const TrieNodeSnapshotResponse = {
 
   fromPartial<I extends Exact<DeepPartial<TrieNodeSnapshotResponse>, I>>(object: I): TrieNodeSnapshotResponse {
     const message = createBaseTrieNodeSnapshotResponse();
-    message.prefix = object.prefix ?? new Uint8Array();
+    message.prefix = object.prefix ?? new Uint8Array(0);
     message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
     message.numMessages = object.numMessages ?? 0;
     message.rootHash = object.rootHash ?? "";
@@ -1146,7 +1191,7 @@ export const TrieNodeSnapshotResponse = {
 };
 
 function createBaseTrieNodePrefix(): TrieNodePrefix {
-  return { prefix: new Uint8Array() };
+  return { prefix: new Uint8Array(0) };
 }
 
 export const TrieNodePrefix = {
@@ -1165,14 +1210,14 @@ export const TrieNodePrefix = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.prefix = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1181,13 +1226,14 @@ export const TrieNodePrefix = {
   },
 
   fromJSON(object: any): TrieNodePrefix {
-    return { prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array() };
+    return { prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(0) };
   },
 
   toJSON(message: TrieNodePrefix): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
+    if (message.prefix.length !== 0) {
+      obj.prefix = base64FromBytes(message.prefix);
+    }
     return obj;
   },
 
@@ -1197,7 +1243,7 @@ export const TrieNodePrefix = {
 
   fromPartial<I extends Exact<DeepPartial<TrieNodePrefix>, I>>(object: I): TrieNodePrefix {
     const message = createBaseTrieNodePrefix();
-    message.prefix = object.prefix ?? new Uint8Array();
+    message.prefix = object.prefix ?? new Uint8Array(0);
     return message;
   },
 };
@@ -1222,14 +1268,14 @@ export const SyncIds = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.syncIds.push(reader.bytes());
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1243,10 +1289,8 @@ export const SyncIds = {
 
   toJSON(message: SyncIds): unknown {
     const obj: any = {};
-    if (message.syncIds) {
-      obj.syncIds = message.syncIds.map((e) => base64FromBytes(e !== undefined ? e : new Uint8Array()));
-    } else {
-      obj.syncIds = [];
+    if (message.syncIds?.length) {
+      obj.syncIds = message.syncIds.map((e) => base64FromBytes(e));
     }
     return obj;
   },
@@ -1291,35 +1335,35 @@ export const FidRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.pageSize = reader.uint32();
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.pageToken = reader.bytes();
           continue;
         case 4:
-          if (tag != 32) {
+          if (tag !== 32) {
             break;
           }
 
           message.reverse = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1338,11 +1382,18 @@ export const FidRequest = {
 
   toJSON(message: FidRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
-    message.pageToken !== undefined &&
-      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
-    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.pageSize !== undefined) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      obj.pageToken = base64FromBytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      obj.reverse = message.reverse;
+    }
     return obj;
   },
 
@@ -1386,28 +1437,28 @@ export const FidsRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.pageSize = reader.uint32();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.pageToken = reader.bytes();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.reverse = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1425,10 +1476,15 @@ export const FidsRequest = {
 
   toJSON(message: FidsRequest): unknown {
     const obj: any = {};
-    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
-    message.pageToken !== undefined &&
-      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
-    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.pageSize !== undefined) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      obj.pageToken = base64FromBytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      obj.reverse = message.reverse;
+    }
     return obj;
   },
 
@@ -1470,12 +1526,13 @@ export const FidsResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag == 8) {
+          if (tag === 8) {
             message.fids.push(longToNumber(reader.uint64() as Long));
+
             continue;
           }
 
-          if (tag == 10) {
+          if (tag === 10) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.fids.push(longToNumber(reader.uint64() as Long));
@@ -1486,14 +1543,14 @@ export const FidsResponse = {
 
           break;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.nextPageToken = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1510,13 +1567,12 @@ export const FidsResponse = {
 
   toJSON(message: FidsResponse): unknown {
     const obj: any = {};
-    if (message.fids) {
+    if (message.fids?.length) {
       obj.fids = message.fids.map((e) => Math.round(e));
-    } else {
-      obj.fids = [];
     }
-    message.nextPageToken !== undefined &&
-      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    if (message.nextPageToken !== undefined) {
+      obj.nextPageToken = base64FromBytes(message.nextPageToken);
+    }
     return obj;
   },
 
@@ -1555,21 +1611,21 @@ export const MessagesResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.messages.push(Message.decode(reader, reader.uint32()));
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.nextPageToken = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1586,13 +1642,12 @@ export const MessagesResponse = {
 
   toJSON(message: MessagesResponse): unknown {
     const obj: any = {};
-    if (message.messages) {
-      obj.messages = message.messages.map((e) => e ? Message.toJSON(e) : undefined);
-    } else {
-      obj.messages = [];
+    if (message.messages?.length) {
+      obj.messages = message.messages.map((e) => Message.toJSON(e));
     }
-    message.nextPageToken !== undefined &&
-      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    if (message.nextPageToken !== undefined) {
+      obj.nextPageToken = base64FromBytes(message.nextPageToken);
+    }
     return obj;
   },
 
@@ -1646,42 +1701,42 @@ export const CastsByParentRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.parentCastId = CastId.decode(reader, reader.uint32());
           continue;
         case 5:
-          if (tag != 42) {
+          if (tag !== 42) {
             break;
           }
 
           message.parentUrl = reader.string();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.pageSize = reader.uint32();
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.pageToken = reader.bytes();
           continue;
         case 4:
-          if (tag != 32) {
+          if (tag !== 32) {
             break;
           }
 
           message.reverse = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1701,13 +1756,21 @@ export const CastsByParentRequest = {
 
   toJSON(message: CastsByParentRequest): unknown {
     const obj: any = {};
-    message.parentCastId !== undefined &&
-      (obj.parentCastId = message.parentCastId ? CastId.toJSON(message.parentCastId) : undefined);
-    message.parentUrl !== undefined && (obj.parentUrl = message.parentUrl);
-    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
-    message.pageToken !== undefined &&
-      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
-    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.parentCastId !== undefined) {
+      obj.parentCastId = CastId.toJSON(message.parentCastId);
+    }
+    if (message.parentUrl !== undefined) {
+      obj.parentUrl = message.parentUrl;
+    }
+    if (message.pageSize !== undefined) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      obj.pageToken = base64FromBytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      obj.reverse = message.reverse;
+    }
     return obj;
   },
 
@@ -1757,35 +1820,35 @@ export const ReactionRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.reactionType = reader.int32() as any;
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag !== 26) {
             break;
           }
 
           message.targetCastId = CastId.decode(reader, reader.uint32());
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.targetUrl = reader.string();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1804,11 +1867,18 @@ export const ReactionRequest = {
 
   toJSON(message: ReactionRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.reactionType !== undefined && (obj.reactionType = reactionTypeToJSON(message.reactionType));
-    message.targetCastId !== undefined &&
-      (obj.targetCastId = message.targetCastId ? CastId.toJSON(message.targetCastId) : undefined);
-    message.targetUrl !== undefined && (obj.targetUrl = message.targetUrl);
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.reactionType !== 0) {
+      obj.reactionType = reactionTypeToJSON(message.reactionType);
+    }
+    if (message.targetCastId !== undefined) {
+      obj.targetCastId = CastId.toJSON(message.targetCastId);
+    }
+    if (message.targetUrl !== undefined) {
+      obj.targetUrl = message.targetUrl;
+    }
     return obj;
   },
 
@@ -1860,42 +1930,42 @@ export const ReactionsByFidRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.reactionType = reader.int32() as any;
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.pageSize = reader.uint32();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.pageToken = reader.bytes();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.reverse = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -1915,13 +1985,21 @@ export const ReactionsByFidRequest = {
 
   toJSON(message: ReactionsByFidRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.reactionType !== undefined &&
-      (obj.reactionType = message.reactionType !== undefined ? reactionTypeToJSON(message.reactionType) : undefined);
-    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
-    message.pageToken !== undefined &&
-      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
-    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.reactionType !== undefined) {
+      obj.reactionType = reactionTypeToJSON(message.reactionType);
+    }
+    if (message.pageSize !== undefined) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      obj.pageToken = base64FromBytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      obj.reverse = message.reverse;
+    }
     return obj;
   },
 
@@ -1982,49 +2060,49 @@ export const ReactionsByTargetRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.targetCastId = CastId.decode(reader, reader.uint32());
           continue;
         case 6:
-          if (tag != 50) {
+          if (tag !== 50) {
             break;
           }
 
           message.targetUrl = reader.string();
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.reactionType = reader.int32() as any;
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.pageSize = reader.uint32();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.pageToken = reader.bytes();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.reverse = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2045,15 +2123,24 @@ export const ReactionsByTargetRequest = {
 
   toJSON(message: ReactionsByTargetRequest): unknown {
     const obj: any = {};
-    message.targetCastId !== undefined &&
-      (obj.targetCastId = message.targetCastId ? CastId.toJSON(message.targetCastId) : undefined);
-    message.targetUrl !== undefined && (obj.targetUrl = message.targetUrl);
-    message.reactionType !== undefined &&
-      (obj.reactionType = message.reactionType !== undefined ? reactionTypeToJSON(message.reactionType) : undefined);
-    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
-    message.pageToken !== undefined &&
-      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
-    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.targetCastId !== undefined) {
+      obj.targetCastId = CastId.toJSON(message.targetCastId);
+    }
+    if (message.targetUrl !== undefined) {
+      obj.targetUrl = message.targetUrl;
+    }
+    if (message.reactionType !== undefined) {
+      obj.reactionType = reactionTypeToJSON(message.reactionType);
+    }
+    if (message.pageSize !== undefined) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      obj.pageToken = base64FromBytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      obj.reverse = message.reverse;
+    }
     return obj;
   },
 
@@ -2098,21 +2185,21 @@ export const UserDataRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag !== 16) {
             break;
           }
 
           message.userDataType = reader.int32() as any;
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2129,8 +2216,12 @@ export const UserDataRequest = {
 
   toJSON(message: UserDataRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.userDataType !== undefined && (obj.userDataType = userDataTypeToJSON(message.userDataType));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.userDataType !== 0) {
+      obj.userDataType = userDataTypeToJSON(message.userDataType);
+    }
     return obj;
   },
 
@@ -2147,7 +2238,7 @@ export const UserDataRequest = {
 };
 
 function createBaseNameRegistryEventRequest(): NameRegistryEventRequest {
-  return { name: new Uint8Array() };
+  return { name: new Uint8Array(0) };
 }
 
 export const NameRegistryEventRequest = {
@@ -2166,14 +2257,14 @@ export const NameRegistryEventRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.name = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2182,13 +2273,14 @@ export const NameRegistryEventRequest = {
   },
 
   fromJSON(object: any): NameRegistryEventRequest {
-    return { name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array() };
+    return { name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array(0) };
   },
 
   toJSON(message: NameRegistryEventRequest): unknown {
     const obj: any = {};
-    message.name !== undefined &&
-      (obj.name = base64FromBytes(message.name !== undefined ? message.name : new Uint8Array()));
+    if (message.name.length !== 0) {
+      obj.name = base64FromBytes(message.name);
+    }
     return obj;
   },
 
@@ -2198,7 +2290,7 @@ export const NameRegistryEventRequest = {
 
   fromPartial<I extends Exact<DeepPartial<NameRegistryEventRequest>, I>>(object: I): NameRegistryEventRequest {
     const message = createBaseNameRegistryEventRequest();
-    message.name = object.name ?? new Uint8Array();
+    message.name = object.name ?? new Uint8Array(0);
     return message;
   },
 };
@@ -2223,14 +2315,14 @@ export const RentRegistryEventsRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2244,7 +2336,9 @@ export const RentRegistryEventsRequest = {
 
   toJSON(message: RentRegistryEventsRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
     return obj;
   },
 
@@ -2279,14 +2373,14 @@ export const RentRegistryEventsResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.events.push(RentRegistryEvent.decode(reader, reader.uint32()));
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2302,10 +2396,8 @@ export const RentRegistryEventsResponse = {
 
   toJSON(message: RentRegistryEventsResponse): unknown {
     const obj: any = {};
-    if (message.events) {
-      obj.events = message.events.map((e) => e ? RentRegistryEvent.toJSON(e) : undefined);
-    } else {
-      obj.events = [];
+    if (message.events?.length) {
+      obj.events = message.events.map((e) => RentRegistryEvent.toJSON(e));
     }
     return obj;
   },
@@ -2322,7 +2414,7 @@ export const RentRegistryEventsResponse = {
 };
 
 function createBaseStorageAdminRegistryEventRequest(): StorageAdminRegistryEventRequest {
-  return { transactionHash: new Uint8Array() };
+  return { transactionHash: new Uint8Array(0) };
 }
 
 export const StorageAdminRegistryEventRequest = {
@@ -2341,14 +2433,14 @@ export const StorageAdminRegistryEventRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.transactionHash = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2358,16 +2450,15 @@ export const StorageAdminRegistryEventRequest = {
 
   fromJSON(object: any): StorageAdminRegistryEventRequest {
     return {
-      transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
+      transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(0),
     };
   },
 
   toJSON(message: StorageAdminRegistryEventRequest): unknown {
     const obj: any = {};
-    message.transactionHash !== undefined &&
-      (obj.transactionHash = base64FromBytes(
-        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array(),
-      ));
+    if (message.transactionHash.length !== 0) {
+      obj.transactionHash = base64FromBytes(message.transactionHash);
+    }
     return obj;
   },
 
@@ -2381,13 +2472,13 @@ export const StorageAdminRegistryEventRequest = {
     object: I,
   ): StorageAdminRegistryEventRequest {
     const message = createBaseStorageAdminRegistryEventRequest();
-    message.transactionHash = object.transactionHash ?? new Uint8Array();
+    message.transactionHash = object.transactionHash ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseUsernameProofRequest(): UsernameProofRequest {
-  return { name: new Uint8Array() };
+  return { name: new Uint8Array(0) };
 }
 
 export const UsernameProofRequest = {
@@ -2406,14 +2497,14 @@ export const UsernameProofRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.name = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2422,13 +2513,14 @@ export const UsernameProofRequest = {
   },
 
   fromJSON(object: any): UsernameProofRequest {
-    return { name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array() };
+    return { name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array(0) };
   },
 
   toJSON(message: UsernameProofRequest): unknown {
     const obj: any = {};
-    message.name !== undefined &&
-      (obj.name = base64FromBytes(message.name !== undefined ? message.name : new Uint8Array()));
+    if (message.name.length !== 0) {
+      obj.name = base64FromBytes(message.name);
+    }
     return obj;
   },
 
@@ -2438,7 +2530,7 @@ export const UsernameProofRequest = {
 
   fromPartial<I extends Exact<DeepPartial<UsernameProofRequest>, I>>(object: I): UsernameProofRequest {
     const message = createBaseUsernameProofRequest();
-    message.name = object.name ?? new Uint8Array();
+    message.name = object.name ?? new Uint8Array(0);
     return message;
   },
 };
@@ -2463,14 +2555,14 @@ export const UsernameProofsResponse = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.proofs.push(UserNameProof.decode(reader, reader.uint32()));
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2484,10 +2576,8 @@ export const UsernameProofsResponse = {
 
   toJSON(message: UsernameProofsResponse): unknown {
     const obj: any = {};
-    if (message.proofs) {
-      obj.proofs = message.proofs.map((e) => e ? UserNameProof.toJSON(e) : undefined);
-    } else {
-      obj.proofs = [];
+    if (message.proofs?.length) {
+      obj.proofs = message.proofs.map((e) => UserNameProof.toJSON(e));
     }
     return obj;
   },
@@ -2504,7 +2594,7 @@ export const UsernameProofsResponse = {
 };
 
 function createBaseVerificationRequest(): VerificationRequest {
-  return { fid: 0, address: new Uint8Array() };
+  return { fid: 0, address: new Uint8Array(0) };
 }
 
 export const VerificationRequest = {
@@ -2526,21 +2616,21 @@ export const VerificationRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.address = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2551,15 +2641,18 @@ export const VerificationRequest = {
   fromJSON(object: any): VerificationRequest {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
+      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(0),
     };
   },
 
   toJSON(message: VerificationRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.address !== undefined &&
-      (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.address.length !== 0) {
+      obj.address = base64FromBytes(message.address);
+    }
     return obj;
   },
 
@@ -2570,13 +2663,13 @@ export const VerificationRequest = {
   fromPartial<I extends Exact<DeepPartial<VerificationRequest>, I>>(object: I): VerificationRequest {
     const message = createBaseVerificationRequest();
     message.fid = object.fid ?? 0;
-    message.address = object.address ?? new Uint8Array();
+    message.address = object.address ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseSignerRequest(): SignerRequest {
-  return { fid: 0, signer: new Uint8Array() };
+  return { fid: 0, signer: new Uint8Array(0) };
 }
 
 export const SignerRequest = {
@@ -2598,21 +2691,21 @@ export const SignerRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.signer = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2623,15 +2716,18 @@ export const SignerRequest = {
   fromJSON(object: any): SignerRequest {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(0),
     };
   },
 
   toJSON(message: SignerRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.signer !== undefined &&
-      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.signer.length !== 0) {
+      obj.signer = base64FromBytes(message.signer);
+    }
     return obj;
   },
 
@@ -2642,7 +2738,7 @@ export const SignerRequest = {
   fromPartial<I extends Exact<DeepPartial<SignerRequest>, I>>(object: I): SignerRequest {
     const message = createBaseSignerRequest();
     message.fid = object.fid ?? 0;
-    message.signer = object.signer ?? new Uint8Array();
+    message.signer = object.signer ?? new Uint8Array(0);
     return message;
   },
 };
@@ -2673,28 +2769,28 @@ export const LinkRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.linkType = reader.string();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.targetFid = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2712,9 +2808,15 @@ export const LinkRequest = {
 
   toJSON(message: LinkRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.linkType !== undefined && (obj.linkType = message.linkType);
-    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.linkType !== "") {
+      obj.linkType = message.linkType;
+    }
+    if (message.targetFid !== undefined) {
+      obj.targetFid = Math.round(message.targetFid);
+    }
     return obj;
   },
 
@@ -2763,42 +2865,42 @@ export const LinksByFidRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.linkType = reader.string();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.pageSize = reader.uint32();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.pageToken = reader.bytes();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.reverse = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2818,12 +2920,21 @@ export const LinksByFidRequest = {
 
   toJSON(message: LinksByFidRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.linkType !== undefined && (obj.linkType = message.linkType);
-    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
-    message.pageToken !== undefined &&
-      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
-    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.linkType !== undefined) {
+      obj.linkType = message.linkType;
+    }
+    if (message.pageSize !== undefined) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      obj.pageToken = base64FromBytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      obj.reverse = message.reverse;
+    }
     return obj;
   },
 
@@ -2874,42 +2985,42 @@ export const LinksByTargetRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.targetFid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.linkType = reader.string();
           continue;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.pageSize = reader.uint32();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.pageToken = reader.bytes();
           continue;
         case 5:
-          if (tag != 40) {
+          if (tag !== 40) {
             break;
           }
 
           message.reverse = reader.bool();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2929,12 +3040,21 @@ export const LinksByTargetRequest = {
 
   toJSON(message: LinksByTargetRequest): unknown {
     const obj: any = {};
-    message.targetFid !== undefined && (obj.targetFid = Math.round(message.targetFid));
-    message.linkType !== undefined && (obj.linkType = message.linkType);
-    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
-    message.pageToken !== undefined &&
-      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
-    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.targetFid !== undefined) {
+      obj.targetFid = Math.round(message.targetFid);
+    }
+    if (message.linkType !== undefined) {
+      obj.linkType = message.linkType;
+    }
+    if (message.pageSize !== undefined) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      obj.pageToken = base64FromBytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      obj.reverse = message.reverse;
+    }
     return obj;
   },
 
@@ -2973,14 +3093,14 @@ export const IdRegistryEventRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = longToNumber(reader.uint64() as Long);
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -2994,7 +3114,9 @@ export const IdRegistryEventRequest = {
 
   toJSON(message: IdRegistryEventRequest): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
     return obj;
   },
 
@@ -3010,7 +3132,7 @@ export const IdRegistryEventRequest = {
 };
 
 function createBaseIdRegistryEventByAddressRequest(): IdRegistryEventByAddressRequest {
-  return { address: new Uint8Array() };
+  return { address: new Uint8Array(0) };
 }
 
 export const IdRegistryEventByAddressRequest = {
@@ -3029,14 +3151,14 @@ export const IdRegistryEventByAddressRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.address = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -3045,13 +3167,14 @@ export const IdRegistryEventByAddressRequest = {
   },
 
   fromJSON(object: any): IdRegistryEventByAddressRequest {
-    return { address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array() };
+    return { address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(0) };
   },
 
   toJSON(message: IdRegistryEventByAddressRequest): unknown {
     const obj: any = {};
-    message.address !== undefined &&
-      (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
+    if (message.address.length !== 0) {
+      obj.address = base64FromBytes(message.address);
+    }
     return obj;
   },
 
@@ -3063,15 +3186,15 @@ export const IdRegistryEventByAddressRequest = {
     object: I,
   ): IdRegistryEventByAddressRequest {
     const message = createBaseIdRegistryEventByAddressRequest();
-    message.address = object.address ?? new Uint8Array();
+    message.address = object.address ?? new Uint8Array(0);
     return message;
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

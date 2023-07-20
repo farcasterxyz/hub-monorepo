@@ -11,7 +11,7 @@ export interface UpdateNameRegistryEventExpiryJobPayload {
 }
 
 function createBaseRevokeMessagesBySignerJobPayload(): RevokeMessagesBySignerJobPayload {
-  return { fid: 0, signer: new Uint8Array() };
+  return { fid: 0, signer: new Uint8Array(0) };
 }
 
 export const RevokeMessagesBySignerJobPayload = {
@@ -33,21 +33,21 @@ export const RevokeMessagesBySignerJobPayload = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 8) {
+          if (tag !== 8) {
             break;
           }
 
           message.fid = reader.uint32();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag !== 18) {
             break;
           }
 
           message.signer = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -58,15 +58,18 @@ export const RevokeMessagesBySignerJobPayload = {
   fromJSON(object: any): RevokeMessagesBySignerJobPayload {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(0),
     };
   },
 
   toJSON(message: RevokeMessagesBySignerJobPayload): unknown {
     const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.signer !== undefined &&
-      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    if (message.fid !== 0) {
+      obj.fid = Math.round(message.fid);
+    }
+    if (message.signer.length !== 0) {
+      obj.signer = base64FromBytes(message.signer);
+    }
     return obj;
   },
 
@@ -81,13 +84,13 @@ export const RevokeMessagesBySignerJobPayload = {
   ): RevokeMessagesBySignerJobPayload {
     const message = createBaseRevokeMessagesBySignerJobPayload();
     message.fid = object.fid ?? 0;
-    message.signer = object.signer ?? new Uint8Array();
+    message.signer = object.signer ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseUpdateNameRegistryEventExpiryJobPayload(): UpdateNameRegistryEventExpiryJobPayload {
-  return { fname: new Uint8Array() };
+  return { fname: new Uint8Array(0) };
 }
 
 export const UpdateNameRegistryEventExpiryJobPayload = {
@@ -106,14 +109,14 @@ export const UpdateNameRegistryEventExpiryJobPayload = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.fname = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -122,13 +125,14 @@ export const UpdateNameRegistryEventExpiryJobPayload = {
   },
 
   fromJSON(object: any): UpdateNameRegistryEventExpiryJobPayload {
-    return { fname: isSet(object.fname) ? bytesFromBase64(object.fname) : new Uint8Array() };
+    return { fname: isSet(object.fname) ? bytesFromBase64(object.fname) : new Uint8Array(0) };
   },
 
   toJSON(message: UpdateNameRegistryEventExpiryJobPayload): unknown {
     const obj: any = {};
-    message.fname !== undefined &&
-      (obj.fname = base64FromBytes(message.fname !== undefined ? message.fname : new Uint8Array()));
+    if (message.fname.length !== 0) {
+      obj.fname = base64FromBytes(message.fname);
+    }
     return obj;
   },
 
@@ -142,15 +146,15 @@ export const UpdateNameRegistryEventExpiryJobPayload = {
     object: I,
   ): UpdateNameRegistryEventExpiryJobPayload {
     const message = createBaseUpdateNameRegistryEventExpiryJobPayload();
-    message.fname = object.fname ?? new Uint8Array();
+    message.fname = object.fname ?? new Uint8Array(0);
     return message;
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }

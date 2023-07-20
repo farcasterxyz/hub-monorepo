@@ -9,7 +9,7 @@ export interface DbTrieNode {
 }
 
 function createBaseDbTrieNode(): DbTrieNode {
-  return { key: new Uint8Array(), childChars: [], items: 0, hash: new Uint8Array() };
+  return { key: new Uint8Array(0), childChars: [], items: 0, hash: new Uint8Array(0) };
 }
 
 export const DbTrieNode = {
@@ -39,19 +39,20 @@ export const DbTrieNode = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break;
           }
 
           message.key = reader.bytes();
           continue;
         case 2:
-          if (tag == 16) {
+          if (tag === 16) {
             message.childChars.push(reader.uint32());
+
             continue;
           }
 
-          if (tag == 18) {
+          if (tag === 18) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
               message.childChars.push(reader.uint32());
@@ -62,21 +63,21 @@ export const DbTrieNode = {
 
           break;
         case 3:
-          if (tag != 24) {
+          if (tag !== 24) {
             break;
           }
 
           message.items = reader.uint32();
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag !== 34) {
             break;
           }
 
           message.hash = reader.bytes();
           continue;
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break;
       }
       reader.skipType(tag & 7);
@@ -86,25 +87,27 @@ export const DbTrieNode = {
 
   fromJSON(object: any): DbTrieNode {
     return {
-      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(0),
       childChars: Array.isArray(object?.childChars) ? object.childChars.map((e: any) => Number(e)) : [],
       items: isSet(object.items) ? Number(object.items) : 0,
-      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
+      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(0),
     };
   },
 
   toJSON(message: DbTrieNode): unknown {
     const obj: any = {};
-    message.key !== undefined &&
-      (obj.key = base64FromBytes(message.key !== undefined ? message.key : new Uint8Array()));
-    if (message.childChars) {
-      obj.childChars = message.childChars.map((e) => Math.round(e));
-    } else {
-      obj.childChars = [];
+    if (message.key.length !== 0) {
+      obj.key = base64FromBytes(message.key);
     }
-    message.items !== undefined && (obj.items = Math.round(message.items));
-    message.hash !== undefined &&
-      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
+    if (message.childChars?.length) {
+      obj.childChars = message.childChars.map((e) => Math.round(e));
+    }
+    if (message.items !== 0) {
+      obj.items = Math.round(message.items);
+    }
+    if (message.hash.length !== 0) {
+      obj.hash = base64FromBytes(message.hash);
+    }
     return obj;
   },
 
@@ -114,18 +117,18 @@ export const DbTrieNode = {
 
   fromPartial<I extends Exact<DeepPartial<DbTrieNode>, I>>(object: I): DbTrieNode {
     const message = createBaseDbTrieNode();
-    message.key = object.key ?? new Uint8Array();
+    message.key = object.key ?? new Uint8Array(0);
     message.childChars = object.childChars?.map((e) => e) || [];
     message.items = object.items ?? 0;
-    message.hash = object.hash ?? new Uint8Array();
+    message.hash = object.hash ?? new Uint8Array(0);
     return message;
   },
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-declare var global: any | undefined;
-var tsProtoGlobalThis: any = (() => {
+declare const self: any | undefined;
+declare const window: any | undefined;
+declare const global: any | undefined;
+const tsProtoGlobalThis: any = (() => {
   if (typeof globalThis !== "undefined") {
     return globalThis;
   }
