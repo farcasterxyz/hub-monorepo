@@ -148,7 +148,7 @@ describe("getUserData", () => {
     const display = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.DISPLAY }));
     expect(Message.toJSON(display._unsafeUnwrap())).toEqual(Message.toJSON(displayAdd));
 
-    const fnameProof = Factories.UserNameProof.build({ name: fname, owner: custodySignerKey });
+    const fnameProof = Factories.UserNameProof.build({ name: fname, fid });
     await engine.mergeUserNameProof(fnameProof);
 
     expect(await engine.mergeMessage(addFname)).toBeInstanceOf(Ok);
