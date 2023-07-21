@@ -47,6 +47,7 @@ import { setReferenceDateForTest } from "../../utils/versions.js";
 import { getUserNameProof } from "../db/nameRegistryEvent.js";
 import { publicClient } from "../../test/utils.js";
 import { jest } from "@jest/globals";
+import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 
 const db = jestRocksDB("protobufs.engine.test");
 const network = FarcasterNetwork.TESTNET;
@@ -882,9 +883,22 @@ describe("with listeners and workers", () => {
         blockNumber: custodyEvent.blockNumber + 1,
       });
       await liveEngine.mergeIdRegistryEvent(custodyTransfer);
+      await sleep(200);
+      // Does not immediately revoke messages, will wait 1 hr
       expect(revokedMessages).toEqual([]);
-      await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd, linkAdd]);
+
+      // Manually trigger the job
+      const queue = new RevokeMessagesBySignerJobQueue(db);
+      const worker = new RevokeMessagesBySignerJobWorker(queue, db, liveEngine);
+      await worker.processJobs(Date.now() + 1000 * 10 * 60 + 5000);
+      expect(revokedMessages).toEqual([]); // No messages revoked yet, after 10 mins
+
+      // Revokes messages after 1 hr
+      await worker.processJobs(Date.now() + 1000 * 60 * 60 + 5000);
+      expect(revokedMessages).toContainEqual(signerAdd);
+      expect(revokedMessages).toContainEqual(castAdd);
+      expect(revokedMessages).toContainEqual(reactionAdd);
+      expect(revokedMessages).toContainEqual(linkAdd);
     });
 
     test("revokes messages when SignerAdd is pruned", async () => {

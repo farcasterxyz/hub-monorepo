@@ -981,7 +981,8 @@ class Engine {
         fid: idRegistryEvent.fid,
         signer: fromAddress,
       });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
+      const oneHourFromNow = Date.now() + 60 * 60 * 1000;
+      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload, oneHourFromNow);
       if (enqueueRevoke.isErr()) {
         log.error(
           { errCode: enqueueRevoke.error.errCode },
