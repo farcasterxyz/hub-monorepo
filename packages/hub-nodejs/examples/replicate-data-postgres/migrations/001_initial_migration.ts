@@ -191,7 +191,7 @@ export const up = async (db: Kysely<any>) => {
     .addColumn("type", "text")
     .addColumn("displayTimestamp", "timestamp")
     .addUniqueConstraint("links_hash_unique", ["hash"])
-    .addUniqueConstraint("links_fid_target_fid_unique", ["fid", "targetFid"])
+    .addUniqueConstraint("links_fid_target_fid_type_unique", ["fid", "targetFid", "type"])
     .execute();
 };
 

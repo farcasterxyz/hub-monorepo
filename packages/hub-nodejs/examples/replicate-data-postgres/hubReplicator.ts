@@ -634,6 +634,8 @@ export class HubReplicator {
       )
       // Do nothing on conflict since nothing should have changed if hash is the same.
       .onConflict((oc) => oc.columns(["hash"]).doNothing())
+      // Do nothing on conflict since nothing should have changed if the fid, targetFid & type are the same.
+      .onConflict((oc) => oc.columns(["fid", "targetFid", "type"]).doNothing())
       .execute();
 
     for (const message of messages) {
