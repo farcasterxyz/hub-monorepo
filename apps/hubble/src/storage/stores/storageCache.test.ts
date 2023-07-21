@@ -78,7 +78,7 @@ describe("syncFromDb", () => {
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.SignerMessage)).resolves.toEqual(
         ok(fidUsage.usage.signer),
       );
-      expect(cache.getCurrentStorageUnitsForFid(fidUsage.fid)).toEqual(ok(4));
+      await expect(cache.getCurrentStorageUnitsForFid(fidUsage.fid)).resolves.toEqual(ok(4));
     }
   });
 });

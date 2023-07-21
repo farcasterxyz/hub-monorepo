@@ -53,6 +53,8 @@ class StorageEventStore {
       events.push(event);
     }
 
+    iterator.end();
+
     if (events.length === 0) throw new HubError("not_found", "record not found");
 
     return events;

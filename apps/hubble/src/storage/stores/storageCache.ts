@@ -21,6 +21,7 @@ import {
   RentRegistryEvent,
   StorageRegistryEventType,
 } from "@farcaster/core";
+import { getNextRentRegistryEventFromIterator, getRentRegistryEventsIterator } from "../db/storageRegistryEvent.js";
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
@@ -29,16 +30,15 @@ const makeKey = (fid: number, set: UserMessagePostfix): string => {
 const log = logger.child({ component: "StorageCache" });
 
 type StorageSlot = {
-  from: number;
-  to: number;
   units: number;
+  invalidateAt: number;
 };
 
 export class StorageCache {
   private _db: RocksDB;
   private _counts: Map<string, number>;
   private _earliestTsHashes: Map<string, Uint8Array>;
-  private _activeStorageSlots: Map<number, StorageSlot[]>;
+  private _activeStorageSlots: Map<number, StorageSlot>;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
@@ -72,29 +72,33 @@ export class StorageCache {
       15 * 60 * 1000, // 15 minutes
     );
 
-    await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.RentRegistryEvent]),
-      async (_, value) => {
-        if (!value) {
-          return;
-        }
+    const time = getFarcasterTime();
+    if (time.isErr()) {
+      log.error({ err: time.error }, "could not obtain time");
+    } else {
+      await this._db.forEachIteratorByPrefix(
+        Buffer.from([RootPrefix.RentRegistryEvent]),
+        async (_, value) => {
+          if (!value) {
+            return;
+          }
 
-        const event = RentRegistryEvent.decode(value);
-        const existingSlots = this._activeStorageSlots.get(event.fid) ?? [];
-        if (event.type === StorageRegistryEventType.RENT) {
-          this._activeStorageSlots.set(event.fid, [
-            ...existingSlots,
-            {
-              from: event.expiry - 365 * 24 * 60 * 60,
-              to: event.expiry,
-              units: event.units,
-            },
-          ]);
-        }
-      },
-      { values: true },
-      15 * 60 * 1000,
-    );
+          const event = RentRegistryEvent.decode(value);
+          const existingSlot = this._activeStorageSlots.get(event.fid);
+          if (event.type === StorageRegistryEventType.RENT && event.expiry > time.value) {
+            this._activeStorageSlots.set(event.fid, {
+              units: event.units + (existingSlot?.units ?? 0),
+              invalidateAt:
+                (existingSlot?.invalidateAt ?? event.expiry) < event.expiry
+                  ? existingSlot?.invalidateAt ?? event.expiry
+                  : event.expiry,
+            });
+          }
+        },
+        { values: true },
+        15 * 60 * 1000,
+      );
+    }
 
     this._counts = usage;
     this._earliestTsHashes = new Map();
@@ -116,10 +120,10 @@ export class StorageCache {
     return ok(this._counts.get(key) ?? 0);
   }
 
-  getCurrentStorageUnitsForFid(fid: number): HubResult<number> {
-    const slots = this._activeStorageSlots.get(fid);
+  async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
+    let slot = this._activeStorageSlots.get(fid);
 
-    if (!slots) {
+    if (!slot) {
       return ok(0);
     }
 
@@ -129,7 +133,28 @@ export class StorageCache {
       return err(time.error);
     }
 
-    return ok(slots.filter((s) => s.from <= time.value && s.to >= time.value).reduce((accum, s) => accum + s.units, 0));
+    if (slot.invalidateAt < time.value) {
+      const iterator = await getRentRegistryEventsIterator(this._db, fid);
+      let event: RentRegistryEvent | undefined;
+      slot = { units: 0, invalidateAt: time.value + 365 * 24 * 60 * 60 };
+
+      while (iterator.isOpen) {
+        event = await getNextRentRegistryEventFromIterator(iterator);
+        if (!event) break;
+        if (event.expiry < time.value) continue;
+        if (slot.invalidateAt > event.expiry) {
+          slot.invalidateAt = event.expiry;
+        }
+
+        slot.units += event.units;
+      }
+
+      this._activeStorageSlots.set(fid, slot);
+
+      iterator.end();
+    }
+
+    return ok(slot.units);
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
@@ -232,15 +257,27 @@ export class StorageCache {
 
   private addRent(event: RentRegistryEvent): void {
     if (event !== undefined) {
-      const slots = this._activeStorageSlots.get(event.fid) ?? [];
-      this._activeStorageSlots.set(event.fid, [
-        ...slots,
-        {
-          from: event.expiry - 365 * 24 * 60 * 60,
-          to: event.expiry,
+      const existingSlot = this._activeStorageSlots.get(event.fid);
+      const time = getFarcasterTime();
+      if (time.isErr()) {
+        log.error({ err: time.error }, "could not obtain time");
+        return;
+      }
+
+      if (time.value > (existingSlot?.invalidateAt ?? 0)) {
+        this._activeStorageSlots.set(event.fid, {
           units: event.units,
-        },
-      ]);
+          invalidateAt: event.expiry,
+        });
+      } else {
+        this._activeStorageSlots.set(event.fid, {
+          units: event.units + (existingSlot?.units ?? 0),
+          invalidateAt:
+            (existingSlot?.invalidateAt ?? event.expiry) < event.expiry
+              ? existingSlot?.invalidateAt ?? event.expiry
+              : event.expiry,
+        });
+      }
     }
   }
 }

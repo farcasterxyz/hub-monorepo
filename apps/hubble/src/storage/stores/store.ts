@@ -242,7 +242,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     const commits: number[] = [];
 
     const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
-    const units = this._eventHandler.getCurrentStorageUnitsForFid(fid);
+    const units = await this._eventHandler.getCurrentStorageUnitsForFid(fid);
 
     if (units.isErr()) {
       return err(units.error);
