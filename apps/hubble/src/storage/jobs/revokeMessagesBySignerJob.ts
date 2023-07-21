@@ -22,6 +22,7 @@ export class RevokeMessagesBySignerJobWorker {
   private _db: RocksDB;
   private _engine: Engine;
   private _status: "working" | "waiting";
+  private _processJobs: () => Promise<void>;
 
   constructor(queue: RevokeMessagesBySignerJobQueue, db: RocksDB, engine: Engine) {
     this._queue = queue;
@@ -29,18 +30,21 @@ export class RevokeMessagesBySignerJobWorker {
     this._engine = engine;
     this._status = "waiting";
 
-    this.processJobs = this.processJobs.bind(this);
+    this._processJobs = async () => {
+      await this.processJobs();
+    };
   }
 
   start() {
-    this._queue.on("enqueueJob", this.processJobs);
+    this._queue.on("enqueueJob", this._processJobs);
   }
 
   stop() {
-    this._queue.off("enqueueJob", this.processJobs);
+    this._queue.off("enqueueJob", this._processJobs);
   }
 
-  async processJobs(): HubAsyncResult<void> {
+  async processJobs(doBefore?: number): HubAsyncResult<void> {
+    const doBeforeTs = doBefore || Date.now() + 500; // Add a 500ms buffer for tests
     if (this._status === "working") {
       return err(new HubError("unavailable", "worker is already processing jobs"));
     }
@@ -50,11 +54,11 @@ export class RevokeMessagesBySignerJobWorker {
 
     this._status = "working";
 
-    let nextJob = await this._queue.popNextJob();
+    let nextJob = await this._queue.popNextJob(doBeforeTs);
     while (nextJob.isOk()) {
       await this.processJob(nextJob.value);
 
-      nextJob = await this._queue.popNextJob();
+      nextJob = await this._queue.popNextJob(doBeforeTs);
     }
 
     this._status = "waiting";
@@ -142,7 +146,13 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
       return err(result.error);
     }
 
-    this.emit("enqueueJob", key.value);
+    if (doAt) {
+      setTimeout(() => {
+        this.emit("enqueueJob", key.value);
+      }, doAt - Date.now() + 1000);
+    } else {
+      this.emit("enqueueJob", key.value);
+    }
 
     return ok(key.value);
   }
