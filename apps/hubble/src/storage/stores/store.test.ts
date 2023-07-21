@@ -127,7 +127,7 @@ describe("store", () => {
           mentions: [],
           mentionsPositions: [],
         },
-        { fid: 2, network: 2 },
+        { fid: 2, network: 2, timestamp: getFarcasterTime()._unsafeUnwrap() + i },
         ed25519Signer2,
       );
 
@@ -141,7 +141,7 @@ describe("store", () => {
           mentions: [],
           mentionsPositions: [],
         },
-        { fid: 3, network: 2 },
+        { fid: 3, network: 2, timestamp: getFarcasterTime()._unsafeUnwrap() + i },
         ed25519Signer3,
       );
 
@@ -155,7 +155,7 @@ describe("store", () => {
           mentions: [],
           mentionsPositions: [],
         },
-        { fid: 4, network: 2 },
+        { fid: 4, network: 2, timestamp: getFarcasterTime()._unsafeUnwrap() + i },
         ed25519Signer4,
       );
 
