@@ -26,10 +26,12 @@ export interface Database {
     parentHash: Uint8Array | null;
     parentFid: number | null;
     parentUrl: string | null;
-    embeds: Generated<{
-      url?: string | undefined;
-      castId?: object | undefined;
-    }[]>;
+    embeds: Generated<
+      {
+        url?: string | undefined;
+        castId?: object | undefined;
+      }[]
+    >;
     embedsDeprecated: Generated<string[]>;
     mentions: Generated<number[]>;
     mentionsPositions: Generated<number[]>;
