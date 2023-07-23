@@ -1,6 +1,7 @@
 import { RootPrefix, UserMessagePostfixMax, UserPostfix } from "./storage/db/types.js";
 import { logger } from "./utils/logger.js";
 import RocksDB from "./storage/db/rocksdb.js";
+import { createWriteStream, unlinkSync } from "fs";
 
 // rome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'
 function getMaxValue(enumType: any): number {
@@ -67,6 +68,7 @@ class ValueStats {
   max: number;
   median: number;
   average: number;
+  p95: number;
   sum: number;
 
   allValues: number[];
@@ -80,6 +82,7 @@ class ValueStats {
     this.median = 0;
     this.average = 0;
     this.sum = 0;
+    this.p95 = 0;
     this.allValues = [];
 
     this.label = label;
@@ -106,11 +109,13 @@ class ValueStats {
       }
     }
 
-    this.min = min;
-    this.max = max;
+    this.min = this.sum === 0 ? 0 : min;
+    this.max = this.sum === 0 ? 0 : max;
 
     this.median = this.allValues[Math.floor(this.allValues.length / 2)] || 0;
-    this.average = this.sum / this.count;
+    this.average = this.sum === 0 ? 0 : this.sum / this.count;
+
+    this.p95 = this.allValues[Math.floor(this.allValues.length * 0.95)] || 0;
   }
 }
 
@@ -278,7 +283,7 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
 }
 
 // Main function to print the usage profile of the DB
-export async function profileStorageUsed(rocksDB: RocksDB) {
+export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: string) {
   const allKeys = new KeysProfile("All Keys");
   const prefixKeys = Array.from(
     { length: getMaxValue(RootPrefix) + 1 },
@@ -292,6 +297,7 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
 
   // Caclulate the individual message sizes
   const valueStats = Array.from({ length: 7 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
+  const allFids = new Map<number, ValueStats[]>();
 
   // Iterate over all the keys in the DB
   await rocksDB.forEachIterator(
@@ -318,7 +324,26 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
               (userPostfixKeys[postfix] as KeysProfile).valueBytes += value?.length || 0;
 
               if (postfix <= UserPostfix.UserDataMessage) {
+                const fid = key.slice(1, 5).readUint32BE();
+
+                let fidProfile;
+                if (fid > 0) {
+                  if (allFids.has(fid)) {
+                    fidProfile = allFids.get(fid) as ValueStats[];
+                  } else {
+                    fidProfile = Array.from(
+                      { length: 7 },
+                      (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()),
+                    );
+                    allFids.set(fid, fidProfile);
+                  }
+                }
+
                 (valueStats[postfix] as ValueStats).addValue(value?.length || 0);
+
+                if (fidProfileFileName) {
+                  ((fidProfile as ValueStats[])[postfix] as ValueStats).addValue(value?.length || 0);
+                }
               }
             } else {
               logger.error(`Invalid postfix ${postfix} for key ${key.toString("hex")}`);
@@ -331,7 +356,10 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
 
       if (allKeys.count % 1_000_000 === 0) {
         logger.info(`Read ${formatNumber(allKeys.count)} keys`);
+        return false;
       }
+
+      return false;
     },
     {},
     1 * 60 * 60 * 1000, // 1 hour timeout
@@ -355,4 +383,48 @@ export async function profileStorageUsed(rocksDB: RocksDB) {
 
   console.log("\nTotals:\n");
   console.log(prettyPrintTable(KeysProfileToPrettyPrintObject([allKeys])));
+
+  if (fidProfileFileName) {
+    // Remove file if it exists
+    unlinkSync(fidProfileFileName);
+
+    // Open a CSV file for writing
+    const csvStream = createWriteStream(fidProfileFileName);
+
+    // Write the headers
+    csvStream.write("FID,");
+    // For each valuestat, write the headers, prefixing the label
+    for (let i = 1; i < valueStats.length; i++) {
+      csvStream.write(`Count_${valueStats[i]?.label},Sum_${valueStats[i]?.label},Min_${valueStats[i]?.label},`);
+      csvStream.write(`Max_${valueStats[i]?.label},Median_${valueStats[i]?.label},Average_${valueStats[i]?.label},`);
+      csvStream.write(`P95_${valueStats[i]?.label},`);
+    }
+    csvStream.write("\n");
+
+    // Iterate over all the FIDs
+    for (const [fid, fidProfile] of allFids) {
+      // Start a new line in the CSV file
+
+      // Write the FID
+      csvStream.write(`${fid},`);
+
+      // Go over each valuestat in the fidprofile and calculate the stats
+      for (let i = 1; i < fidProfile.length; i++) {
+        fidProfile[i]?.calculate();
+
+        // Write the stats to the CSV file
+        csvStream.write(`${fidProfile[i]?.count},${fidProfile[i]?.sum},${fidProfile[i]?.min},${fidProfile[i]?.max},`);
+        csvStream.write(`${fidProfile[i]?.median},${fidProfile[i]?.average},${fidProfile[i]?.p95},`);
+      }
+
+      // End the line
+      csvStream.write("\n");
+    }
+
+    // Close the CSV file
+    csvStream.end();
+    csvStream.close();
+
+    console.log(`\nCSV file written to ${fidProfileFileName}`);
+  }
 }
