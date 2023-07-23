@@ -237,6 +237,14 @@ app
       rpcAuth = hubConfig.rpcAuth;
     }
 
+    // Read the rpcRateLimit
+    let rpcRateLimit;
+    if (cliOptions.rpcRateLimit) {
+      rpcRateLimit = cliOptions.rpcRateLimit;
+    } else {
+      rpcRateLimit = hubConfig.rpcRateLimit;
+    }
+
     // Check if the DB_RESET_TOKEN env variable is set. If it is, we might need to reset the DB.
     let resetDB = false;
     const dbResetToken = process.env["DB_RESET_TOKEN"];
@@ -360,6 +368,7 @@ app
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       rpcAuth,
+      rpcRateLimit,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB,
       rebuildSyncTrie,
@@ -577,6 +586,7 @@ const storageProfileCommand = new Command("storage")
   .description("Profile the storage layout of the hub, accounting for all the storage")
   .option("--db-name <name>", "The name of the RocksDB instance")
   .option("-c, --config <filepath>", "Path to a config file with options")
+  .option("-o, --output <filepath>", "Path to a file to write the profile to")
   .action(async (cliOptions) => {
     const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
     const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
@@ -587,7 +597,7 @@ const storageProfileCommand = new Command("storage")
     if (dbResult.isErr()) {
       logger.warn({ rocksDBName }, "Failed to open RocksDB. The Hub needs to be stopped to run this command.");
     } else {
-      await profileStorageUsed(rocksDB);
+      await profileStorageUsed(rocksDB, cliOptions.output);
     }
 
     await rocksDB.close();

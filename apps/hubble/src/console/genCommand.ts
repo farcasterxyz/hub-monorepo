@@ -40,6 +40,8 @@ export class GenCommand implements ConsoleCommandInterface {
   object() {
     return {
       submitMessages: async (
+        startAtFid = 100_000,
+        numFIDs = 1,
         numMessages = 100,
         network = FarcasterNetwork.DEVNET,
         username?: string | Metadata,
@@ -53,67 +55,74 @@ export class GenCommand implements ConsoleCommandInterface {
           metadata = getAuthMetadata(username, password);
         }
 
-        // Generate a random number from 100_000 to 100_000_000 to use as an fid
-        const fid = Math.floor(Math.random() * 100_000_000 + 100_000);
-
-        const custodySigner = Factories.Eip712Signer.build();
-        const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-        const signer = Factories.Ed25519Signer.build();
-        const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
-
+        const start = performance.now();
         let numSuccess = 0;
         let numFail = 0;
         let errorMessage = "";
 
-        const start = performance.now();
+        for (let i = 0; i < numFIDs; i++) {
+          // Generate a random number from 100_000 to 100_000_000 to use as an fid
+          const fid = i + startAtFid; // Start at 100_000 to avoid collisions with the testnet
 
-        const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-        const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent, metadata);
-        if (idResult.isOk()) {
-          numSuccess++;
-        } else {
-          return `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
-        }
+          const custodySigner = Factories.Eip712Signer.build();
+          const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+          const signer = Factories.Ed25519Signer.build();
+          const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
-        const signerAdd = await Factories.SignerAddMessage.create(
-          { data: { fid, network, signerAddBody: { signer: signerKey } } },
-          { transient: { signer: custodySigner } },
-        );
-
-        const signerResult = await this.rpcClient.submitMessage(signerAdd, metadata);
-        if (signerResult.isOk()) {
-          numSuccess++;
-        } else {
-          return `Failed to submit signer add message for fid ${fid}: ${signerResult.error}`;
-        }
-
-        const submitBatch = async (batch: Message[]) => {
-          const promises = [];
-          for (const castAdd of batch) {
-            promises.push(this.rpcClient.submitMessage(castAdd, metadata));
+          const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
+          const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent, metadata);
+          if (idResult.isOk()) {
+            numSuccess++;
+          } else {
+            return `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
           }
-          const results = await Promise.all(promises);
 
-          let numSuccess = 0;
-          let numFail = 0;
-          let errorMessage = "";
-          for (const r of results) {
-            if (r.isOk()) {
-              numSuccess++;
-            } else {
-              numFail++;
-              errorMessage = `Failed to submit cast add message for fid ${fid}: ${r.error}`;
+          const signerAdd = await Factories.SignerAddMessage.create(
+            { data: { fid, network, signerAddBody: { signer: signerKey } } },
+            { transient: { signer: custodySigner } },
+          );
+
+          const signerResult = await this.rpcClient.submitMessage(signerAdd, metadata);
+          if (signerResult.isOk()) {
+            numSuccess++;
+          } else {
+            return `Failed to submit signer add message for fid ${fid}: ${signerResult.error}`;
+          }
+
+          const submitBatch = async (batch: Message[]) => {
+            const promises = [];
+            for (const msg of batch) {
+              promises.push(this.rpcClient.submitMessage(msg, metadata));
             }
-          }
-          return { numSuccess, numFail, errorMessage };
-        };
+            const results = await Promise.all(promises);
 
-        const batchSize = 5000;
+            let numSuccess = 0;
+            let numFail = 0;
+            let errorMessage = "";
+            for (const r of results) {
+              if (r.isOk()) {
+                numSuccess++;
+              } else {
+                numFail++;
+                errorMessage = `Failed to submit cast add message for fid ${fid}: ${r.error}`;
+              }
+            }
+            return { numSuccess, numFail, errorMessage };
+          };
 
-        for (let i = 0; i < numMessages; i += batchSize) {
           const batch = [];
-          for (let j = i; j < i + batchSize && j < numMessages; j++) {
-            batch.push(await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } }));
+          for (let i = 0; i < numMessages / 2; i++) {
+            const castAdd = await Factories.CastAddMessage.create(
+              { data: { fid, network } },
+              { transient: { signer } },
+            );
+            const reactionAdd = await Factories.ReactionAddMessage.create(
+              { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
+              { transient: { signer } },
+            );
+
+            batch.push(castAdd);
+            batch.push(reactionAdd);
           }
           const result = await submitBatch(batch);
 
@@ -121,9 +130,13 @@ export class GenCommand implements ConsoleCommandInterface {
           numFail += result.numFail;
           errorMessage = result.errorMessage;
 
-          console.log(`Submitted ${numFail + numSuccess} messages`);
+          const duration = performance.now() - start;
+          console.log(
+            `Submitted ${numFail} + ${numSuccess} total messages. Messages per Second = ${
+              numSuccess / (duration / 1000)
+            }  Done with fid ${fid}`,
+          );
         }
-
         const totalDuration = performance.now() - start;
 
         return {

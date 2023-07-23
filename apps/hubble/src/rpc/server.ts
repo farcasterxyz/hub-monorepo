@@ -220,6 +220,7 @@ export default class Server {
     if (rpcRateLimit !== undefined && rpcRateLimit >= 0) {
       rateLimitPerMinute = rpcRateLimit;
     }
+    log.info({ rpcRateLimit }, "RPC rate limit enabled");
 
     this.submitMessageRateLimiter = new RateLimiterMemory({
       points: rateLimitPerMinute,
