@@ -1,6 +1,6 @@
-import { RootPrefix, UserMessagePostfixMax, UserPostfix } from "./storage/db/types.js";
-import { logger } from "./utils/logger.js";
-import RocksDB from "./storage/db/rocksdb.js";
+import { RootPrefix, UserMessagePostfixMax, UserPostfix } from "../storage/db/types.js";
+import { logger } from "../utils/logger.js";
+import RocksDB from "../storage/db/rocksdb.js";
 import { createWriteStream, unlinkSync } from "fs";
 
 // rome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'

@@ -71,7 +71,7 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OPGoerliEthConstants } from "./eth/l2EventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
-import { prettyPrintTable } from "./profile.js";
+import { prettyPrintTable } from "./profile/profile.js";
 import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, fallback, http } from "viem";
 import { mainnet } from "viem/chains";

@@ -66,11 +66,15 @@ import StorageEventStore from "../stores/storageEventStore.js";
 import { RentRegistryEventsResponse } from "@farcaster/hub-nodejs";
 import { PublicClient } from "viem";
 import { normalize } from "viem/ens";
+import os from "os";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 
 const log = logger.child({
   component: "Engine",
 });
+
+// 1 < validation_workers < 16
+const NUM_VALIDATION_WORKERS = Math.max(1, Math.min(16, Math.floor(os.cpus().length - 1)));
 
 class Engine {
   public eventHandler: StoreEventHandler;
@@ -88,7 +92,9 @@ class Engine {
   private _storageEventsDataStore: StorageEventStore;
   private _usernameProofStore: UsernameProofStore;
 
-  private _validationWorker: Worker | undefined;
+  private _validationWorkers: Worker[] | undefined;
+  private _nextValidationWorker = 0;
+
   private _validationWorkerJobId = 0;
   private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<Message>) => void>();
 
@@ -126,29 +132,33 @@ class Engine {
 
     this._revokeSignerWorker.start();
 
-    if (!this._validationWorker) {
+    if (!this._validationWorkers) {
       const workerPath = "./build/storage/engine/validation.worker.js";
       try {
         if (fs.existsSync(workerPath)) {
-          this._validationWorker = new Worker(workerPath);
+          this._validationWorkers = [];
+          for (let i = 0; i < NUM_VALIDATION_WORKERS; i++) {
+            const validationWorker = new Worker(workerPath);
+            logger.info({ workerPath, i }, "created validation worker thread");
 
-          logger.info({ workerPath }, "created validation worker thread");
+            validationWorker.on("message", (data) => {
+              const { id, message, errCode, errMessage } = data;
+              const resolve = this._validationWorkerPromiseMap.get(id);
 
-          this._validationWorker.on("message", (data) => {
-            const { id, message, errCode, errMessage } = data;
-            const resolve = this._validationWorkerPromiseMap.get(id);
-
-            if (resolve) {
-              this._validationWorkerPromiseMap.delete(id);
-              if (message) {
-                resolve(ok(message));
+              if (resolve) {
+                this._validationWorkerPromiseMap.delete(id);
+                if (message) {
+                  resolve(ok(message));
+                } else {
+                  resolve(err(new HubError(errCode, errMessage)));
+                }
               } else {
-                resolve(err(new HubError(errCode, errMessage)));
+                logger.warn({ id }, "validation worker promise.response not found");
               }
-            } else {
-              logger.warn({ id }, "validation worker promise.response not found");
-            }
-          });
+            });
+
+            this._validationWorkers.push(validationWorker);
+          }
         } else {
           logger.warn({ workerPath }, "validation.worker.js not found, falling back to main thread");
         }
@@ -177,9 +187,12 @@ class Engine {
 
     this._revokeSignerWorker.start();
 
-    if (this._validationWorker) {
-      await this._validationWorker.terminate();
-      this._validationWorker = undefined;
+    if (this._validationWorkers) {
+      for (const validationWorker of this._validationWorkers) {
+        await validationWorker.terminate();
+      }
+
+      this._validationWorkers = undefined;
     }
     log.info("engine stopped");
   }
@@ -921,12 +934,13 @@ class Engine {
     }
 
     // 6. Check message body and envelope
-    if (this._validationWorker) {
+    if (this._validationWorkers) {
       return new Promise<HubResult<Message>>((resolve) => {
         const id = this._validationWorkerJobId++;
         this._validationWorkerPromiseMap.set(id, resolve);
 
-        this._validationWorker?.postMessage({ id, message });
+        (this._validationWorkers as Worker[])[this._nextValidationWorker]?.postMessage({ id, message });
+        this._nextValidationWorker = (this._nextValidationWorker + 1) % (this._validationWorkers?.length || 1);
       });
     } else {
       return validations.validateMessage(message);

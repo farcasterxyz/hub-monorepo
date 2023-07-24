@@ -1,5 +1,5 @@
 import { HubRpcClient } from "@farcaster/hub-nodejs";
-import { formatNumber } from "../../profile.js";
+import { formatNumber } from "../../profile/profile.js";
 
 // Class to collect stats
 export class MethodCallProfile {

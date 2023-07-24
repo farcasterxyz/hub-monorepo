@@ -32,12 +32,14 @@ import { RootPrefix } from "../../storage/db/types.js";
 import { fromFarcasterTime } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
+import os from "os";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 128;
-const SYNC_PARALLELISM = 16; // Fetch upto 16 leaf nodes in parallel
+// 4x the number of CPUs, clamped between 2 and 16
+const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length * 4, 16), 2);
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
@@ -98,6 +100,29 @@ type DbStats = {
   numFnames: number;
 };
 
+class CurrentSyncStatus {
+  isSyncing = false;
+  interruptSync = false;
+  peerId: string | undefined;
+  startTimestamp?: number;
+  fidRetryMessageQ = new Map<number, Message[]>();
+
+  constructor(peerId?: string) {
+    if (peerId) {
+      this.peerId = peerId;
+      this.isSyncing = true;
+      this.startTimestamp = Date.now();
+    } else {
+      this.peerId = undefined;
+      this.isSyncing = false;
+      this.startTimestamp = 0;
+    }
+
+    this.interruptSync = false;
+    this.fidRetryMessageQ = new Map();
+  }
+}
+
 class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
   private readonly _db: RocksDB;
@@ -105,8 +130,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _ethEventsProvider: EthEventsProvider | undefined;
   private readonly _l2EventsProvider: L2EventsProvider | undefined;
 
-  private _isSyncing = false;
-  private _interruptSync = false;
+  private _currentSyncStatus: CurrentSyncStatus;
   private _syncProfiler?: SyncEngineProfiler;
 
   private currentHubPeerContacts: Map<string, PeerContact> = new Map();
@@ -122,8 +146,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _messagesSinceLastCompaction = 0;
   private _isCompacting = false;
 
-  private _fidRetryMessageQ = new Map<number, Message[]>();
-
   constructor(
     hub: HubInterface,
     rocksDb: RocksDB,
@@ -137,6 +159,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._trie = new MerkleTrie(rocksDb);
     this._ethEventsProvider = ethEventsProvider;
     this._l2EventsProvider = l2EventsProvider;
+
+    this._currentSyncStatus = new CurrentSyncStatus();
 
     if (profileSync) {
       this._syncProfiler = new SyncEngineProfiler();
@@ -210,14 +234,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async stop() {
     // Interrupt any ongoing sync
-    this._interruptSync = true;
+    this._currentSyncStatus.interruptSync = true;
 
     // First, save the trie to disk
     await this._trie.commitToDb();
 
     // Wait for syncing to stop.
     try {
-      await sleepWhile(() => this._isSyncing, SYNC_INTERRUPT_TIMEOUT);
+      await sleepWhile(() => this._currentSyncStatus.isSyncing, SYNC_INTERRUPT_TIMEOUT);
       await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
 
       // Write the trie to disk one last time, in case there were any changes
@@ -226,7 +250,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.error({ err: e }, "Interrupting sync timed out");
     }
 
-    this._interruptSync = false;
+    this._currentSyncStatus.interruptSync = false;
   }
 
   public getSyncProfile(): SyncEngineProfiler | undefined {
@@ -234,7 +258,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public isSyncing(): boolean {
-    return this._isSyncing;
+    return this._currentSyncStatus.isSyncing;
   }
 
   public getPeerCount(): number {
@@ -387,7 +411,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
     const ourSnapshot = ourSnapshotResult.value;
 
-    if (this._isSyncing) {
+    if (this._currentSyncStatus.isSyncing) {
       return ok({
         isSyncing: true,
         inSync: "unknown",
@@ -445,9 +469,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const fullSyncResult = new MergeResult();
 
     try {
-      this._isSyncing = true;
-      this._interruptSync = false;
-      this._fidRetryMessageQ = new Map();
+      this._currentSyncStatus = new CurrentSyncStatus(peerId);
 
       // Get the snapshot of our trie, at the same prefix as the peer's snapshot
       const snapshot = await this.getSnapshot(otherSnapshot.prefix);
@@ -489,7 +511,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } catch (e) {
       log.warn(e, "Perform sync: Error");
     } finally {
-      this._isSyncing = false;
+      this._currentSyncStatus.isSyncing = false;
     }
 
     return fullSyncResult;
@@ -570,6 +592,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
                 err: result.error.message,
                 signer: bytesToHexString(msg.signer)._unsafeUnwrap(),
                 retryResult: { ...retryResult, retryResultErrorMessage },
+                peerId: this._currentSyncStatus.peerId,
               },
               "Unknown signer, fetched all signers from peer",
             );
@@ -581,7 +604,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             // We'll do it in the background, since this will not block the sync.
             setTimeout(async () => {
               log.warn(
-                { fid: msg.data?.fid, err: result.error.message },
+                { fid: msg.data?.fid, err: result.error.message, peerId: this._currentSyncStatus.peerId },
                 `Unknown fid ${msg.data?.fid}, reprocessing ID registry event`,
               );
               await this.retryIdRegistryEvent(msg, rpcClient);
@@ -626,7 +649,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
   ): Promise<void> {
     // Check if we should interrupt the sync
-    if (this._interruptSync) {
+    if (this._currentSyncStatus.interruptSync) {
       log.info("Interrupting sync");
       return;
     }
@@ -643,7 +666,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } else if (theirNodeResult.value.numMessages === 0) {
       // If there are no messages, we're done, but something is probably wrong, since we should never have
       // a node with no messages.
-      log.warn({ prefix }, "No messages for prefix, skipping");
+      log.warn({ prefix, peerId: this._currentSyncStatus.peerId }, "No messages for prefix, skipping");
       return;
     } else if (ourNode?.hash === theirNodeResult.value.hash) {
       // Hashes match, we're done.
@@ -665,7 +688,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
   ): Promise<void> {
-    if (this._interruptSync) {
+    if (this._currentSyncStatus.interruptSync) {
       log.info("Interrupting sync");
       return;
     }
@@ -870,23 +893,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   private async syncUserAndRetryMessage(message: Message, rpcClient: HubRpcClient): Promise<HubResult<number>> {
+    const fidRetryMessageQ = this._currentSyncStatus.fidRetryMessageQ;
+
     const fid = message.data?.fid;
     if (!fid) {
       return err(new HubError("bad_request.invalid_param", "Invalid fid while retrying message"));
     }
 
-    if (this._fidRetryMessageQ.has(fid)) {
+    if (fidRetryMessageQ.has(fid)) {
       // If the queue is empty, this fid has already been retried, so we can skip
-      if (this._fidRetryMessageQ.get(fid)?.length === 0) {
+      if (fidRetryMessageQ.get(fid)?.length === 0) {
         return err(new HubError("bad_request.invalid_param", "Fid already retried"));
       }
 
       // Add the message to the queue
-      this._fidRetryMessageQ.get(fid)?.push(message);
-      return ok(this._fidRetryMessageQ.get(fid)?.length ?? 0);
+      fidRetryMessageQ.get(fid)?.push(message);
+      return ok(fidRetryMessageQ.get(fid)?.length ?? 0);
     } else {
       // Create a new queue for this fid
-      this._fidRetryMessageQ.set(fid, [message]);
+      fidRetryMessageQ.set(fid, [message]);
     }
 
     // Probably not required to fetch the signer messages, but doing it here means
@@ -905,8 +930,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       signerMessagesResult.value.messages.map((message) => this._hub.submitMessage(message, "sync")),
     );
 
-    const messages = this._fidRetryMessageQ.get(fid) ?? [];
-    this._fidRetryMessageQ.set(fid, []);
+    const messages = fidRetryMessageQ.get(fid) ?? [];
+    fidRetryMessageQ.set(fid, []);
 
     if (results.every((r) => r.isErr())) {
       return err(new HubError("unavailable.storage_failure", "Failed to merge any signer message"));
