@@ -40,6 +40,7 @@ import {
   SignerEventType,
   SignerOnChainEvent,
   SignerRemoveMessage,
+  StorageLimitsResponse,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -55,14 +56,14 @@ import { Worker } from "worker_threads";
 import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
 import { TSHASH_LENGTH, UserPostfix } from "../db/types.js";
-import CastStore from "../stores/castStore.js";
-import LinkStore from "../stores/linkStore.js";
-import ReactionStore from "../stores/reactionStore.js";
+import CastStore, { CAST_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/castStore.js";
+import LinkStore, { LINK_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/linkStore.js";
+import ReactionStore, { REACTION_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/reactionStore.js";
 import SignerStore from "../stores/signerStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
-import UserDataStore from "../stores/userDataStore.js";
-import VerificationStore from "../stores/verificationStore.js";
+import UserDataStore, { USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/userDataStore.js";
+import VerificationStore, { VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
@@ -733,6 +734,44 @@ class Engine {
     return ResultAsync.fromPromise(this._onchainEventsStore.getOnChainEvents(type, fid), (e) => e as HubError).map(
       (events) => OnChainEventResponse.create({ events }),
     );
+  }
+
+  async getCurrentStorageLimitsByFid(fid: number): HubAsyncResult<StorageLimitsResponse> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    const units = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
+
+    if (units.isErr()) {
+      return err(units.error);
+    }
+
+    return ok({
+      limits: [
+        {
+          storeType: "casts",
+          limit: CAST_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "links",
+          limit: LINK_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "reactions",
+          limit: REACTION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "userData",
+          limit: USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "verifications",
+          limit: VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+      ],
+    });
   }
 
   async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {

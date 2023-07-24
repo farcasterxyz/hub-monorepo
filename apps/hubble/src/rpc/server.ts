@@ -2,6 +2,7 @@ import {
   CastAddMessage,
   CastId,
   CastRemoveMessage,
+  DbStats,
   FidsResponse,
   getServer,
   HubAsyncResult,
@@ -26,15 +27,15 @@ import {
   SignerAddMessage,
   SignerRemoveMessage,
   status,
+  StorageLimitsResponse,
   SyncIds,
-  DbStats,
+  SyncStatus,
+  SyncStatusResponse,
   TrieNodeMetadataResponse,
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-  SyncStatusResponse,
-  SyncStatus,
   UserNameProof,
   UsernameProofsResponse,
   OnChainEventResponse,
@@ -976,6 +977,18 @@ export default class Server {
         onChainEventsResult?.match(
           (onChainEvents: OnChainEventResponse) => {
             callback(null, onChainEvents);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      getCurrentStorageLimitsByFid: async (call, callback) => {
+        const request = call.request;
+        const storageLimitsResult = await this.engine?.getCurrentStorageLimitsByFid(request.fid);
+        storageLimitsResult?.match(
+          (storageLimits: StorageLimitsResponse) => {
+            callback(null, storageLimits);
           },
           (err: HubError) => {
             callback(toServiceError(err));
