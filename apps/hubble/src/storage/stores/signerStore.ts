@@ -22,7 +22,7 @@ import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./types.js";
 import { eventCompare } from "./utils.js";
 import { Store } from "./store.js";
 
-const PRUNE_SIZE_LIMIT_DEFAULT = 100;
+export const SIGNER_PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
 /**
  * Generates a unique key used to store a SignerAdd message key in the SignerAdds set index
@@ -98,7 +98,7 @@ class SignerStore extends Store<SignerAddMessage, SignerRemoveMessage> {
   override _removeMessageType = MessageType.SIGNER_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return PRUNE_SIZE_LIMIT_DEFAULT;
+    return SIGNER_PRUNE_SIZE_LIMIT_DEFAULT;
   }
 
   override async findMergeAddConflicts(_message: SignerAddMessage): HubAsyncResult<void> {

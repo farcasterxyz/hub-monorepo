@@ -23,6 +23,8 @@ import { RootPrefix, TRUE_VALUE, UserMessagePostfix, UserPostfix } from "../db/t
 import { MessagesPage, PageOptions } from "../stores/types.js";
 import { Store } from "./store.js";
 
+export const CAST_PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
+
 /**
  * Generates unique keys used to store or fetch CastAdd messages in the adds set index
  *
@@ -132,7 +134,7 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   override _removeMessageType = MessageType.CAST_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return 10_000;
+    return CAST_PRUNE_SIZE_LIMIT_DEFAULT;
   }
 
   protected override get PRUNE_TIME_LIMIT_DEFAULT() {

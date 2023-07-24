@@ -21,7 +21,7 @@ import { Store } from "./store.js";
 import { ResultAsync, err, ok } from "neverthrow";
 import { Transaction } from "../db/rocksdb.js";
 
-const PRUNE_SIZE_LIMIT_DEFAULT = 2_500;
+export const LINK_PRUNE_SIZE_LIMIT_DEFAULT = 2_500;
 
 const makeTargetKey = (target: number): Buffer => {
   return makeFidKey(target);
@@ -152,7 +152,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   override _removeMessageType = MessageType.LINK_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return PRUNE_SIZE_LIMIT_DEFAULT;
+    return LINK_PRUNE_SIZE_LIMIT_DEFAULT;
   }
 
   override async buildSecondaryIndices(txn: Transaction, message: LinkAddMessage): HubAsyncResult<void> {

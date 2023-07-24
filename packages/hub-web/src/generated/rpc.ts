@@ -29,6 +29,7 @@ import {
   RentRegistryEventsRequest,
   RentRegistryEventsResponse,
   SignerRequest,
+  StorageLimitsResponse,
   SubscribeRequest,
   SyncIds,
   SyncStatusRequest,
@@ -78,6 +79,10 @@ export interface HubService {
     request: DeepPartial<RentRegistryEventsRequest>,
     metadata?: grpc.Metadata,
   ): Promise<RentRegistryEventsResponse>;
+  getCurrentStorageLimitsByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<StorageLimitsResponse>;
   /** Username Proof */
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpc.Metadata): Promise<UserNameProof>;
   getUserNameProofsByFid(request: DeepPartial<FidRequest>, metadata?: grpc.Metadata): Promise<UsernameProofsResponse>;
@@ -142,6 +147,7 @@ export class HubServiceClientImpl implements HubService {
     this.getUserDataByFid = this.getUserDataByFid.bind(this);
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
     this.getRentRegistryEvents = this.getRentRegistryEvents.bind(this);
+    this.getCurrentStorageLimitsByFid = this.getCurrentStorageLimitsByFid.bind(this);
     this.getUsernameProof = this.getUsernameProof.bind(this);
     this.getUserNameProofsByFid = this.getUserNameProofsByFid.bind(this);
     this.getVerification = this.getVerification.bind(this);
@@ -242,6 +248,13 @@ export class HubServiceClientImpl implements HubService {
       RentRegistryEventsRequest.fromPartial(request),
       metadata,
     );
+  }
+
+  getCurrentStorageLimitsByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<StorageLimitsResponse> {
+    return this.rpc.unary(HubServiceGetCurrentStorageLimitsByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpc.Metadata): Promise<UserNameProof> {
@@ -694,6 +707,29 @@ export const HubServiceGetRentRegistryEventsDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = RentRegistryEventsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetCurrentStorageLimitsByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetCurrentStorageLimitsByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = StorageLimitsResponse.decode(data);
       return {
         ...value,
         toObject() {

@@ -35,6 +35,7 @@ import {
   SignerAddMessage,
   SignerRemoveMessage,
   StorageAdminRegistryEvent,
+  StorageLimitsResponse,
   StorageRegistryEventType,
   UserDataAddMessage,
   UserDataType,
@@ -694,6 +695,15 @@ class Engine {
     return ResultAsync.fromPromise(this._storageEventsDataStore.getRentRegistryEvents(fid), (e) => e as HubError).map(
       (events) => RentRegistryEventsResponse.create({ events }),
     );
+  }
+
+  async getCurrentStorageLimitsByFid(fid: number): HubAsyncResult<StorageLimitsResponse> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return this._storageEventsDataStore.getCurrentStorageLimitsForFid(fid);
   }
 
   async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {

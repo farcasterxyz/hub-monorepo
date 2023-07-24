@@ -164,6 +164,15 @@ export interface StorageAdminRegistryEventRequest {
   transactionHash: Uint8Array;
 }
 
+export interface StorageLimitsResponse {
+  limits: StorageLimit[];
+}
+
+export interface StorageLimit {
+  storeType: string;
+  limit: number;
+}
+
 export interface UsernameProofRequest {
   name: Uint8Array;
 }
@@ -2382,6 +2391,137 @@ export const StorageAdminRegistryEventRequest = {
   ): StorageAdminRegistryEventRequest {
     const message = createBaseStorageAdminRegistryEventRequest();
     message.transactionHash = object.transactionHash ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseStorageLimitsResponse(): StorageLimitsResponse {
+  return { limits: [] };
+}
+
+export const StorageLimitsResponse = {
+  encode(message: StorageLimitsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.limits) {
+      StorageLimit.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StorageLimitsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStorageLimitsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.limits.push(StorageLimit.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StorageLimitsResponse {
+    return { limits: Array.isArray(object?.limits) ? object.limits.map((e: any) => StorageLimit.fromJSON(e)) : [] };
+  },
+
+  toJSON(message: StorageLimitsResponse): unknown {
+    const obj: any = {};
+    if (message.limits) {
+      obj.limits = message.limits.map((e) => e ? StorageLimit.toJSON(e) : undefined);
+    } else {
+      obj.limits = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StorageLimitsResponse>, I>>(base?: I): StorageLimitsResponse {
+    return StorageLimitsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StorageLimitsResponse>, I>>(object: I): StorageLimitsResponse {
+    const message = createBaseStorageLimitsResponse();
+    message.limits = object.limits?.map((e) => StorageLimit.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseStorageLimit(): StorageLimit {
+  return { storeType: "", limit: 0 };
+}
+
+export const StorageLimit = {
+  encode(message: StorageLimit, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.storeType !== "") {
+      writer.uint32(10).string(message.storeType);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(16).uint64(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StorageLimit {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStorageLimit();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.storeType = reader.string();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.limit = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StorageLimit {
+    return {
+      storeType: isSet(object.storeType) ? String(object.storeType) : "",
+      limit: isSet(object.limit) ? Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: StorageLimit): unknown {
+    const obj: any = {};
+    message.storeType !== undefined && (obj.storeType = message.storeType);
+    message.limit !== undefined && (obj.limit = Math.round(message.limit));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StorageLimit>, I>>(base?: I): StorageLimit {
+    return StorageLimit.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StorageLimit>, I>>(object: I): StorageLimit {
+    const message = createBaseStorageLimit();
+    message.storeType = object.storeType ?? "";
+    message.limit = object.limit ?? 0;
     return message;
   },
 };

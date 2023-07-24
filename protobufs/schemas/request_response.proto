@@ -159,6 +159,15 @@ message StorageAdminRegistryEventRequest {
   bytes transaction_hash = 1;
 }
 
+message StorageLimitsResponse {
+  repeated StorageLimit limits = 1;
+}
+
+message StorageLimit {
+  string store_type = 1;
+  uint64 limit = 2;
+}
+
 message UsernameProofRequest {
   bytes name = 1;
 }

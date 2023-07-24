@@ -1,4 +1,11 @@
-import { HubError, HubEventType, RentRegistryEvent, StorageAdminRegistryEvent } from "@farcaster/hub-nodejs";
+import {
+  HubAsyncResult,
+  HubError,
+  HubEventType,
+  RentRegistryEvent,
+  StorageAdminRegistryEvent,
+  StorageLimitsResponse,
+} from "@farcaster/hub-nodejs";
 import RocksDB from "../db/rocksdb.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import AsyncLock from "async-lock";
@@ -10,6 +17,13 @@ import {
   putRentRegistryEventTransaction,
   putStorageAdminRegistryEventTransaction,
 } from "../db/storageRegistryEvent.js";
+import { CAST_PRUNE_SIZE_LIMIT_DEFAULT } from "./castStore.js";
+import { err, ok } from "neverthrow";
+import { LINK_PRUNE_SIZE_LIMIT_DEFAULT } from "./linkStore.js";
+import { SIGNER_PRUNE_SIZE_LIMIT_DEFAULT } from "./signerStore.js";
+import { REACTION_PRUNE_SIZE_LIMIT_DEFAULT } from "./reactionStore.js";
+import { USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT } from "./userDataStore.js";
+import { VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT } from "./verificationStore.js";
 
 /**
  * StorageEventStore persists Storage Event messages in RocksDB using two grow only CRDT sets
@@ -38,6 +52,43 @@ class StorageEventStore {
     this._db = db;
     this._eventHandler = eventHandler;
     this._mergeLock = new AsyncLock();
+  }
+
+  async getCurrentStorageLimitsForFid(fid: number): HubAsyncResult<StorageLimitsResponse> {
+    const units = await this._eventHandler.getCurrentStorageUnitsForFid(fid);
+
+    if (units.isErr()) {
+      return err(units.error);
+    }
+
+    return ok({
+      limits: [
+        {
+          storeType: "casts",
+          limit: CAST_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "links",
+          limit: LINK_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "reactions",
+          limit: REACTION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "signers",
+          limit: SIGNER_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "userData",
+          limit: USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+        {
+          storeType: "verifications",
+          limit: VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+        },
+      ],
+    });
   }
 
   /** Returns the events from the RentRegistry contract that affected the fid  */

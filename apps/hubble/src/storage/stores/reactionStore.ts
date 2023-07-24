@@ -24,7 +24,7 @@ import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../d
 import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
 import { Store } from "./store.js";
 
-const PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
+export const REACTION_PRUNE_SIZE_LIMIT_DEFAULT = 5_000;
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
 const makeTargetKey = (target: CastId | string): Buffer => {
@@ -147,7 +147,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   override _removeMessageType = MessageType.REACTION_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return PRUNE_SIZE_LIMIT_DEFAULT;
+    return REACTION_PRUNE_SIZE_LIMIT_DEFAULT;
   }
 
   protected override get PRUNE_TIME_LIMIT_DEFAULT() {

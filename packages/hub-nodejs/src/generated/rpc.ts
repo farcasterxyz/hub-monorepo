@@ -39,6 +39,7 @@ import {
   RentRegistryEventsRequest,
   RentRegistryEventsResponse,
   SignerRequest,
+  StorageLimitsResponse,
   SubscribeRequest,
   SyncIds,
   SyncStatusRequest,
@@ -198,6 +199,15 @@ export const HubServiceService = {
     responseSerialize: (value: RentRegistryEventsResponse) =>
       Buffer.from(RentRegistryEventsResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => RentRegistryEventsResponse.decode(value),
+  },
+  getCurrentStorageLimitsByFid: {
+    path: "/HubService/GetCurrentStorageLimitsByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    responseSerialize: (value: StorageLimitsResponse) => Buffer.from(StorageLimitsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => StorageLimitsResponse.decode(value),
   },
   /** Username Proof */
   getUsernameProof: {
@@ -448,6 +458,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getNameRegistryEvent: handleUnaryCall<NameRegistryEventRequest, NameRegistryEvent>;
   getRentRegistryEvents: handleUnaryCall<RentRegistryEventsRequest, RentRegistryEventsResponse>;
+  getCurrentStorageLimitsByFid: handleUnaryCall<FidRequest, StorageLimitsResponse>;
   /** Username Proof */
   getUsernameProof: handleUnaryCall<UsernameProofRequest, UserNameProof>;
   getUserNameProofsByFid: handleUnaryCall<FidRequest, UsernameProofsResponse>;
@@ -693,6 +704,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: RentRegistryEventsResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentStorageLimitsByFid(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentStorageLimitsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentStorageLimitsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
   ): ClientUnaryCall;
   /** Username Proof */
   getUsernameProof(

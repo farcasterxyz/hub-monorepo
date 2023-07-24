@@ -2,6 +2,7 @@ import {
   CastAddMessage,
   CastId,
   CastRemoveMessage,
+  DbStats,
   FidsResponse,
   getServer,
   HubAsyncResult,
@@ -20,25 +21,26 @@ import {
   NameRegistryEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
+  RentRegistryEventsResponse,
   Server as GrpcServer,
   ServerCredentials,
   ServiceError,
   SignerAddMessage,
   SignerRemoveMessage,
   status,
+  StorageLimitsResponse,
   SyncIds,
-  DbStats,
+  SyncStatus,
+  SyncStatusResponse,
   TrieNodeMetadataResponse,
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-  SyncStatusResponse,
-  SyncStatus,
   UserNameProof,
   UsernameProofsResponse,
 } from "@farcaster/hub-nodejs";
-import { err, ok, Result, ResultAsync } from "neverthrow";
+import { err, ok, Result } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
 import { GossipNode } from "../network/p2p/gossipNode.js";
 import { NodeMetadata } from "../network/sync/merkleTrie.js";
@@ -54,7 +56,6 @@ import {
   SLOW_CLIENT_GRACE_PERIOD_MS,
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
-import { RentRegistryEventsResponse } from "@farcaster/hub-nodejs";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -816,6 +817,18 @@ export default class Server {
         rentRegistryEventsResult?.match(
           (rentRegistryEvents: RentRegistryEventsResponse) => {
             callback(null, rentRegistryEvents);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      getCurrentStorageLimitsByFid: async (call, callback) => {
+        const request = call.request;
+        const storageLimitsResult = await this.engine?.getCurrentStorageLimitsByFid(request.fid);
+        storageLimitsResult?.match(
+          (storageLimits: StorageLimitsResponse) => {
+            callback(null, storageLimits);
           },
           (err: HubError) => {
             callback(toServiceError(err));
