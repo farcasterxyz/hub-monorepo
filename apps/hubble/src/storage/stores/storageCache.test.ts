@@ -83,6 +83,24 @@ describe("syncFromDb", () => {
   });
 });
 
+describe("getCurrentStorageUnitsForFid", () => {
+  test("cache invalidation happens when expected", async () => {
+    const fid = Factories.Fid.build();
+    for (let i = 1; i < 3; i++) {
+      const message = await Factories.RentRegistryEvent.create({
+        fid: fid,
+        expiry: getFarcasterTime()._unsafeUnwrap() + i,
+        units: 2,
+      });
+      await putRentRegistryEvent(db, message);
+    }
+    await cache.syncFromDb();
+    await expect(cache.getCurrentStorageUnitsForFid(fid)).resolves.toEqual(ok(4));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await expect(cache.getCurrentStorageUnitsForFid(fid)).resolves.toEqual(ok(2));
+  });
+});
+
 describe("getMessageCount", () => {
   test("returns the correct count even if the cache is not synced", async () => {
     const fid = Factories.Fid.build();
