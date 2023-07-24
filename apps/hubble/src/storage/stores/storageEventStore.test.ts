@@ -9,6 +9,12 @@ import {
 import { jestRocksDB } from "../db/jestUtils.js";
 import StorageEventStore from "./storageEventStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
+import { CAST_PRUNE_SIZE_LIMIT_DEFAULT } from "./castStore.js";
+import { LINK_PRUNE_SIZE_LIMIT_DEFAULT } from "./linkStore.js";
+import { REACTION_PRUNE_SIZE_LIMIT_DEFAULT } from "./reactionStore.js";
+import { SIGNER_PRUNE_SIZE_LIMIT_DEFAULT } from "./signerStore.js";
+import { USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT } from "./userDataStore.js";
+import { VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT } from "./verificationStore.js";
 
 const db = jestRocksDB("protobufs.storageEventStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -29,6 +35,7 @@ beforeAll(async () => {
   rentEvent = Factories.RentRegistryEvent.build({
     fid,
     payer: address1,
+    units: 2,
   });
   setDeprecationTimestampEvent = Factories.StorageAdminRegistryEvent.build({
     from: address1,
@@ -80,131 +87,41 @@ describe("getStorageAdminRegistryEvent", () => {
   });
 });
 
-// describe('mergeIdRegistryEvent', () => {
-//   let mergedContractEvents: RentRegistryEvent[];
+describe("getCurrentStorageLimitsForFid", () => {
+  test("unit-scaled storage info", async () => {
+    const limits = await set.getCurrentStorageLimitsForFid(fid);
+    expect(limits.isErr()).toBe(false);
+    expect(limits._unsafeUnwrap()).toEqual({
+      limits: [
+        {
+          storeType: "casts",
+          limit: CAST_PRUNE_SIZE_LIMIT_DEFAULT * 2,
+        },
+        {
+          storeType: "links",
+          limit: LINK_PRUNE_SIZE_LIMIT_DEFAULT * 2,
+        },
+        {
+          storeType: "reactions",
+          limit: REACTION_PRUNE_SIZE_LIMIT_DEFAULT * 2,
+        },
+        {
+          storeType: "signers",
+          limit: SIGNER_PRUNE_SIZE_LIMIT_DEFAULT * 2,
+        },
+        {
+          storeType: "userData",
+          limit: USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT * 2,
+        },
+        {
+          storeType: "verifications",
+          limit: VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT * 2,
+        },
+      ],
+    });
+  });
 
-//   const handleMergeEvent = (event: MergeRentRegistryEventHubEvent) => {
-//     mergedContractEvents.push(event.mergeRentRegistryEvent.rentRegistryEvent);
-//   };
-
-//   beforeAll(() => {
-//     eventHandler.on('mergeRentRegistryEvent', handleMergeEvent);
-//   });
-
-//   beforeEach(() => {
-//     mergedContractEvents = [];
-//   });
-
-//   afterAll(() => {
-//     eventHandler.off('mergeIdRegistryEvent', handleMergeEvent);
-//   });
-
-//   test('succeeds', async () => {
-//     await expect(set.mergeIdRegistryEvent(custody1Event)).resolves.toBeGreaterThan(0);
-//     await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
-
-//     expect(mergedContractEvents).toEqual([custody1Event]);
-//   });
-
-//   test('fails if events have the same blockNumber but different blockHashes', async () => {
-//     const blockHashConflictEvent = Factories.IdRegistryEvent.build({
-//       ...custody1Event,
-//       blockHash: Factories.BlockHash.build(),
-//     });
-
-//     await set.mergeIdRegistryEvent(custody1Event);
-//     await expect(set.mergeIdRegistryEvent(blockHashConflictEvent)).rejects.toThrow(
-//       new HubError('bad_request.invalid_param', 'block hash mismatch')
-//     );
-
-//     expect(mergedContractEvents).toEqual([custody1Event]);
-//   });
-
-//   test('fails if events have the same blockNumber and logIndex but different transactionHashes', async () => {
-//     const txHashConflictEvent = Factories.IdRegistryEvent.build({
-//       ...custody1Event,
-//       transactionHash: Factories.TransactionHash.build(),
-//     });
-
-//     await set.mergeIdRegistryEvent(custody1Event);
-//     await expect(set.mergeIdRegistryEvent(txHashConflictEvent)).rejects.toThrow(HubError);
-
-//     expect(mergedContractEvents).toEqual([custody1Event]);
-//   });
-
-//   describe('overwrites existing event', () => {
-//     let newEvent: IdRegistryEvent;
-
-//     beforeEach(async () => {
-//       await set.mergeIdRegistryEvent(custody1Event);
-//       // await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
-//     });
-
-//     afterEach(async () => {
-//       await expect(set.mergeIdRegistryEvent(newEvent)).resolves.toBeGreaterThan(0);
-//       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(newEvent);
-//       expect(mergedContractEvents).toEqual([custody1Event, newEvent]);
-//       // SignerAdd should still be valid until messages signed by old custody address are revoked
-//       // await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
-//     });
-
-//     test('when it has a higher block number', async () => {
-//       newEvent = Factories.IdRegistryEvent.build({
-//         ...custody1Event,
-//         transactionHash: Factories.TransactionHash.build(),
-//         to: custody2Address,
-//         blockNumber: custody1Event.blockNumber + 1,
-//       });
-//     });
-
-//     test('when it has the same block number and a higher log index', async () => {
-//       newEvent = Factories.IdRegistryEvent.build({
-//         ...custody1Event,
-//         transactionHash: Factories.TransactionHash.build(),
-//         to: custody2Address,
-//         logIndex: custody1Event.logIndex + 1,
-//       });
-//     });
-//   });
-
-//   describe('does not overwrite existing event', () => {
-//     let newEvent: IdRegistryEvent;
-
-//     beforeEach(async () => {
-//       await set.mergeIdRegistryEvent(custody1Event);
-//       // await set.merge(signerAdd);
-//       // await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
-//     });
-
-//     afterEach(async () => {
-//       await expect(set.mergeIdRegistryEvent(newEvent)).rejects.toThrow(
-//         new HubError('bad_request.conflict', 'event conflicts with a more recent IdRegistryEvent')
-//       );
-//       await expect(set.getIdRegistryEvent(fid)).resolves.toEqual(custody1Event);
-//       // await expect(set.getSignerAdd(fid, signerKey)).resolves.toEqual(signerAdd);
-
-//       expect(mergedContractEvents).toEqual([custody1Event]);
-//     });
-
-//     test('when it has a lower block number', async () => {
-//       newEvent = Factories.IdRegistryEvent.build({
-//         ...custody1Event,
-//         transactionHash: Factories.TransactionHash.build(),
-//         to: custody2Address,
-//         blockNumber: custody1Event.blockNumber - 1,
-//       });
-//     });
-
-//     test('when it has the same block number and a lower log index', async () => {
-//       newEvent = Factories.IdRegistryEvent.build({
-//         ...custody1Event,
-//         to: custody2Address,
-//         logIndex: custody1Event.logIndex - 1,
-//       });
-//     });
-
-//     test('when is a duplicate', async () => {
-//       newEvent = custody1Event;
-//     });
-//   });
-// });
+  test("fails if event is missing", async () => {
+    await expect(set.getStorageAdminRegistryEvents()).rejects.toThrow(HubError);
+  });
+});
