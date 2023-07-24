@@ -620,7 +620,10 @@ const RentRegistryEventTypeFactory = Factory.define<protobufs.StorageRegistryEve
   return faker.helpers.arrayElement([protobufs.StorageRegistryEventType.RENT]);
 });
 
-const RentRegistryEventFactory = Factory.define<protobufs.RentRegistryEvent>(() => {
+const RentRegistryEventFactory = Factory.define<protobufs.RentRegistryEvent>(({ onCreate }) => {
+  onCreate(async (data) => {
+    return data;
+  });
   return protobufs.RentRegistryEvent.create({
     blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
     blockHash: BlockHashFactory.build(),

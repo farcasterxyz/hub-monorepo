@@ -17,13 +17,12 @@ import {
   MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-  MessageType,
 } from "@farcaster/hub-nodejs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import AsyncLock from "async-lock";
 import { err, ok, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import RocksDB, { Transaction } from "../db/rocksdb.js";
 import { RootPrefix, UserMessagePostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
 import { makeTsHash } from "../db/message.js";
@@ -42,6 +41,7 @@ import {
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/core";
+import { logger } from "../../utils/logger.js";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 1_000;
@@ -190,6 +190,10 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     this._storageCache = new StorageCache(this._db);
   }
 
+  async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
+    return await this._storageCache.getCurrentStorageUnitsForFid(fid);
+  }
+
   async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
     return this._storageCache.getMessageCount(fid, set);
   }
@@ -254,12 +258,24 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       }
     }
 
+    const units = await this.getCurrentStorageUnitsForFid(message.data.fid);
+
+    if (units.isErr()) {
+      return err(units.error);
+    }
+
+    if (units.value === 0) {
+      logger.warn({ fid: message.data.fid }, "fid has no registered storage, would be pruned");
+    }
+
+    const unitsMultiplier = units.value > 0 ? units.value : 1;
+
     const messageCount = await this.getCacheMessageCount(message.data.fid, set);
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }
 
-    if (messageCount.value < sizeLimit) {
+    if (messageCount.value < sizeLimit * unitsMultiplier) {
       return ok(false);
     }
 
