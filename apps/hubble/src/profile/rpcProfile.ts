@@ -8,6 +8,7 @@ import {
   Metadata,
   getAdminRpcClient,
   getAuthMetadata,
+  getFarcasterTime,
   getInsecureHubRpcClient,
   getSSLHubRpcClient,
 } from "@farcaster/hub-nodejs";
@@ -51,7 +52,7 @@ async function profileSubmitMessages(
   rpcClient: HubRpcClient,
   adminRpcClient: AdminRpcClient,
   fid: number,
-  network = FarcasterNetwork.MAINNET,
+  network = FarcasterNetwork.DEVNET,
   username?: string | Metadata,
   password?: string,
 ): Promise<string[]> {
@@ -82,6 +83,17 @@ async function profileSubmitMessages(
   const idResult = await adminRpcClient.submitIdRegistryEvent(custodyEvent, metadata);
   if (!idResult.isOk()) {
     throw `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
+  }
+
+  const rentRegistryEvent = Factories.RentRegistryEvent.build({
+    fid,
+    expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
+    units: 2,
+  });
+  const rentResult = await adminRpcClient.submitRentRegistryEvent(rentRegistryEvent, metadata);
+
+  if (!rentResult.isOk()) {
+    throw `Failed to submit rent event for fid ${fid}: ${rentResult.error}`;
   }
 
   const signerAdd = await Factories.SignerAddMessage.create(
