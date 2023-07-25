@@ -73,8 +73,8 @@ const log = logger.child({
   component: "Engine",
 });
 
-// 1 < validation_workers < 16
-const NUM_VALIDATION_WORKERS = Math.max(1, Math.min(16, Math.floor(os.cpus().length - 1)));
+// 1 < validation_workers < 4
+const NUM_VALIDATION_WORKERS = Math.max(1, Math.min(4, Math.floor(os.cpus().length - 1)));
 
 class Engine {
   public eventHandler: StoreEventHandler;
