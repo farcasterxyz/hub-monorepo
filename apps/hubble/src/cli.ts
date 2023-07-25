@@ -8,6 +8,7 @@ import {
 import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
+import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { Command } from "commander";
 import fs, { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
@@ -22,8 +23,8 @@ import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { parseNetwork } from "./utils/command.js";
 import { sleep } from "./utils/crypto.js";
 import { Config as DefaultConfig } from "./defaultConfig.js";
-import { profileStorageUsed } from "./profile.js";
-import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
+import { profileStorageUsed } from "./profile/profile.js";
+import { profileRPCServer } from "./profile/rpcProfile.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -604,7 +605,23 @@ const storageProfileCommand = new Command("storage")
     exit(0);
   });
 
-app.command("profile").description("Profile various resources used by the hub").addCommand(storageProfileCommand);
+const rpcProfileCommand = new Command("rpc")
+  .description("Profile the RPC server's performance")
+  .option(
+    "-s, --server <url>",
+    "Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283)",
+    DEFAULT_RPC_CONSOLE,
+  )
+  .option("--insecure", "Allow insecure connections to the RPC server", false)
+  .action(async (cliOptions) => {
+    profileRPCServer(cliOptions.server, cliOptions.insecure);
+  });
+
+app
+  .command("profile")
+  .description("Profile various resources used by the hub")
+  .addCommand(rpcProfileCommand)
+  .addCommand(storageProfileCommand);
 
 /*//////////////////////////////////////////////////////////////
                           DBRESET COMMAND
