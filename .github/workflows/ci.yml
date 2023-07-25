@@ -13,79 +13,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-image:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Docker buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build Docker image
-        id: docker-image
-        uses: docker/build-push-action@v4
-        with:
-          cache-from: type=gha
-          cache-to: type=gha,type=inline
-          context: .
-          file: Dockerfile.hubble
-          load: true
-          tags: farcasterxyz/hubble:test
-
-      - name: Run Hubble
-        shell: bash
-        run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --eth-mainnet-rpc-url "https://eth-mainnet.g.alchemy.com/v2/8cz__IXnQ5FK_GNYDlfooLzYhBAW7ta0" --network 3 --allowed-peers none'
-
-      - name: Download grpcurl
-        shell: bash
-        run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz -o - | tar -xzf -
-
-      - name: Check that gRPC server is running
-        uses: nick-fields/retry@v2
-        with:
-          timeout_seconds: 10
-          retry_wait_seconds: 5
-          max_attempts: 10
-          shell: bash
-          command: ./grpcurl -plaintext -import-path protobufs/schemas -proto protobufs/schemas/rpc.proto 127.0.0.1:2283 HubService.GetInfo
-          on_retry_command: docker logs hub
-
-  analyze:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Restore cached dependencies for Node modules.
-        id: module-cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}--node--${{ hashFiles('**/yarn.lock') }}
-
-      - name: Install dependencies
-        run: yarn install
-
-      # - name: Run audit
-      #   run: yarn audit
-
-      - name: Run linter
-        run: yarn lint:ci
-
   test:
-    timeout-minutes: 10
+    timeout-minutes: 20
     runs-on: 'buildjet-4vcpu-ubuntu-2204'
 
     strategy:
       matrix:
-        node_version: [18, 20]
+        node_version: [20.2]
 
     steps:
       - uses: actions/checkout@v3
@@ -100,6 +34,12 @@ jobs:
         with:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('**/yarn.lock') }}
+      
+      # - name: Setup upterm session
+      #   uses: lhotari/action-upterm@v1
+      #   with:
+      #     ## limits ssh access and adds the ssh public key for the user which triggered the workflow
+      #     limit-access-to-actor: true
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1

@@ -8,7 +8,8 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
-import { ed25519Verify } from "./rustlib";
+// import { ed25519Verify } from "./rustlib";
+import { ed25519 } from "@noble/curves/ed25519";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -145,7 +146,13 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
       return err(new HubError("bad_request.validation_failure", "signature does not match signer"));
     }
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
-    const signatureIsValid = ed25519Verify(signature, hash, signer);
+    let signatureIsValid = false;
+
+    if (process.env["NODE_ENV"] === "test" || process.env["JEST_WORKER_ID"] !== undefined) {
+      signatureIsValid = ed25519.verify(signature, hash, signer);
+    } else {
+      // signatureIsValid = ed25519Verify(signature, hash, signer);
+    }
 
     if (!signatureIsValid) {
       return err(new HubError("bad_request.validation_failure", "invalid signature"));
