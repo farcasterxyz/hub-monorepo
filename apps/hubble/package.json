@@ -41,7 +41,6 @@
     "@viem/anvil": "^0.0.6",
     "chance": "~1.1.11",
     "csv-stringify": "~6.3.0",
-    "eslint-config-custom": "*",
     "fishery": "~2.2.2",
     "pino-pretty": "~10.0.0",
     "prettier-config-custom": "*",

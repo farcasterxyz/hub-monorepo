@@ -33,7 +33,6 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
-    "eslint-config-custom": "*",
     "rome-config-custom": "*",
     "ts-proto": "^1.146.0"
   },
