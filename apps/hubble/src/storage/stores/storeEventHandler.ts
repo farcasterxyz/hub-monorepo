@@ -265,7 +265,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     if (units.value === 0) {
-      logger.warn({ fid: message.data.fid }, "fid has no registered storage, would be pruned");
+      logger.debug({ fid: message.data.fid }, "fid has no registered storage, would be pruned");
     }
 
     const unitsMultiplier = units.value > 0 ? units.value : 1;
