@@ -3,6 +3,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWRnSZUxjVJjbSHhVKpXtvibMarSfLSKDBeMpfVaNm1Joo", // hoyt.farcaster.xyz
   "12D3KooWJECuSHn5edaorpufE9ceAoqR5zcAuD4ThoyDzVaz77GV", // lamia.farcaster.xyz
   "12D3KooWMQrf6unpGJfLBmTGy3eKTo4cGcXktWRbgMnfbZLXqBbn", // nemes.farcaster.xyz
+  "12D3KooWPqgfTRAiQ1fzKGJ8G3V2vhwmPJBk1WGzB8XgGHKwyQZU", // @kayaomer
   "12D3KooWApEV85oe2T9mdDLFJMsM4PZchcYYMxAS3cosAxPp2GaS", // @asverty
   "12D3KooWN9ztVoHYi26NwTDDLNjgBozz479br3pwBuy3oLQVQmhz", // @cassie
   "12D3KooWBJnUaDeM1bm5CYQSKqBN7yKJZoF5E85SDYDiMKHr9UwA", // @roadz
