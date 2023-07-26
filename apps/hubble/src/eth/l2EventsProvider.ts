@@ -13,9 +13,10 @@ import { StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
 import { optimismGoerli } from "viem/chains";
-import { createPublicClient, fallback, http, Log, PublicClient } from "viem";
+import { createPublicClient, fallback, http, PublicClient, OnLogsParameter, Log } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
+import { ExtractAbiEvent } from "abitype";
 
 const log = logger.child({
   component: "L2EventsProvider",
@@ -45,19 +46,7 @@ export class L2EventsProvider {
 
   private _lastBlockNumber: number;
 
-  private _watchRentRegistryRent: WatchContractEvent<typeof StorageRegistry.abi, "Rent", true>;
-  private _watchStorageAdminRegistrySetDeprecationTimestamp: WatchContractEvent<
-    typeof StorageRegistry.abi,
-    "SetDeprecationTimestamp",
-    true
-  >;
-  private _watchStorageAdminRegistrySetGracePeriod: WatchContractEvent<
-    typeof StorageRegistry.abi,
-    "SetGracePeriod",
-    true
-  >;
-  private _watchStorageAdminRegistrySetMaxUnits: WatchContractEvent<typeof StorageRegistry.abi, "SetMaxUnits", true>;
-  private _watchStorageAdminRegistrySetPrice: WatchContractEvent<typeof StorageRegistry.abi, "SetPrice", true>;
+  private _watchStorageContractEvents: WatchContractEvent<typeof StorageRegistry.abi, string, true>;
   private _watchBlockNumber: WatchBlockNumber;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
@@ -98,69 +87,16 @@ export class L2EventsProvider {
     this._retryDedupMap = new Map();
 
     // Setup StorageRegistry contract
-    this._watchRentRegistryRent = new WatchContractEvent(
+    this._watchStorageContractEvents = new WatchContractEvent(
       this._publicClient,
       {
         address: storageRegistryAddress,
         abi: StorageRegistry.abi,
-        eventName: "Rent",
-        onLogs: this.processRentEvents.bind(this),
+        onLogs: this.processStorageEvents.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
       },
-      "StorageRegistry Rent",
-    );
-
-    this._watchStorageAdminRegistrySetDeprecationTimestamp = new WatchContractEvent(
-      this._publicClient,
-      {
-        address: storageRegistryAddress,
-        abi: StorageRegistry.abi,
-        eventName: "SetDeprecationTimestamp",
-        onLogs: this.processStorageSetDeprecationTimestampEvents.bind(this),
-        pollingInterval: L2EventsProvider.eventPollingInterval,
-        strict: true,
-      },
-      "StorageRegistry SetDeprecationTimestamp",
-    );
-
-    this._watchStorageAdminRegistrySetGracePeriod = new WatchContractEvent(
-      this._publicClient,
-      {
-        address: storageRegistryAddress,
-        abi: StorageRegistry.abi,
-        eventName: "SetGracePeriod",
-        onLogs: this.processStorageSetGracePeriodEvents.bind(this),
-        pollingInterval: L2EventsProvider.eventPollingInterval,
-        strict: true,
-      },
-      "StorageRegistry SetGracePeriod",
-    );
-
-    this._watchStorageAdminRegistrySetMaxUnits = new WatchContractEvent(
-      this._publicClient,
-      {
-        address: storageRegistryAddress,
-        abi: StorageRegistry.abi,
-        eventName: "SetMaxUnits",
-        onLogs: this.processStorageSetMaxUnitsEvents.bind(this),
-        pollingInterval: L2EventsProvider.eventPollingInterval,
-        strict: true,
-      },
-      "StorageRegistry SetMaxUnits",
-    );
-
-    this._watchStorageAdminRegistrySetPrice = new WatchContractEvent(
-      this._publicClient,
-      {
-        address: storageRegistryAddress,
-        abi: StorageRegistry.abi,
-        eventName: "SetPrice",
-        onLogs: this.processStorageSetPriceEvents.bind(this),
-        pollingInterval: L2EventsProvider.eventPollingInterval,
-        strict: true,
-      },
-      "StorageRegistry SetPrice",
+      "StorageRegistry",
     );
 
     this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
@@ -214,19 +150,11 @@ export class L2EventsProvider {
     await this.connectAndSyncHistoricalEvents();
 
     this._watchBlockNumber.start();
-    this._watchRentRegistryRent.start();
-    this._watchStorageAdminRegistrySetDeprecationTimestamp.start();
-    this._watchStorageAdminRegistrySetGracePeriod.start();
-    this._watchStorageAdminRegistrySetMaxUnits.start();
-    this._watchStorageAdminRegistrySetPrice.start();
+    this._watchStorageContractEvents.start();
   }
 
   public async stop() {
-    this._watchStorageAdminRegistrySetPrice.stop();
-    this._watchStorageAdminRegistrySetMaxUnits.stop();
-    this._watchStorageAdminRegistrySetGracePeriod.stop();
-    this._watchStorageAdminRegistrySetDeprecationTimestamp.stop();
-    this._watchRentRegistryRent.stop();
+    this._watchStorageContractEvents.stop();
     this._watchBlockNumber.stop();
 
     // Wait for all async promises to resolve
@@ -246,9 +174,12 @@ export class L2EventsProvider {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async processRentEvents(logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, "Rent">[]) {
+  private async processStorageEvents(
+    // rome-ignore lint/suspicious/noExplicitAny: workaround viem bug
+    logs: OnLogsParameter<any, true, string>,
+  ) {
     for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
 
       // Do nothing if the block is pending
       if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
@@ -257,134 +188,100 @@ export class L2EventsProvider {
 
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
-        await this.cacheRentRegistryEvent(
-          event.args.payer,
-          event.args.fid,
-          event.args.units,
-          StorageRegistryEventType.RENT,
-          Number(blockNumber),
-          blockHash,
-          transactionHash,
-          Number(transactionIndex),
-        );
+        if (event.eventName === "Rent") {
+          // Fix when viem fixes https://github.com/wagmi-dev/viem/issues/938
+          const rentEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof StorageRegistry.abi, "Rent">,
+            true,
+            typeof StorageRegistry.abi
+          >;
+          await this.cacheRentRegistryEvent(
+            rentEvent.args.payer,
+            rentEvent.args.fid,
+            rentEvent.args.units,
+            StorageRegistryEventType.RENT,
+            Number(blockNumber),
+            blockHash,
+            transactionHash,
+            Number(transactionIndex),
+          );
+        } else if (event.eventName === "SetDeprecationTimestamp") {
+          const adminEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof StorageRegistry.abi, "SetDeprecationTimestamp">,
+            true,
+            typeof StorageRegistry.abi
+          >;
+          await this.cacheStorageAdminRegistryEvent(
+            adminEvent.args.oldTimestamp,
+            adminEvent.args.newTimestamp,
+            StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
+            address,
+            Number(blockNumber),
+            blockHash,
+            transactionHash,
+            Number(transactionIndex),
+          );
+        } else if (event.eventName === "SetGracePeriod") {
+          const adminEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof StorageRegistry.abi, "SetGracePeriod">,
+            true,
+            typeof StorageRegistry.abi
+          >;
+          await this.cacheStorageAdminRegistryEvent(
+            adminEvent.args.oldPeriod,
+            adminEvent.args.newPeriod,
+            StorageRegistryEventType.SET_GRACE_PERIOD,
+            address,
+            Number(blockNumber),
+            blockHash,
+            transactionHash,
+            Number(transactionIndex),
+          );
+        } else if (event.eventName === "SetMaxUnits") {
+          const adminEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof StorageRegistry.abi, "SetMaxUnits">,
+            true,
+            typeof StorageRegistry.abi
+          >;
+          await this.cacheStorageAdminRegistryEvent(
+            adminEvent.args.oldMax,
+            adminEvent.args.newMax,
+            StorageRegistryEventType.SET_MAX_UNITS,
+            address,
+            Number(blockNumber),
+            blockHash,
+            transactionHash,
+            Number(transactionIndex),
+          );
+        } else if (event.eventName === "SetPrice") {
+          const adminEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof StorageRegistry.abi, "SetPrice">,
+            true,
+            typeof StorageRegistry.abi
+          >;
+          await this.cacheStorageAdminRegistryEvent(
+            adminEvent.args.oldPrice,
+            adminEvent.args.newPrice,
+            StorageRegistryEventType.SET_PRICE,
+            address,
+            Number(blockNumber),
+            blockHash,
+            transactionHash,
+            Number(transactionIndex),
+          );
+        }
       } catch (e) {
         log.error(e);
-        log.error({ event }, "failed to parse event args");
-      }
-    }
-  }
-
-  private async processStorageSetDeprecationTimestampEvents(
-    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, "SetDeprecationTimestamp">[],
-  ) {
-    for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
-
-      // Do nothing if the block is pending
-      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
-        continue;
-      }
-
-      // Handling: use try-catch + log since errors are expected and not important to surface
-      try {
-        await this.cacheStorageAdminRegistryEvent(
-          event.args.oldTimestamp,
-          event.args.newTimestamp,
-          StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
-          address,
-          Number(blockNumber),
-          blockHash,
-          transactionHash,
-          Number(transactionIndex),
-        );
-      } catch (e) {
-        log.error({ event }, "failed to parse event args");
-      }
-    }
-  }
-
-  private async processStorageSetGracePeriodEvents(
-    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, "SetGracePeriod">[],
-  ) {
-    for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
-
-      // Do nothing if the block is pending
-      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
-        continue;
-      }
-
-      // Handling: use try-catch + log since errors are expected and not important to surface
-      try {
-        await this.cacheStorageAdminRegistryEvent(
-          event.args.oldPeriod,
-          event.args.newPeriod,
-          StorageRegistryEventType.SET_GRACE_PERIOD,
-          address,
-          Number(blockNumber),
-          blockHash,
-          transactionHash,
-          Number(transactionIndex),
-        );
-      } catch (e) {
-        log.error({ event }, "failed to parse event args");
-      }
-    }
-  }
-
-  private async processStorageSetMaxUnitsEvents(
-    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, "SetMaxUnits">[],
-  ) {
-    for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
-
-      // Do nothing if the block is pending
-      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
-        continue;
-      }
-
-      // Handling: use try-catch + log since errors are expected and not important to surface
-      try {
-        await this.cacheStorageAdminRegistryEvent(
-          event.args.oldMax,
-          event.args.newMax,
-          StorageRegistryEventType.SET_MAX_UNITS,
-          address,
-          Number(blockNumber),
-          blockHash,
-          transactionHash,
-          Number(transactionIndex),
-        );
-      } catch (e) {
-        log.error({ event }, "failed to parse event args");
-      }
-    }
-  }
-
-  private async processStorageSetPriceEvents(
-    logs: Log<bigint, number, undefined, true, typeof StorageRegistry.abi, "SetPrice">[],
-  ) {
-    for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex, address } = event;
-
-      // Do nothing if the block is pending
-      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
-        continue;
-      }
-
-      // Handling: use try-catch + log since errors are expected and not important to surface
-      try {
-        await this.cacheStorageAdminRegistryEvent(
-          event.args.oldPrice,
-          event.args.newPrice,
-          StorageRegistryEventType.SET_PRICE,
-          address,
-          Number(blockNumber),
-          blockHash,
-          transactionHash,
-          Number(transactionIndex),
-        );
-      } catch (e) {
         log.error({ event }, "failed to parse event args");
       }
     }
@@ -429,33 +326,7 @@ export class L2EventsProvider {
       log.info({ fromBlock: lastSyncedBlock, toBlock }, "syncing events from missed blocks");
 
       // Sync old Rent events
-      await this.syncHistoricalStorageEvents(StorageRegistryEventType.RENT, lastSyncedBlock, toBlock, this._chunkSize);
-
-      // Sync old Storage Admin events
-      await this.syncHistoricalStorageEvents(
-        StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
-        lastSyncedBlock,
-        toBlock,
-        this._chunkSize,
-      );
-      await this.syncHistoricalStorageEvents(
-        StorageRegistryEventType.SET_GRACE_PERIOD,
-        lastSyncedBlock,
-        toBlock,
-        this._chunkSize,
-      );
-      await this.syncHistoricalStorageEvents(
-        StorageRegistryEventType.SET_MAX_UNITS,
-        lastSyncedBlock,
-        toBlock,
-        this._chunkSize,
-      );
-      await this.syncHistoricalStorageEvents(
-        StorageRegistryEventType.SET_PRICE,
-        lastSyncedBlock,
-        toBlock,
-        this._chunkSize,
-      );
+      await this.syncHistoricalStorageEvents(lastSyncedBlock, toBlock, this._chunkSize);
     }
 
     this._isHistoricalSyncDone = true;
@@ -473,28 +344,14 @@ export class L2EventsProvider {
     this._retryDedupMap.set(blockNumber, true);
 
     // Sync old Storage events
-    await this.syncHistoricalStorageEvents(StorageRegistryEventType.RENT, blockNumber, blockNumber + 1, 1);
-    await this.syncHistoricalStorageEvents(
-      StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
-      blockNumber,
-      blockNumber + 1,
-      1,
-    );
-    await this.syncHistoricalStorageEvents(StorageRegistryEventType.SET_GRACE_PERIOD, blockNumber, blockNumber + 1, 1);
-    await this.syncHistoricalStorageEvents(StorageRegistryEventType.SET_MAX_UNITS, blockNumber, blockNumber + 1, 1);
-    await this.syncHistoricalStorageEvents(StorageRegistryEventType.SET_PRICE, blockNumber, blockNumber + 1, 1);
+    await this.syncHistoricalStorageEvents(blockNumber, blockNumber + 1, 1);
   }
 
   /**
    * Sync old Storage events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalStorageEvents(
-    type: StorageRegistryEventType,
-    fromBlock: number,
-    toBlock: number,
-    batchSize: number,
-  ) {
+  private async syncHistoricalStorageEvents(fromBlock: number, toBlock: number, batchSize: number) {
     /*
      * Querying Blocks in Batches
      *
@@ -524,67 +381,15 @@ export class L2EventsProvider {
         nextFromBlock += 1;
       }
 
-      if (type === StorageRegistryEventType.RENT) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: OPGoerliEthConstants.StorageRegistryAddress,
-          abi: StorageRegistry.abi,
-          eventName: "Rent",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
-
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processRentEvents(logs);
-      } else if (type === StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: OPGoerliEthConstants.StorageRegistryAddress,
-          abi: StorageRegistry.abi,
-          eventName: "SetDeprecationTimestamp",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
-
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processStorageSetDeprecationTimestampEvents(logs);
-      } else if (type === StorageRegistryEventType.SET_GRACE_PERIOD) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: OPGoerliEthConstants.StorageRegistryAddress,
-          abi: StorageRegistry.abi,
-          eventName: "SetGracePeriod",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
-
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processStorageSetGracePeriodEvents(logs);
-      } else if (type === StorageRegistryEventType.SET_MAX_UNITS) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: OPGoerliEthConstants.StorageRegistryAddress,
-          abi: StorageRegistry.abi,
-          eventName: "SetMaxUnits",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
-
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processStorageSetMaxUnitsEvents(logs);
-      } else if (type === StorageRegistryEventType.SET_PRICE) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: OPGoerliEthConstants.StorageRegistryAddress,
-          abi: StorageRegistry.abi,
-          eventName: "SetPrice",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
-
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processStorageSetPriceEvents(logs);
-      }
+      const filter = await this._publicClient.createContractEventFilter({
+        address: OPGoerliEthConstants.StorageRegistryAddress,
+        abi: StorageRegistry.abi,
+        fromBlock: BigInt(nextFromBlock),
+        toBlock: BigInt(nextToBlock),
+        strict: true,
+      });
+      const logs = await this._publicClient.getFilterLogs({ filter });
+      await this.processStorageEvents(logs);
     }
   }
 

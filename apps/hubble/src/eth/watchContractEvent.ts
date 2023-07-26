@@ -27,7 +27,6 @@ export class WatchContractEvent<
     this._params = params;
     this._log = logger.child({
       component: "WatchContractEvent",
-      eventName: params.eventName,
       key,
     });
   }
