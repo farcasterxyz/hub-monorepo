@@ -8,7 +8,7 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
-// import { ed25519Verify } from "./rustlib";
+import { ed25519Verify } from "./rustlib";
 import { ed25519 } from "@noble/curves/ed25519";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
