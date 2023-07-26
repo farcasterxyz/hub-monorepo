@@ -249,7 +249,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     }
 
     if (units.value === 0) {
-      logger.warn({ fid }, "fid has no registered storage, would be pruned");
+      logger.debug({ fid }, "fid has no registered storage, would be pruned");
     }
 
     // This is temporary, when all fids are migrated to using storage rent, we'll just use the units directly.
