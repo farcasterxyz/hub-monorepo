@@ -3,6 +3,7 @@ import { NameRegistryEvent } from "./generated/name_registry_event";
 import * as hubEventProtobufs from "./generated/hub_event";
 import * as protobufs from "./generated/message";
 import { RentRegistryEvent, StorageAdminRegistryEvent } from "./generated/storage_event";
+import * as onchainEventProtobufs from "./generated/onchain_event";
 import { UserNameProof } from "./generated/username_proof";
 
 /** Message types */
@@ -127,6 +128,11 @@ export type UsernameProofMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type KeyRegistryOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER;
+  rentRegistryBody: onchainEventProtobufs.KeyRegistryBody;
+};
+
 /** Hub event types */
 
 export type MergeMessageHubEvent = hubEventProtobufs.HubEvent & {
@@ -176,6 +182,11 @@ export type MergeStorageAdminRegistryEventHubEvent = hubEventProtobufs.HubEvent 
   mergeStorageAdminRegistryEventBody: hubEventProtobufs.MergeStorageAdminRegistryEventBody & {
     storageAdminRegistryEvent: StorageAdminRegistryEvent;
   };
+};
+
+export type MergeOnChainEventHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.MERGE_ON_CHAIN_EVENT;
+  mergeOnChainEventBody: hubEventProtobufs.MergeOnChainEventBody;
 };
 
 export type MergeUsernameProofHubEvent = hubEventProtobufs.HubEvent & {

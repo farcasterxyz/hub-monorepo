@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+enum OnChainEventType {
+  EVENT_TYPE_NONE = 0;
+  EVENT_TYPE_SIGNER = 1;
+  EVENT_TYPE_SIGNER_MIGRATED = 2;
+}
+
+message OnChainEvent {
+  OnChainEventType type = 1;
+  uint32 chain_id = 2;
+  uint32 block_number = 3;
+  bytes block_hash = 4;
+  uint64 block_timestamp = 5;
+  bytes transaction_hash = 6;
+  uint32 log_index = 7;
+  uint64 fid = 8;
+  oneof body {
+    KeyRegistryBody key_registry_body = 9;
+  }
+}
+
+enum KeyRegistryEventType {
+  KEY_REGISTRY_EVENT_TYPE_NONE = 0;
+  KEY_REGISTRY_EVENT_TYPE_ADD = 1;
+  KEY_REGISTRY_EVENT_TYPE_REMOVE = 2;
+  KEY_REGISTRY_EVENT_TYPE_ADMIN_RESET = 3;
+}
+
+message KeyRegistryBody {
+  bytes key = 1;
+  uint32 scheme = 2;
+  KeyRegistryEventType event_type = 3;
+}

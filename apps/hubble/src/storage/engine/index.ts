@@ -25,6 +25,9 @@ import {
   Message,
   NameRegistryEvent,
   NameRegistryEventType,
+  OnChainEvent,
+  OnChainEventResponse,
+  OnChainEventType,
   PruneMessageHubEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
@@ -68,6 +71,7 @@ import { PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import os from "os";
 import UsernameProofStore from "../stores/usernameProofStore.js";
+import OnChainEventStore from "../stores/onChainEventStore.js";
 
 const log = logger.child({
   component: "Engine",
@@ -90,6 +94,7 @@ class Engine {
   private _userDataStore: UserDataStore;
   private _verificationStore: VerificationStore;
   private _storageEventsDataStore: StorageEventStore;
+  private _onchainEventsStore: OnChainEventStore;
   private _usernameProofStore: UsernameProofStore;
 
   private _validationWorkers: Worker[] | undefined;
@@ -115,6 +120,7 @@ class Engine {
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
     this._storageEventsDataStore = new StorageEventStore(db, this.eventHandler);
+    this._onchainEventsStore = new OnChainEventStore(db, this.eventHandler);
     this._usernameProofStore = new UsernameProofStore(db, this.eventHandler);
 
     this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
@@ -266,6 +272,14 @@ class Engine {
   async mergeRentRegistryEvent(event: RentRegistryEvent): HubAsyncResult<number> {
     if (event.type === StorageRegistryEventType.RENT) {
       return ResultAsync.fromPromise(this._storageEventsDataStore.mergeRentRegistryEvent(event), (e) => e as HubError);
+    }
+
+    return err(new HubError("bad_request.validation_failure", "invalid event type"));
+  }
+
+  async mergeOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {
+    if (event.type === OnChainEventType.EVENT_TYPE_SIGNER) {
+      return ResultAsync.fromPromise(this._onchainEventsStore.mergeOnChainEvent(event), (e) => e as HubError);
     }
 
     return err(new HubError("bad_request.validation_failure", "invalid event type"));
@@ -706,6 +720,17 @@ class Engine {
 
     return ResultAsync.fromPromise(this._storageEventsDataStore.getRentRegistryEvents(fid), (e) => e as HubError).map(
       (events) => RentRegistryEventsResponse.create({ events }),
+    );
+  }
+
+  async getOnChainEvents(fid: number): HubAsyncResult<OnChainEventResponse> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._onchainEventsStore.getOnChainEvents(fid), (e) => e as HubError).map(
+      (events) => OnChainEventResponse.create({ events }),
     );
   }
 

@@ -5,7 +5,6 @@ import "id_registry_event.proto";
 import "name_registry_event.proto";
 import "hub_event.proto";
 import "request_response.proto";
-import "storage_event.proto";
 import "username_proof.proto";
 
 service HubService {
@@ -32,7 +31,8 @@ service HubService {
   rpc GetUserData(UserDataRequest) returns (Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
   rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
-  rpc GetRentRegistryEvents(RentRegistryEventsRequest) returns (RentRegistryEventsResponse);
+  rpc GetRentRegistryEvents(FidRequest) returns (RentRegistryEventsResponse);
+  rpc GetOnChainEvents(FidRequest) returns (OnChainEventResponse);
 
   // Username Proof
   rpc GetUsernameProof(UsernameProofRequest) returns (UserNameProof);
@@ -77,6 +77,4 @@ service AdminService {
   
   rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
   rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
-  rpc SubmitRentRegistryEvent(RentRegistryEvent) returns (RentRegistryEvent);
-  rpc SubmitStorageAdminRegistryEvent(StorageAdminRegistryEvent) returns (StorageAdminRegistryEvent);
 }

@@ -4,6 +4,7 @@ import _m0 from "protobufjs/minimal";
 import { IdRegistryEvent } from "./id_registry_event";
 import { Message } from "./message";
 import { NameRegistryEvent } from "./name_registry_event";
+import { OnChainEvent } from "./onchain_event";
 import { RentRegistryEvent, StorageAdminRegistryEvent } from "./storage_event";
 import { UserNameProof } from "./username_proof";
 
@@ -17,6 +18,7 @@ export enum HubEventType {
   MERGE_USERNAME_PROOF = 6,
   MERGE_RENT_REGISTRY_EVENT = 7,
   MERGE_STORAGE_ADMIN_REGISTRY_EVENT = 8,
+  MERGE_ON_CHAIN_EVENT = 9,
 }
 
 export function hubEventTypeFromJSON(object: any): HubEventType {
@@ -48,6 +50,9 @@ export function hubEventTypeFromJSON(object: any): HubEventType {
     case 8:
     case "HUB_EVENT_TYPE_MERGE_STORAGE_ADMIN_REGISTRY_EVENT":
       return HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT;
+    case 9:
+    case "HUB_EVENT_TYPE_MERGE_ON_CHAIN_EVENT":
+      return HubEventType.MERGE_ON_CHAIN_EVENT;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
@@ -73,6 +78,8 @@ export function hubEventTypeToJSON(object: HubEventType): string {
       return "HUB_EVENT_TYPE_MERGE_RENT_REGISTRY_EVENT";
     case HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT:
       return "HUB_EVENT_TYPE_MERGE_STORAGE_ADMIN_REGISTRY_EVENT";
+    case HubEventType.MERGE_ON_CHAIN_EVENT:
+      return "HUB_EVENT_TYPE_MERGE_ON_CHAIN_EVENT";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
@@ -107,6 +114,11 @@ export interface MergeStorageAdminRegistryEventBody {
   storageAdminRegistryEvent: StorageAdminRegistryEvent | undefined;
 }
 
+export interface MergeOnChainEventBody {
+  onChainEvent: OnChainEvent | undefined;
+  deletedOnChainEvent: OnChainEvent | undefined;
+}
+
 export interface MergeUserNameProofBody {
   usernameProof: UserNameProof | undefined;
   deletedUsernameProof: UserNameProof | undefined;
@@ -125,6 +137,7 @@ export interface HubEvent {
   mergeUsernameProofBody?: MergeUserNameProofBody | undefined;
   mergeRentRegistryEventBody?: MergeRentRegistryEventBody | undefined;
   mergeStorageAdminRegistryEventBody?: MergeStorageAdminRegistryEventBody | undefined;
+  mergeOnChainEventBody?: MergeOnChainEventBody | undefined;
 }
 
 function createBaseMergeMessageBody(): MergeMessageBody {
@@ -581,6 +594,86 @@ export const MergeStorageAdminRegistryEventBody = {
   },
 };
 
+function createBaseMergeOnChainEventBody(): MergeOnChainEventBody {
+  return { onChainEvent: undefined, deletedOnChainEvent: undefined };
+}
+
+export const MergeOnChainEventBody = {
+  encode(message: MergeOnChainEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.onChainEvent !== undefined) {
+      OnChainEvent.encode(message.onChainEvent, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.deletedOnChainEvent !== undefined) {
+      OnChainEvent.encode(message.deletedOnChainEvent, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MergeOnChainEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMergeOnChainEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.onChainEvent = OnChainEvent.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.deletedOnChainEvent = OnChainEvent.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MergeOnChainEventBody {
+    return {
+      onChainEvent: isSet(object.onChainEvent) ? OnChainEvent.fromJSON(object.onChainEvent) : undefined,
+      deletedOnChainEvent: isSet(object.deletedOnChainEvent)
+        ? OnChainEvent.fromJSON(object.deletedOnChainEvent)
+        : undefined,
+    };
+  },
+
+  toJSON(message: MergeOnChainEventBody): unknown {
+    const obj: any = {};
+    message.onChainEvent !== undefined &&
+      (obj.onChainEvent = message.onChainEvent ? OnChainEvent.toJSON(message.onChainEvent) : undefined);
+    message.deletedOnChainEvent !== undefined && (obj.deletedOnChainEvent = message.deletedOnChainEvent
+      ? OnChainEvent.toJSON(message.deletedOnChainEvent)
+      : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MergeOnChainEventBody>, I>>(base?: I): MergeOnChainEventBody {
+    return MergeOnChainEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MergeOnChainEventBody>, I>>(object: I): MergeOnChainEventBody {
+    const message = createBaseMergeOnChainEventBody();
+    message.onChainEvent = (object.onChainEvent !== undefined && object.onChainEvent !== null)
+      ? OnChainEvent.fromPartial(object.onChainEvent)
+      : undefined;
+    message.deletedOnChainEvent = (object.deletedOnChainEvent !== undefined && object.deletedOnChainEvent !== null)
+      ? OnChainEvent.fromPartial(object.deletedOnChainEvent)
+      : undefined;
+    return message;
+  },
+};
+
 function createBaseMergeUserNameProofBody(): MergeUserNameProofBody {
   return {
     usernameProof: undefined,
@@ -718,6 +811,7 @@ function createBaseHubEvent(): HubEvent {
     mergeUsernameProofBody: undefined,
     mergeRentRegistryEventBody: undefined,
     mergeStorageAdminRegistryEventBody: undefined,
+    mergeOnChainEventBody: undefined,
   };
 }
 
@@ -753,6 +847,9 @@ export const HubEvent = {
     if (message.mergeStorageAdminRegistryEventBody !== undefined) {
       MergeStorageAdminRegistryEventBody.encode(message.mergeStorageAdminRegistryEventBody, writer.uint32(82).fork())
         .ldelim();
+    }
+    if (message.mergeOnChainEventBody !== undefined) {
+      MergeOnChainEventBody.encode(message.mergeOnChainEventBody, writer.uint32(90).fork()).ldelim();
     }
     return writer;
   },
@@ -837,6 +934,13 @@ export const HubEvent = {
             reader.uint32(),
           );
           continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.mergeOnChainEventBody = MergeOnChainEventBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -870,6 +974,9 @@ export const HubEvent = {
       mergeStorageAdminRegistryEventBody: isSet(object.mergeStorageAdminRegistryEventBody)
         ? MergeStorageAdminRegistryEventBody.fromJSON(object.mergeStorageAdminRegistryEventBody)
         : undefined,
+      mergeOnChainEventBody: isSet(object.mergeOnChainEventBody)
+        ? MergeOnChainEventBody.fromJSON(object.mergeOnChainEventBody)
+        : undefined,
     };
   },
 
@@ -902,6 +1009,9 @@ export const HubEvent = {
       (obj.mergeStorageAdminRegistryEventBody = message.mergeStorageAdminRegistryEventBody
         ? MergeStorageAdminRegistryEventBody.toJSON(message.mergeStorageAdminRegistryEventBody)
         : undefined);
+    message.mergeOnChainEventBody !== undefined && (obj.mergeOnChainEventBody = message.mergeOnChainEventBody
+      ? MergeOnChainEventBody.toJSON(message.mergeOnChainEventBody)
+      : undefined);
     return obj;
   },
 
@@ -941,6 +1051,10 @@ export const HubEvent = {
     message.mergeStorageAdminRegistryEventBody =
       (object.mergeStorageAdminRegistryEventBody !== undefined && object.mergeStorageAdminRegistryEventBody !== null)
         ? MergeStorageAdminRegistryEventBody.fromPartial(object.mergeStorageAdminRegistryEventBody)
+        : undefined;
+    message.mergeOnChainEventBody =
+      (object.mergeOnChainEventBody !== undefined && object.mergeOnChainEventBody !== null)
+        ? MergeOnChainEventBody.fromPartial(object.mergeOnChainEventBody)
         : undefined;
     return message;
   },

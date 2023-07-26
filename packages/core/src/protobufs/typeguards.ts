@@ -221,6 +221,15 @@ export const isMergeStorageAdminRegistryEventHubEvent = (
   );
 };
 
+export const isMergeOnChainHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeOnChainEventHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.MERGE_ON_CHAIN_EVENT &&
+    typeof event.mergeOnChainEventBody !== "undefined" &&
+    (typeof event.mergeOnChainEventBody.onChainEvent !== "undefined" ||
+      typeof event.mergeOnChainEventBody.deletedOnChainEvent !== "undefined")
+  );
+};
+
 export const isMergeUsernameProofHubEvent = (
   event: hubEventProtobufs.HubEvent,
 ): event is types.MergeUsernameProofHubEvent => {

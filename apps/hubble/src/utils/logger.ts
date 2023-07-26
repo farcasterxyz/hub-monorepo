@@ -5,6 +5,7 @@ import {
   Message,
   MessageType,
   NameRegistryEvent,
+  OnChainEvent,
   RentRegistryEvent,
   StorageAdminRegistryEvent,
   storageRegistryEventTypeToJSON,
@@ -81,6 +82,15 @@ export const nameRegistryEventToLog = (event: NameRegistryEvent) => {
     blockNumber: event.blockNumber,
     fname: Buffer.from(event.fname).toString("utf-8").replace(/\0/g, ""),
     to: bytesToHexString(event.to)._unsafeUnwrap(),
+  };
+};
+
+export const onChainEventToLog = (event: OnChainEvent) => {
+  return {
+    blockNumber: event.blockNumber,
+    blockHash: bytesToHexString(event.blockHash)._unsafeUnwrap(),
+    fid: event.fid,
+    type: event.type,
   };
 };
 
