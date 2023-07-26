@@ -148,10 +148,11 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
     let signatureIsValid = false;
 
-    if (process.env["NODE_ENV"] === "test" || process.env["JEST_WORKER_ID"] !== undefined) {
+    // if (process.env["NODE_ENV"] === "test" || process.env["JEST_WORKER_ID"] !== undefined) {
+    if (1 + 1 === 2) {
       signatureIsValid = ed25519.verify(signature, hash, signer);
     } else {
-      // signatureIsValid = ed25519Verify(signature, hash, signer);
+      signatureIsValid = ed25519Verify(signature, hash, signer);
     }
 
     if (!signatureIsValid) {
