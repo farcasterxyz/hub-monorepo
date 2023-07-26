@@ -718,6 +718,3 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
 
   return ok(ensNameP);
 };
-function ed25519_verify(signature: Uint8Array, hash: Uint8Array, signer: Uint8Array): boolean {
-  throw new Error("Function not implemented.");
-}
