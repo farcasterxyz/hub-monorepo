@@ -6,6 +6,7 @@ import {
   FarcasterNetwork,
   Message,
   Metadata,
+  getFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { ConsoleCommandInterface } from "./console.js";
 
@@ -71,10 +72,24 @@ export class GenCommand implements ConsoleCommandInterface {
 
           const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
           const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent, metadata);
+
           if (idResult.isOk()) {
             numSuccess++;
           } else {
             return `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
+          }
+
+          const rentRegistryEvent = Factories.RentRegistryEvent.build({
+            fid,
+            expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
+            units: 2,
+          });
+          const rentResult = await this.adminRpcClient.submitRentRegistryEvent(rentRegistryEvent, metadata);
+
+          if (rentResult.isOk()) {
+            numSuccess++;
+          } else {
+            return `Failed to submit rent event for fid ${fid}: ${rentResult.error}`;
           }
 
           const signerAdd = await Factories.SignerAddMessage.create(
