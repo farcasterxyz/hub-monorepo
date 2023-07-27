@@ -588,17 +588,15 @@ export class Hub implements HubInterface {
 
   /** Apply the new the network config. Will return true if the Hub should exit */
   public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
-    const { allowedPeerIds, shouldExit } = applyNetworkConfig(
-      networkConfig,
-      this.allowedPeerIds ?? [],
-      this.options.network,
-    );
+    const { allowedPeerIds, shouldExit } = applyNetworkConfig(networkConfig, this.allowedPeerIds, this.options.network);
 
     if (shouldExit) {
       return true;
     } else {
-      this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
-      this.allowedPeerIds = allowedPeerIds;
+      if (allowedPeerIds) {
+        this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
+        this.allowedPeerIds = allowedPeerIds;
+      }
       return false;
     }
   }
