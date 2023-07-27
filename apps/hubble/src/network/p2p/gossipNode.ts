@@ -488,6 +488,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         { identity: this.identity, function: "createNode", allowedPeerIds: options.allowedPeerIdStrs },
         "!!! PEER-ID RESTRICTIONS ENABLED !!!",
       );
+    } else {
+      log.warn(
+        { identity: this.identity, function: "createNode" },
+        "No PEER-ID RESTRICTIONS ENABLED. This node will accept connections from any peer",
+      );
     }
     this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
 
