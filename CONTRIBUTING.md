@@ -48,7 +48,7 @@ First, ensure that the following are installed globally on your machine:
 Then, from the root folder run:
 
 - `yarn install` to install dependencies
-- `yarn build` to ensure that the test suite runs correctly
+- `yarn build` to build Hubble and its dependencies
 - `yarn test` to ensure that the test suite runs correctly
 
 ### 2.2. Signing Commits

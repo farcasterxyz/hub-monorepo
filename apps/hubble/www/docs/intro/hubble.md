@@ -1,6 +1,6 @@
 # Hubble
 
-Hubble is an implementation of a [Farcaster Hub](https://github.com/farcasterxyz/protocol), written in [TypeScript](https://www.typescriptlang.org/).
+Hubble is an implementation of a [Farcaster Hub](https://github.com/farcasterxyz/protocol), written in [TypeScript](https://www.typescriptlang.org/) and [Rust](https://www.rust-lang.org/).
 
 Hubble creates a private instance of the Farcaster network on your machine. It stores a copy of every message from every user and syncs with other hubs to stay up to date. Messages uploaded to Hubble will be broadcast to other Hubs. 
 
