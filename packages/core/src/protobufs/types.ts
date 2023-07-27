@@ -130,7 +130,7 @@ export type UsernameProofMessage = protobufs.Message & {
 
 export type KeyRegistryOnChainEvent = onchainEventProtobufs.OnChainEvent & {
   type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER;
-  rentRegistryBody: onchainEventProtobufs.KeyRegistryBody;
+  keyRegistryBody: onchainEventProtobufs.KeyRegistryBody;
 };
 
 /** Hub event types */

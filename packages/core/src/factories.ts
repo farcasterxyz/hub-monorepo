@@ -5,7 +5,13 @@ import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "@noble/hashes/utils";
 import * as protobufs from "./protobufs";
-import { OnChainEventType, UserNameType } from "./protobufs";
+import {
+  KeyRegistryBody,
+  KeyRegistryEventType,
+  KeyRegistryOnChainEvent,
+  OnChainEventType,
+  UserNameType,
+} from "./protobufs";
 import { bytesToHexString, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip712Signer } from "./signers";
 import { getFarcasterTime, toFarcasterTime } from "./time";
@@ -683,6 +689,16 @@ const UserNameProofFactory = Factory.define<protobufs.UserNameProof>(() => {
   });
 });
 
+const KeyRegistryOnChainEventFactory = Factory.define<KeyRegistryOnChainEvent>(() => {
+  return OnChainEventFactory.build({
+    keyRegistryBody: KeyRegistryBody.create({
+      key: Ed25519PPublicKeyFactory.build(),
+      eventType: KeyRegistryEventType.ADD,
+      scheme: 0,
+    }),
+  }) as protobufs.KeyRegistryOnChainEvent;
+});
+
 export const Factories = {
   Fid: FidFactory,
   Fname: FnameFactory,
@@ -751,4 +767,5 @@ export const Factories = {
   RentRegistryEvent: RentRegistryEventFactory,
   StorageAdminRegistryEventType: StorageAdminRegistryEventTypeFactory,
   StorageAdminRegistryEvent: StorageAdminRegistryEventFactory,
+  KeyRegistryOnChainEvent: KeyRegistryOnChainEventFactory,
 };

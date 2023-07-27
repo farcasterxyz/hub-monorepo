@@ -729,9 +729,10 @@ class Engine {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._onchainEventsStore.getOnChainEvents(fid), (e) => e as HubError).map(
-      (events) => OnChainEventResponse.create({ events }),
-    );
+    return ResultAsync.fromPromise(
+      this._onchainEventsStore.getOnChainEvents(fid, OnChainEventType.EVENT_TYPE_SIGNER),
+      (e) => e as HubError,
+    ).map((events) => OnChainEventResponse.create({ events }));
   }
 
   async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {

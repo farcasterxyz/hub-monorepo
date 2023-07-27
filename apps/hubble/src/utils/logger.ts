@@ -6,6 +6,7 @@ import {
   MessageType,
   NameRegistryEvent,
   OnChainEvent,
+  onChainEventTypeToJSON,
   RentRegistryEvent,
   StorageAdminRegistryEvent,
   storageRegistryEventTypeToJSON,
@@ -90,7 +91,7 @@ export const onChainEventToLog = (event: OnChainEvent) => {
     blockNumber: event.blockNumber,
     blockHash: bytesToHexString(event.blockHash)._unsafeUnwrap(),
     fid: event.fid,
-    type: event.type,
+    type: onChainEventTypeToJSON(event.type),
   };
 };
 

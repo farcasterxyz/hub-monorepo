@@ -21,6 +21,7 @@ const hub = new MockHub(db, engine);
 
 let l2EventsProvider: L2EventsProvider;
 let storageRegistryAddress: `0x${string}`;
+let keyRegistryAddress: `0x${string}`;
 
 beforeAll(() => {
   // Poll aggressively for fast testing
@@ -39,6 +40,7 @@ describe("build", () => {
       "http://some-url",
       false,
       storageRegistryAddress,
+      keyRegistryAddress,
       1,
       10000,
       false,
@@ -56,6 +58,7 @@ describe("build", () => {
       "http://some-url,http://some-other-url",
       false,
       storageRegistryAddress,
+      keyRegistryAddress,
       1,
       10000,
       false,
@@ -74,7 +77,15 @@ describe("process events", () => {
     if (!storageAddr) throw new Error("Failed to deploy StorageRegistry contract");
     storageRegistryAddress = storageAddr;
 
-    l2EventsProvider = new L2EventsProvider(hub, publicClient, storageRegistryAddress, 1, 10000, false);
+    l2EventsProvider = new L2EventsProvider(
+      hub,
+      publicClient,
+      storageRegistryAddress,
+      keyRegistryAddress,
+      1,
+      10000,
+      false,
+    );
 
     await l2EventsProvider.start();
   });

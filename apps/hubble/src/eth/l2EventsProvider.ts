@@ -3,13 +3,18 @@ import {
   hexStringToBytes,
   HubAsyncResult,
   HubState,
+  KeyRegistryBody,
+  KeyRegistryEventType,
+  OnChainEvent,
+  OnChainEventType,
+  onChainEventTypeToJSON,
   RentRegistryEvent,
   StorageAdminRegistryEvent,
   StorageRegistryEventType,
   storageRegistryEventTypeToJSON,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
-import { StorageRegistry } from "./abis.js";
+import { KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
 import { optimismGoerli } from "viem/chains";
@@ -24,6 +29,7 @@ const log = logger.child({
 
 export class OPGoerliEthConstants {
   public static StorageRegistryAddress = "0xa89cC9427335da6E8138517419FCB3c9c37d1604" as const;
+  public static KeyRegistryAddress = "0x000000fc6548800fc8265d8eb7061d88cefb87c2" as const;
   public static FirstBlock = 11183461;
   public static ChunkSize = 1000;
   public static chainId = BigInt(420); // OP Goerli
@@ -42,11 +48,13 @@ export class L2EventsProvider {
 
   private _rentEventsByBlock: Map<number, Array<RentRegistryEvent>>;
   private _storageAdminEventsByBlock: Map<number, Array<StorageAdminRegistryEvent>>;
+  private _onChainEventsByBlock: Map<number, Array<OnChainEvent>>;
   private _retryDedupMap: Map<number, boolean>;
 
   private _lastBlockNumber: number;
 
   private _watchStorageContractEvents: WatchContractEvent<typeof StorageRegistry.abi, string, true>;
+  private _watchKeyRegistryContractEvents: WatchContractEvent<typeof KeyRegistry.abi, string, true>;
   private _watchBlockNumber: WatchBlockNumber;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
@@ -68,6 +76,7 @@ export class L2EventsProvider {
     hub: HubInterface,
     publicClient: PublicClient,
     storageRegistryAddress: `0x${string}`,
+    keyRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
@@ -84,6 +93,7 @@ export class L2EventsProvider {
     // numConfirmations blocks have been mined.
     this._rentEventsByBlock = new Map();
     this._storageAdminEventsByBlock = new Map();
+    this._onChainEventsByBlock = new Map();
     this._retryDedupMap = new Map();
 
     // Setup StorageRegistry contract
@@ -97,6 +107,18 @@ export class L2EventsProvider {
         strict: true,
       },
       "StorageRegistry",
+    );
+
+    this._watchKeyRegistryContractEvents = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: keyRegistryAddress,
+        abi: KeyRegistry.abi,
+        onLogs: this.processKeyRegistryEvents.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      "KeyRegistry",
     );
 
     this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
@@ -117,6 +139,7 @@ export class L2EventsProvider {
     l2RpcUrl: string,
     rankRpcs: boolean,
     storageRegistryAddress: `0x${string}`,
+    keyRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
@@ -133,6 +156,7 @@ export class L2EventsProvider {
       hub,
       publicClient,
       storageRegistryAddress,
+      keyRegistryAddress,
       firstBlock,
       chunkSize,
       resyncEvents,
@@ -151,10 +175,12 @@ export class L2EventsProvider {
 
     this._watchBlockNumber.start();
     this._watchStorageContractEvents.start();
+    this._watchKeyRegistryContractEvents.start();
   }
 
   public async stop() {
     this._watchStorageContractEvents.stop();
+    this._watchKeyRegistryContractEvents.stop();
     this._watchBlockNumber.stop();
 
     // Wait for all async promises to resolve
@@ -287,6 +313,50 @@ export class L2EventsProvider {
     }
   }
 
+  private async processKeyRegistryEvents(
+    // rome-ignore lint/suspicious/noExplicitAny: workaround viem bug
+    logs: OnLogsParameter<any, true, string>,
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        if (event.eventName === "Add") {
+          const addEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof KeyRegistry.abi, "Add">,
+            true,
+            typeof KeyRegistry.abi
+          >;
+          const keyRegistryBody = KeyRegistryBody.create({
+            eventType: KeyRegistryEventType.ADD,
+            key: hexStringToBytes(addEvent.args.key)._unsafeUnwrap(),
+            scheme: addEvent.args.scheme,
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_SIGNER,
+            addEvent.args.fid,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            keyRegistryBody,
+          );
+        }
+      } catch (e) {
+        log.error(e);
+        log.error({ event }, "failed to parse signer event args");
+      }
+    }
+  }
+
   /** Connect to Ethereum RPC */
   private async connectAndSyncHistoricalEvents() {
     const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
@@ -326,7 +396,7 @@ export class L2EventsProvider {
       log.info({ fromBlock: lastSyncedBlock, toBlock }, "syncing events from missed blocks");
 
       // Sync old Rent events
-      await this.syncHistoricalStorageEvents(lastSyncedBlock, toBlock, this._chunkSize);
+      await this.syncHistoricalEvents(lastSyncedBlock, toBlock, this._chunkSize);
     }
 
     this._isHistoricalSyncDone = true;
@@ -343,15 +413,15 @@ export class L2EventsProvider {
     }
     this._retryDedupMap.set(blockNumber, true);
 
-    // Sync old Storage events
-    await this.syncHistoricalStorageEvents(blockNumber, blockNumber + 1, 1);
+    // Sync old events
+    await this.syncHistoricalEvents(blockNumber, blockNumber + 1, 1);
   }
 
   /**
    * Sync old Storage events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalStorageEvents(fromBlock: number, toBlock: number, batchSize: number) {
+  private async syncHistoricalEvents(fromBlock: number, toBlock: number, batchSize: number) {
     /*
      * Querying Blocks in Batches
      *
@@ -381,15 +451,27 @@ export class L2EventsProvider {
         nextFromBlock += 1;
       }
 
-      const filter = await this._publicClient.createContractEventFilter({
+      const storageFilter = await this._publicClient.createContractEventFilter({
         address: OPGoerliEthConstants.StorageRegistryAddress,
         abi: StorageRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const logs = await this._publicClient.getFilterLogs({ filter });
-      await this.processStorageEvents(logs);
+      const storageLogs = await this._publicClient.getFilterLogs({
+        filter: storageFilter,
+      });
+      await this.processStorageEvents(storageLogs);
+
+      const keyFilter = await this._publicClient.createContractEventFilter({
+        address: OPGoerliEthConstants.KeyRegistryAddress,
+        abi: KeyRegistry.abi,
+        fromBlock: BigInt(nextFromBlock),
+        toBlock: BigInt(nextToBlock),
+        strict: true,
+      });
+      const keyLogs = await this._publicClient.getFilterLogs({ filter: keyFilter });
+      await this.processKeyRegistryEvents(keyLogs);
     }
   }
 
@@ -398,7 +480,11 @@ export class L2EventsProvider {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
 
     // Get all blocks that have been confirmed into a single array and sort.
-    const cachedBlocksSet = new Set([...this._rentEventsByBlock.keys(), ...this._storageAdminEventsByBlock.keys()]);
+    const cachedBlocksSet = new Set([
+      ...this._rentEventsByBlock.keys(),
+      ...this._storageAdminEventsByBlock.keys(),
+      ...this._onChainEventsByBlock.keys(),
+    ]);
     const cachedBlocks = Array.from(cachedBlocksSet);
     cachedBlocks.sort();
 
@@ -419,6 +505,14 @@ export class L2EventsProvider {
         if (storageAdminEvents) {
           for (const storageAdminEvent of storageAdminEvents) {
             await this._hub.submitStorageAdminRegistryEvent(storageAdminEvent, "l2-provider");
+          }
+        }
+
+        const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
+        this._onChainEventsByBlock.delete(cachedBlock);
+        if (onChainEvents) {
+          for (const onChainEvent of onChainEvents) {
+            await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
           }
         }
 
@@ -543,6 +637,60 @@ export class L2EventsProvider {
       `cacheStorageAdminRegistryEvent: address ${address} performed ${storageRegistryEventTypeToJSON(
         type,
       )} from ${oldValue.toString()} to ${newValue.toString()} in block ${blockNumber}`,
+    );
+
+    return ok(undefined);
+  }
+
+  private async cacheOnChainEvent(
+    type: OnChainEventType,
+    fid: bigint,
+    blockNumBigInt: bigint,
+    blockHash: string,
+    transactionHash: string,
+    index: number,
+    keyRegistryBody?: KeyRegistryBody,
+  ): HubAsyncResult<void> {
+    const blockNumber = Number(blockNumBigInt);
+    const logEvent = log.child({ event: { type, blockNumber } });
+    const serialized = Result.combine([hexStringToBytes(blockHash), hexStringToBytes(transactionHash)]);
+
+    if (serialized.isErr()) {
+      logEvent.error(
+        { errCode: serialized.error.errCode },
+        `cacheStorageAdminRegistryEvent error: ${serialized.error.message}`,
+      );
+      return err(serialized.error);
+    }
+
+    const [blockHashBytes, transactionHashBytes] = serialized.value;
+    const block = await this._publicClient.getBlock({
+      blockHash: blockHash as `0x${string}`,
+    });
+    const timestamp = Number(block.timestamp);
+
+    const onChainEvent = OnChainEvent.create({
+      type,
+      chainId: Number(OPGoerliEthConstants.chainId),
+      fid: Number(fid),
+      blockNumber: Number(blockNumber),
+      blockHash: blockHashBytes,
+      blockTimestamp: timestamp,
+      transactionHash: transactionHashBytes,
+      logIndex: index,
+      keyRegistryBody: keyRegistryBody,
+    });
+
+    // Add it to the cache
+    let onChainEvents = this._onChainEventsByBlock.get(blockNumber);
+    if (!onChainEvents) {
+      onChainEvents = [];
+      this._onChainEventsByBlock.set(blockNumber, onChainEvents);
+    }
+    onChainEvents.push(onChainEvent);
+
+    logEvent.info(
+      `cacheOnChainEvent: recorded ${onChainEventTypeToJSON(type)} for fid: ${fid} in block ${blockNumber}`,
     );
 
     return ok(undefined);

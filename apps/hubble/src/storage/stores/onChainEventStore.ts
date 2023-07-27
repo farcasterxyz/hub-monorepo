@@ -1,7 +1,18 @@
-import { HubError, KeyRegistryOnChainEvent, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
-import RocksDB from "../db/rocksdb.js";
+import {
+  HubError,
+  HubEventType,
+  isSignerOnChainEvent,
+  KeyRegistryOnChainEvent,
+  OnChainEvent,
+  OnChainEventType,
+} from "@farcaster/hub-nodejs";
+import RocksDB, { Transaction } from "../db/rocksdb.js";
 import StoreEventHandler from "./storeEventHandler.js";
-import AsyncLock from "async-lock";
+import {
+  getManyOnChainEvents,
+  makeOnChainEventIteratorPrefix,
+  putOnChainEventTransaction,
+} from "../db/onChainEvent.js";
 
 /**
  * StorageEventStore persists Storage Event messages in RocksDB using two grow only CRDT sets
@@ -24,30 +35,54 @@ import AsyncLock from "async-lock";
 class OnChainEventStore {
   protected _db: RocksDB;
   protected _eventHandler: StoreEventHandler;
-  private _mergeLock: AsyncLock;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
     this._eventHandler = eventHandler;
-    this._mergeLock = new AsyncLock();
   }
 
   async mergeOnChainEvent(event: OnChainEvent): Promise<number> {
-    if (event.type === OnChainEventType.EVENT_TYPE_SIGNER) {
-      return this.mergeKeyRegistryEvent(event as KeyRegistryOnChainEvent);
-    }
-    throw new HubError("bad_request", `invalid on chain event type: ${event.type}`);
+    return this._mergeEvent(event);
   }
 
-  async getOnChainEvents(fid: number): Promise<OnChainEvent[]> {
-    return [];
+  async getOnChainEvents(type: OnChainEventType, fid: number): Promise<OnChainEvent[]> {
+    const keys: Buffer[] = [];
+    await this._db.forEachIteratorByPrefix(
+      makeOnChainEventIteratorPrefix(type, fid),
+      (key) => {
+        if (key) {
+          keys.push(key);
+        }
+      },
+      { keys: true, values: false },
+    );
+    return getManyOnChainEvents(this._db, keys);
   }
 
   /**
    * Merges a rent ContractEvent into the StorageEventStore
    */
-  async mergeKeyRegistryEvent(event: KeyRegistryOnChainEvent): Promise<number> {
-    return event.chainId;
+  async _mergeEvent(event: OnChainEvent): Promise<number> {
+    let txn = putOnChainEventTransaction(this._db.transaction(), event);
+
+    if (isSignerOnChainEvent(event)) {
+      txn = await this._handleKeyRegistryEvent(txn, event);
+    } else {
+      throw new HubError("bad_request", `invalid on chain event type: ${event.type}`);
+    }
+
+    const result = await this._eventHandler.commitTransaction(txn, {
+      type: HubEventType.MERGE_ON_CHAIN_EVENT,
+      mergeOnChainEventBody: { onChainEvent: event, deletedOnChainEvent: undefined },
+    });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
+  }
+
+  private async _handleKeyRegistryEvent(txn: Transaction, _event: KeyRegistryOnChainEvent): Promise<Transaction> {
+    return txn;
   }
 }
 

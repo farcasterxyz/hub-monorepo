@@ -1,4 +1,5 @@
 import * as hubEventProtobufs from "./generated/hub_event";
+import * as onChainEventProtobufs from "./generated/onchain_event";
 import * as protobufs from "./generated/message";
 import * as types from "./types";
 
@@ -152,6 +153,24 @@ export const isUsernameProofMessage = (message: protobufs.Message): message is t
     message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
     typeof message.data !== "undefined" &&
     isUsernameProofData(message.data)
+  );
+};
+
+export const isSignerOnChainEvent = (
+  event: onChainEventProtobufs.OnChainEvent,
+): event is types.KeyRegistryOnChainEvent => {
+  return (
+    event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER &&
+    typeof event.keyRegistryBody !== "undefined"
+  );
+};
+
+export const isSignerMigratedOnChainEvent = (
+  event: onChainEventProtobufs.OnChainEvent,
+): event is types.KeyRegistryOnChainEvent => {
+  return (
+    event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED &&
+    typeof event.keyRegistryBody === "undefined"
   );
 };
 
