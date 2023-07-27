@@ -21,7 +21,7 @@ export type NetworkConfig = {
 };
 
 export type NetworkConfigResult = {
-  allowedPeerIds: string[];
+  allowedPeerIds: string[] | undefined;
   shouldExit: boolean;
 };
 
@@ -55,7 +55,7 @@ export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
 
 export function applyNetworkConfig(
   networkConfig: NetworkConfig,
-  existingPeerIds: string[],
+  existingPeerIds: string[] | undefined,
   currentNetwork: number,
 ): NetworkConfigResult {
   if (networkConfig.network !== currentNetwork) {
@@ -80,7 +80,7 @@ export function applyNetworkConfig(
 
   if (networkConfig.allowedPeers) {
     // Add the network.allowedPeers to the list of allowed peers
-    newPeerIdList = [...new Set([...existingPeerIds, ...networkConfig.allowedPeers])];
+    newPeerIdList = [...new Set([...(existingPeerIds ?? []), ...networkConfig.allowedPeers])];
   } else {
     log.error({ networkConfig }, "network config does not contain 'allowedPeers'");
   }
