@@ -18,7 +18,7 @@ import { ed25519 as ed } from "@noble/curves/ed25519";
 import { faker } from "@faker-js/faker";
 import Server from "../rpc/server.js";
 import { Result } from "neverthrow";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { mnemonicToAccount } from "viem/accounts";
 
 const log = logger.child({
   component: "PeriodicTestDataJob",
@@ -69,7 +69,7 @@ export class PeriodicTestDataJobScheduler {
         continue;
       }
 
-      const account = privateKeyToAccount(generatePrivateKey());
+      const account = mnemonicToAccount(testUser.mnemonic);
       const eip712Signer = new ViemLocalEip712Signer(account);
 
       // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
@@ -101,7 +101,10 @@ export class PeriodicTestDataJobScheduler {
 
       const result = await client.submitMessage(signerAdd, getAuthMetadata(user, password));
       if (result.isErr()) {
-        log.error({ error: result.error, dataOptions }, "TestData: failed to submit SignerAdd message");
+        log.error(
+          { error: result.error, errMsg: result.error.message, dataOptions },
+          "TestData: failed to submit SignerAdd message",
+        );
       }
 
       this._userEd25519KeyPairs.set(testUser.fid, ed25519Signer);
@@ -153,7 +156,10 @@ export class PeriodicTestDataJobScheduler {
 
         const result = await client.submitMessage(castAdd._unsafeUnwrap(), getAuthMetadata(rpcUsername, rpcPassword));
         if (result.isErr()) {
-          log.error({ error: result.error, dataOptions }, "TestData: failed to submit CastAdd message");
+          log.error(
+            { error: result.error, errMsg: result.error.message, dataOptions },
+            "TestData: failed to submit CastAdd message",
+          );
         }
         targetCastIds.push({ fid: testUser.fid, hash: castAdd._unsafeUnwrap().hash });
       }
@@ -179,7 +185,10 @@ export class PeriodicTestDataJobScheduler {
               getAuthMetadata(rpcUsername, rpcPassword),
             );
             if (result.isErr()) {
-              log.error({ error: result.error, dataOptions }, "TestData: failed to submit ReactionAdd message");
+              log.error(
+                { error: result.error, errMsg: result.error.message, dataOptions },
+                "TestData: failed to submit ReactionAdd message",
+              );
             }
           }
         }
