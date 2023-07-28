@@ -40,9 +40,9 @@ Before you get down to coding, take a minute to consider this:
 
 First, ensure that the following are installed globally on your machine:
 
-- [Node.js 20+](https://nodejs.org/en/download/releases)
+- [Node.js 18.7+](https://nodejs.org/en/download/releases)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
-- [Anvil](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 - [Rust](https://www.rust-lang.org/tools/install)
 
 Then, from the root folder run:

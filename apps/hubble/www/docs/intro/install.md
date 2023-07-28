@@ -106,9 +106,9 @@ You can also build and run Hubble from source.
 
 First, ensure that the following are installed globally on your machine:
 
-- [Node.js 20+](https://nodejs.org/en/download/releases)
+- [Node.js 18.7+](https://nodejs.org/en/download/releases)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
-- [Anvil](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 - [Rust](https://www.rust-lang.org/tools/install)
 
 ### 2.2 Build
@@ -122,9 +122,13 @@ First, ensure that the following are installed globally on your machine:
 ### 2.3 Running Hubble
 To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.
 
-1. `yarn idenfity create` to create a ID
+1. `yarn identity create` to create a ID
 2. Follow the instructions to set [connect to a network](./networks.md)
 3. `yarn start --eth-rpc-url <your ETH-RPC-URL> --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL`
 
 ### 2.3 Upgrading Hubble
-To upgrade hubble, simply `git pull` to get the latest version of the source and run the build steps again. (`yarn install && yarn build`)
+To upgrade hubble, find the latest [release tag](https://github.com/farcasterxyz/hub-monorepo/releases) and checkout that version and build.
+
+- `git fetch --tags` to fetch the latest tags
+- `git checkout @farcaster/hubble@<verison>` to checkout the specific version. Replace the tag with the version you want to check out. 
+- `yarn install && yarn build` to build Hubble.
