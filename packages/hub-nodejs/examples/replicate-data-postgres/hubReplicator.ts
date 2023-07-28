@@ -410,7 +410,7 @@ export class HubReplicator {
           parentUrl: message.data.castAddBody.parentUrl,
           embeds:
             message.data.castAddBody.embeds ||
-            message.data.castAddBody.embedsDeprecated?.map((x) => Embed.create({ url: x})) ||
+            message.data.castAddBody.embedsDeprecated?.map((x) => Embed.create({ url: x })) ||
             [],
           mentions: message.data.castAddBody.mentions,
           mentionsPositions: message.data.castAddBody.mentionsPositions,
