@@ -112,7 +112,7 @@ All PR's should have supporting documentation that makes reviewing and understan
 - Add a `Safety: ..` comment explaining every use of `as`.
 - Prefer active, present-tense doing form (`Gets the connection`) over other forms (`Connection is obtained`, `Get the connection`, `We get the connection`, `will get a connection`)
 
-### 3.4. Handling Errors
+### 3.3. Handling Errors
 
 Errors are not handled using `throw` and `try / catch` as is common with Javascript programs. This pattern makes it hard for people to reason about whether methods are safe which leads to incomplete test coverage, unexpected errors and less safety. Instead we use a more functional approach to dealing with errors. See [this issue](https://github.com/farcasterxyz/hub/issues/213) for the rationale behind this approach.
 
@@ -281,6 +281,15 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 5. Checkout main, pull down to the merged commit (should be latest) and run `yarn changeset publish`
 6. Hubble is private and must be manually tagged with `git tag -a @farcaster/hubble@<version>` if bumped.
 7. Run `git push origin <tag>` on each tag to push up the tags.
+
+### 3.7 Working in Rust
+
+Some of the CPU intensive code is written in Rust for speed. We import the Rust modules via [Neon](https://neon-bindings.com/) that are built as a part of the `@farcaster/core` package. 
+
+To add new code to Rust, 
+1. Add it to `packages/core/src/addon/`
+2. Add a bridge implementation and types into `packages/core/src/addon/addon.js` and `packages/core/src/addon/addon.d.ts`
+3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throught the project to transparently call into Rust from Typescript 
 
 ## 4. Troubleshooting
 

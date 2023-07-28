@@ -1,5 +1,4 @@
-import { bytesCompare, DbTrieNode, HubError } from "@farcaster/hub-nodejs";
-import { blake3 } from "@noble/hashes/blake3";
+import { bytesCompare, DbTrieNode, HubError, nativeBlake3Hash20 } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
 import { TIMESTAMP_LENGTH } from "./syncId.js";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -422,17 +421,22 @@ class TrieNode {
     prefixChar: number,
     db: RocksDB,
   ): Promise<{ items: number; hash: string }> {
-    const hash = blake3.create({ dkLen: 20 });
+    // Create a buffer to hold all the data.
+    const childHashes: Buffer[] = [];
+
     let excludedItems = 0;
     for (const [char] of this._children) {
       const child = await this._getOrLoadChild(prefix, char, db);
       if (prefixChar !== char) {
-        hash.update(child.hash);
+        // Add data to the buffer instead of updating the hash.
+        childHashes.push(Buffer.from(child.hash));
         excludedItems += child.items;
       }
     }
 
-    const digest = hash.digest();
+    // Call blake3.hash() with the concatenated buffer.
+    const digest = nativeBlake3Hash20(Buffer.concat(childHashes));
+
     return {
       hash: Buffer.from(digest.buffer, digest.byteOffset, digest.byteLength).toString("hex"),
       items: excludedItems,
@@ -479,19 +483,24 @@ class TrieNode {
     if (this.isLeaf) {
       digest = blake3Truncate160(this.value);
     } else {
-      const hash = blake3.create({ dkLen: 20 });
+      // Create a buffer to hold all the data.
+      const childHashes: Buffer[] = [];
+
       for (const [char] of this._children) {
         // If the child hash is available, use it, else load the child and get its hash
         const childHash = this._children.get(char)?.hash;
         if (childHash) {
-          hash.update(childHash);
+          // Add the child hash to the buffer.
+          childHashes.push(Buffer.from(childHash));
         } else {
           const child = await this._getOrLoadChild(prefix, char, db);
-          hash.update(child.hash);
+          // Add the child's hash to the buffer.
+          childHashes.push(Buffer.from(child.hash));
         }
       }
 
-      digest = hash.digest();
+      // Call blake3.hash() with the concatenated buffer.
+      digest = nativeBlake3Hash20(Buffer.concat(childHashes));
     }
     this._hash = digest;
   }

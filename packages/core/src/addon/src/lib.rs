@@ -1,48 +1,46 @@
-use base64::{engine::general_purpose as GP, Engine as _};
-use neon::prelude::*;
-
 use ed25519_dalek::{PublicKey, Signature, Verifier};
+use neon::{prelude::*, types::buffer::TypedArray};
 
 fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    let signature_b64 = cx.argument::<JsString>(0)?.value(&mut cx);
-    let hash_b64 = cx.argument::<JsString>(1)?.value(&mut cx);
-    let signer_b64 = cx.argument::<JsString>(2)?.value(&mut cx);
-
-    // Decode the base64 strings
-    let decoded_signature = match GP::STANDARD.decode(signature_b64) {
-        Ok(result) => result,
-        Err(_) => return Ok(cx.number(0)),
-    };
-
-    let decoded_message = match GP::STANDARD.decode(hash_b64) {
-        Ok(result) => result,
-        Err(_) => return Ok(cx.number(0)),
-    };
-
-    let decoded_public_key = match GP::STANDARD.decode(signer_b64) {
-        Ok(result) => result,
-        Err(_) => return Ok(cx.number(0)),
-    };
+    let signature_arg = cx.argument::<JsBuffer>(0)?;
+    let hash_arg = cx.argument::<JsBuffer>(1)?;
+    let signer_arg = cx.argument::<JsBuffer>(2)?;
 
     // Convert to the types expected by ed25519_dalek
-    let signature = match Signature::from_bytes(&decoded_signature) {
+    let signature = match Signature::from_bytes(&signature_arg.as_slice(&cx)) {
         Ok(result) => result,
         Err(_) => return Ok(cx.number(0)),
     };
-    let public_key = match PublicKey::from_bytes(&decoded_public_key) {
+    let public_key = match PublicKey::from_bytes(&signer_arg.as_slice(&cx)) {
         Ok(result) => result,
         Err(_) => return Ok(cx.number(0)),
     };
 
     // Verify the signature
-    match public_key.verify(&decoded_message, &signature) {
+    match public_key.verify(&hash_arg.as_slice(&cx), &signature) {
         Ok(_) => Ok(cx.number(1)),
         Err(_) => Ok(cx.number(0)),
     }
 }
 
+fn blake3_20(mut cx: FunctionContext) -> JsResult<JsBuffer> {
+    let input = cx.argument::<JsBuffer>(0)?;
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(&input.as_slice(&cx));
+    let hash = hasher.finalize();
+    let mut output = cx.buffer(20)?;
+
+    // Copy 20 bytes
+    output
+        .as_mut_slice(&mut cx)
+        .copy_from_slice(&hash.as_bytes()[0..20]);
+
+    Ok(output)
+}
+
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_verify", ed25519_verify)?;
+    cx.export_function("blake3_20", blake3_20)?;
     Ok(())
 }
