@@ -27,13 +27,12 @@ fn blake3_20(mut cx: FunctionContext) -> JsResult<JsBuffer> {
     let input = cx.argument::<JsBuffer>(0)?;
     let mut hasher = blake3::Hasher::new();
     hasher.update(&input.as_slice(&cx));
-    let hash = hasher.finalize();
+
+    // Create a 20 byte buffer to hold the output
     let mut output = cx.buffer(20)?;
 
-    // Copy 20 bytes
-    output
-        .as_mut_slice(&mut cx)
-        .copy_from_slice(&hash.as_bytes()[0..20]);
+    // Fill the buffer with the output
+    hasher.finalize_xof().fill(output.as_mut_slice(&mut cx));
 
     Ok(output)
 }
