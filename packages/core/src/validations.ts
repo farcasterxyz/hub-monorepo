@@ -1,5 +1,4 @@
 import * as protobufs from "./protobufs";
-import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { eip712 } from "./crypto";
@@ -8,7 +7,7 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
-import { nativeEd25519Verify } from "./addon/addon.js";
+import { nativeBlake3Hash20, nativeEd25519Verify } from "./rustfunctions";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -115,7 +114,8 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
 
   const dataBytes = protobufs.MessageData.encode(data).finish();
   if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
-    const computedHash = blake3(dataBytes, { dkLen: 20 });
+    const computedHash = nativeBlake3Hash20(dataBytes);
+
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
       return err(new HubError("bad_request.validation_failure", "invalid hash"));

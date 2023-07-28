@@ -52,7 +52,6 @@ async function profileSubmitMessages(
   rpcClient: HubRpcClient,
   adminRpcClient: AdminRpcClient,
   fid: number,
-  network = FarcasterNetwork.DEVNET,
   username?: string | Metadata,
   password?: string,
 ): Promise<string[]> {
@@ -74,6 +73,9 @@ async function profileSubmitMessages(
     metadata = getAuthMetadata(username, password);
   }
 
+  // Make sure the network matches
+  const network = FarcasterNetwork.DEVNET;
+
   const custodySigner = Factories.Eip712Signer.build();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   const signer = Factories.Ed25519Signer.build();
@@ -93,7 +95,7 @@ async function profileSubmitMessages(
   const rentResult = await adminRpcClient.submitRentRegistryEvent(rentRegistryEvent, metadata);
 
   if (!rentResult.isOk()) {
-    throw `Failed to submit rent event for fid ${fid}: ${rentResult.error}`;
+    throw `Failed to submit rent event for fid ${fid}: ${rentResult.error}. NOTE: RPC profile only works on devnet`;
   }
 
   const signerAdd = await Factories.SignerAddMessage.create(
