@@ -26,11 +26,18 @@ RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 FROM node:20.2-alpine AS build
 
 # Needed for compilation step
-RUN apk add --no-cache libc6-compat python3 make g++ linux-headers
+RUN apk add --no-cache libc6-compat python3 make g++ linux-headers curl
 
 USER node
 RUN mkdir /home/node/app
 WORKDIR /home/node/app
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.70.0
+ENV PATH="/home/node/.cargo/bin:${PATH}"
+
+# Rust flags to allow building with musl, which is needed for alpine
+ENV RUSTFLAGS="-C target-feature=-crt-static"
 
 # Copy dependency information and install all dependencies
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .

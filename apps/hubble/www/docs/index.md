@@ -4,7 +4,7 @@ layout: home
 
 hero:
   name: 'Hubble'
-  tagline: A fast, simple implementation of a Farcaster Hub in Typescript.
+  tagline: A fast, simple implementation of a Farcaster Hub in Typescript + Rust.
   actions:
     - theme: brand
       text: Get Started

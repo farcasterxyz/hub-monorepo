@@ -1,6 +1,5 @@
 import * as protobufs from "./protobufs";
 import { blake3 } from "@noble/hashes/blake3";
-import { ed25519 } from "@noble/curves/ed25519";
 import { err, ok, Result } from "neverthrow";
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { eip712 } from "./crypto";
@@ -9,6 +8,7 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
+import { nativeEd25519Verify } from "./addon/addon.js";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -145,7 +145,8 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
       return err(new HubError("bad_request.validation_failure", "signature does not match signer"));
     }
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
-    const signatureIsValid = ed25519.verify(signature, hash, signer);
+    const signatureIsValid = nativeEd25519Verify(signature, hash, signer);
+
     if (!signatureIsValid) {
       return err(new HubError("bad_request.validation_failure", "invalid signature"));
     }

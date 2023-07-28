@@ -960,6 +960,26 @@ describe("validateMessage", () => {
     const result = await validations.validateMessage(message);
     expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
   });
+
+  test("fails with invalid signature data", async () => {
+    const message = await Factories.Message.create({
+      signature: Factories.Bytes.build({}, { transient: { length: 0 } }),
+      signer: Factories.Ed25519PPublicKey.build(),
+    });
+
+    const result = await validations.validateMessage(message);
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
+  });
+
+  test("fails with invalid signer data", async () => {
+    const message = await Factories.Message.create({
+      signature: Factories.Ed25519Signature.build(),
+      signer: Factories.Bytes.build({}, { transient: { length: 0 } }),
+    });
+
+    const result = await validations.validateMessage(message);
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
+  });
 });
 
 describe("validateMessageData", () => {

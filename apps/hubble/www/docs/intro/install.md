@@ -98,3 +98,37 @@ docker pull farcasterxyz/hubble:latest
 # Get a specific release (v1.4.0)
 docker pull farcasterxyz/hubble@v1.4.0
 ```
+
+## Installing from source
+You can also build and run Hubble from source. 
+
+### 2.1 Installing Dependencies
+
+First, ensure that the following are installed globally on your machine:
+
+- [Node.js 18.7+](https://nodejs.org/en/download/releases)
+- [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
+- [Rust](https://www.rust-lang.org/tools/install)
+
+### 2.2 Build
+
+- `git clone https://github.com/farcasterxyz/hub-monorepo.git` to clone the repo
+- `cd hub-monorepo` to enter the directory
+- `yarn install` to install dependencies
+- `yarn build` to build Hubble and its dependencies
+- `yarn test` to ensure that the test suite runs correctly
+
+### 2.3 Running Hubble
+To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.
+
+1. `yarn identity create` to create a ID
+2. Follow the instructions to set [connect to a network](./networks.md)
+3. `yarn start --eth-rpc-url <your ETH-RPC-URL> --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL`
+
+### 2.3 Upgrading Hubble
+To upgrade hubble, find the latest [release tag](https://github.com/farcasterxyz/hub-monorepo/releases) and checkout that version and build.
+
+- `git fetch --tags` to fetch the latest tags
+- `git checkout @farcaster/hubble@<verison>` to checkout the specific version. Replace the tag with the version you want to check out. 
+- `yarn install && yarn build` to build Hubble.

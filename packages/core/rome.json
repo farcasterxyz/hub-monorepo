@@ -8,13 +8,13 @@
     "indentSize": 2,
     "indentStyle": "space",
     "lineWidth": 120,
-    "ignore": ["src/protobufs/generated/*"]
+    "ignore": ["src/protobufs/generated/*", "src/addon/*"]
   },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true
     },
-    "ignore": ["src/protobufs/generated/*"]
+    "ignore": ["src/protobufs/generated/*", "src/addon/*"]
   }
 }
