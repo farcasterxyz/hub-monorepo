@@ -517,18 +517,19 @@ export class Hub implements HubInterface {
     );
 
     // Fetch network config
-    const networkConfig = await fetchNetworkConfig();
-    if (networkConfig.isErr()) {
-      log.error("failed to fetch network config", { error: networkConfig.error });
-    } else {
-      const shouldExit = this.applyNetworkConfig(networkConfig.value);
-      if (shouldExit) {
-        throw new HubError("unavailable", "Exiting due to network config");
+    if (this.options.network === FarcasterNetwork.MAINNET) {
+      const networkConfig = await fetchNetworkConfig();
+      if (networkConfig.isErr()) {
+        log.error("failed to fetch network config", { error: networkConfig.error });
+      } else {
+        const shouldExit = this.applyNetworkConfig(networkConfig.value);
+        if (shouldExit) {
+          throw new HubError("unavailable", "Quitting due to network config");
+        }
+
+        log.info({}, "Network config applied");
       }
-
-      log.info({}, "Network config applied");
     }
-
     await this.engine.start();
 
     // Start the RPC server
@@ -575,10 +576,17 @@ export class Hub implements HubInterface {
     this.validateOrRevokeMessagesJobScheduler.start();
     this.gossipContactInfoJobScheduler.start();
     this.checkIncomingPortsJobScheduler.start();
-    this.updateNetworkConfigJobScheduler.start();
 
-    // Start the test data generator
-    this.testDataJobScheduler?.start();
+    // Mainnet only jobs
+    if (this.options.network === FarcasterNetwork.MAINNET) {
+      this.updateNetworkConfigJobScheduler.start();
+    }
+
+    // Testnet/Devnet only jobs
+    if (this.options.network !== FarcasterNetwork.MAINNET) {
+      // Start the test data generator
+      this.testDataJobScheduler?.start();
+    }
 
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
