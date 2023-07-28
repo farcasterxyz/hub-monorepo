@@ -32,7 +32,6 @@ export interface Database {
         castId?: object | undefined;
       }[]
     >;
-    embedsDeprecated: Generated<string[]>;
     mentions: Generated<number[]>;
     mentionsPositions: Generated<number[]>;
   };
