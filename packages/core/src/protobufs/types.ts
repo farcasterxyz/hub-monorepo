@@ -128,9 +128,19 @@ export type UsernameProofMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
-export type KeyRegistryOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+export type SignerOnChainEvent = onchainEventProtobufs.OnChainEvent & {
   type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER;
-  keyRegistryBody: onchainEventProtobufs.KeyRegistryBody;
+  signerEventBody: onchainEventProtobufs.SignerEventBody;
+};
+
+export type SignerMigratedOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED;
+  signerMigratedEventBody: onchainEventProtobufs.SignerMigratedEventBody;
+};
+
+export type IdRegisterOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_ID_REGISTER;
+  idRegisterEventBody: onchainEventProtobufs.IdRegisterEventBody;
 };
 
 /** Hub event types */

@@ -116,7 +116,6 @@ export interface MergeStorageAdminRegistryEventBody {
 
 export interface MergeOnChainEventBody {
   onChainEvent: OnChainEvent | undefined;
-  deletedOnChainEvent: OnChainEvent | undefined;
 }
 
 export interface MergeUserNameProofBody {
@@ -595,16 +594,13 @@ export const MergeStorageAdminRegistryEventBody = {
 };
 
 function createBaseMergeOnChainEventBody(): MergeOnChainEventBody {
-  return { onChainEvent: undefined, deletedOnChainEvent: undefined };
+  return { onChainEvent: undefined };
 }
 
 export const MergeOnChainEventBody = {
   encode(message: MergeOnChainEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.onChainEvent !== undefined) {
       OnChainEvent.encode(message.onChainEvent, writer.uint32(10).fork()).ldelim();
-    }
-    if (message.deletedOnChainEvent !== undefined) {
-      OnChainEvent.encode(message.deletedOnChainEvent, writer.uint32(18).fork()).ldelim();
     }
     return writer;
   },
@@ -623,13 +619,6 @@ export const MergeOnChainEventBody = {
 
           message.onChainEvent = OnChainEvent.decode(reader, reader.uint32());
           continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.deletedOnChainEvent = OnChainEvent.decode(reader, reader.uint32());
-          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -640,21 +629,13 @@ export const MergeOnChainEventBody = {
   },
 
   fromJSON(object: any): MergeOnChainEventBody {
-    return {
-      onChainEvent: isSet(object.onChainEvent) ? OnChainEvent.fromJSON(object.onChainEvent) : undefined,
-      deletedOnChainEvent: isSet(object.deletedOnChainEvent)
-        ? OnChainEvent.fromJSON(object.deletedOnChainEvent)
-        : undefined,
-    };
+    return { onChainEvent: isSet(object.onChainEvent) ? OnChainEvent.fromJSON(object.onChainEvent) : undefined };
   },
 
   toJSON(message: MergeOnChainEventBody): unknown {
     const obj: any = {};
     message.onChainEvent !== undefined &&
       (obj.onChainEvent = message.onChainEvent ? OnChainEvent.toJSON(message.onChainEvent) : undefined);
-    message.deletedOnChainEvent !== undefined && (obj.deletedOnChainEvent = message.deletedOnChainEvent
-      ? OnChainEvent.toJSON(message.deletedOnChainEvent)
-      : undefined);
     return obj;
   },
 
@@ -666,9 +647,6 @@ export const MergeOnChainEventBody = {
     const message = createBaseMergeOnChainEventBody();
     message.onChainEvent = (object.onChainEvent !== undefined && object.onChainEvent !== null)
       ? OnChainEvent.fromPartial(object.onChainEvent)
-      : undefined;
-    message.deletedOnChainEvent = (object.deletedOnChainEvent !== undefined && object.deletedOnChainEvent !== null)
-      ? OnChainEvent.fromPartial(object.deletedOnChainEvent)
       : undefined;
     return message;
   },

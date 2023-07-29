@@ -6,6 +6,7 @@ export enum OnChainEventType {
   EVENT_TYPE_NONE = 0,
   EVENT_TYPE_SIGNER = 1,
   EVENT_TYPE_SIGNER_MIGRATED = 2,
+  EVENT_TYPE_ID_REGISTER = 3,
 }
 
 export function onChainEventTypeFromJSON(object: any): OnChainEventType {
@@ -19,6 +20,9 @@ export function onChainEventTypeFromJSON(object: any): OnChainEventType {
     case 2:
     case "EVENT_TYPE_SIGNER_MIGRATED":
       return OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED;
+    case 3:
+    case "EVENT_TYPE_ID_REGISTER":
+      return OnChainEventType.EVENT_TYPE_ID_REGISTER;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
@@ -32,49 +36,86 @@ export function onChainEventTypeToJSON(object: OnChainEventType): string {
       return "EVENT_TYPE_SIGNER";
     case OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED:
       return "EVENT_TYPE_SIGNER_MIGRATED";
+    case OnChainEventType.EVENT_TYPE_ID_REGISTER:
+      return "EVENT_TYPE_ID_REGISTER";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
 }
 
-export enum KeyRegistryEventType {
+export enum SignerEventType {
   NONE = 0,
   ADD = 1,
   REMOVE = 2,
   ADMIN_RESET = 3,
 }
 
-export function keyRegistryEventTypeFromJSON(object: any): KeyRegistryEventType {
+export function signerEventTypeFromJSON(object: any): SignerEventType {
   switch (object) {
     case 0:
-    case "KEY_REGISTRY_EVENT_TYPE_NONE":
-      return KeyRegistryEventType.NONE;
+    case "SIGNER_EVENT_TYPE_NONE":
+      return SignerEventType.NONE;
     case 1:
-    case "KEY_REGISTRY_EVENT_TYPE_ADD":
-      return KeyRegistryEventType.ADD;
+    case "SIGNER_EVENT_TYPE_ADD":
+      return SignerEventType.ADD;
     case 2:
-    case "KEY_REGISTRY_EVENT_TYPE_REMOVE":
-      return KeyRegistryEventType.REMOVE;
+    case "SIGNER_EVENT_TYPE_REMOVE":
+      return SignerEventType.REMOVE;
     case 3:
-    case "KEY_REGISTRY_EVENT_TYPE_ADMIN_RESET":
-      return KeyRegistryEventType.ADMIN_RESET;
+    case "SIGNER_EVENT_TYPE_ADMIN_RESET":
+      return SignerEventType.ADMIN_RESET;
     default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum KeyRegistryEventType");
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignerEventType");
   }
 }
 
-export function keyRegistryEventTypeToJSON(object: KeyRegistryEventType): string {
+export function signerEventTypeToJSON(object: SignerEventType): string {
   switch (object) {
-    case KeyRegistryEventType.NONE:
-      return "KEY_REGISTRY_EVENT_TYPE_NONE";
-    case KeyRegistryEventType.ADD:
-      return "KEY_REGISTRY_EVENT_TYPE_ADD";
-    case KeyRegistryEventType.REMOVE:
-      return "KEY_REGISTRY_EVENT_TYPE_REMOVE";
-    case KeyRegistryEventType.ADMIN_RESET:
-      return "KEY_REGISTRY_EVENT_TYPE_ADMIN_RESET";
+    case SignerEventType.NONE:
+      return "SIGNER_EVENT_TYPE_NONE";
+    case SignerEventType.ADD:
+      return "SIGNER_EVENT_TYPE_ADD";
+    case SignerEventType.REMOVE:
+      return "SIGNER_EVENT_TYPE_REMOVE";
+    case SignerEventType.ADMIN_RESET:
+      return "SIGNER_EVENT_TYPE_ADMIN_RESET";
     default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum KeyRegistryEventType");
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignerEventType");
+  }
+}
+
+export enum IdRegisterEventType {
+  NONE = 0,
+  REGISTER = 1,
+  TRANSFER = 2,
+}
+
+export function idRegisterEventTypeFromJSON(object: any): IdRegisterEventType {
+  switch (object) {
+    case 0:
+    case "ID_REGISTER_EVENT_TYPE_NONE":
+      return IdRegisterEventType.NONE;
+    case 1:
+    case "ID_REGISTER_EVENT_TYPE_REGISTER":
+      return IdRegisterEventType.REGISTER;
+    case 2:
+    case "ID_REGISTER_EVENT_TYPE_TRANSFER":
+      return IdRegisterEventType.TRANSFER;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegisterEventType");
+  }
+}
+
+export function idRegisterEventTypeToJSON(object: IdRegisterEventType): string {
+  switch (object) {
+    case IdRegisterEventType.NONE:
+      return "ID_REGISTER_EVENT_TYPE_NONE";
+    case IdRegisterEventType.REGISTER:
+      return "ID_REGISTER_EVENT_TYPE_REGISTER";
+    case IdRegisterEventType.TRANSFER:
+      return "ID_REGISTER_EVENT_TYPE_TRANSFER";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegisterEventType");
   }
 }
 
@@ -87,13 +128,25 @@ export interface OnChainEvent {
   transactionHash: Uint8Array;
   logIndex: number;
   fid: number;
-  keyRegistryBody?: KeyRegistryBody | undefined;
+  signerEventBody?: SignerEventBody | undefined;
+  signerMigratedEventBody?: SignerMigratedEventBody | undefined;
+  idRegisterEventBody?: IdRegisterEventBody | undefined;
 }
 
-export interface KeyRegistryBody {
+export interface SignerEventBody {
   key: Uint8Array;
   scheme: number;
-  eventType: KeyRegistryEventType;
+  eventType: SignerEventType;
+}
+
+export interface SignerMigratedEventBody {
+  migratedAt: number;
+}
+
+export interface IdRegisterEventBody {
+  to: Uint8Array;
+  eventType: IdRegisterEventType;
+  from: Uint8Array;
 }
 
 function createBaseOnChainEvent(): OnChainEvent {
@@ -106,7 +159,9 @@ function createBaseOnChainEvent(): OnChainEvent {
     transactionHash: new Uint8Array(),
     logIndex: 0,
     fid: 0,
-    keyRegistryBody: undefined,
+    signerEventBody: undefined,
+    signerMigratedEventBody: undefined,
+    idRegisterEventBody: undefined,
   };
 }
 
@@ -136,8 +191,14 @@ export const OnChainEvent = {
     if (message.fid !== 0) {
       writer.uint32(64).uint64(message.fid);
     }
-    if (message.keyRegistryBody !== undefined) {
-      KeyRegistryBody.encode(message.keyRegistryBody, writer.uint32(74).fork()).ldelim();
+    if (message.signerEventBody !== undefined) {
+      SignerEventBody.encode(message.signerEventBody, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.signerMigratedEventBody !== undefined) {
+      SignerMigratedEventBody.encode(message.signerMigratedEventBody, writer.uint32(82).fork()).ldelim();
+    }
+    if (message.idRegisterEventBody !== undefined) {
+      IdRegisterEventBody.encode(message.idRegisterEventBody, writer.uint32(90).fork()).ldelim();
     }
     return writer;
   },
@@ -210,7 +271,21 @@ export const OnChainEvent = {
             break;
           }
 
-          message.keyRegistryBody = KeyRegistryBody.decode(reader, reader.uint32());
+          message.signerEventBody = SignerEventBody.decode(reader, reader.uint32());
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.signerMigratedEventBody = SignerMigratedEventBody.decode(reader, reader.uint32());
+          continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.idRegisterEventBody = IdRegisterEventBody.decode(reader, reader.uint32());
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -231,7 +306,13 @@ export const OnChainEvent = {
       transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
       logIndex: isSet(object.logIndex) ? Number(object.logIndex) : 0,
       fid: isSet(object.fid) ? Number(object.fid) : 0,
-      keyRegistryBody: isSet(object.keyRegistryBody) ? KeyRegistryBody.fromJSON(object.keyRegistryBody) : undefined,
+      signerEventBody: isSet(object.signerEventBody) ? SignerEventBody.fromJSON(object.signerEventBody) : undefined,
+      signerMigratedEventBody: isSet(object.signerMigratedEventBody)
+        ? SignerMigratedEventBody.fromJSON(object.signerMigratedEventBody)
+        : undefined,
+      idRegisterEventBody: isSet(object.idRegisterEventBody)
+        ? IdRegisterEventBody.fromJSON(object.idRegisterEventBody)
+        : undefined,
     };
   },
 
@@ -249,8 +330,14 @@ export const OnChainEvent = {
       ));
     message.logIndex !== undefined && (obj.logIndex = Math.round(message.logIndex));
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    message.keyRegistryBody !== undefined &&
-      (obj.keyRegistryBody = message.keyRegistryBody ? KeyRegistryBody.toJSON(message.keyRegistryBody) : undefined);
+    message.signerEventBody !== undefined &&
+      (obj.signerEventBody = message.signerEventBody ? SignerEventBody.toJSON(message.signerEventBody) : undefined);
+    message.signerMigratedEventBody !== undefined && (obj.signerMigratedEventBody = message.signerMigratedEventBody
+      ? SignerMigratedEventBody.toJSON(message.signerMigratedEventBody)
+      : undefined);
+    message.idRegisterEventBody !== undefined && (obj.idRegisterEventBody = message.idRegisterEventBody
+      ? IdRegisterEventBody.toJSON(message.idRegisterEventBody)
+      : undefined);
     return obj;
   },
 
@@ -268,19 +355,26 @@ export const OnChainEvent = {
     message.transactionHash = object.transactionHash ?? new Uint8Array();
     message.logIndex = object.logIndex ?? 0;
     message.fid = object.fid ?? 0;
-    message.keyRegistryBody = (object.keyRegistryBody !== undefined && object.keyRegistryBody !== null)
-      ? KeyRegistryBody.fromPartial(object.keyRegistryBody)
+    message.signerEventBody = (object.signerEventBody !== undefined && object.signerEventBody !== null)
+      ? SignerEventBody.fromPartial(object.signerEventBody)
+      : undefined;
+    message.signerMigratedEventBody =
+      (object.signerMigratedEventBody !== undefined && object.signerMigratedEventBody !== null)
+        ? SignerMigratedEventBody.fromPartial(object.signerMigratedEventBody)
+        : undefined;
+    message.idRegisterEventBody = (object.idRegisterEventBody !== undefined && object.idRegisterEventBody !== null)
+      ? IdRegisterEventBody.fromPartial(object.idRegisterEventBody)
       : undefined;
     return message;
   },
 };
 
-function createBaseKeyRegistryBody(): KeyRegistryBody {
+function createBaseSignerEventBody(): SignerEventBody {
   return { key: new Uint8Array(), scheme: 0, eventType: 0 };
 }
 
-export const KeyRegistryBody = {
-  encode(message: KeyRegistryBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const SignerEventBody = {
+  encode(message: SignerEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.key.length !== 0) {
       writer.uint32(10).bytes(message.key);
     }
@@ -293,10 +387,10 @@ export const KeyRegistryBody = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): KeyRegistryBody {
+  decode(input: _m0.Reader | Uint8Array, length?: number): SignerEventBody {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseKeyRegistryBody();
+    const message = createBaseSignerEventBody();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -330,32 +424,173 @@ export const KeyRegistryBody = {
     return message;
   },
 
-  fromJSON(object: any): KeyRegistryBody {
+  fromJSON(object: any): SignerEventBody {
     return {
       key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
       scheme: isSet(object.scheme) ? Number(object.scheme) : 0,
-      eventType: isSet(object.eventType) ? keyRegistryEventTypeFromJSON(object.eventType) : 0,
+      eventType: isSet(object.eventType) ? signerEventTypeFromJSON(object.eventType) : 0,
     };
   },
 
-  toJSON(message: KeyRegistryBody): unknown {
+  toJSON(message: SignerEventBody): unknown {
     const obj: any = {};
     message.key !== undefined &&
       (obj.key = base64FromBytes(message.key !== undefined ? message.key : new Uint8Array()));
     message.scheme !== undefined && (obj.scheme = Math.round(message.scheme));
-    message.eventType !== undefined && (obj.eventType = keyRegistryEventTypeToJSON(message.eventType));
+    message.eventType !== undefined && (obj.eventType = signerEventTypeToJSON(message.eventType));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<KeyRegistryBody>, I>>(base?: I): KeyRegistryBody {
-    return KeyRegistryBody.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<SignerEventBody>, I>>(base?: I): SignerEventBody {
+    return SignerEventBody.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<KeyRegistryBody>, I>>(object: I): KeyRegistryBody {
-    const message = createBaseKeyRegistryBody();
+  fromPartial<I extends Exact<DeepPartial<SignerEventBody>, I>>(object: I): SignerEventBody {
+    const message = createBaseSignerEventBody();
     message.key = object.key ?? new Uint8Array();
     message.scheme = object.scheme ?? 0;
     message.eventType = object.eventType ?? 0;
+    return message;
+  },
+};
+
+function createBaseSignerMigratedEventBody(): SignerMigratedEventBody {
+  return { migratedAt: 0 };
+}
+
+export const SignerMigratedEventBody = {
+  encode(message: SignerMigratedEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.migratedAt !== 0) {
+      writer.uint32(8).uint32(message.migratedAt);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SignerMigratedEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSignerMigratedEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.migratedAt = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SignerMigratedEventBody {
+    return { migratedAt: isSet(object.migratedAt) ? Number(object.migratedAt) : 0 };
+  },
+
+  toJSON(message: SignerMigratedEventBody): unknown {
+    const obj: any = {};
+    message.migratedAt !== undefined && (obj.migratedAt = Math.round(message.migratedAt));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SignerMigratedEventBody>, I>>(base?: I): SignerMigratedEventBody {
+    return SignerMigratedEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SignerMigratedEventBody>, I>>(object: I): SignerMigratedEventBody {
+    const message = createBaseSignerMigratedEventBody();
+    message.migratedAt = object.migratedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseIdRegisterEventBody(): IdRegisterEventBody {
+  return { to: new Uint8Array(), eventType: 0, from: new Uint8Array() };
+}
+
+export const IdRegisterEventBody = {
+  encode(message: IdRegisterEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.to.length !== 0) {
+      writer.uint32(10).bytes(message.to);
+    }
+    if (message.eventType !== 0) {
+      writer.uint32(16).int32(message.eventType);
+    }
+    if (message.from.length !== 0) {
+      writer.uint32(26).bytes(message.from);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): IdRegisterEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIdRegisterEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.to = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.eventType = reader.int32() as any;
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.from = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): IdRegisterEventBody {
+    return {
+      to: isSet(object.to) ? bytesFromBase64(object.to) : new Uint8Array(),
+      eventType: isSet(object.eventType) ? idRegisterEventTypeFromJSON(object.eventType) : 0,
+      from: isSet(object.from) ? bytesFromBase64(object.from) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: IdRegisterEventBody): unknown {
+    const obj: any = {};
+    message.to !== undefined && (obj.to = base64FromBytes(message.to !== undefined ? message.to : new Uint8Array()));
+    message.eventType !== undefined && (obj.eventType = idRegisterEventTypeToJSON(message.eventType));
+    message.from !== undefined &&
+      (obj.from = base64FromBytes(message.from !== undefined ? message.from : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IdRegisterEventBody>, I>>(base?: I): IdRegisterEventBody {
+    return IdRegisterEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<IdRegisterEventBody>, I>>(object: I): IdRegisterEventBody {
+    const message = createBaseIdRegisterEventBody();
+    message.to = object.to ?? new Uint8Array();
+    message.eventType = object.eventType ?? 0;
+    message.from = object.from ?? new Uint8Array();
     return message;
   },
 };

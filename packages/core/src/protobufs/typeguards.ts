@@ -156,21 +156,28 @@ export const isUsernameProofMessage = (message: protobufs.Message): message is t
   );
 };
 
-export const isSignerOnChainEvent = (
-  event: onChainEventProtobufs.OnChainEvent,
-): event is types.KeyRegistryOnChainEvent => {
+export const isSignerOnChainEvent = (event: onChainEventProtobufs.OnChainEvent): event is types.SignerOnChainEvent => {
   return (
     event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER &&
-    typeof event.keyRegistryBody !== "undefined"
+    typeof event.signerEventBody !== "undefined"
   );
 };
 
 export const isSignerMigratedOnChainEvent = (
   event: onChainEventProtobufs.OnChainEvent,
-): event is types.KeyRegistryOnChainEvent => {
+): event is types.SignerMigratedOnChainEvent => {
   return (
     event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED &&
-    typeof event.keyRegistryBody === "undefined"
+    typeof event.signerMigratedEventBody !== "undefined"
+  );
+};
+
+export const isIdRegisterOnChainEvent = (
+  event: onChainEventProtobufs.OnChainEvent,
+): event is types.IdRegisterOnChainEvent => {
+  return (
+    event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_ID_REGISTER &&
+    typeof event.idRegisterEventBody !== "undefined"
   );
 };
 
@@ -244,8 +251,7 @@ export const isMergeOnChainHubEvent = (event: hubEventProtobufs.HubEvent): event
   return (
     event.type === hubEventProtobufs.HubEventType.MERGE_ON_CHAIN_EVENT &&
     typeof event.mergeOnChainEventBody !== "undefined" &&
-    (typeof event.mergeOnChainEventBody.onChainEvent !== "undefined" ||
-      typeof event.mergeOnChainEventBody.deletedOnChainEvent !== "undefined")
+    typeof event.mergeOnChainEventBody.onChainEvent !== "undefined"
   );
 };
 

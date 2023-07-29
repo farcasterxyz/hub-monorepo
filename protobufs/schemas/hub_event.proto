@@ -51,7 +51,6 @@ message MergeStorageAdminRegistryEventBody {
 
 message MergeOnChainEventBody {
   OnChainEvent on_chain_event = 1;
-  OnChainEvent deleted_on_chain_event = 2;
 }
 
 message MergeUserNameProofBody {

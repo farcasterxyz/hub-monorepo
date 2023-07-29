@@ -311,6 +311,7 @@ export class Hub implements HubInterface {
         options.rankRpcs ?? false,
         options.storageRegistryAddress ?? OPGoerliEthConstants.StorageRegistryAddress,
         OPGoerliEthConstants.KeyRegistryAddress,
+        OPGoerliEthConstants.IdRegistryAddress,
         options.l2FirstBlock ?? OPGoerliEthConstants.FirstBlock,
         options.l2ChunkSize ?? OPGoerliEthConstants.ChunkSize,
         options.resyncEthEvents ?? false,

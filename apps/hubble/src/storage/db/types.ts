@@ -116,6 +116,15 @@ export enum UserPostfix {
   UserDataAdds = 97,
 }
 
+export enum OnChainEventPostfix {
+  OnChainEvents = 1,
+
+  // Secondary indexes
+  SignerByFid = 51,
+  IdRegisterByFid = 52,
+  IdRegisterByCustodyAddress = 53,
+}
+
 /**
  * Export the max (inclusive) message UserPostfix so that we can query all messages for an fid
  */

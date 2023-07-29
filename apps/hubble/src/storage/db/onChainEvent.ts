@@ -1,6 +1,6 @@
 import RocksDB, { Transaction } from "./rocksdb.js";
-import { Message, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
-import { RootPrefix } from "./types.js";
+import { OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
+import { OnChainEventPostfix, RootPrefix } from "./types.js";
 import { makeFidKey } from "./message.js";
 
 // With a 2-second block time on optimism, 2^32 blocks is ~68 years
@@ -31,6 +31,7 @@ export const makeOnChainEventPrimaryKey = (
 ): Buffer => {
   return Buffer.concat([
     Buffer.from([RootPrefix.OnChainEvent]),
+    Buffer.from([OnChainEventPostfix.OnChainEvents]),
     Buffer.from([type]),
     makeFidKey(fid),
     makeBlockNumberKey(blockNumber),
@@ -38,12 +39,57 @@ export const makeOnChainEventPrimaryKey = (
   ]);
 };
 
+export const makeSignerOnChainEventBySignerKey = (fid: number, signer: Uint8Array): Buffer => {
+  return Buffer.concat([
+    Buffer.from([RootPrefix.OnChainEvent]),
+    Buffer.from([OnChainEventPostfix.SignerByFid]),
+    makeFidKey(fid),
+    Buffer.from(signer),
+  ]);
+};
+
+export const makeIdRegisterEventByFidKey = (fid: number): Buffer => {
+  return Buffer.concat([
+    Buffer.from([RootPrefix.OnChainEvent]),
+    Buffer.from([OnChainEventPostfix.IdRegisterByFid]),
+    makeFidKey(fid),
+  ]);
+};
+
+export const makeIdRegisterEventByCustodyKey = (custodyAddress: Uint8Array): Buffer => {
+  return Buffer.concat([
+    Buffer.from([RootPrefix.OnChainEvent]),
+    Buffer.from([OnChainEventPostfix.IdRegisterByCustodyAddress]),
+    Buffer.from(custodyAddress),
+  ]);
+};
+
 export const makeOnChainEventIteratorPrefix = (type: OnChainEventType, fid?: number): Buffer => {
-  let prefix = Buffer.concat([Buffer.from([RootPrefix.OnChainEvent]), Buffer.from([type])]);
+  let prefix = Buffer.concat([
+    Buffer.from([RootPrefix.OnChainEvent]),
+    Buffer.from([OnChainEventPostfix.OnChainEvents]),
+    Buffer.from([type]),
+  ]);
   if (fid) {
     prefix = Buffer.concat([prefix, makeFidKey(fid)]);
   }
   return prefix;
+};
+
+export const getOnChainEvent = async <T extends OnChainEvent>(
+  db: RocksDB,
+  type: OnChainEventType,
+  fid: number,
+  blockNumber: number,
+  logIndex: number,
+) => {
+  const primaryKey = makeOnChainEventPrimaryKey(type, fid, blockNumber, logIndex);
+  return getOnChainEventByKey<T>(db, primaryKey);
+};
+
+export const getOnChainEventByKey = async <T extends OnChainEvent>(db: RocksDB, primaryKey: Buffer) => {
+  const buffer = await db.get(primaryKey);
+  return OnChainEvent.decode(new Uint8Array(buffer)) as T;
 };
 
 export const putOnChainEventTransaction = (txn: Transaction, event: OnChainEvent): Transaction => {

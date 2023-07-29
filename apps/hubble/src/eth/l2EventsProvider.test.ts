@@ -22,6 +22,7 @@ const hub = new MockHub(db, engine);
 let l2EventsProvider: L2EventsProvider;
 let storageRegistryAddress: `0x${string}`;
 let keyRegistryAddress: `0x${string}`;
+let idRegistryAddress: `0x${string}`;
 
 beforeAll(() => {
   // Poll aggressively for fast testing
@@ -41,6 +42,7 @@ describe("build", () => {
       false,
       storageRegistryAddress,
       keyRegistryAddress,
+      idRegistryAddress,
       1,
       10000,
       false,
@@ -59,6 +61,7 @@ describe("build", () => {
       false,
       storageRegistryAddress,
       keyRegistryAddress,
+      idRegistryAddress,
       1,
       10000,
       false,
@@ -82,6 +85,7 @@ describe("process events", () => {
       publicClient,
       storageRegistryAddress,
       keyRegistryAddress,
+      idRegistryAddress,
       1,
       10000,
       false,

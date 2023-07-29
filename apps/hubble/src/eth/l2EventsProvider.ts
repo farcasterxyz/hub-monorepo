@@ -3,22 +3,25 @@ import {
   hexStringToBytes,
   HubAsyncResult,
   HubState,
-  KeyRegistryBody,
-  KeyRegistryEventType,
+  IdRegisterEventBody,
+  IdRegisterEventType,
   OnChainEvent,
   OnChainEventType,
   onChainEventTypeToJSON,
   RentRegistryEvent,
+  SignerEventBody,
+  SignerEventType,
+  SignerMigratedEventBody,
   StorageAdminRegistryEvent,
   StorageRegistryEventType,
   storageRegistryEventTypeToJSON,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
-import { KeyRegistry, StorageRegistry } from "./abis.js";
+import { IdRegistryV2, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
 import { optimismGoerli } from "viem/chains";
-import { createPublicClient, fallback, http, PublicClient, OnLogsParameter, Log } from "viem";
+import { createPublicClient, fallback, http, Log, OnLogsParameter, PublicClient } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
 import { ExtractAbiEvent } from "abitype";
@@ -28,9 +31,10 @@ const log = logger.child({
 });
 
 export class OPGoerliEthConstants {
-  public static StorageRegistryAddress = "0xa89cC9427335da6E8138517419FCB3c9c37d1604" as const;
+  public static StorageRegistryAddress = "0x000000fC0a4Fccee0b30E360773F7888D1bD9FAA" as const;
   public static KeyRegistryAddress = "0x000000fc6548800fc8265d8eb7061d88cefb87c2" as const;
-  public static FirstBlock = 11183461;
+  public static IdRegistryAddress = "0x000000fc99489b8cd629291d97dbca62b81173c4" as const;
+  public static FirstBlock = 12500000;
   public static ChunkSize = 1000;
   public static chainId = BigInt(420); // OP Goerli
 }
@@ -55,6 +59,7 @@ export class L2EventsProvider {
 
   private _watchStorageContractEvents: WatchContractEvent<typeof StorageRegistry.abi, string, true>;
   private _watchKeyRegistryContractEvents: WatchContractEvent<typeof KeyRegistry.abi, string, true>;
+  private _watchIdRegistryContractEvents: WatchContractEvent<typeof IdRegistryV2.abi, string, true>;
   private _watchBlockNumber: WatchBlockNumber;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
@@ -77,6 +82,7 @@ export class L2EventsProvider {
     publicClient: PublicClient,
     storageRegistryAddress: `0x${string}`,
     keyRegistryAddress: `0x${string}`,
+    idRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
@@ -121,6 +127,18 @@ export class L2EventsProvider {
       "KeyRegistry",
     );
 
+    this._watchIdRegistryContractEvents = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: idRegistryAddress,
+        abi: IdRegistryV2.abi,
+        onLogs: this.processIdRegistryEvents.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      "IdRegistry",
+    );
+
     this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
       pollingInterval: L2EventsProvider.blockPollingInterval,
       onBlockNumber: (blockNumber) => this.handleNewBlock(Number(blockNumber)),
@@ -140,6 +158,7 @@ export class L2EventsProvider {
     rankRpcs: boolean,
     storageRegistryAddress: `0x${string}`,
     keyRegistryAddress: `0x${string}`,
+    idRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
     resyncEvents: boolean,
@@ -157,6 +176,7 @@ export class L2EventsProvider {
       publicClient,
       storageRegistryAddress,
       keyRegistryAddress,
+      idRegistryAddress,
       firstBlock,
       chunkSize,
       resyncEvents,
@@ -176,11 +196,13 @@ export class L2EventsProvider {
     this._watchBlockNumber.start();
     this._watchStorageContractEvents.start();
     this._watchKeyRegistryContractEvents.start();
+    this._watchIdRegistryContractEvents.start();
   }
 
   public async stop() {
     this._watchStorageContractEvents.stop();
     this._watchKeyRegistryContractEvents.stop();
+    this._watchIdRegistryContractEvents.stop();
     this._watchBlockNumber.stop();
 
     // Wait for all async promises to resolve
@@ -335,10 +357,11 @@ export class L2EventsProvider {
             true,
             typeof KeyRegistry.abi
           >;
-          const keyRegistryBody = KeyRegistryBody.create({
-            eventType: KeyRegistryEventType.ADD,
-            key: hexStringToBytes(addEvent.args.key)._unsafeUnwrap(),
+          const signerEventBody = SignerEventBody.create({
+            eventType: SignerEventType.ADD,
+            key: hexStringToBytes(addEvent.args.keyBytes)._unsafeUnwrap(),
             scheme: addEvent.args.scheme,
+            // metadata: hexStringToBytes(addEvent.args.metadata)._unsafeUnwrap(),
           });
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_SIGNER,
@@ -347,7 +370,94 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
-            keyRegistryBody,
+            signerEventBody,
+          );
+        } else if (event.eventName === "Migrated") {
+          const migratedEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof KeyRegistry.abi, "Migrated">,
+            true,
+            typeof KeyRegistry.abi
+          >;
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
+            0n,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            undefined,
+            SignerMigratedEventBody.create({ migratedAt: Number(migratedEvent.args.keysMigratedAt) }),
+          );
+        }
+      } catch (e) {
+        log.error(e);
+        log.error({ event }, "failed to parse signer event args");
+      }
+    }
+  }
+
+  private async processIdRegistryEvents(
+    // rome-ignore lint/suspicious/noExplicitAny: workaround viem bug
+    logs: OnLogsParameter<any, true, string>,
+  ) {
+    for (const event of logs) {
+      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+
+      // Do nothing if the block is pending
+      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+        continue;
+      }
+
+      // Handling: use try-catch + log since errors are expected and not important to surface
+      try {
+        if (event.eventName === "Register") {
+          const registerEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof IdRegistryV2.abi, "Register">,
+            true,
+            typeof IdRegistryV2.abi
+          >;
+          const idRegisterEventBody = IdRegisterEventBody.create({
+            eventType: IdRegisterEventType.REGISTER,
+            to: hexStringToBytes(registerEvent.args.to)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_ID_REGISTER,
+            registerEvent.args.id,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            undefined,
+            undefined,
+            idRegisterEventBody,
+          );
+        } else if (event.eventName === "Transfer") {
+          const transferEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof IdRegistryV2.abi, "Transfer">,
+            true,
+            typeof IdRegistryV2.abi
+          >;
+          const idRegisterEventBody = IdRegisterEventBody.create({
+            eventType: IdRegisterEventType.TRANSFER,
+            to: hexStringToBytes(transferEvent.args.to)._unsafeUnwrap(),
+            from: hexStringToBytes(transferEvent.args.from)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_ID_REGISTER,
+            0n,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            undefined,
+            undefined,
+            idRegisterEventBody,
           );
         }
       } catch (e) {
@@ -450,6 +560,17 @@ export class L2EventsProvider {
         // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
         nextFromBlock += 1;
       }
+      log.info({ fromBlock: nextFromBlock, toBlock: nextToBlock }, "syncing events from block range");
+
+      const idFilter = await this._publicClient.createContractEventFilter({
+        address: OPGoerliEthConstants.IdRegistryAddress,
+        abi: IdRegistryV2.abi,
+        fromBlock: BigInt(nextFromBlock),
+        toBlock: BigInt(nextToBlock),
+        strict: true,
+      });
+      const idLogs = await this._publicClient.getFilterLogs({ filter: idFilter });
+      await this.processIdRegistryEvents(idLogs);
 
       const storageFilter = await this._publicClient.createContractEventFilter({
         address: OPGoerliEthConstants.StorageRegistryAddress,
@@ -649,7 +770,9 @@ export class L2EventsProvider {
     blockHash: string,
     transactionHash: string,
     index: number,
-    keyRegistryBody?: KeyRegistryBody,
+    signerEventBody?: SignerEventBody,
+    signerMigratedEventBody?: SignerMigratedEventBody,
+    idRegisterEventBody?: IdRegisterEventBody,
   ): HubAsyncResult<void> {
     const blockNumber = Number(blockNumBigInt);
     const logEvent = log.child({ event: { type, blockNumber } });
@@ -678,7 +801,9 @@ export class L2EventsProvider {
       blockTimestamp: timestamp,
       transactionHash: transactionHashBytes,
       logIndex: index,
-      keyRegistryBody: keyRegistryBody,
+      signerEventBody: signerEventBody,
+      signerMigratedEventBody: signerMigratedEventBody,
+      idRegisterEventBody: idRegisterEventBody,
     });
 
     // Add it to the cache

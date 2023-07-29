@@ -4,6 +4,7 @@ enum OnChainEventType {
   EVENT_TYPE_NONE = 0;
   EVENT_TYPE_SIGNER = 1;
   EVENT_TYPE_SIGNER_MIGRATED = 2;
+  EVENT_TYPE_ID_REGISTER = 3;
 }
 
 message OnChainEvent {
@@ -16,19 +17,37 @@ message OnChainEvent {
   uint32 log_index = 7;
   uint64 fid = 8;
   oneof body {
-    KeyRegistryBody key_registry_body = 9;
+    SignerEventBody signer_event_body = 9;
+    SignerMigratedEventBody signer_migrated_event_body = 10;
+    IdRegisterEventBody id_register_event_body = 11;
   }
 }
 
-enum KeyRegistryEventType {
-  KEY_REGISTRY_EVENT_TYPE_NONE = 0;
-  KEY_REGISTRY_EVENT_TYPE_ADD = 1;
-  KEY_REGISTRY_EVENT_TYPE_REMOVE = 2;
-  KEY_REGISTRY_EVENT_TYPE_ADMIN_RESET = 3;
+enum SignerEventType {
+  SIGNER_EVENT_TYPE_NONE = 0;
+  SIGNER_EVENT_TYPE_ADD = 1;
+  SIGNER_EVENT_TYPE_REMOVE = 2;
+  SIGNER_EVENT_TYPE_ADMIN_RESET = 3;
 }
 
-message KeyRegistryBody {
+message SignerEventBody {
   bytes key = 1;
   uint32 scheme = 2;
-  KeyRegistryEventType event_type = 3;
+  SignerEventType event_type = 3;
+}
+
+message SignerMigratedEventBody {
+  uint32 migratedAt = 1;
+}
+
+enum IdRegisterEventType {
+  ID_REGISTER_EVENT_TYPE_NONE = 0;
+  ID_REGISTER_EVENT_TYPE_REGISTER = 1;
+  ID_REGISTER_EVENT_TYPE_TRANSFER = 2;
+}
+
+message IdRegisterEventBody {
+  bytes to = 1;
+  IdRegisterEventType event_type = 2;
+  bytes from = 3;
 }
