@@ -21,7 +21,7 @@ import {
   UserNameProof,
   isMergeUsernameProofHubEvent,
 } from "@farcaster/hub-nodejs";
-import Server from "../server.js";
+import Server, { SUBSCRIBE_PERIP_LIMIT } from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -41,7 +41,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await server.stop();
+  await server.stop(true);
   await engine.stop();
 });
 
@@ -62,9 +62,9 @@ beforeEach(async () => {
   events = [];
 });
 
-afterEach(() => {
+afterEach(async () => {
   if (stream) {
-    stream.cancel();
+    await closeStream(stream);
   }
 });
 
@@ -86,6 +86,9 @@ const setupSubscription = async (
   events: [HubEventType, any][],
   options: { eventTypes?: HubEventType[]; fromId?: number } = {},
 ): Promise<ClientReadableStream<HubEvent>> => {
+  // First, clear the rate limits
+  server.clearRateLimiters();
+
   const request = SubscribeRequest.create(options);
 
   const streamResult = await client.subscribe(request);
@@ -117,6 +120,23 @@ const setupSubscription = async (
   await sleep(100); // Wait for server to start listeners
 
   return stream;
+};
+
+const closeStream = async (stream: ClientReadableStream<HubEvent>): Promise<boolean> => {
+  if (stream.closed) {
+    return true;
+  }
+
+  return new Promise((resolve) => {
+    stream.on("close", () => {
+      resolve(true);
+    });
+    stream.on("end", () => {
+      resolve(true);
+    });
+
+    stream.cancel();
+  });
 };
 
 describe("subscribe", () => {
@@ -199,7 +219,6 @@ describe("subscribe", () => {
       await engine.mergeMessage(signerAdd);
 
       stream = await setupSubscription(events, { fromId: 1 });
-
       expect(events).toEqual([
         [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
@@ -216,6 +235,32 @@ describe("subscribe", () => {
         [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
       ]);
+    });
+
+    test("can't subscribe too many times", async () => {
+      const streams = [];
+
+      // All these should succeed
+      for (let i = 0; i < SUBSCRIBE_PERIP_LIMIT; i++) {
+        const stream = await client.subscribe({ eventTypes: [] });
+        expect(stream.isOk()).toBe(true);
+        streams.push(stream._unsafeUnwrap());
+      }
+
+      // Assert all are open
+      for (const stream of streams) {
+        expect(stream.closed).toBe(false);
+      }
+
+      // This should fail
+      const overLimitStream = await client.subscribe({ eventTypes: [] });
+      const result = await new Promise((resolve) => {
+        overLimitStream._unsafeUnwrap().on("error", (err) => {
+          resolve(err.message);
+        });
+      });
+
+      expect(result).toContain("Too many connections");
     });
   });
 

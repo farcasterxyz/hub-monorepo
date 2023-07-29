@@ -58,8 +58,8 @@ import { RentRegistryEventsResponse } from "@farcaster/hub-nodejs";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
-const SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
-const SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
+export const SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
+export const SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
 
 export type RpcUsers = Map<string, string[]>;
 
@@ -224,6 +224,11 @@ class IpConnectionLimiter {
       this.totalConnections -= 1;
     }
   }
+
+  clear() {
+    this.ipConnections.clear();
+    this.totalConnections = 0;
+  }
 }
 
 export default class Server {
@@ -335,6 +340,10 @@ export default class Server {
 
   public hasInboundConnections() {
     return this.incomingConnections > 0;
+  }
+
+  public clearRateLimiters() {
+    this.subscribeIpLimiter.clear();
   }
 
   getImpl = (): HubServiceServer => {
@@ -1006,12 +1015,12 @@ export default class Server {
 
         const allowed = this.subscribeIpLimiter.addConnection(peer);
 
-        if (allowed.isOk() && allowed.value) {
+        if (allowed.isOk()) {
           log.info({ r: request, peer }, "subscribe: starting stream");
         } else {
-          log.info({ r: request, peer, err: allowed._unsafeUnwrapErr().message }, "subscribe: rejected stream");
+          log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");
 
-          stream.end();
+          stream.destroy(new Error(allowed.error.message));
           return;
         }
 
