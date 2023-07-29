@@ -46,7 +46,7 @@ import SyncEngine from "../network/sync/syncEngine.js";
 import Engine from "../storage/engine/index.js";
 import { MessagesPage } from "../storage/stores/types.js";
 import { logger } from "../utils/logger.js";
-import { addressInfoFromParts } from "../utils/p2p.js";
+import { addressInfoFromParts, extractIPAddress } from "../utils/p2p.js";
 import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import {
   BufferedStreamWriter,
@@ -57,6 +57,9 @@ import { sleep } from "../utils/crypto.js";
 import { RentRegistryEventsResponse } from "@farcaster/hub-nodejs";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
+
+const SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
+const SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
 
 export type RpcUsers = Map<string, string[]>;
 
@@ -174,6 +177,55 @@ export const getRPCUsersFromAuthString = (rpcAuth?: string): Map<string, string[
   return rpcUsers;
 };
 
+/**
+ * Limit the number of simultaneous connections to the RPC server by
+ * a single IP address.
+ */
+class IpConnectionLimiter {
+  private perIpLimit: number;
+  private globalLimit: number;
+
+  private ipConnections: Map<string, number>;
+  private totalConnections: number;
+
+  constructor(perIpLimit: number, globalLimit: number) {
+    this.ipConnections = new Map();
+
+    this.perIpLimit = perIpLimit;
+    this.globalLimit = globalLimit;
+    this.totalConnections = 0;
+  }
+
+  public addConnection(peerString: string): Result<boolean, Error> {
+    // Get the IP part of the address
+    const ip = extractIPAddress(peerString) ?? "unknown";
+
+    const connections = this.ipConnections.get(ip) ?? 0;
+    if (connections >= this.perIpLimit) {
+      return err(new Error(`Too many connections from this IP: ${ip}`));
+    }
+
+    if (this.totalConnections >= this.globalLimit) {
+      return err(new Error("Too many connections to this server"));
+    }
+
+    this.ipConnections.set(ip, connections + 1);
+    this.totalConnections += 1;
+    return ok(true);
+  }
+
+  public removeConnection(peerString: string) {
+    // Get the IP part of the address
+    const ip = extractIPAddress(peerString) ?? "unknown";
+
+    const connections = this.ipConnections.get(ip) ?? 0;
+    if (connections > 0) {
+      this.ipConnections.set(ip, connections - 1);
+      this.totalConnections -= 1;
+    }
+  }
+}
+
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
@@ -188,6 +240,7 @@ export default class Server {
 
   private rpcUsers: RpcUsers;
   private submitMessageRateLimiter: RateLimiterMemory;
+  private subscribeIpLimiter = new IpConnectionLimiter(SUBSCRIBE_PERIP_LIMIT, SUBSCRIBE_GLOBAL_LIMIT);
 
   constructor(
     hub?: HubInterface,
@@ -944,8 +997,23 @@ export default class Server {
       },
       subscribe: async (stream) => {
         const { request } = stream;
+        const peer = Result.fromThrowable(
+          () => stream.getPeer(),
+          (e) => {
+            log.error({ err: e }, "subscribe: error getting peer");
+          },
+        )().unwrapOr("unknown peer:port");
 
-        log.info({ request }, "subscribe: starting stream");
+        const allowed = this.subscribeIpLimiter.addConnection(peer);
+
+        if (allowed.isOk() && allowed.value) {
+          log.info({ r: request, peer }, "subscribe: starting stream");
+        } else {
+          log.info({ r: request, peer, err: allowed._unsafeUnwrapErr().message }, "subscribe: rejected stream");
+
+          stream.end();
+          return;
+        }
 
         // We'll write using a Buffered Stream Writer
         const bufferedStreamWriter = new BufferedStreamWriter(stream);
@@ -955,10 +1023,6 @@ export default class Server {
           bufferedStreamWriter.writeToStream(event);
         };
 
-        stream.on("cancelled", () => {
-          stream.destroy();
-        });
-
         // Register a close listener to remove all listeners before we start sending events
         stream.on("close", () => {
           this.engine?.eventHandler.off("mergeMessage", eventListener);
@@ -967,6 +1031,10 @@ export default class Server {
           this.engine?.eventHandler.off("mergeIdRegistryEvent", eventListener);
           this.engine?.eventHandler.off("mergeNameRegistryEvent", eventListener);
           this.engine?.eventHandler.off("mergeUsernameProofEvent", eventListener);
+
+          this.subscribeIpLimiter.removeConnection(peer);
+
+          log.info({ peer }, "subscribe: stream closed");
         });
 
         // If the user wants to start from a specific event, we'll start from there first
