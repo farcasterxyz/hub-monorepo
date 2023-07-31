@@ -510,16 +510,10 @@ export default class Server {
       },
       submitMessage: async (call, callback) => {
         // Identify peer that is calling, if available. This is used for rate limiting.
-        let peer;
-        const peerResult = Result.fromThrowable(
+        const peer = Result.fromThrowable(
           () => call.getPeer(),
           (e) => e,
-        )();
-        if (peerResult.isErr()) {
-          peer = "unavailable"; // Catchall. If peer is unavailable, we will group all of them into one bucket
-        } else {
-          peer = peerResult.value;
-        }
+        )().unwrapOr("unavailable");
 
         // Check for rate limits
         const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
@@ -1013,9 +1007,15 @@ export default class Server {
           },
         )().unwrapOr("unknown peer:port");
 
+        // Check if username/password authenticates. If it does, we'll allow the connection
+        // regardless of rate limits.
+        let authorized = false;
+        if (this.rpcUsers.size > 0) {
+          authorized = (await authenticateUser(stream.metadata, this.rpcUsers)).unwrapOr(false);
+        }
         const allowed = this.subscribeIpLimiter.addConnection(peer);
 
-        if (allowed.isOk()) {
+        if (allowed.isOk() || authorized) {
           log.info({ r: request, peer }, "subscribe: starting stream");
         } else {
           log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");

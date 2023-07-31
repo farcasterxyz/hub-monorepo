@@ -20,6 +20,8 @@ import {
   ClientReadableStream,
   UserNameProof,
   isMergeUsernameProofHubEvent,
+  Metadata,
+  getAuthMetadata,
 } from "@farcaster/hub-nodejs";
 import Server, { SUBSCRIBE_PERIP_LIMIT } from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
@@ -34,8 +36,11 @@ const hub = new MockHub(db, engine);
 let server: Server;
 let client: HubRpcClient;
 
+const rpcUser = "rpcUser";
+const rpcPass = "rpcPass";
+
 beforeAll(async () => {
-  server = new Server(hub, engine);
+  server = new Server(hub, engine, undefined, undefined, `${rpcUser}:${rpcPass}`);
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
@@ -261,6 +266,15 @@ describe("subscribe", () => {
       });
 
       expect(result).toContain("Too many connections");
+      overLimitStream._unsafeUnwrap().cancel();
+
+      // But if we pass rpc auth credentials, it will bypass the limit and succeed
+      const authStream = await client.subscribe({ eventTypes: [] }, getAuthMetadata(rpcUser, rpcPass));
+      expect(authStream.isOk()).toBe(true);
+      expect(authStream._unsafeUnwrap().closed).toBe(false);
+
+      // Close all streams
+      authStream._unsafeUnwrap().cancel();
     });
   });
 
