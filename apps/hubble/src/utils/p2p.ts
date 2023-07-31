@@ -19,6 +19,21 @@ export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {
   )();
 };
 
+/* Extracts the ip part from "ip:port" */
+export const extractIPAddress = (peerAddress: string): string | undefined => {
+  // This regex matches both IPv4 and IPv6 addresses
+  const ipRegex = /((?:[0-9]{1,3}\.){3}[0-9]{1,3}|(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}):[0-9]+/;
+
+  const match = peerAddress.match(ipRegex);
+
+  // If the address matches the regex, we remove the port part
+  if (match) {
+    return match[0].split(":")[0];
+  } else {
+    return undefined;
+  }
+};
+
 /** Checks that the IP address to bind to is valid and that the combined IP, transport, and port multiaddr is valid  */
 export const checkNodeAddrs = (listenIPAddr: string, listenCombinedAddr: string): HubResult<void> => {
   return Result.combine([checkIpAddr(listenIPAddr), checkCombinedAddr(listenCombinedAddr)]).map(() => undefined);
