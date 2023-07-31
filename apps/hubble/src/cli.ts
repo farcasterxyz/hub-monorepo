@@ -25,6 +25,7 @@ import { sleep } from "./utils/crypto.js";
 import { Config as DefaultConfig } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
+import { profileGossipServer } from "./profile/gossipProfile.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -617,9 +618,16 @@ const rpcProfileCommand = new Command("rpc")
     profileRPCServer(cliOptions.server, cliOptions.insecure);
   });
 
+const gossipProfileCommand = new Command("gossip")
+  .description("Profile the gossip server's performance")
+  .action(async () => {
+    profileGossipServer();
+  });
+
 app
   .command("profile")
   .description("Profile various resources used by the hub")
+  .addCommand(gossipProfileCommand)
   .addCommand(rpcProfileCommand)
   .addCommand(storageProfileCommand);
 
