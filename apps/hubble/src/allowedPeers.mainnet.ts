@@ -18,7 +18,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWFoPsstYWVH3a4uFpmxksF6nDEsgYizHnPpd9Atw9DRbH", // @gavi
   "12D3KooWKYqmj1bQJChn4hCAhsneg9sRKRd6Zzp3DkVMUL2pjyAB", // @16
   "12D3KooWReH654LePzAE4shSw6wuWqP3i9jSN2jBNswWJu2kiPQ5", // @vern
-  // "12D3KooWRxgeFVLTAxeVgj4QHPzuT6HaV3Hj93LNZQeRi7gAwUVk", // @stout (Add back once version updated to 1.3.3 or newer)
+  "12D3KooWRxgeFVLTAxeVgj4QHPzuT6HaV3Hj93LNZQeRi7gAwUVk", // @stout
   "12D3KooWSii9GJheDmFRBzii43fpzvb3WkmPn62QSoJ8MjvGKMxr", // @mp
   "12D3KooWQ76P8kBUvjNx2Q8EpYDL1BsqXdqZmAkHzTxE1uruuwRd", // @brianjckim
   "12D3KooWMZFw3bxWbU3RghVfr4yWHFZc8p5gymTkTaJqgqJ2EJ4r", // @rafi
