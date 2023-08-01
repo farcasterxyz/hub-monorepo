@@ -48,8 +48,8 @@ export type ProfileWorkerResponse = {
 };
 
 export async function profileGossipServer() {
-  const numWorkers = 20;
-  const numNodes = 25;
+  const numWorkers = 3;
+  const numNodes = 10;
 
   const workerPath = new URL("./gossipProfileWorker.js", import.meta.url);
 
