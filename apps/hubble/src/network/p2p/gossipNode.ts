@@ -30,6 +30,7 @@ import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
 import { GossipMetricsRecorder } from "./gossipMetricsRecorder.js";
 import RocksDB from "storage/db/rocksdb.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
+import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
@@ -62,6 +63,8 @@ interface NodeOptions {
   allowedPeerIdStrs?: string[] | undefined;
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers?: AddrInfo[] | undefined;
+  /** Override peer scoring. Useful for tests */
+  scoreThresholds?: Partial<PeerScoreThresholds>;
 }
 
 /**
@@ -482,17 +485,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
       canRelayMessage: true,
-      scoreThresholds: {
-        publishThreshold: -300000,
-        gossipThreshold: -300000,
-        graylistThreshold: -300000,
-        acceptPXThreshold: -300000,
-      },
-      scoreParams: {
-        appSpecificScore: (peerId): number => {
-          return 100;
-        },
-      },
+      scoreThresholds: { ...options.scoreThresholds },
     });
 
     if (options.allowedPeerIdStrs) {

@@ -1,3 +1,4 @@
+import { format } from "path";
 import { formatNumber, formatPercentage, formatTime, prettyPrintTable } from "./profile.js";
 import { Worker } from "worker_threads";
 
@@ -47,8 +48,8 @@ export type ProfileWorkerResponse = {
 };
 
 export async function profileGossipServer() {
-  const numWorkers = 10;
-  const numNodes = 10;
+  const numWorkers = 20;
+  const numNodes = 25;
 
   const workerPath = new URL("./gossipProfileWorker.js", import.meta.url);
 
@@ -162,7 +163,7 @@ function computeStats(peerIds: string[], datas: number[][], expected: number): s
     return formattedData;
   }
 
-  const allNodes = [0, 0, 0, 0];
+  const allNodes = [0, 0, 0, 0, 0];
 
   // Go over all the nodes and compute the stats
   for (let i = 0; i < peerIds?.length; i++) {
@@ -179,6 +180,9 @@ function computeStats(peerIds: string[], datas: number[][], expected: number): s
 
     // p95 delay
     allNodes[2] += data[2] ?? 0;
+
+    // Num of peers
+    allNodes[3] += data[3] ?? 0;
 
     const row = [
       peerIds[i]?.substring(30) ?? "Unknown",
@@ -199,7 +203,7 @@ function computeStats(peerIds: string[], datas: number[][], expected: number): s
     formatTime((allNodes[1] ?? 0) / peerIds.length),
     formatTime((allNodes[2] ?? 0) / peerIds.length),
     formatPercentage(loss),
-    peerIds.length.toString(),
+    formatNumber((allNodes[3] ?? 0) / peerIds.length),
   ];
   formattedData.push(avgRow);
 
