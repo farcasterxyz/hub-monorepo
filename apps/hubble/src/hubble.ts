@@ -21,6 +21,8 @@ import {
   storageRegistryEventTypeToJSON,
   AckMessageBody,
   NetworkLatencyMessage,
+  OnChainEvent,
+  onChainEventTypeToJSON,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
@@ -50,6 +52,7 @@ import {
   messageToLog,
   messageTypeToName,
   nameRegistryEventToLog,
+  onChainEventToLog,
   rentRegistryEventToLog,
   storageAdminRegistryEventToLog,
   usernameProofToLog,
@@ -101,6 +104,7 @@ export interface HubInterface {
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitStorageAdminRegistryEvent(event: StorageAdminRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
@@ -306,6 +310,8 @@ export class Hub implements HubInterface {
         options.l2RpcUrl,
         options.rankRpcs ?? false,
         options.storageRegistryAddress ?? OPGoerliEthConstants.StorageRegistryAddress,
+        OPGoerliEthConstants.KeyRegistryAddress,
+        OPGoerliEthConstants.IdRegistryAddress,
         options.l2FirstBlock ?? OPGoerliEthConstants.FirstBlock,
         options.l2ChunkSize ?? OPGoerliEthConstants.ChunkSize,
         options.resyncEthEvents ?? false,
@@ -1136,6 +1142,27 @@ export class Hub implements HubInterface {
       },
       (e) => {
         logEvent.warn({ errCode: e.errCode }, `submitStorageAdminRegistryEvent error: ${e.message}`);
+      },
+    );
+
+    return mergeResult;
+  }
+
+  async submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number> {
+    const logEvent = log.child({ event: onChainEventToLog(event), source });
+
+    const mergeResult = await this.engine.mergeOnChainEvent(event);
+
+    mergeResult.match(
+      (eventId) => {
+        logEvent.info(
+          `submitOnChainEvent success ${eventId}: event ${onChainEventTypeToJSON(event.type)} in block ${
+            event.blockNumber
+          }`,
+        );
+      },
+      (e) => {
+        logEvent.warn({ errCode: e.errCode }, `submitOnChainEvent error: ${e.message}`);
       },
     );
 

@@ -12,6 +12,7 @@ import {
   userDataTypeFromJSON,
   userDataTypeToJSON,
 } from "./message";
+import { OnChainEvent } from "./onchain_event";
 import { RentRegistryEvent } from "./storage_event";
 import { UserNameProof } from "./username_proof";
 
@@ -158,6 +159,10 @@ export interface RentRegistryEventsRequest {
 
 export interface RentRegistryEventsResponse {
   events: RentRegistryEvent[];
+}
+
+export interface OnChainEventResponse {
+  events: OnChainEvent[];
 }
 
 export interface StorageAdminRegistryEventRequest {
@@ -2317,6 +2322,66 @@ export const RentRegistryEventsResponse = {
   fromPartial<I extends Exact<DeepPartial<RentRegistryEventsResponse>, I>>(object: I): RentRegistryEventsResponse {
     const message = createBaseRentRegistryEventsResponse();
     message.events = object.events?.map((e) => RentRegistryEvent.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseOnChainEventResponse(): OnChainEventResponse {
+  return { events: [] };
+}
+
+export const OnChainEventResponse = {
+  encode(message: OnChainEventResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.events) {
+      OnChainEvent.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): OnChainEventResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseOnChainEventResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.events.push(OnChainEvent.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): OnChainEventResponse {
+    return { events: Array.isArray(object?.events) ? object.events.map((e: any) => OnChainEvent.fromJSON(e)) : [] };
+  },
+
+  toJSON(message: OnChainEventResponse): unknown {
+    const obj: any = {};
+    if (message.events) {
+      obj.events = message.events.map((e) => e ? OnChainEvent.toJSON(e) : undefined);
+    } else {
+      obj.events = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<OnChainEventResponse>, I>>(base?: I): OnChainEventResponse {
+    return OnChainEventResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<OnChainEventResponse>, I>>(object: I): OnChainEventResponse {
+    const message = createBaseOnChainEventResponse();
+    message.events = object.events?.map((e) => OnChainEvent.fromPartial(e)) || [];
     return message;
   },
 };

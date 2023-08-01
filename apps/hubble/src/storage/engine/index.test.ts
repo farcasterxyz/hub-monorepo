@@ -26,6 +26,7 @@ import {
   ReactionType,
   RevokeMessageHubEvent,
   SignerAddMessage,
+  SignerEventType,
   SignerRemoveMessage,
   toFarcasterTime,
   UserDataAddMessage,
@@ -724,6 +725,66 @@ describe("mergeMessage", () => {
         expect(result._unsafeUnwrapErr().message).toMatch("failed to resolve ens name");
 
         expect(usernameProofEvents.length).toBe(0);
+      });
+    });
+  });
+
+  describe("signer migration", () => {
+    let migratedEngine: Engine;
+    describe("after migration", () => {
+      beforeEach(async () => {
+        // Create a new instance so the isMigrated flag is cleared each time.
+        migratedEngine = new Engine(db, network, undefined, publicClient);
+
+        await expect(migratedEngine.mergeIdRegistryEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
+        await expect(migratedEngine.mergeMessage(signerAdd)).resolves.toBeInstanceOf(Ok);
+        await migratedEngine.mergeOnChainEvent(Factories.SignerMigratedOnChainEvent.build());
+        migratedEngine.eventHandler.on("mergeMessage", handleMergeMessage);
+      });
+      afterEach(() => {
+        migratedEngine.eventHandler.off("mergeMessage", handleMergeMessage);
+      });
+      test("fails if no l2 id registry event", async () => {
+        const result = await migratedEngine.mergeMessage(castAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch("unknown fid");
+      });
+      test("fails if no on chain signer", async () => {
+        const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+        await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+        const result = await migratedEngine.mergeMessage(castAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
+      });
+      test("succeeds with l2 id registry event and on chain signer", async () => {
+        const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+        const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
+        const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+        await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+        await migratedEngine.mergeOnChainEvent(onChainSignerEvent);
+
+        await expect(migratedEngine.mergeMessage(castAdd)).resolves.toBeInstanceOf(Ok);
+        await expect(migratedEngine.getCast(fid, castAdd.hash)).resolves.toEqual(ok(castAdd));
+        expect(mergedMessages).toEqual([castAdd]);
+      });
+      test("fails if signer is removed on chain", async () => {
+        const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+        const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
+        const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+
+        const signerRemovalBody = Factories.SignerEventBody.build({
+          eventType: SignerEventType.REMOVE,
+          key: signerAdd.data.signerAddBody.signer,
+        });
+        const signerRemovalEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
+
+        await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+        await migratedEngine.mergeOnChainEvent(onChainSignerEvent);
+        await migratedEngine.mergeOnChainEvent(signerRemovalEvent);
+
+        const result = await migratedEngine.mergeMessage(castAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
       });
     });
   });
