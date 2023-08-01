@@ -833,11 +833,21 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     if (!rpcClient) {
       return err(new HubError("unavailable.network_failure", `Could not create a RPC client for peer ${peerId}`));
     }
+
     const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
       TrieNodePrefix.create({ prefix: new Uint8Array() }),
       new Metadata(),
       rpcDeadline(),
     );
+
+    const closeResult = Result.fromThrowable(
+      () => rpcClient?.close(),
+      (e) => e as Error,
+    )();
+    if (closeResult.isErr()) {
+      log.warn({ err: closeResult.error }, "Failed to close RPC client after getSyncStatusForPeer");
+    }
+
     if (peerStateResult.isErr()) {
       return err(peerStateResult.error);
     }
