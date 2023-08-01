@@ -885,7 +885,7 @@ describe("revokeMessagesBySigner", () => {
 });
 
 describe("with listeners and workers", () => {
-  const liveEngine = new Engine(db, FarcasterNetwork.TESTNET);
+  let liveEngine: Engine;
   setReferenceDateForTest(100000000000000000000000);
 
   let revokedMessages: Message[];
@@ -894,20 +894,15 @@ describe("with listeners and workers", () => {
     revokedMessages.push(event.revokeMessageBody.message);
   };
 
-  beforeAll(async () => {
-    liveEngine.eventHandler.on("revokeMessage", handleRevokeMessage);
-  });
-
-  afterAll(async () => {
-    liveEngine.eventHandler.off("revokeMessage", handleRevokeMessage);
-  });
-
   beforeEach(async () => {
     revokedMessages = [];
+    liveEngine = new Engine(db, FarcasterNetwork.TESTNET);
+    liveEngine.eventHandler.on("revokeMessage", handleRevokeMessage);
     await liveEngine.start();
   });
 
   afterEach(async () => {
+    liveEngine.eventHandler.off("revokeMessage", handleRevokeMessage);
     await liveEngine.stop();
   });
 
@@ -982,6 +977,27 @@ describe("with listeners and workers", () => {
       expect(revokedMessages).toEqual([signerAdd]);
       await sleep(200); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd, linkAdd]);
+    });
+
+    test("revokes messages when onchain signer is removed", async () => {
+      const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+      const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
+      const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+
+      await liveEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+      await liveEngine.mergeOnChainEvent(onChainSignerEvent);
+      await liveEngine.mergeOnChainEvent(Factories.SignerMigratedOnChainEvent.build());
+
+      const signerRemovalBody = Factories.SignerEventBody.build({
+        eventType: SignerEventType.REMOVE,
+        key: signerEventBody.key,
+      });
+      const signerRemovalEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
+      await liveEngine.mergeOnChainEvent(signerRemovalEvent);
+
+      expect(revokedMessages).toEqual([]);
+      await sleep(200); // Wait for engine to revoke messages
+      expect(revokedMessages).toEqual([castAdd, reactionAdd, linkAdd]);
     });
 
     test("does not revoke UserDataAdd when fname is transferred to different address but same fid", async () => {
