@@ -32,6 +32,7 @@ import {
   isVerificationRemoveMessage,
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
+  Embed,
 } from "@farcaster/hub-nodejs";
 import { HubSubscriber } from "./hubSubscriber";
 import { Logger } from "pino";
@@ -407,7 +408,10 @@ export class HubReplicator {
           parentHash: message.data.castAddBody.parentCastId?.hash,
           parentFid: message.data.castAddBody.parentCastId?.fid,
           parentUrl: message.data.castAddBody.parentUrl,
-          embeds: message.data.castAddBody.embedsDeprecated,
+          embeds:
+            message.data.castAddBody.embeds ||
+            message.data.castAddBody.embedsDeprecated?.map((x) => Embed.create({ url: x })) ||
+            [],
           mentions: message.data.castAddBody.mentions,
           mentionsPositions: message.data.castAddBody.mentionsPositions,
         })),
@@ -631,6 +635,8 @@ export class HubReplicator {
           displayTimestamp: farcasterTimeToDate(message.data.linkBody.displayTimestamp),
         })),
       )
+      // Do nothing on conflict since nothing should have changed if hash is the same.
+      .onConflict((oc) => oc.columns(["hash"]).doNothing())
       .execute();
 
     for (const message of messages) {
