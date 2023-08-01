@@ -507,7 +507,7 @@ export default class Server {
       },
       getSyncSnapshotByPrefix: (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info(
+        log.debug(
           { method: "getSyncSnapshotByPrefix", req: call.request, reqStr: JSON.stringify(call.request) },
           `RPC call from ${peer}`,
         );
