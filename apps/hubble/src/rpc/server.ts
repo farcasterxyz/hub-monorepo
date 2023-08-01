@@ -246,7 +246,6 @@ export default class Server {
 
   private rpcUsers: RpcUsers;
   private submitMessageRateLimiter: RateLimiterMemory;
-  private syncSnapshotRateLimiter: RateLimiterMemory;
   private subscribeIpLimiter = new IpConnectionLimiter(SUBSCRIBE_PERIP_LIMIT, SUBSCRIBE_GLOBAL_LIMIT);
 
   constructor(
@@ -284,12 +283,6 @@ export default class Server {
 
     this.submitMessageRateLimiter = new RateLimiterMemory({
       points: rateLimitPerMinute,
-      duration: 60,
-    });
-
-    // Rate limit sync status to 2 per minute
-    this.syncSnapshotRateLimiter = new RateLimiterMemory({
-      points: 2,
       duration: 60,
     });
   }
@@ -519,13 +512,6 @@ export default class Server {
         const request = call.request;
 
         (async () => {
-          const rateLimitResult = await rateLimitByIp(peer, this.syncSnapshotRateLimiter);
-          if (rateLimitResult.isErr()) {
-            callback(toServiceError(rateLimitResult.error));
-            logger.warn({ err: rateLimitResult.error }, `RPC call: Rate limit exceeded for ${peer}`);
-            return;
-          }
-
           const rootHash = (await this.syncEngine?.trie.rootHash()) ?? "";
           const snapshot = await this.syncEngine?.getSnapshotByPrefix(request.prefix);
           snapshot?.match(
@@ -537,11 +523,9 @@ export default class Server {
                 excludedHashes: snapshot.excludedHashes,
               });
               callback(null, snapshotResponse);
-              log.info({ snapshotResponse }, `RPC call: Sending snapshot response to ${peer}`);
             },
             (err: HubError) => {
               callback(toServiceError(err));
-              log.error({ err }, `RPC call: Error sending snapshot response to ${peer}`);
             },
           );
         })();
