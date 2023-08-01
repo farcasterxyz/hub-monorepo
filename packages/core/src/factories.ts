@@ -5,7 +5,18 @@ import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "@noble/hashes/utils";
 import * as protobufs from "./protobufs";
-import { OnChainEventType, SignerEventBody, SignerEventType, SignerOnChainEvent, UserNameType } from "./protobufs";
+import {
+  IdRegisterEventBody,
+  IdRegisterEventType,
+  IdRegisterOnChainEvent,
+  OnChainEventType,
+  SignerEventBody,
+  SignerEventType,
+  SignerMigratedEventBody,
+  SignerMigratedOnChainEvent,
+  SignerOnChainEvent,
+  UserNameType,
+} from "./protobufs";
 import { bytesToHexString, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip712Signer } from "./signers";
 import { getFarcasterTime, toFarcasterTime } from "./time";
@@ -683,14 +694,39 @@ const UserNameProofFactory = Factory.define<protobufs.UserNameProof>(() => {
   });
 });
 
+const SignerEventBodyFactory = Factory.define<protobufs.SignerEventBody>(() => {
+  return SignerEventBody.create({
+    key: Ed25519PPublicKeyFactory.build(),
+    eventType: SignerEventType.ADD,
+    scheme: 1,
+  });
+});
+
 const SignerOnChainEventFactory = Factory.define<SignerOnChainEvent>(() => {
   return OnChainEventFactory.build({
-    signerEventBody: SignerEventBody.create({
-      key: Ed25519PPublicKeyFactory.build(),
-      eventType: SignerEventType.ADD,
-      scheme: 0,
-    }),
+    type: OnChainEventType.EVENT_TYPE_SIGNER,
+    signerEventBody: SignerEventBodyFactory.build(),
   }) as protobufs.SignerOnChainEvent;
+});
+
+const IdRegisterOnChainEventFactory = Factory.define<IdRegisterOnChainEvent>(() => {
+  return OnChainEventFactory.build({
+    type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
+    idRegisterEventBody: IdRegisterEventBody.create({
+      eventType: IdRegisterEventType.REGISTER,
+      from: EthAddressFactory.build(),
+    }),
+  }) as protobufs.IdRegisterOnChainEvent;
+});
+
+const SignerMigratedOnChainEventFactory = Factory.define<SignerMigratedOnChainEvent>(() => {
+  return OnChainEventFactory.build({
+    type: OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
+    fid: 0,
+    signerMigratedEventBody: SignerMigratedEventBody.create({
+      migratedAt: Math.floor(faker.datatype.datetime().getTime() / 1000),
+    }),
+  }) as protobufs.SignerMigratedOnChainEvent;
 });
 
 export const Factories = {
@@ -761,5 +797,8 @@ export const Factories = {
   RentRegistryEvent: RentRegistryEventFactory,
   StorageAdminRegistryEventType: StorageAdminRegistryEventTypeFactory,
   StorageAdminRegistryEvent: StorageAdminRegistryEventFactory,
+  SignerEventBody: SignerEventBodyFactory,
   KeyRegistryOnChainEvent: SignerOnChainEventFactory,
+  IdRegistryOnChainEvent: IdRegisterOnChainEventFactory,
+  SignerMigratedOnChainEvent: SignerMigratedOnChainEventFactory,
 };

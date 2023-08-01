@@ -1,8 +1,25 @@
-import { bytesCompare, Factories, OnChainEventType } from "@farcaster/hub-nodejs";
+import { bytesCompare, Factories, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "./jestUtils.js";
-import { getManyOnChainEvents, makeOnChainEventPrimaryKey, putOnChainEventTransaction } from "./onChainEvent.js";
+import {
+  getManyOnChainEvents,
+  getOnChainEvent,
+  getOnChainEventByKey,
+  makeOnChainEventPrimaryKey,
+  putOnChainEventTransaction,
+} from "./onChainEvent.js";
 
 const db = jestRocksDB("storage.db.onChainEvent.test");
+let onChainEvent: OnChainEvent;
+let anotherEvent: OnChainEvent;
+
+beforeEach(async () => {
+  onChainEvent = Factories.KeyRegistryOnChainEvent.build();
+  anotherEvent = Factories.IdRegistryOnChainEvent.build();
+  let txn = db.transaction();
+  txn = putOnChainEventTransaction(txn, onChainEvent);
+  txn = putOnChainEventTransaction(txn, anotherEvent);
+  await db.commit(txn);
+});
 
 describe("makeOnChainEventPrimaryKey", () => {
   test("orders keys by type, fid, block and log index", () => {
@@ -25,14 +42,47 @@ describe("putOnChainEvent", () => {
     putOnChainEventTransaction(txn, onChainEvent);
     await db.commit(txn);
     await expect(
-      getManyOnChainEvents(db, [
+      getOnChainEvent(db, onChainEvent.type, onChainEvent.fid, onChainEvent.blockNumber, onChainEvent.logIndex),
+    ).resolves.toEqual(onChainEvent);
+  });
+});
+
+describe("getOnChainEvent", () => {
+  test("succeeds", async () => {
+    await expect(
+      getOnChainEvent(db, onChainEvent.type, onChainEvent.fid, onChainEvent.blockNumber, onChainEvent.logIndex),
+    ).resolves.toEqual(onChainEvent);
+  });
+});
+describe("getOnChainEventByKey", () => {
+  test("succeeds", async () => {
+    await expect(
+      getOnChainEventByKey(
+        db,
         makeOnChainEventPrimaryKey(
           onChainEvent.type,
           onChainEvent.fid,
           onChainEvent.blockNumber,
           onChainEvent.logIndex,
         ),
-      ]),
-    ).resolves.toEqual([onChainEvent]);
+      ),
+    ).resolves.toEqual(onChainEvent);
+  });
+});
+describe("getManyOnChainEvents", () => {
+  test("succeeds", async () => {
+    const key1 = makeOnChainEventPrimaryKey(
+      anotherEvent.type,
+      anotherEvent.fid,
+      anotherEvent.blockNumber,
+      anotherEvent.logIndex,
+    );
+    const key2 = makeOnChainEventPrimaryKey(
+      onChainEvent.type,
+      onChainEvent.fid,
+      onChainEvent.blockNumber,
+      onChainEvent.logIndex,
+    );
+    await expect(getManyOnChainEvents(db, [key1, key2])).resolves.toEqual([anotherEvent, onChainEvent]);
   });
 });

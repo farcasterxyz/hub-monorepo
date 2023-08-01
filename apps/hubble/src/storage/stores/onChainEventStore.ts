@@ -26,22 +26,11 @@ import {
 import { ok, ResultAsync } from "neverthrow";
 
 /**
- * StorageEventStore persists Storage Event messages in RocksDB using two grow only CRDT sets
+ * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
  * to guarantee eventual consistency.
  *
- * The StorageEventStore has a grow only CRDT set for each class of storage events, rent and
- * admin events. It stores each class of storage events under specialized key names
- * corresponding to the specific set. Rent event messages can only collide if they have the
- * same fid and timestamp, which should be infeasible unless a block reorg occurs and a new
- * event subsumes its place. Similarly, storage admin events should also be collision resistant
- * by nature of transaction hash and timestamp. That being said, to ensure even the unlikely
- * event of collisions between storage events, messages are resolved with Last-Write-Wins rules.
- *
- * The key-value entries created by the Storage Event Store are:
- *
- * 1. tsHash -> storage admin events
- * 2. fid:expiry -> rent events
- * 2. expiry:fid -> fid:expiry (Set Index)
+ * It build custom secondary indexes based on the type of the on chain event to allow querying for
+ * current status (e.g. active signer for an fid).
  */
 class OnChainEventStore {
   protected _db: RocksDB;
@@ -72,7 +61,12 @@ class OnChainEventStore {
 
   async getActiveSigner(fid: number, signer: Uint8Array): Promise<SignerOnChainEvent> {
     const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
-    return getOnChainEventByKey(this._db, signerEventPrimaryKey);
+    const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
+    if (event.signerEventBody.eventType === SignerEventType.ADD) {
+      return event;
+    } else {
+      throw new HubError("not_found", "signer removed");
+    }
   }
 
   async getIdRegisterEventByFid(fid: number): Promise<IdRegisterOnChainEvent> {

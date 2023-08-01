@@ -294,7 +294,14 @@ class Engine {
       event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED ||
       event.type === OnChainEventType.EVENT_TYPE_ID_REGISTER
     ) {
-      return ResultAsync.fromPromise(this._onchainEventsStore.mergeOnChainEvent(event), (e) => e as HubError);
+      const result = await ResultAsync.fromPromise(
+        this._onchainEventsStore.mergeOnChainEvent(event),
+        (e) => e as HubError,
+      );
+      if (result.isOk() && event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED) {
+        this._isSignerMigrated = true;
+      }
+      return result;
     }
 
     return err(new HubError("bad_request.validation_failure", "invalid event type"));

@@ -42,6 +42,7 @@ import {
   UsernameProofsResponse,
   VerificationRequest,
 } from "./request_response";
+import { RentRegistryEvent } from "./storage_event";
 import { UserNameProof } from "./username_proof";
 
 export interface HubService {
@@ -1289,6 +1290,10 @@ export interface AdminService {
     request: DeepPartial<NameRegistryEvent>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<NameRegistryEvent>;
+  submitRentRegistryEvent(
+    request: DeepPartial<RentRegistryEvent>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<RentRegistryEvent>;
 }
 
 export class AdminServiceClientImpl implements AdminService {
@@ -1300,6 +1305,7 @@ export class AdminServiceClientImpl implements AdminService {
     this.deleteAllMessagesFromDb = this.deleteAllMessagesFromDb.bind(this);
     this.submitIdRegistryEvent = this.submitIdRegistryEvent.bind(this);
     this.submitNameRegistryEvent = this.submitNameRegistryEvent.bind(this);
+    this.submitRentRegistryEvent = this.submitRentRegistryEvent.bind(this);
   }
 
   rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
@@ -1319,6 +1325,13 @@ export class AdminServiceClientImpl implements AdminService {
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<NameRegistryEvent> {
     return this.rpc.unary(AdminServiceSubmitNameRegistryEventDesc, NameRegistryEvent.fromPartial(request), metadata);
+  }
+
+  submitRentRegistryEvent(
+    request: DeepPartial<RentRegistryEvent>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<RentRegistryEvent> {
+    return this.rpc.unary(AdminServiceSubmitRentRegistryEventDesc, RentRegistryEvent.fromPartial(request), metadata);
   }
 }
 
@@ -1406,6 +1419,29 @@ export const AdminServiceSubmitNameRegistryEventDesc: UnaryMethodDefinitionish =
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = NameRegistryEvent.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AdminServiceSubmitRentRegistryEventDesc: UnaryMethodDefinitionish = {
+  methodName: "SubmitRentRegistryEvent",
+  service: AdminServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return RentRegistryEvent.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = RentRegistryEvent.decode(data);
       return {
         ...value,
         toObject() {

@@ -5,6 +5,7 @@ import "id_registry_event.proto";
 import "name_registry_event.proto";
 import "hub_event.proto";
 import "request_response.proto";
+import "storage_event.proto";
 import "username_proof.proto";
 
 service HubService {
@@ -77,4 +78,5 @@ service AdminService {
   
   rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
   rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
+  rpc SubmitRentRegistryEvent(RentRegistryEvent) returns (RentRegistryEvent);
 }

@@ -51,6 +51,7 @@ import {
   UsernameProofsResponse,
   VerificationRequest,
 } from "./request_response";
+import { RentRegistryEvent } from "./storage_event";
 import { UserNameProof } from "./username_proof";
 
 export type HubServiceService = typeof HubServiceService;
@@ -1122,6 +1123,15 @@ export const AdminServiceService = {
     responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
   },
+  submitRentRegistryEvent: {
+    path: "/AdminService/SubmitRentRegistryEvent",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: RentRegistryEvent) => Buffer.from(RentRegistryEvent.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => RentRegistryEvent.decode(value),
+    responseSerialize: (value: RentRegistryEvent) => Buffer.from(RentRegistryEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => RentRegistryEvent.decode(value),
+  },
 } as const;
 
 export interface AdminServiceServer extends UntypedServiceImplementation {
@@ -1129,6 +1139,7 @@ export interface AdminServiceServer extends UntypedServiceImplementation {
   deleteAllMessagesFromDb: handleUnaryCall<Empty, Empty>;
   submitIdRegistryEvent: handleUnaryCall<IdRegistryEvent, IdRegistryEvent>;
   submitNameRegistryEvent: handleUnaryCall<NameRegistryEvent, NameRegistryEvent>;
+  submitRentRegistryEvent: handleUnaryCall<RentRegistryEvent, RentRegistryEvent>;
 }
 
 export interface AdminServiceClient extends Client {
@@ -1188,6 +1199,21 @@ export interface AdminServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitRentRegistryEvent(
+    request: RentRegistryEvent,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitRentRegistryEvent(
+    request: RentRegistryEvent,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void,
+  ): ClientUnaryCall;
+  submitRentRegistryEvent(
+    request: RentRegistryEvent,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: RentRegistryEvent) => void,
   ): ClientUnaryCall;
 }
 
