@@ -1,7 +1,6 @@
 import { Command } from "commander";
 
 import { benchMerkleTrie } from "./merkleTrie.js";
-import { benchSyncEngine } from "./syncEngine.js";
 import { outputWriter, waitForPromise } from "./utils.js";
 
 const app = new Command();
@@ -40,9 +39,6 @@ let promise;
 switch (opts["benchmark"].toLowerCase()) {
   case "merkletrie":
     promise = benchMerkleTrie(args);
-    break;
-  case "syncengine":
-    promise = benchSyncEngine(args);
     break;
   default:
     process.stderr.write("Error: unknown benchmark suite\n");

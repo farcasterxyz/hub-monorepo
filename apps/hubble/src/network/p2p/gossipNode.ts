@@ -481,6 +481,18 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       globalSignaturePolicy: "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
+      canRelayMessage: true,
+      scoreThresholds: {
+        publishThreshold: -300000,
+        gossipThreshold: -300000,
+        graylistThreshold: -300000,
+        acceptPXThreshold: -300000,
+      },
+      scoreParams: {
+        appSpecificScore: (peerId): number => {
+          return 100;
+        },
+      },
     });
 
     if (options.allowedPeerIdStrs) {

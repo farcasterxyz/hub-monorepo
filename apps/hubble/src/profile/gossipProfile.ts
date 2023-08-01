@@ -1,204 +1,207 @@
-import {
-  AdminRpcClient,
-  Factories,
-  FarcasterNetwork,
-  HubResult,
-  HubRpcClient,
-  Message,
-  Metadata,
-  getAdminRpcClient,
-  getAuthMetadata,
-  getFarcasterTime,
-  getInsecureHubRpcClient,
-  getSSLHubRpcClient,
-} from "@farcaster/hub-nodejs";
-import { formatNumber, prettyPrintTable } from "./profile.js";
-import { ADMIN_SERVER_PORT } from "../rpc/adminServer.js";
-import RocksDB from "../storage/db/rocksdb.js";
-import { GossipNode } from "../network/p2p/gossipNode.js";
+import { formatNumber, formatPercentage, formatTime, prettyPrintTable } from "./profile.js";
+import { Worker } from "worker_threads";
 
-let messageIdCounter = 0;
+let workerMessageIdCounter = 0;
 
-async function getMessage(): Promise<{ msg: Message; counter: number }> {
-  const fid = 1;
-  const network = 1;
-
-  const now = Date.now().toString();
-  const counter = messageIdCounter;
-  const text = `${counter}:${now}`;
-
-  const msg = await Factories.CastAddMessage.create({ data: { fid, network, castAddBody: { text } } });
-
-  messageIdCounter++;
-  return { msg, counter };
+export enum ProfileWorkerAction {
+  Start = 1,
+  SendMessage = 2,
+  WaitForMessages = 3,
+  Stop = 4,
+  GetMultiAddres = 5,
+  ConnectToMutliAddr = 6,
+  ReportPeers = 7,
 }
 
-class GossipTestNode {
-  gossipNode: GossipNode;
-  connectedPeers = 0;
-  recievedMessages = new Map<number, number>(); // Id -> timestamp
+export type WaitForMessagesArgs = {
+  count: number;
+  timeout: number;
+};
 
-  constructor() {
-    this.gossipNode = new GossipNode({} as RocksDB);
-  }
+export type ConnectToMultiAddrArgs = {
+  multiAddr: string[];
+};
 
-  async start() {
-    await this.gossipNode.start([]);
+type WorkerCallArgs = WaitForMessagesArgs | ConnectToMultiAddrArgs;
 
-    this.registerListeners();
-  }
+export type StopResponse = {
+  peerIds: string[];
+  datas: number[][];
+};
 
-  async stop() {
-    await this.gossipNode.stop();
-  }
+export type MultiAddrResponse = {
+  peerIds: string[];
+  multiAddrs: string[];
+};
 
-  async waitForConnection() {
-    await new Promise((resolve) => {
-      const interval = setInterval(async () => {
-        if (this.connectedPeers > 0) {
-          clearInterval(interval);
+export type ProfileWorkerMessage = {
+  id: number;
+  action: ProfileWorkerAction;
+  args?: WaitForMessagesArgs | ConnectToMultiAddrArgs;
+};
 
-          // Wait 100ms for the connection to be fully established
-          setTimeout(resolve, 1000);
-        }
-      }, 100);
-    });
-  }
-
-  async waitForMessages(numMessages: number, timeout: number) {
-    await new Promise((resolve) => {
-      const timeoutFn = setTimeout(resolve, timeout);
-
-      const interval = setInterval(() => {
-        // console.log("Recieved messages", this.recievedMessages.size, "/", numMessages);
-
-        if (this.recievedMessages.size >= numMessages) {
-          clearInterval(interval);
-          clearTimeout(timeoutFn);
-
-          // Wait 100ms for the connection to be fully established
-          setTimeout(resolve, 1000);
-        }
-      }, 100);
-    });
-  }
-
-  async sendMessage() {
-    const { msg, counter } = await getMessage();
-
-    // Send a message from the first node
-    const r = await this.gossipNode.gossipMessage(msg);
-    // console.log("Sent message", r);
-
-    // When sending a message, we add it to our own stats, since technically we also have recieved
-    // the message
-    // this.recievedMessages.set(counter, 0);
-  }
-
-  registerListeners() {
-    // Register the handlers
-    this.gossipNode.gossip?.subscribe(this.gossipNode.primaryTopic());
-    this.gossipNode.on("message", async (_topic, message) => {
-      const castData = message._unsafeUnwrap().message?.data?.castAddBody;
-      const split = castData?.text.split(":");
-
-      const id = parseInt(split?.[0] ?? "-1");
-      const delay = Date.now() - parseInt(split?.[1] ?? "-1");
-
-      this.recievedMessages.set(id, delay);
-      // console.log("Received message ", id, " - ", delay);
-    });
-
-    this.gossipNode.on("peerConnect", (peer) => {
-      // console.log("Peer connected", peer);
-      this.connectedPeers++;
-    });
-
-    this.gossipNode.on("peerDisconnect", (peer) => {
-      // console.log("Peer disconnected", peer);
-      this.connectedPeers--;
-    });
-  }
-}
+export type ProfileWorkerResponse = {
+  id: number;
+  action: ProfileWorkerAction;
+  response?: StopResponse | MultiAddrResponse;
+};
 
 export async function profileGossipServer() {
-  // Setup 2 gossip nodes
-  const numNodes = 30;
+  const numWorkers = 10;
+  const numNodes = 10;
 
-  const nodes = [];
-  for (let i = 0; i < numNodes; i++) {
-    const node = new GossipTestNode();
-    await node.start();
-    nodes.push(node);
+  const workerPath = new URL("./gossipProfileWorker.js", import.meta.url);
 
-    if (i >= 1) {
-      // Connect to the first node
-      await (nodes[0] as GossipTestNode).gossipNode.connect(node.gossipNode);
+  const workers: Worker[] = [];
+  for (let i = 0; i < numWorkers; i++) {
+    workers.push(new Worker(workerPath, { workerData: { numNodes } }));
+  }
 
-      // Connect to upto 5 nodes that came before us
-      const numConnections = Math.min(5, i);
-      for (let j = 0; j < numConnections; j++) {
-        const randomNode = nodes[Math.floor(Math.random() * i)] as GossipTestNode;
-        await randomNode.gossipNode.connect(node.gossipNode);
-        await new Promise((resolve) => setTimeout(resolve, 250));
+  const pendingWorkerCalls = new Map<number, { resolve: (value: ProfileWorkerResponse) => void }>();
+
+  for (const worker of workers) {
+    worker.on("message", (data: ProfileWorkerResponse) => {
+      const { id, action, response } = data;
+      const pendingCall = pendingWorkerCalls.get(id);
+
+      if (pendingCall) {
+        pendingCall.resolve(data);
+        pendingWorkerCalls.delete(id);
+      } else {
+        console.log(`Received unexpected message from worker: ${JSON.stringify(data)}`);
       }
+    });
+  }
 
-      // Wait 100ms for the connection to be fully established
-      await new Promise((resolve) => setTimeout(resolve, 100));
+  const callAllWorkersMethod = (
+    action: ProfileWorkerAction,
+    args?: WorkerCallArgs,
+  ): Promise<ProfileWorkerResponse>[] => {
+    return workers.map((worker) => callWorkerMethod(worker, action, args));
+  };
+
+  const callWorkerMethod = async (
+    worker: Worker,
+    action: ProfileWorkerAction,
+    args?: WorkerCallArgs,
+  ): Promise<ProfileWorkerResponse> => {
+    return new Promise((resolve) => {
+      const id = workerMessageIdCounter++;
+      pendingWorkerCalls.set(id, { resolve });
+
+      worker.postMessage({ id, action, args });
+    });
+  };
+
+  // 1. Start the worker
+  await Promise.all(callAllWorkersMethod(ProfileWorkerAction.Start));
+
+  // 3. We'll connect each group of workers to the previous group
+  for (let i = 1; i < workers.length; i++) {
+    const workerResponse = await callWorkerMethod(workers[i - 1] as Worker, ProfileWorkerAction.GetMultiAddres);
+    const prevMultiAddrs = workerResponse.response as MultiAddrResponse;
+
+    await callWorkerMethod(workers[i] as Worker, ProfileWorkerAction.ConnectToMutliAddr, {
+      multiAddr: prevMultiAddrs?.multiAddrs ?? [],
+    });
+
+    // Wait 100ms between each set of nodes
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  // Wait a while for the connections to settle
+  await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+
+  await Promise.all(callAllWorkersMethod(ProfileWorkerAction.ReportPeers));
+
+  await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+
+  // 4. Send 10 messages, each from a random node
+  const sendMessagesCount = 2;
+  for (let i = 0; i < sendMessagesCount; i++) {
+    for (const worker of workers) {
+      await callWorkerMethod(worker, ProfileWorkerAction.SendMessage);
+
+      // Wait 200ms between each message
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
-  // Wait for the nodes to connect
-  await Promise.all(nodes.map((node) => node.waitForConnection()));
-  console.log("All nodes connected");
+  // 5. Wait for the message to be received
+  await Promise.all(
+    callAllWorkersMethod(ProfileWorkerAction.WaitForMessages, {
+      count: 0.9 * (sendMessagesCount * numWorkers), // Wait for at least 90% of the messages
+      timeout: (numNodes * numWorkers * 1000) / 2, // with a timeout of 60s
+    }),
+  );
 
-  // Send 10 messages, each from a random node
-  const count = 50;
-  for (let i = 0; i < count; i++) {
-    const nodeNum = Math.floor(Math.random() * nodes.length);
-    console.log("Sending via node", nodeNum);
-    const node = nodes[nodeNum] as GossipTestNode;
-    await node.sendMessage();
+  // 6. Stop the worker
+  const allResponses = await Promise.all(callAllWorkersMethod(ProfileWorkerAction.Stop));
 
-    // Wait 100ms between each message
-    await new Promise((resolve) => setTimeout(resolve, 250));
+  // 7. Collect all the datas
+  const peerIds: string[] = [];
+  const datas: number[][] = [];
+  for (const fnResponse of allResponses) {
+    const response = fnResponse.response as StopResponse;
+    peerIds.push(...(response?.peerIds ?? []));
+    datas.push(...(response?.datas ?? []));
   }
 
-  // Wait for the message to be received
-  await Promise.all(nodes.map((node) => node.waitForMessages(count, 10 * 1000)));
-
-  // Stop the nodes
-  for (const node of nodes) {
-    await node.stop();
-  }
-
-  const output = prettyPrintTable(computeStats(nodes));
+  const output = prettyPrintTable(computeStats(peerIds, datas, numWorkers * sendMessagesCount));
   console.log(output);
 }
 
-function computeStats(gossipNodes: GossipTestNode[]): string[][] {
-  const data = [];
+function computeStats(peerIds: string[], datas: number[][], expected: number): string[][] {
+  const formattedData = [];
 
   // Headings
-  const headings = ["Node", "Count", "Median", "p95"];
-  data.push(headings);
+  const headings = ["Node", "Messages", "Median delay", "p95 delay", "Loss %", "# Peers"];
+  formattedData.push(headings);
 
-  // Go over all the nodes and compute the stats
-  for (const node of gossipNodes) {
-    const delays = Array.from(node.recievedMessages.values());
-
-    const count = delays.length;
-    const median = delays[Math.floor(delays.length / 2)];
-    const p95 = delays[Math.floor(delays.length * 0.95)];
-
-    const row = [
-      (node.gossipNode.peerId?.toString() ?? "").substring(30),
-      formatNumber(count),
-      formatNumber(median),
-      formatNumber(p95),
-    ];
-    data.push(row);
+  if (!peerIds || !datas) {
+    return formattedData;
   }
 
-  return data;
+  const allNodes = [0, 0, 0, 0];
+
+  // Go over all the nodes and compute the stats
+  for (let i = 0; i < peerIds?.length; i++) {
+    const data = datas[i] as number[];
+
+    const total = data[0] ?? 0;
+    const loss = (expected - total) / expected;
+
+    // Total Messages
+    allNodes[0] += total;
+
+    // Median delay
+    allNodes[1] += data[1] ?? 0;
+
+    // p95 delay
+    allNodes[2] += data[2] ?? 0;
+
+    const row = [
+      peerIds[i]?.substring(30) ?? "Unknown",
+      formatNumber(total),
+      formatTime(data[1]),
+      formatTime(data[2]),
+      formatPercentage(loss),
+      formatNumber(data[3]),
+    ];
+    formattedData.push(row);
+  }
+
+  // Average out the stats for allNodes
+  const loss = (expected * peerIds.length - (allNodes[0] ?? 0)) / expected;
+  const avgRow = [
+    "All Nodes",
+    formatNumber(allNodes[0]),
+    formatTime((allNodes[1] ?? 0) / peerIds.length),
+    formatTime((allNodes[2] ?? 0) / peerIds.length),
+    formatPercentage(loss),
+    peerIds.length.toString(),
+  ];
+  formattedData.push(avgRow);
+
+  return formattedData;
 }
