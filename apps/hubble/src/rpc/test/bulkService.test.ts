@@ -257,7 +257,7 @@ describe("getOnChainEvents", () => {
     const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
     const idRegistryEvent2 = Factories.IdRegistryOnChainEvent.build({ fid: fid + 1 });
     const signerEvent = Factories.KeyRegistryOnChainEvent.build({ fid });
-    const signerEvent2 = Factories.KeyRegistryOnChainEvent.build({ fid });
+    const signerEvent2 = Factories.KeyRegistryOnChainEvent.build({ blockNumber: signerEvent.blockNumber + 1, fid });
     await expect(engine.mergeOnChainEvent(idRegistryEvent)).resolves.toBeInstanceOf(Ok);
     await expect(engine.mergeOnChainEvent(idRegistryEvent2)).resolves.toBeInstanceOf(Ok);
     await expect(engine.mergeOnChainEvent(signerEvent)).resolves.toBeInstanceOf(Ok);
