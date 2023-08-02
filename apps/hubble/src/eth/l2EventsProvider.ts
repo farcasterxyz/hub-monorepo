@@ -30,13 +30,13 @@ const log = logger.child({
   component: "L2EventsProvider",
 });
 
-export class OPGoerliEthConstants {
+export class OptimismConstants {
   public static StorageRegistryAddress = "0x000000fC0a4Fccee0b30E360773F7888D1bD9FAA" as const;
   public static KeyRegistryAddress = "0x000000fc6548800fc8265d8eb7061d88cefb87c2" as const;
   public static IdRegistryAddress = "0x000000fc99489b8cd629291d97dbca62b81173c4" as const;
   public static FirstBlock = 12500000;
   public static ChunkSize = 1000;
-  public static chainId = BigInt(420); // OP Goerli
+  public static ChainId = 420; // OP Goerli
 }
 
 /**
@@ -48,6 +48,7 @@ export class L2EventsProvider {
 
   private _firstBlock: number;
   private _chunkSize: number;
+  private _chainId: number;
   private _resyncEvents: boolean;
 
   private _rentEventsByBlock: Map<number, Array<RentRegistryEvent>>;
@@ -85,12 +86,14 @@ export class L2EventsProvider {
     idRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
+    chainId: number,
     resyncEvents: boolean,
   ) {
     this._hub = hub;
     this._publicClient = publicClient;
     this._firstBlock = firstBlock;
     this._chunkSize = chunkSize;
+    this._chainId = chainId;
     this._resyncEvents = resyncEvents;
 
     this._lastBlockNumber = 0;
@@ -161,6 +164,7 @@ export class L2EventsProvider {
     idRegistryAddress: `0x${string}`,
     firstBlock: number,
     chunkSize: number,
+    chainId: number,
     resyncEvents: boolean,
   ): L2EventsProvider {
     const l2RpcUrls = l2RpcUrl.split(",");
@@ -179,6 +183,7 @@ export class L2EventsProvider {
       idRegistryAddress,
       firstBlock,
       chunkSize,
+      chainId,
       resyncEvents,
     );
 
@@ -563,7 +568,7 @@ export class L2EventsProvider {
       log.info({ fromBlock: nextFromBlock, toBlock: nextToBlock }, "syncing events from block range");
 
       const idFilter = await this._publicClient.createContractEventFilter({
-        address: OPGoerliEthConstants.IdRegistryAddress,
+        address: OptimismConstants.IdRegistryAddress,
         abi: IdRegistryV2.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
@@ -573,7 +578,7 @@ export class L2EventsProvider {
       await this.processIdRegistryEvents(idLogs);
 
       const storageFilter = await this._publicClient.createContractEventFilter({
-        address: OPGoerliEthConstants.StorageRegistryAddress,
+        address: OptimismConstants.StorageRegistryAddress,
         abi: StorageRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
@@ -585,7 +590,7 @@ export class L2EventsProvider {
       await this.processStorageEvents(storageLogs);
 
       const keyFilter = await this._publicClient.createContractEventFilter({
-        address: OPGoerliEthConstants.KeyRegistryAddress,
+        address: OptimismConstants.KeyRegistryAddress,
         abi: KeyRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
@@ -794,7 +799,7 @@ export class L2EventsProvider {
 
     const onChainEvent = OnChainEvent.create({
       type,
-      chainId: Number(OPGoerliEthConstants.chainId),
+      chainId: this._chainId,
       fid: Number(fid),
       blockNumber: Number(blockNumber),
       blockHash: blockHashBytes,

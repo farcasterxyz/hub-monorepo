@@ -72,11 +72,28 @@ app
   // Ethereum Options
   .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a Mainnet ETH Node (or comma separated list of URLs)")
   .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli ETH Node (or comma separated list of URLs)")
-  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node (or comma separated list of URLs)")
   .option("--rank-rpcs", "Rank the RPCs by latency/stability and use the fastest one (default: disabled)")
   .option("--fname-server-url <url>", `The URL for the FName registry server (default: ${DEFAULT_FNAME_SERVER_URL}`)
   .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
   .option("--first-block <number>", "The block number to begin syncing events from Farcaster contracts", parseNumber)
+
+  // L2 Options
+  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node (or comma separated list of URLs)")
+  .option("--l2-id-registry-address <address>", "The address of the L2 Farcaster ID Registry contract")
+  .option("--l2-key-registry-address <address>", "The address of the L2 Farcaster Key Registry contract")
+  .option("--l2-storage-registry-address <address>", "The address of the L2 Farcaster Storage Registry contract")
+  .option("--l2-resync-events", "Resync events from the L2 Farcaster contracts before starting (default: disabled)")
+  .option(
+    "--l2-first-block <number>",
+    "The block number to begin syncing events from L2 Farcaster contracts",
+    parseNumber,
+  )
+  .option(
+    "--l2-chunk-size <number>",
+    "The number of events to fetch from L2 Farcaster contracts at a time",
+    parseNumber,
+  )
+  .option("--l2-chain-id <number>", "The chain ID of the L2 Farcaster contracts are deployed to", parseNumber)
 
   // Networking Options
   .option("-a, --allowed-peers <peerIds...>", "Only peer with specific peer ids. (default: all peers allowed)")
@@ -359,12 +376,19 @@ app
       ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       ethMainnetRpcUrl: cliOptions.ethMainnetRpcUrl ?? hubConfig.ethMainnetRpcUrl,
       fnameServerUrl: cliOptions.fnameServerUrl ?? hubConfig.fnameServerUrl ?? DEFAULT_FNAME_SERVER_URL,
-      l2RpcUrl: cliOptions.l2RpcUrl ?? hubConfig.l2RpcUrl,
       rankRpcs: cliOptions.rankRpcs ?? hubConfig.rankRpcs ?? false,
       idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
       nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
       firstBlock: cliOptions.firstBlock ?? hubConfig.firstBlock,
       chunkSize: cliOptions.chunkSize ?? hubConfig.chunkSize ?? DEFAULT_CHUNK_SIZE,
+      l2RpcUrl: cliOptions.l2RpcUrl ?? hubConfig.l2RpcUrl,
+      l2IdRegistryAddress: cliOptions.l2IdRegistryAddress ?? hubConfig.l2IdRegistryAddress,
+      l2KeyRegistryAddress: cliOptions.l2KeyRegistryAddress ?? hubConfig.l2KeyRegistryAddress,
+      l2StorageRegistryAddress: cliOptions.l2StorageRegistryAddress ?? hubConfig.l2StorageRegistryAddress,
+      l2FirstBlock: cliOptions.l2FirstBlock ?? hubConfig.l2FirstBlock,
+      l2ChunkSize: cliOptions.l2ChunkSize ?? hubConfig.l2ChunkSize,
+      l2ChainId: cliOptions.l2ChainId ?? hubConfig.l2ChainId,
+      l2ResyncEvents: cliOptions.l2ResyncEvents ?? hubConfig.l2ResyncEvents ?? false,
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,

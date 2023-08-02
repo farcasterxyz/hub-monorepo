@@ -72,7 +72,7 @@ import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJ
 import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
-import { L2EventsProvider, OPGoerliEthConstants } from "./eth/l2EventsProvider.js";
+import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import { prettyPrintTable } from "./profile/profile.js";
 import packageJson from "./package.json" assert { type: "json" };
@@ -169,8 +169,14 @@ export interface HubOptions {
   /** Address of the NameRegistryAddress contract  */
   nameRegistryAddress?: `0x${string}`;
 
-  /** Address of the StorageRegistryAddress contract  */
-  storageRegistryAddress?: `0x${string}`;
+  /** Address of the Id Registry contract  */
+  l2IdRegistryAddress?: `0x${string}`;
+
+  /** Address of the Key Registry contract  */
+  l2KeyRegistryAddress?: `0x${string}`;
+
+  /** Address of the StorageRegistry contract  */
+  l2StorageRegistryAddress?: `0x${string}`;
 
   /** Block number to begin syncing events from  */
   firstBlock?: number;
@@ -183,6 +189,12 @@ export interface HubOptions {
 
   /** Number of blocks to batch when syncing historical events for L2 */
   l2ChunkSize?: number;
+
+  /** Chain Id for L2 */
+  l2ChainId?: number;
+
+  /** Resync l2 events */
+  l2ResyncEvents?: boolean;
 
   /** Resync events */
   resyncEthEvents?: boolean;
@@ -309,12 +321,13 @@ export class Hub implements HubInterface {
         this,
         options.l2RpcUrl,
         options.rankRpcs ?? false,
-        options.storageRegistryAddress ?? OPGoerliEthConstants.StorageRegistryAddress,
-        OPGoerliEthConstants.KeyRegistryAddress,
-        OPGoerliEthConstants.IdRegistryAddress,
-        options.l2FirstBlock ?? OPGoerliEthConstants.FirstBlock,
-        options.l2ChunkSize ?? OPGoerliEthConstants.ChunkSize,
-        options.resyncEthEvents ?? false,
+        options.l2StorageRegistryAddress ?? OptimismConstants.StorageRegistryAddress,
+        options.l2KeyRegistryAddress ?? OptimismConstants.KeyRegistryAddress,
+        options.l2IdRegistryAddress ?? OptimismConstants.IdRegistryAddress,
+        options.l2FirstBlock ?? OptimismConstants.FirstBlock,
+        options.l2ChunkSize ?? OptimismConstants.ChunkSize,
+        options.l2ChainId ?? OptimismConstants.ChainId,
+        options.l2ResyncEvents ?? false,
       );
     } else {
       log.warn("No L2 RPC URL provided, not syncing with L2 contract events");

@@ -1217,7 +1217,11 @@ class Engine {
   private async handleMergeOnChainEvent(event: MergeOnChainEventHubEvent): HubAsyncResult<void> {
     const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
 
-    if (isSignerOnChainEvent(onChainEvent) && onChainEvent.signerEventBody.eventType === SignerEventType.REMOVE) {
+    if (
+      onChainEvent &&
+      isSignerOnChainEvent(onChainEvent) &&
+      onChainEvent.signerEventBody.eventType === SignerEventType.REMOVE
+    ) {
       const payload = RevokeMessagesBySignerJobPayload.create({
         fid: onChainEvent.fid,
         signer: onChainEvent.signerEventBody.key,
