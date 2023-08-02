@@ -448,9 +448,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       const protocolMessage = GossipNode.decodeMessage(message.data);
       if (protocolMessage.isOk() && protocolMessage.value.version === GossipVersion.V1_1) {
         if (protocolMessage.value.message !== undefined)
-          return protocolMessage._unsafeUnwrap().message?.hash as Uint8Array;
+          return protocolMessage.unwrapOr(undefined)?.message?.hash ?? new Uint8Array();
         if (protocolMessage.value.idRegistryEvent !== undefined)
-          return protocolMessage.value.idRegistryEvent?.transactionHash as Uint8Array;
+          return protocolMessage.value.idRegistryEvent?.transactionHash ?? new Uint8Array();
       }
     }
     return msgIdFnStrictSign(message);

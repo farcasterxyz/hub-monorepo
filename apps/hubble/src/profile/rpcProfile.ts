@@ -46,6 +46,8 @@ export async function profileRPCServer(addressString: string, useInsecure: boole
   // Pretty print the results
   console.log("\nRPC Server Profile\n");
   console.log(prettyPrintTable(data));
+
+  rpcClient.close();
 }
 
 async function profileSubmitMessages(

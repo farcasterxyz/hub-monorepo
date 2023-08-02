@@ -620,8 +620,9 @@ const rpcProfileCommand = new Command("rpc")
 
 const gossipProfileCommand = new Command("gossip")
   .description("Profile the gossip server's performance")
-  .action(async () => {
-    profileGossipServer();
+  .option("-n, --num-nodes <threads>:<nodes>", "Number of nodes to simulate. Total is threads * nodes", "3:10")
+  .action(async (cliOptions) => {
+    profileGossipServer(cliOptions.numNodes);
   });
 
 app

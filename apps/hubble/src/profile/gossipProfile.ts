@@ -1,4 +1,3 @@
-import { format } from "path";
 import { formatNumber, formatPercentage, formatTime, prettyPrintTable } from "./profile.js";
 import { Worker } from "worker_threads";
 
@@ -47,9 +46,12 @@ export type ProfileWorkerResponse = {
   response?: StopResponse | MultiAddrResponse;
 };
 
-export async function profileGossipServer() {
-  const numWorkers = 3;
-  const numNodes = 10;
+export async function profileGossipServer(nodeConfig = "3:10") {
+  const [numWorkers, numNodes] = nodeConfig.split(":").map((n) => parseInt(n));
+
+  if (!numWorkers || !numNodes) {
+    throw new Error(`Invalid node config: "${nodeConfig}". Please provide a config like "3:10" for 30 nodes`);
+  }
 
   const workerPath = new URL("./gossipProfileWorker.js", import.meta.url);
 
