@@ -65,6 +65,8 @@ export enum RootPrefix {
   RentRegistryEventsByExpiry = 21,
   /* Used to store storage admin registry events */
   StorageAdminRegistryEvent = 22,
+  /* Used to store on chain events */
+  OnChainEvent = 23,
 }
 
 /**
@@ -112,6 +114,15 @@ export enum UserPostfix {
 
   /* UserDataStore add set */
   UserDataAdds = 97,
+}
+
+export enum OnChainEventPostfix {
+  OnChainEvents = 1,
+
+  // Secondary indexes
+  SignerByFid = 51,
+  IdRegisterByFid = 52,
+  IdRegisterByCustodyAddress = 53,
 }
 
 /**

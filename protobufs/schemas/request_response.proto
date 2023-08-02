@@ -2,6 +2,7 @@ syntax = "proto3";
 
 import "message.proto";
 import "storage_event.proto";
+import "onchain_event.proto";
 import "hub_event.proto";
 import "username_proof.proto";
 
@@ -153,6 +154,10 @@ message RentRegistryEventsRequest {
 
 message RentRegistryEventsResponse {
   repeated RentRegistryEvent events = 1;
+}
+
+message OnChainEventResponse {
+  repeated OnChainEvent events = 1;
 }
 
 message StorageAdminRegistryEventRequest {

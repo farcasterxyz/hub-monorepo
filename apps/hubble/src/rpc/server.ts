@@ -37,6 +37,7 @@ import {
   SyncStatus,
   UserNameProof,
   UsernameProofsResponse,
+  OnChainEventResponse,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -245,6 +246,7 @@ export default class Server {
 
   private rpcUsers: RpcUsers;
   private submitMessageRateLimiter: RateLimiterMemory;
+  private syncSnapshotRateLimiter: RateLimiterMemory;
   private subscribeIpLimiter = new IpConnectionLimiter(SUBSCRIBE_PERIP_LIMIT, SUBSCRIBE_GLOBAL_LIMIT);
 
   constructor(
@@ -282,6 +284,12 @@ export default class Server {
 
     this.submitMessageRateLimiter = new RateLimiterMemory({
       points: rateLimitPerMinute,
+      duration: 60,
+    });
+
+    // Rate limit sync status to 2 per minute
+    this.syncSnapshotRateLimiter = new RateLimiterMemory({
+      points: 2,
       duration: 60,
     });
   }
@@ -351,7 +359,7 @@ export default class Server {
       getInfo: (call, callback) => {
         (async () => {
           const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-          log.info({ method: "getInfo", req: call.request }, `RPC call from ${peer}`);
+          log.debug({ method: "getInfo", req: call.request }, `RPC call from ${peer}`);
 
           const info = HubInfoResponse.create({
             version: APP_VERSION,
@@ -375,7 +383,7 @@ export default class Server {
       getSyncStatus: (call, callback) => {
         (async () => {
           const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-          log.info({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer}`);
+          log.debug({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer}`);
 
           if (!this.gossipNode || !this.syncEngine || !this.hub) {
             callback(toServiceError(new HubError("bad_request", "Hub isn't initialized")));
@@ -417,7 +425,7 @@ export default class Server {
       },
       getAllSyncIdsByPrefix: (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -428,7 +436,7 @@ export default class Server {
       },
       getAllMessagesBySyncIds: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -458,7 +466,7 @@ export default class Server {
       },
       getSyncMetadataByPrefix: (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
 
         const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
           const childrenTrie = [];
@@ -499,7 +507,10 @@ export default class Server {
       },
       getSyncSnapshotByPrefix: (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer}`);
+        log.debug(
+          { method: "getSyncSnapshotByPrefix", req: call.request, reqStr: JSON.stringify(call.request) },
+          `RPC call from ${peer}`,
+        );
 
         // If someone is asking for our sync snapshot, that means we're getting incoming
         // connections
@@ -508,6 +519,13 @@ export default class Server {
         const request = call.request;
 
         (async () => {
+          const rateLimitResult = await rateLimitByIp(peer, this.syncSnapshotRateLimiter);
+          if (rateLimitResult.isErr()) {
+            callback(toServiceError(rateLimitResult.error));
+            logger.warn({ err: rateLimitResult.error }, `RPC call: Rate limit exceeded for ${peer}`);
+            return;
+          }
+
           const rootHash = (await this.syncEngine?.trie.rootHash()) ?? "";
           const snapshot = await this.syncEngine?.getSnapshotByPrefix(request.prefix);
           snapshot?.match(
@@ -519,9 +537,11 @@ export default class Server {
                 excludedHashes: snapshot.excludedHashes,
               });
               callback(null, snapshotResponse);
+              log.info({ snapshotResponse }, `RPC call: Sending snapshot response to ${peer}`);
             },
             (err: HubError) => {
               callback(toServiceError(err));
+              log.error({ err }, `RPC call: Error sending snapshot response to ${peer}`);
             },
           );
         })();
@@ -564,7 +584,7 @@ export default class Server {
       },
       getCast: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getCast", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getCast", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -580,7 +600,7 @@ export default class Server {
       },
       getCastsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getCastsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getCastsByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -600,7 +620,7 @@ export default class Server {
       },
       getCastsByParent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer}`);
 
         const { parentCastId, parentUrl, pageSize, pageToken, reverse } = call.request;
 
@@ -620,7 +640,7 @@ export default class Server {
       },
       getCastsByMention: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getCastsByMention", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getCastsByMention", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -636,7 +656,7 @@ export default class Server {
       },
       getReaction: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getReaction", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getReaction", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -656,7 +676,7 @@ export default class Server {
       },
       getReactionsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getReactionsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getReactionsByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByFid(fid, reactionType, {
@@ -675,7 +695,7 @@ export default class Server {
       },
       getReactionsByCast: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getReactionsByCast", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getReactionsByCast", req: call.request }, `RPC call from ${peer}`);
 
         const { targetCastId, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? CastId.create(), reactionType, {
@@ -694,7 +714,7 @@ export default class Server {
       },
       getReactionsByTarget: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getReactionsByTarget", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getReactionsByTarget", req: call.request }, `RPC call from ${peer}`);
 
         const { targetCastId, targetUrl, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? targetUrl ?? "", reactionType, {
@@ -713,7 +733,7 @@ export default class Server {
       },
       getUserData: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getUserData", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getUserData", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -729,7 +749,7 @@ export default class Server {
       },
       getUserDataByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getUserDataByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getUserDataByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -749,7 +769,7 @@ export default class Server {
       },
       getNameRegistryEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getNameRegistryEvent", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getNameRegistryEvent", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -765,7 +785,7 @@ export default class Server {
       },
       getUsernameProof: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -781,7 +801,7 @@ export default class Server {
       },
       getUserNameProofsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getUserNameProofsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getUserNameProofsByFid", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -797,7 +817,7 @@ export default class Server {
       },
       getVerification: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getVerification", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getVerification", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -813,7 +833,7 @@ export default class Server {
       },
       getVerificationsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getVerificationsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getVerificationsByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -833,7 +853,7 @@ export default class Server {
       },
       getSigner: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getSigner", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getSigner", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -849,7 +869,7 @@ export default class Server {
       },
       getSignersByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getSignersByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getSignersByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const signersResult = await this.engine?.getSignersByFid(fid, {
@@ -868,7 +888,7 @@ export default class Server {
       },
       getIdRegistryEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getIdRegistryEvent", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getIdRegistryEvent", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
         const idRegistryEventResult = await this.engine?.getIdRegistryEvent(request.fid);
@@ -883,7 +903,7 @@ export default class Server {
       },
       getLink: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getLink", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getLink", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
 
@@ -899,7 +919,7 @@ export default class Server {
       },
       getLinksByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getLinksByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getLinksByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, linkType, pageSize, pageToken, reverse } = call.request;
         const linksResult = await this.engine?.getLinksByFid(fid, linkType, {
@@ -918,7 +938,7 @@ export default class Server {
       },
       getLinksByTarget: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getLinksByTarget", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getLinksByTarget", req: call.request }, `RPC call from ${peer}`);
 
         const { targetFid, linkType, pageSize, pageToken, reverse } = call.request;
         const linksResult = await this.engine?.getLinksByTarget(targetFid ?? 0, linkType, {
@@ -937,7 +957,7 @@ export default class Server {
       },
       getIdRegistryEventByAddress: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getIdRegistryEventByAddress", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getIdRegistryEventByAddress", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
         const idRegistryEventResult = await this.engine?.getIdRegistryEventByAddress(request.address);
@@ -952,7 +972,7 @@ export default class Server {
       },
       getRentRegistryEvents: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getRentRegistryEvents", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getRentRegistryEvents", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
         const rentRegistryEventsResult = await this.engine?.getRentRegistryEvents(request.fid);
@@ -965,9 +985,21 @@ export default class Server {
           },
         );
       },
+      getOnChainEvents: async (call, callback) => {
+        const request = call.request;
+        const onChainEventsResult = await this.engine?.getOnChainEvents(request.fid);
+        onChainEventsResult?.match(
+          (onChainEvents: OnChainEventResponse) => {
+            callback(null, onChainEvents);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
       getFids: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getFids", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getFids", req: call.request }, `RPC call from ${peer}`);
 
         const { pageSize, pageToken, reverse } = call.request;
 
@@ -987,7 +1019,7 @@ export default class Server {
       },
       getAllCastMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllCastMessagesByFid(fid, {
@@ -1006,7 +1038,7 @@ export default class Server {
       },
       getAllReactionMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllReactionMessagesByFid(fid, {
@@ -1025,7 +1057,7 @@ export default class Server {
       },
       getAllVerificationMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllVerificationMessagesByFid(fid, {
@@ -1044,7 +1076,7 @@ export default class Server {
       },
       getAllSignerMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllSignerMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllSignerMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllSignerMessagesByFid(fid, {
@@ -1063,7 +1095,7 @@ export default class Server {
       },
       getAllUserDataMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getUserDataByFid(fid, {
@@ -1082,7 +1114,7 @@ export default class Server {
       },
       getAllLinkMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getAllLinkMessagesByFid(fid, {
@@ -1101,7 +1133,7 @@ export default class Server {
       },
       getEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "getEvent", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getEvent", req: call.request }, `RPC call from ${peer}`);
 
         const result = await this.engine?.getEvent(call.request.id);
         result?.match(

@@ -1,4 +1,5 @@
 import * as hubEventProtobufs from "./generated/hub_event";
+import * as onChainEventProtobufs from "./generated/onchain_event";
 import * as protobufs from "./generated/message";
 import * as types from "./types";
 
@@ -155,6 +156,31 @@ export const isUsernameProofMessage = (message: protobufs.Message): message is t
   );
 };
 
+export const isSignerOnChainEvent = (event: onChainEventProtobufs.OnChainEvent): event is types.SignerOnChainEvent => {
+  return (
+    event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER &&
+    typeof event.signerEventBody !== "undefined"
+  );
+};
+
+export const isSignerMigratedOnChainEvent = (
+  event: onChainEventProtobufs.OnChainEvent,
+): event is types.SignerMigratedOnChainEvent => {
+  return (
+    event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED &&
+    typeof event.signerMigratedEventBody !== "undefined"
+  );
+};
+
+export const isIdRegisterOnChainEvent = (
+  event: onChainEventProtobufs.OnChainEvent,
+): event is types.IdRegisterOnChainEvent => {
+  return (
+    event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_ID_REGISTER &&
+    typeof event.idRegisterEventBody !== "undefined"
+  );
+};
+
 /** Hub event typeguards */
 
 export const isMergeMessageHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeMessageHubEvent => {
@@ -218,6 +244,14 @@ export const isMergeStorageAdminRegistryEventHubEvent = (
     event.type === hubEventProtobufs.HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT &&
     typeof event.mergeStorageAdminRegistryEventBody !== "undefined" &&
     typeof event.mergeStorageAdminRegistryEventBody.storageAdminRegistryEvent !== "undefined"
+  );
+};
+
+export const isMergeOnChainHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeOnChainEventHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.MERGE_ON_CHAIN_EVENT &&
+    typeof event.mergeOnChainEventBody !== "undefined" &&
+    typeof event.mergeOnChainEventBody.onChainEvent !== "undefined"
   );
 };
 

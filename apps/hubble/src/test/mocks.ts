@@ -7,6 +7,7 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
+  OnChainEvent,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
 import { ok, ResultAsync } from "neverthrow";
@@ -58,6 +59,10 @@ export class MockHub implements HubInterface {
 
   async submitUserNameProof(proof: UserNameProof): HubAsyncResult<number> {
     return this.engine.mergeUserNameProof(proof);
+  }
+
+  async submitOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {
+    return this.engine.mergeOnChainEvent(event);
   }
 
   async getHubState(): HubAsyncResult<HubState> {
