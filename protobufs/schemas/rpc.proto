@@ -5,8 +5,8 @@ import "id_registry_event.proto";
 import "name_registry_event.proto";
 import "hub_event.proto";
 import "request_response.proto";
-import "storage_event.proto";
 import "username_proof.proto";
+import "onchain_event.proto";
 
 service HubService {
   // Submit Methods
@@ -32,8 +32,7 @@ service HubService {
   rpc GetUserData(UserDataRequest) returns (Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
   rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
-  rpc GetRentRegistryEvents(FidRequest) returns (RentRegistryEventsResponse);
-  rpc GetOnChainEvents(FidRequest) returns (OnChainEventResponse);
+  rpc GetOnChainEvents(OnChainEventRequest) returns (OnChainEventResponse);
 
   // Username Proof
   rpc GetUsernameProof(UsernameProofRequest) returns (UserNameProof);
@@ -45,6 +44,7 @@ service HubService {
 
   // Signer
   rpc GetSigner(SignerRequest) returns (Message);
+  rpc GetOnChainSigner(SignerRequest) returns (OnChainEvent);
   rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
   rpc GetIdRegistryEvent(IdRegistryEventRequest) returns (IdRegistryEvent);
   rpc GetIdRegistryEventByAddress(IdRegistryEventByAddressRequest) returns (IdRegistryEvent);
@@ -78,5 +78,5 @@ service AdminService {
   
   rpc SubmitIdRegistryEvent(IdRegistryEvent) returns (IdRegistryEvent);
   rpc SubmitNameRegistryEvent(NameRegistryEvent) returns (NameRegistryEvent);
-  rpc SubmitRentRegistryEvent(RentRegistryEvent) returns (RentRegistryEvent);
+  rpc SubmitOnChainEvent(OnChainEvent) returns (OnChainEvent);
 }

@@ -38,8 +38,9 @@ import {
   UserNameProof,
   UsernameProofsResponse,
   OnChainEventResponse,
+  SignerOnChainEvent,
 } from "@farcaster/hub-nodejs";
-import { err, ok, Result, ResultAsync } from "neverthrow";
+import { err, ok, Result } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
 import { GossipNode } from "../network/p2p/gossipNode.js";
 import { NodeMetadata } from "../network/sync/merkleTrie.js";
@@ -55,7 +56,6 @@ import {
   SLOW_CLIENT_GRACE_PERIOD_MS,
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
-import { RentRegistryEventsResponse } from "@farcaster/hub-nodejs";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -851,6 +851,22 @@ export default class Server {
           },
         );
       },
+      getOnChainSigner: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.debug({ method: "getOnChainSigner", req: call.request }, `RPC call from ${peer}`);
+
+        const request = call.request;
+
+        const signerResult = await this.engine?.getActiveSigner(request.fid, request.signer);
+        signerResult?.match(
+          (signer: SignerOnChainEvent) => {
+            callback(null, signer);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
       getSignersByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getSignersByFid", req: call.request }, `RPC call from ${peer}`);
@@ -954,24 +970,9 @@ export default class Server {
           },
         );
       },
-      getRentRegistryEvents: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getRentRegistryEvents", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-        const rentRegistryEventsResult = await this.engine?.getRentRegistryEvents(request.fid);
-        rentRegistryEventsResult?.match(
-          (rentRegistryEvents: RentRegistryEventsResponse) => {
-            callback(null, rentRegistryEvents);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
       getOnChainEvents: async (call, callback) => {
         const request = call.request;
-        const onChainEventsResult = await this.engine?.getOnChainEvents(request.fid);
+        const onChainEventsResult = await this.engine?.getOnChainEvents(request.fid, request.eventType);
         onChainEventsResult?.match(
           (onChainEvents: OnChainEventResponse) => {
             callback(null, onChainEvents);

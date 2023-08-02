@@ -89,12 +89,11 @@ async function profileSubmitMessages(
     throw `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
   }
 
-  const rentRegistryEvent = Factories.RentRegistryEvent.build({
+  const rentRegistryEvent = Factories.StorageRentOnChainEvent.build({
     fid,
-    expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
-    units: 2,
+    storageRentEventBody: Factories.StorageRentEventBody.build({ units: 2 }),
   });
-  const rentResult = await adminRpcClient.submitRentRegistryEvent(rentRegistryEvent, metadata);
+  const rentResult = await adminRpcClient.submitOnChainEvent(rentRegistryEvent, metadata);
 
   if (!rentResult.isOk()) {
     throw `Failed to submit rent event for fid ${fid}: ${rentResult.error}. NOTE: RPC profile only works on devnet`;

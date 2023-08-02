@@ -196,21 +196,21 @@ export default class AdminServer {
         );
       },
 
-      submitRentRegistryEvent: async (call, callback) => {
+      submitOnChainEvent: async (call, callback) => {
         const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, "submitRentRegistryEvent failed");
+          logger.warn({ errMsg: authResult.error.message }, "submitOnChainEvent failed");
           callback(
             toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
           );
           return;
         }
 
-        const rentRegistryEvent = call.request;
-        const result = await this.hub?.submitRentRegistryEvent(rentRegistryEvent, "rpc");
+        const onChainEvent = call.request;
+        const result = await this.hub?.submitOnChainEvent(onChainEvent, "rpc");
         result?.match(
           () => {
-            callback(null, rentRegistryEvent);
+            callback(null, onChainEvent);
           },
           (err: HubError) => {
             callback(toServiceError(err));

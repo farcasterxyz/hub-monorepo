@@ -1,4 +1,4 @@
-import { FarcasterNetwork, StorageRegistryEventType } from "@farcaster/hub-nodejs";
+import { FarcasterNetwork, OnChainEventType, StorageRegistryEventType } from "@farcaster/hub-nodejs";
 import { StorageRegistry } from "./abis.js";
 import { jestRocksDB } from "../storage/db/jestUtils.js";
 import Engine from "../storage/engine/index.js";
@@ -7,17 +7,14 @@ import { deployStorageRegistry, publicClient, testClient, walletClientWithAccoun
 import { accounts } from "../test/constants.js";
 import { sleep } from "../utils/crypto.js";
 import { L2EventsProvider, OptimismConstants } from "./l2EventsProvider.js";
-import {
-  getNextRentRegistryEventFromIterator,
-  getNextStorageAdminRegistryEventFromIterator,
-  getRentRegistryEventsIterator,
-  getStorageAdminRegistryEventsIterator,
-} from "../storage/db/storageRegistryEvent.js";
-import { Transport, toBytes } from "viem";
+import { Transport } from "viem";
+import OnChainEventStore from "../storage/stores/onChainEventStore.js";
+import StoreEventHandler from "../storage/stores/storeEventHandler.js";
 
 const db = jestRocksDB("protobufs.l2EventsProvider.test");
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const hub = new MockHub(db, engine);
+const onChainEventStore = new OnChainEventStore(db, new StoreEventHandler(db));
 
 let l2EventsProvider: L2EventsProvider;
 let storageRegistryAddress: `0x${string}`;
@@ -174,28 +171,9 @@ describe("process events", () => {
     await testClient.mine({ blocks: 7 });
     await waitForBlock(Number(maxUnitsTrx.blockNumber) + L2EventsProvider.numConfirmations);
 
-    const postCreditRegistryEventIterator = await getRentRegistryEventsIterator(db, 1);
-    const postCreditRegistryEvent = await getNextRentRegistryEventFromIterator(postCreditRegistryEventIterator);
-    expect(postCreditRegistryEvent).toBeDefined();
-    expect(postCreditRegistryEvent?.fid).toEqual(1);
-    expect(postCreditRegistryEvent?.type).toEqual(StorageRegistryEventType.RENT);
-
-    const storageAdminRegistryEventIterator = await getStorageAdminRegistryEventsIterator(db);
-    const storageAdminEvents = [];
-    for (let i = 0; i < 4; i++) {
-      storageAdminEvents.push(await getNextStorageAdminRegistryEventFromIterator(storageAdminRegistryEventIterator));
-    }
-
-    expect(storageAdminEvents[0]?.type).toEqual(StorageRegistryEventType.SET_PRICE);
-    expect(storageAdminEvents[0]?.value).toEqual(toBytes(BigInt(1)));
-
-    expect(storageAdminEvents[1]?.type).toEqual(StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP);
-    expect(storageAdminEvents[1]?.value).toEqual(toBytes(BigInt(100000000000000)));
-
-    expect(storageAdminEvents[2]?.type).toEqual(StorageRegistryEventType.SET_GRACE_PERIOD);
-    expect(storageAdminEvents[2]?.value).toEqual(toBytes(BigInt(1)));
-
-    expect(storageAdminEvents[3]?.type).toEqual(StorageRegistryEventType.SET_MAX_UNITS);
-    expect(storageAdminEvents[3]?.value).toEqual(toBytes(BigInt(1)));
+    const events = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+    expect(events.length).toEqual(1);
+    expect(events[0]?.fid).toEqual(1);
+    expect(events[0]?.storageRentEventBody?.units).toEqual(1);
   }, 30000);
 });

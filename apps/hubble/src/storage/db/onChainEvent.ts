@@ -105,3 +105,24 @@ export const getManyOnChainEvents = async <T extends OnChainEvent>(
   const buffers = await db.getMany(primaryKeys);
   return buffers.map((buffer) => OnChainEvent.decode(new Uint8Array(buffer)) as T);
 };
+
+export const forEachOnChainEvent = async (
+  db: RocksDB,
+  type: OnChainEventType,
+  callback: (event: OnChainEvent) => void,
+  fid?: number,
+  timeout?: number,
+): Promise<void> => {
+  await db.forEachIteratorByPrefix(
+    makeOnChainEventIteratorPrefix(type, fid),
+    async (_, value) => {
+      if (!value) {
+        return;
+      }
+      const event = OnChainEvent.decode(value);
+      callback(event);
+    },
+    { values: true },
+    timeout || 15 * 60 * 1000,
+  );
+};

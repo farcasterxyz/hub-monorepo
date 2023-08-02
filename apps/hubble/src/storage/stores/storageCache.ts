@@ -3,25 +3,22 @@ import {
   HubEvent,
   HubResult,
   isMergeMessageHubEvent,
+  isMergeOnChainHubEvent,
   isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
+  isStorageRentOnChainEvent,
   Message,
+  OnChainEventType,
+  StorageRentOnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
 import { logger } from "../../utils/logger.js";
 import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from "../db/message.js";
-import {
-  bytesCompare,
-  getFarcasterTime,
-  HubAsyncResult,
-  isMergeRentRegistryEventHubEvent,
-  RentRegistryEvent,
-  StorageRegistryEventType,
-} from "@farcaster/core";
-import { getNextRentRegistryEventFromIterator, getRentRegistryEventsIterator } from "../db/storageRegistryEvent.js";
+import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
+import { forEachOnChainEvent } from "../db/onChainEvent.js";
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
@@ -76,28 +73,19 @@ export class StorageCache {
     if (time.isErr()) {
       log.error({ err: time.error }, "could not obtain time");
     } else {
-      await this._db.forEachIteratorByPrefix(
-        Buffer.from([RootPrefix.RentRegistryEvent]),
-        async (_, value) => {
-          if (!value) {
-            return;
-          }
-
-          const event = RentRegistryEvent.decode(value);
-          const existingSlot = this._activeStorageSlots.get(event.fid);
-          if (event.type === StorageRegistryEventType.RENT && event.expiry > time.value) {
-            this._activeStorageSlots.set(event.fid, {
-              units: event.units + (existingSlot?.units ?? 0),
-              invalidateAt:
-                (existingSlot?.invalidateAt ?? event.expiry) < event.expiry
-                  ? existingSlot?.invalidateAt ?? event.expiry
-                  : event.expiry,
-            });
-          }
-        },
-        { values: true },
-        15 * 60 * 1000,
-      );
+      await forEachOnChainEvent(this._db, OnChainEventType.EVENT_TYPE_STORAGE_RENT, (event) => {
+        const existingSlot = this._activeStorageSlots.get(event.fid);
+        if (isStorageRentOnChainEvent(event) && event.storageRentEventBody.expiry > time.value) {
+          const rentEventBody = event.storageRentEventBody;
+          this._activeStorageSlots.set(event.fid, {
+            units: rentEventBody.units + (existingSlot?.units ?? 0),
+            invalidateAt:
+              (existingSlot?.invalidateAt ?? rentEventBody.expiry) < rentEventBody.expiry
+                ? existingSlot?.invalidateAt ?? rentEventBody.expiry
+                : rentEventBody.expiry,
+          });
+        }
+      });
     }
 
     this._counts = usage;
@@ -134,24 +122,25 @@ export class StorageCache {
     }
 
     if (slot.invalidateAt < time.value) {
-      const iterator = await getRentRegistryEventsIterator(this._db, fid);
-      let event: RentRegistryEvent | undefined;
-      slot = { units: 0, invalidateAt: time.value + 365 * 24 * 60 * 60 };
+      const newSlot = { units: 0, invalidateAt: time.value + 365 * 24 * 60 * 60 };
+      await forEachOnChainEvent(
+        this._db,
+        OnChainEventType.EVENT_TYPE_STORAGE_RENT,
+        (event) => {
+          if (isStorageRentOnChainEvent(event)) {
+            const rentEventBody = event.storageRentEventBody;
+            if (rentEventBody.expiry < time.value) return;
+            if (newSlot.invalidateAt > rentEventBody.expiry) {
+              newSlot.invalidateAt = rentEventBody.expiry;
+            }
 
-      while (iterator.isOpen) {
-        event = await getNextRentRegistryEventFromIterator(iterator);
-        if (!event) break;
-        if (event.expiry < time.value) continue;
-        if (slot.invalidateAt > event.expiry) {
-          slot.invalidateAt = event.expiry;
-        }
-
-        slot.units += event.units;
-      }
-
+            newSlot.units += rentEventBody.units;
+          }
+        },
+        fid,
+      );
+      slot = newSlot;
       this._activeStorageSlots.set(fid, slot);
-
-      iterator.end();
     }
 
     return ok(slot.units);
@@ -205,8 +194,8 @@ export class StorageCache {
       } else if (event.mergeUsernameProofBody.deletedUsernameProofMessage) {
         this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
       }
-    } else if (isMergeRentRegistryEventHubEvent(event)) {
-      this.addRent(event.mergeRentRegistryEventBody.rentRegistryEvent);
+    } else if (isMergeOnChainHubEvent(event) && isStorageRentOnChainEvent(event.mergeOnChainEventBody.onChainEvent)) {
+      this.addRent(event.mergeOnChainEventBody.onChainEvent);
     }
     return ok(undefined);
   }
@@ -255,7 +244,7 @@ export class StorageCache {
     }
   }
 
-  private addRent(event: RentRegistryEvent): void {
+  private addRent(event: StorageRentOnChainEvent): void {
     if (event !== undefined) {
       const existingSlot = this._activeStorageSlots.get(event.fid);
       const time = getFarcasterTime();
@@ -264,18 +253,19 @@ export class StorageCache {
         return;
       }
 
+      const rentEventBody = event.storageRentEventBody;
       if (time.value > (existingSlot?.invalidateAt ?? 0)) {
         this._activeStorageSlots.set(event.fid, {
-          units: event.units,
-          invalidateAt: event.expiry,
+          units: rentEventBody.units,
+          invalidateAt: rentEventBody.expiry,
         });
       } else {
         this._activeStorageSlots.set(event.fid, {
-          units: event.units + (existingSlot?.units ?? 0),
+          units: rentEventBody.units + (existingSlot?.units ?? 0),
           invalidateAt:
-            (existingSlot?.invalidateAt ?? event.expiry) < event.expiry
-              ? existingSlot?.invalidateAt ?? event.expiry
-              : event.expiry,
+            (existingSlot?.invalidateAt ?? rentEventBody.expiry) < rentEventBody.expiry
+              ? existingSlot?.invalidateAt ?? rentEventBody.expiry
+              : rentEventBody.expiry,
         });
       }
     }

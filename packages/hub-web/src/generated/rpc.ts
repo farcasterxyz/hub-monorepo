@@ -8,6 +8,7 @@ import { HubEvent } from "./hub_event";
 import { IdRegistryEvent } from "./id_registry_event";
 import { CastId, Message } from "./message";
 import { NameRegistryEvent } from "./name_registry_event";
+import { OnChainEvent } from "./onchain_event";
 import {
   CastsByParentRequest,
   Empty,
@@ -24,11 +25,11 @@ import {
   LinksByTargetRequest,
   MessagesResponse,
   NameRegistryEventRequest,
+  OnChainEventRequest,
   OnChainEventResponse,
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
-  RentRegistryEventsResponse,
   SignerRequest,
   SubscribeRequest,
   SyncIds,
@@ -42,7 +43,6 @@ import {
   UsernameProofsResponse,
   VerificationRequest,
 } from "./request_response";
-import { RentRegistryEvent } from "./storage_event";
 import { UserNameProof } from "./username_proof";
 
 export interface HubService {
@@ -75,11 +75,7 @@ export interface HubService {
     request: DeepPartial<NameRegistryEventRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<NameRegistryEvent>;
-  getRentRegistryEvents(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<RentRegistryEventsResponse>;
-  getOnChainEvents(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
+  getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
   /** Username Proof */
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof>;
   getUserNameProofsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UsernameProofsResponse>;
@@ -88,6 +84,7 @@ export interface HubService {
   getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   /** Signer */
   getSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
+  getOnChainSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
   getSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   getIdRegistryEvent(request: DeepPartial<IdRegistryEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<IdRegistryEvent>;
   getIdRegistryEventByAddress(
@@ -143,13 +140,13 @@ export class HubServiceClientImpl implements HubService {
     this.getUserData = this.getUserData.bind(this);
     this.getUserDataByFid = this.getUserDataByFid.bind(this);
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
-    this.getRentRegistryEvents = this.getRentRegistryEvents.bind(this);
     this.getOnChainEvents = this.getOnChainEvents.bind(this);
     this.getUsernameProof = this.getUsernameProof.bind(this);
     this.getUserNameProofsByFid = this.getUserNameProofsByFid.bind(this);
     this.getVerification = this.getVerification.bind(this);
     this.getVerificationsByFid = this.getVerificationsByFid.bind(this);
     this.getSigner = this.getSigner.bind(this);
+    this.getOnChainSigner = this.getOnChainSigner.bind(this);
     this.getSignersByFid = this.getSignersByFid.bind(this);
     this.getIdRegistryEvent = this.getIdRegistryEvent.bind(this);
     this.getIdRegistryEventByAddress = this.getIdRegistryEventByAddress.bind(this);
@@ -236,15 +233,8 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceGetNameRegistryEventDesc, NameRegistryEventRequest.fromPartial(request), metadata);
   }
 
-  getRentRegistryEvents(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<RentRegistryEventsResponse> {
-    return this.rpc.unary(HubServiceGetRentRegistryEventsDesc, FidRequest.fromPartial(request), metadata);
-  }
-
-  getOnChainEvents(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse> {
-    return this.rpc.unary(HubServiceGetOnChainEventsDesc, FidRequest.fromPartial(request), metadata);
+  getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse> {
+    return this.rpc.unary(HubServiceGetOnChainEventsDesc, OnChainEventRequest.fromPartial(request), metadata);
   }
 
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof> {
@@ -265,6 +255,10 @@ export class HubServiceClientImpl implements HubService {
 
   getSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceGetSignerDesc, SignerRequest.fromPartial(request), metadata);
+  }
+
+  getOnChainSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent> {
+    return this.rpc.unary(HubServiceGetOnChainSignerDesc, SignerRequest.fromPartial(request), metadata);
   }
 
   getSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
@@ -684,29 +678,6 @@ export const HubServiceGetNameRegistryEventDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
-export const HubServiceGetRentRegistryEventsDesc: UnaryMethodDefinitionish = {
-  methodName: "GetRentRegistryEvents",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return FidRequest.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = RentRegistryEventsResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
 export const HubServiceGetOnChainEventsDesc: UnaryMethodDefinitionish = {
   methodName: "GetOnChainEvents",
   service: HubServiceDesc,
@@ -714,7 +685,7 @@ export const HubServiceGetOnChainEventsDesc: UnaryMethodDefinitionish = {
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidRequest.encode(this).finish();
+      return OnChainEventRequest.encode(this).finish();
     },
   } as any,
   responseType: {
@@ -835,6 +806,29 @@ export const HubServiceGetSignerDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = Message.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetOnChainSignerDesc: UnaryMethodDefinitionish = {
+  methodName: "GetOnChainSigner",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SignerRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = OnChainEvent.decode(data);
       return {
         ...value,
         toObject() {
@@ -1290,10 +1284,7 @@ export interface AdminService {
     request: DeepPartial<NameRegistryEvent>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<NameRegistryEvent>;
-  submitRentRegistryEvent(
-    request: DeepPartial<RentRegistryEvent>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<RentRegistryEvent>;
+  submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
 }
 
 export class AdminServiceClientImpl implements AdminService {
@@ -1305,7 +1296,7 @@ export class AdminServiceClientImpl implements AdminService {
     this.deleteAllMessagesFromDb = this.deleteAllMessagesFromDb.bind(this);
     this.submitIdRegistryEvent = this.submitIdRegistryEvent.bind(this);
     this.submitNameRegistryEvent = this.submitNameRegistryEvent.bind(this);
-    this.submitRentRegistryEvent = this.submitRentRegistryEvent.bind(this);
+    this.submitOnChainEvent = this.submitOnChainEvent.bind(this);
   }
 
   rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
@@ -1327,11 +1318,8 @@ export class AdminServiceClientImpl implements AdminService {
     return this.rpc.unary(AdminServiceSubmitNameRegistryEventDesc, NameRegistryEvent.fromPartial(request), metadata);
   }
 
-  submitRentRegistryEvent(
-    request: DeepPartial<RentRegistryEvent>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<RentRegistryEvent> {
-    return this.rpc.unary(AdminServiceSubmitRentRegistryEventDesc, RentRegistryEvent.fromPartial(request), metadata);
+  submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent> {
+    return this.rpc.unary(AdminServiceSubmitOnChainEventDesc, OnChainEvent.fromPartial(request), metadata);
   }
 }
 
@@ -1429,19 +1417,19 @@ export const AdminServiceSubmitNameRegistryEventDesc: UnaryMethodDefinitionish =
   } as any,
 };
 
-export const AdminServiceSubmitRentRegistryEventDesc: UnaryMethodDefinitionish = {
-  methodName: "SubmitRentRegistryEvent",
+export const AdminServiceSubmitOnChainEventDesc: UnaryMethodDefinitionish = {
+  methodName: "SubmitOnChainEvent",
   service: AdminServiceDesc,
   requestStream: false,
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return RentRegistryEvent.encode(this).finish();
+      return OnChainEvent.encode(this).finish();
     },
   } as any,
   responseType: {
     deserializeBinary(data: Uint8Array) {
-      const value = RentRegistryEvent.decode(data);
+      const value = OnChainEvent.decode(data);
       return {
         ...value,
         toObject() {

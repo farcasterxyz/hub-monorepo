@@ -122,22 +122,11 @@ describe("NameRegistryEventFactory", () => {
   });
 });
 
-describe("RentRegistryEventFactory", () => {
+describe("StorageRentOnChainEventFactory", () => {
   test("succeeds", () => {
-    const event = Factories.RentRegistryEvent.build();
-    const encoded = protobufs.RentRegistryEvent.encode(event).finish();
-    const decoded = protobufs.RentRegistryEvent.decode(encoded);
-    expect(protobufs.RentRegistryEvent.toJSON(decoded)).toEqual(protobufs.RentRegistryEvent.toJSON(event));
-  });
-});
-
-describe("StorageAdminRegistryEventFactory", () => {
-  test("succeeds", () => {
-    const event = Factories.StorageAdminRegistryEvent.build();
-    const encoded = protobufs.StorageAdminRegistryEvent.encode(event).finish();
-    const decoded = protobufs.StorageAdminRegistryEvent.decode(encoded);
-    expect(protobufs.StorageAdminRegistryEvent.toJSON(decoded)).toEqual(
-      protobufs.StorageAdminRegistryEvent.toJSON(event),
-    );
+    const event = Factories.StorageRentOnChainEvent.build();
+    const encoded = protobufs.OnChainEvent.encode(event).finish();
+    const decoded = protobufs.OnChainEvent.decode(encoded);
+    expect(protobufs.OnChainEvent.toJSON(decoded)).toEqual(protobufs.OnChainEvent.toJSON(event));
   });
 });

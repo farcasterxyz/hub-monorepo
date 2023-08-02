@@ -16,9 +16,6 @@ import {
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
   UserNameProof,
-  RentRegistryEvent,
-  StorageAdminRegistryEvent,
-  storageRegistryEventTypeToJSON,
   AckMessageBody,
   NetworkLatencyMessage,
   OnChainEvent,
@@ -53,8 +50,6 @@ import {
   messageTypeToName,
   nameRegistryEventToLog,
   onChainEventToLog,
-  rentRegistryEventToLog,
-  storageAdminRegistryEventToLog,
   usernameProofToLog,
 } from "./utils/logger.js";
 import {
@@ -102,8 +97,6 @@ export interface HubInterface {
   submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitStorageAdminRegistryEvent(event: StorageAdminRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
@@ -434,14 +427,6 @@ export class Hub implements HubInterface {
         this.ethRegistryProvider,
       );
     }
-
-    // if (this.l2RegistryProvider) {
-    //   this.updateRentRegistryEventExpiryJobWorker = new UpdateRentRegistryEventExpiryJobWorker(
-    //     this.updateRentRegistryEventExpiryJobQueue,
-    //     this.rocksDB,
-    //     this.l2RegistryProvider
-    //   );
-    // }
 
     this.allowedPeerIds = this.options.allowedPeers;
     if (this.options.network === FarcasterNetwork.MAINNET) {
@@ -1105,56 +1090,6 @@ export class Hub implements HubInterface {
       },
       (e) => {
         logEvent.warn({ errCode: e.errCode }, `submitUserNameProof error: ${e.message}`);
-      },
-    );
-
-    return mergeResult;
-  }
-
-  async submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
-    const logEvent = log.child({ event: rentRegistryEventToLog(event), source });
-    // eslint-disable-next-line no-console
-    console.log("submitting rent event");
-    const mergeResult = await this.engine.mergeRentRegistryEvent(event);
-
-    mergeResult.match(
-      (eventId) => {
-        // eslint-disable-next-line no-console
-        console.log(
-          `submitRentRegistryEvent success ${eventId}: fid ${event.fid} assigned ${event.units} in block ${event.blockNumber}`,
-        );
-        logEvent.info(
-          `submitRentRegistryEvent success ${eventId}: fid ${event.fid} assigned ${event.units} in block ${event.blockNumber}`,
-        );
-      },
-      (e) => {
-        // eslint-disable-next-line no-console
-        console.log(`submitRentRegistryEvent error: ${e.message}`);
-        logEvent.warn({ errCode: e.errCode }, `submitRentRegistryEvent error: ${e.message}`);
-      },
-    );
-
-    return mergeResult;
-  }
-
-  async submitStorageAdminRegistryEvent(
-    event: StorageAdminRegistryEvent,
-    source?: HubSubmitSource,
-  ): HubAsyncResult<number> {
-    const logEvent = log.child({ event: storageAdminRegistryEventToLog(event), source });
-
-    const mergeResult = await this.engine.mergeStorageAdminRegistryEvent(event);
-
-    mergeResult.match(
-      (eventId) => {
-        logEvent.info(
-          `submitStorageAdminRegistryEvent success ${eventId}: address ${bytesToHexString(
-            event.from,
-          )._unsafeUnwrap()} performed ${storageRegistryEventTypeToJSON(event.type)} in block ${event.blockNumber}`,
-        );
-      },
-      (e) => {
-        logEvent.warn({ errCode: e.errCode }, `submitStorageAdminRegistryEvent error: ${e.message}`);
       },
     );
 

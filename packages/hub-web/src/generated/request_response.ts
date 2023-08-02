@@ -12,8 +12,7 @@ import {
   userDataTypeFromJSON,
   userDataTypeToJSON,
 } from "./message";
-import { OnChainEvent } from "./onchain_event";
-import { RentRegistryEvent } from "./storage_event";
+import { OnChainEvent, OnChainEventType, onChainEventTypeFromJSON, onChainEventTypeToJSON } from "./onchain_event";
 import { UserNameProof } from "./username_proof";
 
 export interface Empty {
@@ -157,8 +156,9 @@ export interface RentRegistryEventsRequest {
   fid: number;
 }
 
-export interface RentRegistryEventsResponse {
-  events: RentRegistryEvent[];
+export interface OnChainEventRequest {
+  fid: number;
+  eventType: OnChainEventType;
 }
 
 export interface OnChainEventResponse {
@@ -2264,31 +2264,41 @@ export const RentRegistryEventsRequest = {
   },
 };
 
-function createBaseRentRegistryEventsResponse(): RentRegistryEventsResponse {
-  return { events: [] };
+function createBaseOnChainEventRequest(): OnChainEventRequest {
+  return { fid: 0, eventType: 0 };
 }
 
-export const RentRegistryEventsResponse = {
-  encode(message: RentRegistryEventsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.events) {
-      RentRegistryEvent.encode(v!, writer.uint32(10).fork()).ldelim();
+export const OnChainEventRequest = {
+  encode(message: OnChainEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.eventType !== 0) {
+      writer.uint32(16).int32(message.eventType);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): RentRegistryEventsResponse {
+  decode(input: _m0.Reader | Uint8Array, length?: number): OnChainEventRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseRentRegistryEventsResponse();
+    const message = createBaseOnChainEventRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag != 8) {
             break;
           }
 
-          message.events.push(RentRegistryEvent.decode(reader, reader.uint32()));
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.eventType = reader.int32() as any;
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -2299,29 +2309,28 @@ export const RentRegistryEventsResponse = {
     return message;
   },
 
-  fromJSON(object: any): RentRegistryEventsResponse {
+  fromJSON(object: any): OnChainEventRequest {
     return {
-      events: Array.isArray(object?.events) ? object.events.map((e: any) => RentRegistryEvent.fromJSON(e)) : [],
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      eventType: isSet(object.eventType) ? onChainEventTypeFromJSON(object.eventType) : 0,
     };
   },
 
-  toJSON(message: RentRegistryEventsResponse): unknown {
+  toJSON(message: OnChainEventRequest): unknown {
     const obj: any = {};
-    if (message.events) {
-      obj.events = message.events.map((e) => e ? RentRegistryEvent.toJSON(e) : undefined);
-    } else {
-      obj.events = [];
-    }
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.eventType !== undefined && (obj.eventType = onChainEventTypeToJSON(message.eventType));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<RentRegistryEventsResponse>, I>>(base?: I): RentRegistryEventsResponse {
-    return RentRegistryEventsResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<OnChainEventRequest>, I>>(base?: I): OnChainEventRequest {
+    return OnChainEventRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<RentRegistryEventsResponse>, I>>(object: I): RentRegistryEventsResponse {
-    const message = createBaseRentRegistryEventsResponse();
-    message.events = object.events?.map((e) => RentRegistryEvent.fromPartial(e)) || [];
+  fromPartial<I extends Exact<DeepPartial<OnChainEventRequest>, I>>(object: I): OnChainEventRequest {
+    const message = createBaseOnChainEventRequest();
+    message.fid = object.fid ?? 0;
+    message.eventType = object.eventType ?? 0;
     return message;
   },
 };

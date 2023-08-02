@@ -1,5 +1,4 @@
 import {
-  bigIntToBytes,
   hexStringToBytes,
   HubAsyncResult,
   HubState,
@@ -8,13 +7,11 @@ import {
   OnChainEvent,
   OnChainEventType,
   onChainEventTypeToJSON,
-  RentRegistryEvent,
   SignerEventBody,
   SignerEventType,
   SignerMigratedEventBody,
-  StorageAdminRegistryEvent,
-  StorageRegistryEventType,
-  storageRegistryEventTypeToJSON,
+  StorageRentEventBody,
+  toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { IdRegistryV2, KeyRegistry, StorageRegistry } from "./abis.js";
@@ -39,6 +36,8 @@ export class OptimismConstants {
   public static ChainId = 420; // OP Goerli
 }
 
+const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
+
 /**
  * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
  */
@@ -51,8 +50,6 @@ export class L2EventsProvider {
   private _chainId: number;
   private _resyncEvents: boolean;
 
-  private _rentEventsByBlock: Map<number, Array<RentRegistryEvent>>;
-  private _storageAdminEventsByBlock: Map<number, Array<StorageAdminRegistryEvent>>;
   private _onChainEventsByBlock: Map<number, Array<OnChainEvent>>;
   private _retryDedupMap: Map<number, boolean>;
 
@@ -100,8 +97,6 @@ export class L2EventsProvider {
 
     // Initialize the cache for the Storage Registry events. They will be processed after
     // numConfirmations blocks have been mined.
-    this._rentEventsByBlock = new Map();
-    this._storageAdminEventsByBlock = new Map();
     this._onChainEventsByBlock = new Map();
     this._retryDedupMap = new Map();
 
@@ -214,15 +209,6 @@ export class L2EventsProvider {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
-  /** Returns expiry for fid in ms from unix epoch */
-  // public async getRentExpiry(fid: number): HubAsyncResult<number> {
-  //   const fidBI = toBigInt(fid);
-
-  //   this._storageStore.
-
-  //   return expiryResult.map((expiry) => Number(expiry) * 1000);
-  // }
-
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
@@ -250,87 +236,31 @@ export class L2EventsProvider {
             true,
             typeof StorageRegistry.abi
           >;
-          await this.cacheRentRegistryEvent(
-            rentEvent.args.payer,
+          const block = await this._publicClient.getBlock({
+            blockHash: blockHash as `0x${string}`,
+          });
+          const timestamp = toFarcasterTime(Number(block.timestamp) * 1000);
+          if (timestamp.isErr()) {
+            log.error(timestamp.error, "failed to parse block timestamp");
+            continue;
+          }
+          const expiry = timestamp.value + RENT_EXPIRY_IN_SECONDS;
+          const storageRentEventBody = StorageRentEventBody.create({
+            payer: hexStringToBytes(rentEvent.args.payer)._unsafeUnwrap(),
+            units: Number(rentEvent.args.units),
+            expiry: expiry,
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_STORAGE_RENT,
             rentEvent.args.fid,
-            rentEvent.args.units,
-            StorageRegistryEventType.RENT,
-            Number(blockNumber),
+            blockNumber,
             blockHash,
             transactionHash,
-            Number(transactionIndex),
-          );
-        } else if (event.eventName === "SetDeprecationTimestamp") {
-          const adminEvent = event as Log<
-            bigint,
-            number,
-            ExtractAbiEvent<typeof StorageRegistry.abi, "SetDeprecationTimestamp">,
-            true,
-            typeof StorageRegistry.abi
-          >;
-          await this.cacheStorageAdminRegistryEvent(
-            adminEvent.args.oldTimestamp,
-            adminEvent.args.newTimestamp,
-            StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
-            address,
-            Number(blockNumber),
-            blockHash,
-            transactionHash,
-            Number(transactionIndex),
-          );
-        } else if (event.eventName === "SetGracePeriod") {
-          const adminEvent = event as Log<
-            bigint,
-            number,
-            ExtractAbiEvent<typeof StorageRegistry.abi, "SetGracePeriod">,
-            true,
-            typeof StorageRegistry.abi
-          >;
-          await this.cacheStorageAdminRegistryEvent(
-            adminEvent.args.oldPeriod,
-            adminEvent.args.newPeriod,
-            StorageRegistryEventType.SET_GRACE_PERIOD,
-            address,
-            Number(blockNumber),
-            blockHash,
-            transactionHash,
-            Number(transactionIndex),
-          );
-        } else if (event.eventName === "SetMaxUnits") {
-          const adminEvent = event as Log<
-            bigint,
-            number,
-            ExtractAbiEvent<typeof StorageRegistry.abi, "SetMaxUnits">,
-            true,
-            typeof StorageRegistry.abi
-          >;
-          await this.cacheStorageAdminRegistryEvent(
-            adminEvent.args.oldMax,
-            adminEvent.args.newMax,
-            StorageRegistryEventType.SET_MAX_UNITS,
-            address,
-            Number(blockNumber),
-            blockHash,
-            transactionHash,
-            Number(transactionIndex),
-          );
-        } else if (event.eventName === "SetPrice") {
-          const adminEvent = event as Log<
-            bigint,
-            number,
-            ExtractAbiEvent<typeof StorageRegistry.abi, "SetPrice">,
-            true,
-            typeof StorageRegistry.abi
-          >;
-          await this.cacheStorageAdminRegistryEvent(
-            adminEvent.args.oldPrice,
-            adminEvent.args.newPrice,
-            StorageRegistryEventType.SET_PRICE,
-            address,
-            Number(blockNumber),
-            blockHash,
-            transactionHash,
-            Number(transactionIndex),
+            transactionIndex,
+            undefined,
+            undefined,
+            undefined,
+            storageRentEventBody,
           );
         }
       } catch (e) {
@@ -606,34 +536,12 @@ export class L2EventsProvider {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
 
     // Get all blocks that have been confirmed into a single array and sort.
-    const cachedBlocksSet = new Set([
-      ...this._rentEventsByBlock.keys(),
-      ...this._storageAdminEventsByBlock.keys(),
-      ...this._onChainEventsByBlock.keys(),
-    ]);
+    const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);
     const cachedBlocks = Array.from(cachedBlocksSet);
     cachedBlocks.sort();
 
     for (const cachedBlock of cachedBlocks) {
       if (cachedBlock + L2EventsProvider.numConfirmations <= blockNumber) {
-        const rentEvents = this._rentEventsByBlock.get(cachedBlock);
-        this._rentEventsByBlock.delete(cachedBlock);
-
-        if (rentEvents) {
-          for (const rentEvent of rentEvents) {
-            await this._hub.submitRentRegistryEvent(rentEvent, "l2-provider");
-          }
-        }
-
-        const storageAdminEvents = this._storageAdminEventsByBlock.get(cachedBlock);
-        this._storageAdminEventsByBlock.delete(cachedBlock);
-
-        if (storageAdminEvents) {
-          for (const storageAdminEvent of storageAdminEvents) {
-            await this._hub.submitStorageAdminRegistryEvent(storageAdminEvent, "l2-provider");
-          }
-        }
-
         const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
         this._onChainEventsByBlock.delete(cachedBlock);
         if (onChainEvents) {
@@ -655,119 +563,6 @@ export class L2EventsProvider {
     this._lastBlockNumber = blockNumber;
   }
 
-  private async cacheRentRegistryEvent(
-    payer: string,
-    fid: bigint,
-    units: bigint,
-    type: StorageRegistryEventType,
-    blockNumber: number,
-    blockHash: string,
-    transactionHash: string,
-    index: number,
-  ): HubAsyncResult<void> {
-    const logEvent = log.child({ event: { fid, blockNumber } });
-
-    const serialized = Result.combine([
-      hexStringToBytes(blockHash),
-      hexStringToBytes(transactionHash),
-      payer && payer.length > 0 ? hexStringToBytes(payer) : ok(new Uint8Array()),
-    ]);
-
-    if (serialized.isErr()) {
-      logEvent.error(
-        { errCode: serialized.error.errCode },
-        `cacheRentRegistryEvent error: ${serialized.error.message}`,
-      );
-      return err(serialized.error);
-    }
-
-    const [blockHashBytes, transactionHashBytes, payerBytes] = serialized.value;
-
-    const rentRegistryEvent = RentRegistryEvent.create({
-      blockNumber,
-      blockHash: blockHashBytes,
-      transactionHash: transactionHashBytes,
-      logIndex: index,
-      payer: payerBytes,
-      fid: Number(fid),
-      units: Number(units),
-      type: StorageRegistryEventType.RENT,
-    });
-
-    // Add it to the cache
-    let rentEvents = this._rentEventsByBlock.get(blockNumber);
-    if (!rentEvents) {
-      rentEvents = [];
-      this._rentEventsByBlock.set(blockNumber, rentEvents);
-    }
-    rentEvents.push(rentRegistryEvent);
-
-    logEvent.info(`cacheRentRegistryEvent: fid ${fid.toString()} rented ${units} units in block ${blockNumber}`);
-
-    return ok(undefined);
-  }
-
-  private async cacheStorageAdminRegistryEvent(
-    oldValue: bigint,
-    newValue: bigint,
-    type: StorageRegistryEventType,
-    address: string,
-    blockNumber: number,
-    blockHash: string,
-    transactionHash: string,
-    index: number,
-  ): HubAsyncResult<void> {
-    const logEvent = log.child({ event: { type, blockNumber } });
-
-    const serialized = Result.combine([
-      hexStringToBytes(blockHash),
-      hexStringToBytes(transactionHash),
-      hexStringToBytes(address),
-      bigIntToBytes(newValue),
-    ]);
-
-    if (serialized.isErr()) {
-      logEvent.error(
-        { errCode: serialized.error.errCode },
-        `cacheStorageAdminRegistryEvent error: ${serialized.error.message}`,
-      );
-      return err(serialized.error);
-    }
-
-    const [blockHashBytes, transactionHashBytes, fromBytes, newValueBytes] = serialized.value;
-    const block = await this._publicClient.getBlock({
-      blockHash: blockHash as `0x${string}`,
-    });
-    const timestamp = Number(block.timestamp);
-
-    const storageAdminRegistryEvent = StorageAdminRegistryEvent.create({
-      blockNumber,
-      blockHash: blockHashBytes,
-      transactionHash: transactionHashBytes,
-      logIndex: index,
-      timestamp: timestamp,
-      from: fromBytes,
-      type: type,
-      value: newValueBytes,
-    });
-
-    // Add it to the cache
-    let storageAdminEvents = this._storageAdminEventsByBlock.get(blockNumber);
-    if (!storageAdminEvents) {
-      storageAdminEvents = [];
-      this._storageAdminEventsByBlock.set(blockNumber, storageAdminEvents);
-    }
-    storageAdminEvents.push(storageAdminRegistryEvent);
-
-    logEvent.info(
-      `cacheStorageAdminRegistryEvent: address ${address} performed ${storageRegistryEventTypeToJSON(
-        type,
-      )} from ${oldValue.toString()} to ${newValue.toString()} in block ${blockNumber}`,
-    );
-
-    return ok(undefined);
-  }
-
   private async cacheOnChainEvent(
     type: OnChainEventType,
     fid: bigint,
@@ -778,16 +573,14 @@ export class L2EventsProvider {
     signerEventBody?: SignerEventBody,
     signerMigratedEventBody?: SignerMigratedEventBody,
     idRegisterEventBody?: IdRegisterEventBody,
+    storageRentEventBody?: StorageRentEventBody,
   ): HubAsyncResult<void> {
     const blockNumber = Number(blockNumBigInt);
     const logEvent = log.child({ event: { type, blockNumber } });
     const serialized = Result.combine([hexStringToBytes(blockHash), hexStringToBytes(transactionHash)]);
 
     if (serialized.isErr()) {
-      logEvent.error(
-        { errCode: serialized.error.errCode },
-        `cacheStorageAdminRegistryEvent error: ${serialized.error.message}`,
-      );
+      logEvent.error({ errCode: serialized.error.errCode }, `cacheOnChainEvent error: ${serialized.error.message}`);
       return err(serialized.error);
     }
 
@@ -809,6 +602,7 @@ export class L2EventsProvider {
       signerEventBody: signerEventBody,
       signerMigratedEventBody: signerMigratedEventBody,
       idRegisterEventBody: idRegisterEventBody,
+      storageRentEventBody: storageRentEventBody,
     });
 
     // Add it to the cache
