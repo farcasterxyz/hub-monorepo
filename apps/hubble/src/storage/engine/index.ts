@@ -14,6 +14,7 @@ import {
   IdRegistryEvent,
   IdRegistryEventType,
   isSignerAddMessage,
+  isSignerOnChainEvent,
   isSignerRemoveMessage,
   isUserDataAddMessage,
   isUsernameProofMessage,
@@ -21,6 +22,7 @@ import {
   LinkRemoveMessage,
   MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
+  MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
   Message,
   NameRegistryEvent,
@@ -37,6 +39,7 @@ import {
   RevokeMessageHubEvent,
   RevokeMessagesBySignerJobPayload,
   SignerAddMessage,
+  SignerEventType,
   SignerRemoveMessage,
   StorageAdminRegistryEvent,
   StorageRegistryEventType,
@@ -133,6 +136,7 @@ class Engine {
     this.handleMergeUsernameProofEvent = this.handleMergeUsernameProofEvent.bind(this);
     this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
     this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
+    this.handleMergeOnChainEvent = this.handleMergeOnChainEvent.bind(this);
   }
 
   async start(): Promise<void> {
@@ -180,6 +184,7 @@ class Engine {
     this.eventHandler.on("mergeMessage", this.handleMergeMessageEvent);
     this.eventHandler.on("revokeMessage", this.handleRevokeMessageEvent);
     this.eventHandler.on("pruneMessage", this.handlePruneMessageEvent);
+    this.eventHandler.on("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     await this.eventHandler.syncCache();
     const isMigrated = await this._onchainEventsStore.isSignerMigrated();
@@ -1196,6 +1201,30 @@ class Engine {
       const payload = RevokeMessagesBySignerJobPayload.create({
         fid: message.data.fid,
         signer: message.data.signerAddBody.signer,
+      });
+      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
+      if (enqueueRevoke.isErr()) {
+        log.error(
+          { errCode: enqueueRevoke.error.errCode },
+          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
+        );
+      }
+    }
+
+    return ok(undefined);
+  }
+
+  private async handleMergeOnChainEvent(event: MergeOnChainEventHubEvent): HubAsyncResult<void> {
+    const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
+
+    if (
+      onChainEvent &&
+      isSignerOnChainEvent(onChainEvent) &&
+      onChainEvent.signerEventBody.eventType === SignerEventType.REMOVE
+    ) {
+      const payload = RevokeMessagesBySignerJobPayload.create({
+        fid: onChainEvent.fid,
+        signer: onChainEvent.signerEventBody.key,
       });
       const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
       if (enqueueRevoke.isErr()) {

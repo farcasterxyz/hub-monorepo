@@ -6,7 +6,7 @@ import { MockHub } from "../test/mocks.js";
 import { deployStorageRegistry, publicClient, testClient, walletClientWithAccount } from "../test/utils.js";
 import { accounts } from "../test/constants.js";
 import { sleep } from "../utils/crypto.js";
-import { L2EventsProvider } from "./l2EventsProvider.js";
+import { L2EventsProvider, OptimismConstants } from "./l2EventsProvider.js";
 import {
   getNextRentRegistryEventFromIterator,
   getNextStorageAdminRegistryEventFromIterator,
@@ -45,6 +45,7 @@ describe("build", () => {
       idRegistryAddress,
       1,
       10000,
+      OptimismConstants.ChainId,
       false,
     );
 
@@ -64,6 +65,7 @@ describe("build", () => {
       idRegistryAddress,
       1,
       10000,
+      OptimismConstants.ChainId,
       false,
     );
 
@@ -88,6 +90,7 @@ describe("process events", () => {
       idRegistryAddress,
       1,
       10000,
+      OptimismConstants.ChainId,
       false,
     );
 
