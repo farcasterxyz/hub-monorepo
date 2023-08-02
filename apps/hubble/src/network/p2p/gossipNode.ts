@@ -30,6 +30,7 @@ import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
 import { GossipMetricsRecorder } from "./gossipMetricsRecorder.js";
 import RocksDB from "storage/db/rocksdb.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
+import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
@@ -62,6 +63,8 @@ interface NodeOptions {
   allowedPeerIdStrs?: string[] | undefined;
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers?: AddrInfo[] | undefined;
+  /** Override peer scoring. Useful for tests */
+  scoreThresholds?: Partial<PeerScoreThresholds>;
 }
 
 /**
@@ -445,9 +448,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       const protocolMessage = GossipNode.decodeMessage(message.data);
       if (protocolMessage.isOk() && protocolMessage.value.version === GossipVersion.V1_1) {
         if (protocolMessage.value.message !== undefined)
-          return protocolMessage._unsafeUnwrap().message?.hash as Uint8Array;
+          return protocolMessage.unwrapOr(undefined)?.message?.hash ?? new Uint8Array();
         if (protocolMessage.value.idRegistryEvent !== undefined)
-          return protocolMessage.value.idRegistryEvent?.transactionHash as Uint8Array;
+          return protocolMessage.value.idRegistryEvent?.transactionHash ?? new Uint8Array();
       }
     }
     return msgIdFnStrictSign(message);
@@ -481,6 +484,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       globalSignaturePolicy: "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
+      canRelayMessage: true,
+      scoreThresholds: { ...options.scoreThresholds },
     });
 
     if (options.allowedPeerIdStrs) {
