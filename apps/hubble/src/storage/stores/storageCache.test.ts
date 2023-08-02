@@ -4,7 +4,7 @@ import { jestRocksDB } from "../db/jestUtils.js";
 import { makeTsHash, putMessage } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
-import { putRentRegistryEvent } from "../db/storageRegistryEvent.js";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("engine.storageCache.test");
 
@@ -53,12 +53,14 @@ describe("syncFromDb", () => {
       }
 
       for (let i = 0; i < fidUsage.usage.storage; i++) {
-        const message = await Factories.RentRegistryEvent.create({
+        const storageRentEvent = Factories.StorageRentOnChainEvent.build({
           fid: fidUsage.fid,
-          expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60 - i,
-          units: 2,
+          storageRentEventBody: Factories.StorageRentEventBody.build({
+            expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60 - i,
+            units: 2,
+          }),
         });
-        await putRentRegistryEvent(db, message);
+        await db.commit(putOnChainEventTransaction(db.transaction(), storageRentEvent));
       }
     }
     await cache.syncFromDb();
@@ -87,12 +89,14 @@ describe("getCurrentStorageUnitsForFid", () => {
   test("cache invalidation happens when expected", async () => {
     const fid = Factories.Fid.build();
     for (let i = 1; i < 3; i++) {
-      const message = await Factories.RentRegistryEvent.create({
+      const event = Factories.StorageRentOnChainEvent.build({
         fid: fid,
-        expiry: getFarcasterTime()._unsafeUnwrap() + i,
-        units: 2,
+        storageRentEventBody: Factories.StorageRentEventBody.build({
+          expiry: getFarcasterTime()._unsafeUnwrap() + i,
+          units: 2,
+        }),
       });
-      await putRentRegistryEvent(db, message);
+      await db.commit(putOnChainEventTransaction(db.transaction(), event));
     }
     await cache.syncFromDb();
     await expect(cache.getCurrentStorageUnitsForFid(fid)).resolves.toEqual(ok(4));

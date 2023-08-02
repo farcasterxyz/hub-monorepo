@@ -7,6 +7,7 @@ export enum OnChainEventType {
   EVENT_TYPE_SIGNER = 1,
   EVENT_TYPE_SIGNER_MIGRATED = 2,
   EVENT_TYPE_ID_REGISTER = 3,
+  EVENT_TYPE_STORAGE_RENT = 4,
 }
 
 export function onChainEventTypeFromJSON(object: any): OnChainEventType {
@@ -23,6 +24,9 @@ export function onChainEventTypeFromJSON(object: any): OnChainEventType {
     case 3:
     case "EVENT_TYPE_ID_REGISTER":
       return OnChainEventType.EVENT_TYPE_ID_REGISTER;
+    case 4:
+    case "EVENT_TYPE_STORAGE_RENT":
+      return OnChainEventType.EVENT_TYPE_STORAGE_RENT;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
@@ -38,6 +42,8 @@ export function onChainEventTypeToJSON(object: OnChainEventType): string {
       return "EVENT_TYPE_SIGNER_MIGRATED";
     case OnChainEventType.EVENT_TYPE_ID_REGISTER:
       return "EVENT_TYPE_ID_REGISTER";
+    case OnChainEventType.EVENT_TYPE_STORAGE_RENT:
+      return "EVENT_TYPE_STORAGE_RENT";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
@@ -131,6 +137,7 @@ export interface OnChainEvent {
   signerEventBody?: SignerEventBody | undefined;
   signerMigratedEventBody?: SignerMigratedEventBody | undefined;
   idRegisterEventBody?: IdRegisterEventBody | undefined;
+  storageRentEventBody?: StorageRentEventBody | undefined;
 }
 
 export interface SignerEventBody {
@@ -149,6 +156,12 @@ export interface IdRegisterEventBody {
   from: Uint8Array;
 }
 
+export interface StorageRentEventBody {
+  payer: Uint8Array;
+  units: number;
+  expiry: number;
+}
+
 function createBaseOnChainEvent(): OnChainEvent {
   return {
     type: 0,
@@ -162,6 +175,7 @@ function createBaseOnChainEvent(): OnChainEvent {
     signerEventBody: undefined,
     signerMigratedEventBody: undefined,
     idRegisterEventBody: undefined,
+    storageRentEventBody: undefined,
   };
 }
 
@@ -199,6 +213,9 @@ export const OnChainEvent = {
     }
     if (message.idRegisterEventBody !== undefined) {
       IdRegisterEventBody.encode(message.idRegisterEventBody, writer.uint32(90).fork()).ldelim();
+    }
+    if (message.storageRentEventBody !== undefined) {
+      StorageRentEventBody.encode(message.storageRentEventBody, writer.uint32(98).fork()).ldelim();
     }
     return writer;
   },
@@ -287,6 +304,13 @@ export const OnChainEvent = {
 
           message.idRegisterEventBody = IdRegisterEventBody.decode(reader, reader.uint32());
           continue;
+        case 12:
+          if (tag != 98) {
+            break;
+          }
+
+          message.storageRentEventBody = StorageRentEventBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -313,6 +337,9 @@ export const OnChainEvent = {
       idRegisterEventBody: isSet(object.idRegisterEventBody)
         ? IdRegisterEventBody.fromJSON(object.idRegisterEventBody)
         : undefined,
+      storageRentEventBody: isSet(object.storageRentEventBody)
+        ? StorageRentEventBody.fromJSON(object.storageRentEventBody)
+        : undefined,
     };
   },
 
@@ -337,6 +364,9 @@ export const OnChainEvent = {
       : undefined);
     message.idRegisterEventBody !== undefined && (obj.idRegisterEventBody = message.idRegisterEventBody
       ? IdRegisterEventBody.toJSON(message.idRegisterEventBody)
+      : undefined);
+    message.storageRentEventBody !== undefined && (obj.storageRentEventBody = message.storageRentEventBody
+      ? StorageRentEventBody.toJSON(message.storageRentEventBody)
       : undefined);
     return obj;
   },
@@ -364,6 +394,9 @@ export const OnChainEvent = {
         : undefined;
     message.idRegisterEventBody = (object.idRegisterEventBody !== undefined && object.idRegisterEventBody !== null)
       ? IdRegisterEventBody.fromPartial(object.idRegisterEventBody)
+      : undefined;
+    message.storageRentEventBody = (object.storageRentEventBody !== undefined && object.storageRentEventBody !== null)
+      ? StorageRentEventBody.fromPartial(object.storageRentEventBody)
       : undefined;
     return message;
   },
@@ -591,6 +624,91 @@ export const IdRegisterEventBody = {
     message.to = object.to ?? new Uint8Array();
     message.eventType = object.eventType ?? 0;
     message.from = object.from ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseStorageRentEventBody(): StorageRentEventBody {
+  return { payer: new Uint8Array(), units: 0, expiry: 0 };
+}
+
+export const StorageRentEventBody = {
+  encode(message: StorageRentEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.payer.length !== 0) {
+      writer.uint32(10).bytes(message.payer);
+    }
+    if (message.units !== 0) {
+      writer.uint32(16).uint32(message.units);
+    }
+    if (message.expiry !== 0) {
+      writer.uint32(24).uint32(message.expiry);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StorageRentEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStorageRentEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.payer = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.units = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.expiry = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StorageRentEventBody {
+    return {
+      payer: isSet(object.payer) ? bytesFromBase64(object.payer) : new Uint8Array(),
+      units: isSet(object.units) ? Number(object.units) : 0,
+      expiry: isSet(object.expiry) ? Number(object.expiry) : 0,
+    };
+  },
+
+  toJSON(message: StorageRentEventBody): unknown {
+    const obj: any = {};
+    message.payer !== undefined &&
+      (obj.payer = base64FromBytes(message.payer !== undefined ? message.payer : new Uint8Array()));
+    message.units !== undefined && (obj.units = Math.round(message.units));
+    message.expiry !== undefined && (obj.expiry = Math.round(message.expiry));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StorageRentEventBody>, I>>(base?: I): StorageRentEventBody {
+    return StorageRentEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StorageRentEventBody>, I>>(object: I): StorageRentEventBody {
+    const message = createBaseStorageRentEventBody();
+    message.payer = object.payer ?? new Uint8Array();
+    message.units = object.units ?? 0;
+    message.expiry = object.expiry ?? 0;
     return message;
   },
 };

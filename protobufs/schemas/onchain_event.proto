@@ -5,6 +5,7 @@ enum OnChainEventType {
   EVENT_TYPE_SIGNER = 1;
   EVENT_TYPE_SIGNER_MIGRATED = 2;
   EVENT_TYPE_ID_REGISTER = 3;
+  EVENT_TYPE_STORAGE_RENT = 4;
 }
 
 message OnChainEvent {
@@ -20,6 +21,7 @@ message OnChainEvent {
     SignerEventBody signer_event_body = 9;
     SignerMigratedEventBody signer_migrated_event_body = 10;
     IdRegisterEventBody id_register_event_body = 11;
+    StorageRentEventBody storage_rent_event_body = 12;
   }
 }
 
@@ -50,4 +52,10 @@ message IdRegisterEventBody {
   bytes to = 1;
   IdRegisterEventType event_type = 2;
   bytes from = 3;
+}
+
+message StorageRentEventBody {
+  bytes payer = 1;
+  uint32 units = 2;
+  uint32 expiry = 3;
 }

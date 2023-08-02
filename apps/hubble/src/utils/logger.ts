@@ -7,9 +7,6 @@ import {
   NameRegistryEvent,
   OnChainEvent,
   onChainEventTypeToJSON,
-  RentRegistryEvent,
-  StorageAdminRegistryEvent,
-  storageRegistryEventTypeToJSON,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
 import pino from "pino";
@@ -92,22 +89,6 @@ export const onChainEventToLog = (event: OnChainEvent) => {
     blockHash: bytesToHexString(event.blockHash)._unsafeUnwrap(),
     fid: event.fid,
     type: onChainEventTypeToJSON(event.type),
-  };
-};
-
-export const rentRegistryEventToLog = (event: RentRegistryEvent) => {
-  return {
-    blockNumber: event.blockNumber,
-    fid: event.fid,
-    units: event.units,
-  };
-};
-
-export const storageAdminRegistryEventToLog = (event: StorageAdminRegistryEvent) => {
-  return {
-    blockNumber: event.blockNumber,
-    from: bytesToHexString(event.from)._unsafeUnwrap(),
-    type: storageRegistryEventTypeToJSON(event.type),
   };
 };
 

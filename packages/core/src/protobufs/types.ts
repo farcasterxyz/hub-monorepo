@@ -5,6 +5,7 @@ import * as protobufs from "./generated/message";
 import { RentRegistryEvent, StorageAdminRegistryEvent } from "./generated/storage_event";
 import * as onchainEventProtobufs from "./generated/onchain_event";
 import { UserNameProof } from "./generated/username_proof";
+import { OnChainEvent } from "./generated/onchain_event";
 
 /** Message types */
 
@@ -143,6 +144,11 @@ export type IdRegisterOnChainEvent = onchainEventProtobufs.OnChainEvent & {
   idRegisterEventBody: onchainEventProtobufs.IdRegisterEventBody;
 };
 
+export type StorageRentOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_STORAGE_RENT;
+  storageRentEventBody: onchainEventProtobufs.StorageRentEventBody;
+};
+
 /** Hub event types */
 
 export type MergeMessageHubEvent = hubEventProtobufs.HubEvent & {
@@ -180,23 +186,11 @@ export type MergeNameRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
   };
 };
 
-export type MergeRentRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
-  type: hubEventProtobufs.HubEventType.MERGE_RENT_REGISTRY_EVENT;
-  mergeRentRegistryEventBody: hubEventProtobufs.MergeRentRegistryEventBody & {
-    rentRegistryEvent: RentRegistryEvent;
-  };
-};
-
-export type MergeStorageAdminRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
-  type: hubEventProtobufs.HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT;
-  mergeStorageAdminRegistryEventBody: hubEventProtobufs.MergeStorageAdminRegistryEventBody & {
-    storageAdminRegistryEvent: StorageAdminRegistryEvent;
-  };
-};
-
 export type MergeOnChainEventHubEvent = hubEventProtobufs.HubEvent & {
   type: hubEventProtobufs.HubEventType.MERGE_ON_CHAIN_EVENT;
-  mergeOnChainEventBody: hubEventProtobufs.MergeOnChainEventBody;
+  mergeOnChainEventBody: hubEventProtobufs.MergeOnChainEventBody & {
+    onChainEvent: OnChainEvent;
+  };
 };
 
 export type MergeUsernameProofHubEvent = hubEventProtobufs.HubEvent & {
