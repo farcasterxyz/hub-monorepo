@@ -12,6 +12,8 @@ import {
   SignerRequest,
   FidRequest,
   FidsRequest,
+  SignerOnChainEvent,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import SyncEngine from "../../network/sync/syncEngine.js";
@@ -53,6 +55,7 @@ let custodyEvent: IdRegistryEvent;
 let custodyEvent2: IdRegistryEvent;
 let signerAdd: SignerAddMessage;
 let signerKey: Uint8Array;
+let onChainSigner: SignerOnChainEvent;
 
 beforeAll(async () => {
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
@@ -65,6 +68,12 @@ beforeAll(async () => {
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } },
   );
+  onChainSigner = Factories.KeyRegistryOnChainEvent.build({
+    fid: fid,
+    signerEventBody: Factories.SignerEventBody.build({
+      key: signerKey,
+    }),
+  });
 });
 
 describe("getSigner", () => {
@@ -90,6 +99,29 @@ describe("getSigner", () => {
 
   test("fails without fid", async () => {
     const result = await client.getSigner(SignerRequest.create({ fid: 0, signer: signerKey }));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
+  });
+});
+
+describe("getOnChainSigner", () => {
+  test("succeeds", async () => {
+    await engine.mergeOnChainEvent(onChainSigner);
+    const result = await client.getOnChainSigner(SignerRequest.create({ fid, signer: signerKey }));
+    expect(OnChainEvent.toJSON(result._unsafeUnwrap())).toEqual(OnChainEvent.toJSON(onChainSigner));
+  });
+
+  test("fails if signer is missing", async () => {
+    const result = await client.getOnChainSigner(SignerRequest.create({ fid, signer: signerKey }));
+    expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
+  });
+
+  test("fails without signer key", async () => {
+    const result = await client.getOnChainSigner(SignerRequest.create({ fid, signer: new Uint8Array() }));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "publicKey is missing"));
+  });
+
+  test("fails without fid", async () => {
+    const result = await client.getOnChainSigner(SignerRequest.create({ fid: 0, signer: signerKey }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
   });
 });

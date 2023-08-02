@@ -724,13 +724,13 @@ class Engine {
     return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
   }
 
-  async getOnChainEvents(fid: number, type: OnChainEventType): HubAsyncResult<OnChainEventResponse> {
+  async getOnChainEvents(type: OnChainEventType, fid: number): HubAsyncResult<OnChainEventResponse> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._onchainEventsStore.getOnChainEvents(fid, type), (e) => e as HubError).map(
+    return ResultAsync.fromPromise(this._onchainEventsStore.getOnChainEvents(type, fid), (e) => e as HubError).map(
       (events) => OnChainEventResponse.create({ events }),
     );
   }

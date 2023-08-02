@@ -972,7 +972,7 @@ export default class Server {
       },
       getOnChainEvents: async (call, callback) => {
         const request = call.request;
-        const onChainEventsResult = await this.engine?.getOnChainEvents(request.fid, request.eventType);
+        const onChainEventsResult = await this.engine?.getOnChainEvents(request.eventType, request.fid);
         onChainEventsResult?.match(
           (onChainEvents: OnChainEventResponse) => {
             callback(null, onChainEvents);
