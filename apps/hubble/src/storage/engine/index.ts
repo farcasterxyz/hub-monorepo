@@ -41,6 +41,7 @@ import {
   SignerOnChainEvent,
   SignerRemoveMessage,
   StorageLimitsResponse,
+  StoreType,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -751,23 +752,23 @@ class Engine {
     return ok({
       limits: [
         {
-          storeType: "casts",
+          storeType: StoreType.CASTS,
           limit: CAST_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
         },
         {
-          storeType: "links",
+          storeType: StoreType.LINKS,
           limit: LINK_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
         },
         {
-          storeType: "reactions",
+          storeType: StoreType.REACTIONS,
           limit: REACTION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
         },
         {
-          storeType: "userData",
+          storeType: StoreType.USER_DATA,
           limit: USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
         },
         {
-          storeType: "verifications",
+          storeType: StoreType.VERIFICATIONS,
           limit: VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
         },
       ],

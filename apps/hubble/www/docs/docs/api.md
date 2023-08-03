@@ -41,11 +41,12 @@ Used to retrieve valid and revoked Signers
 
 Users to retrieve the current metadata associated with a user
 
-| Method Name                 | Request Type    | Response Type    | Description                            |
-| --------------------------- | --------------- | ---------------- | -------------------------------------- |
-| GetUserData                 | UserDataRequest | Message          | Returns a specific UserData for an Fid |
-| GetUserDataByFid            | FidRequest      | MessagesResponse | Returns all UserData for an Fid        |
-| GetAllUserDataMessagesByFid | FidRequest      | MessagesResponse | Returns all UserData for an Fid        |
+| Method Name                  | Request Type    | Response Type         | Description                             |
+|------------------------------|-----------------|-----------------------|-----------------------------------------|
+| GetUserData                  | UserDataRequest | Message               | Returns a specific UserData for an Fid  |
+| GetUserDataByFid             | FidRequest      | MessagesResponse      | Returns all UserData for an Fid         |
+| GetAllUserDataMessagesByFid  | FidRequest      | MessagesResponse      | Returns all UserData for an Fid         |
+| GetCurrentStorageLimitsByFid | FidRequest      | StorageLimitsResponse | Returns StorageLimits for an Fid        |
 
 #### UserData Request
 
@@ -54,6 +55,18 @@ Users to retrieve the current metadata associated with a user
 | fid            | [uint64](#)       |       | Farcaster ID of the user who generated the UserData |
 | user_data_type | [UserDataType](#) |       | Type of UserData being requested                    |
 
+#### StorageLimitsResponse
+
+| Field          | Type                         | Label    | Description                   |
+| -------------- | ---------------------------- | -------- | ----------------------------- |
+| limits         | [StorageLimit](#)            | repeated | Storage limits per store type |
+
+#### StorageLimit
+
+| Field      | Type           | Label | Description                                            |
+| ---------- |----------------| ----- | ------------------------------------------------------ |
+| store_type | [StoreType](#) |       | The specific type being managed by the store           |
+| limit      | [uint64](#)    |       | The limit of the store type, scaled by the user's rent |
 
 ## 3. Cast Service
 

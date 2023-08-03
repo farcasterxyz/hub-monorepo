@@ -10,10 +10,6 @@ import {
   IdRegistryEvent,
   Message,
   MessagesResponse,
-  OnChainEvent,
-  OnChainEventRequest,
-  OnChainEventResponse,
-  OnChainEventType,
   ReactionAddMessage,
   ReactionRemoveMessage,
   SignerAddMessage,
@@ -28,7 +24,6 @@ import Server from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
-import { Ok } from "neverthrow";
 
 const db = jestRocksDB("protobufs.rpc.bulkService.test");
 const network = FarcasterNetwork.TESTNET;
@@ -70,12 +65,6 @@ beforeAll(async () => {
 
 const assertMessagesMatchResult = (result: HubResult<MessagesResponse>, messages: Message[]) => {
   expect(result._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(messages.map((m) => Message.toJSON(m)));
-};
-
-const assertEventsMatchResult = (result: HubResult<OnChainEventResponse>, events: OnChainEvent[]) => {
-  expect(result._unsafeUnwrap().events.map((e) => OnChainEvent.toJSON(e))).toEqual(
-    events.map((e) => OnChainEvent.toJSON(e)),
-  );
 };
 
 describe("getAllCastMessagesByFid", () => {
@@ -249,33 +238,5 @@ describe("getAllUserDataMessagesByFid", () => {
   test("returns empty array without messages", async () => {
     const result = await client.getAllUserDataMessagesByFid(FidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
-  });
-});
-
-describe("getOnChainEvents", () => {
-  test("succeeds", async () => {
-    const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
-    const idRegistryEvent2 = Factories.IdRegistryOnChainEvent.build({ fid: fid + 1 });
-    const signerEvent = Factories.KeyRegistryOnChainEvent.build({ fid });
-    const signerEvent2 = Factories.KeyRegistryOnChainEvent.build({ blockNumber: signerEvent.blockNumber + 1, fid });
-    await expect(engine.mergeOnChainEvent(idRegistryEvent)).resolves.toBeInstanceOf(Ok);
-    await expect(engine.mergeOnChainEvent(idRegistryEvent2)).resolves.toBeInstanceOf(Ok);
-    await expect(engine.mergeOnChainEvent(signerEvent)).resolves.toBeInstanceOf(Ok);
-    await expect(engine.mergeOnChainEvent(signerEvent2)).resolves.toBeInstanceOf(Ok);
-
-    const idResult = await client.getOnChainEvents(
-      OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER, fid }),
-    );
-    assertEventsMatchResult(idResult, [idRegistryEvent]);
-
-    const signerResult = await client.getOnChainEvents(
-      OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_SIGNER, fid }),
-    );
-    assertEventsMatchResult(signerResult, [signerEvent, signerEvent2]);
-
-    const emptyResult = await client.getOnChainEvents(
-      OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_STORAGE_RENT, fid }),
-    );
-    expect(emptyResult._unsafeUnwrap().events.length).toEqual(0);
   });
 });

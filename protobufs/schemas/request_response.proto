@@ -160,16 +160,21 @@ message OnChainEventResponse {
   repeated OnChainEvent events = 1;
 }
 
-message StorageAdminRegistryEventRequest {
-  bytes transaction_hash = 1;
-}
-
 message StorageLimitsResponse {
   repeated StorageLimit limits = 1;
 }
 
+enum StoreType {
+  STORE_TYPE_NONE = 0;
+  STORE_TYPE_CASTS = 1;
+  STORE_TYPE_LINKS = 2;
+  STORE_TYPE_REACTIONS = 3;
+  STORE_TYPE_USER_DATA = 4;
+  STORE_TYPE_VERIFICATIONS = 5;
+}
+
 message StorageLimit {
-  string store_type = 1;
+  StoreType store_type = 1;
   uint64 limit = 2;
 }
 

@@ -15,6 +15,59 @@ import {
 import { OnChainEvent, OnChainEventType, onChainEventTypeFromJSON, onChainEventTypeToJSON } from "./onchain_event";
 import { UserNameProof } from "./username_proof";
 
+export enum StoreType {
+  NONE = 0,
+  CASTS = 1,
+  LINKS = 2,
+  REACTIONS = 3,
+  USER_DATA = 4,
+  VERIFICATIONS = 5,
+}
+
+export function storeTypeFromJSON(object: any): StoreType {
+  switch (object) {
+    case 0:
+    case "STORE_TYPE_NONE":
+      return StoreType.NONE;
+    case 1:
+    case "STORE_TYPE_CASTS":
+      return StoreType.CASTS;
+    case 2:
+    case "STORE_TYPE_LINKS":
+      return StoreType.LINKS;
+    case 3:
+    case "STORE_TYPE_REACTIONS":
+      return StoreType.REACTIONS;
+    case 4:
+    case "STORE_TYPE_USER_DATA":
+      return StoreType.USER_DATA;
+    case 5:
+    case "STORE_TYPE_VERIFICATIONS":
+      return StoreType.VERIFICATIONS;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
+  }
+}
+
+export function storeTypeToJSON(object: StoreType): string {
+  switch (object) {
+    case StoreType.NONE:
+      return "STORE_TYPE_NONE";
+    case StoreType.CASTS:
+      return "STORE_TYPE_CASTS";
+    case StoreType.LINKS:
+      return "STORE_TYPE_LINKS";
+    case StoreType.REACTIONS:
+      return "STORE_TYPE_REACTIONS";
+    case StoreType.USER_DATA:
+      return "STORE_TYPE_USER_DATA";
+    case StoreType.VERIFICATIONS:
+      return "STORE_TYPE_VERIFICATIONS";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
+  }
+}
+
 export interface Empty {
 }
 
@@ -174,7 +227,7 @@ export interface StorageLimitsResponse {
 }
 
 export interface StorageLimit {
-  storeType: string;
+  storeType: StoreType;
   limit: number;
 }
 
@@ -2530,13 +2583,13 @@ export const StorageLimitsResponse = {
 };
 
 function createBaseStorageLimit(): StorageLimit {
-  return { storeType: "", limit: 0 };
+  return { storeType: 0, limit: 0 };
 }
 
 export const StorageLimit = {
   encode(message: StorageLimit, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.storeType !== "") {
-      writer.uint32(10).string(message.storeType);
+    if (message.storeType !== 0) {
+      writer.uint32(8).int32(message.storeType);
     }
     if (message.limit !== 0) {
       writer.uint32(16).uint64(message.limit);
@@ -2552,11 +2605,11 @@ export const StorageLimit = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag != 8) {
             break;
           }
 
-          message.storeType = reader.string();
+          message.storeType = reader.int32() as any;
           continue;
         case 2:
           if (tag != 16) {
@@ -2576,14 +2629,14 @@ export const StorageLimit = {
 
   fromJSON(object: any): StorageLimit {
     return {
-      storeType: isSet(object.storeType) ? String(object.storeType) : "",
+      storeType: isSet(object.storeType) ? storeTypeFromJSON(object.storeType) : 0,
       limit: isSet(object.limit) ? Number(object.limit) : 0,
     };
   },
 
   toJSON(message: StorageLimit): unknown {
     const obj: any = {};
-    message.storeType !== undefined && (obj.storeType = message.storeType);
+    message.storeType !== undefined && (obj.storeType = storeTypeToJSON(message.storeType));
     message.limit !== undefined && (obj.limit = Math.round(message.limit));
     return obj;
   },
@@ -2594,7 +2647,7 @@ export const StorageLimit = {
 
   fromPartial<I extends Exact<DeepPartial<StorageLimit>, I>>(object: I): StorageLimit {
     const message = createBaseStorageLimit();
-    message.storeType = object.storeType ?? "";
+    message.storeType = object.storeType ?? 0;
     message.limit = object.limit ?? 0;
     return message;
   },
