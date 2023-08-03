@@ -43,7 +43,7 @@ export const up = async (db: Kysely<any>) => {
     .addColumn("parentFid", "bigint")
     .addColumn("parentUrl", "text")
     .addColumn("text", "text", (col) => col.notNull())
-    .addColumn("embeds", sql`text[]`, (col) => col.notNull().defaultTo(sql`'{}'`))
+    .addColumn("embeds", "jsonb", (col) => col.notNull().defaultTo(sql`'{}'`))
     .addColumn("mentions", sql`bigint[]`, (col) => col.notNull().defaultTo(sql`'{}'`))
     .addColumn("mentionsPositions", sql`smallint[]`, (col) => col.notNull().defaultTo(sql`'{}'`))
     .addUniqueConstraint("casts_hash_unique", ["hash"])
@@ -182,12 +182,15 @@ export const up = async (db: Kysely<any>) => {
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
     .addColumn("fid", "bigint")
     .addColumn("targetFid", "bigint")
+    .addColumn("hash", sql`bytea`, (col) => col.notNull())
     .addColumn("timestamp", "timestamp", (col) => col.notNull())
     .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
     .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
     .addColumn("deletedAt", "timestamp")
     .addColumn("type", "text")
     .addColumn("displayTimestamp", "timestamp")
+    .addUniqueConstraint("links_hash_unique", ["hash"])
+    .addUniqueConstraint("links_fid_target_fid_type_unique", ["fid", "targetFid", "type"])
     .execute();
 };
 

@@ -32,8 +32,22 @@ export function formatNumber(num?: number): string {
   }
 }
 
+export function formatTime(numMs?: number): string {
+  if (numMs === undefined) return "";
+
+  if (numMs >= 1000 * 60 * 60) {
+    return `${(numMs / (1000 * 60 * 60)).toFixed(1)}h`;
+  } else if (numMs >= 1000 * 60) {
+    return `${(numMs / (1000 * 60)).toFixed(1)}m`;
+  } else if (numMs >= 1000) {
+    return `${(numMs / 1000).toFixed(1)}s`;
+  } else {
+    return `${numMs.toFixed(1)}ms`;
+  }
+}
+
 // Pretty print a percentage
-function formatPercentage(num?: number): string {
+export function formatPercentage(num?: number): string {
   if (num === undefined) return "";
 
   return `${(num * 100).toFixed(2)}%`;

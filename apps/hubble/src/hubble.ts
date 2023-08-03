@@ -16,11 +16,10 @@ import {
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
   UserNameProof,
-  RentRegistryEvent,
-  StorageAdminRegistryEvent,
-  storageRegistryEventTypeToJSON,
   AckMessageBody,
   NetworkLatencyMessage,
+  OnChainEvent,
+  onChainEventTypeToJSON,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
@@ -50,8 +49,7 @@ import {
   messageToLog,
   messageTypeToName,
   nameRegistryEventToLog,
-  rentRegistryEventToLog,
-  storageAdminRegistryEventToLog,
+  onChainEventToLog,
   usernameProofToLog,
 } from "./utils/logger.js";
 import {
@@ -69,7 +67,7 @@ import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJ
 import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
-import { L2EventsProvider, OPGoerliEthConstants } from "./eth/l2EventsProvider.js";
+import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import { prettyPrintTable } from "./profile/profile.js";
 import packageJson from "./package.json" assert { type: "json" };
@@ -99,8 +97,7 @@ export interface HubInterface {
   submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitStorageAdminRegistryEvent(event: StorageAdminRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
@@ -165,8 +162,14 @@ export interface HubOptions {
   /** Address of the NameRegistryAddress contract  */
   nameRegistryAddress?: `0x${string}`;
 
-  /** Address of the StorageRegistryAddress contract  */
-  storageRegistryAddress?: `0x${string}`;
+  /** Address of the Id Registry contract  */
+  l2IdRegistryAddress?: `0x${string}`;
+
+  /** Address of the Key Registry contract  */
+  l2KeyRegistryAddress?: `0x${string}`;
+
+  /** Address of the StorageRegistry contract  */
+  l2StorageRegistryAddress?: `0x${string}`;
 
   /** Block number to begin syncing events from  */
   firstBlock?: number;
@@ -179,6 +182,12 @@ export interface HubOptions {
 
   /** Number of blocks to batch when syncing historical events for L2 */
   l2ChunkSize?: number;
+
+  /** Chain Id for L2 */
+  l2ChainId?: number;
+
+  /** Resync l2 events */
+  l2ResyncEvents?: boolean;
 
   /** Resync events */
   resyncEthEvents?: boolean;
@@ -305,10 +314,13 @@ export class Hub implements HubInterface {
         this,
         options.l2RpcUrl,
         options.rankRpcs ?? false,
-        options.storageRegistryAddress ?? OPGoerliEthConstants.StorageRegistryAddress,
-        options.l2FirstBlock ?? OPGoerliEthConstants.FirstBlock,
-        options.l2ChunkSize ?? OPGoerliEthConstants.ChunkSize,
-        options.resyncEthEvents ?? false,
+        options.l2StorageRegistryAddress ?? OptimismConstants.StorageRegistryAddress,
+        options.l2KeyRegistryAddress ?? OptimismConstants.KeyRegistryAddress,
+        options.l2IdRegistryAddress ?? OptimismConstants.IdRegistryAddress,
+        options.l2FirstBlock ?? OptimismConstants.FirstBlock,
+        options.l2ChunkSize ?? OptimismConstants.ChunkSize,
+        options.l2ChainId ?? OptimismConstants.ChainId,
+        options.l2ResyncEvents ?? false,
       );
     } else {
       log.warn("No L2 RPC URL provided, not syncing with L2 contract events");
@@ -415,14 +427,6 @@ export class Hub implements HubInterface {
         this.ethRegistryProvider,
       );
     }
-
-    // if (this.l2RegistryProvider) {
-    //   this.updateRentRegistryEventExpiryJobWorker = new UpdateRentRegistryEventExpiryJobWorker(
-    //     this.updateRentRegistryEventExpiryJobQueue,
-    //     this.rocksDB,
-    //     this.l2RegistryProvider
-    //   );
-    // }
 
     this.allowedPeerIds = this.options.allowedPeers;
     if (this.options.network === FarcasterNetwork.MAINNET) {
@@ -1092,50 +1096,21 @@ export class Hub implements HubInterface {
     return mergeResult;
   }
 
-  async submitRentRegistryEvent(event: RentRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
-    const logEvent = log.child({ event: rentRegistryEventToLog(event), source });
-    // eslint-disable-next-line no-console
-    console.log("submitting rent event");
-    const mergeResult = await this.engine.mergeRentRegistryEvent(event);
+  async submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number> {
+    const logEvent = log.child({ event: onChainEventToLog(event), source });
 
-    mergeResult.match(
-      (eventId) => {
-        // eslint-disable-next-line no-console
-        console.log(
-          `submitRentRegistryEvent success ${eventId}: fid ${event.fid} assigned ${event.units} in block ${event.blockNumber}`,
-        );
-        logEvent.info(
-          `submitRentRegistryEvent success ${eventId}: fid ${event.fid} assigned ${event.units} in block ${event.blockNumber}`,
-        );
-      },
-      (e) => {
-        // eslint-disable-next-line no-console
-        console.log(`submitRentRegistryEvent error: ${e.message}`);
-        logEvent.warn({ errCode: e.errCode }, `submitRentRegistryEvent error: ${e.message}`);
-      },
-    );
-
-    return mergeResult;
-  }
-
-  async submitStorageAdminRegistryEvent(
-    event: StorageAdminRegistryEvent,
-    source?: HubSubmitSource,
-  ): HubAsyncResult<number> {
-    const logEvent = log.child({ event: storageAdminRegistryEventToLog(event), source });
-
-    const mergeResult = await this.engine.mergeStorageAdminRegistryEvent(event);
+    const mergeResult = await this.engine.mergeOnChainEvent(event);
 
     mergeResult.match(
       (eventId) => {
         logEvent.info(
-          `submitStorageAdminRegistryEvent success ${eventId}: address ${bytesToHexString(
-            event.from,
-          )._unsafeUnwrap()} performed ${storageRegistryEventTypeToJSON(event.type)} in block ${event.blockNumber}`,
+          `submitOnChainEvent success ${eventId}: event ${onChainEventTypeToJSON(event.type)} in block ${
+            event.blockNumber
+          }`,
         );
       },
       (e) => {
-        logEvent.warn({ errCode: e.errCode }, `submitStorageAdminRegistryEvent error: ${e.message}`);
+        logEvent.warn({ errCode: e.errCode }, `submitOnChainEvent error: ${e.message}`);
       },
     );
 

@@ -7,6 +7,7 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
+  OnChainEvent,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
 import { ok, ResultAsync } from "neverthrow";
@@ -15,7 +16,7 @@ import { GossipNode } from "../network/p2p/gossipNode.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import Engine from "../storage/engine/index.js";
 import { PeerId } from "@libp2p/interface-peer-id";
-import { ContactInfoContent, RentRegistryEvent, StorageAdminRegistryEvent } from "@farcaster/core";
+import { ContactInfoContent } from "@farcaster/core";
 import { getHubState, putHubState } from "../storage/db/hubState.js";
 
 export class MockHub implements HubInterface {
@@ -28,14 +29,6 @@ export class MockHub implements HubInterface {
     this.db = db;
     this.engine = engine ?? new Engine(db, FarcasterNetwork.TESTNET);
     this.gossipNode = gossipNode;
-  }
-
-  async submitRentRegistryEvent(event: RentRegistryEvent): HubAsyncResult<number> {
-    return this.engine.mergeRentRegistryEvent(event);
-  }
-
-  async submitStorageAdminRegistryEvent(event: StorageAdminRegistryEvent): HubAsyncResult<number> {
-    return this.engine.mergeStorageAdminRegistryEvent(event);
   }
 
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
@@ -58,6 +51,10 @@ export class MockHub implements HubInterface {
 
   async submitUserNameProof(proof: UserNameProof): HubAsyncResult<number> {
     return this.engine.mergeUserNameProof(proof);
+  }
+
+  async submitOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {
+    return this.engine.mergeOnChainEvent(event);
   }
 
   async getHubState(): HubAsyncResult<HubState> {

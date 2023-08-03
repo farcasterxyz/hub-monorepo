@@ -27,7 +27,6 @@ export class WatchContractEvent<
     this._params = params;
     this._log = logger.child({
       component: "WatchContractEvent",
-      eventName: params.eventName,
       key,
     });
   }
@@ -42,7 +41,7 @@ export class WatchContractEvent<
       },
     });
 
-    this._log.info("Started watching contract events");
+    this._log.info(`Started watching contract events at address ${this._params.address}`);
   }
 
   public stop() {

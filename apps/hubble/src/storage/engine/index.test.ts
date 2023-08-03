@@ -26,6 +26,7 @@ import {
   ReactionType,
   RevokeMessageHubEvent,
   SignerAddMessage,
+  SignerEventType,
   SignerRemoveMessage,
   toFarcasterTime,
   UserDataAddMessage,
@@ -727,6 +728,66 @@ describe("mergeMessage", () => {
       });
     });
   });
+
+  describe("signer migration", () => {
+    let migratedEngine: Engine;
+    describe("after migration", () => {
+      beforeEach(async () => {
+        // Create a new instance so the isMigrated flag is cleared each time.
+        migratedEngine = new Engine(db, network, undefined, publicClient);
+
+        await expect(migratedEngine.mergeIdRegistryEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
+        await expect(migratedEngine.mergeMessage(signerAdd)).resolves.toBeInstanceOf(Ok);
+        await migratedEngine.mergeOnChainEvent(Factories.SignerMigratedOnChainEvent.build());
+        migratedEngine.eventHandler.on("mergeMessage", handleMergeMessage);
+      });
+      afterEach(() => {
+        migratedEngine.eventHandler.off("mergeMessage", handleMergeMessage);
+      });
+      test("fails if no l2 id registry event", async () => {
+        const result = await migratedEngine.mergeMessage(castAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch("unknown fid");
+      });
+      test("fails if no on chain signer", async () => {
+        const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+        await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+        const result = await migratedEngine.mergeMessage(castAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
+      });
+      test("succeeds with l2 id registry event and on chain signer", async () => {
+        const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+        const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
+        const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+        await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+        await migratedEngine.mergeOnChainEvent(onChainSignerEvent);
+
+        await expect(migratedEngine.mergeMessage(castAdd)).resolves.toBeInstanceOf(Ok);
+        await expect(migratedEngine.getCast(fid, castAdd.hash)).resolves.toEqual(ok(castAdd));
+        expect(mergedMessages).toEqual([castAdd]);
+      });
+      test("fails if signer is removed on chain", async () => {
+        const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+        const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
+        const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+
+        const signerRemovalBody = Factories.SignerEventBody.build({
+          eventType: SignerEventType.REMOVE,
+          key: signerAdd.data.signerAddBody.signer,
+        });
+        const signerRemovalEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
+
+        await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+        await migratedEngine.mergeOnChainEvent(onChainSignerEvent);
+        await migratedEngine.mergeOnChainEvent(signerRemovalEvent);
+
+        const result = await migratedEngine.mergeMessage(castAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
+      });
+    });
+  });
 });
 
 describe("mergeMessages", () => {
@@ -824,7 +885,7 @@ describe("revokeMessagesBySigner", () => {
 });
 
 describe("with listeners and workers", () => {
-  const liveEngine = new Engine(db, FarcasterNetwork.TESTNET);
+  let liveEngine: Engine;
   setReferenceDateForTest(100000000000000000000000);
 
   let revokedMessages: Message[];
@@ -833,20 +894,15 @@ describe("with listeners and workers", () => {
     revokedMessages.push(event.revokeMessageBody.message);
   };
 
-  beforeAll(async () => {
-    liveEngine.eventHandler.on("revokeMessage", handleRevokeMessage);
-  });
-
-  afterAll(async () => {
-    liveEngine.eventHandler.off("revokeMessage", handleRevokeMessage);
-  });
-
   beforeEach(async () => {
     revokedMessages = [];
+    liveEngine = new Engine(db, FarcasterNetwork.TESTNET);
+    liveEngine.eventHandler.on("revokeMessage", handleRevokeMessage);
     await liveEngine.start();
   });
 
   afterEach(async () => {
+    liveEngine.eventHandler.off("revokeMessage", handleRevokeMessage);
     await liveEngine.stop();
   });
 
@@ -921,6 +977,27 @@ describe("with listeners and workers", () => {
       expect(revokedMessages).toEqual([signerAdd]);
       await sleep(200); // Wait for engine to revoke messages
       expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd, linkAdd]);
+    });
+
+    test("revokes messages when onchain signer is removed", async () => {
+      const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+      const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
+      const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+
+      await liveEngine.mergeOnChainEvent(idRegistryOnChainEvent);
+      await liveEngine.mergeOnChainEvent(onChainSignerEvent);
+      await liveEngine.mergeOnChainEvent(Factories.SignerMigratedOnChainEvent.build());
+
+      const signerRemovalBody = Factories.SignerEventBody.build({
+        eventType: SignerEventType.REMOVE,
+        key: signerEventBody.key,
+      });
+      const signerRemovalEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
+      await liveEngine.mergeOnChainEvent(signerRemovalEvent);
+
+      expect(revokedMessages).toEqual([]);
+      await sleep(200); // Wait for engine to revoke messages
+      expect(revokedMessages).toEqual([castAdd, reactionAdd, linkAdd]);
     });
 
     test("does not revoke UserDataAdd when fname is transferred to different address but same fid", async () => {

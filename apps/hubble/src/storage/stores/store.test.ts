@@ -7,12 +7,12 @@ import { Message } from "@farcaster/hub-nodejs";
 import { isCastAddMessage } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
 import { jestRocksDB } from "../db/jestUtils.js";
-import { ResultAsync, err, ok } from "neverthrow";
+import { ResultAsync, ok } from "neverthrow";
 import { HubError } from "@farcaster/hub-nodejs";
 import { Transaction } from "../db/rocksdb.js";
 import { Factories } from "@farcaster/hub-nodejs";
 import { getFarcasterTime } from "@farcaster/hub-nodejs";
-import { putRentRegistryEvent } from "../db/storageRegistryEvent.js";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.generalStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -101,20 +101,26 @@ describe("store", () => {
       pruneSizeLimit: 100,
     });
 
-    const message3 = await Factories.RentRegistryEvent.create({
+    const rent3 = Factories.StorageRentOnChainEvent.build({
       fid: 3,
-      expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
-      units: 2,
+      storageRentEventBody: Factories.StorageRentEventBody.build({
+        expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
+        units: 2,
+      }),
     });
 
-    const message4 = await Factories.RentRegistryEvent.create({
+    const rent4 = Factories.StorageRentOnChainEvent.build({
       fid: 4,
-      expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
-      units: 1,
+      storageRentEventBody: Factories.StorageRentEventBody.build({
+        expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
+        units: 1,
+      }),
     });
 
-    await putRentRegistryEvent(db, message3);
-    await putRentRegistryEvent(db, message4);
+    const txn = db.transaction();
+    putOnChainEventTransaction(txn, rent3);
+    putOnChainEventTransaction(txn, rent4);
+    await db.commit(txn);
     await eventHandler.syncCache();
 
     for (let i = 0; i < 200; i++) {

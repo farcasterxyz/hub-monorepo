@@ -6,7 +6,6 @@ import {
   FarcasterNetwork,
   Message,
   Metadata,
-  getFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { ConsoleCommandInterface } from "./console.js";
 
@@ -79,12 +78,11 @@ export class GenCommand implements ConsoleCommandInterface {
             return `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
           }
 
-          const rentRegistryEvent = Factories.RentRegistryEvent.build({
+          const rentRegistryEvent = Factories.StorageRentOnChainEvent.build({
             fid,
-            expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60,
-            units: 2,
+            storageRentEventBody: Factories.StorageRentEventBody.build({ units: 2 }),
           });
-          const rentResult = await this.adminRpcClient.submitRentRegistryEvent(rentRegistryEvent, metadata);
+          const rentResult = await this.adminRpcClient.submitOnChainEvent(rentRegistryEvent, metadata);
 
           if (rentResult.isOk()) {
             numSuccess++;

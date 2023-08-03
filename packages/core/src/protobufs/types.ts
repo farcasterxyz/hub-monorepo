@@ -3,7 +3,9 @@ import { NameRegistryEvent } from "./generated/name_registry_event";
 import * as hubEventProtobufs from "./generated/hub_event";
 import * as protobufs from "./generated/message";
 import { RentRegistryEvent, StorageAdminRegistryEvent } from "./generated/storage_event";
+import * as onchainEventProtobufs from "./generated/onchain_event";
 import { UserNameProof } from "./generated/username_proof";
+import { OnChainEvent } from "./generated/onchain_event";
 
 /** Message types */
 
@@ -127,6 +129,26 @@ export type UsernameProofMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type SignerOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER;
+  signerEventBody: onchainEventProtobufs.SignerEventBody;
+};
+
+export type SignerMigratedOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED;
+  signerMigratedEventBody: onchainEventProtobufs.SignerMigratedEventBody;
+};
+
+export type IdRegisterOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_ID_REGISTER;
+  idRegisterEventBody: onchainEventProtobufs.IdRegisterEventBody;
+};
+
+export type StorageRentOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_STORAGE_RENT;
+  storageRentEventBody: onchainEventProtobufs.StorageRentEventBody;
+};
+
 /** Hub event types */
 
 export type MergeMessageHubEvent = hubEventProtobufs.HubEvent & {
@@ -164,17 +186,10 @@ export type MergeNameRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
   };
 };
 
-export type MergeRentRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
-  type: hubEventProtobufs.HubEventType.MERGE_RENT_REGISTRY_EVENT;
-  mergeRentRegistryEventBody: hubEventProtobufs.MergeRentRegistryEventBody & {
-    rentRegistryEvent: RentRegistryEvent;
-  };
-};
-
-export type MergeStorageAdminRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
-  type: hubEventProtobufs.HubEventType.MERGE_STORAGE_ADMIN_REGISTRY_EVENT;
-  mergeStorageAdminRegistryEventBody: hubEventProtobufs.MergeStorageAdminRegistryEventBody & {
-    storageAdminRegistryEvent: StorageAdminRegistryEvent;
+export type MergeOnChainEventHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.MERGE_ON_CHAIN_EVENT;
+  mergeOnChainEventBody: hubEventProtobufs.MergeOnChainEventBody & {
+    onChainEvent: OnChainEvent;
   };
 };
 

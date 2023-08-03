@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 import "message.proto";
-import "storage_event.proto";
+import "onchain_event.proto";
 import "hub_event.proto";
 import "username_proof.proto";
 
@@ -151,8 +151,13 @@ message RentRegistryEventsRequest {
   uint64 fid = 1;
 }
 
-message RentRegistryEventsResponse {
-  repeated RentRegistryEvent events = 1;
+message OnChainEventRequest {
+  uint64 fid = 1;
+  OnChainEventType event_type = 2;
+}
+
+message OnChainEventResponse {
+  repeated OnChainEvent events = 1;
 }
 
 message StorageAdminRegistryEventRequest {

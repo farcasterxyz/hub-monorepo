@@ -5,12 +5,25 @@ import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "@noble/hashes/utils";
 import * as protobufs from "./protobufs";
+import {
+  IdRegisterEventBody,
+  IdRegisterEventType,
+  IdRegisterOnChainEvent,
+  OnChainEventType,
+  SignerEventBody,
+  SignerEventType,
+  SignerMigratedEventBody,
+  SignerMigratedOnChainEvent,
+  SignerOnChainEvent,
+  StorageRentEventBody,
+  StorageRentOnChainEvent,
+  UserNameType,
+} from "./protobufs";
 import { bytesToHexString, utf8StringToBytes } from "./bytes";
-import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, ViemLocalEip712Signer, Signer } from "./signers";
+import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip712Signer } from "./signers";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { VerificationEthAddressClaim } from "./verifications";
 import { LocalAccount } from "viem";
-import { UserNameType } from "./protobufs";
 
 /** Scalars */
 
@@ -616,46 +629,16 @@ const NameRegistryEventFactory = Factory.define<protobufs.NameRegistryEvent>(() 
   });
 });
 
-const RentRegistryEventTypeFactory = Factory.define<protobufs.StorageRegistryEventType>(() => {
-  return faker.helpers.arrayElement([protobufs.StorageRegistryEventType.RENT]);
-});
-
-const RentRegistryEventFactory = Factory.define<protobufs.RentRegistryEvent>(({ onCreate }) => {
-  onCreate(async (data) => {
-    return data;
-  });
-  return protobufs.RentRegistryEvent.create({
-    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
-    blockHash: BlockHashFactory.build(),
-    transactionHash: TransactionHashFactory.build(),
-    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
-    payer: EthAddressFactory.build(),
+const OnChainEventFactory = Factory.define<protobufs.OnChainEvent>(() => {
+  return protobufs.OnChainEvent.create({
+    type: OnChainEventType.EVENT_TYPE_SIGNER,
+    chainId: 1,
     fid: FidFactory.build(),
-    type: RentRegistryEventTypeFactory.build(),
-    units: faker.datatype.number({ min: 1, max: 1_000 }),
-    expiry: getFarcasterTime()._unsafeUnwrap() + 60 * 60 * 24 * 365, // a year
-  });
-});
-
-const StorageAdminRegistryEventTypeFactory = Factory.define<protobufs.StorageRegistryEventType>(() => {
-  return faker.helpers.arrayElement([
-    protobufs.StorageRegistryEventType.SET_DEPRECATION_TIMESTAMP,
-    protobufs.StorageRegistryEventType.SET_GRACE_PERIOD,
-    protobufs.StorageRegistryEventType.SET_MAX_UNITS,
-    protobufs.StorageRegistryEventType.SET_PRICE,
-  ]);
-});
-
-const StorageAdminRegistryEventFactory = Factory.define<protobufs.StorageAdminRegistryEvent>(() => {
-  return protobufs.StorageAdminRegistryEvent.create({
     blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
     blockHash: BlockHashFactory.build(),
+    blockTimestamp: faker.datatype.datetime().getTime(),
     transactionHash: TransactionHashFactory.build(),
     logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
-    timestamp: faker.datatype.number({ min: 0, max: 1_000 }),
-    from: EthAddressFactory.build(),
-    type: RentRegistryEventTypeFactory.build(),
-    value: BytesFactory.build({}, { transient: { length: 4 } }),
   });
 });
 
@@ -668,6 +651,56 @@ const UserNameProofFactory = Factory.define<protobufs.UserNameProof>(() => {
     fid: FidFactory.build(),
     type: protobufs.UserNameType.USERNAME_TYPE_FNAME,
   });
+});
+
+const SignerEventBodyFactory = Factory.define<protobufs.SignerEventBody>(() => {
+  return SignerEventBody.create({
+    key: Ed25519PPublicKeyFactory.build(),
+    eventType: SignerEventType.ADD,
+    scheme: 1,
+  });
+});
+
+const SignerOnChainEventFactory = Factory.define<SignerOnChainEvent>(() => {
+  return OnChainEventFactory.build({
+    type: OnChainEventType.EVENT_TYPE_SIGNER,
+    signerEventBody: SignerEventBodyFactory.build(),
+  }) as protobufs.SignerOnChainEvent;
+});
+
+const IdRegisterOnChainEventFactory = Factory.define<IdRegisterOnChainEvent>(() => {
+  return OnChainEventFactory.build({
+    type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
+    idRegisterEventBody: IdRegisterEventBody.create({
+      eventType: IdRegisterEventType.REGISTER,
+      from: EthAddressFactory.build(),
+    }),
+  }) as protobufs.IdRegisterOnChainEvent;
+});
+
+const SignerMigratedOnChainEventFactory = Factory.define<SignerMigratedOnChainEvent>(() => {
+  return OnChainEventFactory.build({
+    type: OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
+    fid: 0,
+    signerMigratedEventBody: SignerMigratedEventBody.create({
+      migratedAt: Math.floor(faker.datatype.datetime().getTime() / 1000),
+    }),
+  }) as protobufs.SignerMigratedOnChainEvent;
+});
+
+const StorageRentEventBodyFactory = Factory.define<protobufs.StorageRentEventBody>(() => {
+  return StorageRentEventBody.create({
+    payer: EthAddressFactory.build(),
+    units: faker.datatype.number({ min: 1, max: 1_000 }),
+    expiry: getFarcasterTime()._unsafeUnwrap() + 60 * 60 * 24 * 365, // a year
+  });
+});
+
+const StorageRentOnChainEventFactory = Factory.define<StorageRentOnChainEvent>(() => {
+  return OnChainEventFactory.build({
+    type: OnChainEventType.EVENT_TYPE_STORAGE_RENT,
+    storageRentEventBody: StorageRentEventBodyFactory.build(),
+  }) as protobufs.StorageRentOnChainEvent;
 });
 
 export const Factories = {
@@ -733,8 +766,11 @@ export const Factories = {
   UserNameProof: UserNameProofFactory,
   UsernameProofData: UsernameProofDataFactory,
   UsernameProofMessage: UsernameProofMessageFactory,
-  RentRegistryEventType: RentRegistryEventTypeFactory,
-  RentRegistryEvent: RentRegistryEventFactory,
-  StorageAdminRegistryEventType: StorageAdminRegistryEventTypeFactory,
-  StorageAdminRegistryEvent: StorageAdminRegistryEventFactory,
+  OnChainEvent: OnChainEventFactory,
+  SignerEventBody: SignerEventBodyFactory,
+  KeyRegistryOnChainEvent: SignerOnChainEventFactory,
+  IdRegistryOnChainEvent: IdRegisterOnChainEventFactory,
+  SignerMigratedOnChainEvent: SignerMigratedOnChainEventFactory,
+  StorageRentEventBody: StorageRentEventBodyFactory,
+  StorageRentOnChainEvent: StorageRentOnChainEventFactory,
 };
