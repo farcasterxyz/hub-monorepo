@@ -248,13 +248,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       return err(units.error);
     }
 
-    if (units.value === 0) {
-      logger.debug({ fid }, "fid has no registered storage, would be pruned");
-    }
-
-    // This is temporary, when all fids are migrated to using storage rent, we'll just use the units directly.
-    const unitsMultiplier = units.value > 0 ? units.value : 1;
-
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
       return err(cachedCount.error);
@@ -296,7 +289,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         // Since the TS hash has the first 4 bytes be the timestamp (bigendian), we can use it to prune
         // since the iteration will be implicitly sorted by timestamp
         if (
-          count.value <= this._pruneSizeLimit * unitsMultiplier &&
+          count.value <= this._pruneSizeLimit * units.value &&
           (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
         ) {
           return true; // Nothing left to prune

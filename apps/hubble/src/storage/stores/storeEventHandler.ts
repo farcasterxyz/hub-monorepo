@@ -199,7 +199,14 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   }
 
   async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
-    return await this._storageCache.getCurrentStorageUnitsForFid(fid);
+    const units = await this._storageCache.getCurrentStorageUnitsForFid(fid);
+
+    if (units.isOk() && units.value === 0) {
+      logger.debug({ fid }, "fid has no registered storage, would be pruned");
+    }
+
+    // This is temporary, when all fids are migrated to using storage rent, we'll just use the units directly.
+    return units.map((u) => (u > 0 ? u : 1));
   }
 
   async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
@@ -272,18 +279,12 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(units.error);
     }
 
-    if (units.value === 0) {
-      logger.debug({ fid: message.data.fid }, "fid has no registered storage, would be pruned");
-    }
-
-    const unitsMultiplier = units.value > 0 ? units.value : 1;
-
     const messageCount = await this.getCacheMessageCount(message.data.fid, set);
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }
 
-    if (messageCount.value < sizeLimit * unitsMultiplier) {
+    if (messageCount.value < sizeLimit * units.value) {
       return ok(false);
     }
 
