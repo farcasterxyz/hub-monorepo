@@ -125,6 +125,8 @@ class Engine {
     this._onchainEventsStore = new OnChainEventStore(db, this.eventHandler);
     this._usernameProofStore = new UsernameProofStore(db, this.eventHandler);
 
+    // Calculate total storage available per unit of store. Note that OnChainEventStore
+    // is not included in this calculation because it is not pruned.
     this._totalPruneSize =
       this._linkStore.pruneSizeLimit +
       this._reactionStore.pruneSizeLimit +
@@ -132,8 +134,9 @@ class Engine {
       this._castStore.pruneSizeLimit +
       this._userDataStore.pruneSizeLimit +
       this._verificationStore.pruneSizeLimit +
-      // this._onchainEventsStore.pruneSizeLimit +
       this._usernameProofStore.pruneSizeLimit;
+
+    log.info({ totalPruneSize: this._totalPruneSize }, "total default storage limit size");
 
     this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
     this._revokeSignerWorker = new RevokeMessagesBySignerJobWorker(this._revokeSignerQueue, db, this);

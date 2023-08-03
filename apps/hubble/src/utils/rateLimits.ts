@@ -1,6 +1,6 @@
 import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
-import { RateLimiterAbstract } from "rate-limiter-flexible";
+import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 
 // Number of submit messages (total) that can be merged per 60 seconds
 export const SUBMIT_MESSAGE_RATE_LIMIT = {
@@ -11,15 +11,15 @@ export const SUBMIT_MESSAGE_RATE_LIMIT = {
 // We keep a map of rate limiters per total messages allowed, since each fid has a different limit
 // The totalMessages are always num of storage units purchased * totalPruneSize limit, so there will
 // be as many rate limiters as the number of distinct storage units purchased, which is a small number
-const rateLimiters = new Map<number, RateLimiterAbstract>();
-export function getRateLimiterForTotalMessages(totalMessages: number): RateLimiterAbstract {
+const rateLimiters = new Map<number, RateLimiterMemory>();
+export function getRateLimiterForTotalMessages(totalMessages: number, duration = 60 * 60 * 24): RateLimiterAbstract {
   if (rateLimiters.has(totalMessages)) {
     return rateLimiters.get(totalMessages) as RateLimiterAbstract;
   }
 
-  const limiter = new RateLimiterAbstract({
+  const limiter = new RateLimiterMemory({
     points: totalMessages,
-    duration: 60 * 60 * 24,
+    duration,
   });
   rateLimiters.set(totalMessages, limiter);
   return limiter;
