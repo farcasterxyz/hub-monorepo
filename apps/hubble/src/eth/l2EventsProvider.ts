@@ -48,10 +48,12 @@ export class L2EventsProvider {
   private _firstBlock: number;
   private _chunkSize: number;
   private _chainId: number;
+  private _rentExpiry: number;
   private _resyncEvents: boolean;
 
   private _onChainEventsByBlock: Map<number, Array<OnChainEvent>>;
   private _retryDedupMap: Map<number, boolean>;
+  private _blockTimestampsCache: Map<string, number>;
 
   private _lastBlockNumber: number;
 
@@ -85,6 +87,7 @@ export class L2EventsProvider {
     chunkSize: number,
     chainId: number,
     resyncEvents: boolean,
+    expiryOverride?: number,
   ) {
     this._hub = hub;
     this._publicClient = publicClient;
@@ -92,6 +95,7 @@ export class L2EventsProvider {
     this._chunkSize = chunkSize;
     this._chainId = chainId;
     this._resyncEvents = resyncEvents;
+    this._rentExpiry = expiryOverride ?? RENT_EXPIRY_IN_SECONDS;
 
     this._lastBlockNumber = 0;
 
@@ -99,6 +103,7 @@ export class L2EventsProvider {
     // numConfirmations blocks have been mined.
     this._onChainEventsByBlock = new Map();
     this._retryDedupMap = new Map();
+    this._blockTimestampsCache = new Map();
 
     // Setup StorageRegistry contract
     this._watchStorageContractEvents = new WatchContractEvent(
@@ -144,6 +149,10 @@ export class L2EventsProvider {
         log.error(`Error watching new block numbers: ${error}`, { error });
       },
     });
+
+    if (expiryOverride) {
+      log.warn(`Overriding rent expiry to ${expiryOverride} seconds`);
+    }
   }
 
   /**
@@ -161,6 +170,7 @@ export class L2EventsProvider {
     chunkSize: number,
     chainId: number,
     resyncEvents: boolean,
+    expiryOverride?: number,
   ): L2EventsProvider {
     const l2RpcUrls = l2RpcUrl.split(",");
     const transports = l2RpcUrls.map((url) => http(url, { retryCount: 10 }));
@@ -180,6 +190,7 @@ export class L2EventsProvider {
       chunkSize,
       chainId,
       resyncEvents,
+      expiryOverride,
     );
 
     return provider;
@@ -236,15 +247,13 @@ export class L2EventsProvider {
             true,
             typeof StorageRegistry.abi
           >;
-          const block = await this._publicClient.getBlock({
-            blockHash: blockHash as `0x${string}`,
-          });
-          const timestamp = toFarcasterTime(Number(block.timestamp) * 1000);
-          if (timestamp.isErr()) {
-            log.error(timestamp.error, "failed to parse block timestamp");
+          const blockTimestamp = await this._getBlockTimestamp(blockHash);
+          const blockTimeAsFarcasterTime = toFarcasterTime(blockTimestamp * 1000);
+          if (blockTimeAsFarcasterTime.isErr()) {
+            log.error(blockTimeAsFarcasterTime.error, "failed to parse block timestamp");
             continue;
           }
-          const expiry = timestamp.value + RENT_EXPIRY_IN_SECONDS;
+          const expiry = blockTimeAsFarcasterTime.value + this._rentExpiry;
           const storageRentEventBody = StorageRentEventBody.create({
             payer: hexStringToBytes(rentEvent.args.payer)._unsafeUnwrap(),
             units: Number(rentEvent.args.units),
@@ -488,6 +497,7 @@ export class L2EventsProvider {
     const numOfRuns = Math.ceil((toBlock - fromBlock) / batchSize);
 
     for (let i = 0; i < numOfRuns; i++) {
+      this._blockTimestampsCache.clear(); // Clear the cache for each block to avoid unbounded growth
       let nextFromBlock = fromBlock + i * batchSize;
       const nextToBlock = nextFromBlock + batchSize;
 
@@ -560,6 +570,7 @@ export class L2EventsProvider {
       await this._hub.putHubState(hubState);
     }
 
+    this._blockTimestampsCache.clear(); // Clear the cache periodically to avoid unbounded growth
     this._lastBlockNumber = blockNumber;
   }
 
@@ -585,10 +596,7 @@ export class L2EventsProvider {
     }
 
     const [blockHashBytes, transactionHashBytes] = serialized.value;
-    const block = await this._publicClient.getBlock({
-      blockHash: blockHash as `0x${string}`,
-    });
-    const timestamp = Number(block.timestamp);
+    const timestamp = await this._getBlockTimestamp(blockHash);
 
     const onChainEvent = OnChainEvent.create({
       type,
@@ -618,5 +626,18 @@ export class L2EventsProvider {
     );
 
     return ok(undefined);
+  }
+
+  private async _getBlockTimestamp(blockHash: string): Promise<number> {
+    const cachedTimestamp = this._blockTimestampsCache.get(blockHash);
+    if (cachedTimestamp) {
+      return cachedTimestamp;
+    }
+    const block = await this._publicClient.getBlock({
+      blockHash: blockHash as `0x${string}`,
+    });
+    const timestamp = Number(block.timestamp);
+    this._blockTimestampsCache.set(blockHash, timestamp);
+    return timestamp;
   }
 }

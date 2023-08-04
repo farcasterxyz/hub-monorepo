@@ -186,6 +186,9 @@ export interface HubOptions {
   /** Chain Id for L2 */
   l2ChainId?: number;
 
+  /** Storage rent expiry override for tests */
+  l2RentExpiryOverride?: number;
+
   /** Resync l2 events */
   l2ResyncEvents?: boolean;
 
@@ -321,6 +324,7 @@ export class Hub implements HubInterface {
         options.l2ChunkSize ?? OptimismConstants.ChunkSize,
         options.l2ChainId ?? OptimismConstants.ChainId,
         options.l2ResyncEvents ?? false,
+        options.l2RentExpiryOverride,
       );
     } else {
       log.warn("No L2 RPC URL provided, not syncing with L2 contract events");

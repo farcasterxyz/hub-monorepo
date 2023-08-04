@@ -95,6 +95,11 @@ app
     parseNumber,
   )
   .option("--l2-chain-id <number>", "The chain ID of the L2 Farcaster contracts are deployed to", parseNumber)
+  .option(
+    "--l2-rent-expiry-override <number>",
+    "The storage rent expiry in seconds to use instead of the default 1 year (ONLY FOR TESTS)",
+    parseNumber,
+  )
 
   // Networking Options
   .option("-a, --allowed-peers <peerIds...>", "Only peer with specific peer ids. (default: all peers allowed)")
@@ -390,6 +395,7 @@ app
       l2ChunkSize: cliOptions.l2ChunkSize ?? hubConfig.l2ChunkSize,
       l2ChainId: cliOptions.l2ChainId ?? hubConfig.l2ChainId,
       l2ResyncEvents: cliOptions.l2ResyncEvents ?? hubConfig.l2ResyncEvents ?? false,
+      l2RentExpiryOverride: cliOptions.l2RentExpiryOverride ?? hubConfig.l2RentExpiryOverride,
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
