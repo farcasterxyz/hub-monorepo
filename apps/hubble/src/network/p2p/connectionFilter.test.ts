@@ -22,7 +22,7 @@ describe("connectionFilter tests", () => {
   });
 
   test("denies all connections by default", async () => {
-    const filter = new ConnectionFilter([]);
+    const filter = new ConnectionFilter([], []);
     const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
       remotePeer: allowedPeerId,
@@ -40,7 +40,7 @@ describe("connectionFilter tests", () => {
   });
 
   test("allows selected peers", async () => {
-    const filter = new ConnectionFilter([allowedPeerId.toString()]);
+    const filter = new ConnectionFilter([allowedPeerId.toString()], []);
     const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
       remotePeer: allowedPeerId,
@@ -58,7 +58,7 @@ describe("connectionFilter tests", () => {
   });
 
   test("filters unknown peers", async () => {
-    const filter = new ConnectionFilter([allowedPeerId.toString()]);
+    const filter = new ConnectionFilter([allowedPeerId.toString()], []);
     const { outbound: remoteConnection } = mockMultiaddrConnPair({
       addrs: [multiaddr(localMultiAddrStr), multiaddr(filteredMultiAddrStr)],
       remotePeer: blockedPeerId,
@@ -69,5 +69,47 @@ describe("connectionFilter tests", () => {
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
     await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
+  });
+
+  test("denied peers are not allowed", async () => {
+    const filter = new ConnectionFilter(undefined, [blockedPeerId.toString()]);
+    const { outbound: remoteConnection } = mockMultiaddrConnPair({
+      addrs: [multiaddr(localMultiAddrStr), multiaddr(filteredMultiAddrStr)],
+      remotePeer: blockedPeerId,
+    });
+    await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
+    await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeTruthy();
+    // Incepient Inbound Connections are always allowed
+    await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
+    await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
+    await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
+  });
+
+  test("denies peer that is both allowed and denied", async () => {
+    const filter = new ConnectionFilter([blockedPeerId.toString()], [blockedPeerId.toString()]);
+    const { outbound: remoteConnection } = mockMultiaddrConnPair({
+      addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
+      remotePeer: blockedPeerId,
+    });
+    await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeTruthy();
+    await expect(filter.denyDialMultiaddr(blockedPeerId, multiaddr(allowedMultiAddrStr))).resolves.toBeTruthy();
+    // Incepient Inbound Connections are always allowed
+    await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
+    await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
+    await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
+  });
+
+  test("no filter allows all", async () => {
+    const filter = new ConnectionFilter(undefined, []);
+    const { outbound: remoteConnection } = mockMultiaddrConnPair({
+      addrs: [multiaddr(localMultiAddrStr), multiaddr(allowedMultiAddrStr)],
+      remotePeer: allowedPeerId,
+    });
+    await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
+    await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeFalsy();
+    // Incepient Inbound Connections are always allowed
+    await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
+    await expect(filter.denyOutboundConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
+    await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeTruthy();
   });
 });
