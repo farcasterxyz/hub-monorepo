@@ -108,6 +108,7 @@ describe("server rpc tests", () => {
   describe("getCurrentStorageLimitsByFid", () => {
     test("succeeds for user with no storage", async () => {
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
+      // Default storage limits
       expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([10000, 2500, 5000, 100, 50]);
     });
 
