@@ -7,6 +7,7 @@ export const MAINNET_ALLOWED_PEERS = [
   "12D3KooWN9ztVoHYi26NwTDDLNjgBozz479br3pwBuy3oLQVQmhz", // @cassie
   "12D3KooWBJnUaDeM1bm5CYQSKqBN7yKJZoF5E85SDYDiMKHr9UwA", // @roadz
   "12D3KooWHiyvASqvhGn9kqsLBemPTAF6UYEaFGaLUpPxnM54KFbG", // @deodad
+  "12D3KooWED3UKfrwLBoi3vR3JoGpNs8HmRK3mMYmNC2A9fu2s2M7", // @web3dave
   // "12D3KooWKXAG1Z212HHrwYaW5NnwBxoXkk3Sr7USzRxMzS9pieZi", // @paden (Add back once version updated to 1.3.3 or newer)
   "12D3KooWFbnaXtbD5fwbMGq2JRjPaj7C6EpZRgaxC8jdtcX7FJbZ", // @v
   "12D3KooWHL4wFVz2gysrYLJvSmnLP7A3vKT2bxUyUPbSKPhfpUz2", // @wijuwiju
