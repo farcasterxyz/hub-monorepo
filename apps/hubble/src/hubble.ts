@@ -628,7 +628,10 @@ export class Hub implements HubInterface {
         this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
         this.allowedPeerIds = allowedPeerIds;
       }
+
+      this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
+
       return false;
     }
   }

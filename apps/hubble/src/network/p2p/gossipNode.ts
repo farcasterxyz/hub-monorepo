@@ -398,6 +398,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._connectionGater?.updateAllowedPeers(peerIds);
   }
 
+  updateDeniedPeerIds(peerIds: string[]) {
+    this._connectionGater?.updateDeniedPeers(peerIds);
+  }
+
   //TODO: Needs better typesafety
   static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
     return ok(GossipMessage.encode(message).finish());
