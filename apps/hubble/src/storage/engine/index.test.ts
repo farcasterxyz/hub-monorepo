@@ -759,7 +759,7 @@ describe("mergeMessage", () => {
       test("succeeds with l2 id registry event and on chain signer", async () => {
         const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
         const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
-        const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+        const onChainSignerEvent = Factories.SignerOnChainEvent.build({ fid, signerEventBody });
         await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
         await migratedEngine.mergeOnChainEvent(onChainSignerEvent);
 
@@ -770,13 +770,13 @@ describe("mergeMessage", () => {
       test("fails if signer is removed on chain", async () => {
         const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
         const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
-        const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+        const onChainSignerEvent = Factories.SignerOnChainEvent.build({ fid, signerEventBody });
 
         const signerRemovalBody = Factories.SignerEventBody.build({
           eventType: SignerEventType.REMOVE,
           key: signerAdd.data.signerAddBody.signer,
         });
-        const signerRemovalEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
+        const signerRemovalEvent = Factories.SignerOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
 
         await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
         await migratedEngine.mergeOnChainEvent(onChainSignerEvent);
@@ -982,7 +982,7 @@ describe("with listeners and workers", () => {
     test("revokes messages when onchain signer is removed", async () => {
       const idRegistryOnChainEvent = Factories.IdRegistryOnChainEvent.build({ fid });
       const signerEventBody = Factories.SignerEventBody.build({ key: signerAdd.data.signerAddBody.signer });
-      const onChainSignerEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody });
+      const onChainSignerEvent = Factories.SignerOnChainEvent.build({ fid, signerEventBody });
 
       await liveEngine.mergeOnChainEvent(idRegistryOnChainEvent);
       await liveEngine.mergeOnChainEvent(onChainSignerEvent);
@@ -992,7 +992,7 @@ describe("with listeners and workers", () => {
         eventType: SignerEventType.REMOVE,
         key: signerEventBody.key,
       });
-      const signerRemovalEvent = Factories.KeyRegistryOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
+      const signerRemovalEvent = Factories.SignerOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
       await liveEngine.mergeOnChainEvent(signerRemovalEvent);
 
       expect(revokedMessages).toEqual([]);

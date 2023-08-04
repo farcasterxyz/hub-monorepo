@@ -81,8 +81,8 @@ describe("server rpc tests", () => {
     test("succeeds", async () => {
       const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
       const idRegistryEvent2 = Factories.IdRegistryOnChainEvent.build({ fid: fid + 1 });
-      const signerEvent = Factories.KeyRegistryOnChainEvent.build({ fid });
-      const signerEvent2 = Factories.KeyRegistryOnChainEvent.build({ blockNumber: signerEvent.blockNumber + 1, fid });
+      const signerEvent = Factories.SignerOnChainEvent.build({ fid });
+      const signerEvent2 = Factories.SignerOnChainEvent.build({ blockNumber: signerEvent.blockNumber + 1, fid });
       await expect(engine.mergeOnChainEvent(idRegistryEvent)).resolves.toBeInstanceOf(Ok);
       await expect(engine.mergeOnChainEvent(idRegistryEvent2)).resolves.toBeInstanceOf(Ok);
       await expect(engine.mergeOnChainEvent(signerEvent)).resolves.toBeInstanceOf(Ok);
@@ -158,15 +158,6 @@ describe("server rpc tests", () => {
       expect(newLimits).toContainEqual(
         StorageLimit.create({ limit: VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.VERIFICATIONS }),
       );
-    });
-
-    test("succeeds for user with multiple units of storage", async () => {
-      const units = 3;
-      const rentEvent = Factories.StorageRentOnChainEvent.build({
-        fid,
-        storageRentEventBody: Factories.StorageRentEventBody.build({ units }),
-      });
-      await engine.mergeOnChainEvent(rentEvent);
     });
   });
 });

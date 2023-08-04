@@ -68,7 +68,7 @@ beforeAll(async () => {
     { data: { fid, network, signerAddBody: { signer: signerKey } } },
     { transient: { signer: custodySigner } },
   );
-  onChainSigner = Factories.KeyRegistryOnChainEvent.build({
+  onChainSigner = Factories.SignerOnChainEvent.build({
     fid: fid,
     signerEventBody: Factories.SignerEventBody.build({
       key: signerKey,

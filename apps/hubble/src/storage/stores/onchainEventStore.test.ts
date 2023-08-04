@@ -17,21 +17,21 @@ const set = new OnChainEventStore(db, eventHandler);
 describe("OnChainEventStore", () => {
   describe("mergeOnChainEvent", () => {
     test("should merge event", async () => {
-      const onChainEvent = Factories.KeyRegistryOnChainEvent.build();
+      const onChainEvent = Factories.SignerOnChainEvent.build();
       await set.mergeOnChainEvent(onChainEvent);
       expect(await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER, onChainEvent.fid)).toEqual([onChainEvent]);
     });
 
     test("does not merge duplicate events", async () => {
-      const onChainEvent = Factories.KeyRegistryOnChainEvent.build();
+      const onChainEvent = Factories.SignerOnChainEvent.build();
       await set.mergeOnChainEvent(onChainEvent);
       await expect(set.mergeOnChainEvent(onChainEvent)).rejects.toThrow("already exists");
     });
 
     describe("signers", () => {
       test("can add same signer for multiple fids", async () => {
-        const firstSigner = Factories.KeyRegistryOnChainEvent.build();
-        const secondSigner = Factories.KeyRegistryOnChainEvent.build({
+        const firstSigner = Factories.SignerOnChainEvent.build();
+        const secondSigner = Factories.SignerOnChainEvent.build({
           fid: firstSigner.fid + 1,
           signerEventBody: Factories.SignerEventBody.build({
             key: firstSigner.signerEventBody.key,
@@ -42,8 +42,8 @@ describe("OnChainEventStore", () => {
         await set.mergeOnChainEvent(secondSigner);
       });
       test("does not allow re-adding removed keys", async () => {
-        const signer = Factories.KeyRegistryOnChainEvent.build();
-        const signerRemoved = Factories.KeyRegistryOnChainEvent.build({
+        const signer = Factories.SignerOnChainEvent.build();
+        const signerRemoved = Factories.SignerOnChainEvent.build({
           fid: signer.fid,
           signerEventBody: Factories.SignerEventBody.build({
             eventType: SignerEventType.REMOVE,
@@ -54,7 +54,7 @@ describe("OnChainEventStore", () => {
         await set.mergeOnChainEvent(signer);
         await set.mergeOnChainEvent(signerRemoved);
 
-        const signerReAdd = Factories.KeyRegistryOnChainEvent.build({
+        const signerReAdd = Factories.SignerOnChainEvent.build({
           fid: signer.fid,
           signerEventBody: Factories.SignerEventBody.build({
             eventType: SignerEventType.ADD,
@@ -82,8 +82,8 @@ describe("OnChainEventStore", () => {
 
   describe("getOnChainEvents", () => {
     test("returns onchain events by type and fid", async () => {
-      const keyRegistryEvent = Factories.KeyRegistryOnChainEvent.build();
-      const keyRegistryEvent2 = Factories.KeyRegistryOnChainEvent.build({
+      const keyRegistryEvent = Factories.SignerOnChainEvent.build();
+      const keyRegistryEvent2 = Factories.SignerOnChainEvent.build({
         fid: keyRegistryEvent.fid,
         blockNumber: keyRegistryEvent.blockNumber + 1,
       });
@@ -105,14 +105,14 @@ describe("OnChainEventStore", () => {
 
   describe("getActiveSigner", () => {
     test("returns signer if it's not removed", async () => {
-      const signer = Factories.KeyRegistryOnChainEvent.build();
+      const signer = Factories.SignerOnChainEvent.build();
       await set.mergeOnChainEvent(signer);
       await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).resolves.toEqual(signer);
     });
 
     test("does not return signer if it's removed", async () => {
-      const signer = Factories.KeyRegistryOnChainEvent.build();
-      const signerRemoved = Factories.KeyRegistryOnChainEvent.build({
+      const signer = Factories.SignerOnChainEvent.build();
+      const signerRemoved = Factories.SignerOnChainEvent.build({
         fid: signer.fid,
         signerEventBody: Factories.SignerEventBody.build({
           eventType: SignerEventType.REMOVE,
@@ -165,7 +165,7 @@ describe("OnChainEventStore", () => {
 
     test("emits events on merge", async () => {
       const idRegisterEvent = Factories.IdRegistryOnChainEvent.build();
-      const keyRegistryEvent = Factories.KeyRegistryOnChainEvent.build();
+      const keyRegistryEvent = Factories.SignerOnChainEvent.build();
       const signerMigratedEvent = Factories.SignerMigratedOnChainEvent.build();
       await set.mergeOnChainEvent(idRegisterEvent);
       await set.mergeOnChainEvent(keyRegistryEvent);

@@ -768,7 +768,7 @@ export const Factories = {
   UsernameProofMessage: UsernameProofMessageFactory,
   OnChainEvent: OnChainEventFactory,
   SignerEventBody: SignerEventBodyFactory,
-  KeyRegistryOnChainEvent: SignerOnChainEventFactory,
+  SignerOnChainEvent: SignerOnChainEventFactory,
   IdRegistryOnChainEvent: IdRegisterOnChainEventFactory,
   SignerMigratedOnChainEvent: SignerMigratedOnChainEventFactory,
   StorageRentEventBody: StorageRentEventBodyFactory,
