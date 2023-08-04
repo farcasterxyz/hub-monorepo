@@ -109,7 +109,13 @@ describe("server rpc tests", () => {
     test("succeeds for user with no storage", async () => {
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       // Default storage limits
-      expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([10000, 2500, 5000, 100, 50]);
+      expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([
+        CAST_PRUNE_SIZE_LIMIT_DEFAULT,
+        LINK_PRUNE_SIZE_LIMIT_DEFAULT,
+        REACTION_PRUNE_SIZE_LIMIT_DEFAULT,
+        USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT,
+        VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT,
+      ]);
     });
 
     test("succeeds for user with storage", async () => {

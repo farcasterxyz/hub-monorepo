@@ -103,6 +103,7 @@ app
 
   // Networking Options
   .option("-a, --allowed-peers <peerIds...>", "Only peer with specific peer ids. (default: all peers allowed)")
+  .option("--denied-peers <peerIds...>", "Do not peer with specific peer ids. (default: no peers denied)")
   .option("-b, --bootstrap <peer-multiaddrs...>", "Peers to bootstrap gossip and sync from. (default: none)")
   .option("-g, --gossip-port <port>", `Port to use for gossip (default: ${DEFAULT_GOSSIP_PORT})`)
   .option("-r, --rpc-port <port>", `Port to use for gRPC  (default: ${DEFAULT_RPC_PORT})`)
@@ -398,6 +399,7 @@ app
       l2RentExpiryOverride: cliOptions.l2RentExpiryOverride ?? hubConfig.l2RentExpiryOverride,
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
+      deniedPeers: cliOptions.deniedPeers ?? hubConfig.deniedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       rpcAuth,
       rpcRateLimit,

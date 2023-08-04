@@ -117,6 +117,9 @@ export interface HubOptions {
   /** A list of PeerId strings to allow connections with */
   allowedPeers?: string[];
 
+  /** A list of PeerId strings to disallow connections with */
+  deniedPeers?: string[];
+
   /** IP address string in MultiAddr format to bind the gossip node to */
   ipMultiAddr?: string;
 
@@ -263,6 +266,7 @@ export class Hub implements HubInterface {
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
   private allowedPeerIds: string[] | undefined;
+  private deniedPeerIds: string[];
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -438,6 +442,11 @@ export class Hub implements HubInterface {
       // Append and de-dup the allowed peers
       this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...MAINNET_ALLOWED_PEERS])];
     }
+    this.deniedPeerIds = this.options.deniedPeers ?? [];
+    if (this.options.network === FarcasterNetwork.MAINNET) {
+      // Append and de-dup the denied peers
+      this.deniedPeerIds = [...new Set([...(this.deniedPeerIds ?? [])])];
+    }
   }
 
   get rpcAddress() {
@@ -571,6 +580,7 @@ export class Hub implements HubInterface {
       announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
       allowedPeerIdStrs: this.allowedPeerIds,
+      deniedPeerIdStrs: this.deniedPeerIds,
       directPeers: this.options.directPeers,
     });
 
@@ -604,7 +614,12 @@ export class Hub implements HubInterface {
 
   /** Apply the new the network config. Will return true if the Hub should exit */
   public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
-    const { allowedPeerIds, shouldExit } = applyNetworkConfig(networkConfig, this.allowedPeerIds, this.options.network);
+    const { allowedPeerIds, deniedPeerIds, shouldExit } = applyNetworkConfig(
+      networkConfig,
+      this.allowedPeerIds,
+      this.deniedPeerIds,
+      this.options.network,
+    );
 
     if (shouldExit) {
       return true;
@@ -613,6 +628,10 @@ export class Hub implements HubInterface {
         this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
         this.allowedPeerIds = allowedPeerIds;
       }
+
+      this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
+      this.deniedPeerIds = deniedPeerIds;
+
       return false;
     }
   }

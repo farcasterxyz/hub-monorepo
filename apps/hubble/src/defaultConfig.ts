@@ -27,8 +27,8 @@ export const Config = {
   /** An "allow list" of Peer Ids. Blocks all other connections */
   // allowedPeers: [
   //   '12D3KooWGNNs8uJkmJfThyrnESRBhfuNUAGeGrLb1PYssNnwQy11', // prod hub
-  //   '12D3KooWMDdQaMWCkQ8Gf3C6zdJdMEfFs8R2pw8YQw2HgoY8qhzA', // @adityapk00
   // ],
+  // deniedPeers: [],
   /** The IP address libp2p should listen on. */
   ip: "0.0.0.0",
   /** The IP address that libp2p should announce to peers */

@@ -15,13 +15,14 @@ const NETWORK_CONFIG_LOCATION =
 
 export type NetworkConfig = {
   network: number;
-  allowedPeers: string[];
+  allowedPeers: string[] | undefined;
   deniedPeers: string[];
   minAppVersion: string;
 };
 
 export type NetworkConfigResult = {
   allowedPeerIds: string[] | undefined;
+  deniedPeerIds: string[];
   shouldExit: boolean;
 };
 
@@ -55,12 +56,13 @@ export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
 
 export function applyNetworkConfig(
   networkConfig: NetworkConfig,
-  existingPeerIds: string[] | undefined,
+  allowedPeerIds: string[] | undefined,
+  deniedPeerIds: string[],
   currentNetwork: number,
 ): NetworkConfigResult {
   if (networkConfig.network !== currentNetwork) {
     log.error({ networkConfig, network: currentNetwork }, "network config mismatch");
-    return { allowedPeerIds: existingPeerIds, shouldExit: false };
+    return { allowedPeerIds, deniedPeerIds, shouldExit: false };
   }
 
   // Refuse to start if we are below the minAppVersion
@@ -70,27 +72,29 @@ export function applyNetworkConfig(
     if (semver.lt(APP_VERSION, minAppVersion)) {
       const errMsg = "Hubble version is too old too start. Please update your node.";
       log.fatal({ minAppVersion, ourVersion: APP_VERSION }, errMsg);
-      return { allowedPeerIds: existingPeerIds, shouldExit: true };
+      return { allowedPeerIds, deniedPeerIds, shouldExit: true };
     }
   } else {
     log.error({ networkConfig }, "invalid minAppVersion");
   }
 
-  let newPeerIdList: string[] = [];
+  let newPeerIdList: string[] | undefined = undefined;
+  let newDeniedPeerIdList: string[] = [];
 
   if (networkConfig.allowedPeers) {
     // Add the network.allowedPeers to the list of allowed peers
-    newPeerIdList = [...new Set([...(existingPeerIds ?? []), ...networkConfig.allowedPeers])];
+    newPeerIdList = [...new Set([...(allowedPeerIds ?? []), ...networkConfig.allowedPeers])];
   } else {
     log.error({ networkConfig }, "network config does not contain 'allowedPeers'");
   }
 
   // Then remove the denied peers from this list
   if (networkConfig.deniedPeers) {
-    newPeerIdList = newPeerIdList.filter((peerId) => !networkConfig.deniedPeers.includes(peerId));
+    newPeerIdList = newPeerIdList?.filter((peerId) => !networkConfig.deniedPeers.includes(peerId));
+    newDeniedPeerIdList = [...new Set([...deniedPeerIds, ...networkConfig.deniedPeers])];
   } else {
     log.error({ networkConfig }, "network config does not contain 'deniedPeers'");
   }
 
-  return { allowedPeerIds: newPeerIdList, shouldExit: false };
+  return { allowedPeerIds: newPeerIdList, deniedPeerIds: newDeniedPeerIdList, shouldExit: false };
 }

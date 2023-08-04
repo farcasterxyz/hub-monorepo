@@ -19,13 +19,19 @@ const log = logger.child({
  */
 export class ConnectionFilter implements ConnectionGater {
   private allowedPeers: string[] | undefined;
+  private deniedPeers: string[];
 
-  constructor(addrs: string[] | undefined) {
+  constructor(addrs: string[] | undefined, deiniedPeers: string[] | undefined) {
     this.allowedPeers = addrs;
+    this.deniedPeers = deiniedPeers ?? [];
   }
 
   updateAllowedPeers(addrs: string[]) {
     this.allowedPeers = addrs;
+  }
+
+  updateDeniedPeers(addrs: string[]) {
+    this.deniedPeers = addrs;
   }
 
   denyDialPeer = async (peerId: PeerId): Promise<boolean> => {
@@ -99,8 +105,14 @@ export class ConnectionFilter implements ConnectionGater {
 
   private shouldDeny(peerId: string) {
     if (!peerId) return true;
+
+    // Deny list is checked first
+    if (this.deniedPeers.find((value) => value === peerId)) return true;
+
+    // If the allowedPeers is undefined, that means we are running in "allow all" mode
     if (this.allowedPeers === undefined) return false;
 
+    // Access-controlled mode. Check if the peerId is in the allow list
     const found = this.allowedPeers.find((value) => {
       return peerId && value === peerId;
     });

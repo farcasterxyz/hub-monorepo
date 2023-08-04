@@ -37,7 +37,7 @@ const MultiaddrLocalHost = "/ip4/127.0.0.1";
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
 
-const log = logger.child({ component: "Node" });
+const log = logger.child({ component: "GossipNode" });
 
 /** Events emitted by a Farcaster Gossip Node */
 interface NodeEvents {
@@ -61,6 +61,8 @@ interface NodeOptions {
   gossipPort?: number | undefined;
   /** A list of PeerIds that are allowed to connect to this node */
   allowedPeerIdStrs?: string[] | undefined;
+  /** A list of peerIds that are not allowed to connect to this node */
+  deniedPeerIdStrs?: string[] | undefined;
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers?: AddrInfo[] | undefined;
   /** Override peer scoring. Useful for tests */
@@ -396,6 +398,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._connectionGater?.updateAllowedPeers(peerIds);
   }
 
+  updateDeniedPeerIds(peerIds: string[]) {
+    this._connectionGater?.updateDeniedPeers(peerIds);
+  }
+
   //TODO: Needs better typesafety
   static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
     return ok(GossipMessage.encode(message).finish());
@@ -490,16 +496,21 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
     if (options.allowedPeerIdStrs) {
       log.info(
-        { identity: this.identity, function: "createNode", allowedPeerIds: options.allowedPeerIdStrs },
+        {
+          identity: this.identity,
+          function: "createNode",
+          allowedPeerIds: options.allowedPeerIdStrs,
+          deniedPeerIds: options.deniedPeerIdStrs,
+        },
         "!!! PEER-ID RESTRICTIONS ENABLED !!!",
       );
     } else {
       log.warn(
-        { identity: this.identity, function: "createNode" },
+        { identity: this.identity, deniedPeerIds: options.deniedPeerIdStrs, function: "createNode" },
         "No PEER-ID RESTRICTIONS ENABLED. This node will accept connections from any peer",
       );
     }
-    this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
+    this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs, options.deniedPeerIdStrs);
 
     return ResultAsync.fromPromise(
       createLibp2p({
