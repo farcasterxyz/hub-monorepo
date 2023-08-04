@@ -1,4 +1,3 @@
-import { RateLimiterMemory } from "rate-limiter-flexible";
 import {
   Factories,
   HubError,
@@ -10,12 +9,10 @@ import {
   HubInfoRequest,
 } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
-
-import Server, { rateLimitByIp } from "../server.js";
+import Server from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
-import { sleep } from "../../utils/crypto.js";
 
 const db = jestRocksDB("protobufs.rpcAuth.test");
 const network = FarcasterNetwork.TESTNET;
@@ -110,31 +107,5 @@ describe("auth tests", () => {
 
     await authServer.stop();
     authClient.close();
-  });
-
-  test("test rate limiting", async () => {
-    const Limit10PerSecond = new RateLimiterMemory({
-      points: 10,
-      duration: 1,
-    });
-
-    // 10 Requests should be fine
-    for (let i = 0; i < 10; i++) {
-      const result = await rateLimitByIp("testip:3000", Limit10PerSecond);
-      expect(result.isOk()).toBeTruthy();
-    }
-
-    // Sleep for 1 second to reset the rate limiter
-    await sleep(1100);
-
-    // 11th+ request should fail
-    for (let i = 0; i < 20; i++) {
-      const result = await rateLimitByIp("testip:3000", Limit10PerSecond);
-      if (i < 10) {
-        expect(result.isOk()).toBeTruthy();
-      } else {
-        expect(result._unsafeUnwrapErr().message).toEqual("Too many requests");
-      }
-    }
   });
 });

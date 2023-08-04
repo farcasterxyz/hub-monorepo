@@ -50,13 +50,14 @@ import Engine from "../storage/engine/index.js";
 import { MessagesPage } from "../storage/stores/types.js";
 import { logger } from "../utils/logger.js";
 import { addressInfoFromParts, extractIPAddress } from "../utils/p2p.js";
-import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
+import { RateLimiterMemory } from "rate-limiter-flexible";
 import {
   BufferedStreamWriter,
   STREAM_MESSAGE_BUFFER_SIZE,
   SLOW_CLIENT_GRACE_PERIOD_MS,
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
+import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -66,18 +67,6 @@ export const SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
 export type RpcUsers = Map<string, string[]>;
 
 const log = logger.child({ component: "rpcServer" });
-
-export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
-  // Get the IP part of the address
-  const ipPart = ip.split(":")[0] ?? "";
-
-  try {
-    await limiter.consume(ipPart);
-    return ok(true);
-  } catch (e) {
-    return err(new HubError("unavailable", "Too many requests"));
-  }
-};
 
 // Check if the user is authenticated via the metadata
 export const authenticateUser = async (metadata: Metadata, rpcUsers: RpcUsers): HubAsyncResult<boolean> => {
@@ -276,16 +265,13 @@ export default class Server {
     this.grpcServer.addService(HubServiceService, this.getImpl());
 
     // Submit message are rate limited by default to 20k per minute
-    let rateLimitPerMinute = 20_000;
+    const rateLimitPerMinute = SUBMIT_MESSAGE_RATE_LIMIT;
     if (rpcRateLimit !== undefined && rpcRateLimit >= 0) {
-      rateLimitPerMinute = rpcRateLimit;
+      rateLimitPerMinute.points = rpcRateLimit;
     }
     log.info({ rpcRateLimit }, "RPC rate limit enabled");
 
-    this.submitMessageRateLimiter = new RateLimiterMemory({
-      points: rateLimitPerMinute,
-      duration: 60,
-    });
+    this.submitMessageRateLimiter = new RateLimiterMemory(rateLimitPerMinute);
   }
 
   async start(ip = "0.0.0.0", port = 0): Promise<number> {
@@ -501,10 +487,7 @@ export default class Server {
       },
       getSyncSnapshotByPrefix: (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug(
-          { method: "getSyncSnapshotByPrefix", req: call.request, reqStr: JSON.stringify(call.request) },
-          `RPC call from ${peer}`,
-        );
+        log.debug({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer}`);
 
         // If someone is asking for our sync snapshot, that means we're getting incoming
         // connections

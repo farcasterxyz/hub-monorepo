@@ -73,6 +73,7 @@ import { normalize } from "viem/ens";
 import os from "os";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
+import { getRateLimiterForTotalMessages, rateLimitByKey } from "../../utils/rateLimits.js";
 
 const log = logger.child({
   component: "Engine",
@@ -108,6 +109,8 @@ class Engine {
   private _revokeSignerQueue: RevokeMessagesBySignerJobQueue;
   private _revokeSignerWorker: RevokeMessagesBySignerJobWorker;
 
+  private _totalPruneSize: number;
+
   constructor(db: RocksDB, network: FarcasterNetwork, eventHandler?: StoreEventHandler, publicClient?: PublicClient) {
     this._db = db;
     this._network = network;
@@ -123,6 +126,19 @@ class Engine {
     this._verificationStore = new VerificationStore(db, this.eventHandler);
     this._onchainEventsStore = new OnChainEventStore(db, this.eventHandler);
     this._usernameProofStore = new UsernameProofStore(db, this.eventHandler);
+
+    // Calculate total storage available per unit of store. Note that OnChainEventStore
+    // is not included in this calculation because it is not pruned.
+    this._totalPruneSize =
+      this._linkStore.pruneSizeLimit +
+      this._reactionStore.pruneSizeLimit +
+      this._signerStore.pruneSizeLimit +
+      this._castStore.pruneSizeLimit +
+      this._userDataStore.pruneSizeLimit +
+      this._verificationStore.pruneSizeLimit +
+      this._usernameProofStore.pruneSizeLimit;
+
+    log.info({ totalPruneSize: this._totalPruneSize }, "total default storage limit size");
 
     this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
     this._revokeSignerWorker = new RevokeMessagesBySignerJobWorker(this._revokeSignerQueue, db, this);
@@ -224,6 +240,21 @@ class Engine {
   }
 
   async mergeMessage(message: Message): HubAsyncResult<number> {
+    // Extract the FID that this message was signed by
+    const fid = message.data?.fid ?? 0;
+    const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
+
+    if (storageUnits.isOk()) {
+      // We rate limit the number of messages that can be merged per FID
+      const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
+
+      const rateLimitResult = await rateLimitByKey(`${fid}`, limiter);
+      if (rateLimitResult.isErr()) {
+        logger.warn({ fid, err: rateLimitResult.error }, "rate limit exceeded for FID");
+        return err(rateLimitResult.error);
+      }
+    }
+
     const validatedMessage = await this.validateMessage(message);
     if (validatedMessage.isErr()) {
       return err(validatedMessage.error);
