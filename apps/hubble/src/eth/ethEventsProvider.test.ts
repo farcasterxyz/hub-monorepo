@@ -133,17 +133,23 @@ describe("EthEventsProvider", () => {
     });
 
     const waitForBlock = async (blockNumber: number) => {
-      while (ethEventsProvider.getLatestBlockNumber() <= blockNumber) {
+      while (ethEventsProvider.getLatestBlockNumber() < blockNumber) {
         // Wait for all async promises to resolve
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
     };
 
     test("handles new blocks", async () => {
-      await testClient.mine({ blocks: 1 });
       const latestBlockNumber = await publicClient.getBlockNumber();
+      await testClient.mine({ blocks: 1 });
       await waitForBlock(Number(latestBlockNumber));
       expect(ethEventsProvider.getLatestBlockNumber()).toBeGreaterThanOrEqual(latestBlockNumber);
+
+      // Mine another block to make sure the block number is updated
+      const nextBlockNumber = Number(latestBlockNumber) + 1;
+      await testClient.mine({ blocks: 1 });
+      await waitForBlock(nextBlockNumber);
+      expect(ethEventsProvider.getLatestBlockNumber()).toBeGreaterThanOrEqual(nextBlockNumber);
     });
 
     test("processes IdRegistry events", async () => {
