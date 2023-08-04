@@ -43,7 +43,7 @@ describe("GossipNode", () => {
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
     expect(error.errCode).toEqual("unavailable");
-    expect(error.message).toMatch("failed to create libp2p node");
+    expect(error.message).toMatch("invalid multiaddr");
     expect(node.isStarted()).toBeFalsy();
     await node.stop();
   });
