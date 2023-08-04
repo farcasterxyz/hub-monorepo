@@ -691,7 +691,7 @@ const SignerMigratedOnChainEventFactory = Factory.define<SignerMigratedOnChainEv
 const StorageRentEventBodyFactory = Factory.define<protobufs.StorageRentEventBody>(() => {
   return StorageRentEventBody.create({
     payer: EthAddressFactory.build(),
-    units: faker.datatype.number({ min: 1, max: 1_000 }),
+    units: faker.datatype.number({ min: 1, max: 10 }),
     expiry: getFarcasterTime()._unsafeUnwrap() + 60 * 60 * 24 * 365, // a year
   });
 });
@@ -768,7 +768,7 @@ export const Factories = {
   UsernameProofMessage: UsernameProofMessageFactory,
   OnChainEvent: OnChainEventFactory,
   SignerEventBody: SignerEventBodyFactory,
-  KeyRegistryOnChainEvent: SignerOnChainEventFactory,
+  SignerOnChainEvent: SignerOnChainEventFactory,
   IdRegistryOnChainEvent: IdRegisterOnChainEventFactory,
   SignerMigratedOnChainEvent: SignerMigratedOnChainEventFactory,
   StorageRentEventBody: StorageRentEventBodyFactory,

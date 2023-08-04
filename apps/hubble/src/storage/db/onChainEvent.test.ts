@@ -13,7 +13,7 @@ let onChainEvent: OnChainEvent;
 let anotherEvent: OnChainEvent;
 
 beforeEach(async () => {
-  onChainEvent = Factories.KeyRegistryOnChainEvent.build();
+  onChainEvent = Factories.SignerOnChainEvent.build();
   anotherEvent = Factories.IdRegistryOnChainEvent.build();
   let txn = db.transaction();
   txn = putOnChainEventTransaction(txn, onChainEvent);
@@ -37,7 +37,7 @@ describe("makeOnChainEventPrimaryKey", () => {
 
 describe("putOnChainEvent", () => {
   test("succeeds", async () => {
-    const onChainEvent = Factories.KeyRegistryOnChainEvent.build();
+    const onChainEvent = Factories.SignerOnChainEvent.build();
     const txn = db.transaction();
     putOnChainEventTransaction(txn, onChainEvent);
     await db.commit(txn);

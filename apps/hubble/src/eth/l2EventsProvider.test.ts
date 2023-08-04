@@ -1,4 +1,4 @@
-import { FarcasterNetwork, OnChainEventType, StorageRegistryEventType } from "@farcaster/hub-nodejs";
+import { FarcasterNetwork, OnChainEventType } from "@farcaster/hub-nodejs";
 import { StorageRegistry } from "./abis.js";
 import { jestRocksDB } from "../storage/db/jestUtils.js";
 import Engine from "../storage/engine/index.js";

@@ -31,6 +31,7 @@ import {
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
   SignerRequest,
+  StorageLimitsResponse,
   SubscribeRequest,
   SyncIds,
   SyncStatusRequest,
@@ -76,6 +77,10 @@ export interface HubService {
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<NameRegistryEvent>;
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
+  getCurrentStorageLimitsByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<StorageLimitsResponse>;
   /** Username Proof */
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof>;
   getUserNameProofsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UsernameProofsResponse>;
@@ -141,6 +146,7 @@ export class HubServiceClientImpl implements HubService {
     this.getUserDataByFid = this.getUserDataByFid.bind(this);
     this.getNameRegistryEvent = this.getNameRegistryEvent.bind(this);
     this.getOnChainEvents = this.getOnChainEvents.bind(this);
+    this.getCurrentStorageLimitsByFid = this.getCurrentStorageLimitsByFid.bind(this);
     this.getUsernameProof = this.getUsernameProof.bind(this);
     this.getUserNameProofsByFid = this.getUserNameProofsByFid.bind(this);
     this.getVerification = this.getVerification.bind(this);
@@ -235,6 +241,13 @@ export class HubServiceClientImpl implements HubService {
 
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse> {
     return this.rpc.unary(HubServiceGetOnChainEventsDesc, OnChainEventRequest.fromPartial(request), metadata);
+  }
+
+  getCurrentStorageLimitsByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<StorageLimitsResponse> {
+    return this.rpc.unary(HubServiceGetCurrentStorageLimitsByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof> {
@@ -691,6 +704,29 @@ export const HubServiceGetOnChainEventsDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = OnChainEventResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetCurrentStorageLimitsByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetCurrentStorageLimitsByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = StorageLimitsResponse.decode(data);
       return {
         ...value,
         toObject() {

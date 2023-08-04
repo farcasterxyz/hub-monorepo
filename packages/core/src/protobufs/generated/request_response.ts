@@ -15,6 +15,59 @@ import {
 import { OnChainEvent, OnChainEventType, onChainEventTypeFromJSON, onChainEventTypeToJSON } from "./onchain_event";
 import { UserNameProof } from "./username_proof";
 
+export enum StoreType {
+  NONE = 0,
+  CASTS = 1,
+  LINKS = 2,
+  REACTIONS = 3,
+  USER_DATA = 4,
+  VERIFICATIONS = 5,
+}
+
+export function storeTypeFromJSON(object: any): StoreType {
+  switch (object) {
+    case 0:
+    case "STORE_TYPE_NONE":
+      return StoreType.NONE;
+    case 1:
+    case "STORE_TYPE_CASTS":
+      return StoreType.CASTS;
+    case 2:
+    case "STORE_TYPE_LINKS":
+      return StoreType.LINKS;
+    case 3:
+    case "STORE_TYPE_REACTIONS":
+      return StoreType.REACTIONS;
+    case 4:
+    case "STORE_TYPE_USER_DATA":
+      return StoreType.USER_DATA;
+    case 5:
+    case "STORE_TYPE_VERIFICATIONS":
+      return StoreType.VERIFICATIONS;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
+  }
+}
+
+export function storeTypeToJSON(object: StoreType): string {
+  switch (object) {
+    case StoreType.NONE:
+      return "STORE_TYPE_NONE";
+    case StoreType.CASTS:
+      return "STORE_TYPE_CASTS";
+    case StoreType.LINKS:
+      return "STORE_TYPE_LINKS";
+    case StoreType.REACTIONS:
+      return "STORE_TYPE_REACTIONS";
+    case StoreType.USER_DATA:
+      return "STORE_TYPE_USER_DATA";
+    case StoreType.VERIFICATIONS:
+      return "STORE_TYPE_VERIFICATIONS";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
+  }
+}
+
 export interface Empty {
 }
 
@@ -167,6 +220,15 @@ export interface OnChainEventResponse {
 
 export interface StorageAdminRegistryEventRequest {
   transactionHash: Uint8Array;
+}
+
+export interface StorageLimitsResponse {
+  limits: StorageLimit[];
+}
+
+export interface StorageLimit {
+  storeType: StoreType;
+  limit: number;
 }
 
 export interface UsernameProofRequest {
@@ -2456,6 +2518,137 @@ export const StorageAdminRegistryEventRequest = {
   ): StorageAdminRegistryEventRequest {
     const message = createBaseStorageAdminRegistryEventRequest();
     message.transactionHash = object.transactionHash ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseStorageLimitsResponse(): StorageLimitsResponse {
+  return { limits: [] };
+}
+
+export const StorageLimitsResponse = {
+  encode(message: StorageLimitsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.limits) {
+      StorageLimit.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StorageLimitsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStorageLimitsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.limits.push(StorageLimit.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StorageLimitsResponse {
+    return { limits: Array.isArray(object?.limits) ? object.limits.map((e: any) => StorageLimit.fromJSON(e)) : [] };
+  },
+
+  toJSON(message: StorageLimitsResponse): unknown {
+    const obj: any = {};
+    if (message.limits) {
+      obj.limits = message.limits.map((e) => e ? StorageLimit.toJSON(e) : undefined);
+    } else {
+      obj.limits = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StorageLimitsResponse>, I>>(base?: I): StorageLimitsResponse {
+    return StorageLimitsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StorageLimitsResponse>, I>>(object: I): StorageLimitsResponse {
+    const message = createBaseStorageLimitsResponse();
+    message.limits = object.limits?.map((e) => StorageLimit.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseStorageLimit(): StorageLimit {
+  return { storeType: 0, limit: 0 };
+}
+
+export const StorageLimit = {
+  encode(message: StorageLimit, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.storeType !== 0) {
+      writer.uint32(8).int32(message.storeType);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(16).uint64(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StorageLimit {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStorageLimit();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.storeType = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.limit = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StorageLimit {
+    return {
+      storeType: isSet(object.storeType) ? storeTypeFromJSON(object.storeType) : 0,
+      limit: isSet(object.limit) ? Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: StorageLimit): unknown {
+    const obj: any = {};
+    message.storeType !== undefined && (obj.storeType = storeTypeToJSON(message.storeType));
+    message.limit !== undefined && (obj.limit = Math.round(message.limit));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StorageLimit>, I>>(base?: I): StorageLimit {
+    return StorageLimit.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StorageLimit>, I>>(object: I): StorageLimit {
+    const message = createBaseStorageLimit();
+    message.storeType = object.storeType ?? 0;
+    message.limit = object.limit ?? 0;
     return message;
   },
 };

@@ -2,7 +2,6 @@ import { IdRegistryEvent } from "./generated/id_registry_event";
 import { NameRegistryEvent } from "./generated/name_registry_event";
 import * as hubEventProtobufs from "./generated/hub_event";
 import * as protobufs from "./generated/message";
-import { RentRegistryEvent, StorageAdminRegistryEvent } from "./generated/storage_event";
 import * as onchainEventProtobufs from "./generated/onchain_event";
 import { UserNameProof } from "./generated/username_proof";
 import { OnChainEvent } from "./generated/onchain_event";
