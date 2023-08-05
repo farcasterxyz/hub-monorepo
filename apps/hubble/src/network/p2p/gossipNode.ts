@@ -162,6 +162,14 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.peerStore.get(peerId);
   }
 
+  async isPeerAllowed(peerId: PeerId) {
+    if (this._connectionGater) {
+      return await this._connectionGater.allowPeerConnection(peerId);
+    } else {
+      return true;
+    }
+  }
+
   /** Returns the GossipSub instance used by the Node */
   get gossip() {
     const pubsub = this._node?.pubsub;
@@ -429,6 +437,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   /* Attempts to dial all the addresses in the bootstrap list */
   public async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
+    log.info({ bootstrapAddrs }, "Bootstrapping Gossip Node");
+
     if (bootstrapAddrs.length === 0) return ok(undefined);
     const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
 

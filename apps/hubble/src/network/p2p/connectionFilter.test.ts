@@ -36,7 +36,7 @@ describe("connectionFilter tests", () => {
     await expect(filter.denyOutboundConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
     await expect(filter.denyOutboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
     await expect(filter.denyOutboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeFalsy();
+    await expect(filter.allowPeerConnection(allowedPeerId)).resolves.toBeFalsy();
   });
 
   test("allows selected peers", async () => {
@@ -54,7 +54,7 @@ describe("connectionFilter tests", () => {
     await expect(filter.denyOutboundConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeTruthy();
+    await expect(filter.allowPeerConnection(allowedPeerId)).resolves.toBeTruthy();
   });
 
   test("filters unknown peers", async () => {
@@ -68,7 +68,7 @@ describe("connectionFilter tests", () => {
     // Incepient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
+    await expect(filter.allowPeerConnection(blockedPeerId)).resolves.toBeFalsy();
   });
 
   test("denied peers are not allowed", async () => {
@@ -82,7 +82,7 @@ describe("connectionFilter tests", () => {
     // Incepient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
+    await expect(filter.allowPeerConnection(blockedPeerId)).resolves.toBeFalsy();
   });
 
   test("denies peer that is both allowed and denied", async () => {
@@ -96,7 +96,7 @@ describe("connectionFilter tests", () => {
     // Incepient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
-    await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
+    await expect(filter.allowPeerConnection(blockedPeerId)).resolves.toBeFalsy();
   });
 
   test("no filter allows all", async () => {
@@ -110,6 +110,6 @@ describe("connectionFilter tests", () => {
     // Incepient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
-    await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeTruthy();
+    await expect(filter.allowPeerConnection(allowedPeerId)).resolves.toBeTruthy();
   });
 });
