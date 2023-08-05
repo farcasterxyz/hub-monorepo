@@ -164,7 +164,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   async isPeerAllowed(peerId: PeerId) {
     if (this._connectionGater) {
-      return await this._connectionGater.allowPeerConnection(peerId);
+      return await this._connectionGater.filterMultiaddrForPeer(peerId);
     } else {
       return true;
     }

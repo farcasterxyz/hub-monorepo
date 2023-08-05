@@ -95,7 +95,7 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  allowPeerConnection = async (peer: PeerId): Promise<boolean> => {
+  filterMultiaddrForPeer = async (peer: PeerId): Promise<boolean> => {
     return !this.shouldDeny(peer.toString());
   };
 
