@@ -637,8 +637,6 @@ export class HubReplicator {
       )
       // Do nothing on conflict since nothing should have changed if hash is the same.
       .onConflict((oc) => oc.columns(["hash"]).doNothing())
-      // Do nothing on conflict since nothing should have changed if the fid, targetFid & type are the same.
-      .onConflict((oc) => oc.columns(["fid", "targetFid", "type"]).doNothing())
       .execute();
 
     for (const message of messages) {
@@ -651,13 +649,12 @@ export class HubReplicator {
   private async onLinkRemove(messages: LinkRemoveMessage[]) {
     for (const message of messages) {
       await this.db
-        .updateTable("links")
+        .deleteFrom("links")
         .where("fid", "=", message.data.fid)
         // type assertion due to a problem with the type definitions. This field is infact required and present in all valid messages
         // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
         .where("targetFid", "=", message.data.linkBody.targetFid!)
         .where("type", "=", message.data.linkBody.type)
-        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
         .execute();
 
       // TODO: Execute any cleanup side effects to remove the cast
