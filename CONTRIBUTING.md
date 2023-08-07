@@ -279,8 +279,11 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 3. Check that all CHANGELOG.mds represent the important changes made
 4. Check in all the files and merge the branch to main
 5. Checkout main, pull down to the merged commit (should be latest) and run `yarn changeset publish`
-6. Hubble is private and must be manually tagged with `git tag -a @farcaster/hubble@<version>` if bumped.
-7. Run `git push origin <tag>` on each tag to push up the tags.
+6. Manually tag Hubble with `git tag -a @farcaster/hubble@<version>` if version was changed..
+7. Update the `@latest` tag: `git tag -f @latest`
+8. Push all tags to the remote repo: `git push origin @latest --force && git push origin HEAD --tags`
+9. Create a GitHub Release for Hubble, marking it as the latest.
+10. If this is a non-patch change, create an NFT for the release.
 
 ### 3.7 Working in Rust
 
