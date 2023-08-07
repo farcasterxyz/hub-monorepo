@@ -49,6 +49,10 @@ const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
   return true;
 };
 
+// Timestamp after which we stop pruning based on time limit. This is in preparation for mainnet migration,
+// since there is no time based pruning with storage based limits.
+const PRUNE_STOP_TIMESTAMP = new Date("2023-08-22").getTime();
+
 export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _db: RocksDB;
   protected _eventHandler: StoreEventHandler;
@@ -195,8 +199,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
               // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
               message as any,
               this._postfix,
-              this._pruneSizeLimit,
-              this._pruneTimeLimit,
+              this.pruneSizeLimit,
+              this.pruneTimeLimit,
             );
             if (prunableResult.isErr()) {
               throw prunableResult.error;
@@ -264,8 +268,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     }
 
     // Calculate the timestamp cut-off to prune
-    const timestampToPrune =
-      this._pruneTimeLimit === undefined ? undefined : farcasterTime.value - this._pruneTimeLimit;
+    const timestampToPrune = this.pruneTimeLimit === undefined ? undefined : farcasterTime.value - this.pruneTimeLimit;
 
     // Go over all messages for this fid and postfix
     await this._db.forEachIteratorByPrefix(
@@ -289,7 +292,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         // Since the TS hash has the first 4 bytes be the timestamp (bigendian), we can use it to prune
         // since the iteration will be implicitly sorted by timestamp
         if (
-          count.value <= this._pruneSizeLimit * units.value &&
+          count.value <= this.pruneSizeLimit * units.value &&
           (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
         ) {
           return true; // Nothing left to prune
@@ -331,6 +334,11 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   get pruneTimeLimit(): number | undefined {
+    // We're deprecating time based pruning, so pick a date in the future that all the hubs can use as a common point
+    // of reference to stop time based pruning. This is so we don't affect sync.
+    if (Date.now() > PRUNE_STOP_TIMESTAMP) {
+      return undefined;
+    }
     return this._pruneTimeLimit;
   }
 
