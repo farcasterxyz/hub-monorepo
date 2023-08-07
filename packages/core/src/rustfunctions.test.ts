@@ -31,7 +31,7 @@ describe("ed25519 tests", () => {
     const signature = (await signer.signMessageHash(hash))._unsafeUnwrap();
 
     expect((await ed25519.verifyMessageHashSignature(signature, hash, signerKey))._unsafeUnwrap()).toBeTruthy();
-    expect(nativeEd25519Verify(signature, hash, signerKey)).toBeTruthy();
+    expect(await nativeEd25519Verify(signature, hash, signerKey)).toBeTruthy();
   });
 
   test("bad signature fails", async () => {
@@ -43,7 +43,7 @@ describe("ed25519 tests", () => {
     const badHash = Factories.Bytes.build({}, { transient: { length: 32 } });
 
     expect((await ed25519.verifyMessageHashSignature(signature, badHash, signerKey))._unsafeUnwrap()).toBeFalsy();
-    expect(nativeEd25519Verify(signature, badHash, signerKey)).toBeFalsy();
+    expect(await nativeEd25519Verify(signature, badHash, signerKey)).toBeFalsy();
   });
 
   test("bad signer fails", async () => {
@@ -54,7 +54,7 @@ describe("ed25519 tests", () => {
     const badSigner = Factories.Bytes.build({}, { transient: { length: 32 } });
 
     expect((await ed25519.verifyMessageHashSignature(signature, hash, badSigner))._unsafeUnwrap()).toBeFalsy();
-    expect(nativeEd25519Verify(signature, hash, badSigner)).toBeFalsy();
+    expect(await nativeEd25519Verify(signature, hash, badSigner)).toBeFalsy();
   });
 
   test("bad signature fails", async () => {
@@ -65,7 +65,7 @@ describe("ed25519 tests", () => {
     const badSignature = Factories.Bytes.build({}, { transient: { length: 64 } });
 
     expect((await ed25519.verifyMessageHashSignature(badSignature, hash, signerKey))._unsafeUnwrap()).toBeFalsy();
-    expect(nativeEd25519Verify(badSignature, hash, signerKey)).toBeFalsy();
+    expect(await nativeEd25519Verify(badSignature, hash, signerKey)).toBeFalsy();
   });
 
   test("0 length data fails", async () => {
@@ -76,8 +76,8 @@ describe("ed25519 tests", () => {
 
     const empty = new Uint8Array([]);
 
-    expect(nativeEd25519Verify(empty, hash, signerKey)).toBeFalsy();
-    expect(nativeEd25519Verify(signature, empty, signerKey)).toBeFalsy();
-    expect(nativeEd25519Verify(signature, hash, empty)).toBeFalsy();
+    expect(await nativeEd25519Verify(empty, hash, signerKey)).toBeFalsy();
+    expect(await nativeEd25519Verify(signature, empty, signerKey)).toBeFalsy();
+    expect(await nativeEd25519Verify(signature, hash, empty)).toBeFalsy();
   });
 });
