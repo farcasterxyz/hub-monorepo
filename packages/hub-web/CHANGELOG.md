@@ -1,5 +1,22 @@
 # @farcaster/hub-web
 
+## 0.6.0
+
+### Minor Changes
+
+- 86149d32: Added storage limits RPC
+
+### Patch Changes
+
+- dcd7a149: feat: support migrating to l2
+- 67e9466e: feat: refactor storage rent events to on chain events
+- Updated dependencies [ec7734cf]
+- Updated dependencies [15fad467]
+- Updated dependencies [dcd7a149]
+- Updated dependencies [67e9466e]
+- Updated dependencies [86149d32]
+  - @farcaster/core@0.12.0
+
 ## 0.5.0
 
 ### Minor Changes

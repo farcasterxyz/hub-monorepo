@@ -1,5 +1,38 @@
 # @farcaster/hubble
 
+## 1.4.4
+
+### Patch Changes
+
+- 083762e5: feat: Improve profiler for gen messages and storage
+- 63260785: fix: Bugfix where testnet would restrict peers
+- 40c17c9b: feat: Add fallback bootstrap peers for mainnet
+- d443fbe9: Adds support for logging would-be-pruned events, plus handles extra storage if purchased
+- 571e5434: fix: Fetch network config only for mainnet
+- c7ec4ca9: feat: revoke signers 1hr after custody event
+- ec7734cf: feat: Move blake3 hash into rust
+- 996be825: fix: handle revoking on chain signer and make l2 options customizable
+- 1e0979b0: feat: Rate limit merges per FID to the total messages storage available for the FID
+- 503b379d: feat: Check integrity of messages during sync
+- b9efe14a: feat: validate name proofs against fids rather than custody address to enable smoother fid recovery process
+- 65a4faff: feat: Create a deny list for PeerIDs
+- a1b9aced: fix: Limit the number of simultaneous subscribe() streams by IP address
+- 3f180073: chore: Update grpc-js and setup grpc server timeouts
+- dcd7a149: feat: support migrating to l2
+- 39e0141d: fix: Fix the TestData generation for testnet
+- b598c4a2: feat: Add libp2p gossip server profiler
+- 9ae366b7: fix: Fix onchain event subscription not sending events correctly
+- 9f669b57: feat: Scale validation workers by number of CPUs and add a RPC profiler
+- 2df38497: feat: Deprecate time based pruning in sets
+- 67e9466e: feat: refactor storage rent events to on chain events
+- 50a6b8ac: Adjusted rent prune log to debug instead of warn
+- 86149d32: Added storage limits RPC
+- Updated dependencies [3f180073]
+- Updated dependencies [dcd7a149]
+- Updated dependencies [67e9466e]
+- Updated dependencies [86149d32]
+  - @farcaster/hub-nodejs@0.10.0
+
 ## 1.4.3
 
 ### Patch Changes

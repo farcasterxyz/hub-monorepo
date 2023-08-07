@@ -284,12 +284,12 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 
 ### 3.7 Working in Rust
 
-Some of the CPU intensive code is written in Rust for speed. We import the Rust modules via [Neon](https://neon-bindings.com/) that are built as a part of the `@farcaster/core` package. 
+Some of the CPU intensive code is written in Rust for speed. We import the Rust modules via [Neon](https://neon-bindings.com/) that are built as a part of the `@farcaster/core` package.
 
-To add new code to Rust, 
+To add new code to Rust,
 1. Add it to `packages/core/src/addon/`
 2. Add a bridge implementation and types into `packages/core/src/addon/addon.js` and `packages/core/src/addon/addon.d.ts`
-3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throught the project to transparently call into Rust from Typescript 
+3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throught the project to transparently call into Rust from Typescript
 
 ## 4. Troubleshooting
 
