@@ -1,5 +1,18 @@
 # @farcaster/core
 
+## 0.12.0
+
+### Minor Changes
+
+- 86149d32: Added storage limits RPC
+
+### Patch Changes
+
+- ec7734cf: feat: Move blake3 hash into rust
+- 15fad467: feat: Add Rust to the toolchain and use rust for ed25519 signature verification
+- dcd7a149: feat: support migrating to l2
+- 67e9466e: feat: refactor storage rent events to on chain events
+
 ## 0.11.1
 
 ### Patch Changes
