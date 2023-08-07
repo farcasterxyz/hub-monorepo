@@ -22,6 +22,8 @@ import {
   isMergeUsernameProofHubEvent,
   Metadata,
   getAuthMetadata,
+  OnChainEvent,
+  isMergeOnChainHubEvent,
 } from "@farcaster/hub-nodejs";
 import Server, { SUBSCRIBE_PERIP_LIMIT } from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
@@ -59,6 +61,7 @@ let usernameProof: UserNameProof;
 let signerAdd: SignerAddMessage;
 let castAdd: CastAddMessage;
 let reactionAdd: ReactionAddMessage;
+let onChainEvent: OnChainEvent;
 // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 let events: [HubEventType, any][];
 let stream: ClientReadableStream<HubEvent>;
@@ -84,6 +87,7 @@ beforeAll(async () => {
   );
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });
+  onChainEvent = Factories.OnChainEvent.build({ fid });
 });
 
 const setupSubscription = async (
@@ -119,6 +123,9 @@ const setupSubscription = async (
     } else if (isMergeUsernameProofHubEvent(event)) {
       // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, UserNameProof.toJSON(event.mergeUsernameProofBody.usernameProof!)]);
+    } else if (isMergeOnChainHubEvent(event)) {
+      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      events.push([event.type, OnChainEvent.toJSON(event.mergeOnChainEventBody.onChainEvent!)]);
     }
   });
 
@@ -151,11 +158,15 @@ describe("subscribe", () => {
       await engine.mergeIdRegistryEvent(custodyEvent);
       await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
+      await engine.mergeUserNameProof(usernameProof);
+      await engine.mergeOnChainEvent(onChainEvent);
       await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
         [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
+        [HubEventType.MERGE_USERNAME_PROOF, UserNameProof.toJSON(usernameProof)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(onChainEvent)],
       ]);
     });
   });
@@ -185,6 +196,7 @@ describe("subscribe", () => {
           HubEventType.MERGE_MESSAGE,
           HubEventType.MERGE_USERNAME_PROOF,
           HubEventType.MERGE_ID_REGISTRY_EVENT,
+          HubEventType.MERGE_ON_CHAIN_EVENT,
         ],
       });
 
@@ -192,12 +204,14 @@ describe("subscribe", () => {
       await engine.mergeUserNameProof(usernameProof);
       await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
+      await engine.mergeOnChainEvent(onChainEvent);
       await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
         [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
         [HubEventType.MERGE_USERNAME_PROOF, UserNameProof.toJSON(usernameProof)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(onChainEvent)],
       ]);
     });
   });

@@ -1164,6 +1164,7 @@ export default class Server {
           this.engine?.eventHandler.off("mergeIdRegistryEvent", eventListener);
           this.engine?.eventHandler.off("mergeNameRegistryEvent", eventListener);
           this.engine?.eventHandler.off("mergeUsernameProofEvent", eventListener);
+          this.engine?.eventHandler.off("mergeOnChainEvent", eventListener);
 
           this.subscribeIpLimiter.removeConnection(peer);
 
@@ -1251,6 +1252,7 @@ export default class Server {
           this.engine?.eventHandler.on("mergeIdRegistryEvent", eventListener);
           this.engine?.eventHandler.on("mergeNameRegistryEvent", eventListener);
           this.engine?.eventHandler.on("mergeUsernameProofEvent", eventListener);
+          this.engine?.eventHandler.on("mergeOnChainEvent", eventListener);
         } else {
           for (const eventType of request.eventTypes) {
             if (eventType === HubEventType.MERGE_MESSAGE) {
@@ -1265,6 +1267,8 @@ export default class Server {
               this.engine?.eventHandler.on("mergeNameRegistryEvent", eventListener);
             } else if (eventType === HubEventType.MERGE_USERNAME_PROOF) {
               this.engine?.eventHandler.on("mergeUsernameProofEvent", eventListener);
+            } else if (eventType === HubEventType.MERGE_ON_CHAIN_EVENT) {
+              this.engine?.eventHandler.on("mergeOnChainEvent", eventListener);
             }
           }
         }

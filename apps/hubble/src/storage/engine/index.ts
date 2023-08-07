@@ -218,6 +218,7 @@ class Engine {
     this.eventHandler.off("mergeMessage", this.handleMergeMessageEvent);
     this.eventHandler.off("revokeMessage", this.handleRevokeMessageEvent);
     this.eventHandler.off("pruneMessage", this.handlePruneMessageEvent);
+    this.eventHandler.off("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     this._revokeSignerWorker.start();
 
