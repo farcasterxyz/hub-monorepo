@@ -58,6 +58,7 @@ import {
   getPublicIp,
   ipFamilyToString,
   p2pMultiAddrStr,
+  parseAddress,
 } from "./utils/p2p.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
 import { ensureAboveMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
@@ -65,6 +66,7 @@ import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcaster
 import { ValidateOrRevokeMessagesJobScheduler } from "./storage/jobs/validateOrRevokeMessagesJob.js";
 import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJob.js";
 import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
+import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
@@ -442,11 +444,8 @@ export class Hub implements HubInterface {
       // Append and de-dup the allowed peers
       this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...MAINNET_ALLOWED_PEERS])];
     }
+
     this.deniedPeerIds = this.options.deniedPeers ?? [];
-    if (this.options.network === FarcasterNetwork.MAINNET) {
-      // Append and de-dup the denied peers
-      this.deniedPeerIds = [...new Set([...(this.deniedPeerIds ?? [])])];
-    }
   }
 
   get rpcAddress() {
@@ -574,7 +573,25 @@ export class Hub implements HubInterface {
       this.updateNameRegistryEventExpiryJobWorker.start();
     }
 
-    await this.gossipNode.start(this.options.bootstrapAddrs ?? [], {
+    let bootstrapAddrs = this.options.bootstrapAddrs ?? [];
+    // Add mainnet bootstrap addresses if none are provided
+    if (bootstrapAddrs.length === 0 && this.options.network === FarcasterNetwork.MAINNET) {
+      bootstrapAddrs = MAINNET_BOOTSTRAP_PEERS.map((a) => parseAddress(a))
+        .map((r) => {
+          if (r.isErr()) {
+            logger.warn(
+              { errorCode: r.error.errCode, message: r.error.message },
+              "Couldn't parse bootstrap address from MAINNET_BOOTSTRAP_PEERS, ignoring",
+            );
+          }
+          return r;
+        })
+        .filter((a) => a.isOk())
+        .map((a) => a._unsafeUnwrap());
+    }
+
+    // Start the Gossip node
+    await this.gossipNode.start(bootstrapAddrs, {
       peerId: this.options.peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
@@ -1186,10 +1203,9 @@ export class Hub implements HubInterface {
     return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
 
-  async isValidPeer(ourPeerId: PeerId, message: ContactInfoContent) {
-    const peerId = ourPeerId.toString();
-    if (this.allowedPeerIds?.length && !this.allowedPeerIds.includes(peerId)) {
-      log.warn(`Peer ${ourPeerId.toString()} is not in the allowed peers list`);
+  async isValidPeer(otherPeerId: PeerId, message: ContactInfoContent) {
+    if (!this.gossipNode.isPeerAllowed(otherPeerId)) {
+      log.warn(`Peer ${otherPeerId.toString()} is not in allowlist or is in the denylist`);
       return false;
     }
 
@@ -1199,7 +1215,7 @@ export class Hub implements HubInterface {
     const versionCheckResult = ensureAboveMinFarcasterVersion(theirVersion);
     if (versionCheckResult.isErr()) {
       log.warn(
-        { peerId: ourPeerId, theirVersion, ourVersion: FARCASTER_VERSION, errMsg: versionCheckResult.error.message },
+        { peerId: otherPeerId, theirVersion, ourVersion: FARCASTER_VERSION, errMsg: versionCheckResult.error.message },
         "Peer is running an outdated version, ignoring",
       );
       return false;
@@ -1207,7 +1223,7 @@ export class Hub implements HubInterface {
 
     if (theirNetwork !== this.options.network) {
       log.warn(
-        { peerId: ourPeerId, theirNetwork, ourNetwork: this.options.network },
+        { peerId: otherPeerId, theirNetwork, ourNetwork: this.options.network },
         "Peer is running a different network, ignoring",
       );
       return false;
