@@ -145,7 +145,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
       return err(new HubError("bad_request.validation_failure", "signature does not match signer"));
     }
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
-    const signatureIsValid = nativeEd25519Verify(signature, hash, signer);
+    const signatureIsValid = await nativeEd25519Verify(signature, hash, signer);
 
     if (!signatureIsValid) {
       return err(new HubError("bad_request.validation_failure", "invalid signature"));
