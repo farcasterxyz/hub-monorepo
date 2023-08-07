@@ -29,7 +29,7 @@ import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../../storage/db/types.js";
-import { fromFarcasterTime } from "@farcaster/core";
+import { bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 import os from "os";
@@ -83,6 +83,13 @@ class MergeResult {
   }
 }
 
+type DbStats = {
+  numMessages: number;
+  numFids: number;
+  numFnames: number;
+};
+
+// The Status of the node's sync with the network.
 type SyncStatus = {
   isSyncing: boolean;
   inSync: "true" | "false" | "unknown" | "blocked";
@@ -94,18 +101,14 @@ type SyncStatus = {
   lastBadSync: number;
 };
 
-type DbStats = {
-  numMessages: number;
-  numFids: number;
-  numFnames: number;
-};
-
+// Status of the current (ongoing) sync.
 class CurrentSyncStatus {
   isSyncing = false;
   interruptSync = false;
   peerId: string | undefined;
   startTimestamp?: number;
   fidRetryMessageQ = new Map<number, Message[]>();
+  seriousValidationFailures = 0;
 
   constructor(peerId?: string) {
     if (peerId) {
@@ -554,11 +557,30 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     );
     await messagesResult.match(
       async (msgs) => {
-        result = await this.mergeMessages(msgs.messages, rpcClient);
+        // Make sure that the messages are actually for the SyncIDs
+        const syncIdHashes = new Set(
+          syncIds
+            .map((syncId) => bytesToHexString(SyncId.hashFromSyncId(syncId)).unwrapOr(""))
+            .filter((str) => str !== ""),
+        );
+
+        // Go over the SyncID hashes and the messages and make sure that the messages are for the SyncIDs
+        const mismatched = msgs.messages.some(
+          (msg) => !syncIdHashes.has(bytesToHexString(msg.hash).unwrapOr("0xUnknown")),
+        );
+
+        if (mismatched) {
+          log.warn(
+            { syncIds, messages: msgs.messages, peer: this._currentSyncStatus.peerId },
+            "PeerError: Fetched Messages do not match SyncIDs requested",
+          );
+        } else {
+          result = await this.mergeMessages(msgs.messages, rpcClient);
+        }
       },
       async (err) => {
         // e.g. Node goes down while we're performing the sync. No need to handle it, the next round of sync will retry.
-        log.warn(err, "Error fetching messages for sync");
+        log.warn(err, "PeerError: Error fetching messages for sync");
       },
     );
     return result;
@@ -613,6 +635,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             // We'll push this message as a failure, and we'll retry it on the next sync.
             mergeResults.push(result);
             deferredCount += 1;
+          } else {
+            // These are very serious validation errors, caused only by
+            // 1. A malfunctioning or malicious peer
+            // 2. A bug in the Hub
+            // So log the errors as "warn"
+            log.warn(
+              { fid: msg.data?.fid, err: result.error.message, peerId: this._currentSyncStatus.peerId },
+              "PeerError: Unexpected validation error",
+            );
+            this._currentSyncStatus.seriousValidationFailures += 1;
           }
         } else if (result.error.errCode === "bad_request.duplicate") {
           // This message has been merged into the DB, but for some reason is not in the Trie.
@@ -711,6 +743,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (result.isErr()) {
         log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
       } else {
+        // Verify that the returned syncIDs actually have the prefix we requested.
+        if (!this.verifySyncIdForPrefix(theirNode.prefix, result.value.syncIds)) {
+          log.warn(
+            { prefix: theirNode.prefix, syncIds: result.value.syncIds, peerId: this._currentSyncStatus.peerId },
+            "PeerError: Received syncIds that don't match prefix, aborting trie branch",
+          );
+          return;
+        }
+
         // Strip out all syncIds that we already have. This can happen if our node has more messages than the other
         // hub at this node.
         // Note that we can optimize this check for the common case of a single missing syncId, since the diff
@@ -900,6 +941,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     logger.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
     // We'll retry all events from this block number
     await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
+  }
+
+  /**
+   * Verify the peer is being honest by checking to make sure the syncIds actually have the
+   * prefix
+   */
+  private verifySyncIdForPrefix(prefix: Uint8Array, syncIds: Uint8Array[]): boolean {
+    for (const syncId of syncIds) {
+      // Make sure SyncId has the prefix
+      if (!bytesStartsWith(syncId, prefix)) {
+        log.warn(
+          { syncId, prefix, peerId: this._currentSyncStatus.peerId },
+          "PeerError: SyncId does not have the expected prefix",
+        );
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private async syncUserAndRetryMessage(message: Message, rpcClient: HubRpcClient): Promise<HubResult<number>> {

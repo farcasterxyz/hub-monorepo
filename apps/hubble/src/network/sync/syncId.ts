@@ -57,6 +57,11 @@ class SyncId {
 
     return Buffer.from(pk);
   }
+
+  /** Return the message hash for the SyncID */
+  static hashFromSyncId(syncId: Uint8Array): Uint8Array {
+    return syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES + 1);
+  }
 }
 
 /** Normalizes the timestamp in seconds to fixed length to ensure consistent depth in the trie */

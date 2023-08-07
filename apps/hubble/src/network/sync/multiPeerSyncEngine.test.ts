@@ -23,6 +23,7 @@ import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
 import { deployIdRegistry, deployNameRegistry, publicClient } from "../../test/utils.js";
+import { EMPTY_HASH } from "./trieNode.js";
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -455,6 +456,62 @@ describe("Multi peer sync engine", () => {
 
     await syncEngine2.stop();
     await engine2.stop();
+  });
+
+  test("recovers if there are missing messages in the engine", async () => {
+    const engine2 = new Engine(testDb2, network);
+    const hub2 = new MockHub(testDb2, engine2);
+    const syncEngine2 = new SyncEngine(hub2, testDb2);
+    await syncEngine2.initialize();
+
+    // Add a message to engine1 synctrie, but not to the engine itself.
+    syncEngine1.trie.insert(new SyncId(signerAdd));
+
+    // Attempt to sync engine2 <-- engine1.
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+    // Since the message is actually missing, it should be a no-op, and the missing message should disappear
+    // from the sync trie
+    sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(signerAdd))) === true, 1000);
+    expect(await syncEngine2.trie.exists(new SyncId(signerAdd))).toBeFalsy();
+
+    // The root hashes should be the same, since nothing actually happened
+    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+    expect(await syncEngine1.trie.rootHash()).toEqual(EMPTY_HASH);
+  });
+
+  test("recovers if messages are missing from the sync trie", async () => {
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeMessage(signerAdd);
+
+    const engine2 = new Engine(testDb2, network);
+    const hub2 = new MockHub(testDb2, engine2);
+    const syncEngine2 = new SyncEngine(hub2, testDb2);
+    await syncEngine2.initialize();
+
+    // We add it to the engine2 synctrie as normal...
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine2.mergeMessage(signerAdd);
+
+    // ...but we'll corrupt the sync trie by pretending that the signerAdd message is missing
+    syncEngine2.trie.deleteBySyncId(new SyncId(signerAdd));
+
+    // syncengine2 should be empty
+    expect(await syncEngine2.trie.items()).toEqual(0);
+    expect(await syncEngine2.trie.rootHash()).toEqual(EMPTY_HASH);
+
+    // Attempt to sync engine2 <-- engine1.
+    // It will appear to engine2 that the message is missing, so it will request it from engine1.
+    // It will be a duplicate, but the sync trie should be updated
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+    // Since the message isn't actually missing, it should be a no-op, and the missing message should
+    // get added back to the sync trie
+    sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(signerAdd))) === false, 1000);
+
+    // The root hashes should now be the same
+    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+    expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
   });
 
   test("syncEngine syncs with same numMessages but different hashes", async () => {

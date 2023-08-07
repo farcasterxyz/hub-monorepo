@@ -99,3 +99,17 @@ export const bigIntToBytes = (value: bigint): HubResult<Uint8Array> => {
 export const bytesToBigInt = (bytes: Uint8Array): HubResult<bigint> => {
   return bytesToHexString(bytes).map((hexString) => BigInt(hexString));
 };
+
+export const bytesStartsWith = (haystack: Uint8Array, needle: Uint8Array): boolean => {
+  if (needle.length > haystack.length) {
+    return false;
+  }
+
+  for (let i = 0; i < needle.length; i++) {
+    if (haystack[i] !== needle[i]) {
+      return false;
+    }
+  }
+
+  return true;
+};
