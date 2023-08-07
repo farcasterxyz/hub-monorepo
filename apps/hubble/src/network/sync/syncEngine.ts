@@ -851,7 +851,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     );
 
     await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.NameRegistryEvent]),
+      Buffer.from([RootPrefix.FNameUserNameProof]),
       () => {
         numFnames += 1;
       },

@@ -325,8 +325,8 @@ describe("SyncEngine", () => {
 
   test("getSyncStats is correct", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
-    await engine.mergeNameRegistryEvent(Factories.NameRegistryEvent.build());
+    await engine.mergeUserNameProof(Factories.UserNameProof.build());
+    await engine.mergeUserNameProof(Factories.UserNameProof.build());
     await engine.mergeMessage(signerAdd);
     await addMessagesWithTimestamps([167, 169]);
 
