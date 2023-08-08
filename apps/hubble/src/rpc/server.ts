@@ -379,6 +379,7 @@ export default class Server {
           const response = SyncStatusResponse.create({
             isSyncing: false,
             syncStatus: [],
+            engineStarted: this.syncEngine.isStarted(),
           });
 
           for (const peerId of peersToCheck) {

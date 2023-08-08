@@ -106,6 +106,7 @@ export interface SyncStatusRequest {
 export interface SyncStatusResponse {
   isSyncing: boolean;
   syncStatus: SyncStatus[];
+  engineStarted: boolean;
 }
 
 export interface SyncStatus {
@@ -216,10 +217,6 @@ export interface OnChainEventRequest {
 
 export interface OnChainEventResponse {
   events: OnChainEvent[];
-}
-
-export interface StorageAdminRegistryEventRequest {
-  transactionHash: Uint8Array;
 }
 
 export interface StorageLimitsResponse {
@@ -774,7 +771,7 @@ export const SyncStatusRequest = {
 };
 
 function createBaseSyncStatusResponse(): SyncStatusResponse {
-  return { isSyncing: false, syncStatus: [] };
+  return { isSyncing: false, syncStatus: [], engineStarted: false };
 }
 
 export const SyncStatusResponse = {
@@ -784,6 +781,9 @@ export const SyncStatusResponse = {
     }
     for (const v of message.syncStatus) {
       SyncStatus.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.engineStarted === true) {
+      writer.uint32(24).bool(message.engineStarted);
     }
     return writer;
   },
@@ -809,6 +809,13 @@ export const SyncStatusResponse = {
 
           message.syncStatus.push(SyncStatus.decode(reader, reader.uint32()));
           continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.engineStarted = reader.bool();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -822,6 +829,7 @@ export const SyncStatusResponse = {
     return {
       isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
       syncStatus: Array.isArray(object?.syncStatus) ? object.syncStatus.map((e: any) => SyncStatus.fromJSON(e)) : [],
+      engineStarted: isSet(object.engineStarted) ? Boolean(object.engineStarted) : false,
     };
   },
 
@@ -833,6 +841,7 @@ export const SyncStatusResponse = {
     } else {
       obj.syncStatus = [];
     }
+    message.engineStarted !== undefined && (obj.engineStarted = message.engineStarted);
     return obj;
   },
 
@@ -844,6 +853,7 @@ export const SyncStatusResponse = {
     const message = createBaseSyncStatusResponse();
     message.isSyncing = object.isSyncing ?? false;
     message.syncStatus = object.syncStatus?.map((e) => SyncStatus.fromPartial(e)) || [];
+    message.engineStarted = object.engineStarted ?? false;
     return message;
   },
 };
@@ -2453,71 +2463,6 @@ export const OnChainEventResponse = {
   fromPartial<I extends Exact<DeepPartial<OnChainEventResponse>, I>>(object: I): OnChainEventResponse {
     const message = createBaseOnChainEventResponse();
     message.events = object.events?.map((e) => OnChainEvent.fromPartial(e)) || [];
-    return message;
-  },
-};
-
-function createBaseStorageAdminRegistryEventRequest(): StorageAdminRegistryEventRequest {
-  return { transactionHash: new Uint8Array() };
-}
-
-export const StorageAdminRegistryEventRequest = {
-  encode(message: StorageAdminRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.transactionHash.length !== 0) {
-      writer.uint32(10).bytes(message.transactionHash);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): StorageAdminRegistryEventRequest {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseStorageAdminRegistryEventRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.transactionHash = reader.bytes();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): StorageAdminRegistryEventRequest {
-    return {
-      transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
-    };
-  },
-
-  toJSON(message: StorageAdminRegistryEventRequest): unknown {
-    const obj: any = {};
-    message.transactionHash !== undefined &&
-      (obj.transactionHash = base64FromBytes(
-        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array(),
-      ));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<StorageAdminRegistryEventRequest>, I>>(
-    base?: I,
-  ): StorageAdminRegistryEventRequest {
-    return StorageAdminRegistryEventRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<StorageAdminRegistryEventRequest>, I>>(
-    object: I,
-  ): StorageAdminRegistryEventRequest {
-    const message = createBaseStorageAdminRegistryEventRequest();
-    message.transactionHash = object.transactionHash ?? new Uint8Array();
     return message;
   },
 };

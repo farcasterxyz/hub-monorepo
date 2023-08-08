@@ -578,6 +578,7 @@ app
       }
 
       let isSyncing = false;
+      const syncEngingStarted = syncResult.value.engineStarted;
       const msgPercents: number[] = [];
       for (const peerStatus of syncResult.value.syncStatus) {
         if (peerStatus.theirMessages === 0) {
@@ -589,8 +590,11 @@ app
           isSyncing = true;
         }
       }
+
       const numPeers = msgPercents.length;
-      if (numPeers === 0) {
+      if (!syncEngingStarted) {
+        logger.info("Sync Status: Getting blockchain events (Sync not started yet)");
+      } else if (numPeers === 0) {
         logger.info("Sync Status: No peers");
       } else {
         const avgMsgPercent = msgPercents.reduce((a, b) => a + b, 0) / numPeers;

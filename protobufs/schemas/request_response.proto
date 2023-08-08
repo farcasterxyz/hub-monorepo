@@ -42,6 +42,7 @@ message SyncStatusRequest {
 message SyncStatusResponse {
   bool is_syncing = 1;
   repeated SyncStatus sync_status = 2;
+  bool engine_started = 3;
 }
 
 message SyncStatus {
