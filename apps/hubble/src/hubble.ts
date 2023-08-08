@@ -543,7 +543,7 @@ export class Hub implements HubInterface {
           throw new HubError("unavailable", "Quitting due to network config");
         }
 
-        log.info({}, "Network config applied");
+        log.info({ networkConfig }, "Network config applied");
       }
     }
     await this.engine.start();
@@ -648,6 +648,8 @@ export class Hub implements HubInterface {
 
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
+
+      log.info({ allowedPeerIds, deniedPeerIds }, "Updated Network Config");
 
       return false;
     }
