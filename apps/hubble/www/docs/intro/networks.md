@@ -23,5 +23,6 @@ FC_NETWORK_ID=1
 BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282
 ```
 2. Get your PeerId from the file `apps/hubble/.hub/<PEER_ID>_id.protobuf`
-3. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/src/allowedPeers.mainnet.ts), and wait for a deploy (usually 48 hours).
+3. Make a PR to add it to the [allowed peers list](https://github.com/farcasterxyz/allowlist-mainnet/blob/main/networkConfig.js)
+4. Once merged, other Hubs will start peering with you after 1 hour.
 
