@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.1
+
+### Patch Changes
+
+- cfec7767: fix: Disable the rust code path to make it pureJS for now
+
 ## 0.12.0
 
 ### Minor Changes
