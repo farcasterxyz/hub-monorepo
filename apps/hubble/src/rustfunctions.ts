@@ -11,6 +11,7 @@ export function nativeEd25519Verify(signature: Uint8Array, hash: Uint8Array, sig
   return bridgeEd25519Verify(signature, hash, signer);
 }
 
+/** Fast, native implementation of validation methods to improve perf */
 export const nativeValidationMethods: validations.ValidationMethods = {
   ed25519_verify: async (s: Uint8Array, m: Uint8Array, p: Uint8Array) => nativeEd25519Verify(s, m, p),
   blake3_20: (message: Uint8Array) => nativeBlake3Hash20(message),
