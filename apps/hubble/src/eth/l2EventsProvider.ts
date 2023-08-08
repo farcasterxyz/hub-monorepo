@@ -305,11 +305,53 @@ export class L2EventsProvider {
             eventType: SignerEventType.ADD,
             key: hexStringToBytes(addEvent.args.keyBytes)._unsafeUnwrap(),
             scheme: addEvent.args.scheme,
-            // metadata: hexStringToBytes(addEvent.args.metadata)._unsafeUnwrap(),
+            metadata: hexStringToBytes(addEvent.args.metadata)._unsafeUnwrap(),
           });
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_SIGNER,
             addEvent.args.fid,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            signerEventBody,
+          );
+        } else if (event.eventName === "Remove") {
+          const removeEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof KeyRegistry.abi, "Remove">,
+            true,
+            typeof KeyRegistry.abi
+          >;
+          const signerEventBody = SignerEventBody.create({
+            eventType: SignerEventType.REMOVE,
+            key: hexStringToBytes(removeEvent.args.keyBytes)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_SIGNER,
+            removeEvent.args.fid,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            signerEventBody,
+          );
+        } else if (event.eventName === "AdminReset") {
+          const resetEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof KeyRegistry.abi, "AdminReset">,
+            true,
+            typeof KeyRegistry.abi
+          >;
+          const signerEventBody = SignerEventBody.create({
+            eventType: SignerEventType.ADMIN_RESET,
+            key: hexStringToBytes(resetEvent.args.keyBytes)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_SIGNER,
+            resetEvent.args.fid,
             blockNumber,
             blockHash,
             transactionHash,
@@ -367,6 +409,7 @@ export class L2EventsProvider {
           const idRegisterEventBody = IdRegisterEventBody.create({
             eventType: IdRegisterEventType.REGISTER,
             to: hexStringToBytes(registerEvent.args.to)._unsafeUnwrap(),
+            recoveryAddress: hexStringToBytes(registerEvent.args.recovery)._unsafeUnwrap(),
           });
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_ID_REGISTER,
@@ -395,6 +438,29 @@ export class L2EventsProvider {
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_ID_REGISTER,
             0n,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            undefined,
+            undefined,
+            idRegisterEventBody,
+          );
+        } else if (event.eventName === "ChangeRecoveryAddress") {
+          const transferEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof IdRegistryV2.abi, "ChangeRecoveryAddress">,
+            true,
+            typeof IdRegistryV2.abi
+          >;
+          const idRegisterEventBody = IdRegisterEventBody.create({
+            eventType: IdRegisterEventType.CHANGE_RECOVERY,
+            recoveryAddress: hexStringToBytes(transferEvent.args.recovery)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_ID_REGISTER,
+            transferEvent.args.id,
             blockNumber,
             blockHash,
             transactionHash,
@@ -434,7 +500,7 @@ export class L2EventsProvider {
     let lastSyncedBlock = this._firstBlock;
 
     const hubState = await this._hub.getHubState();
-    if (hubState.isOk()) {
+    if (hubState.isOk() && hubState.value.lastEthBlock) {
       lastSyncedBlock = hubState.value.lastEthBlock;
     }
 
@@ -555,7 +621,7 @@ export class L2EventsProvider {
         const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
         this._onChainEventsByBlock.delete(cachedBlock);
         if (onChainEvents) {
-          for (const onChainEvent of onChainEvents) {
+          for (const onChainEvent of onChainEvents.sort((a, b) => a.type - b.type)) {
             await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
           }
         }

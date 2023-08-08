@@ -668,13 +668,17 @@ const SignerOnChainEventFactory = Factory.define<SignerOnChainEvent>(() => {
   }) as protobufs.SignerOnChainEvent;
 });
 
+const IdRegisterEventBodyFactory = Factory.define<protobufs.IdRegisterEventBody>(() => {
+  return IdRegisterEventBody.create({
+    eventType: IdRegisterEventType.REGISTER,
+    from: EthAddressFactory.build(),
+  });
+});
+
 const IdRegisterOnChainEventFactory = Factory.define<IdRegisterOnChainEvent>(() => {
   return OnChainEventFactory.build({
     type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
-    idRegisterEventBody: IdRegisterEventBody.create({
-      eventType: IdRegisterEventType.REGISTER,
-      from: EthAddressFactory.build(),
-    }),
+    idRegisterEventBody: IdRegisterEventBodyFactory.build(),
   }) as protobufs.IdRegisterOnChainEvent;
 });
 
@@ -770,6 +774,7 @@ export const Factories = {
   SignerEventBody: SignerEventBodyFactory,
   SignerOnChainEvent: SignerOnChainEventFactory,
   IdRegistryOnChainEvent: IdRegisterOnChainEventFactory,
+  IdRegistryEventBody: IdRegisterEventBodyFactory,
   SignerMigratedOnChainEvent: SignerMigratedOnChainEventFactory,
   StorageRentEventBody: StorageRentEventBodyFactory,
   StorageRentOnChainEvent: StorageRentOnChainEventFactory,

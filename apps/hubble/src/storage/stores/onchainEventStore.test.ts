@@ -3,6 +3,7 @@ import OnChainEventStore from "./onChainEventStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   Factories,
+  IdRegisterEventType,
   MergeOnChainEventHubEvent,
   OnChainEvent,
   OnChainEventType,
@@ -45,6 +46,7 @@ describe("OnChainEventStore", () => {
         const signer = Factories.SignerOnChainEvent.build();
         const signerRemoved = Factories.SignerOnChainEvent.build({
           fid: signer.fid,
+          blockNumber: signer.blockNumber + 1,
           signerEventBody: Factories.SignerEventBody.build({
             eventType: SignerEventType.REMOVE,
             key: signer.signerEventBody.key,
@@ -56,6 +58,7 @@ describe("OnChainEventStore", () => {
 
         const signerReAdd = Factories.SignerOnChainEvent.build({
           fid: signer.fid,
+          blockNumber: signerRemoved.blockNumber + 1,
           signerEventBody: Factories.SignerEventBody.build({
             eventType: SignerEventType.ADD,
             key: signer.signerEventBody.key,
@@ -63,7 +66,83 @@ describe("OnChainEventStore", () => {
         });
         await expect(set.mergeOnChainEvent(signerReAdd)).rejects.toThrow("re-add removed key");
       });
-      test("handles out of order keys", async () => {});
+
+      test("does not fail on admin reset of non-existing signer", async () => {
+        const reset = Factories.SignerOnChainEvent.build({
+          signerEventBody: Factories.SignerEventBody.build({
+            eventType: SignerEventType.ADMIN_RESET,
+          }),
+        });
+
+        await expect(set.mergeOnChainEvent(reset)).resolves.toBeDefined();
+        await expect(set.getActiveSigner(reset.fid, reset.signerEventBody.key)).rejects.toThrow("signer removed");
+      });
+    });
+
+    describe("transfers", () => {
+      test("updates the custody address on transfer", async () => {
+        const register = Factories.IdRegistryOnChainEvent.build();
+        const transfer = Factories.IdRegistryOnChainEvent.build({
+          fid: register.fid,
+          blockNumber: register.blockNumber + 1,
+          idRegisterEventBody: Factories.IdRegistryEventBody.build({
+            eventType: IdRegisterEventType.TRANSFER,
+          }),
+        });
+        await set.mergeOnChainEvent(register);
+        await set.mergeOnChainEvent(transfer);
+
+        await expect(set.getIdRegisterEventByFid(transfer.fid)).resolves.toEqual(transfer);
+        await expect(set.getIdRegisterEventByCustodyAddress(transfer.idRegisterEventBody.to)).resolves.toEqual(
+          transfer,
+        );
+      });
+      test("does not update secondary indexes for recovery event", async () => {
+        const register = Factories.IdRegistryOnChainEvent.build();
+        const recovery = Factories.IdRegistryOnChainEvent.build({
+          fid: register.fid,
+          blockNumber: register.blockNumber + 1,
+          idRegisterEventBody: Factories.IdRegistryEventBody.build({
+            eventType: IdRegisterEventType.CHANGE_RECOVERY,
+          }),
+        });
+        await set.mergeOnChainEvent(register);
+        await set.mergeOnChainEvent(recovery);
+
+        await expect(
+          set.getOnChainEvents(OnChainEventType.EVENT_TYPE_ID_REGISTER, register.fid),
+        ).resolves.toContainEqual(recovery);
+        await expect(set.getIdRegisterEventByFid(register.fid)).resolves.toEqual(register);
+        await expect(set.getIdRegisterEventByCustodyAddress(register.idRegisterEventBody.to)).resolves.toEqual(
+          register,
+        );
+      });
+      test("secondary index has the latest transfer regardless of order of merge", async () => {
+        const register = Factories.IdRegistryOnChainEvent.build();
+        const transfer = Factories.IdRegistryOnChainEvent.build({
+          fid: register.fid,
+          blockNumber: register.blockNumber + 1,
+          idRegisterEventBody: Factories.IdRegistryEventBody.build({
+            eventType: IdRegisterEventType.TRANSFER,
+          }),
+        });
+        const secondTransfer = Factories.IdRegistryOnChainEvent.build({
+          fid: register.fid,
+          blockNumber: transfer.blockNumber + 1,
+          idRegisterEventBody: Factories.IdRegistryEventBody.build({
+            eventType: IdRegisterEventType.TRANSFER,
+          }),
+        });
+
+        await set.mergeOnChainEvent(secondTransfer);
+        await set.mergeOnChainEvent(transfer);
+        await set.mergeOnChainEvent(register);
+
+        await expect(set.getIdRegisterEventByFid(transfer.fid)).resolves.toEqual(secondTransfer);
+        await expect(set.getIdRegisterEventByCustodyAddress(transfer.idRegisterEventBody.to)).resolves.toEqual(
+          secondTransfer,
+        );
+      });
     });
   });
 
@@ -114,6 +193,7 @@ describe("OnChainEventStore", () => {
       const signer = Factories.SignerOnChainEvent.build();
       const signerRemoved = Factories.SignerOnChainEvent.build({
         fid: signer.fid,
+        blockNumber: signer.blockNumber + 1,
         signerEventBody: Factories.SignerEventBody.build({
           eventType: SignerEventType.REMOVE,
           key: signer.signerEventBody.key,
@@ -122,6 +202,49 @@ describe("OnChainEventStore", () => {
 
       await set.mergeOnChainEvent(signer);
       await set.mergeOnChainEvent(signerRemoved);
+
+      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("signer removed");
+    });
+
+    test("return the signer if removal is admin reset", async () => {
+      const signer = Factories.SignerOnChainEvent.build();
+      const signerRemoved = Factories.SignerOnChainEvent.build({
+        fid: signer.fid,
+        blockNumber: signer.blockNumber + 1,
+        signerEventBody: Factories.SignerEventBody.build({
+          eventType: SignerEventType.REMOVE,
+          key: signer.signerEventBody.key,
+        }),
+      });
+      const adminReset = Factories.SignerOnChainEvent.build({
+        fid: signer.fid,
+        blockNumber: signerRemoved.blockNumber + 1,
+        signerEventBody: Factories.SignerEventBody.build({
+          eventType: SignerEventType.ADMIN_RESET,
+          key: signer.signerEventBody.key,
+        }),
+      });
+
+      await set.mergeOnChainEvent(signer);
+      await set.mergeOnChainEvent(signerRemoved);
+      await set.mergeOnChainEvent(adminReset);
+
+      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).resolves.toEqual(signer);
+    });
+
+    test("does not return signer even if events are merged out of order", async () => {
+      const signer = Factories.SignerOnChainEvent.build();
+      const signerRemoved = Factories.SignerOnChainEvent.build({
+        fid: signer.fid,
+        blockNumber: signer.blockNumber + 1,
+        signerEventBody: Factories.SignerEventBody.build({
+          eventType: SignerEventType.REMOVE,
+          key: signer.signerEventBody.key,
+        }),
+      });
+
+      await set.mergeOnChainEvent(signerRemoved);
+      await set.mergeOnChainEvent(signer);
 
       await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("signer removed");
     });

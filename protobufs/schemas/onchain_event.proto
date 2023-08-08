@@ -2,10 +2,10 @@ syntax = "proto3";
 
 enum OnChainEventType {
   EVENT_TYPE_NONE = 0;
-  EVENT_TYPE_SIGNER = 1;
-  EVENT_TYPE_SIGNER_MIGRATED = 2;
-  EVENT_TYPE_ID_REGISTER = 3;
-  EVENT_TYPE_STORAGE_RENT = 4;
+  EVENT_TYPE_ID_REGISTER = 1;
+  EVENT_TYPE_SIGNER = 2;
+  EVENT_TYPE_STORAGE_RENT = 3;
+  EVENT_TYPE_SIGNER_MIGRATED = 4;
 }
 
 message OnChainEvent {
@@ -36,6 +36,7 @@ message SignerEventBody {
   bytes key = 1;
   uint32 scheme = 2;
   SignerEventType event_type = 3;
+  bytes metadata = 4;
 }
 
 message SignerMigratedEventBody {
@@ -46,12 +47,14 @@ enum IdRegisterEventType {
   ID_REGISTER_EVENT_TYPE_NONE = 0;
   ID_REGISTER_EVENT_TYPE_REGISTER = 1;
   ID_REGISTER_EVENT_TYPE_TRANSFER = 2;
+  ID_REGISTER_EVENT_TYPE_CHANGE_RECOVERY = 3;
 }
 
 message IdRegisterEventBody {
   bytes to = 1;
   IdRegisterEventType event_type = 2;
   bytes from = 3;
+  bytes recovery_address = 4;
 }
 
 message StorageRentEventBody {
