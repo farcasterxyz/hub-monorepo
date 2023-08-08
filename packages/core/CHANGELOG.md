@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.2
+
+### Patch Changes
+
+- afd2146f: fix: Remove neon shim to get compilation working
+
 ## 0.12.1
 
 ### Patch Changes
