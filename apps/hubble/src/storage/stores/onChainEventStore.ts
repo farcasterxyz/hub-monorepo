@@ -26,6 +26,8 @@ import {
 } from "../db/onChainEvent.js";
 import { ok, ResultAsync } from "neverthrow";
 
+const SUPPORTED_SIGNER_SCHEMES = [1];
+
 /**
  * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
  * to guarantee eventual consistency.
@@ -63,10 +65,13 @@ class OnChainEventStore {
   async getActiveSigner(fid: number, signer: Uint8Array): Promise<SignerOnChainEvent> {
     const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
     const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
-    if (event.signerEventBody.eventType === SignerEventType.ADD) {
+    if (
+      event.signerEventBody.eventType === SignerEventType.ADD &&
+      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.scheme)
+    ) {
       return event;
     } else {
-      throw new HubError("not_found", "signer removed");
+      throw new HubError("not_found", "no such active signer");
     }
   }
 

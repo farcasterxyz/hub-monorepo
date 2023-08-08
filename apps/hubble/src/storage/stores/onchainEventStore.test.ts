@@ -75,7 +75,7 @@ describe("OnChainEventStore", () => {
         });
 
         await expect(set.mergeOnChainEvent(reset)).resolves.toBeDefined();
-        await expect(set.getActiveSigner(reset.fid, reset.signerEventBody.key)).rejects.toThrow("signer removed");
+        await expect(set.getActiveSigner(reset.fid, reset.signerEventBody.key)).rejects.toThrow("active signer");
       });
     });
 
@@ -203,7 +203,19 @@ describe("OnChainEventStore", () => {
       await set.mergeOnChainEvent(signer);
       await set.mergeOnChainEvent(signerRemoved);
 
-      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("signer removed");
+      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("active signer");
+    });
+
+    test("does not return signer if unsupported scheme", async () => {
+      const signer = Factories.SignerOnChainEvent.build({
+        signerEventBody: Factories.SignerEventBody.build({
+          eventType: SignerEventType.ADD,
+          scheme: 2,
+        }),
+      });
+      await set.mergeOnChainEvent(signer);
+
+      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("active signer");
     });
 
     test("return the signer if removal is admin reset", async () => {
@@ -246,7 +258,7 @@ describe("OnChainEventStore", () => {
       await set.mergeOnChainEvent(signerRemoved);
       await set.mergeOnChainEvent(signer);
 
-      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("signer removed");
+      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("active signer");
     });
   });
 
