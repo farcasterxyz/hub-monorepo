@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.3
+
+### Patch Changes
+
+- 41334ab8: fix: Move rust code to apps/hubble, making core package PureJS
+
 ## 0.12.2
 
 ### Patch Changes

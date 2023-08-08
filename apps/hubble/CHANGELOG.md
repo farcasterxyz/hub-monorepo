@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.4.5
+
+### Patch Changes
+
+- 437545cc: fix: Log when network config is updated
+- 41334ab8: fix: Move rust code to apps/hubble, making core package PureJS
+  - @farcaster/hub-nodejs@0.10.3
+
 ## 1.4.4
 
 ### Patch Changes
