@@ -74,6 +74,7 @@ import os from "os";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
 import { getRateLimiterForTotalMessages, rateLimitByKey } from "../../utils/rateLimits.js";
+import { nativeValidationMethods } from "../../rustfunctions.js";
 
 const log = logger.child({
   component: "Engine",
@@ -1079,7 +1080,7 @@ class Engine {
         this._nextValidationWorker = (this._nextValidationWorker + 1) % (this._validationWorkers?.length || 1);
       });
     } else {
-      return validations.validateMessage(message);
+      return validations.validateMessage(message, nativeValidationMethods);
     }
   }
 

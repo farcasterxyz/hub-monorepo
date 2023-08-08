@@ -1,13 +1,13 @@
 import * as protobufs from "./protobufs";
+import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
-import { eip712 } from "./crypto";
+import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
-import { nativeBlake3Hash20, nativeEd25519Verify } from "./rustfunctions";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -19,6 +19,24 @@ export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
 
 export const EMBEDS_V1_CUTOFF = 73612800; // 5/3/23 00:00 UTC
+
+/**
+ * CPU intensive validation methods that are used during validations. By default, we use
+ * pure JS implementations for compatibility, but we can also use native implementations if available.
+ */
+export type ValidationMethods = {
+  ed25519_verify: (signature: Uint8Array, message: Uint8Array, publicKey: Uint8Array) => Promise<boolean>;
+  blake3_20: (message: Uint8Array) => Uint8Array;
+};
+
+/**
+ * Pure JS implementations. These are used by default, but can be overridden by native implementations.
+ */
+const pureJSValidationMethods: ValidationMethods = {
+  ed25519_verify: async (s: Uint8Array, m: Uint8Array, p: Uint8Array) =>
+    (await ed25519.verifyMessageHashSignature(s, m, p)).unwrapOr(false),
+  blake3_20: (message: Uint8Array) => blake3(message, { dkLen: 20 }),
+};
 
 export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> => {
   if (!hash || hash.length === 0) {
@@ -95,7 +113,10 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
   return ok(publicKey);
 };
 
-export const validateMessage = async (message: protobufs.Message): HubAsyncResult<protobufs.Message> => {
+export const validateMessage = async (
+  message: protobufs.Message,
+  validationMethods: ValidationMethods = pureJSValidationMethods,
+): HubAsyncResult<protobufs.Message> => {
   // 1. Check the message data
   const data = message.data;
   if (!data) {
@@ -114,7 +135,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
 
   const dataBytes = protobufs.MessageData.encode(data).finish();
   if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
-    const computedHash = nativeBlake3Hash20(dataBytes);
+    const computedHash = validationMethods.blake3_20(dataBytes);
 
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
@@ -145,7 +166,7 @@ export const validateMessage = async (message: protobufs.Message): HubAsyncResul
       return err(new HubError("bad_request.validation_failure", "signature does not match signer"));
     }
   } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
-    const signatureIsValid = await nativeEd25519Verify(signature, hash, signer);
+    const signatureIsValid = await validationMethods.ed25519_verify(signature, hash, signer);
 
     if (!signatureIsValid) {
       return err(new HubError("bad_request.validation_failure", "invalid signature"));

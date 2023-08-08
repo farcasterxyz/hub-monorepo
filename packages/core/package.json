@@ -11,9 +11,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "MIT",
   "dependencies": {
     "@noble/curves": "^1.0.0",
@@ -24,8 +22,7 @@
     "viem": "^1.1.4"
   },
   "scripts": {
-    "build:rust": "cargo-cp-artifact -ac addon src/addon/index.node -- cargo build --manifest-path ./src/addon/Cargo.toml --message-format=json-render-diagnostics --release",
-    "build": "yarn build:rust && tsup --config tsup.config.ts",
+    "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/protobufs/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=false,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=../../protobufs/schemas  ../../protobufs/schemas/*",
     "lint": "rome format src/ --write && rome check src/ --apply",
@@ -46,7 +43,6 @@
     "node-gyp": "^9.4.0",
     "prettier-config-custom": "*",
     "rome-config-custom": "*",
-    "ts-proto": "^1.146.0",
-    "cargo-cp-artifact": "^0.1"
+    "ts-proto": "^1.146.0"
   }
 }

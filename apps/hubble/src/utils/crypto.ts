@@ -1,4 +1,4 @@
-import { nativeBlake3Hash20 } from "@farcaster/hub-nodejs";
+import { nativeBlake3Hash20 } from "../rustfunctions.js";
 import { blake3 } from "@noble/hashes/blake3";
 
 export const BLAKE3TRUNCATE160_EMPTY_HASH = Buffer.from(blake3(new Uint8Array(), { dkLen: 20 }));
