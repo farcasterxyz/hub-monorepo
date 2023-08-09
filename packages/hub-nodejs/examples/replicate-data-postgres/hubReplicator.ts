@@ -636,7 +636,18 @@ export class HubReplicator {
         })),
       )
       // Do nothing on conflict since nothing should have changed if hash is the same.
-      .onConflict((oc) => oc.columns(["hash"]).doNothing())
+      .onConflict((oc) =>
+        oc
+          .columns(["fid", "targetFid", "type"])
+          .doUpdateSet(({ ref }) => ({
+            updatedAt: new Date(),
+            deletedAt: null,
+            hash: ref("excluded.hash"),
+            timestamp: ref("excluded.timestamp"),
+            displayTimestamp: ref("excluded.displayTimestamp"),
+          }))
+          .where(({ cmpr, ref }) => cmpr("links.timestamp", "<", ref("excluded.timestamp"))),
+      )
       .execute();
 
     for (const message of messages) {
