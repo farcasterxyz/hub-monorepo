@@ -636,7 +636,18 @@ export class HubReplicator {
         })),
       )
       // Do nothing on conflict since nothing should have changed if hash is the same.
-      .onConflict((oc) => oc.columns(["hash"]).doNothing())
+      .onConflict((oc) =>
+        oc
+          .columns(["fid", "targetFid", "type"])
+          .doUpdateSet(({ ref }) => ({
+            updatedAt: new Date(),
+            deletedAt: null,
+            hash: ref("excluded.hash"),
+            timestamp: ref("excluded.timestamp"),
+            displayTimestamp: ref("excluded.displayTimestamp"),
+          }))
+          .where(({ cmpr, ref }) => cmpr("links.timestamp", "<", ref("excluded.timestamp"))),
+      )
       .execute();
 
     for (const message of messages) {
@@ -649,12 +660,13 @@ export class HubReplicator {
   private async onLinkRemove(messages: LinkRemoveMessage[]) {
     for (const message of messages) {
       await this.db
-        .deleteFrom("links")
+        .updateTable("links")
         .where("fid", "=", message.data.fid)
         // type assertion due to a problem with the type definitions. This field is infact required and present in all valid messages
         // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
         .where("targetFid", "=", message.data.linkBody.targetFid!)
         .where("type", "=", message.data.linkBody.type)
+        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })
         .execute();
 
       // TODO: Execute any cleanup side effects to remove the cast
