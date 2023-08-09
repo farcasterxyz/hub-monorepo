@@ -16,7 +16,7 @@
   "type": "module",
   "scripts": {
     "bench": "NODE_OPTIONS='--max-old-space-size=8192' tsx src/test/bench",
-    "copy:rust": "cp src/addon/index.node build/addon/index.node",
+    "copy:rust": "mkdir -p build/addon && cp src/addon/index.node build/addon/index.node",
     "build:rust": "cargo-cp-artifact -ac addon src/addon/index.node -- cargo build --manifest-path ./src/addon/Cargo.toml --message-format=json-render-diagnostics --release",
     "build": "yarn clean && yarn build:rust && tsc --project ./tsconfig.json && yarn copy:rust",
     "clean": "rimraf ./build && cargo clean --manifest-path ./src/addon/Cargo.toml",
