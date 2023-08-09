@@ -22,6 +22,7 @@ import { createPublicClient, fallback, http, Log, OnLogsParameter, PublicClient 
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
 import { ExtractAbiEvent } from "abitype";
+import { onChainEventSorter } from "../storage/db/onChainEvent.js";
 
 const log = logger.child({
   component: "L2EventsProvider",
@@ -69,12 +70,12 @@ export class L2EventsProvider {
   // 6 for now, because that's the threshold beyond which blocks are unlikely
   // to reorg anymore. 6 blocks represents ~72 seconds on Goerli, so the delay
   // is not too long.
-  static numConfirmations = 6;
+  static numConfirmations = 2;
 
-  // Events are only processed after 6 blocks have been confirmed; poll less
+  // Events are only processed after `numConfirmations` blocks have been confirmed; poll less
   // frequently while ensuring events are available the moment they are
   // confirmed.
-  static eventPollingInterval = (L2EventsProvider.numConfirmations - 2) * 12_000;
+  static eventPollingInterval = Math.max(L2EventsProvider.numConfirmations - 2, 1) * 10_000;
   static blockPollingInterval = 4_000;
 
   constructor(
@@ -621,7 +622,7 @@ export class L2EventsProvider {
         const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
         this._onChainEventsByBlock.delete(cachedBlock);
         if (onChainEvents) {
-          for (const onChainEvent of onChainEvents.sort((a, b) => a.type - b.type)) {
+          for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
             await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
           }
         }
