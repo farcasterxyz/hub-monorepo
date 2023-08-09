@@ -1,7 +1,7 @@
 import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
 import semver from "semver";
 import https from "https";
-import { err, ok } from "neverthrow";
+import { Result, err, ok } from "neverthrow";
 import { logger } from "../../utils/logger.js";
 import vm from "vm";
 import { APP_VERSION } from "../../hubble.js";
@@ -29,7 +29,7 @@ export type NetworkConfigResult = {
 export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
   return new Promise((resolve) => {
     https
-      .get(NETWORK_CONFIG_LOCATION, (res) => {
+      .get(NETWORK_CONFIG_LOCATION, { timeout: 15 * 1000 }, (res) => {
         let data = "";
 
         res.on("data", (chunk) => {
@@ -37,10 +37,29 @@ export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
         });
 
         res.on("end", () => {
-          const script = new vm.Script(data);
-          // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+          const script = Result.fromThrowable(
+            () => new vm.Script(data),
+            (error) => error,
+          )();
+
+          if (script.isErr()) {
+            log.error({ error: script.error, data }, "Error parsing network config");
+            resolve(err(new HubError("unavailable.network_failure", script.error as Error)));
+            return;
+          }
+
+          // rome-ignore lint/suspicious/noExplicitAny: context has to be "any"
           const context: any = {};
-          script.runInNewContext(context);
+
+          const result = Result.fromThrowable(
+            () => script.value.runInNewContext(context),
+            (e) => e,
+          )();
+          if (result.isErr()) {
+            log.error({ error: result.error, data }, "Error running network config");
+            resolve(err(new HubError("unavailable.network_failure", result.error as Error)));
+            return;
+          }
 
           // Access the config object
           const config = context["config"] as NetworkConfig;
