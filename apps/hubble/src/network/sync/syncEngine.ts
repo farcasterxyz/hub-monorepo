@@ -149,6 +149,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _messagesSinceLastCompaction = 0;
   private _isCompacting = false;
 
+  // Has the syncengine started yet?
+  private _started = false;
+
   constructor(
     hub: HubInterface,
     rocksDb: RocksDB,
@@ -208,6 +211,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._syncMergeQ;
   }
 
+  public isStarted(): boolean {
+    return this._started;
+  }
+
   public async initialize(rebuildSyncTrie = false) {
     // Check if we need to rebuild sync trie
     if (rebuildSyncTrie) {
@@ -218,6 +225,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
     const rootHash = await this._trie.rootHash();
 
+    this._started = true;
     log.info({ rootHash }, "Sync engine initialized");
   }
 
@@ -253,6 +261,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.error({ err: e }, "Interrupting sync timed out");
     }
 
+    this._started = false;
     this._currentSyncStatus.interruptSync = false;
   }
 
