@@ -776,7 +776,11 @@ describe("mergeMessage", () => {
           eventType: SignerEventType.REMOVE,
           key: signerAdd.data.signerAddBody.signer,
         });
-        const signerRemovalEvent = Factories.SignerOnChainEvent.build({ fid, signerEventBody: signerRemovalBody });
+        const signerRemovalEvent = Factories.SignerOnChainEvent.build({
+          fid,
+          blockNumber: onChainSignerEvent.blockNumber + 1,
+          signerEventBody: signerRemovalBody,
+        });
 
         await migratedEngine.mergeOnChainEvent(idRegistryOnChainEvent);
         await migratedEngine.mergeOnChainEvent(onChainSignerEvent);

@@ -126,3 +126,10 @@ export const forEachOnChainEvent = async (
     timeout || 15 * 60 * 1000,
   );
 };
+
+export const onChainEventSorter = (a: OnChainEvent, b: OnChainEvent): number => {
+  if (a.blockNumber === b.blockNumber) {
+    return a.logIndex - b.logIndex;
+  }
+  return a.blockNumber - b.blockNumber;
+};

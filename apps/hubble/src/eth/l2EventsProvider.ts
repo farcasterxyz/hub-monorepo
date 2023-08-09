@@ -22,6 +22,7 @@ import { createPublicClient, fallback, http, Log, OnLogsParameter, PublicClient 
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
 import { ExtractAbiEvent } from "abitype";
+import { onChainEventSorter } from "../storage/db/onChainEvent.js";
 
 const log = logger.child({
   component: "L2EventsProvider",
@@ -69,12 +70,12 @@ export class L2EventsProvider {
   // 6 for now, because that's the threshold beyond which blocks are unlikely
   // to reorg anymore. 6 blocks represents ~72 seconds on Goerli, so the delay
   // is not too long.
-  static numConfirmations = 6;
+  static numConfirmations = 2;
 
-  // Events are only processed after 6 blocks have been confirmed; poll less
+  // Events are only processed after `numConfirmations` blocks have been confirmed; poll less
   // frequently while ensuring events are available the moment they are
   // confirmed.
-  static eventPollingInterval = (L2EventsProvider.numConfirmations - 2) * 12_000;
+  static eventPollingInterval = Math.max(L2EventsProvider.numConfirmations - 2, 1) * 10_000;
   static blockPollingInterval = 4_000;
 
   constructor(
@@ -305,11 +306,53 @@ export class L2EventsProvider {
             eventType: SignerEventType.ADD,
             key: hexStringToBytes(addEvent.args.keyBytes)._unsafeUnwrap(),
             scheme: addEvent.args.scheme,
-            // metadata: hexStringToBytes(addEvent.args.metadata)._unsafeUnwrap(),
+            metadata: hexStringToBytes(addEvent.args.metadata)._unsafeUnwrap(),
           });
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_SIGNER,
             addEvent.args.fid,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            signerEventBody,
+          );
+        } else if (event.eventName === "Remove") {
+          const removeEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof KeyRegistry.abi, "Remove">,
+            true,
+            typeof KeyRegistry.abi
+          >;
+          const signerEventBody = SignerEventBody.create({
+            eventType: SignerEventType.REMOVE,
+            key: hexStringToBytes(removeEvent.args.keyBytes)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_SIGNER,
+            removeEvent.args.fid,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            signerEventBody,
+          );
+        } else if (event.eventName === "AdminReset") {
+          const resetEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof KeyRegistry.abi, "AdminReset">,
+            true,
+            typeof KeyRegistry.abi
+          >;
+          const signerEventBody = SignerEventBody.create({
+            eventType: SignerEventType.ADMIN_RESET,
+            key: hexStringToBytes(resetEvent.args.keyBytes)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_SIGNER,
+            resetEvent.args.fid,
             blockNumber,
             blockHash,
             transactionHash,
@@ -367,6 +410,7 @@ export class L2EventsProvider {
           const idRegisterEventBody = IdRegisterEventBody.create({
             eventType: IdRegisterEventType.REGISTER,
             to: hexStringToBytes(registerEvent.args.to)._unsafeUnwrap(),
+            recoveryAddress: hexStringToBytes(registerEvent.args.recovery)._unsafeUnwrap(),
           });
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_ID_REGISTER,
@@ -395,6 +439,29 @@ export class L2EventsProvider {
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_ID_REGISTER,
             0n,
+            blockNumber,
+            blockHash,
+            transactionHash,
+            transactionIndex,
+            undefined,
+            undefined,
+            idRegisterEventBody,
+          );
+        } else if (event.eventName === "ChangeRecoveryAddress") {
+          const transferEvent = event as Log<
+            bigint,
+            number,
+            ExtractAbiEvent<typeof IdRegistryV2.abi, "ChangeRecoveryAddress">,
+            true,
+            typeof IdRegistryV2.abi
+          >;
+          const idRegisterEventBody = IdRegisterEventBody.create({
+            eventType: IdRegisterEventType.CHANGE_RECOVERY,
+            recoveryAddress: hexStringToBytes(transferEvent.args.recovery)._unsafeUnwrap(),
+          });
+          await this.cacheOnChainEvent(
+            OnChainEventType.EVENT_TYPE_ID_REGISTER,
+            transferEvent.args.id,
             blockNumber,
             blockHash,
             transactionHash,
@@ -434,7 +501,7 @@ export class L2EventsProvider {
     let lastSyncedBlock = this._firstBlock;
 
     const hubState = await this._hub.getHubState();
-    if (hubState.isOk()) {
+    if (hubState.isOk() && hubState.value.lastEthBlock) {
       lastSyncedBlock = hubState.value.lastEthBlock;
     }
 
@@ -555,7 +622,7 @@ export class L2EventsProvider {
         const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
         this._onChainEventsByBlock.delete(cachedBlock);
         if (onChainEvents) {
-          for (const onChainEvent of onChainEvents) {
+          for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
             await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
           }
         }
