@@ -4,10 +4,10 @@ import _m0 from "protobufjs/minimal";
 
 export enum OnChainEventType {
   EVENT_TYPE_NONE = 0,
-  EVENT_TYPE_ID_REGISTER = 1,
-  EVENT_TYPE_SIGNER = 2,
-  EVENT_TYPE_STORAGE_RENT = 3,
-  EVENT_TYPE_SIGNER_MIGRATED = 4,
+  EVENT_TYPE_SIGNER = 1,
+  EVENT_TYPE_SIGNER_MIGRATED = 2,
+  EVENT_TYPE_ID_REGISTER = 3,
+  EVENT_TYPE_STORAGE_RENT = 4,
 }
 
 export function onChainEventTypeFromJSON(object: any): OnChainEventType {
@@ -16,17 +16,17 @@ export function onChainEventTypeFromJSON(object: any): OnChainEventType {
     case "EVENT_TYPE_NONE":
       return OnChainEventType.EVENT_TYPE_NONE;
     case 1:
-    case "EVENT_TYPE_ID_REGISTER":
-      return OnChainEventType.EVENT_TYPE_ID_REGISTER;
-    case 2:
     case "EVENT_TYPE_SIGNER":
       return OnChainEventType.EVENT_TYPE_SIGNER;
-    case 3:
-    case "EVENT_TYPE_STORAGE_RENT":
-      return OnChainEventType.EVENT_TYPE_STORAGE_RENT;
-    case 4:
+    case 2:
     case "EVENT_TYPE_SIGNER_MIGRATED":
       return OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED;
+    case 3:
+    case "EVENT_TYPE_ID_REGISTER":
+      return OnChainEventType.EVENT_TYPE_ID_REGISTER;
+    case 4:
+    case "EVENT_TYPE_STORAGE_RENT":
+      return OnChainEventType.EVENT_TYPE_STORAGE_RENT;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
@@ -36,14 +36,14 @@ export function onChainEventTypeToJSON(object: OnChainEventType): string {
   switch (object) {
     case OnChainEventType.EVENT_TYPE_NONE:
       return "EVENT_TYPE_NONE";
-    case OnChainEventType.EVENT_TYPE_ID_REGISTER:
-      return "EVENT_TYPE_ID_REGISTER";
     case OnChainEventType.EVENT_TYPE_SIGNER:
       return "EVENT_TYPE_SIGNER";
-    case OnChainEventType.EVENT_TYPE_STORAGE_RENT:
-      return "EVENT_TYPE_STORAGE_RENT";
     case OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED:
       return "EVENT_TYPE_SIGNER_MIGRATED";
+    case OnChainEventType.EVENT_TYPE_ID_REGISTER:
+      return "EVENT_TYPE_ID_REGISTER";
+    case OnChainEventType.EVENT_TYPE_STORAGE_RENT:
+      return "EVENT_TYPE_STORAGE_RENT";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
