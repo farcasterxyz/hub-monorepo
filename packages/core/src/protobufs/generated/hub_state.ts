@@ -5,10 +5,11 @@ import _m0 from "protobufjs/minimal";
 export interface HubState {
   lastEthBlock: number;
   lastFnameProof: number;
+  lastL2Block: number;
 }
 
 function createBaseHubState(): HubState {
-  return { lastEthBlock: 0, lastFnameProof: 0 };
+  return { lastEthBlock: 0, lastFnameProof: 0, lastL2Block: 0 };
 }
 
 export const HubState = {
@@ -18,6 +19,9 @@ export const HubState = {
     }
     if (message.lastFnameProof !== 0) {
       writer.uint32(16).uint64(message.lastFnameProof);
+    }
+    if (message.lastL2Block !== 0) {
+      writer.uint32(24).uint64(message.lastL2Block);
     }
     return writer;
   },
@@ -43,6 +47,13 @@ export const HubState = {
 
           message.lastFnameProof = longToNumber(reader.uint64() as Long);
           continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.lastL2Block = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -56,6 +67,7 @@ export const HubState = {
     return {
       lastEthBlock: isSet(object.lastEthBlock) ? Number(object.lastEthBlock) : 0,
       lastFnameProof: isSet(object.lastFnameProof) ? Number(object.lastFnameProof) : 0,
+      lastL2Block: isSet(object.lastL2Block) ? Number(object.lastL2Block) : 0,
     };
   },
 
@@ -63,6 +75,7 @@ export const HubState = {
     const obj: any = {};
     message.lastEthBlock !== undefined && (obj.lastEthBlock = Math.round(message.lastEthBlock));
     message.lastFnameProof !== undefined && (obj.lastFnameProof = Math.round(message.lastFnameProof));
+    message.lastL2Block !== undefined && (obj.lastL2Block = Math.round(message.lastL2Block));
     return obj;
   },
 
@@ -74,6 +87,7 @@ export const HubState = {
     const message = createBaseHubState();
     message.lastEthBlock = object.lastEthBlock ?? 0;
     message.lastFnameProof = object.lastFnameProof ?? 0;
+    message.lastL2Block = object.lastL2Block ?? 0;
     return message;
   },
 };

@@ -502,8 +502,8 @@ export class L2EventsProvider {
     let lastSyncedBlock = this._firstBlock;
 
     const hubState = await this._hub.getHubState();
-    if (hubState.isOk() && hubState.value.lastEthBlock) {
-      lastSyncedBlock = hubState.value.lastEthBlock;
+    if (hubState.isOk() && hubState.value.lastL2Block) {
+      lastSyncedBlock = hubState.value.lastL2Block;
     }
 
     if (this._resyncEvents) {
@@ -639,8 +639,13 @@ export class L2EventsProvider {
 
     // Update the last synced block if all the historical events have been synced
     if (this._isHistoricalSyncDone) {
-      const hubState = HubState.create({ lastEthBlock: blockNumber });
-      await this._hub.putHubState(hubState);
+      const hubState = await this._hub.getHubState();
+      if (hubState.isOk()) {
+        hubState.value.lastL2Block = blockNumber;
+        await this._hub.putHubState(hubState.value);
+      } else {
+        log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
+      }
     }
 
     this._blockTimestampsCache.clear(); // Clear the cache periodically to avoid unbounded growth
