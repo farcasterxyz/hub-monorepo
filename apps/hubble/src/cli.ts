@@ -592,7 +592,7 @@ app
       }
 
       const numPeers = msgPercents.length;
-      if (!syncEngingStarted) {
+      if (syncEngingStarted === false && numPeers === 0) {
         logger.info("Sync Status: Getting blockchain events (Sync not started yet)");
       } else if (numPeers === 0) {
         logger.info("Sync Status: No peers");
