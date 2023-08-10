@@ -9,6 +9,10 @@ import {
   Message,
   ReactionType,
   TrieNodeMetadataResponse,
+  bytesToHexString,
+  utf8StringToBytes,
+  UserNameType,
+  toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import { anything, instance, mock, when } from "ts-mockito";
@@ -20,6 +24,8 @@ import { sleepWhile } from "../../utils/crypto.js";
 import { NetworkFactories } from "../../network/utils/factories.js";
 import { HubInterface } from "../../hubble.js";
 import { MockHub } from "../../test/mocks.js";
+import { jest } from "@jest/globals";
+import { publicClient } from "../../test/utils.js";
 
 const testDb = jestRocksDB("engine.syncEngine.test");
 const testDb2 = jestRocksDB("engine2.syncEngine.test");
@@ -53,7 +59,7 @@ describe("SyncEngine", () => {
 
   beforeEach(async () => {
     // await testDb.clear();
-    engine = new Engine(testDb, FarcasterNetwork.TESTNET);
+    engine = new Engine(testDb, FarcasterNetwork.TESTNET, undefined, publicClient);
     hub = new MockHub(testDb, engine);
     syncEngine = new SyncEngine(hub, testDb);
   });
@@ -150,6 +156,44 @@ describe("SyncEngine", () => {
 
     // The trie should not contain the castAdd anymore
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+  });
+
+  test("trie is updated for username proof messages", async () => {
+    const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
+    jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      return Promise.resolve(custodyAddress);
+    });
+    const timestampSec = Math.floor(Date.now() / 1000);
+    const proof = await Factories.UsernameProofMessage.create(
+      {
+        data: {
+          fid,
+          usernameProofBody: Factories.UserNameProof.build({
+            name: utf8StringToBytes("test.eth")._unsafeUnwrap(),
+            fid,
+            owner: custodyEvent.to,
+            timestamp: timestampSec,
+            type: UserNameType.USERNAME_TYPE_ENS_L1,
+          }),
+          timestamp: toFarcasterTime(timestampSec * 1000)._unsafeUnwrap(),
+          type: MessageType.USERNAME_PROOF,
+        },
+      },
+      { transient: { signer } },
+    );
+
+    const existingItems = await syncEngine.trie.items();
+    expect(existingItems).toEqual(0);
+
+    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeMessage(signerAdd);
+    expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
+
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+
+    // SignerAdd and Username proof is added to the trie
+    expect((await syncEngine.trie.items()) - existingItems).toEqual(2);
+    expect(await syncEngine.trie.exists(new SyncId(proof))).toBeTruthy();
   });
 
   test("getAllMessages returns empty with invalid syncId", async () => {

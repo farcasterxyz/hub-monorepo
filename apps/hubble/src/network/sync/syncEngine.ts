@@ -15,6 +15,7 @@ import {
   FidRequest,
   TrieNodeMetadataResponse,
   bytesToHexString,
+  MergeUsernameProofHubEvent,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
@@ -200,6 +201,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this._syncTrieQ += 1;
       await this.removeMessage(event.revokeMessageBody.message);
       this._syncTrieQ -= 1;
+    });
+    this._hub.engine.eventHandler.on("mergeUsernameProofEvent", async (event: MergeUsernameProofHubEvent) => {
+      if (event.mergeUsernameProofBody.usernameProofMessage) {
+        this._syncTrieQ += 1;
+        await this.addMessage(event.mergeUsernameProofBody.usernameProofMessage);
+        this._syncTrieQ -= 1;
+      }
+      if (event.mergeUsernameProofBody.deletedUsernameProofMessage) {
+        this._syncTrieQ += 1;
+        await this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
+        this._syncTrieQ -= 1;
+      }
     });
   }
 
