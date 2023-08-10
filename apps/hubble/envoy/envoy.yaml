@@ -1,3 +1,9 @@
+# Example Envoy configuration for setting up Envoy to expose a port that
+# supports grpc-web (for browser clients).
+#
+# The configuration below will work with the docker-compose.yml file in the
+# apps/hubble directory.
+
 admin:
   access_log_path: /tmp/admin_access.log
   address:
@@ -8,7 +14,7 @@ static_resources:
     - name: listener_0
       address:
         # update the port_value to the port of envoy
-        socket_address: { address: 0.0.0.0, port_value: 2284 }
+        socket_address: { address: 0.0.0.0, port_value: 2285 }
       filter_chains:
         - filters:
             - name: envoy.filters.network.http_connection_manager
@@ -58,7 +64,10 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      # win/mac hosts: Use address: host.docker.internal instead of address: localhost in the line below
-                      address: 0.0.0.0
-                      # update the value to the port of rpc server
+                      # "hubble" is the hostname of the hub container in the docker-compose.yml
+                      #
+                      # If you're modifying this file and running the hubble and
+                      # envoy containers in host networking mode, use "localhost".
+                      address: hubble
+                      # update the value to the port of rpc server (default is 2283)
                       port_value: 2283
