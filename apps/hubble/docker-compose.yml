@@ -1,10 +1,24 @@
+# A working Docker Compose configuration file that starts a working hub.
+#
+# See https://www.thehubble.xyz/intro/install.html#installing-hubble for full
+# instructions.
+
 version: '3.9'
 
 services:
   hubble:
     image: farcasterxyz/hubble:latest
     restart: unless-stopped
-    command: ["yarn", "start", "--ip", "0.0.0.0", "--gossip-port", "2282", "--rpc-port", "2283", "--eth-rpc-url", "$ETH_RPC_URL", "--eth-mainnet-rpc-url", "$ETH_MAINNET_RPC_URL", "--network", "$FC_NETWORK_ID", "-b", "$BOOTSTRAP_NODE"]
+    command: [
+      "node", "build/cli.js", "start",
+      "--ip", "0.0.0.0",
+      "--gossip-port", "2282",
+      "--rpc-port", "2283",
+      "--eth-rpc-url", "$ETH_RPC_URL",
+      "--eth-mainnet-rpc-url", "$ETH_MAINNET_RPC_URL",
+      "--network", "${FC_NETWORK_ID:-1}",
+      "-b", "${BOOTSTRAP_NODE:-/dns/nemes.farcaster.xyz/tcp/2282}",
+    ]
     ports:
       - '2282:2282' # Gossip
       - '2283:2283' # RPC
@@ -16,3 +30,13 @@ services:
       options:
         max-size: "1g"
         max-file: "2"
+
+  # Start if you want to expose your hub over grpc-web (for browser clients)
+  envoy:
+    image: envoyproxy/envoy:v1.26.1
+    depends_on:
+      - hubble
+    ports:
+      - '2285:2285'
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
