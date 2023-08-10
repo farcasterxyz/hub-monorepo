@@ -75,7 +75,7 @@ class TrieNode {
     current_index = 0,
   ): Promise<TrieNodeOpResult> {
     if (current_index >= key.length) {
-      throw "Key length exceeded";
+      throw new Error("Key length exceeded");
     }
     const char = key.at(current_index) as number;
 

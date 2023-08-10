@@ -4,7 +4,7 @@ import { HubError, Message } from "@farcaster/hub-nodejs";
 import { SyncId } from "./syncId.js";
 import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import RocksDB from "../../storage/db/rocksdb.js";
-import { FID_BYTES, RootPrefix, UserMessagePostfixMax } from "../../storage/db/types.js";
+import { FID_BYTES, HASH_LENGTH, RootPrefix, UserMessagePostfixMax } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
 
 // The number of messages to process before unloading the trie from memory
@@ -107,7 +107,7 @@ class MerkleTrie {
             () => Message.decode(new Uint8Array(value as Buffer)),
             (e) => e as HubError,
           )();
-          if (message.isOk()) {
+          if (message.isOk() && message.value.hash.length === HASH_LENGTH) {
             await this.insert(new SyncId(message.value));
             count += 1;
             if (count % 10_000 === 0) {
