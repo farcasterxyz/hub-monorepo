@@ -91,6 +91,10 @@ export enum UserPostfix {
   UserDataMessage = 6,
   UsernameProofMessage = 7,
 
+  // Add new message types here
+  // NOTE: If you add a new message type, make sure that it is only used to store Message protobufs.
+  // If you need to store an index, use one of the UserPostfix values below (>86).
+
   /** Index records (must be 86-255) */
 
   BySigner = 86, // Index message by its signer

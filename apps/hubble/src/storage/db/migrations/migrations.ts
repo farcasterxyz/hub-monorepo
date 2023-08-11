@@ -2,10 +2,11 @@ import { ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
 
+// The latest code version of the DB schema. This is the version that the DB will be
+// migrated to if the DB has an older schema version.
 export const LATEST_DB_SCHEMA_VERSION = 1;
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
-
 const migrations = new Map<number, MigrationFunctionType>();
 
 // Add all DB Migrations here. The key is the schema version number.
@@ -14,6 +15,12 @@ migrations.set(1, async (db: RocksDB) => {
   // to `UsernameProofMessageAdd`
   return await usernameProofIndexMigration(db);
 });
+
+// To Add a new migration
+// migrations.set(<next number>, async (db: RocksDB) => {
+//   <call migration script>
+//   return true; // or false if migration failed
+// });
 
 export async function performDbMigrations(
   db: RocksDB,
