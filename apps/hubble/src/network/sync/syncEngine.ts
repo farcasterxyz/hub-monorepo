@@ -848,11 +848,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._messagesSinceLastCompaction += messagesLength;
     if (this.shouldCompactDb && !this._isCompacting) {
       this._isCompacting = true;
-      logger.info("Starting DB compaction");
+      log.info("Starting DB compaction");
 
       await this._db.compact().catch((e) => log.warn(e, `Error compacting DB: ${e.message}`));
 
-      logger.info("Completed DB compaction");
+      log.info("Completed DB compaction");
       this._messagesSinceLastCompaction = 0;
       this._isCompacting = false;
       return true;
@@ -960,7 +960,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Get the ethereum block number from the custody event
     const custodyEventBlockNumber = custodyEventResult.value.blockNumber;
 
-    logger.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
+    log.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
     // We'll retry all events from this block number
     await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
   }
