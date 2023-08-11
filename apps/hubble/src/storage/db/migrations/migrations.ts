@@ -14,10 +14,14 @@ migrations.set(1, async (db: RocksDB) => {
   return await usernameProofIndexMigration(db);
 });
 
-export async function performDbMigrations(db: RocksDB, currentDbSchemaVersion: number): Promise<boolean> {
+export async function performDbMigrations(
+  db: RocksDB,
+  currentDbSchemaVersion: number,
+  toDbSchemaVersion = LATEST_DB_SCHEMA_VERSION,
+): Promise<boolean> {
   // Starting at schema version + 1 until LATEST_DB_SCHEMA_VERSION, perform migrations
   // one by one.
-  for (let i = currentDbSchemaVersion + 1; i <= LATEST_DB_SCHEMA_VERSION; i++) {
+  for (let i = currentDbSchemaVersion + 1; i <= toDbSchemaVersion; i++) {
     const migration = migrations.get(i) as MigrationFunctionType;
     const success = await migration(db);
     if (!success) {

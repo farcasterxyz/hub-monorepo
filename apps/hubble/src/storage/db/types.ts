@@ -119,7 +119,7 @@ export enum UserPostfix {
   UserDataAdds = 97,
 
   /* UserNameProof add set */
-  UserNameProofAdds = 98,
+  UserNameProofAdds = 99,
 }
 
 export enum OnChainEventPostfix {
