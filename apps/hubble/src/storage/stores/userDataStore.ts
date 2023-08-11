@@ -17,6 +17,7 @@ import {
   getUserNameProof,
   putUserNameProofTransaction,
   deleteUserNameProofTransaction,
+  getFNameProofByFid,
 } from "../db/nameRegistryEvent.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
@@ -111,6 +112,10 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
 
   async getUserNameProof(name: Uint8Array): Promise<UserNameProof> {
     return getUserNameProof(this._db, name);
+  }
+
+  async getUserNameProofByFid(fid: number): Promise<UserNameProof> {
+    return getFNameProofByFid(this._db, fid);
   }
 
   /**

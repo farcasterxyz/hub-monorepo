@@ -517,11 +517,13 @@ describe("mergeMessage", () => {
       expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
       expect(result._unsafeUnwrapErr().message).toMatch("invalid ens name");
     });
+
     test("fails gracefully when resolving throws an error", async () => {
       const result = await engine.mergeMessage(await createProof("test.eth"));
       expect(result).toMatchObject(err({ errCode: "unavailable.network_failure" }));
       expect(result._unsafeUnwrapErr().message).toMatch("failed to resolve ens name");
     });
+
     test("fails gracefully when resolving an unregistered name", async () => {
       jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(null);
@@ -530,6 +532,7 @@ describe("mergeMessage", () => {
       expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
       expect(result._unsafeUnwrapErr().message).toMatch("no valid address for akjsdhkhaasd.eth");
     });
+
     test("fails when resolved address does not match proof", async () => {
       const message = await createProof("test.eth");
       jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -539,6 +542,7 @@ describe("mergeMessage", () => {
       expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
       expect(result._unsafeUnwrapErr().message).toMatch(`resolved address ${randomEthAddress} does not match proof`);
     });
+
     test("fails when resolved address does not match custody address or verification address", async () => {
       await engine.mergeMessage(verificationAdd);
       jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -549,6 +553,7 @@ describe("mergeMessage", () => {
       expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
       expect(result._unsafeUnwrapErr().message).toMatch("ens name does not belong to fid");
     });
+
     test("succeeds for valid proof for custody address", async () => {
       const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
       jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -562,6 +567,7 @@ describe("mergeMessage", () => {
       expect(usernameProofEvents[0]?.usernameProof).toMatchObject(message.data.usernameProofBody);
       expect(usernameProofEvents[0]?.deletedUsernameProof).toBeUndefined();
     });
+
     test("succeeds for valid proof for verified eth address", async () => {
       await engine.mergeMessage(verificationAdd);
       const verificationAddress = bytesToHexString(
@@ -577,6 +583,29 @@ describe("mergeMessage", () => {
       expect(usernameProofEvents.length).toBe(1);
       expect(usernameProofEvents[0]?.usernameProof).toMatchObject(message.data.usernameProofBody);
       expect(usernameProofEvents[0]?.deletedUsernameProof).toBeUndefined();
+    });
+
+    test("getUsernameProofsByFid returns all proofs for fid including fname proofs", async () => {
+      const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(custodyAddress);
+      });
+      const message = await createProof("test.eth", null, custodyAddress);
+      const result = await engine.mergeMessage(message);
+      expect(result.isOk()).toBeTruthy();
+
+      const fnameProof = Factories.UserNameProof.build({ fid });
+      await engine.mergeUserNameProof(fnameProof);
+
+      const proofs = (await engine.getUserNameProofsByFid(fid)).unwrapOr([]);
+      expect(proofs.length).toBe(2);
+      expect(proofs).toContainEqual(message.data.usernameProofBody);
+      expect(proofs).toContainEqual(fnameProof);
+    });
+
+    test("getUsernameProofsByFid does not fail for empty results", async () => {
+      const proofs = (await engine.getUserNameProofsByFid(fid)).unwrapOr([]);
+      expect(proofs.length).toBe(0);
     });
 
     describe("userDataAdd message with an ens name", () => {

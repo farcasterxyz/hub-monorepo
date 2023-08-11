@@ -1,6 +1,7 @@
 import { ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
+import { fnameProofIndexMigration } from "./2.fnameproof.js";
 
 // The latest code version of the DB schema. This is the version that the DB will be
 // migrated to if the DB has an older schema version.
@@ -14,6 +15,9 @@ migrations.set(1, async (db: RocksDB) => {
   // Migration to move the postfix for indexes for UserNameProof from `UsernameProofMessage`
   // to `UsernameProofMessageAdd`
   return await usernameProofIndexMigration(db);
+});
+migrations.set(2, async (db: RocksDB) => {
+  return await fnameProofIndexMigration(db);
 });
 
 // To Add a new migration

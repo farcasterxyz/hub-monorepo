@@ -839,8 +839,22 @@ class Engine {
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
-
-    return ResultAsync.fromPromise(this._usernameProofStore.getUsernameProofsByFid(fid), (e) => e as HubError);
+    const proofs: UserNameProof[] = [];
+    const fnameProof = await ResultAsync.fromPromise(
+      this._userDataStore.getUserNameProofByFid(fid),
+      (e) => e as HubError,
+    );
+    if (fnameProof.isOk()) {
+      proofs.push(fnameProof.value);
+    }
+    const ensProofs = await ResultAsync.fromPromise(
+      this._usernameProofStore.getUsernameProofsByFid(fid),
+      (e) => e as HubError,
+    );
+    if (ensProofs.isOk()) {
+      proofs.push(...ensProofs.value);
+    }
+    return ok(proofs);
   }
 
   /* -------------------------------------------------------------------------- */
