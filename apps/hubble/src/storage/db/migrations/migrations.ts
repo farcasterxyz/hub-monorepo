@@ -3,10 +3,6 @@ import RocksDB from "../rocksdb.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
 import { fnameProofIndexMigration } from "./2.fnameproof.js";
 
-// The latest code version of the DB schema. This is the version that the DB will be
-// migrated to if the DB has an older schema version.
-export const LATEST_DB_SCHEMA_VERSION = 1;
-
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
 
@@ -25,6 +21,10 @@ migrations.set(2, async (db: RocksDB) => {
 //   <call migration script>
 //   return true; // or false if migration failed
 // });
+
+// The latest code version of the DB schema. This is the version that the DB will be
+// migrated to if the DB has an older schema version.
+export const LATEST_DB_SCHEMA_VERSION = migrations.size;
 
 export async function performDbMigrations(
   db: RocksDB,
