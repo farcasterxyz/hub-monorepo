@@ -72,7 +72,7 @@ export enum RootPrefix {
   DBSchemaVersion = 24,
 
   /* Used to index fname username proofs by fid */
-  FNameUserNameProofByFid = 17,
+  FNameUserNameProofByFid = 25,
 }
 
 /**

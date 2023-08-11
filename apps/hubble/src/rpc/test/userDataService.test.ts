@@ -161,7 +161,7 @@ describe("getUserData", () => {
     expect(await engine.mergeMessage(ensNameProof)).toBeInstanceOf(Ok);
     const usernameProofs = await client.getUserNameProofsByFid(FidRequest.create({ fid }));
     expect(UsernameProofsResponse.toJSON(usernameProofs._unsafeUnwrap())).toEqual(
-      UsernameProofsResponse.toJSON({ proofs: [ensNameProof.data.usernameProofBody] }),
+      UsernameProofsResponse.toJSON({ proofs: [fnameProof, ensNameProof.data.usernameProofBody] }),
     );
 
     expect(await engine.mergeMessage(addEnsName)).toBeInstanceOf(Ok);
