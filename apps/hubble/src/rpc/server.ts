@@ -369,11 +369,13 @@ export default class Server {
             callback(toServiceError(new HubError("bad_request", "Hub isn't initialized")));
             return;
           }
+
           let peersToCheck: string[];
           if (call.request.peerId && call.request.peerId.length > 0) {
             peersToCheck = [call.request.peerId];
           } else {
-            peersToCheck = this.gossipNode.allPeerIds();
+            // If no peerId is specified, check upto 20 peers
+            peersToCheck = this.gossipNode.allPeerIds().slice(0, 20);
           }
 
           const response = SyncStatusResponse.create({
@@ -382,24 +384,27 @@ export default class Server {
             engineStarted: this.syncEngine.isStarted(),
           });
 
-          for (const peerId of peersToCheck) {
-            const statusResult = await this.syncEngine.getSyncStatusForPeer(peerId, this.hub);
-            if (statusResult.isOk()) {
-              const status = statusResult.value;
-              response.isSyncing = status.isSyncing;
-              const peerStatus = SyncStatus.create({
-                peerId,
-                inSync: status.inSync,
-                shouldSync: status.shouldSync,
-                lastBadSync: status.lastBadSync,
-                divergencePrefix: status.divergencePrefix,
-                divergenceSecondsAgo: status.divergenceSecondsAgo,
-                ourMessages: status.ourSnapshot.numMessages,
-                theirMessages: status.theirSnapshot.numMessages,
-              });
-              response.syncStatus.push(peerStatus);
-            }
-          }
+          await Promise.all(
+            peersToCheck.map(async (peerId) => {
+              const statusResult = await this.syncEngine?.getSyncStatusForPeer(peerId, this.hub as HubInterface);
+              if (statusResult?.isOk()) {
+                const status = statusResult.value;
+                response.isSyncing = status.isSyncing;
+                response.syncStatus.push(
+                  SyncStatus.create({
+                    peerId,
+                    inSync: status.inSync,
+                    shouldSync: status.shouldSync,
+                    lastBadSync: status.lastBadSync,
+                    divergencePrefix: status.divergencePrefix,
+                    divergenceSecondsAgo: status.divergenceSecondsAgo,
+                    ourMessages: status.ourSnapshot.numMessages,
+                    theirMessages: status.theirSnapshot.numMessages,
+                  }),
+                );
+              }
+            }),
+          );
 
           callback(null, response);
         })();
