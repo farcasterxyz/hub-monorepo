@@ -373,7 +373,10 @@ export default class Server {
           if (call.request.peerId && call.request.peerId.length > 0) {
             peersToCheck = [call.request.peerId];
           } else {
-            peersToCheck = this.gossipNode.allPeerIds();
+            // If no peerId is specified, check upto 30 random peers
+            const allPeers = this.gossipNode.allPeerIds();
+            // Shuffle the peers and pick 30
+            peersToCheck = allPeers.sort(() => Math.random() - 0.5).slice(0, 30);
           }
 
           const response = SyncStatusResponse.create({
