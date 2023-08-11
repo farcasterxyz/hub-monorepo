@@ -533,6 +533,8 @@ export class Hub implements HubInterface {
       if (success) {
         log.info({}, "All DB migrations successful");
         await this.setDbSchemaVersion(LATEST_DB_SCHEMA_VERSION);
+      } else {
+        throw new HubError("unavailable.storage_failure", "DB migrations failed");
       }
     } else {
       log.info({ dbSchemaVersion, latestDbSchemaVersion: LATEST_DB_SCHEMA_VERSION }, "DB schema is up-to-date");

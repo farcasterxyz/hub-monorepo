@@ -40,24 +40,7 @@ export async function usernameProofIndexMigration(db: RocksDB): Promise<boolean>
             key.subarray(1 + FID_BYTES + 1),
           ]);
 
-          // // Sanity check the key length
-          // if (newKey.length !== key.length) {
-          //   log.error({ key, newKey }, "New key length does not match old key length");
-          // }
-
-          // // Compare the key bytes, make sure only the 6th byte changed
-          // for (let i = 0; i < key.length; i++) {
-          //   if (i === 1 + FID_BYTES) {
-          //     if (newKey[i] !== UserPostfix.UserNameProofAdds) {
-          //       log.error({ key, newKey }, "New key does not have the correct postfix");
-          //     }
-          //   } else {
-          //     if (newKey[i] !== key[i]) {
-          //       log.error({ key, newKey }, "New key does not match old key");
-          //     }
-          //   }
-          // }
-
+          // Write the new key and delete the old one
           const txn = db.transaction();
           txn.put(newKey, value);
           txn.del(key);

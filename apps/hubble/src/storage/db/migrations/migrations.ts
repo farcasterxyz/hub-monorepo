@@ -1,3 +1,4 @@
+import { ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
 
@@ -23,8 +24,8 @@ export async function performDbMigrations(
   // one by one.
   for (let i = currentDbSchemaVersion + 1; i <= toDbSchemaVersion; i++) {
     const migration = migrations.get(i) as MigrationFunctionType;
-    const success = await migration(db);
-    if (!success) {
+    const success = await ResultAsync.fromPromise(migration(db), (e) => e);
+    if (success.isErr() || success.value === false) {
       return false;
     }
   }
