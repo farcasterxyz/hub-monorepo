@@ -79,6 +79,7 @@ import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
 import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
+import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -515,6 +516,28 @@ export class Hub implements HubInterface {
           "Hub was NOT shutdown cleanly. Sync might re-fetch messages. Please re-run with --rebuild-sync-trie to rebuild the trie if needed.",
         );
       }
+    }
+
+    // Get the DB Schema version
+    const dbSchemaVersion = await this.getDbSchemaVersion();
+    if (dbSchemaVersion > LATEST_DB_SCHEMA_VERSION) {
+      throw new HubError(
+        "unavailable.storage_failure",
+        `DB schema version is unknown. Do you have the right version of Hubble? DB schema version: ${dbSchemaVersion}, latest supported version: ${LATEST_DB_SCHEMA_VERSION}`,
+      );
+    }
+    if (dbSchemaVersion < LATEST_DB_SCHEMA_VERSION) {
+      // We need a migration
+      log.info({ dbSchemaVersion, latestDbSchemaVersion: LATEST_DB_SCHEMA_VERSION }, "DB needs migrations");
+      const success = await performDbMigrations(this.rocksDB, dbSchemaVersion);
+      if (success) {
+        log.info({}, "All DB migrations successful");
+        await this.setDbSchemaVersion(LATEST_DB_SCHEMA_VERSION);
+      } else {
+        throw new HubError("unavailable.storage_failure", "DB migrations failed");
+      }
+    } else {
+      log.info({ dbSchemaVersion, latestDbSchemaVersion: LATEST_DB_SCHEMA_VERSION }, "DB schema is up-to-date");
     }
 
     // Get the Network ID from the DB
@@ -1194,6 +1217,33 @@ export class Hub implements HubInterface {
 
     // get the enum value from the number
     return networkNumber.map((n) => n as FarcasterNetwork);
+  }
+
+  async getDbSchemaVersion(): Promise<number> {
+    const dbResult = await ResultAsync.fromPromise(
+      this.rocksDB.get(Buffer.from([RootPrefix.DBSchemaVersion])),
+      (e) => e as HubError,
+    );
+    if (dbResult.isErr()) {
+      return 0;
+    }
+
+    // parse the buffer as an int
+    const schemaVersion = Result.fromThrowable(
+      () => dbResult.value.readUInt32BE(0),
+      (e) => e as HubError,
+    )();
+
+    return schemaVersion.unwrapOr(0);
+  }
+
+  async setDbSchemaVersion(version: number): HubAsyncResult<void> {
+    const txn = this.rocksDB.transaction();
+    const value = Buffer.alloc(4);
+    value.writeUInt32BE(version, 0);
+    txn.put(Buffer.from([RootPrefix.DBSchemaVersion]), value);
+
+    return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
 
   async setDbNetwork(network: FarcasterNetwork): HubAsyncResult<void> {

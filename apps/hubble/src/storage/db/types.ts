@@ -67,6 +67,9 @@ export enum RootPrefix {
 
   /* Used to store on chain events */
   OnChainEvent = 23,
+
+  /** DB Schema version */
+  DBSchemaVersion = 24,
 }
 
 /**
@@ -114,6 +117,9 @@ export enum UserPostfix {
 
   /* UserDataStore add set */
   UserDataAdds = 97,
+
+  /* UserNameProof add set */
+  UserNameProofAdds = 99,
 }
 
 export enum OnChainEventPostfix {

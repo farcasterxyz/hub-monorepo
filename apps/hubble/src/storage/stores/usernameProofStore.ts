@@ -25,7 +25,7 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 10;
  * @returns RocksDB index key of the form <RootPrefix>:<fid?>:<tsHash?>
  */
 const makeUserNameProofByFidKey = (fid: number, name: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.UsernameProofMessage]), Buffer.from(name)]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.UserNameProofAdds]), Buffer.from(name)]);
 };
 
 const makeUserNameProofByNameKey = (name: Uint8Array): Buffer => {
