@@ -606,18 +606,20 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     const addsKey = this.makeAddKey(message as any);
 
-    // Ensure that the Adds key is using a Postfix > UserMessagePostfixMax
-    const keypostfix = addsKey.readUint8(1 + FID_BYTES);
-    if (keypostfix <= UserMessagePostfixMax) {
-      // It's using a message postfix key. Not allowed!
-      return err(
-        new HubError(
-          "unauthorized",
-          "Don't use a message key for the Adds index! Postfix must be > UserMessagePostfixMax",
-        ),
-      );
+    // Run only in TEST
+    if (process.env["NODE_ENV"] === "test") {
+      // Ensure that the Adds key is using a Postfix > UserMessagePostfixMax
+      const keypostfix = addsKey.readUint8(1 + FID_BYTES);
+      if (keypostfix <= UserMessagePostfixMax) {
+        // It's using a message postfix key. Not allowed!
+        return err(
+          new HubError(
+            "unauthorized",
+            "Don't use a message key for the Adds index! Postfix must be > UserMessagePostfixMax",
+          ),
+        );
+      }
     }
-
     addTxn = addTxn.put(addsKey, Buffer.from(tsHash.value));
 
     const build = await this.buildSecondaryIndices(addTxn, message);
@@ -669,16 +671,19 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     const removesKey = this.makeRemoveKey(message as any);
 
-    // Ensure that the Removes key is using a Postfix > UserMessagePostfixMax
-    const keypostfix = removesKey.readUint8(1 + FID_BYTES);
-    if (keypostfix <= UserMessagePostfixMax) {
-      // It's using a message postfix key. Not allowed!
-      return err(
-        new HubError(
-          "unauthorized",
-          "Don't use a message key for the Removes index! Postfix must be > UserMessagePostfixMax",
-        ),
-      );
+    // Run only in TEST
+    if (process.env["NODE_ENV"] === "test") {
+      // Ensure that the Removes key is using a Postfix > UserMessagePostfixMax
+      const keypostfix = removesKey.readUint8(1 + FID_BYTES);
+      if (keypostfix <= UserMessagePostfixMax) {
+        // It's using a message postfix key. Not allowed!
+        return err(
+          new HubError(
+            "unauthorized",
+            "Don't use a message key for the Removes index! Postfix must be > UserMessagePostfixMax",
+          ),
+        );
+      }
     }
 
     removeTxn = removeTxn.put(removesKey, Buffer.from(tsHash.value));

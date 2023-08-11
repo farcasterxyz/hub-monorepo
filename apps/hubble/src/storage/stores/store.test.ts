@@ -2,7 +2,7 @@ import { CastAddMessage, CastRemoveMessage, NobleEd25519Signer, makeCastAdd } fr
 import * as ed from "@noble/ed25519";
 import { DeepPartial, Store } from "./store.js";
 import { MessageType, HubAsyncResult } from "@farcaster/hub-nodejs";
-import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { Message } from "@farcaster/hub-nodejs";
 import { isCastAddMessage } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
@@ -19,7 +19,13 @@ const eventHandler = new StoreEventHandler(db);
 
 class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
   override makeAddKey(data: DeepPartial<CastAddMessage>) {
-    return data.hash as Uint8Array as Buffer;
+    const hash = data.hash as Uint8Array as Buffer;
+    return Buffer.concat([
+      Buffer.from([RootPrefix.User]), // root prefix
+      Buffer.from([0, 0, 1, 10]), // fid
+      Buffer.from([UserPostfix.CastAdds]), // CastAdds postfix
+      hash,
+    ]);
   }
   override makeRemoveKey(_data: DeepPartial<CastRemoveMessage>): Buffer {
     throw new Error("Method not implemented");
