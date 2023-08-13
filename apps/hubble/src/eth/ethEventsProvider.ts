@@ -18,6 +18,7 @@ import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
+import { formatPercentage } from "../profile/profile.js";
 
 const log = logger.child({
   component: "EthEventsProvider",
@@ -268,7 +269,7 @@ export class EthEventsProvider {
     let lastSyncedBlock = this._firstBlock;
 
     const hubState = await this._hub.getHubState();
-    if (hubState.isOk()) {
+    if (hubState.isOk() && hubState.value.lastEthBlock) {
       lastSyncedBlock = hubState.value.lastEthBlock;
     }
 
@@ -279,110 +280,8 @@ export class EthEventsProvider {
 
     log.info({ lastSyncedBlock }, "last synced block");
     const toBlock = latestBlock;
+    const fromBlock = lastSyncedBlock;
 
-    if (lastSyncedBlock < toBlock) {
-      log.info({ fromBlock: lastSyncedBlock, toBlock }, "syncing events from missed blocks");
-
-      // Sync old Id events
-      await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, lastSyncedBlock, toBlock, this._chunkSize);
-      await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
-
-      // Sync old Name Transfer events
-      await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, lastSyncedBlock, toBlock, this._chunkSize);
-
-      // We don't need to sync historical Renew events because the expiry
-      // is pulled when NameRegistryEvents are merged
-    }
-
-    this._isHistoricalSyncDone = true;
-  }
-
-  /**
-   * Retry events from a specific block number
-   *
-   * @param blockNumber
-   */
-  public async retryEventsFromBlock(blockNumber: number) {
-    if (this._retryDedupMap.has(blockNumber)) {
-      return;
-    }
-    this._retryDedupMap.set(blockNumber, true);
-    await this.syncHistoricalIdEvents(IdRegistryEventType.REGISTER, blockNumber, blockNumber + 1, 1);
-    await this.syncHistoricalIdEvents(IdRegistryEventType.TRANSFER, blockNumber, blockNumber + 1, 1);
-
-    // Sync old Name Transfer events
-    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, blockNumber, blockNumber + 1, 1);
-  }
-
-  /**
-   * Sync old Id events that may have happened before hub was started. We'll put them all
-   * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
-   */
-  private async syncHistoricalIdEvents(
-    type: IdRegistryEventType,
-    fromBlock: number,
-    toBlock: number,
-    batchSize: number,
-  ) {
-    /*
-     * How querying blocks in batches works
-     * We calculate the difference in blocks, for example, lets say we need to sync/cache 769,531 blocks (difference between the contracts FirstBlock, and the latest Goerli block at time of writing, 8418326)
-     * After that, we divide our difference in blocks by the batchSize. For example, over 769,531 blocks, at a 10,000 block batchSize, we need to run our loop 76.9531 times, which obviously just rounds up to 77 loops
-     * During this whole process, we're using a for(let i=0;) loop, which means to get the correct from block, we need to calculate new fromBlock's and toBlock's on every loop
-     * fromBlock: FirstBlock + (loopIndex * batchSize) - Example w/ batchSize 10,000: Run 0 - FirstBlock + 0, Run 1 - FirstBlock + 10,000, Run 2 - FirstBlock + 20,000, etc....
-     * toBlock: fromBlock + batchSize - Example w/ batchSize 10,000: Run 0: fromBlock + 10,000, Run 1 - fromBlock + 10,000, etc...
-     */
-
-    // Calculate amount of runs required based on batchSize, and round up to capture all blocks
-    const numOfRuns = Math.ceil((toBlock - fromBlock) / batchSize);
-
-    for (let i = 0; i < numOfRuns; i++) {
-      let nextFromBlock = fromBlock + i * batchSize;
-      const nextToBlock = nextFromBlock + batchSize;
-
-      if (i > 0) {
-        // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
-        nextFromBlock += 1;
-      }
-
-      if (type === IdRegistryEventType.REGISTER) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: GoerliEthConstants.IdRegistryAddress,
-          abi: IdRegistry.abi,
-          eventName: "Register",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
-
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processIdRegisterEvents(logs);
-      } else if (type === IdRegistryEventType.TRANSFER) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: GoerliEthConstants.IdRegistryAddress,
-          abi: IdRegistry.abi,
-          eventName: "Transfer",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
-
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processIdTransferEvents(logs);
-      }
-    }
-  }
-
-  /**
-   * Sync old Name events that may have happened before hub was started. We'll put them all
-   * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
-   */
-  private async syncHistoricalNameEvents(
-    type: NameRegistryEventType,
-    fromBlock: number,
-    toBlock: number,
-    batchSize: number,
-  ) {
     /*
      * Querying Blocks in Batches
      *
@@ -400,31 +299,103 @@ export class EthEventsProvider {
      * For the 2nd run, toBlock = 7,658,796 + 10,000 =  7,668,796
      */
 
-    // Calculate amount of runs required based on batchSize, and round up to capture all blocks
-    const numOfRuns = Math.ceil((toBlock - fromBlock) / batchSize);
+    if (lastSyncedBlock < toBlock) {
+      const totalBlocks = toBlock - fromBlock;
+      const numOfRuns = Math.ceil(totalBlocks / this._chunkSize);
 
-    for (let i = 0; i < numOfRuns; i++) {
-      let nextFromBlock = fromBlock + i * batchSize;
-      const nextToBlock = nextFromBlock + batchSize;
+      for (let i = 0; i < numOfRuns; i++) {
+        let nextFromBlock = fromBlock + i * this._chunkSize;
+        const nextToBlock = nextFromBlock + this._chunkSize;
 
-      if (i > 0) {
-        // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
-        nextFromBlock += 1;
+        if (i > 0) {
+          // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
+          nextFromBlock += 1;
+        }
+
+        log.info(
+          { fromBlock: nextFromBlock, toBlock: nextToBlock },
+          `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)}) `,
+        );
+
+        // Sync old Id events
+        await this.syncHistoricalIdEvents(nextFromBlock, nextToBlock);
+
+        // Sync old Name Transfer events
+        await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, nextFromBlock, nextToBlock);
+
+        // We don't need to sync historical Renew events because the expiry
+        // is pulled when NameRegistryEvents are merged
       }
+    }
 
-      if (type === NameRegistryEventType.TRANSFER) {
-        const filter = await this._publicClient.createContractEventFilter({
-          address: GoerliEthConstants.NameRegistryAddress,
-          abi: NameRegistry.abi,
-          eventName: "Transfer",
-          fromBlock: BigInt(nextFromBlock),
-          toBlock: BigInt(nextToBlock),
-          strict: true,
-        });
+    this._isHistoricalSyncDone = true;
+  }
 
-        const logs = await this._publicClient.getFilterLogs({ filter });
-        await this.processNameTransferEvents(logs);
-      }
+  /**
+   * Retry events from a specific block number
+   *
+   * @param blockNumber
+   */
+  public async retryEventsFromBlock(blockNumber: number) {
+    if (this._retryDedupMap.has(blockNumber)) {
+      return;
+    }
+    this._retryDedupMap.set(blockNumber, true);
+    await this.syncHistoricalIdEvents(blockNumber, blockNumber + 1);
+
+    // Sync old Name Transfer events
+    await this.syncHistoricalNameEvents(NameRegistryEventType.TRANSFER, blockNumber, blockNumber + 1);
+  }
+
+  /**
+   * Sync old Id events that may have happened before hub was started. We'll put them all
+   * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
+   */
+  private async syncHistoricalIdEvents(fromBlock: number, toBlock: number) {
+    const idFilter = await this._publicClient.createContractEventFilter({
+      address: GoerliEthConstants.IdRegistryAddress,
+      abi: IdRegistry.abi,
+      eventName: "Register",
+      fromBlock: BigInt(fromBlock),
+      toBlock: BigInt(toBlock),
+      strict: true,
+    });
+    const idlogsPromise = this._publicClient.getFilterLogs({ filter: idFilter });
+
+    const tfrFilter = await this._publicClient.createContractEventFilter({
+      address: GoerliEthConstants.IdRegistryAddress,
+      abi: IdRegistry.abi,
+      eventName: "Transfer",
+      fromBlock: BigInt(fromBlock),
+      toBlock: BigInt(toBlock),
+      strict: true,
+    });
+    const tfrlogsPromise = this._publicClient.getFilterLogs({ filter: tfrFilter });
+
+    // Process the idLogs first
+    await this.processIdRegisterEvents(await idlogsPromise);
+
+    // Then the transfer events
+    await this.processIdTransferEvents(await tfrlogsPromise);
+  }
+
+  /**
+   * Sync old Name events that may have happened before hub was started. We'll put them all
+   * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
+   */
+  private async syncHistoricalNameEvents(type: NameRegistryEventType, fromBlock: number, toBlock: number) {
+    if (type === NameRegistryEventType.TRANSFER) {
+      const filter = await this._publicClient.createContractEventFilter({
+        address: GoerliEthConstants.NameRegistryAddress,
+        abi: NameRegistry.abi,
+        eventName: "Transfer",
+        fromBlock: BigInt(fromBlock),
+        toBlock: BigInt(toBlock),
+        strict: true,
+      });
+
+      const logs = await this._publicClient.getFilterLogs({ filter });
+      await this.processNameTransferEvents(logs);
     }
   }
 
@@ -661,7 +632,7 @@ export class EthEventsProvider {
     }
     idEvents.push(idRegistryEvent);
 
-    log.info(
+    log.debug(
       { event: { to, id: id.toString(), blockNumber } },
       `cacheIdRegistryEvent: fid ${id.toString()} assigned to ${to} in block ${blockNumber}`,
     );
@@ -717,7 +688,7 @@ export class EthEventsProvider {
     }
     nameEvents.push(nameRegistryEvent);
 
-    logEvent.info(`cacheNameRegistryEvent: token id ${tokenId.toString()} assigned to ${to} in block ${blockNumber}`);
+    logEvent.debug(`cacheNameRegistryEvent: token id ${tokenId.toString()} assigned to ${to} in block ${blockNumber}`);
 
     return ok(undefined);
   }
