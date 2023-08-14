@@ -6,6 +6,7 @@ import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { FID_BYTES, HASH_LENGTH, RootPrefix, UserMessagePostfixMax } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
+import { statsd } from "../../utils/statsd.js";
 
 // The number of messages to process before unloading the trie from memory
 // Approx 25k * 10 nodes * 65 bytes per node = approx 16MB of cached data
@@ -126,6 +127,8 @@ class MerkleTrie {
       this._lock.writeLock(async (release) => {
         try {
           const { status, dbUpdatesMap } = await this._root.insert(id.syncId(), this._db, new Map());
+          statsd().gauge("merkle_trie.num_messages", this._root.items);
+
           this._updatePendingDbUpdates(dbUpdatesMap);
 
           // Write the transaction to the DB

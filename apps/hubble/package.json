@@ -73,6 +73,7 @@
     "async-lock": "^1.4.0",
     "axios": "^1.4.0",
     "commander": "~10.0.0",
+    "hot-shots": "^10.0.0",
     "libp2p": "0.42.2",
     "neverthrow": "~6.0.0",
     "node-cron": "~3.0.2",

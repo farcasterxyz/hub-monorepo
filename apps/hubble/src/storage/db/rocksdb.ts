@@ -3,6 +3,7 @@ import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from "abstract-
 import { mkdir } from "fs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import { logger } from "../../utils/logger.js";
+import { statsd } from "../../utils/statsd.js";
 
 export const DB_DIRECTORY = ".rocks";
 export const MAX_DB_ITERATOR_OPEN_MILLISECONDS = 60 * 1000; // 1 min
@@ -407,6 +408,14 @@ class RocksDB {
       // Compact all keys
       this._db.compactRange(Buffer.from([0]), Buffer.from([255]), (e?: Error) => {
         e ? reject(parseError(e)) : resolve(undefined);
+      });
+    });
+  }
+
+  async approximateSize(): Promise<number> {
+    return new Promise((resolve) => {
+      this._db.approximateSize(Buffer.from([0]), Buffer.from([255]), (e?: Error, size?: number) => {
+        resolve(size || -1);
       });
     });
   }

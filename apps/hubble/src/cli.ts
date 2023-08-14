@@ -17,7 +17,7 @@ import { dirname, resolve } from "path";
 import { exit } from "process";
 import { APP_VERSION, Hub, HubOptions } from "./hubble.js";
 import { logger } from "./utils/logger.js";
-import { addressInfoFromParts, ipMultiAddrStrFromAddressInfo, parseAddress } from "./utils/p2p.js";
+import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo, parseAddress } from "./utils/p2p.js";
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
 import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { parseNetwork } from "./utils/command.js";
@@ -26,6 +26,7 @@ import { Config as DefaultConfig } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
+import { initializeStatsd } from "./utils/statsd.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -119,8 +120,14 @@ app
     "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
   )
 
-  // Debugging options
+  // Metrics
+  .option(
+    "--statsd-metrics-server <host>",
+    'The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)',
+  )
   .option("--gossip-metrics-enabled", "Generate tracing and metrics for the gossip network. (default: disabled)")
+
+  // Debugging options
   .option("--profile-sync", "Profile a full hub sync and exit. (default: disabled)")
   .option("--rebuild-sync-trie", "Rebuild the sync trie before starting (default: disabled)")
   .option("--resync-eth-events", "Resync events from the Farcaster contracts before starting (default: disabled)")
@@ -293,6 +300,20 @@ app
         logger.warn({ dbResetTokenFileContents, dbResetToken }, "Resetting DB since DB_RESET_TOKEN was set");
         resetDB = true;
       }
+    }
+
+    // Metrics
+    const statsDServer = cliOptions.statsdMetricsServer ?? hubConfig.statsdMetricsServer;
+    if (statsDServer) {
+      const server = hostPortFromString(statsDServer);
+      if (server.isErr()) {
+        logger.error({ err: server.error }, "Failed to parse statsd server. Statsd disabled");
+      } else {
+        logger.info({ server: server.value }, "Statsd server specified. Statsd enabled");
+        initializeStatsd(server.value.address, server.value.port);
+      }
+    } else {
+      logger.info({}, "No statsd server specified. Statsd disabled");
     }
 
     const network = cliOptions.network ?? hubConfig.network;
