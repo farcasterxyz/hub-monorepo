@@ -34,6 +34,22 @@ describe("networkConfig", () => {
     expect(result.shouldExit).toEqual(false);
   });
 
+  test("change from undefined", () => {
+    const existingPeerIds = undefined;
+
+    const networkConfig = {
+      network,
+      allowedPeers: ["1", "2", "3"],
+      deniedPeers: [],
+      minAppVersion: APP_VERSION,
+    };
+
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network);
+    expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
+    expect(result.deniedPeerIds).toEqual([]);
+    expect(result.shouldExit).toEqual(false);
+  });
+
   test("add peerIDs", () => {
     const existingPeerIds = ["1", "2", "3"];
 
