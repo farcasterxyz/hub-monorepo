@@ -146,7 +146,7 @@ describe("fnameRegistryEventsProvider", () => {
     });
 
     it("fetches events from where it left off", async () => {
-      await hub.putHubState({ lastFnameProof: transferEvents[0]?.id ?? 0, lastEthBlock: 0 });
+      await hub.putHubState({ lastFnameProof: transferEvents[0]?.id ?? 0, lastEthBlock: 0, lastL2Block: 0 });
       mockFnameRegistryClient.setMinimumSince(transferEvents[0]?.id ?? 0);
       await provider.start();
       expect(await getUserNameProof(db, utf8ToBytes("test2"))).toBeTruthy();
