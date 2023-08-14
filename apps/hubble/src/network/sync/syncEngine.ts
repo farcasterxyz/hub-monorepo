@@ -977,6 +977,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
     // We'll retry all events from this block number
     await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
+    await this._l2EventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
   }
 
   /**

@@ -519,6 +519,7 @@ export class L2EventsProvider {
 
       // Sync old Rent events
       await this.syncHistoricalEvents(lastSyncedBlock, toBlock, this._chunkSize);
+      await this.handleNewBlock(latestBlock);
     }
 
     this._isHistoricalSyncDone = true;
@@ -617,6 +618,18 @@ export class L2EventsProvider {
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
+
+    let missedBlocks = 0;
+    for (let i = this._lastBlockNumber + 1; i < blockNumber; i++) {
+      if (!this._retryDedupMap.has(i)) {
+        missedBlocks++;
+      }
+    }
+
+    if (this._isHistoricalSyncDone && missedBlocks > 0) {
+      log.info(`Detected ${missedBlocks} between ${this._lastBlockNumber} and ${blockNumber}. Resyncing`);
+      await this.syncHistoricalEvents(this._lastBlockNumber + 1, blockNumber, this._chunkSize);
+    }
 
     // Get all blocks that have been confirmed into a single array and sort.
     const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);
