@@ -17,7 +17,7 @@ BOOTSTRAP_NODE=/dns/testnet1.farcaster.xyz/tcp/2282
 
 A Mainnet Hub connects to the production environment used by all apps on the network. You will need 8GB RAM and 20 GB of disk space to operate a mainnet hub. 
 
-Update the `.env` file in your `apps/hubble` directory, substituting the relevant value for your `ETH_RPC_URL`:
+Update the `.env` file in your `apps/hubble` directory with the network ID and bootstrap nodes.
 ```sh
 FC_NETWORK_ID=1
 BOOTSTRAP_NODE=/dns/nemes.farcaster.xyz/tcp/2282

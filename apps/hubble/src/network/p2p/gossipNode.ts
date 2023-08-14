@@ -419,7 +419,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.getPeers()?.map((peer) => peer.toString()) ?? [];
   }
 
-  updateAllowedPeerIds(peerIds: string[]) {
+  updateAllowedPeerIds(peerIds: string[] | undefined) {
     this._connectionGater?.updateAllowedPeers(peerIds);
   }
 

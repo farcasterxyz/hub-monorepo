@@ -26,7 +26,7 @@ export class ConnectionFilter implements ConnectionGater {
     this.deniedPeers = deiniedPeers ?? [];
   }
 
-  updateAllowedPeers(addrs: string[]) {
+  updateAllowedPeers(addrs: string[] | undefined) {
     this.allowedPeers = addrs;
   }
 
