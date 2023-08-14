@@ -23,6 +23,7 @@ import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
 import { ExtractAbiEvent } from "abitype";
 import { onChainEventSorter } from "../storage/db/onChainEvent.js";
+import { formatPercentage } from "../profile/profile.js";
 
 const log = logger.child({
   component: "L2EventsProvider",
@@ -495,7 +496,7 @@ export class L2EventsProvider {
       return;
     }
 
-    log.info({ latestBlock: latestBlock }, "connected to ethereum node");
+    log.info({ latestBlock: latestBlock }, "connected to optimism node");
 
     // Find how how much we need to sync
     let lastSyncedBlock = this._firstBlock;
@@ -561,7 +562,8 @@ export class L2EventsProvider {
      */
 
     // Calculate amount of runs required based on batchSize, and round up to capture all blocks
-    const numOfRuns = Math.ceil((toBlock - fromBlock) / batchSize);
+    const totalBlocks = toBlock - fromBlock;
+    const numOfRuns = Math.ceil(totalBlocks / batchSize);
 
     for (let i = 0; i < numOfRuns; i++) {
       this._blockTimestampsCache.clear(); // Clear the cache for each block to avoid unbounded growth
@@ -572,7 +574,10 @@ export class L2EventsProvider {
         // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
         nextFromBlock += 1;
       }
-      log.info({ fromBlock: nextFromBlock, toBlock: nextToBlock }, "syncing events from block range");
+      log.info(
+        { fromBlock: nextFromBlock, toBlock: nextToBlock },
+        `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)})`,
+      );
 
       const idFilter = await this._publicClient.createContractEventFilter({
         address: OptimismConstants.IdRegistryAddress,
@@ -581,8 +586,7 @@ export class L2EventsProvider {
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const idLogs = await this._publicClient.getFilterLogs({ filter: idFilter });
-      await this.processIdRegistryEvents(idLogs);
+      const idLogsPromise = this._publicClient.getFilterLogs({ filter: idFilter });
 
       const storageFilter = await this._publicClient.createContractEventFilter({
         address: OptimismConstants.StorageRegistryAddress,
@@ -591,10 +595,9 @@ export class L2EventsProvider {
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const storageLogs = await this._publicClient.getFilterLogs({
+      const storageLogsPromise = this._publicClient.getFilterLogs({
         filter: storageFilter,
       });
-      await this.processStorageEvents(storageLogs);
 
       const keyFilter = await this._publicClient.createContractEventFilter({
         address: OptimismConstants.KeyRegistryAddress,
@@ -603,8 +606,11 @@ export class L2EventsProvider {
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const keyLogs = await this._publicClient.getFilterLogs({ filter: keyFilter });
-      await this.processKeyRegistryEvents(keyLogs);
+      const keyLogsPromise = this._publicClient.getFilterLogs({ filter: keyFilter });
+
+      await this.processIdRegistryEvents(await idLogsPromise);
+      await this.processStorageEvents(await storageLogsPromise);
+      await this.processKeyRegistryEvents(await keyLogsPromise);
     }
   }
 
@@ -688,7 +694,7 @@ export class L2EventsProvider {
     }
     onChainEvents.push(onChainEvent);
 
-    logEvent.info(
+    logEvent.debug(
       `cacheOnChainEvent: recorded ${onChainEventTypeToJSON(type)} for fid: ${fid} in block ${blockNumber}`,
     );
 
