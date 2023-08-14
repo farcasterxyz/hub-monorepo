@@ -3,4 +3,5 @@ syntax = "proto3";
 message HubState {
   uint32 last_eth_block = 1;
   uint64 last_fname_proof = 2;
+  uint64 last_l2_block = 3;
 }

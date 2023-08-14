@@ -106,6 +106,7 @@ export interface SyncStatusRequest {
 export interface SyncStatusResponse {
   isSyncing: boolean;
   syncStatus: SyncStatus[];
+  engineStarted: boolean;
 }
 
 export interface SyncStatus {
@@ -770,7 +771,7 @@ export const SyncStatusRequest = {
 };
 
 function createBaseSyncStatusResponse(): SyncStatusResponse {
-  return { isSyncing: false, syncStatus: [] };
+  return { isSyncing: false, syncStatus: [], engineStarted: false };
 }
 
 export const SyncStatusResponse = {
@@ -780,6 +781,9 @@ export const SyncStatusResponse = {
     }
     for (const v of message.syncStatus) {
       SyncStatus.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.engineStarted === true) {
+      writer.uint32(24).bool(message.engineStarted);
     }
     return writer;
   },
@@ -805,6 +809,13 @@ export const SyncStatusResponse = {
 
           message.syncStatus.push(SyncStatus.decode(reader, reader.uint32()));
           continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.engineStarted = reader.bool();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -818,6 +829,7 @@ export const SyncStatusResponse = {
     return {
       isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
       syncStatus: Array.isArray(object?.syncStatus) ? object.syncStatus.map((e: any) => SyncStatus.fromJSON(e)) : [],
+      engineStarted: isSet(object.engineStarted) ? Boolean(object.engineStarted) : false,
     };
   },
 
@@ -829,6 +841,7 @@ export const SyncStatusResponse = {
     } else {
       obj.syncStatus = [];
     }
+    message.engineStarted !== undefined && (obj.engineStarted = message.engineStarted);
     return obj;
   },
 
@@ -840,6 +853,7 @@ export const SyncStatusResponse = {
     const message = createBaseSyncStatusResponse();
     message.isSyncing = object.isSyncing ?? false;
     message.syncStatus = object.syncStatus?.map((e) => SyncStatus.fromPartial(e)) || [];
+    message.engineStarted = object.engineStarted ?? false;
     return message;
   },
 };
