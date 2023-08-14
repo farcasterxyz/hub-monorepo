@@ -80,21 +80,21 @@ docker compose exec hubble
 You can monitor your Hub by setting up grafana to monitor real time stats
 
 1. Start grafana and statsd
-```
+```bash
 docker compose up statsd grafana
 ```
 
 2. Enable monitoring on your Hub by setting this in your `.env`
-```
+```bash
 STATSD_METRICS_SERVER=statsd:8125
 ```
 
 If you are running hubble from source, you can pass this in as a command line argument
-```
+```bash
 yarn start --statsd-metrics-server 127.0.0.1:8125
 ```
 
-3. Open Grafana in a browser at `127.0.0.1:3000`. The default username/password is `admin` and `admin`. You will need to change your password on first login
+3. Open Grafana in a browser at `127.0.0.1:3000`. The default username/password is `admin`/`admin`. You will need to change your password on first login
 
 4. Go to `Settings -> Datasource -> Add new data source` and select `Graphite`. Set the URL to `http://statsd:80` and click `Save & Test` to make sure it is working
 
