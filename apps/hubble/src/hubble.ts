@@ -79,6 +79,7 @@ import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
 import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
+import { statsd } from "./utils/statsd.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
@@ -1061,6 +1062,8 @@ export class Hub implements HubInterface {
       return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
     }
 
+    const start = Date.now();
+
     const mergeResult = await this.engine.mergeMessage(message);
 
     mergeResult.match(
@@ -1089,6 +1092,8 @@ export class Hub implements HubInterface {
     if (mergeResult.isOk() && source === "rpc") {
       void this.gossipNode.gossipMessage(message);
     }
+
+    statsd().timing("hub.merge_message", Date.now() - start);
 
     return mergeResult;
   }

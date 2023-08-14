@@ -31,6 +31,7 @@ import { GossipMetricsRecorder } from "./gossipMetricsRecorder.js";
 import RocksDB from "storage/db/rocksdb.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
+import { statsd } from "../../utils/statsd.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
@@ -333,6 +334,19 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
   }
 
+  updateStatsdPeerGauges() {
+    const [inbound, outbound] = this._node?.getConnections()?.reduce(
+      (acc, conn) => {
+        acc[conn.stat.direction === "inbound" ? 0 : 1]++;
+        return acc;
+      },
+      [0, 0],
+    ) || [0, 0];
+
+    statsd().gauge("gossip.peers.inbound", inbound);
+    statsd().gauge("gossip.peers.outbound", outbound);
+  }
+
   registerListeners() {
     this._node?.addEventListener("peer:connect", (event) => {
       log.info(
@@ -340,10 +354,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         "P2P Connection established",
       );
       this.emit("peerConnect", event.detail);
+      this.updateStatsdPeerGauges();
     });
     this._node?.addEventListener("peer:disconnect", (event) => {
       log.info({ peer: event.detail.remotePeer }, "P2P Connection disconnected");
       this.emit("peerDisconnect", event.detail);
+      this.updateStatsdPeerGauges();
     });
     this.gossip?.addEventListener("gossipsub:message", (event) => {
       log.debug({
@@ -356,6 +372,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
       if (this.gossipTopics().includes(event.detail.msg.topic)) {
         this.emit("message", event.detail.msg.topic, GossipNode.decodeMessage(event.detail.msg.data));
+        statsd().increment("gossip.messages");
       }
     });
   }
@@ -407,6 +424,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   updateDeniedPeerIds(peerIds: string[]) {
+    statsd().gauge("gossip.denied_peers", peerIds.length);
     this._connectionGater?.updateDeniedPeers(peerIds);
   }
 
