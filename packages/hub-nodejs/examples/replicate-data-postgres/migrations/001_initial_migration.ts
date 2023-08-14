@@ -205,4 +205,5 @@ export const down = async (db: Kysely<any>) => {
   await db.schema.dropTable("verifications").ifExists().execute();
   await db.schema.dropTable("userData").ifExists().execute();
   await db.schema.dropTable("messages").ifExists().execute();
+  await db.schema.dropTable("hubSubscriptions").ifExists().execute();
 };
