@@ -33,9 +33,9 @@ export class OptimismConstants {
   public static StorageRegistryAddress = "0x000000fC0a4Fccee0b30E360773F7888D1bD9FAA" as const;
   public static KeyRegistryAddress = "0x000000fc6548800fc8265d8eb7061d88cefb87c2" as const;
   public static IdRegistryAddress = "0x000000fc99489b8cd629291d97dbca62b81173c4" as const;
-  public static FirstBlock = 12500000;
+  public static FirstBlock = 108222360; // ~Aug 14 2023 8pm UTC, approx 1.5 weeks before planned migration
   public static ChunkSize = 1000;
-  public static ChainId = 420; // OP Goerli
+  public static ChainId = 10; // OP mainnet
 }
 
 const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
