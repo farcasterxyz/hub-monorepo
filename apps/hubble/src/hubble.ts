@@ -1084,7 +1084,8 @@ export class Hub implements HubInterface {
         }
       },
       (e) => {
-        logMessage.warn({ errCode: e.errCode }, `submitMessage error: ${e.message}`);
+        logMessage.warn({ errCode: e.errCode, source }, `submitMessage error: ${e.message}`);
+        statsd().increment(`submit_message.error.${source}.${e.errCode}`);
       },
     );
 
