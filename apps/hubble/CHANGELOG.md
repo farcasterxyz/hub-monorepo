@@ -1,5 +1,27 @@
 # @farcaster/hubble
 
+## 1.4.6
+
+### Patch Changes
+
+- e55e571f: feat: Add "getting blockchain events" to hub status
+- 5e96e134: fix: Handle network failures when fetching config
+- 951793b1: fix: getUserNameProofsByFid should return fname proofs as well
+- 3e601f81: fix: Fetch L2 events in parallel before processing, show progress
+- 6ec14935: feat: Remove permissioned allowlist for mainnet hubs
+- c61728cb: fix: DB Migration for UserNameProof index messages
+- 6bb1b439: fix: Handle sync status reporting properly
+- 1fcfd495: fix: fetching l2 events was not respecting --l2-first-block
+- f9631488: feat: Add statsd monitoring for Hubble
+- c6d79cdb: feat: on chain event ordering updated to be more consistent
+- f241dcf4: fix: Make sure valid messages are inserted into Sync Trie
+- 36484022: fix: user name proofs weren't syncd correctly because they were not added to the sync trie
+- 8d61f5f2: fix: Improve initial eth events fetching
+- d8cb39ac: fix: Limit SyncStatus to upto 30 peers
+- Updated dependencies [e55e571f]
+- Updated dependencies [c6d79cdb]
+  - @farcaster/hub-nodejs@0.10.4
+
 ## 1.4.5
 
 ### Patch Changes

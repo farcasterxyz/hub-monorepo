@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.10.4
+
+### Patch Changes
+
+- e55e571f: feat: Add "getting blockchain events" to hub status
+- c6d79cdb: feat: on chain event ordering updated to be more consistent
+- Updated dependencies [e55e571f]
+- Updated dependencies [1fcfd495]
+- Updated dependencies [c6d79cdb]
+  - @farcaster/core@0.12.4
+
 ## 0.10.3
 
 ### Patch Changes
