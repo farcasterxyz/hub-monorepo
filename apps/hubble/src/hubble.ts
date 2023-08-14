@@ -668,8 +668,6 @@ export class Hub implements HubInterface {
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
 
-      log.info({ allowedPeerIds, deniedPeerIds }, "Updated Network Config");
-
       return false;
     }
   }
