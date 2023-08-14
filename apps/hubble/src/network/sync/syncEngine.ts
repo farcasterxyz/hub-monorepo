@@ -28,6 +28,7 @@ import { TrieSnapshot } from "./trieNode.js";
 import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
+import { statsd } from "../../utils/statsd.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
@@ -179,6 +180,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       const { message, deletedMessages } = event.mergeMessageBody;
       const totalMessages = 1 + (deletedMessages?.length ?? 0);
       this._syncTrieQ += totalMessages;
+      statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
 
       await this.addMessage(message);
 
@@ -194,22 +196,28 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Order of events does not matter. The trie will always converge to the same state.
     this._hub.engine.eventHandler.on("pruneMessage", async (event: PruneMessageHubEvent) => {
       this._syncTrieQ += 1;
+      statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
       await this.removeMessage(event.pruneMessageBody.message);
       this._syncTrieQ -= 1;
     });
+
     this._hub.engine.eventHandler.on("revokeMessage", async (event: RevokeMessageHubEvent) => {
       this._syncTrieQ += 1;
+      statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
       await this.removeMessage(event.revokeMessageBody.message);
       this._syncTrieQ -= 1;
     });
+
     this._hub.engine.eventHandler.on("mergeUsernameProofEvent", async (event: MergeUsernameProofHubEvent) => {
       if (event.mergeUsernameProofBody.usernameProofMessage) {
         this._syncTrieQ += 1;
+        statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
         await this.addMessage(event.mergeUsernameProofBody.usernameProofMessage);
         this._syncTrieQ -= 1;
       }
       if (event.mergeUsernameProofBody.deletedUsernameProofMessage) {
         this._syncTrieQ += 1;
+        statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
         await this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
         this._syncTrieQ -= 1;
       }
@@ -491,6 +499,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<MergeResult> {
     log.debug({ peerId }, "Perform sync: Start");
 
+    const start = Date.now();
+
     const fullSyncResult = new MergeResult();
 
     try {
@@ -518,7 +528,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           const result = await this.fetchAndMergeMessages(missingIds, rpcClient);
           fullSyncResult.addResult(result);
         });
+
         log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
+        statsd().timing("syncengine.sync_time_ms", Date.now() - start);
 
         // If we did not merge any messages and didn't defer any. Then this peer only had old messages.
         if (
@@ -617,6 +629,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // Merge messages sequentially, so we can handle missing users.
     this._syncMergeQ += messages.length;
+    statsd().gauge("syncengine.merge_q", this._syncMergeQ);
 
     await this.compactDbIfRequired(messages.length);
 
@@ -682,6 +695,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       }
     }
     this._syncMergeQ -= messages.length;
+    statsd().gauge("syncengine.merge_q", this._syncMergeQ);
 
     if (this._syncProfiler) {
       this._syncProfiler.getMethodProfile("mergeMessages").addCall(Date.now() - startTime, 0, messages.length);

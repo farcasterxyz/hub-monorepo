@@ -3,6 +3,7 @@ import { err, ok } from "neverthrow";
 import cron from "node-cron";
 import Engine from "../engine/index.js";
 import { logger } from "../../utils/logger.js";
+import { statsd } from "../../utils/statsd.js";
 
 export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = "0 * * * *"; // Every hour at :00
 
@@ -65,6 +66,12 @@ export class PruneMessagesJobScheduler {
     } while (!finished);
 
     log.info({ timeTakenMs: Date.now() - start }, "finished prune messages job");
+    this._engine
+      .getDb()
+      .approximateSize()
+      .then((size) => {
+        statsd().gauge("rocksdb.approximate_size", size || 0);
+      });
 
     this._running = false;
     return ok(undefined);

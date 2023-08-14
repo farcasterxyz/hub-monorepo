@@ -58,6 +58,7 @@ import {
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
+import { statsd } from "../utils/statsd.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -498,6 +499,7 @@ export default class Server {
         // If someone is asking for our sync snapshot, that means we're getting incoming
         // connections
         this.incomingConnections += 1;
+        statsd().increment("rpc.get_sync_snapshot");
 
         const request = call.request;
 
