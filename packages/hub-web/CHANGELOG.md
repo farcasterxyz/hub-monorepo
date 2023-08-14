@@ -1,5 +1,16 @@
 # @farcaster/hub-web
 
+## 0.6.1
+
+### Patch Changes
+
+- 1fcfd495: fix: fetching l2 events was not respecting --l2-first-block
+- c6d79cdb: feat: on chain event ordering updated to be more consistent
+- Updated dependencies [e55e571f]
+- Updated dependencies [1fcfd495]
+- Updated dependencies [c6d79cdb]
+  - @farcaster/core@0.12.4
+
 ## 0.6.0
 
 ### Minor Changes
