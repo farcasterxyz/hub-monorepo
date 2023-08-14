@@ -97,7 +97,7 @@ export function applyNetworkConfig(
     log.error({ networkConfig }, "invalid minAppVersion");
   }
 
-  let newPeerIdList: string[] | undefined = undefined;
+  let newPeerIdList: string[] | undefined = allowedPeerIds;
   let newDeniedPeerIdList: string[] = [];
 
   if (networkConfig.allowedPeers) {
