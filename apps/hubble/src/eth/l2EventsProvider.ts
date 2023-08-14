@@ -694,7 +694,7 @@ export class L2EventsProvider {
     }
     onChainEvents.push(onChainEvent);
 
-    logEvent.debug(
+    logEvent.info(
       `cacheOnChainEvent: recorded ${onChainEventTypeToJSON(type)} for fid: ${fid} in block ${blockNumber}`,
     );
 
