@@ -65,7 +65,6 @@ import { ensureAboveMinFarcasterVersion, VersionSchedule } from "./utils/version
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
 import { ValidateOrRevokeMessagesJobScheduler } from "./storage/jobs/validateOrRevokeMessagesJob.js";
 import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJob.js";
-import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
@@ -440,13 +439,9 @@ export class Hub implements HubInterface {
       );
     }
 
+    // Allowed peers can be undefined, which means permissionless connections
     this.allowedPeerIds = this.options.allowedPeers;
-    if (this.options.network === FarcasterNetwork.MAINNET) {
-      // Mainnet is right now resitrcited to a few peers
-      // Append and de-dup the allowed peers
-      this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...MAINNET_ALLOWED_PEERS])];
-    }
-
+    // Denied peers by default is an empty list
     this.deniedPeerIds = this.options.deniedPeers ?? [];
   }
 
@@ -672,8 +667,6 @@ export class Hub implements HubInterface {
 
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
-
-      log.info({ allowedPeerIds, deniedPeerIds }, "Updated Network Config");
 
       return false;
     }
