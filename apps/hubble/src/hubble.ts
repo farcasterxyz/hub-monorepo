@@ -542,8 +542,6 @@ export class Hub implements HubInterface {
         if (shouldExit) {
           throw new HubError("unavailable", "Quitting due to network config");
         }
-
-        log.info({ networkConfig }, "Network config applied");
       }
     }
     await this.engine.start();
@@ -637,13 +635,13 @@ export class Hub implements HubInterface {
     if (shouldExit) {
       return true;
     } else {
-      if (allowedPeerIds) {
-        this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
-        this.allowedPeerIds = allowedPeerIds;
-      }
+      this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
+      this.allowedPeerIds = allowedPeerIds;
 
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
+
+      log.info({ allowedPeerIds, deniedPeerIds }, "Network config applied");
 
       return false;
     }
