@@ -26,6 +26,7 @@
     "start": "node build/cli.js start",
     "identity": "node build/cli.js identity",
     "dbreset": "node build/cli.js dbreset",
+    "events-reset": "node build/cli.js events-reset",
     "console": "node build/cli.js console",
     "profile": "node --max-old-space-size=4096 build/cli.js profile",
     "status": "node build/cli.js status",

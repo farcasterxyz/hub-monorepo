@@ -3,6 +3,7 @@ import OnChainEventStore from "./onChainEventStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   Factories,
+  HubState,
   IdRegisterEventType,
   MergeOnChainEventHubEvent,
   OnChainEvent,
@@ -10,6 +11,7 @@ import {
   SignerEventType,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
+import { getHubState, putHubState } from "../db/hubState.js";
 
 const db = jestRocksDB("protobufs.onChainEventStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -306,6 +308,30 @@ describe("OnChainEventStore", () => {
       await set.mergeOnChainEvent(keyRegistryEvent);
       await set.mergeOnChainEvent(signerMigratedEvent);
       expect(onChainHubEvents).toEqual([idRegisterEvent, keyRegistryEvent, signerMigratedEvent]);
+    });
+  });
+
+  describe("clearEvents", () => {
+    test("clears all events and resets hub state", async () => {
+      const idEvent = Factories.IdRegistryOnChainEvent.build();
+      const signerEvent = Factories.SignerOnChainEvent.build();
+      const storageEvent = Factories.StorageRentOnChainEvent.build();
+      const migratedEvent = Factories.SignerMigratedOnChainEvent.build();
+      await set.mergeOnChainEvent(idEvent);
+      await set.mergeOnChainEvent(signerEvent);
+      await set.mergeOnChainEvent(storageEvent);
+      await set.mergeOnChainEvent(migratedEvent);
+
+      await putHubState(db, HubState.create({ lastL2Block: 12345 }));
+
+      await OnChainEventStore.clearEvents(db);
+
+      expect(await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_ID_REGISTER, idEvent.fid)).toEqual([]);
+      expect(await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER, idEvent.fid)).toEqual([]);
+      expect(await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, idEvent.fid)).toEqual([]);
+      expect(await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED, idEvent.fid)).toEqual([]);
+      await expect(set.getActiveSigner(signerEvent.fid, signerEvent.signerEventBody.key)).rejects.toThrow("NotFound");
+      expect(await getHubState(db)).toEqual(HubState.create({ lastL2Block: 0 }));
     });
   });
 });
