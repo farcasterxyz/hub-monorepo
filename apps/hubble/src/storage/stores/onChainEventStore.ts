@@ -25,6 +25,8 @@ import {
   putOnChainEventTransaction,
 } from "../db/onChainEvent.js";
 import { ok, ResultAsync } from "neverthrow";
+import { RootPrefix } from "../db/types.js";
+import { getHubState, putHubState } from "../db/hubState.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 
@@ -187,6 +189,26 @@ class OnChainEventStore {
       }
     }
     return undefined;
+  }
+
+  static async clearEvents(db: RocksDB) {
+    let count = 0;
+    await db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.OnChainEvent]),
+      async (key, value) => {
+        if (!key || !value) {
+          return;
+        }
+        await db.del(key);
+        count++;
+      },
+      {},
+      1 * 60 * 60 * 1000,
+    );
+    const state = await getHubState(db);
+    state.lastL2Block = 0;
+    await putHubState(db, state);
+    return count;
   }
 }
 
