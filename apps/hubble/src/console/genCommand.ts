@@ -17,6 +17,151 @@ export type SubmitStats = {
   messagesPerSecond: number;
 };
 
+class GenMessages {
+  startAtFid: number;
+  numFIDs: number;
+  numMessagesPerFID: number;
+  network: FarcasterNetwork;
+  metadata: Metadata;
+  rpcClient: HubRpcClient;
+  adminRpcClient: AdminRpcClient;
+
+  allFiDs: number[] = [];
+
+  numSuccessMessages = 0;
+  numFailMessages = 0;
+  numFailedFIDs = 0;
+
+  batchSize = 5;
+  concurrentFIDq = 0;
+
+  startTime?: number;
+
+  constructor(
+    startAtFid: number,
+    numFIDs: number,
+    numMessagesPerFID: number,
+    network: FarcasterNetwork,
+    metadata: Metadata,
+    rpcClient: HubRpcClient,
+    adminRpcClient: AdminRpcClient,
+  ) {
+    this.startAtFid = startAtFid;
+    this.numFIDs = numFIDs;
+    this.numMessagesPerFID = numMessagesPerFID;
+    this.network = network;
+    this.metadata = metadata;
+
+    this.rpcClient = rpcClient;
+    this.adminRpcClient = adminRpcClient;
+  }
+
+  async generate() {
+    // First, populate all the FIDs
+    this.allFiDs = Array.from({ length: this.numFIDs }, (_, i) => i + this.startAtFid);
+
+    this.startTime = Date.now();
+
+    const genPromises = [];
+    for (let i = 0; i < this.numFIDs; i++) {
+      const fid = this.allFiDs[i] as number;
+      genPromises.push(this.genForFid(fid));
+
+      while (this.concurrentFIDq >= this.batchSize) {
+        // Sleep for a while
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+
+    await Promise.all(genPromises);
+  }
+
+  async genForFid(fid: number) {
+    this.concurrentFIDq++;
+
+    const custodySigner = Factories.Eip712Signer.build();
+    const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
+    const signer = Factories.Ed25519Signer.build();
+    const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
+
+    const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
+    const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent, this.metadata);
+
+    if (idResult.isOk()) {
+      this.numSuccessMessages++;
+    } else {
+      console.log(`Failed to submit custody event for fid ${fid}: ${idResult.error}`);
+    }
+
+    const rentRegistryEvent = Factories.StorageRentOnChainEvent.build({
+      fid,
+      storageRentEventBody: Factories.StorageRentEventBody.build({ units: 2 }),
+    });
+    const rentResult = await this.adminRpcClient.submitOnChainEvent(rentRegistryEvent, this.metadata);
+
+    if (rentResult.isOk()) {
+      this.numSuccessMessages++;
+    } else {
+      console.log(`Failed to submit rent event for fid ${fid}: ${rentResult.error}`);
+    }
+
+    const signerAdd = await Factories.SignerAddMessage.create(
+      { data: { fid, network: this.network, signerAddBody: { signer: signerKey } } },
+      { transient: { signer: custodySigner } },
+    );
+
+    const signerResult = await this.rpcClient.submitMessage(signerAdd, this.metadata);
+    if (signerResult.isOk()) {
+      this.numSuccessMessages++;
+    } else {
+      console.log(`Failed to submit signer add message for fid ${fid}: ${signerResult.error}`);
+    }
+
+    // Generate messages and push them
+    for (let i = 0; i < this.numMessagesPerFID / 2; i++) {
+      const promises = [];
+
+      const castAdd = await Factories.CastAddMessage.create(
+        { data: { fid, network: this.network } },
+        { transient: { signer } },
+      );
+      promises.push(this.rpcClient.submitMessage(castAdd, this.metadata));
+
+      const reactionAdd = await Factories.ReactionAddMessage.create(
+        { data: { fid, network: this.network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
+        { transient: { signer } },
+      );
+      promises.push(this.rpcClient.submitMessage(reactionAdd, this.metadata));
+
+      await Promise.all(
+        (
+          await Promise.all(promises)
+        ).map(async (result) => {
+          if (result.isOk()) {
+            this.numSuccessMessages++;
+          } else {
+            this.numFailMessages++;
+            console.log(`Failed to submit message for fid ${fid}: ${result.error}`);
+
+            // If there was an error, wait for a second before continuing
+            // to avoid spamming the hub
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }),
+      );
+    }
+
+    this.concurrentFIDq--;
+
+    const duration = Date.now() - (this.startTime ?? 0);
+    console.log(
+      `Done with fid ${fid}. Success: ${this.numSuccessMessages}, Fail: ${this.numFailMessages}. Messages/s = ${
+        this.numSuccessMessages / (duration / 1000)
+      }`,
+    );
+  }
+}
+
 export class GenCommand implements ConsoleCommandInterface {
   constructor(private readonly rpcClient: HubRpcClient, private readonly adminRpcClient: AdminRpcClient) {}
 
@@ -46,7 +191,7 @@ export class GenCommand implements ConsoleCommandInterface {
         network = FarcasterNetwork.DEVNET,
         username?: string | Metadata,
         password?: string,
-      ): Promise<string | SubmitStats> => {
+      ): Promise<SubmitStats> => {
         // Submit messages might need a username/password
         let metadata = new Metadata();
         if (username && typeof username !== "string") {
@@ -55,109 +200,25 @@ export class GenCommand implements ConsoleCommandInterface {
           metadata = getAuthMetadata(username, password);
         }
 
-        const start = performance.now();
-        let numSuccess = 0;
-        let numFail = 0;
-        let errorMessage = "";
+        const genMessages = new GenMessages(
+          startAtFid,
+          numFIDs,
+          numMessages,
+          network,
+          metadata,
+          this.rpcClient,
+          this.adminRpcClient,
+        );
+        await genMessages.generate();
 
-        for (let i = 0; i < numFIDs; i++) {
-          // Generate a random number from 100_000 to 100_000_000 to use as an fid
-          const fid = i + startAtFid; // Start at 100_000 to avoid collisions with the testnet
-
-          const custodySigner = Factories.Eip712Signer.build();
-          const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-          const signer = Factories.Ed25519Signer.build();
-          const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
-
-          const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-          const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent, metadata);
-
-          if (idResult.isOk()) {
-            numSuccess++;
-          } else {
-            return `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
-          }
-
-          const rentRegistryEvent = Factories.StorageRentOnChainEvent.build({
-            fid,
-            storageRentEventBody: Factories.StorageRentEventBody.build({ units: 2 }),
-          });
-          const rentResult = await this.adminRpcClient.submitOnChainEvent(rentRegistryEvent, metadata);
-
-          if (rentResult.isOk()) {
-            numSuccess++;
-          } else {
-            return `Failed to submit rent event for fid ${fid}: ${rentResult.error}`;
-          }
-
-          const signerAdd = await Factories.SignerAddMessage.create(
-            { data: { fid, network, signerAddBody: { signer: signerKey } } },
-            { transient: { signer: custodySigner } },
-          );
-
-          const signerResult = await this.rpcClient.submitMessage(signerAdd, metadata);
-          if (signerResult.isOk()) {
-            numSuccess++;
-          } else {
-            return `Failed to submit signer add message for fid ${fid}: ${signerResult.error}`;
-          }
-
-          const submitBatch = async (batch: Message[]) => {
-            const promises = [];
-            for (const msg of batch) {
-              promises.push(this.rpcClient.submitMessage(msg, metadata));
-            }
-            const results = await Promise.all(promises);
-
-            let numSuccess = 0;
-            let numFail = 0;
-            let errorMessage = "";
-            for (const r of results) {
-              if (r.isOk()) {
-                numSuccess++;
-              } else {
-                numFail++;
-                errorMessage = `Failed to submit cast add message for fid ${fid}: ${r.error}`;
-              }
-            }
-            return { numSuccess, numFail, errorMessage };
-          };
-
-          const batch = [];
-          for (let i = 0; i < numMessages / 2; i++) {
-            const castAdd = await Factories.CastAddMessage.create(
-              { data: { fid, network } },
-              { transient: { signer } },
-            );
-            const reactionAdd = await Factories.ReactionAddMessage.create(
-              { data: { fid, network, reactionBody: { targetCastId: { fid, hash: castAdd.hash } } } },
-              { transient: { signer } },
-            );
-
-            batch.push(castAdd);
-            batch.push(reactionAdd);
-          }
-          const result = await submitBatch(batch);
-
-          numSuccess += result.numSuccess;
-          numFail += result.numFail;
-          errorMessage = result.errorMessage;
-
-          const duration = performance.now() - start;
-          console.log(
-            `Submitted ${numFail} + ${numSuccess} total messages. Messages per Second = ${
-              numSuccess / (duration / 1000)
-            }  Done with fid ${fid}`,
-          );
-        }
-        const totalDuration = performance.now() - start;
+        const totalDurationMs = Date.now() - (genMessages.startTime ?? 0);
 
         return {
-          numSuccess,
-          numFail,
-          errorMessage,
-          totalDurationMs: totalDuration,
-          messagesPerSecond: numSuccess / (totalDuration / 1000),
+          numSuccess: genMessages.numSuccessMessages,
+          numFail: genMessages.numFailMessages,
+          errorMessage: "",
+          totalDurationMs,
+          messagesPerSecond: genMessages.numSuccessMessages / (totalDurationMs / 1000),
         };
       },
     };
