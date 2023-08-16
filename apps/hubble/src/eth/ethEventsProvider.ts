@@ -306,7 +306,7 @@ export class EthEventsProvider {
 
       let progressBar;
       if (totalBlocks > 100) {
-        progressBar = addProgressBar("Syncing ETH (Goreli) events", totalBlocks);
+        progressBar = addProgressBar("Syncing ETH (Goerli) events", totalBlocks);
       }
 
       for (let i = 0; i < numOfRuns; i++) {
@@ -543,7 +543,7 @@ export class EthEventsProvider {
       const lastBlock = cachedBlocks[cachedBlocks.length - 1] ?? 0;
       firstBlock = cachedBlocks[0] ?? 0;
       totalBlocks = lastBlock - firstBlock;
-      progressBar = addProgressBar("Processing ETH (Goreli) events", totalBlocks);
+      progressBar = addProgressBar("Processing ETH (Goerli) events", totalBlocks);
     }
 
     for (const cachedBlock of cachedBlocks) {
