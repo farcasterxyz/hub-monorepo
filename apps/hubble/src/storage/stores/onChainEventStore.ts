@@ -9,6 +9,7 @@ import {
   OnChainEvent,
   OnChainEventType,
   SignerEventType,
+  SignerMigratedOnChainEvent,
   SignerOnChainEvent,
 } from "@farcaster/hub-nodejs";
 import RocksDB, { Transaction } from "../db/rocksdb.js";
@@ -87,12 +88,15 @@ class OnChainEventStore {
     return getOnChainEventByKey(this._db, idRegisterEventPrimaryKey);
   }
 
-  async isSignerMigrated(): HubAsyncResult<boolean> {
-    const signerMigrated = await this.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED, 0);
-    if (signerMigrated.length > 0) {
-      return ok(true);
+  async getSignerMigratedAt(): HubAsyncResult<number> {
+    const signerMigrated = await this.getOnChainEvents<SignerMigratedOnChainEvent>(
+      OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
+      0,
+    );
+    if (signerMigrated[0]) {
+      return ok(signerMigrated[0].signerMigratedEventBody?.migratedAt);
     }
-    return ok(false);
+    return ok(0);
   }
 
   /**

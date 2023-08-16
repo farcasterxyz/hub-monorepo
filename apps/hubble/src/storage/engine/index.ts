@@ -14,6 +14,7 @@ import {
   IdRegistryEvent,
   IdRegistryEventType,
   isSignerAddMessage,
+  isSignerMigratedOnChainEvent,
   isSignerOnChainEvent,
   isSignerRemoveMessage,
   isUserDataAddMessage,
@@ -89,8 +90,8 @@ class Engine {
   private _db: RocksDB;
   private _network: FarcasterNetwork;
   private _publicClient: PublicClient | undefined;
-  // Used to determine if hubs have migrated to onChain signers
-  private _isSignerMigrated = false;
+  // Used to determine when hubs have migrated to onChain signers
+  private _signerMigratedAt = 0;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -200,16 +201,17 @@ class Engine {
     this.eventHandler.on("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     await this.eventHandler.syncCache();
-    const isMigrated = await this._onchainEventsStore.isSignerMigrated();
-    if (isMigrated.isOk()) {
-      this._isSignerMigrated = isMigrated.value;
+    const migratedAt = await this._onchainEventsStore.getSignerMigratedAt();
+    if (migratedAt.isOk()) {
+      this._signerMigratedAt = migratedAt.value;
+      this.eventHandler.signerMigrated(this._signerMigratedAt);
     } else {
       log.error(
-        { errCode: isMigrated.error.errCode },
-        `error checking if hubs have migrated to onChain signers: ${isMigrated.error.message}`,
+        { errCode: migratedAt.error.errCode },
+        `error checking if hubs have migrated to onChain signers: ${migratedAt.error.message}`,
       );
     }
-    log.info(`engine started (signer migrated: ${this._isSignerMigrated}`);
+    log.info(`engine started (signer migrated: ${this._signerMigratedAt})`);
   }
 
   async stop(): Promise<void> {
@@ -247,6 +249,9 @@ class Engine {
     const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
 
     if (storageUnits.isOk()) {
+      if (storageUnits.value === 0) {
+        return err(new HubError("bad_request.prunable", "no storage"));
+      }
       // We rate limit the number of messages that can be merged per FID
       const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
 
@@ -325,8 +330,9 @@ class Engine {
         this._onchainEventsStore.mergeOnChainEvent(event),
         (e) => e as HubError,
       );
-      if (result.isOk() && event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED) {
-        this._isSignerMigrated = true;
+      if (result.isOk() && isSignerMigratedOnChainEvent(event)) {
+        this._signerMigratedAt = event.signerMigratedEventBody.migratedAt;
+        this.eventHandler.signerMigrated(event.signerMigratedEventBody.migratedAt);
       }
       return result;
     }
@@ -957,7 +963,7 @@ class Engine {
 
     // 3. Check that the user has a custody address
     let custodyAddress: Uint8Array | undefined;
-    if (this._isSignerMigrated) {
+    if (this._signerMigratedAt) {
       const custodyEvent = await ResultAsync.fromPromise(
         this._onchainEventsStore.getIdRegisterEventByFid(message.data.fid),
         (e) => e as HubError,
@@ -984,7 +990,7 @@ class Engine {
     // 4. Check that the signer is valid
     if (isSignerAddMessage(message) || isSignerRemoveMessage(message)) {
       // TODO: should we be checking the timestamp instead?
-      if (this._isSignerMigrated) {
+      if (this._signerMigratedAt) {
         return err(
           new HubError(
             "bad_request.validation_failure",
@@ -1005,7 +1011,7 @@ class Engine {
       }
     } else {
       let signerExists: boolean;
-      if (this._isSignerMigrated) {
+      if (this._signerMigratedAt) {
         const result = await ResultAsync.fromPromise(
           this._onchainEventsStore.getActiveSigner(message.data.fid, message.signer),
           (e) => e,
@@ -1024,7 +1030,7 @@ class Engine {
           return err(
             new HubError(
               "bad_request.validation_failure",
-              `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid} (migrated: ${this._isSignerMigrated})`,
+              `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid} (migrated: ${this._signerMigratedAt})`,
             ),
           );
         });
