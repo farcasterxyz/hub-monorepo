@@ -175,6 +175,9 @@ app
       }
     };
 
+    // Start the logger off in buffered mode
+    logger.$.startBuffering();
+
     console.log("\n Hubble Startup Checks");
     console.log("------------------------");
 
@@ -509,6 +512,12 @@ app
       process.exit(1);
     }
 
+    if (statsDServer) {
+      console.log("\nMonitor Your Node");
+      console.log("----------------");
+      console.log("🔗 | Grafana at http://localhost:3000");
+    }
+
     console.log("\n Starting Hubble");
     console.log("------------------");
     const hub = hubResult.value;
@@ -693,7 +702,7 @@ app
         break;
       }
 
-      await sleep(10_000);
+      await sleep(60 * 1000);
     }
     exit(0);
   });

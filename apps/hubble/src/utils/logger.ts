@@ -52,23 +52,19 @@ if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
   defaultOptions.level = process.env["LOG_LEVEL"];
 }
 
+type ProxiedLogger = { $: BufferedLogger } & Logger;
+
 class BufferedLogger {
   // rome-ignore lint/suspicious/noExplicitAny: <explanation>
   private buffer: { method: string; args: any[] }[] = [];
-  private flushed = false;
+  private buffering = false;
   private logger: Logger;
-  private logLevel: string | undefined;
 
   constructor() {
     this.logger = pino.pino(defaultOptions);
-    this.logLevel = defaultOptions.level;
   }
 
-  createProxy(loggerInstance: Logger = this.logger): Logger {
-    if (this.logLevel === "silent") {
-      return this.logger;
-    }
-
+  createProxy(loggerInstance: Logger = this.logger): ProxiedLogger {
     return new Proxy(loggerInstance, {
       // rome-ignore lint/suspicious/noExplicitAny: <explanation>
       get: (target: any, prop: string) => {
@@ -76,7 +72,7 @@ class BufferedLogger {
         if (["info", "error", "debug", "warn", "trace"].includes(prop)) {
           // rome-ignore lint/suspicious/noExplicitAny: <explanation>
           return (...args: any[]) => {
-            if (this.flushed) {
+            if (!this.buffering || loggerInstance.level === "silent") {
               target[prop](...args);
             } else {
               // Handle the common case of ignoring debug logs if the log level is info
@@ -99,6 +95,8 @@ class BufferedLogger {
         } else if (prop === "flush") {
           this.finishBuffering();
           return target[prop];
+        } else if (prop === "$") {
+          return this;
         } else {
           return target[prop];
         }
@@ -106,8 +104,15 @@ class BufferedLogger {
     });
   }
 
+  startBuffering(): void {
+    this.buffering = true;
+    this.buffer = [];
+  }
+
   finishBuffering(): void {
-    this.flushed = true;
+    if (!this.buffering) return;
+
+    this.buffering = false;
 
     // And then in an async function, flush the buffer so that we don't block the main thread
     (async () => {

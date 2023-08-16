@@ -99,18 +99,18 @@ const promisifyClient = <C extends Client>(client: C) => {
 
 export type HubRpcClient = PromisifiedClient<HubServiceClient>;
 
-export const getSSLHubRpcClient = (address: string): HubRpcClient => {
-  return promisifyClient(getSSLClient(address));
+export const getSSLHubRpcClient = (address: string, options?: Partial<grpc.ClientOptions>): HubRpcClient => {
+  return promisifyClient(getSSLClient(address, options));
 };
 
-export const getInsecureHubRpcClient = (address: string): HubRpcClient => {
-  return promisifyClient(getInsecureClient(address));
+export const getInsecureHubRpcClient = (address: string, options?: Partial<grpc.ClientOptions>): HubRpcClient => {
+  return promisifyClient(getInsecureClient(address, options));
 };
 
 export type AdminRpcClient = PromisifiedClient<AdminServiceClient>;
 
 export const getAdminRpcClient = async (address: string): Promise<AdminRpcClient> => {
-  return promisifyClient(await getAdminClient(address));
+  return promisifyClient(getAdminClient(address));
 };
 
 export const getAuthMetadata = (username: string, password: string): Metadata => {
@@ -134,14 +134,14 @@ export const getServer = (): grpc.Server => {
   return server;
 };
 
-export const getSSLClient = (address: string): HubServiceClient => {
-  return new HubServiceClient(address, grpc.credentials.createSsl());
+export const getSSLClient = (address: string, options?: Partial<grpc.ClientOptions>): HubServiceClient => {
+  return new HubServiceClient(address, grpc.credentials.createSsl(), { ...options });
 };
 
-export const getInsecureClient = (address: string): HubServiceClient => {
-  return new HubServiceClient(address, grpc.credentials.createInsecure());
+export const getInsecureClient = (address: string, options?: Partial<grpc.ClientOptions>): HubServiceClient => {
+  return new HubServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };
 
-export const getAdminClient = (address: string): AdminServiceClient => {
-  return new AdminServiceClient(address, grpc.credentials.createInsecure());
+export const getAdminClient = (address: string, options?: Partial<grpc.ClientOptions>): AdminServiceClient => {
+  return new AdminServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };

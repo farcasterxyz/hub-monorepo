@@ -84,7 +84,7 @@ export class StartupChecks {
         "https://www.thehubble.xyz/intro/install.html#installing-hubble",
       );
     } else {
-      printStartupCheckStatus(StartupCheckStatus.OK, `Connected to ${type} node.`);
+      printStartupCheckStatus(StartupCheckStatus.OK, `Connected to ${type} node`);
     }
   }
 }

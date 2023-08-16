@@ -19,6 +19,7 @@ import {
   NetworkLatencyMessage,
   OnChainEvent,
   onChainEventTypeToJSON,
+  ClientOptions,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
@@ -100,7 +101,11 @@ export interface HubInterface {
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
-  getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined>;
+  getRPCClientForPeer(
+    peerId: PeerId,
+    peer: ContactInfoContent,
+    options?: Partial<ClientOptions>,
+  ): Promise<HubRpcClient | undefined>;
 }
 
 export interface HubOptions {
@@ -602,19 +607,6 @@ export class Hub implements HubInterface {
       this.testDataJobScheduler?.start();
     }
 
-    // Finish up the progress bars and start logging to STDOUT
-    (async () => {
-      // Wait 10 seconds so that the user can see all the status. Do it async, so we don't block the startup
-      const progress = addProgressBar("Starting Hubble", 10);
-      for (let i = 0; i < 10; i++) {
-        progress?.increment();
-        await sleep(1000);
-      }
-
-      finishAllProgressBars();
-      logger.flush();
-    })();
-
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
     // This way, when starting up, we'll know if the previous shutdown was clean or not.
@@ -902,26 +894,34 @@ export class Hub implements HubInterface {
   /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,
    *  and fall back to the non-SSL version
    */
-  private async getHubRpcClient(address: string): Promise<HubRpcClient> {
+  private async getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient> {
     return new Promise((resolve) => {
       try {
-        const sslClientResult = getSSLHubRpcClient(address);
+        const sslClientResult = getSSLHubRpcClient(address, options);
 
         sslClientResult.$.waitForReady(Date.now() + 2000, (err) => {
           if (!err) {
             resolve(sslClientResult);
           } else {
-            resolve(getInsecureHubRpcClient(address));
+            Result.fromThrowable(
+              () => sslClientResult.close(),
+              (e) => e as Error,
+            )();
+            resolve(getInsecureHubRpcClient(address, options));
           }
         });
       } catch (e) {
         // Fall back to insecure client
-        resolve(getInsecureHubRpcClient(address));
+        resolve(getInsecureHubRpcClient(address, options));
       }
     });
   }
 
-  public async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
+  public async getRPCClientForPeer(
+    peerId: PeerId,
+    peer: ContactInfoContent,
+    options?: Partial<ClientOptions>,
+  ): Promise<HubRpcClient | undefined> {
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
@@ -971,7 +971,7 @@ export class Hub implements HubInterface {
     };
 
     try {
-      return await this.getHubRpcClient(addressInfoToString(ai));
+      return await this.getHubRpcClient(addressInfoToString(ai), options);
     } catch (e) {
       log.error({ error: e, peer, peerId, addressInfo: ai }, "unable to connect to peer");
       // If the peer is unreachable (e.g. behind a firewall), remove it from our address book
