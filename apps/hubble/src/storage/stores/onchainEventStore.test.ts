@@ -148,16 +148,17 @@ describe("OnChainEventStore", () => {
     });
   });
 
-  describe("isSignerMigrated", () => {
-    test("returns true if signer migrated", async () => {
-      await set.mergeOnChainEvent(Factories.SignerMigratedOnChainEvent.build());
-      const result = await set.isSignerMigrated();
-      expect(result).toEqual(ok(true));
+  describe("getSignerMigratedAt", () => {
+    test("returns timestamp of signer migrated event", async () => {
+      const event = Factories.SignerMigratedOnChainEvent.build();
+      await set.mergeOnChainEvent(event);
+      const result = await set.getSignerMigratedAt();
+      expect(result).toEqual(ok(event.signerMigratedEventBody.migratedAt));
     });
 
-    test("returns false if not migrated", async () => {
-      const result = await set.isSignerMigrated();
-      expect(result).toEqual(ok(false));
+    test("returns 0 if not migrated", async () => {
+      const result = await set.getSignerMigratedAt();
+      expect(result).toEqual(ok(0));
     });
   });
 

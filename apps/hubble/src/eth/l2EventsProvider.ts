@@ -439,7 +439,7 @@ export class L2EventsProvider {
           });
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_ID_REGISTER,
-            0n,
+            transferEvent.args.id,
             blockNumber,
             blockHash,
             transactionHash,

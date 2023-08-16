@@ -48,6 +48,7 @@ import { logger } from "../../utils/logger.js";
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 1_000;
 const DEFAULT_LOCK_TIMEOUT = 500; // in ms
+const PRUNING_START_GRACE_PERIOD = 60 * 60 * 24 * 1000; // 1 day in ms
 
 type PrunableMessage =
   | CastAddMessage
@@ -184,6 +185,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _generator: HubEventIdGenerator;
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
+  private _signerMigratedAt = 0;
 
   constructor(db: RocksDB, options: StoreEventHandlerOptions = {}) {
     super();
@@ -205,8 +207,12 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       logger.debug({ fid }, "fid has no registered storage, would be pruned");
     }
 
-    // This is temporary, when all fids are migrated to using storage rent, we'll just use the units directly.
-    return units.map((u) => (u > 0 ? u : 1));
+    return units.map((u) => {
+      if (this.shouldEnforcePruning) {
+        return u;
+      }
+      return u > 0 ? u : 1;
+    });
   }
 
   async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
@@ -372,6 +378,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     return ok(undefined);
+  }
+
+  signerMigrated(migratedAt: number) {
+    this._signerMigratedAt = migratedAt;
+  }
+
+  get shouldEnforcePruning(): boolean {
+    if (!this._signerMigratedAt) {
+      return false;
+    }
+    const pruneStartInMs = this._signerMigratedAt * 1000 + PRUNING_START_GRACE_PERIOD;
+    return Date.now() > pruneStartInMs;
   }
 }
 
