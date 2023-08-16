@@ -567,22 +567,7 @@ export class Hub implements HubInterface {
     // Start the sync engine
     await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
-    let bootstrapAddrs = this.options.bootstrapAddrs ?? [];
-    // Add mainnet bootstrap addresses if none are provided
-    if (bootstrapAddrs.length === 0 && this.options.network === FarcasterNetwork.MAINNET) {
-      bootstrapAddrs = MAINNET_BOOTSTRAP_PEERS.map((a) => parseAddress(a))
-        .map((r) => {
-          if (r.isErr()) {
-            logger.warn(
-              { errorCode: r.error.errCode, message: r.error.message },
-              "Couldn't parse bootstrap address from MAINNET_BOOTSTRAP_PEERS, ignoring",
-            );
-          }
-          return r;
-        })
-        .filter((a) => a.isOk())
-        .map((a) => a._unsafeUnwrap());
-    }
+    const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
     // Start the Gossip node
     await this.gossipNode.start(bootstrapAddrs, {

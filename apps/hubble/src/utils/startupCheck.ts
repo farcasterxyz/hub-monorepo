@@ -38,8 +38,8 @@ export class StartupChecks {
     try {
       // If the directory exists, check that it is writable
       if (existsSync(dbDir)) {
-        fs.accessSync(dbDir, fs.constants.W_OK);
-        printStartupCheckStatus(StartupCheckStatus.OK, `DB directory ${dbDir} is writable`);
+        fs.accessSync(dbDir, fs.constants.W_OK | fs.constants.R_OK);
+        printStartupCheckStatus(StartupCheckStatus.OK, `Directory ${dbDir} is writable`);
       } else {
         // If the directory does not exist, check that the parent directory is writable
         const parentDir = dirname(dbDir);
@@ -48,17 +48,17 @@ export class StartupChecks {
     } catch (err) {
       printStartupCheckStatus(
         StartupCheckStatus.ERROR,
-        `DB directory ${dbDir} is not writable.\nPlease run 'chmod 777 ${dbDir}'\n\n`,
+        `Directory ${dbDir} is not writable.\nPlease run 'chmod 777 ${dbDir}'\n\n`,
       );
-      throw new Error(`DB directory ${dbDir} is not writable`);
+      throw new Error(`Directory ${dbDir} is not writable`);
     }
   }
 
-  static async rpcCheck(rpcUrl: string | undefined, chain: Chain) {
+  static async rpcCheck(rpcUrl: string | undefined, chain: Chain, status = StartupCheckStatus.ERROR) {
     const type = chain.name;
     if (!rpcUrl) {
       printStartupCheckStatus(
-        StartupCheckStatus.WARNING,
+        status,
         `No ${type} node configured.`,
         "https://www.thehubble.xyz/intro/install.html#installing-hubble",
       );
@@ -79,7 +79,7 @@ export class StartupChecks {
     if (chainIdResult.isErr() || chainIdResult.value !== chain.id) {
       console.log(chainIdResult);
       printStartupCheckStatus(
-        StartupCheckStatus.WARNING,
+        status,
         `Failed to connect to ${type} node.`,
         "https://www.thehubble.xyz/intro/install.html#installing-hubble",
       );

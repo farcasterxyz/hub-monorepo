@@ -30,6 +30,8 @@ import { initializeStatsd } from "./utils/statsd.js";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { printStartupCheckStatus, StartupChecks, StartupCheckStatus } from "./utils/startupCheck.js";
 import { goerli, mainnet, optimismGoerli } from "viem/chains";
+import { finishAllProgressBars } from "./utils/progressBars.js";
+import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -131,6 +133,7 @@ app
   .option("--gossip-metrics-enabled", "Generate tracing and metrics for the gossip network. (default: disabled)")
 
   // Debugging options
+  .option("--disable-progress-bars", "Immediately log to STDOUT, and disable progress bars. (default: disabled)")
   .option("--profile-sync", "Profile a full hub sync and exit. (default: disabled)")
   .option("--rebuild-sync-trie", "Rebuild the sync trie before starting (default: disabled)")
   .option("--resync-eth-events", "Resync events from the Farcaster contracts before starting (default: disabled)")
@@ -237,14 +240,24 @@ app
       hubConfig = (await import(resolve(cliOptions.config))).Config;
     }
 
+    if (cliOptions.disableProgressBars ?? hubConfig.disableProgressBars ?? false) {
+      logger.info("Interactive Progress Bars disabled");
+      logger.flush();
+      finishAllProgressBars();
+    }
+
     // Read PeerID from 1. CLI option, 2. Environment variable, 3. Config file
     let peerId;
     if (cliOptions.id) {
       const peerIdR = await ResultAsync.fromPromise(readPeerId(resolve(cliOptions.id)), (e) => e);
       if (peerIdR.isErr()) {
-        throw new Error(
-          `Failed to read identity from ${cliOptions.id}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`,
+        const errorStr = `Failed to read identity from ${cliOptions.id}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`;
+        printStartupCheckStatus(
+          StartupCheckStatus.ERROR,
+          errorStr,
+          "https://www.thehubble.xyz/intro/install.html#installing-hubble",
         );
+        throw new Error(errorStr);
       } else {
         peerId = peerIdR.value;
       }
@@ -262,15 +275,25 @@ app
       peerId = peerIdResult.value;
       logger.info({ identity: peerId.toString() }, "Read identity from environment");
     } else {
-      const peerIdR = await ResultAsync.fromPromise(readPeerId(resolve(hubConfig.id)), (e) => e);
+      const idFile = resolve(hubConfig.id ?? DEFAULT_PEER_ID_LOCATION);
+      StartupChecks.directoryWritable(dirname(idFile));
+
+      const peerIdR = await ResultAsync.fromPromise(readPeerId(idFile), (e) => e);
       if (peerIdR.isErr()) {
-        throw new Error(
-          `Failed to read identity from ${cliOptions.id}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`,
+        const errStr = `Failed to read identity from ${idFile}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`;
+        printStartupCheckStatus(
+          StartupCheckStatus.ERROR,
+          errStr,
+          "https://www.thehubble.xyz/intro/install.html#installing-hubble",
         );
+
+        throw new Error(errStr);
       } else {
         peerId = peerIdR.value;
       }
     }
+
+    printStartupCheckStatus(StartupCheckStatus.OK, "Loaded identity");
 
     // Read RPC Auth from 1. CLI option, 2. Environment variable, 3. Config file
     let rpcAuth;
@@ -369,7 +392,11 @@ app
       throw ipMultiAddrResult.error;
     }
 
-    const bootstrapAddrs = ((cliOptions.bootstrap ?? hubConfig.bootstrap ?? []) as string[])
+    const bootstrapAddrs = (
+      (cliOptions.bootstrap ??
+        hubConfig.bootstrap ??
+        (network === FarcasterNetwork.MAINNET ? MAINNET_BOOTSTRAP_PEERS : [])) as string[]
+    )
       .map((a) => parseAddress(a))
       .map((a) => {
         if (a.isErr()) {
