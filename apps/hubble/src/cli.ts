@@ -28,6 +28,8 @@ import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
 import { initializeStatsd } from "./utils/statsd.js";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
+import { printStartupCheckStatus, StartupChecks, StartupCheckStatus } from "./utils/startupCheck.js";
+import { goerli, mainnet, optimismGoerli } from "viem/chains";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -147,6 +149,8 @@ app
 
   .action(async (cliOptions) => {
     const handleShutdownSignal = (signalName: string) => {
+      logger.flush();
+
       logger.warn(`${signalName} received`);
       if (!isExiting) {
         isExiting = true;
@@ -168,10 +172,15 @@ app
       }
     };
 
+    console.log("\n Hubble Startup Checks");
+    console.log("------------------------");
+
     // We'll write our process number to a file so that we can detect if another hub process has taken over.
     const processFileDir = `${DB_DIRECTORY}/process/`;
     const processFilePrefix = cliOptions.processFilePrefix?.concat("_") ?? "";
     const processFileName = `${processFilePrefix}process_number.txt`;
+
+    StartupChecks.directoryWritable(DB_DIRECTORY);
 
     // Generate a random number to identify this hub instance
     // Note that we can't use the PID as the identifier, since the hub running in a docker container will
@@ -215,13 +224,16 @@ app
     let hubConfig: any = DefaultConfig;
     if (cliOptions.config) {
       if (!cliOptions.config.endsWith(".js")) {
+        printStartupCheckStatus(StartupCheckStatus.ERROR, "Config file must be a .js file");
         throw new Error(`Config file ${cliOptions.config} must be a .js file`);
       }
 
       if (!fs.existsSync(resolve(cliOptions.config))) {
+        printStartupCheckStatus(StartupCheckStatus.ERROR, `Config file ${cliOptions.config} does not exist`);
         throw new Error(`Config file ${cliOptions.config} does not exist`);
       }
 
+      printStartupCheckStatus(StartupCheckStatus.OK, `Loading config file ${cliOptions.config}`);
       hubConfig = (await import(resolve(cliOptions.config))).Config;
     }
 
@@ -312,8 +324,14 @@ app
       } else {
         logger.info({ server: server.value }, "Statsd server specified. Statsd enabled");
         initializeStatsd(server.value.address, server.value.port);
+        printStartupCheckStatus(StartupCheckStatus.OK, "Hubble Monitoring enabled");
       }
     } else {
+      printStartupCheckStatus(
+        StartupCheckStatus.WARNING,
+        "Hubble Monitoring is disabled",
+        "https://www.thehubble.xyz/intro/install.html#monitoring-hubble",
+      );
       logger.info({}, "No statsd server specified. Statsd disabled");
     }
 
@@ -364,6 +382,15 @@ app
       })
       .filter((a) => a.isOk())
       .map((a) => a._unsafeUnwrap());
+    if (bootstrapAddrs.length > 0) {
+      printStartupCheckStatus(StartupCheckStatus.OK, `Bootstrapping from ${bootstrapAddrs.length} peers`);
+    } else {
+      printStartupCheckStatus(
+        StartupCheckStatus.WARNING,
+        "No bootstrap peers specified. Hubble will not be able to sync without them.",
+        "https://www.thehubble.xyz/intro/networks.html",
+      );
+    }
 
     const directPeers = ((cliOptions.directPeers ?? hubConfig.directPeers ?? []) as string[])
       .map((a) => parseAddress(a))
@@ -440,6 +467,10 @@ app
       directPeers,
     };
 
+    await StartupChecks.rpcCheck(options.ethRpcUrl, goerli);
+    await StartupChecks.rpcCheck(options.ethMainnetRpcUrl, mainnet);
+    await StartupChecks.rpcCheck(options.l2RpcUrl, optimismGoerli);
+
     const hubResult = Result.fromThrowable(
       () => new Hub(options),
       (e) => new Error(`Failed to create hub: ${e}`),
@@ -451,6 +482,8 @@ app
       process.exit(1);
     }
 
+    console.log("\n Starting Hubble");
+    console.log("------------------");
     const hub = hubResult.value;
     const startResult = await ResultAsync.fromPromise(
       hub.start(),

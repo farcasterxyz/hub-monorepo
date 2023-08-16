@@ -56,25 +56,6 @@ Navigate to `apps/hubble` in hub-monorepo and run:
 docker compose stop && docker compose up -d --force-recreate --pull always
 ```
 
-## Running commands
-
-Check the sync status to see how your Hub is doing:
-
-```bash
-docker compose exec hubble yarn status --watch --insecure
-```
-
-Check the logs to ensure your hub is running successfully:
-
-```bash
-docker compose logs -f hubble
-```
-
-Open up a shell inside the hubble container by running:
-
-```bash
-docker compose exec hubble
-```
 
 ## Monitoring Hubble
 You can monitor your Hub by setting up grafana to monitor real time stats
@@ -100,6 +81,27 @@ yarn start --statsd-metrics-server 127.0.0.1:8125
 
 5. Go to `Settings -> Dashboard -> Add New -> Import`, and in the `Import from Panel JSON`, paste the contents of the [Default Grafana Dashboard](https://github.com/farcasterxyz/hub-monorepo/blob/main/scripts/grafana-dashboard.json)
 
+
+## Running commands
+
+Check the logs to ensure your hub is running successfully:
+
+```bash
+docker compose logs -f hubble
+```
+
+Check the sync status to see how your Hub is doing:
+
+```bash
+docker compose exec hubble yarn status --insecure
+```
+
+
+Open up a shell inside the hubble container by running:
+
+```bash
+docker compose exec hubble
+```
 
 ## Troubleshooting
 

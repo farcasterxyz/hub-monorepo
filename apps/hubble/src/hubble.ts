@@ -75,6 +75,7 @@ import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { statsd } from "./utils/statsd.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
+import { addProgressBar, finishAllProgressBars } from "./utils/progressBars.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -351,7 +352,6 @@ export class Hub implements HubInterface {
       chain: mainnet,
       transport: fallback(transports, { rank: options.rankRpcs ?? false }),
     });
-
     this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
 
     const profileSync = options.profileSync ?? false;
@@ -495,6 +495,21 @@ export class Hub implements HubInterface {
       }
     }
 
+    // Get the Network ID from the DB
+    const dbNetworkResult = await this.getDbNetwork();
+    if (dbNetworkResult.isOk() && dbNetworkResult.value && dbNetworkResult.value !== this.options.network) {
+      throw new HubError(
+        "unavailable",
+        `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. Please reset the DB with the "dbreset" command if this is intentional.`,
+      );
+    }
+
+    // Set the network in the DB
+    await this.setDbNetwork(this.options.network);
+    log.info(
+      `starting hub with Farcaster version ${FARCASTER_VERSION}, app version ${APP_VERSION} and network ${this.options.network}`,
+    );
+
     // Get the DB Schema version
     const dbSchemaVersion = await this.getDbSchemaVersion();
     if (dbSchemaVersion > LATEST_DB_SCHEMA_VERSION) {
@@ -516,21 +531,6 @@ export class Hub implements HubInterface {
     } else {
       log.info({ dbSchemaVersion, latestDbSchemaVersion: LATEST_DB_SCHEMA_VERSION }, "DB schema is up-to-date");
     }
-
-    // Get the Network ID from the DB
-    const dbNetworkResult = await this.getDbNetwork();
-    if (dbNetworkResult.isOk() && dbNetworkResult.value && dbNetworkResult.value !== this.options.network) {
-      throw new HubError(
-        "unavailable",
-        `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. Please reset the DB with the "dbreset" command if this is intentional.`,
-      );
-    }
-
-    // Set the network in the DB
-    await this.setDbNetwork(this.options.network);
-    log.info(
-      `starting hub with Farcaster version ${FARCASTER_VERSION}, app version ${APP_VERSION} and network ${this.options.network}`,
-    );
 
     // Fetch network config
     if (this.options.network === FarcasterNetwork.MAINNET) {
@@ -565,7 +565,7 @@ export class Hub implements HubInterface {
     await this.fNameRegistryEventsProvider?.start();
 
     // Start the sync engine
-    await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
+    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
     let bootstrapAddrs = this.options.bootstrapAddrs ?? [];
     // Add mainnet bootstrap addresses if none are provided
@@ -616,6 +616,19 @@ export class Hub implements HubInterface {
       // Start the test data generator
       this.testDataJobScheduler?.start();
     }
+
+    // Finish up the progress bars and start logging to STDOUT
+    (async () => {
+      // Wait 10 seconds so that the user can see all the status. Do it async, so we don't block the startup
+      const progress = addProgressBar("Starting Hubble", 10);
+      for (let i = 0; i < 10; i++) {
+        progress?.increment();
+        await sleep(1000);
+      }
+
+      finishAllProgressBars();
+      logger.flush();
+    })();
 
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
@@ -1069,7 +1082,7 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logEvent.info(
+        logEvent.debug(
           `submitIdRegistryEvent success ${eventId}: fid ${event.fid} assigned to ${bytesToHexString(
             event.to,
           )._unsafeUnwrap()} in block ${event.blockNumber}`,
@@ -1090,7 +1103,7 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logEvent.info(
+        logEvent.debug(
           `submitNameRegistryEvent success ${eventId}: fname ${bytesToUtf8String(
             event.fname,
           )._unsafeUnwrap()} assigned to ${bytesToHexString(event.to)._unsafeUnwrap()} in block ${event.blockNumber}`,
@@ -1111,10 +1124,14 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logEvent.info(
-          `submitUserNameProof success ${eventId}: fname ${bytesToUtf8String(
-            usernameProof.name,
-          )._unsafeUnwrap()} assigned to fid: ${usernameProof.fid} at timestamp ${usernameProof.timestamp}`,
+        logEvent.debug(
+          {
+            eventId,
+            name: bytesToUtf8String(usernameProof.name).unwrapOr(""),
+            fid: usernameProof.fid,
+            timestamp: usernameProof.timestamp,
+          },
+          "submitUserNameProof success",
         );
       },
       (e) => {

@@ -236,7 +236,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._started;
   }
 
-  public async initialize(rebuildSyncTrie = false) {
+  public async start(rebuildSyncTrie = false) {
     // Check if we need to rebuild sync trie
     if (rebuildSyncTrie) {
       await this.rebuildSyncTrie();

@@ -103,7 +103,7 @@ describe("Multi peer sync engine", () => {
     engine1 = new Engine(testDb1, network);
     hub1 = new MockHub(testDb1, engine1);
     syncEngine1 = new SyncEngine(hub1, testDb1);
-    syncEngine1.initialize();
+    syncEngine1.start();
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
     clientForServer1 = getInsecureHubRpcClient(`127.0.0.1:${port1}`);
@@ -142,7 +142,7 @@ describe("Multi peer sync engine", () => {
     // are loaded into the sync engine Merkle Trie properly.
     await syncEngine1.trie.commitToDb();
     const reinitSyncEngine = new SyncEngine(hub1, testDb1);
-    await reinitSyncEngine.initialize();
+    await reinitSyncEngine.start();
 
     expect(await reinitSyncEngine.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
@@ -436,7 +436,7 @@ describe("Multi peer sync engine", () => {
     await engine2.mergeIdRegistryEvent(custodyEvent);
 
     const syncEngine2 = new SyncEngine(hub2, testDb2);
-    await syncEngine2.initialize();
+    await syncEngine2.start();
 
     // Try to merge all the messages, to see if it fetches the right signers
     const results = await syncEngine2.mergeMessages(castAdds, clientForServer1);
@@ -462,7 +462,7 @@ describe("Multi peer sync engine", () => {
     const engine2 = new Engine(testDb2, network);
     const hub2 = new MockHub(testDb2, engine2);
     const syncEngine2 = new SyncEngine(hub2, testDb2);
-    await syncEngine2.initialize();
+    await syncEngine2.start();
 
     // Add a message to engine1 synctrie, but not to the engine itself.
     syncEngine1.trie.insert(new SyncId(signerAdd));
@@ -487,7 +487,7 @@ describe("Multi peer sync engine", () => {
     const engine2 = new Engine(testDb2, network);
     const hub2 = new MockHub(testDb2, engine2);
     const syncEngine2 = new SyncEngine(hub2, testDb2);
-    await syncEngine2.initialize();
+    await syncEngine2.start();
 
     // We add it to the engine2 synctrie as normal...
     await engine2.mergeIdRegistryEvent(custodyEvent);
@@ -671,7 +671,7 @@ describe("Multi peer sync engine", () => {
       const engine2 = new Engine(testDb2, network);
       const hub2 = new MockHub(testDb2, engine2);
       const syncEngine2 = new SyncEngine(hub2, testDb2);
-      syncEngine2.initialize();
+      syncEngine2.start();
 
       // Engine 2 should sync with engine1
       expect(
@@ -704,7 +704,7 @@ describe("Multi peer sync engine", () => {
       expect(await reinitSyncEngine.trie.rootHash()).toEqual("");
 
       totalTime = await timedTest(async () => {
-        await reinitSyncEngine.initialize();
+        await reinitSyncEngine.start();
       });
       // console.log('MerkleTrie total time', totalTime, 'seconds. Messages per second:', totalMessages / totalTime);
 
