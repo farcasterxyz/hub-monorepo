@@ -62,5 +62,5 @@ export const Config = {
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers: [],
   /** Disable progress bars and immediately print logs instead */
-  // disableProgressBars: false,
+  // disableConsoleStatus: false,
 };

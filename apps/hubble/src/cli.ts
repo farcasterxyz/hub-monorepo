@@ -133,7 +133,10 @@ app
   .option("--gossip-metrics-enabled", "Generate tracing and metrics for the gossip network. (default: disabled)")
 
   // Debugging options
-  .option("--disable-progress-bars", "Immediately log to STDOUT, and disable progress bars. (default: disabled)")
+  .option(
+    "--disable-console-status",
+    "Immediately log to STDOUT, and disable console status and progressbars. (default: disabled)",
+  )
   .option("--profile-sync", "Profile a full hub sync and exit. (default: disabled)")
   .option("--rebuild-sync-trie", "Rebuild the sync trie before starting (default: disabled)")
   .option("--resync-eth-events", "Resync events from the Farcaster contracts before starting (default: disabled)")
@@ -243,7 +246,8 @@ app
       hubConfig = (await import(resolve(cliOptions.config))).Config;
     }
 
-    if (cliOptions.disableProgressBars ?? hubConfig.disableProgressBars ?? false) {
+    const disableConsoleStatus = cliOptions.disableConsoleStatus ?? hubConfig.disableConsoleStatus ?? false;
+    if (disableConsoleStatus) {
       logger.info("Interactive Progress Bars disabled");
       logger.flush();
       finishAllProgressBars();
@@ -512,14 +516,17 @@ app
       process.exit(1);
     }
 
-    if (statsDServer) {
+    if (statsDServer && !disableConsoleStatus) {
       console.log("\nMonitor Your Node");
       console.log("----------------");
       console.log("🔗 | Grafana at http://localhost:3000");
     }
 
-    console.log("\n Starting Hubble");
-    console.log("------------------");
+    if (!disableConsoleStatus) {
+      console.log("\n Starting Hubble");
+      console.log("------------------");
+    }
+
     const hub = hubResult.value;
     const startResult = await ResultAsync.fromPromise(
       hub.start(),

@@ -4,7 +4,7 @@ import { logger } from "./logger.js";
 // The global multibar, to which all progress bars are added
 const multiBar = new cliProgress.MultiBar(
   {
-    format: " {bar} {percentage}% | {name} | ETA: {eta}s",
+    format: " {bar} {percentage}% | {name} | {value}/{total} | ETA: {eta}s",
     hideCursor: true,
     clearOnComplete: false,
     etaBuffer: 100,
@@ -25,18 +25,20 @@ export function addProgressBar(name: string, total: number, options?: cliProgres
 }
 
 // Finish all progress bars. This should be called when the process is shutting
-export function finishAllProgressBars(): void {
+export function finishAllProgressBars(showDelay = false): void {
   if (!finished) {
     // Finish up the progress bars and start logging to STDOUT
     (async () => {
-      const waitForSec = 30;
+      if (showDelay) {
+        const waitForSec = 30;
 
-      // Wait a few seconds so that the user can see all the status. Do it async, so we don't block the startup
-      const progress = addProgressBar("Starting Hubble", waitForSec);
+        // Wait a few seconds so that the user can see all the status. Do it async, so we don't block the startup
+        const progress = addProgressBar("Starting Hubble", waitForSec);
 
-      for (let i = 0; i < waitForSec; i++) {
-        progress?.increment();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        for (let i = 0; i < waitForSec; i++) {
+          progress?.increment();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
       }
 
       finished = true;

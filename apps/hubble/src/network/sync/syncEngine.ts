@@ -532,7 +532,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           }
         } else {
           this._currentSyncStatus.initialSync = false;
-          finishAllProgressBars();
+          finishAllProgressBars(true);
         }
 
         const divergencePrefix = this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
@@ -573,7 +573,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } finally {
       this._currentSyncStatus.isSyncing = false;
       if (this._currentSyncStatus.initialSync) {
-        finishAllProgressBars();
+        finishAllProgressBars(true);
       }
     }
 
