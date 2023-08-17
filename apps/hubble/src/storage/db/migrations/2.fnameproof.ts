@@ -8,7 +8,6 @@ import RocksDB from "../rocksdb.js";
 import { RootPrefix } from "../types.js";
 import { UserNameProof } from "@farcaster/hub-nodejs";
 import { makeFNameUserNameProofByFidKey } from "../nameRegistryEvent.js";
-import { Result } from "neverthrow";
 
 const log = logger.child({ component: "FNameProofIndexMigration" });
 
@@ -24,20 +23,11 @@ export async function fnameProofIndexMigration(db: RocksDB): Promise<boolean> {
         return;
       }
 
-      const proof = Result.fromThrowable(
-        () => UserNameProof.decode(new Uint8Array(value)),
-        (e) => e,
-      )();
-      if (proof.isOk() && proof.value.fid) {
-        try {
-          const secondaryKey = makeFNameUserNameProofByFidKey(proof.value.fid);
-          await db.put(secondaryKey, key);
-          count += 1;
-        } catch (e) {
-          log.error({ key: key.toString("hex"), errorStr: JSON.stringify(e) }, "Failed to add fname proof index");
-        }
-      } else {
-        log.error({ key: key.toString("hex"), errorStr: JSON.stringify(proof) }, "Failed to decode fname proof");
+      const proof = UserNameProof.decode(new Uint8Array(value));
+      if (proof.fid) {
+        const secondaryKey = makeFNameUserNameProofByFidKey(proof.fid);
+        await db.put(secondaryKey, key);
+        count += 1;
       }
     },
     {},
