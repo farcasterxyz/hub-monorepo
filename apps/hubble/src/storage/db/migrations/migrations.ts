@@ -2,9 +2,12 @@ import { ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
 import { fnameProofIndexMigration } from "./2.fnameproof.js";
+import { logger } from "../../../utils/logger.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
+
+const log = logger.child({ component: "DBMigrations" });
 
 // Add all DB Migrations here. The key is the schema version number.
 migrations.set(1, async (db: RocksDB) => {
@@ -37,6 +40,7 @@ export async function performDbMigrations(
     const migration = migrations.get(i) as MigrationFunctionType;
     const success = await ResultAsync.fromPromise(migration(db), (e) => e);
     if (success.isErr() || success.value === false) {
+      log.error({ error: success, i }, "DB migration failed");
       return false;
     }
   }
