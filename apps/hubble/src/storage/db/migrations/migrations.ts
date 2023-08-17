@@ -40,7 +40,7 @@ export async function performDbMigrations(
     const migration = migrations.get(i) as MigrationFunctionType;
     const success = await ResultAsync.fromPromise(migration(db), (e) => e);
     if (success.isErr() || success.value === false) {
-      log.error({ error: success, i }, "DB migration failed");
+      log.error({ errorStr: JSON.stringify(success), i }, "DB migration failed");
       return false;
     }
   }
