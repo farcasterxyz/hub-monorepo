@@ -1,7 +1,6 @@
 import {
   hexStringToBytes,
   HubAsyncResult,
-  HubState,
   IdRegisterEventBody,
   IdRegisterEventType,
   OnChainEvent,
@@ -24,6 +23,7 @@ import { WatchBlockNumber } from "./watchBlockNumber.js";
 import { ExtractAbiEvent } from "abitype";
 import { onChainEventSorter } from "../storage/db/onChainEvent.js";
 import { formatPercentage } from "../profile/profile.js";
+import { addProgressBar } from "../utils/progressBars.js";
 
 const log = logger.child({
   component: "L2EventsProvider",
@@ -66,6 +66,7 @@ export class L2EventsProvider {
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
   private _isHistoricalSyncDone = false;
+  private _isHandlingBlock = false;
 
   // Number of blocks to wait before processing an event. This is hardcoded to
   // 6 for now, because that's the threshold beyond which blocks are unlikely
@@ -565,6 +566,11 @@ export class L2EventsProvider {
     const totalBlocks = toBlock - fromBlock;
     const numOfRuns = Math.ceil(totalBlocks / batchSize);
 
+    let progressBar;
+    if (totalBlocks > 100) {
+      progressBar = addProgressBar("Syncing L2 ETH events", totalBlocks);
+    }
+
     for (let i = 0; i < numOfRuns; i++) {
       this._blockTimestampsCache.clear(); // Clear the cache for each block to avoid unbounded growth
       let nextFromBlock = fromBlock + i * batchSize;
@@ -574,10 +580,12 @@ export class L2EventsProvider {
         // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
         nextFromBlock += 1;
       }
-      log.info(
+
+      log.debug(
         { fromBlock: nextFromBlock, toBlock: nextToBlock },
         `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)})`,
       );
+      progressBar?.update(nextFromBlock - fromBlock);
 
       const idFilter = await this._publicClient.createContractEventFilter({
         address: OptimismConstants.IdRegistryAddress,
@@ -612,16 +620,36 @@ export class L2EventsProvider {
       await this.processStorageEvents(await storageLogsPromise);
       await this.processKeyRegistryEvents(await keyLogsPromise);
     }
+
+    progressBar?.update(totalBlocks);
+    progressBar?.stop();
   }
 
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
+    // Don't let multiple blocks be handled at once
+    while (this._isHandlingBlock) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    this._isHandlingBlock = true;
     log.info({ blockNumber }, `new block: ${blockNumber}`);
 
     // Get all blocks that have been confirmed into a single array and sort.
     const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);
     const cachedBlocks = Array.from(cachedBlocksSet);
     cachedBlocks.sort();
+
+    let progressBar;
+    let firstBlock = 0;
+    let totalBlocks = 0;
+    if (cachedBlocks.length > 100) {
+      // Lots of blocks, so show a progress bar
+      const lastBlock = cachedBlocks[cachedBlocks.length - 1] ?? 0;
+      firstBlock = cachedBlocks[0] ?? 0;
+      totalBlocks = lastBlock - firstBlock;
+      progressBar = addProgressBar("Processing ETH (Goreli) events", totalBlocks);
+    }
 
     for (const cachedBlock of cachedBlocks) {
       if (cachedBlock + L2EventsProvider.numConfirmations <= blockNumber) {
@@ -635,7 +663,12 @@ export class L2EventsProvider {
 
         this._retryDedupMap.delete(cachedBlock);
       }
+
+      progressBar?.update(cachedBlock - firstBlock);
     }
+
+    progressBar?.update(totalBlocks);
+    progressBar?.stop();
 
     // Update the last synced block if all the historical events have been synced
     if (this._isHistoricalSyncDone) {
@@ -649,6 +682,7 @@ export class L2EventsProvider {
     }
 
     this._blockTimestampsCache.clear(); // Clear the cache periodically to avoid unbounded growth
+    this._isHandlingBlock = false;
     this._lastBlockNumber = blockNumber;
   }
 

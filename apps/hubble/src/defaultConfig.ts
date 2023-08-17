@@ -61,4 +61,6 @@ export const Config = {
   // statsdMetricsServer: "127.0.0.1:8125",
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers: [],
+  /** Disable progress bars and immediately print logs instead */
+  // disableConsoleStatus: false,
 };

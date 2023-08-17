@@ -9,7 +9,7 @@ import {
   onChainEventTypeToJSON,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
-import pino from "pino";
+import pino, { Bindings } from "pino";
 
 /**
  * Logging Guidelines
@@ -42,6 +42,8 @@ import pino from "pino";
  */
 const defaultOptions: pino.LoggerOptions = {};
 
+const MAX_BUFFERLOG_SIZE = 1_000_000;
+
 // Disable logging in tests and CI to reduce noise
 if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
   // defaultOptions.level = 'debug';
@@ -50,7 +52,80 @@ if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
   defaultOptions.level = process.env["LOG_LEVEL"];
 }
 
-export const logger = pino.pino(defaultOptions);
+type ProxiedLogger = { $: BufferedLogger } & Logger;
+
+class BufferedLogger {
+  // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+  private buffer: { method: string; args: any[] }[] = [];
+  private buffering = false;
+  private logger: Logger;
+
+  constructor() {
+    this.logger = pino.pino(defaultOptions);
+  }
+
+  createProxy(loggerInstance: Logger = this.logger): ProxiedLogger {
+    return new Proxy(loggerInstance, {
+      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      get: (target: any, prop: string) => {
+        // We don't intercept "fatal" because it's a special case that we don't want to buffer
+        if (["info", "error", "debug", "warn", "trace"].includes(prop)) {
+          // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+          return (...args: any[]) => {
+            if (!this.buffering || loggerInstance.level === "silent") {
+              target[prop](...args);
+            } else {
+              // Handle the common case of ignoring debug logs if the log level is info
+              if (loggerInstance.level === "info" && prop === "debug") {
+                return;
+              } else {
+                this.buffer.push({ method: prop, args });
+
+                if (this.buffer.length > MAX_BUFFERLOG_SIZE) {
+                  this.finishBuffering();
+                }
+              }
+            }
+          };
+        } else if (prop === "child") {
+          return (bindings: Bindings) => {
+            const childLogger = target.child(bindings);
+            return this.createProxy(childLogger);
+          };
+        } else if (prop === "flush") {
+          this.finishBuffering();
+          return target[prop];
+        } else if (prop === "$") {
+          return this;
+        } else {
+          return target[prop];
+        }
+      },
+    });
+  }
+
+  startBuffering(): void {
+    this.buffering = true;
+    this.buffer = [];
+  }
+
+  finishBuffering(): void {
+    if (!this.buffering) return;
+
+    this.buffering = false;
+
+    // And then in an async function, flush the buffer so that we don't block the main thread
+    (async () => {
+      for (const log of this.buffer) {
+        // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+        (this.logger as any)[log.method](...log.args);
+      }
+      this.buffer = [];
+    })();
+  }
+}
+
+export const logger = new BufferedLogger().createProxy();
 export type Logger = pino.Logger;
 
 export const messageTypeToName = (type?: MessageType) => {

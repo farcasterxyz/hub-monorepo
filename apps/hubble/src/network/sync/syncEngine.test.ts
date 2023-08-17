@@ -389,7 +389,7 @@ describe("SyncEngine", () => {
     expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
 
     const syncEngine2 = new SyncEngine(hub, testDb);
-    await syncEngine2.initialize();
+    await syncEngine2.start();
 
     // Make sure all messages exist
     expect(await syncEngine2.trie.items()).toEqual(4);
@@ -410,7 +410,7 @@ describe("SyncEngine", () => {
     expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
 
     const syncEngine2 = new SyncEngine(hub, testDb);
-    await syncEngine2.initialize(true); // Rebuild from engine messages
+    await syncEngine2.start(true); // Rebuild from engine messages
 
     // Make sure all messages exist
     expect(await syncEngine2.trie.items()).toEqual(4);

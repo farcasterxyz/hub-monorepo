@@ -22,8 +22,8 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
 import { Hub, HubInterface } from "../../hubble.js";
-import { MerkleTrie, NodeMetadata } from "../../network/sync/merkleTrie.js";
-import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "../../network/sync/syncId.js";
+import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
+import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "./syncId.js";
 import { TrieSnapshot } from "./trieNode.js";
 import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -35,6 +35,8 @@ import { bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 import os from "os";
+import { addProgressBar, finishAllProgressBars } from "../../utils/progressBars.js";
+import { SingleBar } from "cli-progress";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -111,6 +113,7 @@ class CurrentSyncStatus {
   startTimestamp?: number;
   fidRetryMessageQ = new Map<number, Message[]>();
   seriousValidationFailures = 0;
+  initialSync = false;
 
   constructor(peerId?: string) {
     if (peerId) {
@@ -236,7 +239,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._started;
   }
 
-  public async initialize(rebuildSyncTrie = false) {
+  public async start(rebuildSyncTrie = false) {
     // Check if we need to rebuild sync trie
     if (rebuildSyncTrie) {
       await this.rebuildSyncTrie();
@@ -513,6 +516,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       } else {
         const ourSnapshot = snapshot.value;
 
+        let progressBar: SingleBar | undefined;
+
+        const missingMessages = otherSnapshot.numMessages - ourSnapshot.numMessages;
+        if (missingMessages > 10_000) {
+          this._currentSyncStatus.initialSync = true;
+          progressBar = addProgressBar("Initial Sync", missingMessages, {
+            etaBuffer: 1000,
+          });
+
+          if (ourSnapshot.numMessages === 0) {
+            // If we have no messages, we need to fetch all messages from the peer
+            // so start with the signers
+            await this.getAllSignersFromPeer(rpcClient, progressBar);
+          }
+        } else {
+          this._currentSyncStatus.initialSync = false;
+          finishAllProgressBars(true);
+        }
+
         const divergencePrefix = this.getDivergencePrefix(ourSnapshot, otherSnapshot.excludedHashes);
         log.info(
           {
@@ -527,6 +549,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
           const result = await this.fetchAndMergeMessages(missingIds, rpcClient);
           fullSyncResult.addResult(result);
+          progressBar?.increment(result.total);
         });
 
         log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
@@ -549,9 +572,78 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.warn(e, "Perform sync: Error");
     } finally {
       this._currentSyncStatus.isSyncing = false;
+      if (this._currentSyncStatus.initialSync) {
+        finishAllProgressBars(true);
+      }
     }
 
     return fullSyncResult;
+  }
+
+  async getAllSignersFromPeer(rpcClient: HubRpcClient, progressBar?: SingleBar): Promise<boolean> {
+    // Get all signers from the peer to speed up the sync
+
+    // First, fetch all FIDs from the peer
+    let finished = false;
+    let pageToken: Uint8Array | undefined;
+    const fids: number[] = [];
+
+    do {
+      const fidRequest = FidRequest.create({ pageToken, pageSize: 1000 });
+      const fidResult = await rpcClient.getFids(fidRequest, new Metadata(), rpcDeadline());
+
+      if (fidResult.isErr()) {
+        log.error({ err: fidResult.error }, "Failed to fetch FIDs from peer");
+        return false;
+      }
+
+      const { fids: fetchedFids, nextPageToken } = fidResult.value;
+      fids.push(...fetchedFids);
+      if (!nextPageToken) {
+        finished = true;
+      } else {
+        pageToken = nextPageToken;
+      }
+    } while (!finished);
+
+    progressBar?.setTotal(progressBar.getTotal() + fids.length);
+
+    // Then, fetch all signers for the FIDs, in groups of 10
+    for (let i = 0; i < fids.length; i += 10) {
+      const fidsBatch = Array.from({ length: Math.min(10, fids.length - i) }, (_, j) => fids[i + j]);
+      await Promise.all(
+        fidsBatch.map(async (fid) => {
+          if (!fid || this._currentSyncStatus.interruptSync) {
+            return;
+          }
+
+          progressBar?.increment();
+
+          const signerResult = await rpcClient.getSignersByFid(
+            FidRequest.create({ fid }),
+            new Metadata(),
+            rpcDeadline(),
+          );
+          if (signerResult.isErr()) {
+            log.error({ err: signerResult.error }, "Failed to fetch signer from peer");
+
+            // Ignore this FID, we'll just sync the message without the signer
+            return;
+          }
+
+          const { messages } = signerResult.value;
+          for (const signer of messages) {
+            const signerResult = await this._hub.submitMessage(signer, "sync");
+            if (signerResult.isErr()) {
+              log.error({ err: signerResult.error, fid }, "Failed to submit signer");
+              break;
+            }
+          }
+        }),
+      );
+    }
+
+    return true;
   }
 
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
