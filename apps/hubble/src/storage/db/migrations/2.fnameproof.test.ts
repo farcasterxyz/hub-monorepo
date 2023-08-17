@@ -31,4 +31,13 @@ describe("fnameproof migration", () => {
 
     await expect(getFNameProofByFid(db, proof.fid)).resolves.toEqual(proof);
   });
+
+  test("should not fail when proof is not decodable", async () => {
+    const badProof = Buffer.from([1, 2, 3]);
+    await db.put(makeFNameUserNameProofKey(Buffer.from([])), badProof);
+    await expect(db.get(makeFNameUserNameProofKey(Buffer.from([])))).resolves.toBeDefined();
+    const success = await performDbMigrations(db, 1, 2);
+    expect(success).toBe(true);
+    await expect(db.get(makeFNameUserNameProofKey(Buffer.from([])))).rejects.toThrow("NotFound");
+  });
 });

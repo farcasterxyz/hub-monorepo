@@ -23,9 +23,16 @@ export async function fnameProofIndexMigration(db: RocksDB): Promise<boolean> {
         return;
       }
 
-      const proof = UserNameProof.decode(new Uint8Array(value));
-      if (proof.fid) {
-        const secondaryKey = makeFNameUserNameProofByFidKey(proof.fid);
+      let proof: UserNameProof | undefined = undefined;
+      try {
+        proof = UserNameProof.decode(new Uint8Array(value));
+      } catch (e) {
+        log.error({ key: key.toString("hex"), error: e }, "Failed to decode proof, deleting");
+        await db.del(key);
+      }
+
+      if (proof?.fid) {
+        const secondaryKey = makeFNameUserNameProofByFidKey(proof?.fid);
         await db.put(secondaryKey, key);
         count += 1;
       }
