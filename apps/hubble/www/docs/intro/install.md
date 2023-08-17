@@ -47,6 +47,12 @@ docker compose up hubble -d
 
 Docker compose will start a Hubble container that exposes ports for networking and writes data to `.hub` and `.rocks` directories. Hubble will now sync with the contracts and other hubble instances to download all messages on the network. 
 
+7. To view the status of the sync and hubble, follow the logs
+
+```bash
+docker compose logs -f hubble
+```
+
 ## Upgrading Hubble
 
 Navigate to `apps/hubble` in hub-monorepo and run: 
@@ -100,7 +106,7 @@ docker compose exec hubble yarn status --insecure
 Open up a shell inside the hubble container by running:
 
 ```bash
-docker compose exec hubble
+docker compose exec hubble /bin/sh
 ```
 
 ## Troubleshooting

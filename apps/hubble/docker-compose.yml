@@ -8,6 +8,7 @@ version: '3.9'
 services:
   hubble:
     image: farcasterxyz/hubble:latest
+    tty: true # Attach a TTY to see the progress bars
     restart: unless-stopped
     command: [
       "node", "build/cli.js", "start",
