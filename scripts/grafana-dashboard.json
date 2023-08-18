@@ -1,4 +1,14 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_GRAPHITE",
+      "label": "Data Source",
+      "description": "Graphite data source",
+      "type": "datasource",
+      "pluginId": "graphite",
+      "pluginName": "Graphite"
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -11,6 +21,12 @@
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
@@ -18,7 +34,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 3,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -36,7 +51,7 @@
       "type": "row"
     },
     {
-      "datasource": null,
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -111,7 +126,7 @@
       },
       "targets": [
         {
-          "datasource": null,
+          "datasource": "${DS_GRAPHITE}",
           "refCount": 0,
           "refId": "A",
           "target": "stats.timers.hubble.hub.merge_message.mean"
@@ -121,7 +136,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": null,
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -205,7 +220,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": null,
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -332,7 +347,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": null,
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -365,14 +380,15 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.3",
       "targets": [
         {
           "refId": "A",
@@ -384,7 +400,7 @@
       "type": "gauge"
     },
     {
-      "datasource": null,
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -418,14 +434,15 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.3",
       "targets": [
         {
           "refId": "A",
@@ -437,6 +454,7 @@
       "type": "gauge"
     },
     {
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -469,14 +487,15 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.3",
       "targets": [
         {
           "refId": "A",
@@ -488,6 +507,7 @@
       "type": "gauge"
     },
     {
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -520,14 +540,15 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.3",
       "targets": [
         {
           "refId": "A",
@@ -538,6 +559,7 @@
       "type": "gauge"
     },
     {
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -626,6 +648,7 @@
       "type": "timeseries"
     },
     {
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -708,6 +731,7 @@
       "type": "timeseries"
     },
     {
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -750,7 +774,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -758,7 +784,6 @@
         "showThresholdMarkers": false,
         "text": {}
       },
-      "pluginVersion": "10.0.3",
       "targets": [
         {
           "refId": "A",
@@ -769,6 +794,7 @@
       "type": "gauge"
     },
     {
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -812,14 +838,15 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.3",
       "targets": [
         {
           "refId": "A",
@@ -843,7 +870,7 @@
       "type": "row"
     },
     {
-      "datasource": null,
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -917,7 +944,7 @@
       },
       "targets": [
         {
-          "datasource": null,
+          "datasource": "${DS_GRAPHITE}",
           "refId": "A",
           "target": "sumSeriesWithWildcards(stats_counts.hubble.submit_message.error.*.*.*, 5,6)"
         }
@@ -926,7 +953,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": null,
+      "datasource": "${DS_GRAPHITE}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1000,7 +1027,7 @@
       },
       "targets": [
         {
-          "datasource": null,
+          "datasource": "${DS_GRAPHITE}",
           "refId": "A",
           "target": "sumSeriesWithWildcards(stats_counts.hubble.submit_message.error.*.*.*, 4,5)",
           "textEditor": true
