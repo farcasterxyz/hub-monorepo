@@ -29,7 +29,7 @@ import { profileGossipServer } from "./profile/gossipProfile.js";
 import { initializeStatsd } from "./utils/statsd.js";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { printStartupCheckStatus, StartupChecks, StartupCheckStatus } from "./utils/startupCheck.js";
-import { goerli, mainnet, optimismGoerli } from "viem/chains";
+import { goerli, mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 
@@ -85,7 +85,7 @@ app
   .option("--first-block <number>", "The block number to begin syncing events from Farcaster contracts", parseNumber)
 
   // L2 Options
-  .option("-l, --l2-rpc-url <url>", "RPC URL of a Goerli Optimism Node (or comma separated list of URLs)")
+  .option("-l, --l2-rpc-url <url>", "RPC URL of a mainnet Optimism Node (or comma separated list of URLs)")
   .option("--l2-id-registry-address <address>", "The address of the L2 Farcaster ID Registry contract")
   .option("--l2-key-registry-address <address>", "The address of the L2 Farcaster Key Registry contract")
   .option("--l2-storage-registry-address <address>", "The address of the L2 Farcaster Storage Registry contract")
@@ -503,7 +503,7 @@ app
 
     await StartupChecks.rpcCheck(options.ethRpcUrl, goerli);
     await StartupChecks.rpcCheck(options.ethMainnetRpcUrl, mainnet);
-    await StartupChecks.rpcCheck(options.l2RpcUrl, optimismGoerli);
+    await StartupChecks.rpcCheck(options.l2RpcUrl, optimism);
 
     const hubResult = Result.fromThrowable(
       () => new Hub(options),
