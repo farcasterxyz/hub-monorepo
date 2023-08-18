@@ -6,8 +6,11 @@ import {
   IdRegisterOnChainEvent,
   isIdRegisterOnChainEvent,
   isSignerOnChainEvent,
+  Message,
   OnChainEvent,
+  OnChainEventResponse,
   OnChainEventType,
+  SignerAddMessage,
   SignerEventType,
   SignerMigratedOnChainEvent,
   SignerOnChainEvent,
@@ -18,6 +21,7 @@ import {
   getManyOnChainEvents,
   getOnChainEvent,
   getOnChainEventByKey,
+  getOnChainEventsPageByPrefix,
   makeIdRegisterEventByCustodyKey,
   makeIdRegisterEventByFidKey,
   makeOnChainEventIteratorPrefix,
@@ -28,6 +32,8 @@ import {
 import { ok, ResultAsync } from "neverthrow";
 import { RootPrefix } from "../db/types.js";
 import { getHubState, putHubState } from "../db/hubState.js";
+import { getMessagesPageByPrefix } from "../db/message.js";
+import { MessagesPage, PageOptions } from "./types.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 
@@ -76,6 +82,19 @@ class OnChainEventStore {
     } else {
       throw new HubError("not_found", "no such active signer");
     }
+  }
+
+  async getSignersByFid(fid: number, pageOptions: PageOptions = {}): Promise<OnChainEventResponse> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      // Return only active signers
+      return isSignerOnChainEvent(event) && event.signerEventBody.eventType === SignerEventType.ADD;
+    };
+    return getOnChainEventsPageByPrefix(
+      this._db,
+      makeSignerOnChainEventBySignerKey(fid, Buffer.from([])),
+      filter,
+      pageOptions,
+    );
   }
 
   async getIdRegisterEventByFid(fid: number): Promise<IdRegisterOnChainEvent> {

@@ -1,7 +1,9 @@
-import RocksDB, { Transaction } from "./rocksdb.js";
-import { OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
+import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
+import { HubError, OnChainEvent, OnChainEventResponse, OnChainEventType } from "@farcaster/hub-nodejs";
 import { OnChainEventPostfix, RootPrefix } from "./types.js";
-import { makeFidKey } from "./message.js";
+import { getPageIteratorByPrefix, makeFidKey } from "./message.js";
+import { PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
+import { ResultAsync } from "neverthrow";
 
 // With a 2-second block time on optimism, 2^32 blocks is ~68 years
 export const BLOCK_NUMBER_BYTES = 4;
@@ -132,4 +134,45 @@ export const onChainEventSorter = (a: OnChainEvent, b: OnChainEvent): number => 
     return a.logIndex - b.logIndex;
   }
   return a.blockNumber - b.blockNumber;
+};
+
+export const getOnChainEventsPageByPrefix = async <T extends OnChainEvent>(
+  db: RocksDB,
+  prefix: Buffer,
+  filter: (event: OnChainEvent) => event is T,
+  pageOptions: PageOptions = {},
+): Promise<OnChainEventResponse> => {
+  const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
+
+  const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
+
+  const events: T[] = [];
+
+  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, OnChainEvent]> => {
+    const [key, value] = await iterator.next();
+    return [key as Buffer, OnChainEvent.decode(new Uint8Array(value as Buffer))];
+  };
+
+  let iteratorFinished = false;
+  let lastPageToken: Uint8Array | undefined;
+  do {
+    const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+    if (result.isErr()) {
+      iteratorFinished = true;
+      break;
+    }
+
+    const [key, message] = result.value;
+    lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+    if (filter(message)) {
+      events.push(message);
+    }
+  } while (events.length < limit);
+
+  await iterator.end();
+  if (!iteratorFinished) {
+    return { events: events, nextPageToken: lastPageToken };
+  } else {
+    return { events: events, nextPageToken: undefined };
+  }
 };
