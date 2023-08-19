@@ -148,9 +148,10 @@ export interface OnChainEvent {
 
 export interface SignerEventBody {
   key: Uint8Array;
-  scheme: number;
+  keyType: number;
   eventType: SignerEventType;
   metadata: Uint8Array;
+  metadataType: number;
 }
 
 export interface SignerMigratedEventBody {
@@ -411,7 +412,7 @@ export const OnChainEvent = {
 };
 
 function createBaseSignerEventBody(): SignerEventBody {
-  return { key: new Uint8Array(), scheme: 0, eventType: 0, metadata: new Uint8Array() };
+  return { key: new Uint8Array(), keyType: 0, eventType: 0, metadata: new Uint8Array(), metadataType: 0 };
 }
 
 export const SignerEventBody = {
@@ -419,14 +420,17 @@ export const SignerEventBody = {
     if (message.key.length !== 0) {
       writer.uint32(10).bytes(message.key);
     }
-    if (message.scheme !== 0) {
-      writer.uint32(16).uint32(message.scheme);
+    if (message.keyType !== 0) {
+      writer.uint32(16).uint32(message.keyType);
     }
     if (message.eventType !== 0) {
       writer.uint32(24).int32(message.eventType);
     }
     if (message.metadata.length !== 0) {
       writer.uint32(34).bytes(message.metadata);
+    }
+    if (message.metadataType !== 0) {
+      writer.uint32(40).uint32(message.metadataType);
     }
     return writer;
   },
@@ -450,7 +454,7 @@ export const SignerEventBody = {
             break;
           }
 
-          message.scheme = reader.uint32();
+          message.keyType = reader.uint32();
           continue;
         case 3:
           if (tag != 24) {
@@ -466,6 +470,13 @@ export const SignerEventBody = {
 
           message.metadata = reader.bytes();
           continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.metadataType = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -478,9 +489,10 @@ export const SignerEventBody = {
   fromJSON(object: any): SignerEventBody {
     return {
       key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
-      scheme: isSet(object.scheme) ? Number(object.scheme) : 0,
+      keyType: isSet(object.keyType) ? Number(object.keyType) : 0,
       eventType: isSet(object.eventType) ? signerEventTypeFromJSON(object.eventType) : 0,
       metadata: isSet(object.metadata) ? bytesFromBase64(object.metadata) : new Uint8Array(),
+      metadataType: isSet(object.metadataType) ? Number(object.metadataType) : 0,
     };
   },
 
@@ -488,10 +500,11 @@ export const SignerEventBody = {
     const obj: any = {};
     message.key !== undefined &&
       (obj.key = base64FromBytes(message.key !== undefined ? message.key : new Uint8Array()));
-    message.scheme !== undefined && (obj.scheme = Math.round(message.scheme));
+    message.keyType !== undefined && (obj.keyType = Math.round(message.keyType));
     message.eventType !== undefined && (obj.eventType = signerEventTypeToJSON(message.eventType));
     message.metadata !== undefined &&
       (obj.metadata = base64FromBytes(message.metadata !== undefined ? message.metadata : new Uint8Array()));
+    message.metadataType !== undefined && (obj.metadataType = Math.round(message.metadataType));
     return obj;
   },
 
@@ -502,9 +515,10 @@ export const SignerEventBody = {
   fromPartial<I extends Exact<DeepPartial<SignerEventBody>, I>>(object: I): SignerEventBody {
     const message = createBaseSignerEventBody();
     message.key = object.key ?? new Uint8Array();
-    message.scheme = object.scheme ?? 0;
+    message.keyType = object.keyType ?? 0;
     message.eventType = object.eventType ?? 0;
     message.metadata = object.metadata ?? new Uint8Array();
+    message.metadataType = object.metadataType ?? 0;
     return message;
   },
 };

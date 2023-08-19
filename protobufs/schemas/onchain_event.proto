@@ -34,9 +34,10 @@ enum SignerEventType {
 
 message SignerEventBody {
   bytes key = 1;
-  uint32 scheme = 2;
+  uint32 key_type = 2;
   SignerEventType event_type = 3;
   bytes metadata = 4;
+  uint32 metadata_type = 5;
 }
 
 message SignerMigratedEventBody {

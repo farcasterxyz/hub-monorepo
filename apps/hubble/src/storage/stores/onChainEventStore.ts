@@ -73,7 +73,7 @@ class OnChainEventStore {
     const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
     if (
       event.signerEventBody.eventType === SignerEventType.ADD &&
-      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.scheme)
+      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
     ) {
       return event;
     } else {

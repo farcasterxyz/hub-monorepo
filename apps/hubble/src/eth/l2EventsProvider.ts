@@ -307,8 +307,9 @@ export class L2EventsProvider {
           const signerEventBody = SignerEventBody.create({
             eventType: SignerEventType.ADD,
             key: hexStringToBytes(addEvent.args.keyBytes)._unsafeUnwrap(),
-            scheme: addEvent.args.scheme,
+            keyType: addEvent.args.keyType,
             metadata: hexStringToBytes(addEvent.args.metadata)._unsafeUnwrap(),
+            metadataType: addEvent.args.metadataType,
           });
           await this.cacheOnChainEvent(
             OnChainEventType.EVENT_TYPE_SIGNER,

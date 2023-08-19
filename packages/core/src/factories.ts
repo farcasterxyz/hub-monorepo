@@ -657,7 +657,8 @@ const SignerEventBodyFactory = Factory.define<protobufs.SignerEventBody>(() => {
   return SignerEventBody.create({
     key: Ed25519PPublicKeyFactory.build(),
     eventType: SignerEventType.ADD,
-    scheme: 1,
+    keyType: 1,
+    metadataType: 1,
   });
 });
 

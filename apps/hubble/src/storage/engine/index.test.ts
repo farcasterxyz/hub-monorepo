@@ -21,6 +21,7 @@ import {
   MessageType,
   NameRegistryEvent,
   NameRegistryEventType,
+  OnChainEventType,
   PruneMessageHubEvent,
   ReactionAddMessage,
   ReactionType,
@@ -820,6 +821,14 @@ describe("mergeMessage", () => {
         expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
       });
     });
+  });
+});
+
+describe("mergeOnChainEvent", () => {
+  test("does not merge invalid event type", async () => {
+    const event = Factories.OnChainEvent.build({ type: OnChainEventType.EVENT_TYPE_NONE });
+    const result = await engine.mergeOnChainEvent(event);
+    expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
   });
 });
 

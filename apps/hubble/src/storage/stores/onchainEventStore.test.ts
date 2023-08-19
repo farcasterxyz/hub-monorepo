@@ -213,7 +213,7 @@ describe("OnChainEventStore", () => {
       const signer = Factories.SignerOnChainEvent.build({
         signerEventBody: Factories.SignerEventBody.build({
           eventType: SignerEventType.ADD,
-          scheme: 2,
+          keyType: 2,
         }),
       });
       await set.mergeOnChainEvent(signer);
