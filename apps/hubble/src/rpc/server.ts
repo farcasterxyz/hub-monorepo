@@ -40,6 +40,7 @@ import {
   UsernameProofsResponse,
   OnChainEventResponse,
   SignerOnChainEvent,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -878,6 +879,25 @@ export default class Server {
           },
         );
       },
+      getOnChainSignersByFid: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.debug({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer}`);
+
+        const { fid, pageSize, pageToken, reverse } = call.request;
+        const signersResult = await this.engine?.getOnChainSignersByFid(fid, {
+          pageSize,
+          pageToken,
+          reverse,
+        });
+        signersResult?.match(
+          (page: OnChainEventResponse) => {
+            callback(null, page);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
       getIdRegistryEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getIdRegistryEvent", req: call.request }, `RPC call from ${peer}`);
@@ -955,6 +975,21 @@ export default class Server {
         const idRegistryEventResult = await this.engine?.getIdRegistryEventByAddress(request.address);
         idRegistryEventResult?.match(
           (idRegistryEvent: IdRegistryEvent) => {
+            callback(null, idRegistryEvent);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      getIdRegistryOnChainEventByAddress: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.debug({ method: "getIdRegistryOnChainEventByAddress", req: call.request }, `RPC call from ${peer}`);
+
+        const request = call.request;
+        const idRegistryEventResult = await this.engine?.getIdRegistryOnChainEventByAddress(request.address);
+        idRegistryEventResult?.match(
+          (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
           },
           (err: HubError) => {

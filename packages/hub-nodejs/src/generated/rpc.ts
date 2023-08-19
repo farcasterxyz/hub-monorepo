@@ -189,24 +189,6 @@ export const HubServiceService = {
     responseSerialize: (value: NameRegistryEvent) => Buffer.from(NameRegistryEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => NameRegistryEvent.decode(value),
   },
-  getOnChainEvents: {
-    path: "/HubService/GetOnChainEvents",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: OnChainEventRequest) => Buffer.from(OnChainEventRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => OnChainEventRequest.decode(value),
-    responseSerialize: (value: OnChainEventResponse) => Buffer.from(OnChainEventResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => OnChainEventResponse.decode(value),
-  },
-  getCurrentStorageLimitsByFid: {
-    path: "/HubService/GetCurrentStorageLimitsByFid",
-    requestStream: false,
-    responseStream: false,
-    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: StorageLimitsResponse) => Buffer.from(StorageLimitsResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => StorageLimitsResponse.decode(value),
-  },
   /** Username Proof */
   getUsernameProof: {
     path: "/HubService/GetUsernameProof",
@@ -255,6 +237,16 @@ export const HubServiceService = {
     responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Message.decode(value),
   },
+  getSignersByFid: {
+    path: "/HubService/GetSignersByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
+  /** OnChain Events */
   getOnChainSigner: {
     path: "/HubService/GetOnChainSigner",
     requestStream: false,
@@ -264,14 +256,42 @@ export const HubServiceService = {
     responseSerialize: (value: OnChainEvent) => Buffer.from(OnChainEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => OnChainEvent.decode(value),
   },
-  getSignersByFid: {
-    path: "/HubService/GetSignersByFid",
+  getOnChainSignersByFid: {
+    path: "/HubService/GetOnChainSignersByFid",
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
-    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+    responseSerialize: (value: OnChainEventResponse) => Buffer.from(OnChainEventResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => OnChainEventResponse.decode(value),
+  },
+  getOnChainEvents: {
+    path: "/HubService/GetOnChainEvents",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: OnChainEventRequest) => Buffer.from(OnChainEventRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => OnChainEventRequest.decode(value),
+    responseSerialize: (value: OnChainEventResponse) => Buffer.from(OnChainEventResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => OnChainEventResponse.decode(value),
+  },
+  getIdRegistryOnChainEventByAddress: {
+    path: "/HubService/GetIdRegistryOnChainEventByAddress",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: IdRegistryEventByAddressRequest) =>
+      Buffer.from(IdRegistryEventByAddressRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => IdRegistryEventByAddressRequest.decode(value),
+    responseSerialize: (value: OnChainEvent) => Buffer.from(OnChainEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => OnChainEvent.decode(value),
+  },
+  getCurrentStorageLimitsByFid: {
+    path: "/HubService/GetCurrentStorageLimitsByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    responseSerialize: (value: StorageLimitsResponse) => Buffer.from(StorageLimitsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => StorageLimitsResponse.decode(value),
   },
   getIdRegistryEvent: {
     path: "/HubService/GetIdRegistryEvent",
@@ -464,8 +484,6 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getUserData: handleUnaryCall<UserDataRequest, Message>;
   getUserDataByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   getNameRegistryEvent: handleUnaryCall<NameRegistryEventRequest, NameRegistryEvent>;
-  getOnChainEvents: handleUnaryCall<OnChainEventRequest, OnChainEventResponse>;
-  getCurrentStorageLimitsByFid: handleUnaryCall<FidRequest, StorageLimitsResponse>;
   /** Username Proof */
   getUsernameProof: handleUnaryCall<UsernameProofRequest, UserNameProof>;
   getUserNameProofsByFid: handleUnaryCall<FidRequest, UsernameProofsResponse>;
@@ -474,8 +492,13 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getVerificationsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Signer */
   getSigner: handleUnaryCall<SignerRequest, Message>;
-  getOnChainSigner: handleUnaryCall<SignerRequest, OnChainEvent>;
   getSignersByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  /** OnChain Events */
+  getOnChainSigner: handleUnaryCall<SignerRequest, OnChainEvent>;
+  getOnChainSignersByFid: handleUnaryCall<FidRequest, OnChainEventResponse>;
+  getOnChainEvents: handleUnaryCall<OnChainEventRequest, OnChainEventResponse>;
+  getIdRegistryOnChainEventByAddress: handleUnaryCall<IdRegistryEventByAddressRequest, OnChainEvent>;
+  getCurrentStorageLimitsByFid: handleUnaryCall<FidRequest, StorageLimitsResponse>;
   getIdRegistryEvent: handleUnaryCall<IdRegistryEventRequest, IdRegistryEvent>;
   getIdRegistryEventByAddress: handleUnaryCall<IdRegistryEventByAddressRequest, IdRegistryEvent>;
   getFids: handleUnaryCall<FidsRequest, FidsResponse>;
@@ -698,36 +721,6 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: NameRegistryEvent) => void,
   ): ClientUnaryCall;
-  getOnChainEvents(
-    request: OnChainEventRequest,
-    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
-  ): ClientUnaryCall;
-  getOnChainEvents(
-    request: OnChainEventRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
-  ): ClientUnaryCall;
-  getOnChainEvents(
-    request: OnChainEventRequest,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
-  ): ClientUnaryCall;
-  getCurrentStorageLimitsByFid(
-    request: FidRequest,
-    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
-  ): ClientUnaryCall;
-  getCurrentStorageLimitsByFid(
-    request: FidRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
-  ): ClientUnaryCall;
-  getCurrentStorageLimitsByFid(
-    request: FidRequest,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
-  ): ClientUnaryCall;
   /** Username Proof */
   getUsernameProof(
     request: UsernameProofRequest,
@@ -803,6 +796,22 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
   ): ClientUnaryCall;
+  getSignersByFid(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getSignersByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getSignersByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  /** OnChain Events */
   getOnChainSigner(
     request: SignerRequest,
     callback: (error: ServiceError | null, response: OnChainEvent) => void,
@@ -818,20 +827,65 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: OnChainEvent) => void,
   ): ClientUnaryCall;
-  getSignersByFid(
+  getOnChainSignersByFid(
     request: FidRequest,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
   ): ClientUnaryCall;
-  getSignersByFid(
+  getOnChainSignersByFid(
     request: FidRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
   ): ClientUnaryCall;
-  getSignersByFid(
+  getOnChainSignersByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
+  ): ClientUnaryCall;
+  getOnChainEvents(
+    request: OnChainEventRequest,
+    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
+  ): ClientUnaryCall;
+  getOnChainEvents(
+    request: OnChainEventRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
+  ): ClientUnaryCall;
+  getOnChainEvents(
+    request: OnChainEventRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
+  ): ClientUnaryCall;
+  getIdRegistryOnChainEventByAddress(
+    request: IdRegistryEventByAddressRequest,
+    callback: (error: ServiceError | null, response: OnChainEvent) => void,
+  ): ClientUnaryCall;
+  getIdRegistryOnChainEventByAddress(
+    request: IdRegistryEventByAddressRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: OnChainEvent) => void,
+  ): ClientUnaryCall;
+  getIdRegistryOnChainEventByAddress(
+    request: IdRegistryEventByAddressRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: OnChainEvent) => void,
+  ): ClientUnaryCall;
+  getCurrentStorageLimitsByFid(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentStorageLimitsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentStorageLimitsByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: StorageLimitsResponse) => void,
   ): ClientUnaryCall;
   getIdRegistryEvent(
     request: IdRegistryEventRequest,

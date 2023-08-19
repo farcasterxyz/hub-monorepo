@@ -18,16 +18,19 @@ import {
   getManyOnChainEvents,
   getOnChainEvent,
   getOnChainEventByKey,
+  getOnChainEventsPageByPrefix,
   makeIdRegisterEventByCustodyKey,
   makeIdRegisterEventByFidKey,
   makeOnChainEventIteratorPrefix,
   makeOnChainEventPrimaryKey,
+  makeOnChainEventSecondaryIteratorPrefix,
   makeSignerOnChainEventBySignerKey,
   putOnChainEventTransaction,
 } from "../db/onChainEvent.js";
 import { ok, ResultAsync } from "neverthrow";
-import { RootPrefix } from "../db/types.js";
+import { OnChainEventPostfix, RootPrefix } from "../db/types.js";
 import { getHubState, putHubState } from "../db/hubState.js";
+import { PageOptions } from "./types.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 
@@ -70,12 +73,44 @@ class OnChainEventStore {
     const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
     if (
       event.signerEventBody.eventType === SignerEventType.ADD &&
-      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.scheme)
+      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
     ) {
       return event;
     } else {
       throw new HubError("not_found", "no such active signer");
     }
+  }
+
+  async getFids(pageOptions: PageOptions = {}): Promise<{
+    fids: number[];
+    nextPageToken: Uint8Array | undefined;
+  }> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      return isIdRegisterOnChainEvent(event);
+    };
+    const result = await getOnChainEventsPageByPrefix(
+      this._db,
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.IdRegisterByFid),
+      filter,
+      pageOptions,
+    );
+    return { fids: result.events.map((event) => event.fid), nextPageToken: result.nextPageToken };
+  }
+
+  async getSignersByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<{ events: OnChainEvent[]; nextPageToken: Uint8Array | undefined }> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      // Return only active signers
+      return isSignerOnChainEvent(event) && event.signerEventBody.eventType === SignerEventType.ADD;
+    };
+    return getOnChainEventsPageByPrefix(
+      this._db,
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.SignerByFid, fid),
+      filter,
+      pageOptions,
+    );
   }
 
   async getIdRegisterEventByFid(fid: number): Promise<IdRegisterOnChainEvent> {

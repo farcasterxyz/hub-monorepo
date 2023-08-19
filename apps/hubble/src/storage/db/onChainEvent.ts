@@ -1,7 +1,9 @@
-import RocksDB, { Transaction } from "./rocksdb.js";
-import { OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
+import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
+import { HubError, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
 import { OnChainEventPostfix, RootPrefix } from "./types.js";
-import { makeFidKey } from "./message.js";
+import { getPageIteratorByPrefix, makeFidKey } from "./message.js";
+import { PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
+import { ResultAsync } from "neverthrow";
 
 // With a 2-second block time on optimism, 2^32 blocks is ~68 years
 export const BLOCK_NUMBER_BYTES = 4;
@@ -76,6 +78,14 @@ export const makeOnChainEventIteratorPrefix = (type: OnChainEventType, fid?: num
   return prefix;
 };
 
+export const makeOnChainEventSecondaryIteratorPrefix = (postfix: OnChainEventPostfix, fid?: number): Buffer => {
+  let prefix = Buffer.concat([Buffer.from([RootPrefix.OnChainEvent]), Buffer.from([postfix])]);
+  if (fid) {
+    prefix = Buffer.concat([prefix, makeFidKey(fid)]);
+  }
+  return prefix;
+};
+
 export const getOnChainEvent = async <T extends OnChainEvent>(
   db: RocksDB,
   type: OnChainEventType,
@@ -132,4 +142,50 @@ export const onChainEventSorter = (a: OnChainEvent, b: OnChainEvent): number => 
     return a.logIndex - b.logIndex;
   }
   return a.blockNumber - b.blockNumber;
+};
+
+export const getOnChainEventsPageByPrefix = async <T extends OnChainEvent>(
+  db: RocksDB,
+  prefix: Buffer,
+  filter: (event: OnChainEvent) => event is T,
+  pageOptions: PageOptions = {},
+): Promise<{
+  events: T[];
+  nextPageToken: Uint8Array | undefined;
+}> => {
+  const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
+
+  const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
+
+  const eventsPrimaryKeys: Buffer[] = [];
+
+  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
+    const [key, value] = await iterator.next();
+    return [key as Buffer, value as Buffer];
+  };
+
+  let iteratorFinished = false;
+  let lastPageToken: Uint8Array | undefined;
+  do {
+    const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
+    if (result.isErr()) {
+      iteratorFinished = true;
+      break;
+    }
+
+    const [key, value] = result.value;
+    lastPageToken = Uint8Array.from(key.subarray(prefix.length));
+    if (value) {
+      eventsPrimaryKeys.push(value);
+    }
+  } while (eventsPrimaryKeys.length < limit);
+
+  const events = (await getManyOnChainEvents<T>(db, eventsPrimaryKeys)).filter(filter);
+
+  await iterator.end();
+  if (!iteratorFinished) {
+    return { events: events, nextPageToken: lastPageToken };
+  } else {
+    return { events: events, nextPageToken: undefined };
+  }
 };

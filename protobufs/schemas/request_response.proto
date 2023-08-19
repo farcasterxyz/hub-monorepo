@@ -155,10 +155,14 @@ message RentRegistryEventsRequest {
 message OnChainEventRequest {
   uint64 fid = 1;
   OnChainEventType event_type = 2;
+  optional uint32 page_size = 3;
+  optional bytes page_token = 4;
+  optional bool reverse = 5;
 }
 
 message OnChainEventResponse {
   repeated OnChainEvent events = 1;
+  optional bytes next_page_token = 2;
 }
 
 message StorageLimitsResponse {

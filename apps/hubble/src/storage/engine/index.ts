@@ -320,24 +320,19 @@ class Engine {
   }
 
   async mergeOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {
-    if (
-      event.type === OnChainEventType.EVENT_TYPE_SIGNER ||
-      event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED ||
-      event.type === OnChainEventType.EVENT_TYPE_ID_REGISTER ||
-      event.type === OnChainEventType.EVENT_TYPE_STORAGE_RENT
-    ) {
-      const result = await ResultAsync.fromPromise(
-        this._onchainEventsStore.mergeOnChainEvent(event),
-        (e) => e as HubError,
-      );
-      if (result.isOk() && isSignerMigratedOnChainEvent(event)) {
-        this._signerMigratedAt = event.signerMigratedEventBody.migratedAt;
-        this.eventHandler.signerMigrated(event.signerMigratedEventBody.migratedAt);
-      }
-      return result;
+    const eventResult = await this.validateOnChainEvent(event);
+    if (eventResult.isErr()) {
+      return err(eventResult.error);
     }
-
-    return err(new HubError("bad_request.validation_failure", "invalid event type"));
+    const mergeResult = await ResultAsync.fromPromise(
+      this._onchainEventsStore.mergeOnChainEvent(event),
+      (e) => e as HubError,
+    );
+    if (mergeResult.isOk() && isSignerMigratedOnChainEvent(event)) {
+      this._signerMigratedAt = event.signerMigratedEventBody.migratedAt;
+      this.eventHandler.signerMigrated(event.signerMigratedEventBody.migratedAt);
+    }
+    return mergeResult;
   }
 
   async mergeUserNameProof(usernameProof: UserNameProof): HubAsyncResult<number> {
@@ -703,6 +698,15 @@ class Engine {
     return ResultAsync.fromPromise(this._onchainEventsStore.getActiveSigner(fid, signerPubKey), (e) => e as HubError);
   }
 
+  async getOnChainSignersByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<OnChainEventResponse> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._onchainEventsStore.getSignersByFid(fid, pageOptions), (e) => e as HubError);
+  }
+
   async getSignersByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<MessagesPage<SignerAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -720,11 +724,22 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEventByAddress(address), (e) => e as HubError);
   }
 
+  async getIdRegistryOnChainEventByAddress(address: Uint8Array): HubAsyncResult<OnChainEvent> {
+    return ResultAsync.fromPromise(
+      this._onchainEventsStore.getIdRegisterEventByCustodyAddress(address),
+      (e) => e as HubError,
+    );
+  }
+
   async getFids(pageOptions: PageOptions = {}): HubAsyncResult<{
     fids: number[];
     nextPageToken: Uint8Array | undefined;
   }> {
-    return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
+    if (this._signerMigratedAt) {
+      return ResultAsync.fromPromise(this._onchainEventsStore.getFids(pageOptions), (e) => e as HubError);
+    } else {
+      return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
+    }
   }
 
   async getAllSignerMessagesByFid(
@@ -944,6 +959,24 @@ class Engine {
   /* -------------------------------------------------------------------------- */
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
+
+  private async validateOnChainEvent(event: OnChainEvent): HubAsyncResult<OnChainEvent> {
+    if (!event) {
+      return err(new HubError("bad_request.validation_failure", "event is missing"));
+    }
+
+    if (
+      !(
+        event.type === OnChainEventType.EVENT_TYPE_SIGNER ||
+        event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED ||
+        event.type === OnChainEventType.EVENT_TYPE_ID_REGISTER ||
+        event.type === OnChainEventType.EVENT_TYPE_STORAGE_RENT
+      )
+    ) {
+      return err(new HubError("bad_request.validation_failure", "invalid event type"));
+    }
+    return ok(event);
+  }
 
   private async validateMessage(message: Message): HubAsyncResult<Message> {
     // 1. Ensure message data is present

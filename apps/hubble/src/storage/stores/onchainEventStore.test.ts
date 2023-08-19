@@ -213,7 +213,7 @@ describe("OnChainEventStore", () => {
       const signer = Factories.SignerOnChainEvent.build({
         signerEventBody: Factories.SignerEventBody.build({
           eventType: SignerEventType.ADD,
-          scheme: 2,
+          keyType: 2,
         }),
       });
       await set.mergeOnChainEvent(signer);
@@ -277,6 +277,43 @@ describe("OnChainEventStore", () => {
       expect(await set.getIdRegisterEventByCustodyAddress(idRegistryEvent.idRegisterEventBody.to)).toEqual(
         idRegistryEvent,
       );
+    });
+  });
+
+  describe("getSignersByFid", () => {
+    test("succeeds", async () => {
+      const firstSigner = Factories.SignerOnChainEvent.build();
+      const secondSigner = Factories.SignerOnChainEvent.build({
+        fid: firstSigner.fid,
+      });
+
+      await set.mergeOnChainEvent(firstSigner);
+      await set.mergeOnChainEvent(secondSigner);
+      const events = (await set.getSignersByFid(firstSigner.fid)).events;
+      expect(events.length).toEqual(2);
+      expect(events).toContainEqual(firstSigner);
+      expect(events).toContainEqual(secondSigner);
+    });
+    test("only returns active signers", async () => {
+      const firstSigner = Factories.SignerOnChainEvent.build();
+      const secondSigner = Factories.SignerOnChainEvent.build({
+        fid: firstSigner.fid + 1,
+        signerEventBody: Factories.SignerEventBody.build({
+          key: firstSigner.signerEventBody.key,
+        }),
+      });
+      const secondSignerRemoval = Factories.SignerOnChainEvent.build({
+        fid: firstSigner.fid + 1,
+        signerEventBody: Factories.SignerEventBody.build({
+          eventType: SignerEventType.REMOVE,
+          key: firstSigner.signerEventBody.key,
+        }),
+      });
+
+      await set.mergeOnChainEvent(firstSigner);
+      await set.mergeOnChainEvent(secondSigner);
+      await set.mergeOnChainEvent(secondSignerRemoval);
+      expect((await set.getSignersByFid(firstSigner.fid)).events).toEqual([firstSigner]);
     });
   });
 
