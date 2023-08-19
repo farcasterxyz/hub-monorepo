@@ -33,14 +33,6 @@ self_upgrade() {
     rm -f "$TMP_FILE"  # Clean up temporary file
 }
 
-# Check the command-line argument for 'self-upgrade'
-if [ "$1" == "self-upgrade" ]; then
-    self_upgrade
-    exit 0
-fi
-
-# The rest of your script logic goes here
-echo "Running script version $CURRENT_VERSION"
 
 # Fetch the @latest docker-compose file
 REPO="farcasterxyz/hub-monorepo"
@@ -50,7 +42,7 @@ LATEST_TAG="@latest"
 
 fetch_latest_docker_compose() {
     # Fetch the commit SHA associated with the @latest tag
-    LATEST_COMMIT_SHA=$(curl -s "$API_BASE/git/refs/tags/$LATEST_TAG" | grep sha | head -n 1 | cut -d '"' -f 4)
+    LATEST_COMMIT_SHA=$(curl -sS "$API_BASE/git/refs/tags/$LATEST_TAG" | grep sha | head -n 1 | cut -d '"' -f 4)
 
     # If there's no such tag, exit
     if [ -z "$LATEST_COMMIT_SHA" ]; then
@@ -59,7 +51,7 @@ fetch_latest_docker_compose() {
     fi
 
     # Fetch the docker-compose.yml file associated with the latest tag
-    LATEST_FILE_CONTENT=$(curl -s "$API_BASE/contents/$FILE_PATH?ref=$LATEST_COMMIT_SHA")
+    LATEST_FILE_CONTENT=$(curl -sS "$API_BASE/contents/$FILE_PATH?ref=$LATEST_COMMIT_SHA")
     DOWNLOAD_URL=$(echo "$LATEST_FILE_CONTENT" | grep download_url | cut -d '"' -f 4)
 
     if [ -z "$DOWNLOAD_URL" ]; then
@@ -68,43 +60,65 @@ fetch_latest_docker_compose() {
     fi
 
     # Download the file
-    curl -o docker-compose-latest.yml "$DOWNLOAD_URL"
-    echo "Latest docker-compose.yml downloaded as docker-compose-latest.yml"
+    curl -sS -o docker-compose.yml "$DOWNLOAD_URL"
+    echo "✅ Latest docker-compose.yml"
 }
+
 
 validate_and_store() {
     local rpc_name=$1
     local expected_chain_id=$2
 
     while true; do
-        read -p "Enter your $rpc_name Ethereum RPC URL: " RPC_URL
+        read -p "> Enter your $rpc_name Ethereum RPC URL: " RPC_URL
         RESPONSE=$(curl -s -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' $RPC_URL)
 
         # Convert both the response and expected chain ID to lowercase for comparison
-        local lower_response=${RESPONSE,,}
-        local lower_expected_chain_id=${expected_chain_id,,}
+        local lower_response=$(echo "$RESPONSE" | tr '[:upper:]' '[:lower:]')
+        local lower_expected_chain_id=$(echo "$expected_chain_id" | tr '[:upper:]' '[:lower:]')
+
 
         if [[ $lower_response == *'"result":"'$lower_expected_chain_id'"'* ]]; then
-            echo "$rpc_name RPC URL is valid and the chainID is $expected_chain_id."
-            echo "$3=$RPC_URL" >> .env
+            echo "$3=$RPC_URL" >> .script.env
             break
         else
-            echo "Invalid $rpc_name Ethereum RPC URL or chainID is not $expected_chain_id. Please retry."
+            echo "!!! Invalid !!!"
+            echo "$rpc_name Ethereum RPC URL or chainID is not $expected_chain_id. Please retry."
             echo "You can signup for a free account at Alchemy or Infura if you need an RPC provider"
+            echo "Server returned \"$RESPONSE\""
         fi
     done
 }
 
-# Clear or create the .env file
-> .script.env
+key_exists() {
+    local key=$1
+    grep -q "^$key=" .env
+    return $?
+}
 
-echo "NETWORK=1" >> .env
+write_env_file() {
+    if [[ ! -f .env ]]; then
+        touch .env
+    fi
 
-# Validate and store Ethereum Mainnet (example chainID: 0x1)
-validate_and_store "Ethereum Mainnet" "0x1" "ETH_MAINNET_RPC_URL"
+    if ! key_exists "FC_NETWORK_ID"; then
+        echo "FC_NETWORK_ID=1" >> .env
+    fi
 
-# Validate and store Optimism (as per your instruction, example chainID: 0x5)
-validate_and_store "Optimism Mainnet" "0xa" "ETH_RPC_URL"
+    if ! key_exists "STATSD_METRICS_SERVER"; then
+        echo "STATSD_METRICS_SERVER=http://statsd:8125" >> .env
+    fi
+
+    if ! key_exists "ETH_MAINNET_RPC_URL"; then
+        validate_and_store "Ethereum Mainnet" "0x1" "ETH_MAINNET_RPC_URL"
+    fi
+
+    if ! key_exists "ETH_RPC_URL"; then
+        validate_and_store "Optimism Mainnet" "0x5" "ETH_RPC_URL"
+    fi
+
+    echo "✅ .env file is updated."
+}
 
 ## Configure Grafana
 setup_grafana() {
@@ -161,4 +175,23 @@ setup_grafana() {
          --data-binary @grafana-dashboard.json
 }
 
-setup_grafana
+# Check the command-line argument for 'self-upgrade'
+if [ "$1" == "self-upgrade" ]; then
+    self_upgrade
+    exit 0
+fi
+
+# The rest of your script logic goes here
+echo "hubble.sh version $CURRENT_VERSION"
+
+# Ensure the ~/hubble directory exists
+if [ ! -d ~/hubble ]; then
+    mkdir -p ~/hubble || { echo "Failed to create ~/hubble directory."; exit 1; }
+fi
+
+# Ensure the script runs in the ~/hubble directory
+cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
+
+write_env_file
+
+fetch_latest_docker_compose
