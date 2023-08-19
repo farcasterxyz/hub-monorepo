@@ -2,87 +2,80 @@
 
 # Define the version of this script
 CURRENT_VERSION="1"
-
-# Fetch the @latest docker-compose file
 REPO="farcasterxyz/hub-monorepo"
 API_BASE="https://api.github.com/repos/$REPO"
 LATEST_TAG="@latest"
 
 DOCKER_COMPOSE_FILE_PATH="apps/hubble/docker-compose.yml"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
+GRAFANA_DASHBOARD_JSON_PATH="scripts/gradana-dashboard.json"
 
+# Fetch the commit SHA associated with the @latest tag
+fetch_latest_commit_sha() {
+    local sha
+    sha=$(curl -sS "$API_BASE/git/refs/tags/$LATEST_TAG" | grep sha | head -n 1 | cut -d '"' -f 4)
 
-# Function to check and upgrade the script
-
-self_upgrade() {
-    echo "Checking for newer version..."
-
-    # Fetch the commit SHA associated with the @latest tag
-    LATEST_COMMIT_SHA=$(curl -sS "$API_BASE/git/refs/tags/$LATEST_TAG" | grep sha | head -n 1 | cut -d '"' -f 4)
-
-    # If there's no such tag, exit
-    if [ -z "$LATEST_COMMIT_SHA" ]; then
+    if [ -z "$sha" ]; then
         echo "No @latest tag found."
         exit 1
     fi
-
-    # Fetch the script file associated with the latest tag
-    LATEST_FILE_CONTENT=$(curl -sS "$API_BASE/contents/$SCRIPT_FILE_PATH?ref=$LATEST_COMMIT_SHA")
-    DOWNLOAD_URL=$(echo "$LATEST_FILE_CONTENT" | grep download_url | cut -d '"' -f 4)
-
-    if [ -z "$DOWNLOAD_URL" ]; then
-        echo "Failed to fetch the script."
-        exit 1
-    fi
-
-    # Download the script to a temporary location
-    TMP_FILE=$(mktemp)
-    if curl -sS -o "$TMP_FILE" "$DOWNLOAD_URL"; then
-        # Extract the version from the fetched script
-        LATEST_VERSION=$(grep -oP '^CURRENT_VERSION="\K[^"]+' "$TMP_FILE")
-
-        # Compare the versions
-        if [[ "$LATEST_VERSION" > "$CURRENT_VERSION" ]]; then
-            echo "Newer version found ($LATEST_VERSION). Upgrading..."
-            mv "$TMP_FILE" "$0" # Overwrite the current script
-            chmod +x "$0"       # Ensure the script remains executable
-            echo "Upgrade complete. Restarting with new version..."
-            exec "$0" "$@"
-        else
-            echo "✅ Script version ($CURRENT_VERSION)."
-            rm -f "$TMP_FILE"  # Clean up temporary file if no upgrade was needed
-        fi
-    else
-        echo "Failed to check for newer version. Please try again later."
-        rm -f "$TMP_FILE"  # Clean up temporary file on failure
-        exit 1
-    fi
+    echo "$sha"
 }
 
+# Fetch file from repo at a given commit SHA
+fetch_file_from_repo_at_sha() {
+    local file_path="$1"
+    local local_filename="$2"
+    local commit_sha="$3"
 
+    local latest_file_content download_url
+    latest_file_content=$(curl -sS "$API_BASE/contents/$file_path?ref=$commit_sha")
+    download_url=$(echo "$latest_file_content" | grep download_url | cut -d '"' -f 4)
 
-fetch_latest_docker_compose() {
-    # Fetch the commit SHA associated with the @latest tag
-    LATEST_COMMIT_SHA=$(curl -sS "$API_BASE/git/refs/tags/$LATEST_TAG" | grep sha | head -n 1 | cut -d '"' -f 4)
-
-    # If there's no such tag, exit
-    if [ -z "$LATEST_COMMIT_SHA" ]; then
-        echo "No @latest tag found."
-        exit 1
-    fi
-
-    # Fetch the docker-compose.yml file associated with the latest tag
-    LATEST_FILE_CONTENT=$(curl -sS "$API_BASE/contents/$DOCKER_COMPOSE_FILE_PATH?ref=$LATEST_COMMIT_SHA")
-    DOWNLOAD_URL=$(echo "$LATEST_FILE_CONTENT" | grep download_url | cut -d '"' -f 4)
-
-    if [ -z "$DOWNLOAD_URL" ]; then
-        echo "Failed to fetch the file."
+    if [ -z "$download_url" ]; then
+        echo "Failed to fetch $local_filename."
         exit 1
     fi
 
     # Download the file
-    curl -sS -o docker-compose.yml "$DOWNLOAD_URL"
-    echo "✅ Latest docker-compose.yml"
+    curl -sS -o "$local_filename" "$download_url"
+    echo "✅ Latest $local_filename downloaded."
+}
+
+# Upgrade the script
+self_upgrade() {
+    echo "Checking for newer version..."
+
+    local latest_commit_sha
+    latest_commit_sha=$(fetch_latest_commit_sha)
+
+    local tmp_file
+    tmp_file=$(mktemp)
+    fetch_file_from_repo_at_sha "$SCRIPT_FILE_PATH" "$tmp_file" "$latest_commit_sha"
+
+    local latest_version
+    latest_version=$(grep -oP '^CURRENT_VERSION="\K[^"]+' "$tmp_file")
+
+    # Compare the versions
+    if [[ "$latest_version" > "$CURRENT_VERSION" ]]; then
+        echo "Newer version found ($latest_version). Upgrading..."
+        mv "$tmp_file" "$0" # Overwrite the current script
+        chmod +x "$0"       # Ensure the script remains executable
+        echo "Upgrade complete. Restarting with new version..."
+        exec "$0" "$@"
+    else
+        echo "✅ Script version ($CURRENT_VERSION)."
+        rm -f "$tmp_file"  # Clean up temporary file if no upgrade was needed
+    fi
+}
+
+# Fetch the docker-compose.yml and grafana-dashboard.json files
+fetch_latest_docker_compose_and_dashboard() {
+    local latest_commit_sha
+    latest_commit_sha=$(fetch_latest_commit_sha)
+
+    fetch_file_from_repo_at_sha "$DOCKER_COMPOSE_FILE_PATH" "docker-compose.yml" "$latest_commit_sha"
+    fetch_file_from_repo_at_sha "$GRAFANA_DASHBOARD_JSON_PATH" "grafana-dashboard.json" "$latest_commit_sha"
 }
 
 
