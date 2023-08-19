@@ -107,7 +107,7 @@ class OnChainEventStore {
     };
     return getOnChainEventsPageByPrefix(
       this._db,
-      makeSignerOnChainEventBySignerKey(fid, Buffer.from([])),
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.SignerByFid, fid),
       filter,
       pageOptions,
     );
