@@ -6,11 +6,8 @@ import {
   IdRegisterOnChainEvent,
   isIdRegisterOnChainEvent,
   isSignerOnChainEvent,
-  Message,
   OnChainEvent,
-  OnChainEventResponse,
   OnChainEventType,
-  SignerAddMessage,
   SignerEventType,
   SignerMigratedOnChainEvent,
   SignerOnChainEvent,
@@ -26,14 +23,14 @@ import {
   makeIdRegisterEventByFidKey,
   makeOnChainEventIteratorPrefix,
   makeOnChainEventPrimaryKey,
+  makeOnChainEventSecondaryIteratorPrefix,
   makeSignerOnChainEventBySignerKey,
   putOnChainEventTransaction,
 } from "../db/onChainEvent.js";
 import { ok, ResultAsync } from "neverthrow";
-import { RootPrefix } from "../db/types.js";
+import { OnChainEventPostfix, RootPrefix } from "../db/types.js";
 import { getHubState, putHubState } from "../db/hubState.js";
-import { getMessagesPageByPrefix } from "../db/message.js";
-import { MessagesPage, PageOptions } from "./types.js";
+import { PageOptions } from "./types.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 
@@ -84,7 +81,26 @@ class OnChainEventStore {
     }
   }
 
-  async getSignersByFid(fid: number, pageOptions: PageOptions = {}): Promise<OnChainEventResponse> {
+  async getFids(pageOptions: PageOptions = {}): Promise<{
+    fids: number[];
+    nextPageToken: Uint8Array | undefined;
+  }> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      return isIdRegisterOnChainEvent(event);
+    };
+    const result = await getOnChainEventsPageByPrefix(
+      this._db,
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.IdRegisterByFid),
+      filter,
+      pageOptions,
+    );
+    return { fids: result.events.map((event) => event.fid), nextPageToken: result.nextPageToken };
+  }
+
+  async getSignersByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<{ events: OnChainEvent[]; nextPageToken: Uint8Array | undefined }> {
     const filter = (event: OnChainEvent): event is OnChainEvent => {
       // Return only active signers
       return isSignerOnChainEvent(event) && event.signerEventBody.eventType === SignerEventType.ADD;

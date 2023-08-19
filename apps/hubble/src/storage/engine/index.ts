@@ -735,8 +735,11 @@ class Engine {
     fids: number[];
     nextPageToken: Uint8Array | undefined;
   }> {
-    // TODO: Handle migration
-    return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
+    if (this._signerMigratedAt) {
+      return ResultAsync.fromPromise(this._onchainEventsStore.getFids(pageOptions), (e) => e as HubError);
+    } else {
+      return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
+    }
   }
 
   async getAllSignerMessagesByFid(

@@ -1,5 +1,5 @@
 import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
-import { HubError, OnChainEvent, OnChainEventResponse, OnChainEventType } from "@farcaster/hub-nodejs";
+import { HubError, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
 import { OnChainEventPostfix, RootPrefix } from "./types.js";
 import { getPageIteratorByPrefix, makeFidKey } from "./message.js";
 import { PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
@@ -78,6 +78,14 @@ export const makeOnChainEventIteratorPrefix = (type: OnChainEventType, fid?: num
   return prefix;
 };
 
+export const makeOnChainEventSecondaryIteratorPrefix = (postfix: OnChainEventPostfix, fid?: number): Buffer => {
+  let prefix = Buffer.concat([Buffer.from([RootPrefix.OnChainEvent]), Buffer.from([postfix])]);
+  if (fid) {
+    prefix = Buffer.concat([prefix, makeFidKey(fid)]);
+  }
+  return prefix;
+};
+
 export const getOnChainEvent = async <T extends OnChainEvent>(
   db: RocksDB,
   type: OnChainEventType,
@@ -141,16 +149,19 @@ export const getOnChainEventsPageByPrefix = async <T extends OnChainEvent>(
   prefix: Buffer,
   filter: (event: OnChainEvent) => event is T,
   pageOptions: PageOptions = {},
-): Promise<OnChainEventResponse> => {
+): Promise<{
+  events: T[];
+  nextPageToken: Uint8Array | undefined;
+}> => {
   const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
 
   const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
-  const events: T[] = [];
+  const eventsPrimaryKeys: Buffer[] = [];
 
-  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, OnChainEvent]> => {
+  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
     const [key, value] = await iterator.next();
-    return [key as Buffer, OnChainEvent.decode(new Uint8Array(value as Buffer))];
+    return [key as Buffer, value as Buffer];
   };
 
   let iteratorFinished = false;
@@ -162,12 +173,14 @@ export const getOnChainEventsPageByPrefix = async <T extends OnChainEvent>(
       break;
     }
 
-    const [key, message] = result.value;
+    const [key, value] = result.value;
     lastPageToken = Uint8Array.from(key.subarray(prefix.length));
-    if (filter(message)) {
-      events.push(message);
+    if (value) {
+      eventsPrimaryKeys.push(value);
     }
-  } while (events.length < limit);
+  } while (eventsPrimaryKeys.length < limit);
+
+  const events = (await getManyOnChainEvents<T>(db, eventsPrimaryKeys)).filter(filter);
 
   await iterator.end();
   if (!iteratorFinished) {

@@ -14,6 +14,9 @@ import {
   FidsRequest,
   SignerOnChainEvent,
   OnChainEvent,
+  OnChainEventResponse,
+  SignerEventType,
+  IdRegistryEventByAddressRequest,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import SyncEngine from "../../network/sync/syncEngine.js";
@@ -44,6 +47,15 @@ afterAll(async () => {
 
 const assertMessagesMatchResult = (result: HubResult<MessagesResponse>, messages: Message[]) => {
   expect(result._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(messages.map((m) => Message.toJSON(m)));
+};
+
+const assertOnChainEventsMatchResult = (result: HubResult<OnChainEventResponse>, events: OnChainEvent[]) => {
+  expect(
+    result
+      ._unsafeUnwrap()
+      .events.sort((a, b) => a.blockNumber - b.blockNumber)
+      .map((e: OnChainEvent) => OnChainEvent.toJSON(e)),
+  ).toEqual(events.map((e) => OnChainEvent.toJSON(e)));
 };
 
 const fid = Factories.Fid.build();
@@ -193,6 +205,74 @@ describe("getSignersByFid", () => {
   });
 });
 
+describe("getOnChainSignersByFid", () => {
+  let signer2Key: Uint8Array;
+  let onChainSigner2: OnChainEvent;
+  let differentFidSignerEvent: OnChainEvent;
+  beforeEach(async () => {
+    signer2Key = (await Factories.Ed25519Signer.build().getSignerKey())._unsafeUnwrap();
+    onChainSigner2 = Factories.SignerOnChainEvent.build({
+      fid: fid,
+      blockNumber: onChainSigner.blockNumber + 1,
+      signerEventBody: Factories.SignerEventBody.build({
+        key: signer2Key,
+      }),
+    });
+    differentFidSignerEvent = Factories.SignerOnChainEvent.build({
+      fid: fid + 1,
+      signerEventBody: Factories.SignerEventBody.build({
+        key: (await Factories.Ed25519Signer.build().getSignerKey())._unsafeUnwrap(),
+      }),
+    });
+
+    await engine.mergeOnChainEvent(onChainSigner);
+    await engine.mergeOnChainEvent(onChainSigner2);
+    await engine.mergeOnChainEvent(differentFidSignerEvent);
+  });
+  test("succeeds", async () => {
+    const result = await client.getOnChainSignersByFid(FidRequest.create({ fid }));
+    assertOnChainEventsMatchResult(result, [onChainSigner, onChainSigner2]);
+  });
+
+  test("returns pageSize messages", async () => {
+    const result = await client.getOnChainSignersByFid(FidRequest.create({ fid, pageSize: 1 }));
+    expect(result._unsafeUnwrap().events).toHaveLength(1);
+  });
+
+  test("returns all messages when pageSize > messages count", async () => {
+    const result = await client.getOnChainSignersByFid(FidRequest.create({ fid, pageSize: 3 }));
+    assertOnChainEventsMatchResult(result, [onChainSigner, onChainSigner2]);
+  });
+
+  test("returns results after pageToken", async () => {
+    const page1Result = await client.getOnChainSignersByFid(FidRequest.create({ fid, pageSize: 1 }));
+    const page2Result = await client.getOnChainSignersByFid(
+      FidRequest.create({ fid, pageToken: page1Result._unsafeUnwrap().nextPageToken }),
+    );
+    expect(page2Result._unsafeUnwrap().events).toHaveLength(1);
+    expect(page2Result._unsafeUnwrap().events).not.toContainEqual(page1Result._unsafeUnwrap().events[0]);
+  });
+
+  test("returns empty array without messages", async () => {
+    const result = await client.getOnChainSignersByFid(FidRequest.create({ fid: fid - 1 }));
+    expect(result._unsafeUnwrap().events).toEqual([]);
+  });
+
+  test("returns only active signers", async () => {
+    const revokeSigner1 = Factories.SignerOnChainEvent.build({
+      fid: fid,
+      blockNumber: onChainSigner.blockNumber + 2,
+      signerEventBody: Factories.SignerEventBody.build({
+        key: signerKey,
+        eventType: SignerEventType.REMOVE,
+      }),
+    });
+    await engine.mergeOnChainEvent(revokeSigner1);
+    const result = await client.getOnChainSignersByFid(FidRequest.create({ fid }));
+    assertOnChainEventsMatchResult(result, [onChainSigner2]);
+  });
+});
+
 describe("getIdRegistryEvent", () => {
   test("succeeds", async () => {
     await engine.mergeIdRegistryEvent(custodyEvent);
@@ -202,6 +282,24 @@ describe("getIdRegistryEvent", () => {
 
   test("fails when event is missing", async () => {
     const result = await client.getIdRegistryEvent(FidRequest.create({ fid }));
+    expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
+  });
+});
+
+describe("getIdRegistryOnChainEventByAddress", () => {
+  test("succeeds", async () => {
+    const onChainCustodyEvent = Factories.IdRegistryOnChainEvent.build();
+    await engine.mergeOnChainEvent(onChainCustodyEvent);
+    const result = await client.getIdRegistryOnChainEventByAddress(
+      IdRegistryEventByAddressRequest.create({ address: onChainCustodyEvent.idRegisterEventBody.to }),
+    );
+    expect(OnChainEvent.toJSON(result._unsafeUnwrap())).toEqual(OnChainEvent.toJSON(onChainCustodyEvent));
+  });
+
+  test("fails when event is missing", async () => {
+    const result = await client.getIdRegistryOnChainEventByAddress(
+      IdRegistryEventByAddressRequest.create({ address: custodyEvent.to }),
+    );
     expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
 });
@@ -239,7 +337,25 @@ describe("getFids", () => {
   });
 
   test("returns empty array without events", async () => {
+    // Before migration, onchain events don't matter
+    await engine.mergeOnChainEvent(Factories.IdRegistryOnChainEvent.build({ fid: custodyEvent.fid }));
     const result = await client.getFids(FidsRequest.create());
     expect(result._unsafeUnwrap().fids).toEqual([]);
+  });
+
+  describe("after migration", () => {
+    beforeEach(async () => {
+      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeOnChainEvent(Factories.IdRegistryOnChainEvent.build({ fid: custodyEvent.fid }));
+      await engine.mergeOnChainEvent(Factories.IdRegistryOnChainEvent.build({ fid: custodyEvent2.fid }));
+      await engine.mergeOnChainEvent(Factories.SignerMigratedOnChainEvent.build());
+    });
+    test("returns results based on onChainEvents", async () => {
+      const fid3 = custodyEvent2.fid + 1;
+      await engine.mergeOnChainEvent(Factories.IdRegistryOnChainEvent.build({ fid: fid3 }));
+      const result = await client.getFids(FidsRequest.create());
+      // expect(result._unsafeUnwrapErr()).toBeUndefined();
+      expect(result._unsafeUnwrap().fids).toEqual([custodyEvent.fid, custodyEvent2.fid, fid3]);
+    });
   });
 });
