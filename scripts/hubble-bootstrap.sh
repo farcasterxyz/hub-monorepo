@@ -4,24 +4,72 @@
 # Simply run the following command to install the latest version of hubble:
 # curl <file location> | bash
 
-REPO="adityapk00/hub"
+REPO="farcasterxyz/hub-monorepo"
 API_BASE="https://api.github.com/repos/$REPO"
 LATEST_TAG="@latest"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
+
+install_jq() {
+    if command -v jq >/dev/null 2>&1; then
+        echo "✅ Dependencies are installed."
+        return 0
+    fi
+
+    echo "Installing jq..."
+
+    # macOS
+    if [[ "$(uname)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            brew install jq
+        else
+            echo "Homebrew is not installed. Please install Homebrew first."
+            return 1
+        fi
+
+    # Ubuntu/Debian
+    elif [[ -f /etc/lsb-release ]] || [[ -f /etc/debian_version ]]; then
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+    # RHEL/CentOS
+    elif [[ -f /etc/redhat-release ]]; then
+        sudo yum install -y jq
+
+    # Fedora
+    elif [[ -f /etc/fedora-release ]]; then
+        sudo dnf install -y jq
+
+    # openSUSE
+    elif [[ -f /etc/os-release ]] && grep -q "ID=openSUSE" /etc/os-release; then
+        sudo zypper install -y jq
+
+    # Arch Linux
+    elif [[ -f /etc/arch-release ]]; then
+        sudo pacman -S jq
+
+    else
+        echo "Unsupported operating system. Please install jq manually."
+        return 1
+    fi
+
+    echo "✅ jq installed successfully."
+}
 
 # Fetch the commit SHA associated with the @latest tag
 fetch_latest_commit_sha() {
     local sha response
 
     response=$(curl -sS "$API_BASE/git/refs/tags/$LATEST_TAG")
-    
-    if echo "$response" | grep -q "API rate limit exceeded"; then
+
+    # Check for rate limit
+    if echo "$response" | jq -e 'if (.message? // empty) | contains("API rate limit exceeded") then true else false end' >/dev/null; then
         echo "$response"
         echo "❌ Github Rate Limit Exceeded. Please wait an hour and try again."
         exit 1
     fi
 
-    sha=$(echo "$response" | grep sha | head -n 1 | cut -d '"' -f 4)
+    # Extract sha from the response
+    sha=$(echo "$response" | jq -r '.object.sha')
 
     if [ -z "$sha" ]; then
         echo "No @latest tag found. $sha"
@@ -40,7 +88,7 @@ fetch_file_from_repo_at_sha() {
     local latest_file_content download_url
 
     latest_file_content=$(curl -sS "$API_BASE/contents/$file_path?ref=$commit_sha")
-    download_url=$(echo "$latest_file_content" | grep download_url | cut -d '"' -f 4)
+    download_url=$(echo "$latest_file_content" | jq -r '.download_url')
 
     if [ -z "$download_url" ]; then
         echo "Failed to fetch $local_filename."
@@ -73,6 +121,9 @@ do_bootstrap() {
     set -x
     exec ~/hubble/hubble.sh "upgrade" < /dev/tty
 }
+
+# Install jq
+install_jq
 
 # Bootstrap
 do_bootstrap

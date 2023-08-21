@@ -15,19 +15,67 @@ DOCKER_COMPOSE_FILE_PATH="apps/hubble/docker-compose.yml"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
 GRAFANA_DASHBOARD_JSON_PATH="scripts/grafana-dashboard.json"
 
+install_jq() {
+    if command -v jq >/dev/null 2>&1; then
+        echo "✅ Dependencies are installed."
+        return 0
+    fi
+
+    echo "Installing jq..."
+
+    # macOS
+    if [[ "$(uname)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            brew install jq
+        else
+            echo "Homebrew is not installed. Please install Homebrew first."
+            return 1
+        fi
+
+    # Ubuntu/Debian
+    elif [[ -f /etc/lsb-release ]] || [[ -f /etc/debian_version ]]; then
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+    # RHEL/CentOS
+    elif [[ -f /etc/redhat-release ]]; then
+        sudo yum install -y jq
+
+    # Fedora
+    elif [[ -f /etc/fedora-release ]]; then
+        sudo dnf install -y jq
+
+    # openSUSE
+    elif [[ -f /etc/os-release ]] && grep -q "ID=openSUSE" /etc/os-release; then
+        sudo zypper install -y jq
+
+    # Arch Linux
+    elif [[ -f /etc/arch-release ]]; then
+        sudo pacman -S jq
+
+    else
+        echo "Unsupported operating system. Please install jq manually."
+        return 1
+    fi
+
+    echo "✅ jq installed successfully."
+}
+
 # Fetch the commit SHA associated with the @latest tag
 fetch_latest_commit_sha() {
     local sha response
 
     response=$(curl -sS "$API_BASE/git/refs/tags/$LATEST_TAG")
-    
-    if echo "$response" | grep -q "API rate limit exceeded"; then
+
+    # Check for rate limit
+    if echo "$response" | jq -e 'if (.message? // empty) | contains("API rate limit exceeded") then true else false end' >/dev/null; then
         echo "$response"
         echo "❌ Github Rate Limit Exceeded. Please wait an hour and try again."
         exit 1
     fi
 
-    sha=$(echo "$response" | grep sha | head -n 1 | cut -d '"' -f 4)
+    # Extract sha from the response
+    sha=$(echo "$response" | jq -r '.object.sha')
 
     if [ -z "$sha" ]; then
         echo "No @latest tag found. $sha"
@@ -46,7 +94,7 @@ fetch_file_from_repo_at_sha() {
     local latest_file_content download_url
 
     latest_file_content=$(curl -sS "$API_BASE/contents/$file_path?ref=$commit_sha")
-    download_url=$(echo "$latest_file_content" | grep download_url | cut -d '"' -f 4)
+    download_url=$(echo "$latest_file_content" | jq -r '.download_url')
 
     if [ -z "$download_url" ]; then
         echo "Failed to fetch $local_filename."
@@ -188,9 +236,10 @@ setup_grafana() {
     }
 
     delete_dashboard() {
+        local dashboard_uid
+
         dashboard_uid=$(curl -s "$grafana_url/api/search?query=Hub Dashboard" -u "$credentials" | \
-                grep -o '"uid":"[^"]*"' | \
-            awk -F '"' '{print $4}')
+            jq -r '.[] | select(.title == "Hub Dashboard") | .uid')
 
         if [[ "$dashboard_uid" ]]; then
             curl -s -X "DELETE" "$grafana_url/api/dashboards/uid/$dashboard_uid" -u "$credentials"
@@ -235,13 +284,18 @@ setup_grafana() {
     # Step 4: Delete the dashboard if it exists
     delete_dashboard
 
-    # Step 5: Import the dashboard. Assuming the dashboard JSON is in a file named "grafana-dashboard.json"
+    # Step 5: Import the dashboard. The API takes a slighly different format than the JSON import
+    # in the UI, so we need to convert the JSON file first.
+    jq 'if .dashboard then . else {dashboard: ., folderId: 0, overwrite: true} end' "grafana-dashboard.json" > "grafana-dashboard.api.json"
+    
     response=$(curl -s -X "POST" "$grafana_url/api/dashboards/db" \
         -u "$credentials" \
         -H "Content-Type: application/json" \
-        --data-binary @grafana-dashboard.json)
+        --data-binary @grafana-dashboard.api.json)
 
-    if echo "$response" | grep -q "\"status\":\"success\""; then
+    rm "grafana-dashboard.api.json"
+
+    if echo "$response" | jq -e '.status == "success"' >/dev/null; then
         echo "✅ Dashboard is installed."
     else
         echo "Failed to install dashboard. Exiting."
@@ -265,14 +319,8 @@ install_docker() {
     # Add current user to the docker group
     sudo usermod -aG docker $(whoami)
 
-    echo "✅ Docker installation completed. Restarting"
-    echo "------------------------------------------------"
-    newgrp docker << EONG
-    exec "$0" "$1" < /dev/tty
-EONG
-
-    # Exit the script because we already "exec"ed the script above
-    exit 0
+    echo "✅ Docker is installed"   
+    return 0 
 }
 
 start_hubble() {
@@ -301,6 +349,8 @@ start_hubble() {
 
 # Check the command-line argument for 'upgrade'
 if [ "$1" == "upgrade" ]; then    
+    echo "New Hubble version!!"
+
     # Ensure the ~/hubble directory exists
     if [ ! -d ~/hubble ]; then
         mkdir -p ~/hubble || { echo "Failed to create ~/hubble directory."; exit 1; }
@@ -309,11 +359,14 @@ if [ "$1" == "upgrade" ]; then
     # Ensure the script runs in the ~/hubble directory
     cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
 
+    # Install dependencies
+    install_jq
+
+    # Upgrade this script itself
     self_upgrade "$@"
 
     # Call the function to install docker
     install_docker "$@"
-
 
     # Update the env file if needed
     write_env_file
