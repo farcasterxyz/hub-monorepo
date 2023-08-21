@@ -349,8 +349,6 @@ start_hubble() {
 
 # Check the command-line argument for 'upgrade'
 if [ "$1" == "upgrade" ]; then    
-    echo "New Hubble version!!"
-
     # Ensure the ~/hubble directory exists
     if [ ! -d ~/hubble ]; then
         mkdir -p ~/hubble || { echo "Failed to create ~/hubble directory."; exit 1; }
