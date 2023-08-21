@@ -9,44 +9,50 @@ export enum StartupCheckStatus {
   ERROR = "ERROR",
 }
 
-export function printStartupCheckStatus(status: StartupCheckStatus, message: string, helpUrl?: string): void {
-  switch (status) {
-    case StartupCheckStatus.OK:
-      console.log(`✅ | ${message}`);
-      break;
-    case StartupCheckStatus.WARNING:
-      console.log(`⚠️  | ${message}`);
-      if (helpUrl) {
-        console.log("   | Please see help at");
-        console.log(`   | ${helpUrl}`);
-      }
-      break;
-    case StartupCheckStatus.ERROR:
-      console.log(`❌ | ${message}`);
-      if (helpUrl) {
-        console.log("   | Please see help at");
-        console.log(`   | ${helpUrl}`);
-      }
-      break;
-  }
-}
+class StartupCheck {
+  private anyFailed = false;
 
-export class StartupChecks {
-  static directoryWritable(directory: string) {
+  anyFailedChecks(): boolean {
+    return this.anyFailed;
+  }
+
+  printStartupCheckStatus(status: StartupCheckStatus, message: string, helpUrl?: string): void {
+    switch (status) {
+      case StartupCheckStatus.OK:
+        console.log(`✅ | ${message}`);
+        break;
+      case StartupCheckStatus.WARNING:
+        console.log(`⚠️  | ${message}`);
+        if (helpUrl) {
+          console.log(`   | Please see help at ${helpUrl}`);
+        }
+
+        break;
+      case StartupCheckStatus.ERROR:
+        console.log(`❌ | ${message}`);
+        if (helpUrl) {
+          console.log(`   | Please see help at ${helpUrl}`);
+        }
+        this.anyFailed = true;
+        break;
+    }
+  }
+
+  directoryWritable(directory: string) {
     // Ensure that the DB_Directory is writable
     const dbDir = resolve(directory);
     try {
       // If the directory exists, check that it is writable
       if (existsSync(dbDir)) {
         fs.accessSync(dbDir, fs.constants.W_OK | fs.constants.R_OK);
-        printStartupCheckStatus(StartupCheckStatus.OK, `Directory ${dbDir} is writable`);
+        this.printStartupCheckStatus(StartupCheckStatus.OK, `Directory ${dbDir} is writable`);
       } else {
         // If the directory does not exist, check that the parent directory is writable
         const parentDir = dirname(dbDir);
         this.directoryWritable(parentDir);
       }
     } catch (err) {
-      printStartupCheckStatus(
+      this.printStartupCheckStatus(
         StartupCheckStatus.ERROR,
         `Directory ${dbDir} is not writable.\nPlease run 'chmod 777 ${dbDir}'\n\n`,
       );
@@ -54,10 +60,10 @@ export class StartupChecks {
     }
   }
 
-  static async rpcCheck(rpcUrl: string | undefined, chain: Chain, status = StartupCheckStatus.ERROR) {
+  async rpcCheck(rpcUrl: string | undefined, chain: Chain, status = StartupCheckStatus.ERROR) {
     const type = chain.name;
     if (!rpcUrl) {
-      printStartupCheckStatus(
+      this.printStartupCheckStatus(
         status,
         `No ${type} node configured.`,
         "https://www.thehubble.xyz/intro/install.html#installing-hubble",
@@ -78,13 +84,15 @@ export class StartupChecks {
 
     if (chainIdResult.isErr() || chainIdResult.value !== chain.id) {
       console.log(chainIdResult);
-      printStartupCheckStatus(
+      this.printStartupCheckStatus(
         status,
         `Failed to connect to ${type} node.`,
         "https://www.thehubble.xyz/intro/install.html#installing-hubble",
       );
     } else {
-      printStartupCheckStatus(StartupCheckStatus.OK, `Connected to ${type} node`);
+      this.printStartupCheckStatus(StartupCheckStatus.OK, `Connected to ${type} node`);
     }
   }
 }
+
+export const startupCheck = new StartupCheck();
