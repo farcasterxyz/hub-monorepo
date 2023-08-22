@@ -820,6 +820,10 @@ describe("mergeMessage", () => {
         expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
         expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
       });
+      test("isMigrated returns true after migration", async () => {
+        expect(engine.isMigrated).toBeFalsy();
+        expect(migratedEngine.isMigrated).toBeTruthy();
+      });
     });
   });
 });

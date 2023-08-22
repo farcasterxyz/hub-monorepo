@@ -239,6 +239,10 @@ class Engine {
     return this._db;
   }
 
+  get isMigrated(): boolean {
+    return this._signerMigratedAt > 0;
+  }
+
   async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
