@@ -60,12 +60,12 @@ class StartupCheck {
     }
   }
 
-  async rpcCheck(rpcUrl: string | undefined, chain: Chain, status = StartupCheckStatus.ERROR) {
+  async rpcCheck(rpcUrl: string | undefined, chain: Chain, prefix = "", status = StartupCheckStatus.ERROR) {
     const type = chain.name;
     if (!rpcUrl) {
       this.printStartupCheckStatus(
         status,
-        `No ${type} node configured.`,
+        `No ${prefix} ${type} node configured.`,
         "https://www.thehubble.xyz/intro/install.html#installing-hubble",
       );
       return;
@@ -86,11 +86,11 @@ class StartupCheck {
       console.log(chainIdResult);
       this.printStartupCheckStatus(
         status,
-        `Failed to connect to ${type} node.`,
+        `Failed to connect to ${prefix} ${type} node.`,
         "https://www.thehubble.xyz/intro/install.html#installing-hubble",
       );
     } else {
-      this.printStartupCheckStatus(StartupCheckStatus.OK, `Connected to ${type} node`);
+      this.printStartupCheckStatus(StartupCheckStatus.OK, `Connected to ${prefix} ${type} node`);
     }
   }
 }

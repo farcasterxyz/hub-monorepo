@@ -325,6 +325,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     if (this.currentHubPeerContacts.size === 0) {
       log.warn("Diffsync: No peer contacts, skipping sync");
       this.emit("syncComplete", false);
+
+      if (!this._currentSyncStatus.isSyncing) {
+        finishAllProgressBars(true);
+      }
       return;
     }
 
@@ -353,6 +357,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     if (!peerContact || !peerId) {
       log.warn({ peerContact, peerId }, "Diffsync: No contact info for peer, skipping sync");
       this.emit("syncComplete", false);
+
+      if (!this._currentSyncStatus.isSyncing) {
+        finishAllProgressBars(true);
+      }
       return;
     }
 
@@ -364,6 +372,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // the periodic ContactInfo gossip job.
       this.removeContactInfoForPeerId(updatedPeerIdString);
       this.emit("syncComplete", false);
+
+      if (!this._currentSyncStatus.isSyncing) {
+        finishAllProgressBars(true);
+      }
       return;
     }
 
@@ -385,6 +397,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           "Diffsync: Failed to get peer state, skipping sync",
         );
         this.emit("syncComplete", false);
+
+        if (!this._currentSyncStatus.isSyncing) {
+          finishAllProgressBars(true);
+        }
         return;
       }
 
@@ -393,6 +409,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (syncStatusResult.isErr()) {
         log.warn("Diffsync: Failed to get shouldSync");
         this.emit("syncComplete", false);
+
+        if (!this._currentSyncStatus.isSyncing) {
+          finishAllProgressBars(true);
+        }
         return;
       }
 
@@ -523,9 +543,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         const missingMessages = otherSnapshot.numMessages - ourSnapshot.numMessages;
         if (missingMessages > 10_000) {
           this._currentSyncStatus.initialSync = true;
-          progressBar = addProgressBar("Initial Sync", missingMessages, {
-            etaBuffer: 1000,
-          });
+          progressBar = addProgressBar("Initial Sync", missingMessages);
 
           if (ourSnapshot.numMessages === 0) {
             // If we have no messages, we need to fetch all messages from the peer

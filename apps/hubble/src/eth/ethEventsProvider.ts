@@ -299,14 +299,13 @@ export class EthEventsProvider {
      * For the 2nd run, fromBlock = 7,648,795 + (1 * 10,000) + 1 =  7,658,796
      * For the 2nd run, toBlock = 7,658,796 + 10,000 =  7,668,796
      */
-
     if (lastSyncedBlock < toBlock) {
       const totalBlocks = toBlock - fromBlock;
       const numOfRuns = Math.ceil(totalBlocks / this._chunkSize);
 
       let progressBar;
       if (totalBlocks > 100) {
-        progressBar = addProgressBar("Syncing ETH (Goerli) events", totalBlocks);
+        progressBar = addProgressBar("Syncing Farcaster Contracts", totalBlocks);
       }
 
       for (let i = 0; i < numOfRuns; i++) {
@@ -318,7 +317,7 @@ export class EthEventsProvider {
           nextFromBlock += 1;
         }
 
-        progressBar?.update(nextFromBlock - fromBlock);
+        progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
 
         // Sync old Id events
         await this.syncHistoricalIdEvents(nextFromBlock, nextToBlock);
@@ -543,7 +542,7 @@ export class EthEventsProvider {
       const lastBlock = cachedBlocks[cachedBlocks.length - 1] ?? 0;
       firstBlock = cachedBlocks[0] ?? 0;
       totalBlocks = lastBlock - firstBlock;
-      progressBar = addProgressBar("Processing ETH (Goerli) events", totalBlocks);
+      progressBar = addProgressBar("Processing Farcaster Contract Events", totalBlocks);
     }
 
     for (const cachedBlock of cachedBlocks) {
