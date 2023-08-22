@@ -823,48 +823,4 @@ describe("pruneMessages", () => {
       expect(prunedMessages).toEqual([remove2]);
     });
   });
-
-  describe("with time limit", () => {
-    const timePrunedStore = new CastStore(db, eventHandler, { pruneTimeLimit: 60 * 60 - 1 });
-
-    test("prunes earliest messages", async () => {
-      const messages = [add1, add2, remove3, add4];
-      for (const message of messages) {
-        await timePrunedStore.merge(message);
-      }
-
-      const nowOrig = Date.now;
-      Date.now = () => FARCASTER_EPOCH + (add4.data.timestamp - 1 + 60 * 60) * 1000;
-      try {
-        const result = await timePrunedStore.pruneMessages(fid);
-        expect(result.isOk()).toBeTruthy();
-
-        expect(prunedMessages).toEqual([add1, add2, remove3]);
-      } finally {
-        Date.now = nowOrig;
-      }
-
-      await expect(timePrunedStore.getCastAdd(fid, add1.hash)).rejects.toThrow(HubError);
-      await expect(timePrunedStore.getCastAdd(fid, add1.hash)).rejects.toThrow(HubError);
-      await expect(timePrunedStore.getCastRemove(fid, remove3.data.castRemoveBody.targetHash)).rejects.toThrow(
-        HubError,
-      );
-    });
-
-    test("fails to merge message which would be immediately pruned", async () => {
-      const messages = [add1, add2];
-      for (const message of messages) {
-        await timePrunedStore.merge(message);
-      }
-
-      await expect(timePrunedStore.merge(addOld1)).rejects.toEqual(
-        new HubError("bad_request.prunable", "message would be pruned"),
-      );
-
-      const result = await timePrunedStore.pruneMessages(fid);
-      expect(result.isOk()).toBeTruthy();
-
-      expect(prunedMessages).toEqual([]);
-    });
-  });
 });
