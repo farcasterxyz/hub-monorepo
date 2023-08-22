@@ -7,8 +7,7 @@
 # Define the version of this script
 CURRENT_VERSION="1"
 
-#REPO="farcasterxyz/hub-monorepo"
-REPO="adityapk00/hub"
+REPO="farcasterxyz/hub-monorepo"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
 LATEST_TAG="@latest"
 
