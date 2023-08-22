@@ -159,6 +159,10 @@ write_env_file() {
         validate_and_store "Ethereum Goerli Testnet" "0x5" "ETH_RPC_URL"
     fi
 
+    if ! key_exists "OPTIMISM_L2_RPC_URL"; then
+        validate_and_store "Optimism L2" "0xa" "OPTIMISM_L2_RPC_URL"
+    fi
+
     echo "✅ .env file updated."
 }
 
