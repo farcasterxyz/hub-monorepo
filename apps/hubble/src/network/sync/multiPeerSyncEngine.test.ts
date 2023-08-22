@@ -12,6 +12,7 @@ import {
   TrieNodePrefix,
   HubInfoRequest,
   getFarcasterTime,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../../hubble.js";
 import SyncEngine from "./syncEngine.js";
@@ -24,6 +25,7 @@ import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
 import { deployIdRegistry, deployNameRegistry, publicClient } from "../../test/utils.js";
 import { EMPTY_HASH } from "./trieNode.js";
+import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -396,6 +398,65 @@ describe("Multi peer sync engine", () => {
     // Because do it without awaiting, we need to wait for the promise to resolve
     await sleep(100);
     expect(retrySpy).toHaveBeenCalled();
+  });
+
+  describe("after migration", () => {
+    let engine2: Engine;
+    let syncEngine2: SyncEngine;
+    let retryEventsMock: L2EventsProvider;
+    let custodyEvent: OnChainEvent;
+    let signerEvent: OnChainEvent;
+
+    beforeEach(async () => {
+      engine2 = new Engine(testDb2, network);
+      const hub2 = new MockHub(testDb2, engine2);
+      // rome-ignore lint/suspicious/noExplicitAny: mock used only in tests
+      const l2EventsProvider = jest.fn() as any;
+      l2EventsProvider.retryEventsFromBlock = jest.fn();
+      retryEventsMock = l2EventsProvider.retryEventsFromBlock;
+
+      syncEngine2 = new SyncEngine(hub2, testDb2, undefined, l2EventsProvider);
+
+      // Set up engine1
+      custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+      signerEvent = Factories.SignerOnChainEvent.build({
+        fid,
+        signerEventBody: Factories.SignerEventBody.build({ key: (await signer.getSignerKey())._unsafeUnwrap() }),
+      });
+      const migratedEvent = Factories.SignerMigratedOnChainEvent.build();
+      await engine1.mergeOnChainEvent(custodyEvent);
+      await engine1.mergeOnChainEvent(signerEvent);
+      await engine1.mergeOnChainEvent(migratedEvent);
+
+      await engine2.mergeOnChainEvent(migratedEvent);
+      await addMessagesWithTimeDelta(engine1, [167]);
+    });
+    test("retries the id registry event block if it's missing", async () => {
+      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+      // Because do it without awaiting, we need to wait for the promise to resolve
+      await sleep(100);
+      expect(retryEventsMock).toHaveBeenCalledWith(custodyEvent.blockNumber);
+    });
+
+    test("retries the signer event block if it's missing", async () => {
+      await engine2.mergeOnChainEvent(custodyEvent);
+      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+      // Because do it without awaiting, we need to wait for the promise to resolve
+      await sleep(100);
+      expect(retryEventsMock).toHaveBeenCalledWith(signerEvent.blockNumber);
+    });
+
+    test("does not retry any block if both events are present", async () => {
+      await engine2.mergeOnChainEvent(custodyEvent);
+      await engine2.mergeOnChainEvent(signerEvent);
+      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+      // Because do it without awaiting, we need to wait for the promise to resolve
+      await sleep(100);
+      expect(retryEventsMock).not.toHaveBeenCalled();
+    });
   });
 
   test("Merge with multiple signers", async () => {

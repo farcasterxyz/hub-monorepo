@@ -1,21 +1,23 @@
 import {
+  bytesToHexString,
+  ContactInfoContent,
+  FidRequest,
   getFarcasterTime,
   HubAsyncResult,
   HubError,
   HubResult,
   HubRpcClient,
-  Metadata,
-  ContactInfoContent,
   MergeMessageHubEvent,
+  MergeUsernameProofHubEvent,
+  Message,
+  Metadata,
+  OnChainEventRequest,
+  OnChainEventType,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-  TrieNodePrefix,
   SyncIds,
-  Message,
-  FidRequest,
   TrieNodeMetadataResponse,
-  bytesToHexString,
-  MergeUsernameProofHubEvent,
+  TrieNodePrefix,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
@@ -733,7 +735,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         if (result.error.errCode === "bad_request.validation_failure") {
           if (result.error.message.startsWith("invalid signer")) {
             // The user's signer was not found. So fetch all signers from the peer and retry.
-            const retryResult = await this.syncUserAndRetryMessage(msg, rpcClient);
+            const retryResult = await this.syncSignersAndRetryMessage(msg, rpcClient);
             const retryResultErrorMessage = retryResult.isErr() ? retryResult.error.message : "";
             log.warn(
               {
@@ -1053,22 +1055,35 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     }
 
-    const custodyEventResult = await rpcClient.getIdRegistryEvent(
-      FidRequest.create({ fid }),
-      new Metadata(),
-      rpcDeadline(),
-    );
-    if (custodyEventResult.isErr()) {
-      log.warn({ fid }, "Failed to fetch custody event from peer");
-      return;
+    if (this._hub.engine.isMigrated) {
+      const l2CustodyEventResult = await rpcClient.getOnChainEvents(
+        OnChainEventRequest.create({ fid, eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+      if (l2CustodyEventResult.isOk() && l2CustodyEventResult.value.events[0]) {
+        const custodyEventBlockNumber = l2CustodyEventResult.value.events[0].blockNumber;
+        log.info({ fid }, `Retrying events from l2 block ${custodyEventBlockNumber}`);
+        await this._l2EventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
+      } else {
+        log.warn({ fid }, "Failed to fetch custody event from peer");
+        return;
+      }
+    } else {
+      const custodyEventResult = await rpcClient.getIdRegistryEvent(
+        FidRequest.create({ fid }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+      if (custodyEventResult.isErr()) {
+        log.warn({ fid }, "Failed to fetch custody event from peer");
+        return;
+      }
+      const custodyEventBlockNumber = custodyEventResult.value.blockNumber;
+      log.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
+      // We'll retry all events from this block number
+      await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
     }
-
-    // Get the ethereum block number from the custody event
-    const custodyEventBlockNumber = custodyEventResult.value.blockNumber;
-
-    log.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
-    // We'll retry all events from this block number
-    await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
   }
 
   /**
@@ -1090,7 +1105,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return true;
   }
 
-  private async syncUserAndRetryMessage(message: Message, rpcClient: HubRpcClient): Promise<HubResult<number>> {
+  private async syncSignersAndRetryMessage(message: Message, rpcClient: HubRpcClient): Promise<HubResult<number>> {
     const fidRetryMessageQ = this._currentSyncStatus.fidRetryMessageQ;
 
     const fid = message.data?.fid;
@@ -1115,35 +1130,42 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Probably not required to fetch the signer messages, but doing it here means
     // sync will complete in one round (prevents messages failing to merge due to missed or out of
     // order signer message)
-    const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(
-      FidRequest.create({ fid }),
-      new Metadata(),
-      rpcDeadline(),
-    );
-    if (signerMessagesResult.isErr()) {
-      return err(new HubError("unavailable.network_failure", "Failed to fetch signer messages"));
+    if (this._hub.engine.isMigrated) {
+      const signerEvents = await rpcClient.getOnChainSignersByFid(
+        FidRequest.create({ fid }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+      if (signerEvents.isErr()) {
+        return err(new HubError("unavailable.network_failure", "Failed to fetch signer events"));
+      }
+      const retryPromises = signerEvents.value.events.map((event) =>
+        this._l2EventsProvider?.retryEventsFromBlock(event.blockNumber),
+      );
+      await Promise.all(retryPromises);
+    } else {
+      const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(
+        FidRequest.create({ fid }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+      if (signerMessagesResult.isErr()) {
+        return err(new HubError("unavailable.network_failure", "Failed to fetch signer messages"));
+      }
+
+      await Promise.all(signerMessagesResult.value.messages.map((message) => this._hub.submitMessage(message, "sync")));
     }
-
-    const results = await Promise.all(
-      signerMessagesResult.value.messages.map((message) => this._hub.submitMessage(message, "sync")),
-    );
-
     const messages = fidRetryMessageQ.get(fid) ?? [];
     fidRetryMessageQ.set(fid, []);
 
-    if (results.every((r) => r.isErr())) {
-      return err(new HubError("unavailable.storage_failure", "Failed to merge any signer message"));
-    } else {
-      // if at least one signer message was merged, retry the messages in the queue
-      const results = await Promise.all(messages.map(async (message) => this._hub.submitMessage(message, "sync")));
+    const results = await Promise.all(messages.map(async (message) => this._hub.submitMessage(message, "sync")));
 
-      // If any of the messages failed, return a hub error
-      const firstFailed = results.find((r) => r.isErr());
-      if (firstFailed) {
-        return firstFailed;
-      } else {
-        return ok(0);
-      }
+    // If any of the messages failed, return a hub error
+    const firstFailed = results.find((r) => r.isErr());
+    if (firstFailed) {
+      return firstFailed;
+    } else {
+      return ok(0);
     }
   }
 }
