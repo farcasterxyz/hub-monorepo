@@ -59,15 +59,13 @@ fetch_file_from_repo() {
     local file_path="$1"
     local local_filename="$2"
     
-
     local download_url
-    download_url="$RAWFILE_BASE/$LATEST_TAG/$file_path"
+    download_url="$RAWFILE_BASE/$LATEST_TAG/$file_path?t=$(date +%s)"
 
     # Download the file using curl, and save it to the local filename. If the download fails,
     # exit with an error.
     curl -sS -o "$local_filename" "$download_url" || { echo "Failed to fetch $download_url."; exit 1; }
 }
-
 
 do_bootstrap() {
     # Make the ~/hubble directory if it doesn't exist
