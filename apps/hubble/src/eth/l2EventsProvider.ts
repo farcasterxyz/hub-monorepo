@@ -569,7 +569,7 @@ export class L2EventsProvider {
 
     let progressBar;
     if (totalBlocks > 100) {
-      progressBar = addProgressBar("Syncing L2 ETH events", totalBlocks);
+      progressBar = addProgressBar("Syncing Farcaster Contracts", totalBlocks);
     }
 
     for (let i = 0; i < numOfRuns; i++) {
@@ -586,7 +586,7 @@ export class L2EventsProvider {
         { fromBlock: nextFromBlock, toBlock: nextToBlock },
         `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)})`,
       );
-      progressBar?.update(nextFromBlock - fromBlock);
+      progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
 
       const idFilter = await this._publicClient.createContractEventFilter({
         address: OptimismConstants.IdRegistryAddress,
@@ -649,7 +649,7 @@ export class L2EventsProvider {
       const lastBlock = cachedBlocks[cachedBlocks.length - 1] ?? 0;
       firstBlock = cachedBlocks[0] ?? 0;
       totalBlocks = lastBlock - firstBlock;
-      progressBar = addProgressBar("Processing ETH (Goreli) events", totalBlocks);
+      progressBar = addProgressBar("Processing Farcaster Contract Events", totalBlocks);
     }
 
     for (const cachedBlock of cachedBlocks) {

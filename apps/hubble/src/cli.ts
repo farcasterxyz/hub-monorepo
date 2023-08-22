@@ -266,13 +266,12 @@ app
     if (cliOptions.id) {
       const peerIdR = await ResultAsync.fromPromise(readPeerId(resolve(cliOptions.id)), (e) => e);
       if (peerIdR.isErr()) {
-        const errorStr = `Failed to read identity from ${cliOptions.id}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`;
         startupCheck.printStartupCheckStatus(
           StartupCheckStatus.ERROR,
-          errorStr,
-          "https://www.thehubble.xyz/intro/install.html#installing-hubble",
+          `Failed to read identity from ${cliOptions.id}. Please run "yarn identity create".`,
+          "https://www.thehubble.xyz/intro/install.html#installing-hubble\n",
         );
-        throw new Error(errorStr);
+        process.exit(1);
       } else {
         peerId = peerIdR.value;
       }
@@ -280,7 +279,7 @@ app
       // Read from the environment variable
       const identityProtoBytes = Buffer.from(process.env["IDENTITY_B64"], "base64");
       const peerIdResult = await ResultAsync.fromPromise(createFromProtobuf(identityProtoBytes), (e) => {
-        return new Error(`Failed to read identity from environment: ${e}`);
+        throw new Error("Failed to read identity from environment");
       });
 
       if (peerIdResult.isErr()) {
@@ -295,14 +294,13 @@ app
 
       const peerIdR = await ResultAsync.fromPromise(readPeerId(idFile), (e) => e);
       if (peerIdR.isErr()) {
-        const errStr = `Failed to read identity from ${idFile}: ${peerIdR.error}.\nPlease run "yarn identity create" to create a new identity.`;
         startupCheck.printStartupCheckStatus(
           StartupCheckStatus.ERROR,
-          errStr,
-          "https://www.thehubble.xyz/intro/install.html#installing-hubble",
+          `Failed to read identity from ${idFile}. Please run "yarn identity create".`,
+          "https://www.thehubble.xyz/intro/install.html#installing-hubble\n",
         );
 
-        throw new Error(errStr);
+        process.exit(1);
       } else {
         peerId = peerIdR.value;
       }
@@ -374,8 +372,10 @@ app
     }
 
     const network = cliOptions.network ?? hubConfig.network;
-
-    startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Network is set: ${network}`);
+    startupCheck.printStartupCheckStatus(
+      StartupCheckStatus.OK,
+      `Network is ${FarcasterNetwork[network]?.toString()}(${network})`,
+    );
 
     let testUsers;
     if (process.env["TEST_USERS"]) {
@@ -511,9 +511,9 @@ app
       directPeers,
     };
 
-    await startupCheck.rpcCheck(options.ethRpcUrl, goerli);
-    await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet);
-    await startupCheck.rpcCheck(options.l2RpcUrl, optimism);
+    await startupCheck.rpcCheck(options.ethRpcUrl, goerli, "L1");
+    await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet, "L1");
+    await startupCheck.rpcCheck(options.l2RpcUrl, optimism, "L2");
 
     const hubResult = Result.fromThrowable(
       () => new Hub(options),

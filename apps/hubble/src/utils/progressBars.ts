@@ -7,7 +7,7 @@ const multiBar = new cliProgress.MultiBar(
     format: " {bar} {percentage}% | {name} | {value}/{total} | ETA: {eta}s",
     hideCursor: true,
     clearOnComplete: false,
-    etaBuffer: 100,
+    etaBuffer: 1_000,
     autopadding: true,
   },
   cliProgress.Presets.shades_grey,
