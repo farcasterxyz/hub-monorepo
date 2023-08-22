@@ -5,7 +5,7 @@
 # curl <file location> | bash
 
 REPO="adityapk00/hub"
-API_BASE="https://api.github.com/repos/$REPO"
+RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
 LATEST_TAG="@latest"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
 
