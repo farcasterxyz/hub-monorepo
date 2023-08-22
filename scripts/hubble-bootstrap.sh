@@ -4,14 +4,13 @@
 # Simply run the following command to install the latest version of hubble:
 # curl <file location> | bash
 
-REPO="farcasterxyz/hub-monorepo"
+REPO="adityapk00/hub"
 API_BASE="https://api.github.com/repos/$REPO"
 LATEST_TAG="@latest"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
 
 install_jq() {
     if command -v jq >/dev/null 2>&1; then
-        echo "✅ Dependencies are installed."
         return 0
     fi
 
@@ -118,7 +117,6 @@ do_bootstrap() {
     mv "$tmp_file" ~/hubble/hubble.sh
     chmod +x ~/hubble/hubble.sh
 
-    set -x
     exec ~/hubble/hubble.sh "upgrade" < /dev/tty
 }
 

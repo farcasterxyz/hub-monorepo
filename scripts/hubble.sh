@@ -7,7 +7,7 @@
 # Define the version of this script
 CURRENT_VERSION="1"
 
-REPO="farcasterxyz/hub-monorepo"
+REPO="adityapk00/hub"
 API_BASE="https://api.github.com/repos/$REPO"
 LATEST_TAG="@latest"
 
@@ -107,8 +107,6 @@ fetch_file_from_repo_at_sha() {
 
 # Upgrade the script
 self_upgrade() {
-    echo "Checking for newer version of script..."
-
     local latest_commit_sha
     latest_commit_sha=$(fetch_latest_commit_sha)
     if [ $? -ne 0 ]; then
@@ -130,13 +128,13 @@ self_upgrade() {
         mv "$tmp_file" "$0" # Overwrite the current script
         chmod +x "$0"       # Ensure the script remains executable
         echo "✅ Upgrade complete. Restarting with new version..."
-        echo "------------------------------------------------"
+        echo ""
         exec "$0" "$1" || echo "Exec failed with status: $?"
 
         # Exit the script because we already "exec"ed the script above
         exit 0
     else
-        echo "✅ Script version ($CURRENT_VERSION)."
+        echo "✅ Latest Script Version: $CURRENT_VERSION."
         rm -f "$tmp_file"  # Clean up temporary file if no upgrade was needed
     fi
 }
@@ -247,12 +245,16 @@ setup_grafana() {
     }
 
     # Step 1: Restart statsd and grafana if they are running, otherwise start them
-    if sudo docker compose ps statsd | grep -q "Up"; then
-        sudo docker compose restart statsd grafana
+    if docker compose ps statsd 2>&1 >/dev/null; then
+        if docker compose ps statsd | grep -q "Up"; then
+            docker compose restart statsd grafana
+        else
+            docker compose up -d statsd grafana
+        fi
     else
-        sudo sudo docker compose up -d statsd grafana
+        echo "❌ Docker is not running or there's another issue with Docker. Please start Docker manually."
+        exit 1
     fi
-
 
     # Step 2: Wait for Grafana to be ready
     echo "Waiting for Grafana to be ready..."
@@ -325,7 +327,7 @@ install_docker() {
 
 start_hubble() {
     # First, make sure to pull all the latest images in docker compose
-    sudo docker compose pull
+    docker compose pull
 
     # Make directory for hubble data called ".hub" and ".rocks". Make sure to set
     # the permissions so that the current user owns the directory and it is writable
@@ -334,18 +336,30 @@ start_hubble() {
     chmod 777 .hub .rocks
     
    if [[ ! -f "./.hub/default_id.protobuf" ]]; then
-        sudo docker compose run hubble yarn identity create
+        docker compose run hubble yarn identity create
         echo "✅ Created Peer Identity"
     else
-        echo "✅ Identity exists"
+        echo "✅ Peer Identity exists"
     fi
 
     # Stop the "hubble" service if it is already running
-    sudo docker compose stop hubble
+    docker compose stop hubble
 
     # Start the "hubble" service
-    sudo docker compose up -d hubble
+    docker compose up -d hubble
 }
+
+reexec_as_root_if_needed() {
+    # If on Linux and not running as root
+    if [[ "$(uname)" == "Linux" ]] && [[ "$(id -u)" -ne 0 ]]; then
+        exec sudo "$0" "$@"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        echo "✅ Running on macOS."
+    fi
+}
+
+# Call the function at the beginning of your script
+reexec_as_root_if_needed "$@"
 
 # Check the command-line argument for 'upgrade'
 if [ "$1" == "upgrade" ]; then    
@@ -390,7 +404,7 @@ if [ "$1" == "logs" ]; then
     # Ensure the script runs in the ~/hubble directory
     cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
 
-    sudo docker compose logs -f hubble
+    docker compose logs -f hubble
     exit 0
 fi
 
