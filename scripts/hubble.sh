@@ -7,7 +7,8 @@
 # Define the version of this script
 CURRENT_VERSION="1"
 
-REPO="farcasterxyz/hub-monorepo"
+#REPO="farcasterxyz/hub-monorepo"
+REPO="adityapk00/hub"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
 LATEST_TAG="@latest"
 
@@ -254,7 +255,20 @@ setup_grafana() {
 
     rm "grafana-dashboard.api.json"
 
+    echo "Grafana response: $response"
+
     if echo "$response" | jq -e '.status == "success"' >/dev/null; then
+        # Extract dashboard UID from the response
+        dashboard_uid=$(echo "$response" | jq -r '.uid')
+
+        echo "Dashboard UID: $dashboard_uid"
+
+        # Set the default home dashboard for the organization
+        curl -s -X "PUT" "$grafana_url/api/org/preferences" \
+            -u "$credentials" \
+            -H "Content-Type: application/json" \
+            --data "{\"homeDashboardUID\":\"$dashboard_uid\"}"
+
         echo "✅ Dashboard is installed."
     else
         echo "Failed to install dashboard. Exiting."
@@ -362,6 +376,12 @@ if [ "$1" == "upgrade" ]; then
     echo "✅ Upgrade complete."    
     echo ""
     echo "Monitor your node at http://localhost:3000/"
+
+    # Sleep for 5 seconds
+    sleep 5
+
+    # Finally, start showing the logs
+    docker compose logs -f hubble
 
     exit 0
 fi
