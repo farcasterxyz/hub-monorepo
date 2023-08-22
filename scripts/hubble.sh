@@ -8,7 +8,7 @@
 CURRENT_VERSION="1"
 
 REPO="adityapk00/hub"
-API_BASE="https://api.github.com/repos/$REPO"
+RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
 LATEST_TAG="@latest"
 
 DOCKER_COMPOSE_FILE_PATH="apps/hubble/docker-compose.yml"
@@ -61,63 +61,25 @@ install_jq() {
     echo "✅ jq installed successfully."
 }
 
-# Fetch the commit SHA associated with the @latest tag
-fetch_latest_commit_sha() {
-    local sha response
-
-    response=$(curl -sS "$API_BASE/git/refs/tags/$LATEST_TAG")
-
-    # Check for rate limit
-    if echo "$response" | jq -e 'if (.message? // empty) | contains("API rate limit exceeded") then true else false end' >/dev/null; then
-        echo "$response"
-        echo "❌ Github Rate Limit Exceeded. Please wait an hour and try again."
-        exit 1
-    fi
-
-    # Extract sha from the response
-    sha=$(echo "$response" | jq -r '.object.sha')
-
-    if [ -z "$sha" ]; then
-        echo "No @latest tag found. $sha"
-        exit 1
-    fi
-
-    echo "$sha"
-}
-
-# Fetch file from repo at a given commit SHA
-fetch_file_from_repo_at_sha() {
+# Fetch file from repo at "@latest"
+fetch_file_from_repo() {
     local file_path="$1"
     local local_filename="$2"
-    local commit_sha="$3"
+    
 
-    local latest_file_content download_url
+    local download_url
+    download_url="$RAWFILE_BASE/$LATEST_TAG/$file_path"
 
-    latest_file_content=$(curl -sS "$API_BASE/contents/$file_path?ref=$commit_sha")
-    download_url=$(echo "$latest_file_content" | jq -r '.download_url')
-
-    if [ -z "$download_url" ]; then
-        echo "Failed to fetch $local_filename."
-        exit 1
-    fi
-
-    # Download the file
-    curl -sS -o "$local_filename" "$download_url"
+    # Download the file using curl, and save it to the local filename. If the download fails,
+    # exit with an error.
+    curl -sS -o "$local_filename" "$download_url" || { echo "Failed to fetch $download_url."; exit 1; }
 }
 
 # Upgrade the script
-self_upgrade() {
-    local latest_commit_sha
-    latest_commit_sha=$(fetch_latest_commit_sha)
-    if [ $? -ne 0 ]; then
-        echo "Error in self_upgrade: Unable to fetch the latest commit SHA."
-        echo "$latest_commit_sha"
-        exit 1
-    fi
-
+self_upgrade() {    
     local tmp_file
     tmp_file=$(mktemp)
-    fetch_file_from_repo_at_sha "$SCRIPT_FILE_PATH" "$tmp_file" "$latest_commit_sha"
+    fetch_file_from_repo "$SCRIPT_FILE_PATH" "$tmp_file"
 
     local latest_version
     latest_version=$(awk -F'="' '/^CURRENT_VERSION=/ { print $2 }' "$tmp_file" | tr -d '"')
@@ -140,17 +102,9 @@ self_upgrade() {
 }
 
 # Fetch the docker-compose.yml and grafana-dashboard.json files
-fetch_latest_docker_compose_and_dashboard() {
-    local latest_commit_sha
-    latest_commit_sha=$(fetch_latest_commit_sha)
-    if [ $? -ne 0 ]; then
-        echo "Error in fetch_latest_docker_compose_and_dashboard: Unable to fetch the latest commit SHA."
-        echo "$latest_commit_sha"
-        exit 1
-    fi
-
-    fetch_file_from_repo_at_sha "$DOCKER_COMPOSE_FILE_PATH" "docker-compose.yml" "$latest_commit_sha"
-    fetch_file_from_repo_at_sha "$GRAFANA_DASHBOARD_JSON_PATH" "grafana-dashboard.json" "$latest_commit_sha"
+fetch_latest_docker_compose_and_dashboard() {    
+    fetch_file_from_repo "$DOCKER_COMPOSE_FILE_PATH" "docker-compose.yml" 
+    fetch_file_from_repo "$GRAFANA_DASHBOARD_JSON_PATH" "grafana-dashboard.json"
 }
 
 validate_and_store() {
@@ -350,13 +304,26 @@ start_hubble() {
 }
 
 reexec_as_root_if_needed() {
-    # If on Linux and not running as root
-    if [[ "$(uname)" == "Linux" ]] && [[ "$(id -u)" -ne 0 ]]; then
-        exec sudo "$0" "$@"
+    # Check if on Linux
+    if [[ "$(uname)" == "Linux" ]]; then
+        # Check if not running as root, then re-exec as root
+        if [[ "$(id -u)" -ne 0 ]]; then
+            # Ensure the script runs in the ~/hubble directory
+            cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
+            exec sudo "$0" "$@"
+        else
+            # If the current directory is not named "hubble", change to "~/hubble"
+            if [[ "$(basename "$PWD")" != "hubble" ]]; then
+                cd ~/hubble
+            fi
+            echo "✅ Running on Linux."
+        fi
+    # Check if on macOS
     elif [[ "$(uname)" == "Darwin" ]]; then
         echo "✅ Running on macOS."
     fi
 }
+
 
 # Call the function at the beginning of your script
 reexec_as_root_if_needed "$@"
@@ -367,9 +334,6 @@ if [ "$1" == "upgrade" ]; then
     if [ ! -d ~/hubble ]; then
         mkdir -p ~/hubble || { echo "Failed to create ~/hubble directory."; exit 1; }
     fi
-
-    # Ensure the script runs in the ~/hubble directory
-    cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
 
     # Install dependencies
     install_jq
