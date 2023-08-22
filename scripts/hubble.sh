@@ -5,7 +5,7 @@
 # itself in the process.
 
 # Define the version of this script
-CURRENT_VERSION="2"
+CURRENT_VERSION="1"
 
 REPO="adityapk00/hub"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
@@ -333,8 +333,6 @@ reexec_as_root_if_needed "$@"
 
 # Check the command-line argument for 'upgrade'
 if [ "$1" == "upgrade" ]; then    
-    echo "UPGRADED HUBBLE.SH!!"
-
     # Ensure the ~/hubble directory exists
     if [ ! -d ~/hubble ]; then
         mkdir -p ~/hubble || { echo "Failed to create ~/hubble directory."; exit 1; }
