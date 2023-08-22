@@ -78,6 +78,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -163,6 +164,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up.... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -247,6 +249,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -578,6 +581,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -667,6 +671,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -968,6 +973,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
