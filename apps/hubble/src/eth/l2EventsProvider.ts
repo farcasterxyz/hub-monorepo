@@ -569,7 +569,7 @@ export class L2EventsProvider {
 
     let progressBar;
     if (totalBlocks > 100) {
-      progressBar = addProgressBar("Syncing Farcaster Contracts", totalBlocks);
+      progressBar = addProgressBar("Syncing Farcaster L2 Contracts", totalBlocks);
     }
 
     for (let i = 0; i < numOfRuns; i++) {
@@ -649,7 +649,7 @@ export class L2EventsProvider {
       const lastBlock = cachedBlocks[cachedBlocks.length - 1] ?? 0;
       firstBlock = cachedBlocks[0] ?? 0;
       totalBlocks = lastBlock - firstBlock;
-      progressBar = addProgressBar("Processing Farcaster Contract Events", totalBlocks);
+      progressBar = addProgressBar("Processing Farcaster L2 Contract Events", totalBlocks);
     }
 
     for (const cachedBlock of cachedBlocks) {

@@ -4,7 +4,7 @@ import { logger } from "./logger.js";
 // The global multibar, to which all progress bars are added
 const multiBar = new cliProgress.MultiBar(
   {
-    format: " {bar} {percentage}% | {name} | {value}/{total} | ETA: {eta}s",
+    format: " {bar} {percentage}% | {name} | {value}/{total} | ETA: {eta_formatted}",
     hideCursor: true,
     clearOnComplete: false,
     etaBuffer: 1_000,
