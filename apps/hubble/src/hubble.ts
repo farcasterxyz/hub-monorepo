@@ -631,6 +631,21 @@ export class Hub implements HubInterface {
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
 
+      if (!this.l2RegistryProvider?.ready) {
+        if (
+          networkConfig.storageRegistryAddress &&
+          networkConfig.keyRegistryAddress &&
+          networkConfig.idRegistryAddress
+        ) {
+          this.l2RegistryProvider?.setAddresses(
+            networkConfig.storageRegistryAddress,
+            networkConfig.keyRegistryAddress,
+            networkConfig.idRegistryAddress,
+          );
+          this.l2RegistryProvider?.start();
+        }
+      }
+
       log.info({ allowedPeerIds, deniedPeerIds }, "Network config applied");
 
       return false;
