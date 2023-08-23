@@ -173,7 +173,7 @@ docker compose exec hubble /bin/sh
 
 - If upgrading from 1.3.3 or below, please set `ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL` (if using docker) or provide the `--eth-mainnet-rpc-url` flag (if not using docker)
 
-- If you're changing your Hub from one network to another, you'll need to reset your database. WARNING: This will delete your DB  
+- If you're changing your Hub from one network to another, you'll need to delete your database contents: 
 
 ```bash
 docker compose stop && docker compose run --rm hubble yarn dbreset
