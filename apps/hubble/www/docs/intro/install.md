@@ -28,7 +28,7 @@ This is the easiest way to install and run Hubble. On a Linux server, just run
 curl -s https://download.thehubble.xyz/hubble-bootstrap.sh | bash
 ```
 
-This will install and configure all dependencies automatically, and install the `hubble.sh` script into `~/hubble` for future use.
+This will install and configure all dependencies automatically, and install the `hubble.sh` script into `~/hubble` for future use. Monitoring is set up automatically, and you can view the grafana dashboard by navigating to `http://localhost:3000` in your browser.
 
 #### Upgrading Hubble
 To upgrade your hubble via the script, run
@@ -38,7 +38,7 @@ cd ~/hubble && ./hubble.sh upgrade
 
 ### Install via docker container
 
-This method allows you to manage your docker containers and config manually
+This method allows you to manage your docker containers and config manually.
 
 1. Check out the [hub-monorepo](https://github.com/farcasterxyz/hub-monorepo) locally.
 2. From the root of this folder navigate to `apps/hubble`
@@ -56,6 +56,9 @@ ETH_RPC_URL=your-ETH-RPC-URL
 
 # Set this to your L1 Mainnet ETH RPC URL
 ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
+
+# Set this to your L2 Optimism Mainnet RPC URL
+L2_RPC_URL=your-L2-optimism-RPC-URL
 ```
 
 5. Follow the instructions to set [connect to a network](./networks.md).
