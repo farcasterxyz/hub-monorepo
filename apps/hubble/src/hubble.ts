@@ -332,7 +332,8 @@ export class Hub implements HubInterface {
         options.l2RentExpiryOverride,
       );
     } else {
-      log.warn("No L2 RPC URL provided, not syncing with L2 contract events");
+      log.warn("No L2 RPC URL provided, unable to sync L2 contract events");
+      throw new HubError("bad_request.invalid_param", "Invalid l2 rpc url");
     }
 
     if (options.fnameServerUrl && options.fnameServerUrl !== "") {
