@@ -1,5 +1,29 @@
 # @farcaster/hubble
 
+## 1.5.0
+
+### Minor Changes
+
+- be6ee3c8: feat: Make l2 rpc url required to start hubble ahead of mainnet migration
+
+### Patch Changes
+
+- ee3897f3: feat: Add startup checks and progress bars
+- 01a3c08e: feat: fetch l2 contract addresses from network config
+- b50024c8: fix: Improve startup checks to be clearer
+- 315a0873: feat: add an events-reset command to clear l2 events from the db
+- 74313c17: Switch startup checks to check against OP Mainnet
+- a3d6b21e: fix: Cleanup startup checks and add cleaner exit failures
+- e6180074: feat: enforce storage pruning 1 day after migration
+- a508e56f: chore: Improve gen.submitMessages() for testing
+- 930d8635: chore: Update the Grafana dashboard
+- 7a969943: fix: Improve logging for DB migration failures
+- 27287d2d: feat: hubble.sh script to install and upgrade hubble
+- bf1c44d2: feat: Update signer onchain event to store new fields and add additional RPC calls
+- acfb44d7: feat: SyncEngine syncs from L2 if required post migration
+- Updated dependencies [bf1c44d2]
+  - @farcaster/hub-nodejs@0.10.5
+
 ## 1.4.6
 
 ### Patch Changes
