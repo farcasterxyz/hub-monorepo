@@ -7,8 +7,7 @@
 # Define the version of this script
 CURRENT_VERSION="1"
 
-#REPO="farcasterxyz/hub-monorepo"
-REPO="adityapk00/hub"
+REPO="farcasterxyz/hub-monorepo"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
 LATEST_TAG="@latest"
 
@@ -116,7 +115,7 @@ validate_and_store() {
     local expected_chain_id=$2
 
     while true; do
-        read -p "> Enter your $rpc_name Ethereum RPC URL: " RPC_URL
+        read -p "> Enter your $rpc_name RPC URL: " RPC_URL
         RESPONSE=$(curl -s -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' "$RPC_URL")
 
         # Convert both the response and expected chain ID to lowercase for comparison
@@ -165,7 +164,7 @@ write_env_file() {
     fi
 
     if ! key_exists "OPTIMISM_L2_RPC_URL"; then
-        validate_and_store "Optimism L2" "0xa" "OPTIMISM_L2_RPC_URL"
+        validate_and_store "Optimism L2 Mainnet" "0xa" "OPTIMISM_L2_RPC_URL"
     fi
 
     echo "✅ .env file updated."
@@ -259,13 +258,9 @@ setup_grafana() {
 
     rm "grafana-dashboard.api.json"
 
-    echo "Grafana response: $response"
-
     if echo "$response" | jq -e '.status == "success"' >/dev/null; then
         # Extract dashboard UID from the response
         dashboard_uid=$(echo "$response" | jq -r '.uid')
-
-        echo "Dashboard UID: $dashboard_uid"
 
         # Set the default home dashboard for the organization
         curl -s -X "PUT" "$grafana_url/api/org/preferences" \
