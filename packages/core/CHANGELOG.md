@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.12.5
+
+### Patch Changes
+
+- e6180074: feat: enforce storage pruning 1 day after migration
+- bf1c44d2: feat: Update signer onchain event to store new fields and add additional RPC calls
+
 ## 0.12.4
 
 ### Patch Changes

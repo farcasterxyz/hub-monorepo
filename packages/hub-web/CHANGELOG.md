@@ -1,5 +1,14 @@
 # @farcaster/hub-web
 
+## 0.6.2
+
+### Patch Changes
+
+- bf1c44d2: feat: Update signer onchain event to store new fields and add additional RPC calls
+- Updated dependencies [e6180074]
+- Updated dependencies [bf1c44d2]
+  - @farcaster/core@0.12.5
+
 ## 0.6.1
 
 ### Patch Changes
