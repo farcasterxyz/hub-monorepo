@@ -174,7 +174,7 @@ write_env_file() {
 setup_grafana() {
     local grafana_url="http://127.0.0.1:3000"
     local credentials="admin:admin"
-    local response dashboard_uid
+    local response dashboard_uid prefs
 
     add_datasource() {
         response=$(curl -s -o /dev/null -w "%{http_code}" -X "POST" "$grafana_url/api/datasources" \
