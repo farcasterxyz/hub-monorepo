@@ -67,6 +67,9 @@ services:
   grafana:
     image: grafana/grafana:10.0.3
     restart: unless-stopped
+    # Mount the grafana config file
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     ports:
       - '3000:3000' # Grafana web
     networks:

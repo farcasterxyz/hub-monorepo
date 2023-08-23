@@ -7,13 +7,15 @@
 # Define the version of this script
 CURRENT_VERSION="1"
 
-REPO="farcasterxyz/hub-monorepo"
+#REPO="farcasterxyz/hub-monorepo"
+REPO="adityapk00/hub"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
 LATEST_TAG="@latest"
 
 DOCKER_COMPOSE_FILE_PATH="apps/hubble/docker-compose.yml"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
-GRAFANA_DASHBOARD_JSON_PATH="scripts/grafana-dashboard.json"
+GRAFANA_DASHBOARD_JSON_PATH="apps/hubble/grafana/grafana-dashboard.json"
+GRAFANA_INI_PATH="apps/hubble/grafana/grafana.ini"
 
 install_jq() {
     if command -v jq >/dev/null 2>&1; then
@@ -104,6 +106,9 @@ self_upgrade() {
 fetch_latest_docker_compose_and_dashboard() {    
     fetch_file_from_repo "$DOCKER_COMPOSE_FILE_PATH" "docker-compose.yml" 
     fetch_file_from_repo "$GRAFANA_DASHBOARD_JSON_PATH" "grafana-dashboard.json"
+    mkdir -p grafana
+    chmod 777 grafana
+    fetch_file_from_repo "$GRAFANA_INI_PATH" "grafana/grafana.ini"
 }
 
 validate_and_store() {
@@ -336,6 +341,7 @@ reexec_as_root_if_needed() {
         fi
     # Check if on macOS
     elif [[ "$(uname)" == "Darwin" ]]; then
+        cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
         echo "✅ Running on macOS."
     fi
 }
