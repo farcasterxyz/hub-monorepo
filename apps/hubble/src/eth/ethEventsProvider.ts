@@ -19,6 +19,7 @@ import { logger } from "../utils/logger.js";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
 import { addProgressBar } from "../utils/progressBars.js";
+import { statsd } from "../utils/statsd.js";
 
 const log = logger.child({
   component: "EthEventsProvider",
@@ -625,6 +626,8 @@ export class EthEventsProvider {
     index: number,
   ): HubAsyncResult<void> {
     const logEvent = log.child({ event: { to, id: id.toString(), blockNumber } });
+
+    statsd().gauge("contracts.block_number", blockNumber);
 
     const serialized = Result.combine([
       from && from.length > 0 ? hexStringToBytes(from) : ok(new Uint8Array()),

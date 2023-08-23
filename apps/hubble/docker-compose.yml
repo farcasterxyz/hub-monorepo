@@ -17,6 +17,7 @@ services:
       "--rpc-port", "2283",
       "--eth-rpc-url", "$ETH_RPC_URL",
       "--eth-mainnet-rpc-url", "$ETH_MAINNET_RPC_URL",
+      "--l2-rpc-url", "$OPTIMISM_L2_RPC_URL",
       "--network", "${FC_NETWORK_ID:-1}",
       "-b", "${BOOTSTRAP_NODE:-/dns/nemes.farcaster.xyz/tcp/2282}",
       "--statsd-metrics-server", 
@@ -66,6 +67,9 @@ services:
   grafana:
     image: grafana/grafana:10.0.3
     restart: unless-stopped
+    # Mount the grafana config file
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     ports:
       - '3000:3000' # Grafana web
     networks:

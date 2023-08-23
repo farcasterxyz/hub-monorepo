@@ -1,14 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_GRAPHITE",
-      "label": "Data Source",
-      "description": "Graphite data source",
-      "type": "datasource",
-      "pluginId": "graphite",
-      "pluginName": "Graphite"
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -51,7 +41,7 @@
       "type": "row"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -88,6 +78,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -126,7 +117,7 @@
       },
       "targets": [
         {
-          "datasource": "${DS_GRAPHITE}",
+          "datasource": "Graphite",
           "refCount": 0,
           "refId": "A",
           "target": "stats.timers.hubble.hub.merge_message.mean"
@@ -136,7 +127,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -173,6 +164,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up.... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -220,7 +212,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -257,6 +249,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -313,7 +306,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 9,
         "x": 0,
         "y": 9
       },
@@ -347,7 +340,57 @@
       "type": "timeseries"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 3,
+        "x": 9,
+        "y": 9
+      },
+      "id": 10,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": "Graphite",
+          "refId": "A",
+          "target": "stats.gauges.hubble.contracts.block_number",
+          "textEditor": false
+        }
+      ],
+      "title": "Last Synced Block",
+      "type": "stat"
+    },
+    {
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -376,13 +419,11 @@
         "x": 12,
         "y": 9
       },
-      "id": 10,
+      "id": 18,
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -400,7 +441,7 @@
       "type": "gauge"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -434,9 +475,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -454,7 +493,7 @@
       "type": "gauge"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -487,9 +526,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -507,7 +544,7 @@
       "type": "gauge"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -540,9 +577,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -559,7 +594,7 @@
       "type": "gauge"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -596,6 +631,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -648,7 +684,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -685,6 +721,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -731,7 +768,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -774,9 +811,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -794,7 +829,7 @@
       "type": "gauge"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -838,9 +873,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -870,7 +903,7 @@
       "type": "row"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -944,7 +977,7 @@
       },
       "targets": [
         {
-          "datasource": "${DS_GRAPHITE}",
+          "datasource": "Graphite",
           "refId": "A",
           "target": "sumSeriesWithWildcards(stats_counts.hubble.submit_message.error.*.*.*, 5,6)"
         }
@@ -953,7 +986,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "${DS_GRAPHITE}",
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -990,6 +1023,7 @@
             }
           },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1027,7 +1061,7 @@
       },
       "targets": [
         {
-          "datasource": "${DS_GRAPHITE}",
+          "datasource": "Graphite",
           "refId": "A",
           "target": "sumSeriesWithWildcards(stats_counts.hubble.submit_message.error.*.*.*, 4,5)",
           "textEditor": true

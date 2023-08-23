@@ -24,6 +24,7 @@ import { ExtractAbiEvent } from "abitype";
 import { onChainEventSorter } from "../storage/db/onChainEvent.js";
 import { formatPercentage } from "../profile/profile.js";
 import { addProgressBar } from "../utils/progressBars.js";
+import { statsd } from "../utils/statsd.js";
 
 const log = logger.child({
   component: "L2EventsProvider",
@@ -737,6 +738,8 @@ export class L2EventsProvider {
     const blockNumber = Number(blockNumBigInt);
     const logEvent = log.child({ event: { type, blockNumber } });
     const serialized = Result.combine([hexStringToBytes(blockHash), hexStringToBytes(transactionHash)]);
+
+    statsd().gauge("contracts.block_number", blockNumber);
 
     if (serialized.isErr()) {
       logEvent.error({ errCode: serialized.error.errCode }, `cacheOnChainEvent error: ${serialized.error.message}`);

@@ -34,7 +34,10 @@ export const extractIPAddress = (peerAddress: string): string | undefined => {
   }
 };
 
-export const hostPortFromString = (peerAddress: string): HubResult<NodeAddress> => {
+export const hostPortFromString = (rawPeerAddress: string): HubResult<NodeAddress> => {
+  // Strip http:// and https:// from the beginning of the address if present
+  const peerAddress = rawPeerAddress.replace(/^(https?:\/\/)/, "");
+
   const host = peerAddress.split(":")[0] || "";
   const port = parseInt(peerAddress.split(":")[1] || "0", 10);
 
