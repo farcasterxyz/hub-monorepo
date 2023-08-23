@@ -263,10 +263,10 @@ setup_grafana() {
         dashboard_uid=$(echo "$response" | jq -r '.uid')
 
         # Set the default home dashboard for the organization
-        curl -s -X "PUT" "$grafana_url/api/org/preferences" \
+        prefs=$(curl -s -X "PUT" "$grafana_url/api/org/preferences" \
             -u "$credentials" \
             -H "Content-Type: application/json" \
-            --data "{\"homeDashboardUID\":\"$dashboard_uid\"}"
+            --data "{\"homeDashboardUID\":\"$dashboard_uid\"}")
 
         echo "✅ Dashboard is installed."
     else
