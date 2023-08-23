@@ -1,4 +1,4 @@
-import { FarcasterNetwork, OnChainEventType } from "@farcaster/hub-nodejs";
+import { bytesToHexString, Factories, FarcasterNetwork, OnChainEventType } from "@farcaster/hub-nodejs";
 import { StorageRegistry } from "./abis.js";
 import { jestRocksDB } from "../storage/db/jestUtils.js";
 import Engine from "../storage/engine/index.js";
@@ -23,6 +23,9 @@ let idRegistryAddress: `0x${string}`;
 
 beforeAll(() => {
   // Poll aggressively for fast testing
+  storageRegistryAddress = bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
+  idRegistryAddress = bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
+  keyRegistryAddress = bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
   L2EventsProvider.blockPollingInterval = 10;
   L2EventsProvider.eventPollingInterval = 10;
 });
