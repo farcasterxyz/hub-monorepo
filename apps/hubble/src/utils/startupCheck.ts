@@ -60,7 +60,13 @@ class StartupCheck {
     }
   }
 
-  async rpcCheck(rpcUrl: string | undefined, chain: Chain, prefix = "", status = StartupCheckStatus.ERROR) {
+  async rpcCheck(
+    rpcUrl: string | undefined,
+    chain: Chain,
+    prefix = "",
+    chainId?: number,
+    status = StartupCheckStatus.ERROR,
+  ) {
     const type = chain.name;
     if (!rpcUrl) {
       this.printStartupCheckStatus(
@@ -82,7 +88,7 @@ class StartupCheck {
     // Check that the publicClient is reachable and returns the goerli chainId
     const chainIdResult = await ResultAsync.fromPromise(publicClient.getChainId(), (err) => err);
 
-    if (chainIdResult.isErr() || chainIdResult.value !== chain.id) {
+    if (chainIdResult.isErr() || chainIdResult.value !== (chainId ?? chain.id)) {
       console.log(chainIdResult);
       this.printStartupCheckStatus(
         status,
