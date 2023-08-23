@@ -18,6 +18,9 @@ export type NetworkConfig = {
   allowedPeers: string[] | undefined;
   deniedPeers: string[];
   minAppVersion: string;
+  storageRegistryAddress: `0x${string}` | undefined;
+  keyRegistryAddress: `0x${string}` | undefined;
+  idRegistryAddress: `0x${string}` | undefined;
 };
 
 export type NetworkConfigResult = {
