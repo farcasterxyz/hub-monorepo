@@ -174,7 +174,7 @@ write_env_file() {
 setup_grafana() {
     local grafana_url="http://127.0.0.1:3000"
     local credentials="admin:admin"
-    local response dashboard_uid
+    local response dashboard_uid prefs
 
     add_datasource() {
         response=$(curl -s -o /dev/null -w "%{http_code}" -X "POST" "$grafana_url/api/datasources" \
@@ -263,10 +263,10 @@ setup_grafana() {
         dashboard_uid=$(echo "$response" | jq -r '.uid')
 
         # Set the default home dashboard for the organization
-        curl -s -X "PUT" "$grafana_url/api/org/preferences" \
+        prefs=$(curl -s -X "PUT" "$grafana_url/api/org/preferences" \
             -u "$credentials" \
             -H "Content-Type: application/json" \
-            --data "{\"homeDashboardUID\":\"$dashboard_uid\"}"
+            --data "{\"homeDashboardUID\":\"$dashboard_uid\"}")
 
         echo "✅ Dashboard is installed."
     else
