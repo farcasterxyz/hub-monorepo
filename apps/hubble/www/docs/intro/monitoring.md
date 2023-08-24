@@ -2,7 +2,7 @@
 
 Hubble ships with a default Grafana configuration to monitor sync and perf.
 
-If you used the install script, open http://localhost:3000 in a browser to see your dashboard. If you used docker manually or installed from source, you may need to set this up yourself. 
+If you used the install script, open localhost:3000 in a browser to see your dashboard. If you used docker manually or installed from source, you may need to set this up yourself. 
 
 ## Setting up monitoring
 
