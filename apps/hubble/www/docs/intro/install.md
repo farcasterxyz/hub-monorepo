@@ -25,7 +25,7 @@ You can install and run Hubble various ways depending on how much flexibility yo
 This is the easiest way to install and run Hubble. On a Linux server, just run
 
 ```bash
-curl -s https://download.thehubble.xyz/hubble-bootstrap.sh | bash
+curl -sSL https://raw.githubusercontent.com/farcasterxyz/hub-monorepo/@latest/scripts/hubble-bootstrap.sh  | bash
 ```
 
 This will install and configure all dependencies automatically, and install the `hubble.sh` script into `~/hubble` for future use. Monitoring is set up automatically, and you can view the grafana dashboard by navigating to `http://localhost:3000` in your browser.
