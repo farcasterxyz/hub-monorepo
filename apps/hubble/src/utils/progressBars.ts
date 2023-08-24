@@ -34,14 +34,16 @@ export function finishAllProgressBars(showDelay = false): void {
 
         // Wait a few seconds so that the user can see all the status. Do it async, so we don't block the startup
         const progress = addProgressBar("Starting Hubble", waitForSec);
+        finished = true;
 
         for (let i = 0; i < waitForSec; i++) {
           progress?.increment();
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
+      } else {
+        finished = true;
       }
 
-      finished = true;
       multiBar.stop();
       logger.flush();
     })();

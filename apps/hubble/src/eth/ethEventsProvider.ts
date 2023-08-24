@@ -320,6 +320,8 @@ export class EthEventsProvider {
 
         progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
 
+        statsd().increment("ethevents.blocks", Math.min(toBlock, nextToBlock) - nextFromBlock);
+
         // Sync old Id events
         await this.syncHistoricalIdEvents(nextFromBlock, nextToBlock);
 
@@ -525,6 +527,7 @@ export class EthEventsProvider {
 
     this._isHandlingBlock = true;
     log.info({ blockNumber }, `new block: ${blockNumber}`);
+    statsd().increment("ethevents.blocks");
 
     // Get all blocks that have been confirmed into a single array and sort.
     const cachedBlocksSet = new Set([
