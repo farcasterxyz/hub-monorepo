@@ -623,6 +623,7 @@ export class L2EventsProvider {
         `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)})`,
       );
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
+      statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
       const idFilter = await this._publicClient.createContractEventFilter({
         address: this.idRegistryAddress,
@@ -671,6 +672,7 @@ export class L2EventsProvider {
 
     this._isHandlingBlock = true;
     log.info({ blockNumber }, `new block: ${blockNumber}`);
+    statsd().increment("l2events.blocks");
 
     // Get all blocks that have been confirmed into a single array and sort.
     const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);

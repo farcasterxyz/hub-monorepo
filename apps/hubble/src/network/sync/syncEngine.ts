@@ -23,7 +23,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
-import { Hub, HubInterface } from "../../hubble.js";
+import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
 import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "./syncId.js";
 import { TrieSnapshot } from "./trieNode.js";
@@ -156,6 +156,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _messagesSinceLastCompaction = 0;
   private _isCompacting = false;
 
+  // The latest sync snapshot for each peer
+  private _peerSyncSnapshot = new Map<string, TrieSnapshot>();
+
   // Has the syncengine started yet?
   private _started = false;
 
@@ -235,6 +238,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public get syncMergeQSize(): number {
     return this._syncMergeQ;
+  }
+
+  public avgPeerNumMessages(): number {
+    const filtered = Array.from(this._peerSyncSnapshot.values()).filter((snapshot) => snapshot.numMessages > 0);
+    const total = filtered.reduce((acc, snapshot) => acc + snapshot.numMessages, 0);
+    return filtered.length ? total / filtered.length : 0;
   }
 
   public isStarted(): boolean {
@@ -321,6 +330,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async diffSyncIfRequired(hub: Hub, peerIdString?: string) {
     this.emit("syncStart");
+
+    // Log the version number for the dashboard
+    statsd().gauge(`farcaster.version.${FARCASTER_VERSION}`, 1);
+    statsd().gauge(`farcaster.hubversion.${APP_VERSION}`, 1);
 
     if (this.currentHubPeerContacts.size === 0) {
       log.warn("Diffsync: No peer contacts, skipping sync");
@@ -434,6 +447,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         },
         "DiffSync: SyncStatus", // Search for this string in the logs to get summary of sync status
       );
+
+      // Save the peer's sync snapshot
+      this._peerSyncSnapshot.set(updatedPeerIdString, syncStatus.theirSnapshot);
 
       if (syncStatus.shouldSync === true) {
         log.info({ peerId }, "Diffsync: Starting Sync with peer");
@@ -570,6 +586,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           const result = await this.fetchAndMergeMessages(missingIds, rpcClient);
           fullSyncResult.addResult(result);
           progressBar?.increment(result.total);
+
+          const avgPeerNumMessages = this.avgPeerNumMessages();
+          statsd().gauge(
+            "syncengine.sync_percent",
+            avgPeerNumMessages > 0 ? Math.min(1, (await this.trie.items()) / avgPeerNumMessages) : 0,
+          );
         });
 
         log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
