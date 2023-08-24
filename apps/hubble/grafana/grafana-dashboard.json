@@ -509,7 +509,7 @@
       },
       "id": 14,
       "panels": [],
-      "title": "Hubble Stats",
+      "title": "Performance",
       "type": "row"
     },
     {
@@ -978,7 +978,7 @@
           "target": "stats.gauges.hubble.rocksdb.approximate_size"
         }
       ],
-      "title": "Node Size",
+      "title": "DB Size on disk",
       "type": "timeseries"
     },
     {
