@@ -4,7 +4,7 @@ We recommend running Hubble on an always-on server that has [Docker](https://doc
 
 ## Requirements
 
-Hubble can be installed in 30 minutes, but a full sync can take up to three hours to complete. You'll need a machine that has: 
+Hubble can be installed in 30 minutes, and a full sync can take 1-2 hours to complete. You'll need a machine that has: 
 
 - 8 GB of RAM
 - 2 CPU cores or vCPUs
@@ -13,32 +13,32 @@ Hubble can be installed in 30 minutes, but a full sync can take up to three hour
 
 See [tutorials](./tutorials.html) for instructions on how to set up cloud providers to run Hubble.
 
-You will need RPC endpoints for Ethereum nodes on L1 Mainnet and L1 Goerli. We recommend using a service like [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/).
+You will need RPC endpoints for Ethereum nodes on L2 OP Mainnet, L1 Mainnet and L1 Goerli. We recommend using a service like [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/).
 
 
-## Installing Hubble
+## Install via Script
 
-You can install and run Hubble various ways depending on how much flexibility you need.
-
-### Install via installation script
-
-This is the easiest way to install and run Hubble. On a Linux server, just run
+The install script is the simplest way to set up Hubble. 
 
 ```bash
 curl -sSL https://download.thehubble.xyz/bootstrap.sh | bash
 ```
 
-This will install and configure all dependencies automatically, and install the `hubble.sh` script into `~/hubble` for future use. Monitoring is set up automatically, and you can view the grafana dashboard by navigating to `http://localhost:3000` in your browser.
+*If you're using macOS, you'll need to have docker installed and running.*
 
-#### Upgrading Hubble
-To upgrade your hubble via the script, run
+Hubble will be installed into `~/hubble` and will be run via Docker in the background, along with Grafana and Prometheus for [monitoring](monitoring.md). If you have trouble with the script, try [installing via docker](#install-via-docker).
+
+### Upgrading Hubble
+
+Upgrade Hubble to the latest version by running
+
 ```bash
 cd ~/hubble && ./hubble.sh upgrade
 ```
 
-### Install via docker container
+## Install via Docker
 
-This method allows you to manage your docker containers and config manually.
+Hubble can also be set up by running the docker image directly. To do this: 
 
 1. Check out the [hub-monorepo](https://github.com/farcasterxyz/hub-monorepo) locally.
 2. From the root of this folder navigate to `apps/hubble`
@@ -77,7 +77,9 @@ Docker compose will start a Hubble container that exposes ports for networking a
 docker compose logs -f hubble
 ```
 
-#### Upgrading Hubble
+8. Follow the instructions in the [monitoring section](#monitoring-hubble) to set up Grafana and view your Hub's status in real-time.
+
+### Upgrading Hubble
 
 Navigate to `apps/hubble` in hub-monorepo and run: 
 
@@ -86,9 +88,9 @@ git checkout main && git pull
 docker compose stop && docker compose up -d --force-recreate --pull always
 ```
 
+## Installing from source
 
-### Installing from source
-You can also build and run Hubble from source.
+Hubble can also be built and run directly from source without Docker. 
 
 #### Installing Dependencies
 
@@ -114,37 +116,15 @@ To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the 
 2. Follow the instructions to set [connect to a network](./networks.md)
 3. `yarn start --eth-rpc-url <your ETH-RPC-URL> --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL`
 
-#### Upgrading Hubble
+### Upgrading Hubble
+
 To upgrade hubble, find the latest [release tag](https://github.com/farcasterxyz/hub-monorepo/releases) and checkout that version and build.
 
-- `git fetch --tags` to fetch the latest tags
-- `git checkout @farcaster/hubble@<version>` to checkout the specific version. Replace the tag with the version you want to check out. 
-- `yarn install && yarn build` in the root folder to build Hubble.
-
-## Monitoring Hubble
-You can monitor your Hub in real-time by setting up Grafana.
-
-1. Start grafana and statsd
 ```bash
-docker compose up statsd grafana
+git fetch --tags # to fetch the latest tags
+git checkout @farcaster/hubble@latest # Or use a specific version. 
+yarn install && yarn build # in the root folder
 ```
-
-2. Enable monitoring on your Hub by setting this in your `.env`
-```bash
-STATSD_METRICS_SERVER=statsd:8125
-```
-
-If you are running hubble from source, you can pass this in as a command line argument
-```bash
-yarn start --statsd-metrics-server 127.0.0.1:8125
-```
-
-3. Open Grafana in a browser at `127.0.0.1:3000`. The default username/password is `admin`/`admin`. You will need to change your password on first login
-
-4. Go to `Settings -> Datasource -> Add new data source` and select `Graphite`. Set the URL to `http://statsd:80` and click `Save & Test` to make sure it is working
-
-5. Go to `Settings -> Dashboard -> Add New -> Import`, and in the `Import from Panel JSON`, paste the contents of the [Default Grafana Dashboard](https://github.com/farcasterxyz/hub-monorepo/blob/main/apps/hubble/grafana/grafana-dashboard.json)
-
 
 ## Running commands
 
