@@ -1,6 +1,6 @@
 # Installation
 
-We recommend running Hubble on an always on server that has [Docker](https://docs.docker.com/desktop/install/linux-install/) installed. 
+We recommend running Hubble on an always-on server that has [Docker](https://docs.docker.com/desktop/install/linux-install/) installed. 
 
 ## Requirements
 
@@ -16,8 +16,29 @@ See [tutorials](./tutorials.html) for instructions on how to set up cloud provid
 You will need RPC endpoints for Ethereum nodes on L1 Mainnet and L1 Goerli. We recommend using a service like [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/).
 
 
-
 ## Installing Hubble
+
+You can install and run Hubble various ways depending on how much flexibility you need.
+
+### Install via installation script
+
+This is the easiest way to install and run Hubble. On a Linux server, just run
+
+```bash
+curl -s https://download.thehubble.xyz/hubble-bootstrap.sh | bash
+```
+
+This will install and configure all dependencies automatically, and install the `hubble.sh` script into `~/hubble` for future use. Monitoring is set up automatically, and you can view the grafana dashboard by navigating to `http://localhost:3000` in your browser.
+
+#### Upgrading Hubble
+To upgrade your hubble via the script, run
+```bash
+cd ~/hubble && ./hubble.sh upgrade
+```
+
+### Install via docker container
+
+This method allows you to manage your docker containers and config manually.
 
 1. Check out the [hub-monorepo](https://github.com/farcasterxyz/hub-monorepo) locally.
 2. From the root of this folder navigate to `apps/hubble`
@@ -30,11 +51,14 @@ docker compose run hubble yarn identity create
 4. Create a .env file in `apps/hubble` with your Ethereum RPC endpoints:
 
 ```bash
-# Set to to your L1 Goerli ETH RPC URL
+# Set this to your L1 Goerli ETH RPC URL
 ETH_RPC_URL=your-ETH-RPC-URL
 
-# Set this to you L1 Mainnet ETH RPC URL
+# Set this to your L1 Mainnet ETH RPC URL
 ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
+
+# Set this to your L2 Optimism Mainnet RPC URL
+L2_RPC_URL=your-L2-optimism-RPC-URL
 ```
 
 5. Follow the instructions to set [connect to a network](./networks.md).
@@ -53,18 +77,52 @@ Docker compose will start a Hubble container that exposes ports for networking a
 docker compose logs -f hubble
 ```
 
-## Upgrading Hubble
+#### Upgrading Hubble
 
 Navigate to `apps/hubble` in hub-monorepo and run: 
 
 ```bash
- git checkout main && git pull
+git checkout main && git pull
 docker compose stop && docker compose up -d --force-recreate --pull always
 ```
 
 
+### Installing from source
+You can also build and run Hubble from source.
+
+#### Installing Dependencies
+
+First, ensure that the following are installed globally on your machine:
+
+- [Node.js 18.7+](https://nodejs.org/en/download/releases)
+- [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
+- [Rust](https://www.rust-lang.org/tools/install)
+
+#### Build
+
+- `git clone https://github.com/farcasterxyz/hub-monorepo.git` to clone the repo
+- `cd hub-monorepo` to enter the directory
+- `yarn install` to install dependencies
+- `yarn build` to build Hubble and its dependencies
+- `yarn test` to ensure that the test suite runs correctly
+
+#### Running Hubble
+To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.
+
+1. `yarn identity create` to create a ID
+2. Follow the instructions to set [connect to a network](./networks.md)
+3. `yarn start --eth-rpc-url <your ETH-RPC-URL> --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL`
+
+#### Upgrading Hubble
+To upgrade hubble, find the latest [release tag](https://github.com/farcasterxyz/hub-monorepo/releases) and checkout that version and build.
+
+- `git fetch --tags` to fetch the latest tags
+- `git checkout @farcaster/hubble@<version>` to checkout the specific version. Replace the tag with the version you want to check out. 
+- `yarn install && yarn build` in the root folder to build Hubble.
+
 ## Monitoring Hubble
-You can monitor your Hub by setting up grafana to monitor real time stats
+You can monitor your Hub in real-time by setting up Grafana.
 
 1. Start grafana and statsd
 ```bash
@@ -115,7 +173,7 @@ docker compose exec hubble /bin/sh
 
 - If upgrading from 1.3.3 or below, please set `ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL` (if using docker) or provide the `--eth-mainnet-rpc-url` flag (if not using docker)
 
-- If you're changing your Hub from one network to another, you'll need to reset your database with:  
+- If you're changing your Hub from one network to another, you'll need to delete your database contents: 
 
 ```bash
 docker compose stop && docker compose run --rm hubble yarn dbreset
@@ -131,37 +189,3 @@ docker pull farcasterxyz/hubble:latest
 # Get a specific release (v1.4.0)
 docker pull farcasterxyz/hubble@v1.4.0
 ```
-
-## Installing from source
-You can also build and run Hubble from source. 
-
-### 2.1 Installing Dependencies
-
-First, ensure that the following are installed globally on your machine:
-
-- [Node.js 18.7+](https://nodejs.org/en/download/releases)
-- [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
-- [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
-- [Rust](https://www.rust-lang.org/tools/install)
-
-### 2.2 Build
-
-- `git clone https://github.com/farcasterxyz/hub-monorepo.git` to clone the repo
-- `cd hub-monorepo` to enter the directory
-- `yarn install` to install dependencies
-- `yarn build` to build Hubble and its dependencies
-- `yarn test` to ensure that the test suite runs correctly
-
-### 2.3 Running Hubble
-To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.
-
-1. `yarn identity create` to create a ID
-2. Follow the instructions to set [connect to a network](./networks.md)
-3. `yarn start --eth-rpc-url <your ETH-RPC-URL> --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL`
-
-### 2.3 Upgrading Hubble
-To upgrade hubble, find the latest [release tag](https://github.com/farcasterxyz/hub-monorepo/releases) and checkout that version and build.
-
-- `git fetch --tags` to fetch the latest tags
-- `git checkout @farcaster/hubble@<verison>` to checkout the specific version. Replace the tag with the version you want to check out. 
-- `yarn install && yarn build` to build Hubble.
