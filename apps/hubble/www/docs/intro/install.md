@@ -58,7 +58,7 @@ ETH_RPC_URL=your-ETH-RPC-URL
 ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
 
 # Set this to your L2 Optimism Mainnet RPC URL
-L2_RPC_URL=your-L2-optimism-RPC-URL
+OPTIMISM_L2_RPC_URL=your-L2-optimism-RPC-URL
 ```
 
 5. Follow the instructions to set [connect to a network](./networks.md).
