@@ -1,9 +1,12 @@
-import { bytesIncrement, HubError, isHubError } from "@farcaster/hub-nodejs";
+import { bytesIncrement, HubError, HubResult, isHubError } from "@farcaster/hub-nodejs";
 import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from "abstract-leveldown";
 import { mkdir } from "fs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import { logger } from "../../utils/logger.js";
-import { statsd } from "../../utils/statsd.js";
+import * as tar from "tar";
+import * as fs from "fs";
+import { err, ok, Result } from "neverthrow";
+import path from "path";
 
 export const DB_DIRECTORY = ".rocks";
 export const MAX_DB_ITERATOR_OPEN_MILLISECONDS = 60 * 1000; // 1 min
@@ -422,3 +425,74 @@ class RocksDB {
 }
 
 export default RocksDB;
+
+export async function createTarBackup(inputDir: string): Promise<Result<string, Error>> {
+  // Output path is {dirname}-{date as yyyy-mm-dd}.tar
+  const outputFilePath = `${inputDir}-${new Date().toISOString().split("T")[0]}.tar`;
+
+  return new Promise((resolve) => {
+    tar
+      .c(
+        {
+          gzip: false,
+          file: outputFilePath,
+          cwd: path.dirname(inputDir),
+        },
+        [path.basename(inputDir)],
+      )
+      .then(() => {
+        const stats = fs.statSync(outputFilePath);
+        log.info({ size: stats.size, outputFilePath }, "Tarball created");
+        resolve(ok(outputFilePath));
+      })
+      .catch((e: Error) => {
+        log.error({ error: e, inputDir, outputFilePath }, "Error creating tarball");
+        resolve(err(e));
+      });
+  });
+}
+
+export async function extractTarBackup(tarFilePath: string): Promise<Result<string, Error>> {
+  // Output directory is the same name as the tar file without the extension
+  const outputDir = path.dirname(tarFilePath);
+
+  return new Promise((resolve) => {
+    tar
+      .x({
+        file: tarFilePath,
+        cwd: outputDir,
+        strict: true,
+      })
+      .then(() => {
+        log.info({ outputDir }, "Tarball extracted");
+        resolve(ok(outputDir));
+      })
+      .catch((e: Error) => {
+        log.error({ error: e, tarFilePath, outputDir }, "Error extracting tarball");
+        resolve(err(e));
+      });
+  });
+}
+
+// export async function gzipFile(inputFilePath: string, outputFilePath: string): Promise<Result<string, Error>> {
+//   return new Promise((resolve) => {
+//     const inputFile = fs.createReadStream(inputFilePath);
+//     const outputFile = fs.createWriteStream(outputFilePath);
+//     const gzip = zlib.createGzip();
+
+//     inputFile
+//       .pipe(gzip)
+//       .pipe(outputFile)
+//       .on("finish", () => {
+//         // Delete the original file
+//         fs.unlinkSync(inputFilePath);
+
+//         resolve(ok(outputFilePath));
+//       })
+//       .on("error", (e) => {
+//         log.info({ outputFilePath }, "Gzip file created");
+//         log.error({ error: e, inputFilePath, outputFilePath }, "Error creating tarball");
+//         resolve(err(e));
+//       });
+//   });
+// }

@@ -32,6 +32,7 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { goerli, mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
+import AWS from "aws-sdk";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -124,6 +125,10 @@ app
     "--rpc-rate-limit <number>",
     "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
   )
+
+  // Snapshots
+  .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
+  .option("--disable-snapshot-sync", "Disable syncing from snapshots. (default: enabled)")
 
   // Metrics
   .option(
@@ -465,6 +470,13 @@ app
     const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
     const profileSync = cliOptions.profileSync ?? hubConfig.profileSync ?? false;
 
+    let enableSnapshotToS3 = cliOptions.enableSnapshotToS3 ?? hubConfig.enableSnapshotToS3 ?? false;
+    if (enableSnapshotToS3) {
+      // If we're uploading snapshots to S3, we need to make sure that the S3 credentials are set
+      const awsVerified = await verifyAWSCredentials();
+      enableSnapshotToS3 = awsVerified;
+    }
+
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
@@ -509,7 +521,23 @@ app
       testUsers: testUsers,
       gossipMetricsEnabled: cliOptions.gossipMetricsEnabled ?? false,
       directPeers,
+      disableSnapshotSync: cliOptions.disableSnapshotSync ?? hubConfig.disableSnapshotSync ?? false,
+      enableSnapshotToS3,
     };
+
+    if (options.enableSnapshotToS3) {
+      // Set the Hub to exit (and be automatically restarted) so that the snapshot is uploaded
+      // before the Hub starts syncing
+      // Calculate and set a timeout to run at 9:10 am UTC (2:10 am PST)
+      const millisTill9 = millisTill9Am();
+
+      logger.info({ millisTill9 }, "Scheduling Hub to exit at 9:10 am UTC (2:10 am PST) to upload snapshot to S3");
+
+      setTimeout(async () => {
+        logger.info("Exiting Hub to upload snapshot to S3");
+        handleShutdownSignal("S3SnapshotUpload");
+      }, millisTill9);
+    }
 
     await startupCheck.rpcCheck(options.ethRpcUrl, goerli, "L1");
     await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet, "L1");
@@ -876,3 +904,40 @@ const readPeerId = async (filePath: string) => {
 };
 
 app.parse(process.argv);
+
+///////////////////////////////////////////////////////////////
+//                        UTILS
+///////////////////////////////////////////////////////////////
+function millisTill9Am(): number {
+  // Calculate the number of milliseconds until 9:10 am UTC (2:10 am PST)
+  const now = new Date();
+  const timeAt9 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 10, 0, 0).getTime();
+
+  const millisTill9Tomorrow = timeAt9 + 24 * 60 * 60 * 1000 - now.getTime();
+  const millisTill9Today = timeAt9 - now.getTime();
+
+  return millisTill9Today > 0 ? millisTill9Today : millisTill9Tomorrow;
+}
+
+// Verify that we have access to the AWS credentials.
+// Either via environment variables or via the AWS credentials file
+async function verifyAWSCredentials(): Promise<boolean> {
+  try {
+    // Set the AWS region, e.g., 'us-west-2'
+    AWS.config.update({ region: "us-west-2" });
+
+    // Create an STS service object
+    const sts = new AWS.STS();
+
+    // Call the STS getCallerIdentity() method, which will throw an error if credentials are invalid or inaccessible
+    const identity = await sts.getCallerIdentity().promise();
+
+    // If we reach this point without an error, credentials are valid
+    logger.info({ accountId: identity.Account }, "Verified AWS credentials");
+
+    return true;
+  } catch (error) {
+    logger.error({ err: error }, "Failed to verify AWS credentials. No S3 snapshot upload will be performed.");
+    return false;
+  }
+}
