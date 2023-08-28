@@ -206,11 +206,11 @@ setup_grafana() {
     }
 
     # Step 1: Restart statsd and grafana if they are running, otherwise start them
-    if docker compose ps statsd 2>&1 >/dev/null; then
-        if docker compose ps statsd | grep -q "Up"; then
-            docker compose restart statsd grafana
+    if $COMPOSE_CMD ps statsd 2>&1 >/dev/null; then
+        if $COMPOSE_CMD ps statsd | grep -q "Up"; then
+            $COMPOSE_CMD restart statsd grafana
         else
-            docker compose up -d statsd grafana
+            $COMPOSE_CMD up -d statsd grafana
         fi
     else
         echo "❌ Docker is not running or there's another issue with Docker. Please start Docker manually."
@@ -297,7 +297,7 @@ install_docker() {
 
 start_hubble() {
     # First, make sure to pull all the latest images in docker compose
-    docker compose pull
+    $COMPOSE_CMD pull
 
     # Make directory for hubble data called ".hub" and ".rocks". Make sure to set
     # the permissions so that the current user owns the directory and it is writable
@@ -306,17 +306,31 @@ start_hubble() {
     chmod 777 .hub .rocks
     
    if [[ ! -f "./.hub/default_id.protobuf" ]]; then
-        docker compose run hubble yarn identity create
+        $COMPOSE_CMD run hubble yarn identity create
         echo "✅ Created Peer Identity"
     else
         echo "✅ Peer Identity exists"
     fi
 
     # Stop the "hubble" service if it is already running
-    docker compose stop hubble
+    $COMPOSE_CMD stop hubble
 
     # Start the "hubble" service
-    docker compose up -d hubble
+    $COMPOSE_CMD up -d hubble
+}
+
+set_compose_command() {
+    # Detect whether "docker-compose" or "docker compose" is available
+    if command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+        echo "✅ Using docker-compose"
+    elif docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
+        echo "✅ Using docker compose"
+    else
+        echo "❌ Neither 'docker-compose' nor 'docker compose' is available on this system."
+        exit 1
+    fi
 }
 
 reexec_as_root_if_needed() {
@@ -361,6 +375,9 @@ if [ "$1" == "upgrade" ]; then
     # Call the function to install docker
     install_docker "$@"
 
+    # Call the function to set the COMPOSE_CMD variable
+    set_compose_command
+
     # Update the env file if needed
     write_env_file
 
@@ -381,7 +398,7 @@ if [ "$1" == "upgrade" ]; then
     sleep 5
 
     # Finally, start showing the logs
-    docker compose logs -f hubble
+    $COMPOSE_CMD logs --tail 100 -f hubble
 
     exit 0
 fi
@@ -391,7 +408,7 @@ if [ "$1" == "logs" ]; then
     # Ensure the script runs in the ~/hubble directory
     cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
 
-    docker compose logs -f hubble
+    $COMPOSE_CMD logs --tail 100 -f hubble
     exit 0
 fi
 
