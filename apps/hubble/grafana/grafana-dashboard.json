@@ -100,6 +100,9 @@
       "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -113,11 +116,7 @@
                 "value": 80
               }
             ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "unit": "none"
+          }
         },
         "overrides": []
       },
@@ -129,16 +128,16 @@
       },
       "id": 25,
       "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": ["lastNotNull"],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "auto",
         "colorMode": "value",
         "graphMode": "none",
-        "justifyMode": "auto"
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
       "pluginVersion": "10.0.3",
       "targets": [
