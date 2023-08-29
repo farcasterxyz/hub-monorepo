@@ -2,7 +2,13 @@ version: '3.9'
 
 services:
   app:
-    image: 'node:20.2-alpine'
+    build:
+      context: .
+      # Need to install python3 due to ffi requirements in core. Once we release a new version of core removing the dep,
+      # we can remove this.
+      dockerfile_inline: |
+        FROM node:20.2-alpine
+        RUN apk add --no-cache libc6-compat python3 make g++ linux-headers
     restart: unless-stopped
     command: ["sh", "-c", "yarn install && exec yarn start"]
     init: true
