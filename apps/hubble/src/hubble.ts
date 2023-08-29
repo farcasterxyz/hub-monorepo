@@ -74,11 +74,17 @@ import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { statsd } from "./utils/statsd.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
-import AWS from "aws-sdk";
-import * as fs from "fs";
+import {
+  S3Client,
+  PutObjectCommand,
+  ListObjectsV2Command,
+  HeadObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 import path from "path";
-import { ManagedUpload } from "aws-sdk/clients/s3.js";
 import { addProgressBar } from "./utils/progressBars.js";
+import * as stream from "stream";
+import * as fs from "fs";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -86,6 +92,7 @@ export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
 export const SNAPSHOT_S3_BUCKET = "backups-adityapk-us";
+export const S3_REGION = "us-east-1";
 
 export const FARCASTER_VERSION = "2023.8.23";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
@@ -701,25 +708,17 @@ export class Hub implements HubInterface {
     if (dbFiles.isErr() || dbFiles.value.length === 0) {
       log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
 
-      // List all the snapshots in S3
-      const s3 = new AWS.S3();
-      const s3Result = await ResultAsync.fromPromise(
-        s3
-          .listObjectsV2({
-            Bucket: SNAPSHOT_S3_BUCKET,
-            Prefix: `${FarcasterNetwork[this.options.network].toString()}/`,
-          })
-          .promise(),
-        (e) => e as Error,
+      const s3 = new S3Client({ region: S3_REGION });
+
+      const s3Result = await s3.send(
+        new ListObjectsV2Command({
+          Bucket: SNAPSHOT_S3_BUCKET,
+          Prefix: `${FarcasterNetwork[this.options.network].toString()}/`,
+        }),
       );
 
-      if (s3Result.isErr()) {
-        log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to list snapshots in S3");
-        return;
-      }
-
       // Find the latest snapshot. This is the key with the highest "LastModified" timestamp.
-      const latestSnapshot = s3Result.value.Contents?.sort((a, b) => {
+      const latestSnapshot = s3Result.Contents?.sort((a, b) => {
         return (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0);
       })[0];
 
@@ -730,28 +729,32 @@ export class Hub implements HubInterface {
         );
         return;
       }
-      log.info({ key: latestSnapshot.Key }, "found latest snapshot in S3");
 
-      // Fetch the snapshot and save it to the DB location. We need to stream
-      // the file from S3 to avoid loading the entire file into memory.
       const params = {
         Bucket: SNAPSHOT_S3_BUCKET,
-        Key: latestSnapshot.Key ?? "",
+        Key: latestSnapshot.Key,
       };
 
-      // Get the total size of the file from S3 metadata
-      const head = await s3.headObject(params).promise();
+      const head = await s3.send(new HeadObjectCommand(params));
       const totalSize = head.ContentLength || 0;
 
-      const s3Stream = s3.getObject(params).createReadStream();
+      const s3StreamResponse = await s3.send(new GetObjectCommand(params));
+
+      if (!(s3StreamResponse.Body instanceof stream.Readable)) {
+        throw new Error("Expected Body to be a readable stream");
+      }
+
+      const s3Stream: stream.Readable = s3StreamResponse.Body;
+      if (!s3Stream) {
+        log.error({ key: latestSnapshot.Key }, "failed to get snapshot from S3");
+        return;
+      }
 
       let downloadedSize = 0;
-
       const progressBar = addProgressBar("Getting snapshot", totalSize);
 
       s3Stream.on("data", (chunk) => {
         downloadedSize += chunk.length;
-        const progress = ((downloadedSize / totalSize) * 100).toFixed(2);
         progressBar?.update(downloadedSize);
       });
 
@@ -1400,7 +1403,9 @@ export class Hub implements HubInterface {
   }
 
   async uploadToS3(filePath: string): HubAsyncResult<string> {
-    const s3 = new AWS.S3();
+    const s3 = new S3Client({
+      region: S3_REGION,
+    });
 
     // The AWS key is "{network}/snapshot-{yyyy-mm-dd}.tar"
     const key = `${FarcasterNetwork[this.options.network].toString()}/snapshot-${
@@ -1421,15 +1426,12 @@ export class Hub implements HubInterface {
       Body: fileStream,
     };
 
-    return new Promise((resolve) => {
-      s3.upload(params, (e: Error, data: ManagedUpload.SendData) => {
-        if (e) {
-          resolve(err(new HubError("unavailable.network_failure", e.message)));
-        } else {
-          resolve(ok(data.Location));
-        }
-        log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
-      });
-    });
+    try {
+      const result = await s3.send(new PutObjectCommand(params));
+      log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
+      return ok(key);
+    } catch (e: unknown) {
+      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    }
   }
 }

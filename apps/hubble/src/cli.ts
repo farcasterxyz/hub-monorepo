@@ -15,7 +15,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { Result, ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
 import { exit } from "process";
-import { APP_VERSION, FARCASTER_VERSION, Hub, HubOptions } from "./hubble.js";
+import { APP_VERSION, FARCASTER_VERSION, Hub, HubOptions, S3_REGION } from "./hubble.js";
 import { logger } from "./utils/logger.js";
 import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo, parseAddress } from "./utils/p2p.js";
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
@@ -32,7 +32,7 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { goerli, mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
-import AWS from "aws-sdk";
+import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -922,17 +922,11 @@ function millisTill9Am(): number {
 // Verify that we have access to the AWS credentials.
 // Either via environment variables or via the AWS credentials file
 async function verifyAWSCredentials(): Promise<boolean> {
+  const sts = new STSClient({ region: S3_REGION });
+
   try {
-    // Set the AWS region, e.g., 'us-west-2'
-    AWS.config.update({ region: "us-west-2" });
+    const identity = await sts.send(new GetCallerIdentityCommand({}));
 
-    // Create an STS service object
-    const sts = new AWS.STS();
-
-    // Call the STS getCallerIdentity() method, which will throw an error if credentials are invalid or inaccessible
-    const identity = await sts.getCallerIdentity().promise();
-
-    // If we reach this point without an error, credentials are valid
     logger.info({ accountId: identity.Account }, "Verified AWS credentials");
 
     return true;
