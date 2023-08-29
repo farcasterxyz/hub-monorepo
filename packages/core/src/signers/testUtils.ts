@@ -11,7 +11,8 @@ import {
 import { makeUserNameProofClaim, UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
 import { bytesToHex } from "viem";
-import { SignedKeyRequest } from "../signedKeyRequest";
+import { SignedKeyRequestEip712 } from "../signedKeyRequest";
+import { IdRegisterEip712, IdTransferEip712 } from "../idRegistry";
 
 export const testEip712Signer = async (signer: Eip712Signer) => {
   let signerKey: Uint8Array;
@@ -128,8 +129,100 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
   });
 
+  describe("signIdRegister", () => {
+    let message: IdRegisterEip712;
+    let signature: Uint8Array;
+
+    beforeAll(async () => {
+      message = {
+        to: bytesToHex(signerKey),
+        recovery: bytesToHex(signerKey),
+        nonce: 1n,
+        deadline: BigInt(Math.floor(Date.now() / 1000)),
+      };
+      const signatureResult = await signer.signIdRegister(message);
+      expect(signatureResult.isOk()).toBeTruthy();
+      signature = signatureResult._unsafeUnwrap();
+    });
+
+    test("succeeds", async () => {
+      const valid = await eip712.verifyIdRegister(
+        message,
+        signature,
+        signerKey
+      );
+      expect(valid).toEqual(ok(true));
+    });
+
+    test("succeeds when encoding twice", async () => {
+      const message2: IdRegisterEip712 = { ...message };
+      const signature2 = await signer.signIdRegister(message2);
+      expect(signature2).toEqual(ok(signature));
+      expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(
+        bytesToHexString(signature)
+      );
+    });
+
+    test("fails with HubError", async () => {
+      const result = await signer.signIdRegister({
+        ...message,
+        deadline: -1n,
+      });
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().errCode).toBe(
+        "bad_request.invalid_param"
+      );
+    });
+  });
+
+  describe("signIdTransfer", () => {
+    let message: IdTransferEip712;
+    let signature: Uint8Array;
+
+    beforeAll(async () => {
+      message = {
+        fid: 1n,
+        to: bytesToHex(signerKey),
+        nonce: 1n,
+        deadline: BigInt(Math.floor(Date.now() / 1000)),
+      };
+      const signatureResult = await signer.signIdTransfer(message);
+      expect(signatureResult.isOk()).toBeTruthy();
+      signature = signatureResult._unsafeUnwrap();
+    });
+
+    test("succeeds", async () => {
+      const valid = await eip712.verifyIdTransfer(
+        message,
+        signature,
+        signerKey
+      );
+      expect(valid).toEqual(ok(true));
+    });
+
+    test("succeeds when encoding twice", async () => {
+      const message2: IdTransferEip712 = { ...message };
+      const signature2 = await signer.signIdTransfer(message2);
+      expect(signature2).toEqual(ok(signature));
+      expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(
+        bytesToHexString(signature)
+      );
+    });
+
+    test("fails with HubError", async () => {
+      const result = await signer.signIdTransfer({
+        ...message,
+        deadline: -1n,
+      });
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().errCode).toBe(
+        "bad_request.invalid_param"
+      );
+    });
+  });
+
   describe("signSignedKeyRequest", () => {
-    let request: SignedKeyRequest;
+    let request: SignedKeyRequestEip712;
     let signature: Uint8Array;
 
     beforeAll(async () => {
@@ -153,7 +246,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
 
     test("succeeds when encoding twice", async () => {
-      const request2: SignedKeyRequest = { ...request };
+      const request2: SignedKeyRequestEip712 = { ...request };
       const signature2 = await signer.signSignedKeyRequest(request2);
       expect(signature2).toEqual(ok(signature));
       expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(

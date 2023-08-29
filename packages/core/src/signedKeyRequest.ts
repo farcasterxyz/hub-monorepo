@@ -1,8 +1,13 @@
 import { Hex, decodeAbiParameters, encodeAbiParameters } from "viem";
 
-export type SignedKeyRequest = {
+export type SignedKeyRequestEip712 = {
+  /** FID of the requester */
   requestFid: bigint;
+
+  /** Key being requested */
   key: Hex;
+
+  /** Unix timestamp when this request expires */
   deadline: bigint;
 };
 

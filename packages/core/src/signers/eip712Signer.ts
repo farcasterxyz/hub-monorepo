@@ -2,7 +2,8 @@ import { SignatureScheme } from "../protobufs";
 import { HubAsyncResult } from "../errors";
 import { VerificationEthAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
-import { SignedKeyRequest } from "../signedKeyRequest";
+import { SignedKeyRequestEip712 } from "../signedKeyRequest";
+import { IdRegisterEip712, IdTransferEip712 } from "../idRegistry";
 import { Signer } from "./signer";
 
 /**
@@ -24,6 +25,12 @@ export abstract class Eip712Signer implements Signer {
     claim: UserNameProofClaim
   ): HubAsyncResult<Uint8Array>;
   public abstract signSignedKeyRequest(
-    request: SignedKeyRequest
+    request: SignedKeyRequestEip712
+  ): HubAsyncResult<Uint8Array>;
+  public abstract signIdRegister(
+    request: IdRegisterEip712
+  ): HubAsyncResult<Uint8Array>;
+  public abstract signIdTransfer(
+    request: IdTransferEip712
   ): HubAsyncResult<Uint8Array>;
 }

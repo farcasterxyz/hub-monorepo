@@ -6,8 +6,15 @@ import { UserNameProofClaim } from "../userNameProof";
 import {
   SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
   SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE,
-  SignedKeyRequest,
+  SignedKeyRequestEip712,
 } from "../signedKeyRequest";
+import {
+  ID_REGISTRY_EIP_712_DOMAIN,
+  ID_REGISTRY_REGISTER_TYPE,
+  ID_REGISTRY_TRANSFER_TYPE,
+  IdRegisterEip712,
+  IdTransferEip712,
+} from "../idRegistry";
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: "Farcaster Verify Ethereum Address",
@@ -115,8 +122,48 @@ export const verifyMessageHashSignature = async (
   return valid;
 };
 
+export const verifyIdRegister = async (
+  message: IdRegisterEip712,
+  signature: Uint8Array,
+  address: Uint8Array
+): HubAsyncResult<boolean> => {
+  const valid = await ResultAsync.fromPromise(
+    verifyTypedData({
+      address: bytesToHex(address),
+      domain: ID_REGISTRY_EIP_712_DOMAIN,
+      types: { Register: ID_REGISTRY_REGISTER_TYPE },
+      primaryType: "Register",
+      message,
+      signature,
+    }),
+    (e) => new HubError("unknown", e as Error)
+  );
+
+  return valid;
+};
+
+export const verifyIdTransfer = async (
+  message: IdTransferEip712,
+  signature: Uint8Array,
+  address: Uint8Array
+): HubAsyncResult<boolean> => {
+  const valid = await ResultAsync.fromPromise(
+    verifyTypedData({
+      address: bytesToHex(address),
+      domain: ID_REGISTRY_EIP_712_DOMAIN,
+      types: { Transfer: ID_REGISTRY_TRANSFER_TYPE },
+      primaryType: "Transfer",
+      message,
+      signature,
+    }),
+    (e) => new HubError("unknown", e as Error)
+  );
+
+  return valid;
+};
+
 export const verifySignedKeyRequest = async (
-  signedKeyRequest: SignedKeyRequest,
+  signedKeyRequest: SignedKeyRequestEip712,
   signature: Uint8Array,
   address: Uint8Array
 ): HubAsyncResult<boolean> => {

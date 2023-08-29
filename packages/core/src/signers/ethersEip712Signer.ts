@@ -15,8 +15,15 @@ import {
 import {
   SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
   SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE,
-  SignedKeyRequest,
+  SignedKeyRequestEip712,
 } from "../signedKeyRequest";
+import {
+  ID_REGISTRY_EIP_712_DOMAIN,
+  ID_REGISTRY_REGISTER_TYPE,
+  ID_REGISTRY_TRANSFER_TYPE,
+  IdRegisterEip712,
+  IdTransferEip712,
+} from "../idRegistry";
 
 export type MinimalEthersSigner = Pick<Signer, "signTypedData" | "getAddress">;
 
@@ -78,8 +85,36 @@ export class EthersEip712Signer extends Eip712Signer {
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
+  public async signIdRegister(
+    register: IdRegisterEip712
+  ): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._ethersSigner.signTypedData(
+        ID_REGISTRY_EIP_712_DOMAIN,
+        { Register: [...ID_REGISTRY_REGISTER_TYPE] },
+        register
+      ),
+      (e) => new HubError("bad_request.invalid_param", e as Error)
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signIdTransfer(
+    transfer: IdTransferEip712
+  ): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._ethersSigner.signTypedData(
+        ID_REGISTRY_EIP_712_DOMAIN,
+        { Transfer: [...ID_REGISTRY_TRANSFER_TYPE] },
+        transfer
+      ),
+      (e) => new HubError("bad_request.invalid_param", e as Error)
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
   public async signSignedKeyRequest(
-    signedKeyRequest: SignedKeyRequest
+    signedKeyRequest: SignedKeyRequestEip712
   ): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._ethersSigner.signTypedData(
