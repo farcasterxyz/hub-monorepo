@@ -8,7 +8,7 @@ export const up = async (db: Kysely<any>) => {
 
   await db.schema.alterTable("signers").dropConstraint("signers_hash_foreign").execute();
 
-  await db.schema.alterTable("signers").addUniqueConstraint("signers_fid_signer_unique", ["fid", "signer"]).execute();
+  // await db.schema.alterTable("signers").addUniqueConstraint("signers_fid_signer_unique", ["fid", "signer"]).execute();
 
   await db.schema
     .alterTable("signers")
@@ -46,7 +46,7 @@ export const down = async (db: Kysely<any>) => {
     .alterColumn("custodyAddress", (c) => c.setNotNull())
     .execute();
   await db.schema.alterTable("signers").addUniqueConstraint("signers_hash_unique", ["hash"]).execute();
-  await db.schema.alterTable("signers").dropConstraint("signers_fid_signer_unique").execute();
+  // await db.schema.alterTable("signers").dropConstraint("signers_fid_signer_unique").execute();
   await db.schema
     .alterTable("signers")
     .addForeignKeyConstraint("signers_hash_foreign", ["hash"], "messages", ["hash"])

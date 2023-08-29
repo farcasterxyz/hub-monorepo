@@ -415,7 +415,7 @@ export class HubReplicator {
             signer: event.signerEventBody.key,
           })
           // Do nothing on conflict since nothing should have changed if hash is the same.
-          .onConflict((oc) => oc.columns(["fid", "signer"]).doNothing())
+          // .onConflict((oc) => oc.columns(["fid", "signer"]).doNothing())
           .execute();
       } else if (event.signerEventBody.eventType === SignerEventType.REMOVE) {
         await this.db
@@ -683,7 +683,7 @@ export class HubReplicator {
         }),
       )
       // Do nothing on conflict since nothing should have changed if hash is the same.
-      .onConflict((oc) => oc.columns(["signer", "fid"]).doNothing())
+      // .onConflict((oc) => oc.columns(["signer", "fid"]).doNothing())
       .execute();
 
     for (const message of messages) {
