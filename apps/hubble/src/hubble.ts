@@ -91,7 +91,7 @@ export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" 
 export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
-export const SNAPSHOT_S3_BUCKET = "backups-adityapk-us";
+export const SNAPSHOT_S3_BUCKET = "adityapk-farcaster-snapshot";
 export const S3_REGION = "us-east-1";
 
 export const FARCASTER_VERSION = "2023.8.23";
@@ -708,14 +708,23 @@ export class Hub implements HubInterface {
     if (dbFiles.isErr() || dbFiles.value.length === 0) {
       log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
 
-      const s3 = new S3Client({ region: S3_REGION });
+      const s3 = new S3Client({
+        region: S3_REGION,
+        signer: { sign: async (request) => request }, // Public bucket, no need to sign
+      });
 
-      const s3Result = await s3.send(
-        new ListObjectsV2Command({
-          Bucket: SNAPSHOT_S3_BUCKET,
-          Prefix: `${FarcasterNetwork[this.options.network].toString()}/`,
-        }),
-      );
+      let s3Result;
+      try {
+        s3Result = await s3.send(
+          new ListObjectsV2Command({
+            Bucket: SNAPSHOT_S3_BUCKET,
+            Prefix: `${FarcasterNetwork[this.options.network].toString()}/`,
+          }),
+        );
+      } catch (e) {
+        log.error({ error: e }, "failed to list snapshots in S3");
+        return;
+      }
 
       // Find the latest snapshot. This is the key with the highest "LastModified" timestamp.
       const latestSnapshot = s3Result.Contents?.sort((a, b) => {
