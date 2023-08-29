@@ -13,6 +13,11 @@ import { HubAsyncResult, HubError } from "../errors";
 import { VerificationEthAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
+import {
+  SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
+  SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE,
+  SignedKeyRequest,
+} from "../signedKeyRequest";
 
 export class ViemLocalEip712Signer extends Eip712Signer {
   private readonly _viemLocalAccount: LocalAccount<string>;
@@ -25,7 +30,7 @@ export class ViemLocalEip712Signer extends Eip712Signer {
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
     return ResultAsync.fromPromise(
       Promise.resolve(this._viemLocalAccount.address),
-      (e) => new HubError("unknown", e as Error),
+      (e) => new HubError("unknown", e as Error)
     ).andThen(hexStringToBytes);
   }
 
@@ -39,12 +44,14 @@ export class ViemLocalEip712Signer extends Eip712Signer {
           hash: bytesToHex(hash),
         },
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error),
+      (e) => new HubError("bad_request.invalid_param", e as Error)
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
+  public async signVerificationEthAddressClaim(
+    claim: VerificationEthAddressClaim
+  ): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
         domain: EIP_712_FARCASTER_DOMAIN,
@@ -52,12 +59,14 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         primaryType: "VerificationClaim",
         message: claim,
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error),
+      (e) => new HubError("bad_request.invalid_param", e as Error)
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signUserNameProofClaim(userNameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
+  public async signUserNameProofClaim(
+    userNameProof: UserNameProofClaim
+  ): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
         domain: EIP_712_USERNAME_DOMAIN,
@@ -65,7 +74,22 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         primaryType: "UserNameProof",
         message: userNameProof,
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error),
+      (e) => new HubError("bad_request.invalid_param", e as Error)
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signSignedKeyRequest(
+    signedKeyRequest: SignedKeyRequest
+  ): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._viemLocalAccount.signTypedData({
+        domain: SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
+        types: { SignedKeyRequest: SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE },
+        primaryType: "SignedKeyRequest",
+        message: signedKeyRequest,
+      }),
+      (e) => new HubError("bad_request.invalid_param", e as Error)
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }

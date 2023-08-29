@@ -3,6 +3,11 @@ import { ResultAsync } from "neverthrow";
 import { HubAsyncResult, HubError } from "../errors";
 import { VerificationEthAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
+import {
+  SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
+  SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE,
+  SignedKeyRequest,
+} from "../signedKeyRequest";
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: "Farcaster Verify Ethereum Address",
@@ -53,7 +58,7 @@ export const EIP_712_USERNAME_PROOF = [
 export const verifyVerificationEthAddressClaimSignature = async (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array,
-  address: Uint8Array,
+  address: Uint8Array
 ): HubAsyncResult<boolean> => {
   const valid = await ResultAsync.fromPromise(
     verifyTypedData({
@@ -64,7 +69,7 @@ export const verifyVerificationEthAddressClaimSignature = async (
       message: claim,
       signature,
     }),
-    (e) => new HubError("unknown", e as Error),
+    (e) => new HubError("unknown", e as Error)
   );
 
   return valid;
@@ -73,7 +78,7 @@ export const verifyVerificationEthAddressClaimSignature = async (
 export const verifyUserNameProofClaim = async (
   nameProof: UserNameProofClaim,
   signature: Uint8Array,
-  address: Uint8Array,
+  address: Uint8Array
 ): HubAsyncResult<boolean> => {
   const valid = await ResultAsync.fromPromise(
     verifyTypedData({
@@ -84,7 +89,7 @@ export const verifyUserNameProofClaim = async (
       message: nameProof,
       signature,
     }),
-    (e) => new HubError("unknown", e as Error),
+    (e) => new HubError("unknown", e as Error)
   );
 
   return valid;
@@ -93,7 +98,7 @@ export const verifyUserNameProofClaim = async (
 export const verifyMessageHashSignature = async (
   hash: Uint8Array,
   signature: Uint8Array,
-  address: Uint8Array,
+  address: Uint8Array
 ): HubAsyncResult<boolean> => {
   const valid = await ResultAsync.fromPromise(
     verifyTypedData({
@@ -104,7 +109,27 @@ export const verifyMessageHashSignature = async (
       message: { hash: bytesToHex(hash) },
       signature,
     }),
-    (e) => new HubError("unknown", e as Error),
+    (e) => new HubError("unknown", e as Error)
+  );
+
+  return valid;
+};
+
+export const verifySignedKeyRequest = async (
+  signedKeyRequest: SignedKeyRequest,
+  signature: Uint8Array,
+  address: Uint8Array
+): HubAsyncResult<boolean> => {
+  const valid = await ResultAsync.fromPromise(
+    verifyTypedData({
+      address: bytesToHex(address),
+      domain: SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
+      types: { SignedKeyRequest: SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE },
+      primaryType: "SignedKeyRequest",
+      message: signedKeyRequest,
+      signature,
+    }),
+    (e) => new HubError("unknown", e as Error)
   );
 
   return valid;
