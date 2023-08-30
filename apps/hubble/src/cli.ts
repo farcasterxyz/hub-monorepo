@@ -162,7 +162,7 @@ app
     const handleShutdownSignal = (signalName: string) => {
       logger.flush();
 
-      logger.warn(`${signalName} received`);
+      logger.warn(`signal '${signalName}' received`);
       if (!isExiting) {
         isExiting = true;
         hub

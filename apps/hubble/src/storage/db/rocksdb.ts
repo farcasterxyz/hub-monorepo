@@ -4,6 +4,7 @@ import { mkdir } from "fs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import { logger } from "../../utils/logger.js";
 import * as tar from "tar";
+import * as zlib from "zlib";
 import * as fs from "fs";
 import { err, ok, Result } from "neverthrow";
 import path from "path";
@@ -427,14 +428,19 @@ class RocksDB {
 export default RocksDB;
 
 export async function createTarBackup(inputDir: string): Promise<Result<string, Error>> {
-  // Output path is {dirname}-{date as yyyy-mm-dd}.tar
-  const outputFilePath = `${inputDir}-${new Date().toISOString().split("T")[0]}.tar`;
+  // Output path is {dirname}-{date as yyyy-mm-dd}-{timestamp}.tar.gz
+  const outputFilePath = `${inputDir}-${new Date().toISOString().split("T")[0]}-${Math.floor(
+    Date.now() / 1000,
+  )}.tar.gz`;
+
+  const start = Date.now();
+  log.info({ inputDir, outputFilePath }, "Creating tarball");
 
   return new Promise((resolve) => {
     tar
       .c(
         {
-          gzip: false,
+          gzip: true,
           file: outputFilePath,
           cwd: path.dirname(inputDir),
         },
@@ -442,7 +448,7 @@ export async function createTarBackup(inputDir: string): Promise<Result<string, 
       )
       .then(() => {
         const stats = fs.statSync(outputFilePath);
-        log.info({ size: stats.size, outputFilePath }, "Tarball created");
+        log.info({ size: stats.size, outputFilePath, timeTakenMs: Date.now() - start }, "Tarball created");
         resolve(ok(outputFilePath));
       })
       .catch((e: Error) => {
@@ -452,47 +458,38 @@ export async function createTarBackup(inputDir: string): Promise<Result<string, 
   });
 }
 
-export async function extractTarBackup(tarFilePath: string): Promise<Result<string, Error>> {
+export async function extractTarBackup(tarFilePath: string, newTopLevelDir: string): Promise<Result<string, Error>> {
   // Output directory is the same name as the tar file without the extension
   const outputDir = path.dirname(tarFilePath);
 
   return new Promise((resolve) => {
-    tar
-      .x({
-        file: tarFilePath,
-        cwd: outputDir,
-        strict: true,
-      })
-      .then(() => {
-        log.info({ outputDir }, "Tarball extracted");
-        resolve(ok(outputDir));
-      })
-      .catch((e: Error) => {
-        log.error({ error: e, tarFilePath, outputDir }, "Error extracting tarball");
-        resolve(err(e));
-      });
+    const gunzip = zlib.createGunzip();
+    const parseStream = new tar.Parse();
+
+    parseStream.on("entry", (entry) => {
+      const newPath = path.join(outputDir, newTopLevelDir, ...entry.path.split(path.sep).slice(1));
+      const newDir = path.dirname(newPath);
+
+      if (entry.type === "Directory") {
+        fs.mkdirSync(newPath, { recursive: true });
+        entry.resume();
+      } else {
+        fs.mkdirSync(newDir, { recursive: true });
+        entry.pipe(fs.createWriteStream(newPath));
+      }
+    });
+
+    try {
+      fs.createReadStream(tarFilePath)
+        .pipe(gunzip) // Ungzip on the fly
+        .pipe(parseStream)
+        .on("end", () => {
+          log.info({ tarFilePath, newTopLevelDir, outputDir }, "Tarball extracted with new top-level directory");
+          resolve(ok(outputDir));
+        });
+    } catch (e) {
+      log.error({ error: e, tarFilePath, outputDir }, "Error extracting tarball");
+      resolve(err(e as Error));
+    }
   });
 }
-
-// export async function gzipFile(inputFilePath: string, outputFilePath: string): Promise<Result<string, Error>> {
-//   return new Promise((resolve) => {
-//     const inputFile = fs.createReadStream(inputFilePath);
-//     const outputFile = fs.createWriteStream(outputFilePath);
-//     const gzip = zlib.createGzip();
-
-//     inputFile
-//       .pipe(gzip)
-//       .pipe(outputFile)
-//       .on("finish", () => {
-//         // Delete the original file
-//         fs.unlinkSync(inputFilePath);
-
-//         resolve(ok(outputFilePath));
-//       })
-//       .on("error", (e) => {
-//         log.info({ outputFilePath }, "Gzip file created");
-//         log.error({ error: e, inputFilePath, outputFilePath }, "Error creating tarball");
-//         resolve(err(e));
-//       });
-//   });
-// }

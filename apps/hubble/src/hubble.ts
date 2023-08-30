@@ -786,7 +786,7 @@ export class Hub implements HubInterface {
       }
 
       // Extract the tar file
-      const extractResult = await extractTarBackup(snapshotLocation);
+      const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation));
       if (extractResult.isErr()) {
         log.error({ error: extractResult.error }, "failed to extract snapshot from S3");
         return;
@@ -1416,10 +1416,10 @@ export class Hub implements HubInterface {
       region: S3_REGION,
     });
 
-    // The AWS key is "{network}/snapshot-{yyyy-mm-dd}.tar"
+    // The AWS key is "{network}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
     const key = `${FarcasterNetwork[this.options.network].toString()}/snapshot-${
       new Date().toISOString().split("T")[0]
-    }.tar`;
+    }-${Math.floor(Date.now() / 1000)}.tar.gz`;
 
     const start = Date.now();
     log.info({ filePath }, "Uploading snapshot to S3");
