@@ -29,7 +29,8 @@ export function finishAllProgressBars(showDelay = false): void {
   if (!finished) {
     // Finish up the progress bars and start logging to STDOUT
     (async () => {
-      if (showDelay) {
+      // Don't show delay in CI or test
+      if (showDelay && process.env["NODE_ENV"] !== "test" && !process.env["CI"]) {
         const waitForSec = 30;
 
         // Wait a few seconds so that the user can see all the status. Do it async, so we don't block the startup
