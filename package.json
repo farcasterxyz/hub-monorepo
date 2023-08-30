@@ -4,10 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "packageManager": "yarn@1.22.19",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "build": "./node_modules/.bin/turbo run build",
     "clean": "./node_modules/.bin/turbo run clean",
@@ -16,7 +13,7 @@
     "test": "./node_modules/.bin/turbo run test",
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
-    "lint:ci": "./node_modules/.bin/turbo run lint:ci --parallel",
+    "lint:ci": "./node_modules/.bin/turbo run lint:ci --parallel --verbose",
     "prepare": "husky install",
     "version-packages": "changeset version --ignore @farcaster/hubble",
     "release-packages": "yarn build && changeset publish",
@@ -44,8 +41,6 @@
     "typescript": "^5.0.2"
   },
   "lint-staged": {
-    "*.ts": [
-      "rome check"
-    ]
+    "*.ts": ["rome check"]
   }
 }
