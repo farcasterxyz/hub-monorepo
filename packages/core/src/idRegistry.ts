@@ -1,4 +1,7 @@
-import { Hex } from "viem";
+import { verifyTypedData } from "viem";
+import { ResultAsync } from "neverthrow";
+import { Hex, bytesToHex } from "viem";
+import { HubAsyncResult, HubError } from "./errors";
 
 export type IdRegisterEip712 = {
   /** Address to register FID to */
@@ -32,7 +35,7 @@ export const ID_REGISTRY_EIP_712_DOMAIN = {
   name: "Farcaster IdRegistry",
   version: "1",
   chainId: 10,
-  verifyingContract: "0x880a0b520732e951c03eb229e27144fdb9b80658", // TODO replace with final contract address
+  verifyingContract: "0x00000000fcaf86937e41ba038b4fa40baa4b780a",
 } as const;
 
 export const ID_REGISTRY_REGISTER_TYPE = [
@@ -48,3 +51,43 @@ export const ID_REGISTRY_TRANSFER_TYPE = [
   { name: "nonce", type: "uint256" },
   { name: "deadline", type: "uint256" },
 ] as const;
+
+export const verifyIdRegister = async (
+  message: IdRegisterEip712,
+  signature: Uint8Array,
+  address: Uint8Array,
+): HubAsyncResult<boolean> => {
+  const valid = await ResultAsync.fromPromise(
+    verifyTypedData({
+      address: bytesToHex(address),
+      domain: ID_REGISTRY_EIP_712_DOMAIN,
+      types: { Register: ID_REGISTRY_REGISTER_TYPE },
+      primaryType: "Register",
+      message,
+      signature,
+    }),
+    (e) => new HubError("unknown", e as Error),
+  );
+
+  return valid;
+};
+
+export const verifyIdTransfer = async (
+  message: IdTransferEip712,
+  signature: Uint8Array,
+  address: Uint8Array,
+): HubAsyncResult<boolean> => {
+  const valid = await ResultAsync.fromPromise(
+    verifyTypedData({
+      address: bytesToHex(address),
+      domain: ID_REGISTRY_EIP_712_DOMAIN,
+      types: { Transfer: ID_REGISTRY_TRANSFER_TYPE },
+      primaryType: "Transfer",
+      message,
+      signature,
+    }),
+    (e) => new HubError("unknown", e as Error),
+  );
+
+  return valid;
+};

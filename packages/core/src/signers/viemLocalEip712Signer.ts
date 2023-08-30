@@ -25,6 +25,13 @@ import {
   IdRegisterEip712,
   IdTransferEip712,
 } from "../idRegistry";
+import {
+  KEY_REGISTRY_ADD_TYPE,
+  KEY_REGISTRY_EIP_712_DOMAIN,
+  KEY_REGISTRY_REMOVE_TYPE,
+  KeyAddEip712,
+  KeyRemoveEip712,
+} from "../keyRegistry";
 
 export class ViemLocalEip712Signer extends Eip712Signer {
   private readonly _viemLocalAccount: LocalAccount<string>;
@@ -37,7 +44,7 @@ export class ViemLocalEip712Signer extends Eip712Signer {
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
     return ResultAsync.fromPromise(
       Promise.resolve(this._viemLocalAccount.address),
-      (e) => new HubError("unknown", e as Error)
+      (e) => new HubError("unknown", e as Error),
     ).andThen(hexStringToBytes);
   }
 
@@ -51,14 +58,12 @@ export class ViemLocalEip712Signer extends Eip712Signer {
           hash: bytesToHex(hash),
         },
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signVerificationEthAddressClaim(
-    claim: VerificationEthAddressClaim
-  ): HubAsyncResult<Uint8Array> {
+  public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
         domain: EIP_712_FARCASTER_DOMAIN,
@@ -66,14 +71,12 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         primaryType: "VerificationClaim",
         message: claim,
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signUserNameProofClaim(
-    userNameProof: UserNameProofClaim
-  ): HubAsyncResult<Uint8Array> {
+  public async signUserNameProofClaim(userNameProof: UserNameProofClaim): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
         domain: EIP_712_USERNAME_DOMAIN,
@@ -81,14 +84,12 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         primaryType: "UserNameProof",
         message: userNameProof,
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signIdRegister(
-    register: IdRegisterEip712
-  ): HubAsyncResult<Uint8Array> {
+  public async signIdRegister(register: IdRegisterEip712): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
         domain: ID_REGISTRY_EIP_712_DOMAIN,
@@ -96,14 +97,12 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         primaryType: "Register",
         message: register,
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signIdTransfer(
-    transfer: IdTransferEip712
-  ): HubAsyncResult<Uint8Array> {
+  public async signIdTransfer(transfer: IdTransferEip712): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
         domain: ID_REGISTRY_EIP_712_DOMAIN,
@@ -111,14 +110,38 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         primaryType: "Transfer",
         message: transfer,
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signSignedKeyRequest(
-    signedKeyRequest: SignedKeyRequestEip712
-  ): HubAsyncResult<Uint8Array> {
+  public async signKeyAdd(message: KeyAddEip712): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._viemLocalAccount.signTypedData({
+        domain: KEY_REGISTRY_EIP_712_DOMAIN,
+        types: { Add: KEY_REGISTRY_ADD_TYPE },
+        primaryType: "Add",
+        message,
+      }),
+      (e) => new HubError("bad_request.invalid_param", e as Error),
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signKeyRemove(message: KeyRemoveEip712): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._viemLocalAccount.signTypedData({
+        domain: KEY_REGISTRY_EIP_712_DOMAIN,
+        types: { Remove: KEY_REGISTRY_REMOVE_TYPE },
+        primaryType: "Remove",
+        message,
+      }),
+      (e) => new HubError("bad_request.invalid_param", e as Error),
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signSignedKeyRequest(signedKeyRequest: SignedKeyRequestEip712): HubAsyncResult<Uint8Array> {
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
         domain: SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
@@ -126,7 +149,7 @@ export class ViemLocalEip712Signer extends Eip712Signer {
         primaryType: "SignedKeyRequest",
         message: signedKeyRequest,
       }),
-      (e) => new HubError("bad_request.invalid_param", e as Error)
+      (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }

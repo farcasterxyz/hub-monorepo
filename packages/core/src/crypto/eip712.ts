@@ -15,6 +15,13 @@ import {
   IdRegisterEip712,
   IdTransferEip712,
 } from "../idRegistry";
+import {
+  KEY_REGISTRY_ADD_TYPE,
+  KEY_REGISTRY_EIP_712_DOMAIN,
+  KEY_REGISTRY_REMOVE_TYPE,
+  KeyAddEip712,
+  KeyRemoveEip712,
+} from "../keyRegistry";
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: "Farcaster Verify Ethereum Address",
@@ -65,7 +72,7 @@ export const EIP_712_USERNAME_PROOF = [
 export const verifyVerificationEthAddressClaimSignature = async (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array,
-  address: Uint8Array
+  address: Uint8Array,
 ): HubAsyncResult<boolean> => {
   const valid = await ResultAsync.fromPromise(
     verifyTypedData({
@@ -76,7 +83,7 @@ export const verifyVerificationEthAddressClaimSignature = async (
       message: claim,
       signature,
     }),
-    (e) => new HubError("unknown", e as Error)
+    (e) => new HubError("unknown", e as Error),
   );
 
   return valid;
@@ -85,7 +92,7 @@ export const verifyVerificationEthAddressClaimSignature = async (
 export const verifyUserNameProofClaim = async (
   nameProof: UserNameProofClaim,
   signature: Uint8Array,
-  address: Uint8Array
+  address: Uint8Array,
 ): HubAsyncResult<boolean> => {
   const valid = await ResultAsync.fromPromise(
     verifyTypedData({
@@ -96,7 +103,7 @@ export const verifyUserNameProofClaim = async (
       message: nameProof,
       signature,
     }),
-    (e) => new HubError("unknown", e as Error)
+    (e) => new HubError("unknown", e as Error),
   );
 
   return valid;
@@ -105,7 +112,7 @@ export const verifyUserNameProofClaim = async (
 export const verifyMessageHashSignature = async (
   hash: Uint8Array,
   signature: Uint8Array,
-  address: Uint8Array
+  address: Uint8Array,
 ): HubAsyncResult<boolean> => {
   const valid = await ResultAsync.fromPromise(
     verifyTypedData({
@@ -116,67 +123,7 @@ export const verifyMessageHashSignature = async (
       message: { hash: bytesToHex(hash) },
       signature,
     }),
-    (e) => new HubError("unknown", e as Error)
-  );
-
-  return valid;
-};
-
-export const verifyIdRegister = async (
-  message: IdRegisterEip712,
-  signature: Uint8Array,
-  address: Uint8Array
-): HubAsyncResult<boolean> => {
-  const valid = await ResultAsync.fromPromise(
-    verifyTypedData({
-      address: bytesToHex(address),
-      domain: ID_REGISTRY_EIP_712_DOMAIN,
-      types: { Register: ID_REGISTRY_REGISTER_TYPE },
-      primaryType: "Register",
-      message,
-      signature,
-    }),
-    (e) => new HubError("unknown", e as Error)
-  );
-
-  return valid;
-};
-
-export const verifyIdTransfer = async (
-  message: IdTransferEip712,
-  signature: Uint8Array,
-  address: Uint8Array
-): HubAsyncResult<boolean> => {
-  const valid = await ResultAsync.fromPromise(
-    verifyTypedData({
-      address: bytesToHex(address),
-      domain: ID_REGISTRY_EIP_712_DOMAIN,
-      types: { Transfer: ID_REGISTRY_TRANSFER_TYPE },
-      primaryType: "Transfer",
-      message,
-      signature,
-    }),
-    (e) => new HubError("unknown", e as Error)
-  );
-
-  return valid;
-};
-
-export const verifySignedKeyRequest = async (
-  signedKeyRequest: SignedKeyRequestEip712,
-  signature: Uint8Array,
-  address: Uint8Array
-): HubAsyncResult<boolean> => {
-  const valid = await ResultAsync.fromPromise(
-    verifyTypedData({
-      address: bytesToHex(address),
-      domain: SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
-      types: { SignedKeyRequest: SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE },
-      primaryType: "SignedKeyRequest",
-      message: signedKeyRequest,
-      signature,
-    }),
-    (e) => new HubError("unknown", e as Error)
+    (e) => new HubError("unknown", e as Error),
   );
 
   return valid;

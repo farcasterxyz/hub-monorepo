@@ -1,7 +1,9 @@
-import { Hex, decodeAbiParameters, encodeAbiParameters } from "viem";
+import { ResultAsync } from "neverthrow";
+import { Hex, decodeAbiParameters, encodeAbiParameters, verifyTypedData, bytesToHex } from "viem";
+import { HubAsyncResult, HubError } from "./errors";
 
 export type SignedKeyRequestEip712 = {
-  /** FID of the requester */
+  /** FID making the request */
   requestFid: bigint;
 
   /** Key being requested */
@@ -15,7 +17,7 @@ export const SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN = {
   name: "Farcaster SignedKeyRequestValidator",
   version: "1",
   chainId: 10,
-  verifyingContract: "0x880a0b520732e951c03eb229e27144fdb9b80658", // TODO replace with final contract address
+  verifyingContract: "0x00000000fc700472606ed4fa22623acf62c60553",
 } as const;
 
 export const SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE = [
@@ -24,12 +26,12 @@ export const SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE = [
   { name: "deadline", type: "uint256" },
 ] as const;
 
-const signedKeyRequestAbi = [
+const signedKeyRequestMetadataAbi = [
   {
     components: [
       {
         name: "requestFid",
-        type: "uint256",
+        type: "uint255",
       },
       {
         name: "requestSigner",
@@ -41,7 +43,7 @@ const signedKeyRequestAbi = [
       },
       {
         name: "deadline",
-        type: "uint256",
+        type: "uint255",
       },
     ],
     name: "SignedKeyRequest",
@@ -49,7 +51,27 @@ const signedKeyRequestAbi = [
   },
 ] as const;
 
-export const encodeSignedKeyRequest = ({
+export const verifySignedKeyRequest = async (
+  signedKeyRequest: SignedKeyRequestEip712,
+  signature: Uint8Array,
+  address: Uint8Array,
+): HubAsyncResult<boolean> => {
+  const valid = await ResultAsync.fromPromise(
+    verifyTypedData({
+      address: bytesToHex(address),
+      domain: SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
+      types: { SignedKeyRequest: SIGNED_KEY_REQUEST_VALIDATOR_METADATA_TYPE },
+      primaryType: "SignedKeyRequest",
+      message: signedKeyRequest,
+      signature,
+    }),
+    (e) => new HubError("unknown", e as Error),
+  );
+
+  return valid;
+};
+
+export const encodeSignedKeyRequestMetadata = ({
   requestFid,
   requestSigner,
   sig,
@@ -67,7 +89,7 @@ export const encodeSignedKeyRequest = ({
   /** Unix timestamp when the request expires */
   deadline: bigint;
 }): Hex => {
-  return encodeAbiParameters(signedKeyRequestAbi, [
+  return encodeAbiParameters(signedKeyRequestMetadataAbi, [
     {
       requestFid,
       requestSigner,
@@ -77,6 +99,6 @@ export const encodeSignedKeyRequest = ({
   ]);
 };
 
-export const decodeSignedKeyRequest = (data: Hex) => {
-  return decodeAbiParameters(signedKeyRequestAbi, data);
+export const decodeSignedKeyRequestMetadata = (data: Hex) => {
+  return decodeAbiParameters(signedKeyRequestMetadataAbi, data);
 };

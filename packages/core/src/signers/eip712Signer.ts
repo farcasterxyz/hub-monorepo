@@ -4,6 +4,7 @@ import { VerificationEthAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import { SignedKeyRequestEip712 } from "../signedKeyRequest";
 import { IdRegisterEip712, IdTransferEip712 } from "../idRegistry";
+import { KeyAddEip712, KeyRemoveEip712 } from "../keyRegistry";
 import { Signer } from "./signer";
 
 /**
@@ -17,20 +18,20 @@ export abstract class Eip712Signer implements Signer {
    * Get the 160-bit address in bytes.
    */
   public abstract getSignerKey(): HubAsyncResult<Uint8Array>;
+
   public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
-  public abstract signVerificationEthAddressClaim(
-    claim: VerificationEthAddressClaim
-  ): HubAsyncResult<Uint8Array>;
-  public abstract signUserNameProofClaim(
-    claim: UserNameProofClaim
-  ): HubAsyncResult<Uint8Array>;
-  public abstract signSignedKeyRequest(
-    request: SignedKeyRequestEip712
-  ): HubAsyncResult<Uint8Array>;
-  public abstract signIdRegister(
-    request: IdRegisterEip712
-  ): HubAsyncResult<Uint8Array>;
-  public abstract signIdTransfer(
-    request: IdTransferEip712
-  ): HubAsyncResult<Uint8Array>;
+
+  public abstract signIdRegister(request: IdRegisterEip712): HubAsyncResult<Uint8Array>;
+
+  public abstract signIdTransfer(request: IdTransferEip712): HubAsyncResult<Uint8Array>;
+
+  public abstract signKeyAdd(request: KeyAddEip712): HubAsyncResult<Uint8Array>;
+
+  public abstract signKeyRemove(request: KeyRemoveEip712): HubAsyncResult<Uint8Array>;
+
+  public abstract signSignedKeyRequest(request: SignedKeyRequestEip712): HubAsyncResult<Uint8Array>;
+
+  public abstract signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array>;
+
+  public abstract signUserNameProofClaim(claim: UserNameProofClaim): HubAsyncResult<Uint8Array>;
 }
