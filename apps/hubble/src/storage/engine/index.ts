@@ -31,11 +31,9 @@ import {
   OnChainEvent,
   OnChainEventResponse,
   OnChainEventType,
-  PruneMessageHubEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
-  RevokeMessageHubEvent,
   RevokeMessagesBySignerJobPayload,
   SignerAddMessage,
   SignerEventType,
@@ -148,8 +146,6 @@ class Engine {
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
     this.handleMergeUsernameProofEvent = this.handleMergeUsernameProofEvent.bind(this);
-    this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
-    this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
     this.handleMergeOnChainEvent = this.handleMergeOnChainEvent.bind(this);
   }
 
@@ -196,8 +192,6 @@ class Engine {
     this.eventHandler.on("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.on("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.on("mergeMessage", this.handleMergeMessageEvent);
-    this.eventHandler.on("revokeMessage", this.handleRevokeMessageEvent);
-    this.eventHandler.on("pruneMessage", this.handlePruneMessageEvent);
     this.eventHandler.on("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     await this.eventHandler.syncCache();
@@ -219,8 +213,6 @@ class Engine {
     this.eventHandler.off("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.off("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.off("mergeMessage", this.handleMergeMessageEvent);
-    this.eventHandler.off("revokeMessage", this.handleRevokeMessageEvent);
-    this.eventHandler.off("pruneMessage", this.handlePruneMessageEvent);
     this.eventHandler.off("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     this._revokeSignerWorker.start();
@@ -465,6 +457,9 @@ class Engine {
         }
         case UserPostfix.ReactionMessage: {
           return this._reactionStore.revoke(message);
+        }
+        case UserPostfix.SignerMessage: {
+          return this._signerStore.revoke(message);
         }
         case UserPostfix.CastMessage: {
           return this._castStore.revoke(message);
@@ -1261,46 +1256,6 @@ class Engine {
       const payload = RevokeMessagesBySignerJobPayload.create({
         fid: message.data.fid,
         signer: message.data.signerRemoveBody.signer,
-      });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
-        );
-      }
-    }
-
-    return ok(undefined);
-  }
-
-  private async handlePruneMessageEvent(event: PruneMessageHubEvent): HubAsyncResult<void> {
-    const { message } = event.pruneMessageBody;
-
-    if (isSignerAddMessage(message)) {
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: message.data.fid,
-        signer: message.data.signerAddBody.signer,
-      });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
-        );
-      }
-    }
-
-    return ok(undefined);
-  }
-
-  private async handleRevokeMessageEvent(event: RevokeMessageHubEvent): HubAsyncResult<void> {
-    const { message } = event.revokeMessageBody;
-
-    if (isSignerAddMessage(message)) {
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: message.data.fid,
-        signer: message.data.signerAddBody.signer,
       });
       const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
       if (enqueueRevoke.isErr()) {
