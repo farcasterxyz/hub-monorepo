@@ -44,9 +44,11 @@ import { SingleBar } from "cli-progress";
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 128;
+const SYNC_MAX_DURATION = 30 * 60 * 1000; // 30 minutes
 // 4x the number of CPUs, clamped between 2 and 16
 const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length * 4, 16), 2);
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
+
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
 const BAD_PEER_MESSAGE_THRESHOLD = 1000; // Number of messages we can't merge before we consider a peer "bad"
@@ -541,12 +543,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.debug({ peerId }, "Perform sync: Start");
 
     const start = Date.now();
-
     const fullSyncResult = new MergeResult();
 
-    try {
-      this._currentSyncStatus = new CurrentSyncStatus(peerId);
+    this._currentSyncStatus = new CurrentSyncStatus(peerId);
+    const syncTimeout = setTimeout(() => {
+      this._currentSyncStatus.interruptSync = true;
+      log.warn({ peerId, durationMs: Date.now() - start }, "Perform sync: Sync timed out, interrupting sync");
+    }, SYNC_MAX_DURATION);
 
+    try {
       // Get the snapshot of our trie, at the same prefix as the peer's snapshot
       const snapshot = await this.getSnapshot(otherSnapshot.prefix);
       if (snapshot.isErr()) {
@@ -614,6 +619,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.warn(e, "Perform sync: Error");
     } finally {
       this._currentSyncStatus.isSyncing = false;
+      this._currentSyncStatus.interruptSync = false;
+
+      clearTimeout(syncTimeout);
+
       if (this._currentSyncStatus.initialSync) {
         finishAllProgressBars(true);
       }
