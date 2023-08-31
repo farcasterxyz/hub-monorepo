@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.5.1
+
+### Patch Changes
+
+- 9138ca9e: chore: Improve dashboard with sync %, versions
+- 8ea938ab: fix: Handle both 'docker-compose' and 'docker compose' in hubble.sh
+- 05e5ed1e: fix: Stream buffer size to 5K and correct store size limits
+
 ## 1.5.0
 
 ### Minor Changes
