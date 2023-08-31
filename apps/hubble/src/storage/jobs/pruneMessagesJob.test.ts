@@ -118,10 +118,10 @@ describe("doJobs", () => {
 
         // These are pruned based on size
         const verifications = await engine.getVerificationsByFid(fid);
-        expect(verifications._unsafeUnwrap().messages.length).toEqual(50);
+        expect(verifications._unsafeUnwrap().messages.length).toEqual(25);
       }
 
-      expect(prunedMessages.length).toEqual(2);
+      expect(prunedMessages.length).toEqual(52); // 26 verifications * 2 fids
       expect(prunedMessages.filter((m) => m.data?.type !== MessageType.VERIFICATION_ADD_ETH_ADDRESS)).toEqual([]);
     },
     15 * 1000,
