@@ -466,9 +466,6 @@ class Engine {
         case UserPostfix.ReactionMessage: {
           return this._reactionStore.revoke(message);
         }
-        case UserPostfix.SignerMessage: {
-          return this._signerStore.revoke(message);
-        }
         case UserPostfix.CastMessage: {
           return this._castStore.revoke(message);
         }
