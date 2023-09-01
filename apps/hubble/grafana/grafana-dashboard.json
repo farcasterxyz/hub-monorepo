@@ -28,20 +28,19 @@
   "liveNow": false,
   "panels": [
     {
-      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 21,
-      "panels": [],
-      "title": "Hub Syncing",
+      "id": 26,
+      "title": "Status",
       "type": "row"
     },
     {
       "datasource": "Graphite",
+      "description": "Percentage of FC messages in local hub relative to last known peer. May fluctuate as peers change.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -68,7 +67,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 2,
+        "w": 4,
         "x": 0,
         "y": 1
       },
@@ -79,7 +78,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -93,7 +94,7 @@
           "target": "stats.gauges.hubble.syncengine.sync_percent"
         }
       ],
-      "title": "Synced",
+      "title": "Message Sync %",
       "type": "stat"
     },
     {
@@ -122,8 +123,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 2,
-        "x": 2,
+        "w": 4,
+        "x": 4,
         "y": 1
       },
       "id": 25,
@@ -133,7 +134,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -152,42 +155,44 @@
     },
     {
       "datasource": "Graphite",
+      "description": "Number of blocks being processed for Farcaster Contract events",
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
-            "drawStyle": "bars",
-            "lineInterpolation": "linear",
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
             "barAlignment": 0,
-            "lineWidth": 1,
+            "drawStyle": "bars",
             "fillOpacity": 0,
             "gradientMode": "none",
-            "spanNulls": false,
-            "showPoints": "auto",
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
             },
-            "axisPlacement": "auto",
-            "axisLabel": "",
-            "axisColorMode": "text",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "axisCenteredZero": false,
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
             }
           },
-          "color": {
-            "mode": "palette-classic"
-          },
           "mappings": [],
+          "noValue": "Starting up... Please wait",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -197,32 +202,50 @@
               }
             ]
           },
-          "noValue": "Starting up... Please wait",
-          "unit": "none",
-          "displayName": "L2 Blocks"
+          "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stats_counts.hubble.l2events.blocks"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "OP Mainnet Blocks"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 4,
+        "w": 8,
+        "x": 8,
         "y": 1
       },
       "id": 10,
       "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        },
-        "legend": {
-          "showLegend": true,
-          "displayMode": "list",
-          "placement": "bottom",
-          "calcs": []
         }
       },
       "targets": [
+        {
+          "datasource": "Graphite",
+          "refCount": 0,
+          "refId": "A",
+          "target": "stats_counts.hubble.ethevents.blocks",
+          "textEditor": false
+        },
         {
           "datasource": "Graphite",
           "hide": false,
@@ -232,11 +255,326 @@
           "textEditor": true
         }
       ],
-      "title": "Synced Blocks",
+      "title": "Blocks Processed",
       "type": "timeseries"
     },
     {
       "datasource": "Graphite",
+      "description": "Number of Farcaster Messages stored in the DB. Increases and decreases when users add or delete data.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "Messages",
+          "mappings": [],
+          "noValue": "Starting up... Please wait",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Graphite",
+          "refCount": 0,
+          "refId": "A",
+          "target": "stats.gauges.hubble.merkle_trie.num_messages"
+        }
+      ],
+      "title": "Farcaster Messages",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "The Hubble version and the Farcaster Protocol version.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      },
+      "id": 24,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 26,
+          "valueSize": 1
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "datasource": "Graphite",
+          "refId": "A",
+          "target": "aliasByNode(stats.gauges.hubble.farcaster.*.*.*.*, 5, 6, 7)",
+          "textEditor": true
+        }
+      ],
+      "title": "Hubble Version",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 21,
+      "panels": [],
+      "title": "Sync Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "Number of gossip messages received from peers",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "Messages",
+          "mappings": [],
+          "noValue": "Starting up... Please wait",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 10
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "target": "stats_counts.hubble.gossip.messages",
+          "textEditor": true
+        }
+      ],
+      "title": "Incoming Gossip",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "Peers with open inbound connections. Requires port 2282 to be open. Gossip works even without inbound connections, but not having any may affect your peer score and network health. ",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 0,
+                  "text": "No Incoming Connection. Gossip port not open?"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 10
+      },
+      "id": 6,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "text": {}
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "refId": "A",
+          "target": "stats.gauges.hubble.gossip.peers.inbound"
+        }
+      ],
+      "title": "Inbound Gossip Connections",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "Number of peers that Hubble is connected with for outbound and inbound flow.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -288,117 +626,28 @@
             ]
           }
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 7,
-        "x": 10,
-        "y": 1
-      },
-      "id": 1,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "target": "stats_counts.hubble.gossip.messages",
-          "textEditor": true
-        }
-      ],
-      "title": "Gossip Messages",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 100,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "noValue": "Starting up... Please wait",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "locale"
-        },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "stats.gauges.hubble.rocksdb.approximate_size"
+              "options": "stats.gauges.hubble.gossip.peers.inbound"
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "decbytes"
-              },
-              {
                 "id": "displayName",
-                "value": "RocksDB Size on disk"
+                "value": "Inbound Peers"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "stats.gauges.hubble.merkle_trie.num_messages"
+              "options": "stats.gauges.hubble.gossip.peers.outbound"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Num Messages"
+                "value": "Outbound Peers"
               }
             ]
           }
@@ -406,11 +655,11 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 7,
-        "x": 17,
-        "y": 1
+        "w": 8,
+        "x": 16,
+        "y": 10
       },
-      "id": 19,
+      "id": 2,
       "options": {
         "legend": {
           "calcs": [],
@@ -425,89 +674,23 @@
       },
       "targets": [
         {
-          "datasource": "Graphite",
           "refCount": 0,
           "refId": "A",
-          "target": "stats.gauges.hubble.merkle_trie.num_messages"
+          "target": "stats.gauges.hubble.gossip.peers.inbound"
+        },
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "B",
+          "target": "stats.gauges.hubble.gossip.peers.outbound"
         }
       ],
-      "title": "Synced Messages",
+      "title": "Gossip Peers",
       "type": "timeseries"
     },
     {
       "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 5
-      },
-      "id": 24,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "text": {
-          "titleSize": 26,
-          "valueSize": 1
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.0.3",
-      "targets": [
-        {
-          "datasource": "Graphite",
-          "refId": "A",
-          "target": "aliasByNode(stats.gauges.hubble.farcaster.*.*.*.*, 5, 6, 7)",
-          "textEditor": true
-        }
-      ],
-      "title": "Hub Version",
-      "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 9
-      },
-      "id": 14,
-      "panels": [],
-      "title": "Performance",
-      "type": "row"
-    },
-    {
-      "datasource": "Graphite",
+      "description": "Time taken to perform a diff sync which fetches all unknown messages from a peer over grpc.  Happens every two minutes unless a sync is already running. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -544,7 +727,7 @@
             }
           },
           "mappings": [],
-          "noValue": "Starting up.... Please wait",
+          "noValue": "Waiting for first sync to complete",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -566,7 +749,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 10
+        "y": 18
       },
       "id": 3,
       "options": {
@@ -593,6 +776,141 @@
     },
     {
       "datasource": "Graphite",
+      "description": "Successful inbound syncs from peers. Requires port 2283 to be open. Outbound sync works even if the port is closed but it may affect your peer reputation score and network health. ",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 0,
+                  "text": "No Incoming Connections! Are your ports open?"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No Incoming Connections! Are your ports open?",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "id": 7,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "refId": "A",
+          "target": "stats_counts.hubble.rpc.get_sync_snapshot"
+        }
+      ],
+      "title": "Inbound Sync Attempts",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "Number of peers blocked due to bad peer reputation scores.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "id": 11,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "refId": "A",
+          "target": "stats.gauges.hubble.gossip.denied_peers",
+          "textEditor": true
+        }
+      ],
+      "title": "Blocked Peers",
+      "type": "gauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 14,
+      "panels": [],
+      "title": "Perf Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "Time taken to merge a newly received message into the Hub's DB",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -628,6 +946,7 @@
               "mode": "off"
             }
           },
+          "displayName": "Average Time",
           "mappings": [],
           "noValue": "Starting up... Please wait",
           "thresholds": {
@@ -649,9 +968,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 7,
-        "x": 8,
-        "y": 10
+        "w": 12,
+        "x": 0,
+        "y": 27
       },
       "id": 9,
       "options": {
@@ -679,6 +998,7 @@
     },
     {
       "datasource": "Graphite",
+      "description": "Number of messages waiting in queue to be merged",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -714,6 +1034,7 @@
               "mode": "off"
             }
           },
+          "displayName": "Messages",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -733,9 +1054,96 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 9,
-        "x": 15,
-        "y": 10
+        "w": 12,
+        "x": 12,
+        "y": 27
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "datasource": "Graphite",
+          "refId": "A",
+          "target": "stats.gauges.hubble.syncengine.merge_q",
+          "textEditor": true
+        }
+      ],
+      "title": "Merge Queue Size",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "Number of messages waiting to be added to the merkle sync trie.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "Messages",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
       },
       "id": 8,
       "options": {
@@ -798,6 +1206,7 @@
               "mode": "off"
             }
           },
+          "displayName": "MB",
           "mappings": [],
           "noValue": "Starting up... Please wait",
           "thresholds": {
@@ -812,143 +1221,16 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "decbytes"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 18
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "refCount": 0,
-          "refId": "A",
-          "target": "stats.gauges.hubble.gossip.peers.inbound"
-        },
-        {
-          "hide": false,
-          "refCount": 0,
-          "refId": "B",
-          "target": "stats.gauges.hubble.gossip.peers.outbound"
-        }
-      ],
-      "title": "Gossip Peers",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "noValue": "Starting up... Please wait",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "stats.gauges.hubble.rocksdb.approximate_size"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "unit",
-                "value": "decbytes"
-              },
-              {
-                "id": "displayName",
-                "value": "RocksDB Size on disk"
-              },
-              {
-                "id": "custom.spanNulls",
-                "value": true
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "stats.gauges.hubble.merkle_trie.num_messages"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Num Messages"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 7,
-        "x": 8,
-        "y": 18
+        "w": 12,
+        "x": 12,
+        "y": 35
       },
       "id": 4,
       "options": {
@@ -976,97 +1258,12 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 9,
-        "x": 15,
-        "y": 18
-      },
-      "id": 20,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "10.0.3",
-      "targets": [
-        {
-          "datasource": "Graphite",
-          "refId": "A",
-          "target": "stats.gauges.hubble.syncengine.merge_q",
-          "textEditor": true
-        }
-      ],
-      "title": "Merge Queue Size",
-      "type": "timeseries"
-    },
-    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 43
       },
       "id": 15,
       "panels": [],
@@ -1126,13 +1323,38 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stats_counts.hubble.submit_message.error.gossip"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Gossip"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stats_counts.hubble.submit_message.error.sync"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sync"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 44
       },
       "id": 16,
       "options": {
@@ -1210,13 +1432,38 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stats_counts.hubble.submit_message.error.validation_failure"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Validation Errors"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stats_counts.hubble.submit_message.error.storage_failure"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Storage Errors"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 44
       },
       "id": 17,
       "options": {
@@ -1243,241 +1490,12 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "index": 0,
-                  "text": "No Incoming Connections! Are your ports open?"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No Incoming Connections! Are your ports open?",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 0
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 4,
-        "x": 0,
-        "y": 35
-      },
-      "id": 7,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "10.0.3",
-      "targets": [
-        {
-          "refId": "A",
-          "target": "stats_counts.hubble.rpc.get_sync_snapshot"
-        }
-      ],
-      "title": "Inbound Sync",
-      "type": "gauge"
-    },
-    {
-      "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "index": 0,
-                  "text": "No Incoming Connection. Gossip port not open?"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 0
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 4,
-        "x": 4,
-        "y": 35
-      },
-      "id": 6,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": false,
-        "text": {}
-      },
-      "pluginVersion": "10.0.3",
-      "targets": [
-        {
-          "refId": "A",
-          "target": "stats.gauges.hubble.gossip.peers.inbound"
-        }
-      ],
-      "title": "Inbound Peers",
-      "type": "gauge"
-    },
-    {
-      "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 20
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 3,
-        "x": 12,
-        "y": 35
-      },
-      "id": 11,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "10.0.3",
-      "targets": [
-        {
-          "refId": "A",
-          "target": "stats.gauges.hubble.gossip.denied_peers",
-          "textEditor": true
-        }
-      ],
-      "title": "Blocked Peers",
-      "type": "gauge"
-    },
-    {
-      "datasource": "Graphite",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 3,
-        "x": 15,
-        "y": 35
-      },
-      "id": 18,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "10.0.3",
-      "targets": [
-        {
-          "refId": "A",
-          "target": "sum(stats.gauges.hubble.gossip.peers.*)",
-          "textEditor": false
-        }
-      ],
-      "title": "Num Peers",
-      "type": "gauge"
-    },
-    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 52
       },
       "id": 28,
       "panels": [],
@@ -1542,9 +1560,9 @@
         "h": 10,
         "w": 7,
         "x": 0,
-        "y": 44
+        "y": 53
       },
-      "id": 26,
+      "id": 30,
       "options": {
         "legend": {
           "calcs": [],
@@ -1633,13 +1651,6 @@
                 "value": "bars"
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*/"
-            },
-            "properties": []
           }
         ]
       },
@@ -1647,7 +1658,7 @@
         "h": 10,
         "w": 9,
         "x": 7,
-        "y": 44
+        "y": 53
       },
       "id": 27,
       "options": {
@@ -1731,7 +1742,7 @@
         "h": 10,
         "w": 8,
         "x": 16,
-        "y": 44
+        "y": 53
       },
       "id": 29,
       "options": {
@@ -1773,6 +1784,6 @@
   "timezone": "",
   "title": "Hubble Dashboard",
   "uid": "af04c037-bd8f-484a-b93e-0cb4b7d3b026",
-  "version": 3,
+  "version": 2,
   "weekStart": ""
 }
