@@ -158,11 +158,6 @@ write_env_file() {
         validate_and_store "Ethereum Mainnet" "0x1" "ETH_MAINNET_RPC_URL"
     fi
 
-    # After the mainnet migration, this should change to Optimism's mainnet RPC
-    if ! key_exists "ETH_RPC_URL"; then
-        validate_and_store "Ethereum Goerli Testnet" "0x5" "ETH_RPC_URL"
-    fi
-
     if ! key_exists "OPTIMISM_L2_RPC_URL"; then
         validate_and_store "Optimism L2 Mainnet" "0xa" "OPTIMISM_L2_RPC_URL"
     fi

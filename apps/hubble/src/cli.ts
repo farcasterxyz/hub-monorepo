@@ -78,7 +78,6 @@ app
 
   // Ethereum Options
   .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a Mainnet ETH Node (or comma separated list of URLs)")
-  .option("-e, --eth-rpc-url <url>", "RPC URL of a Goerli ETH Node (or comma separated list of URLs)")
   .option("--rank-rpcs", "Rank the RPCs by latency/stability and use the fastest one (default: disabled)")
   .option("--fname-server-url <url>", `The URL for the FName registry server (default: ${DEFAULT_FNAME_SERVER_URL}`)
   .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
@@ -473,7 +472,6 @@ app
       announceServerName: cliOptions.announceServerName ?? hubConfig.announceServerName,
       gossipPort: hubAddressInfo.value.port,
       network,
-      ethRpcUrl: cliOptions.ethRpcUrl ?? hubConfig.ethRpcUrl,
       ethMainnetRpcUrl: cliOptions.ethMainnetRpcUrl ?? hubConfig.ethMainnetRpcUrl,
       fnameServerUrl: cliOptions.fnameServerUrl ?? hubConfig.fnameServerUrl ?? DEFAULT_FNAME_SERVER_URL,
       rankRpcs: cliOptions.rankRpcs ?? hubConfig.rankRpcs ?? false,
@@ -511,7 +509,6 @@ app
       directPeers,
     };
 
-    await startupCheck.rpcCheck(options.ethRpcUrl, goerli, "L1");
     await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet, "L1");
     await startupCheck.rpcCheck(options.l2RpcUrl, optimism, "L2", options.l2ChainId);
 
@@ -544,7 +541,7 @@ app
     if (!disableConsoleStatus) {
       console.log("\n Starting Hubble");
       console.log("------------------");
-      console.log("Please wait...This may take several minutes");
+      console.log("Please wait... This may take several minutes");
     }
 
     const hub = hubResult.value;

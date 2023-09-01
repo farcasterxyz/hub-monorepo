@@ -22,7 +22,6 @@ import {
 import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
 import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
 import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "./syncId.js";
@@ -137,7 +136,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _trie: MerkleTrie;
   private readonly _db: RocksDB;
   private readonly _hub: HubInterface;
-  private readonly _ethEventsProvider: EthEventsProvider | undefined;
+
   private readonly _l2EventsProvider: L2EventsProvider | undefined;
 
   private _currentSyncStatus: CurrentSyncStatus;
@@ -162,18 +161,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Has the syncengine started yet?
   private _started = false;
 
-  constructor(
-    hub: HubInterface,
-    rocksDb: RocksDB,
-    ethEventsProvider?: EthEventsProvider,
-    l2EventsProvider?: L2EventsProvider,
-    profileSync = false,
-  ) {
+  constructor(hub: HubInterface, rocksDb: RocksDB, l2EventsProvider?: L2EventsProvider, profileSync = false) {
     super();
 
     this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
-    this._ethEventsProvider = ethEventsProvider;
     this._l2EventsProvider = l2EventsProvider;
 
     this._currentSyncStatus = new CurrentSyncStatus();
@@ -1024,34 +1016,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return;
     }
 
-    if (this._hub.engine.isMigrated) {
-      const l2CustodyEventResult = await rpcClient.getOnChainEvents(
-        OnChainEventRequest.create({ fid, eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER }),
-        new Metadata(),
-        rpcDeadline(),
-      );
-      if (l2CustodyEventResult.isOk() && l2CustodyEventResult.value.events[0]) {
-        const custodyEventBlockNumber = l2CustodyEventResult.value.events[0].blockNumber;
-        log.info({ fid }, `Retrying events from l2 block ${custodyEventBlockNumber}`);
-        await this._l2EventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
-      } else {
-        log.warn({ fid }, "Failed to fetch custody event from peer");
-        return;
-      }
+    const l2CustodyEventResult = await rpcClient.getOnChainEvents(
+      OnChainEventRequest.create({ fid, eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER }),
+      new Metadata(),
+      rpcDeadline(),
+    );
+    if (l2CustodyEventResult.isOk() && l2CustodyEventResult.value.events[0]) {
+      const custodyEventBlockNumber = l2CustodyEventResult.value.events[0].blockNumber;
+      log.info({ fid }, `Retrying events from l2 block ${custodyEventBlockNumber}`);
+      await this._l2EventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
     } else {
-      const custodyEventResult = await rpcClient.getIdRegistryEvent(
-        FidRequest.create({ fid }),
-        new Metadata(),
-        rpcDeadline(),
-      );
-      if (custodyEventResult.isErr()) {
-        log.warn({ fid }, "Failed to fetch custody event from peer");
-        return;
-      }
-      const custodyEventBlockNumber = custodyEventResult.value.blockNumber;
-      log.info({ fid }, `Retrying events from block ${custodyEventBlockNumber}`);
-      // We'll retry all events from this block number
-      await this._ethEventsProvider?.retryEventsFromBlock(custodyEventBlockNumber);
+      log.warn({ fid }, "Failed to fetch custody event from peer");
+      return;
     }
   }
 
@@ -1099,31 +1075,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Probably not required to fetch the signer messages, but doing it here means
     // sync will complete in one round (prevents messages failing to merge due to missed or out of
     // order signer message)
-    if (this._hub.engine.isMigrated) {
-      const signerEvents = await rpcClient.getOnChainSignersByFid(
-        FidRequest.create({ fid }),
-        new Metadata(),
-        rpcDeadline(),
-      );
-      if (signerEvents.isErr()) {
-        return err(new HubError("unavailable.network_failure", "Failed to fetch signer events"));
-      }
-      const retryPromises = signerEvents.value.events.map((event) =>
-        this._l2EventsProvider?.retryEventsFromBlock(event.blockNumber),
-      );
-      await Promise.all(retryPromises);
-    } else {
-      const signerMessagesResult = await rpcClient.getAllSignerMessagesByFid(
-        FidRequest.create({ fid }),
-        new Metadata(),
-        rpcDeadline(),
-      );
-      if (signerMessagesResult.isErr()) {
-        return err(new HubError("unavailable.network_failure", "Failed to fetch signer messages"));
-      }
-
-      await Promise.all(signerMessagesResult.value.messages.map((message) => this._hub.submitMessage(message, "sync")));
+    const signerEvents = await rpcClient.getOnChainSignersByFid(
+      FidRequest.create({ fid }),
+      new Metadata(),
+      rpcDeadline(),
+    );
+    if (signerEvents.isErr()) {
+      return err(new HubError("unavailable.network_failure", "Failed to fetch signer events"));
     }
+    const retryPromises = signerEvents.value.events.map((event) =>
+      this._l2EventsProvider?.retryEventsFromBlock(event.blockNumber),
+    );
+    await Promise.all(retryPromises);
+
     const messages = fidRetryMessageQ.get(fid) ?? [];
     fidRetryMessageQ.set(fid, []);
 
