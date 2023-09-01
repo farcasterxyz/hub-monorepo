@@ -92,6 +92,7 @@ Commands:
 Usage: yarn status [options]
 
 Reports the db and sync status of the hub
+WARNING: This command has been deprecated, and will be removed in a future release. Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html
 
 Options:
   -s, --server <url>     Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283) (default: "127.0.0.1:2283")

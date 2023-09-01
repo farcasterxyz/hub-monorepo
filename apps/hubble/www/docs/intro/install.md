@@ -74,7 +74,7 @@ Docker compose will start a Hubble container that exposes ports for networking a
 docker compose logs -f hubble
 ```
 
-8. Follow the instructions in the [monitoring section](#monitoring-hubble) to set up Grafana and view your Hub's status in real-time.
+8. Follow the instructions in the [monitoring](monitoring.md) instructions to set up Grafana and view your Hub's status in real-time.
 
 ### Upgrading Hubble
 
@@ -130,13 +130,6 @@ Check the logs to ensure your hub is running successfully:
 ```bash
 docker compose logs -f hubble
 ```
-
-Check the sync status to see how your Hub is doing:
-
-```bash
-docker compose exec hubble yarn status --insecure
-```
-
 
 Open up a shell inside the hubble container by running:
 
