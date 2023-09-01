@@ -655,7 +655,7 @@ app
 /*//////////////////////////////////////////////////////////////
                           STATUS COMMAND
 //////////////////////////////////////////////////////////////*/
-
+// Deprecated. Please use grafana monitoring instead.
 app
   .command("status")
   .description("Reports the db and sync status of the hub")
@@ -687,6 +687,11 @@ app
       `Hub Version: ${infoResult.value.version} Messages: ${dbStats?.numMessages} FIDs: ${dbStats?.numFidEvents} FNames: ${dbStats?.numFnameEvents}}`,
     );
     for (;;) {
+      logger.warn(
+        "DEPRECATION WARNING:" +
+          "The 'status' command has been deprecated, and will be removed in a future release." +
+          "Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html",
+      );
       const syncResult = await rpcClient.getSyncStatus(SyncStatusRequest.create({ peerId: cliOptions.peerId }));
       if (syncResult.isErr()) {
         logger.error(

@@ -134,13 +134,6 @@ Check the logs to ensure your hub is running successfully:
 docker compose logs -f hubble
 ```
 
-Check the sync status to see how your Hub is doing:
-
-```bash
-docker compose exec hubble yarn status --insecure
-```
-
-
 Open up a shell inside the hubble container by running:
 
 ```bash
