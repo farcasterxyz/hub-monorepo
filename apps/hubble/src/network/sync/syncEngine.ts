@@ -814,6 +814,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               "PeerError: Unexpected validation error",
             );
             this._currentSyncStatus.seriousValidationFailures += 1;
+            errCount += 1;
           }
         } else if (result.error.errCode === "bad_request.duplicate") {
           // This message has been merged into the DB, but for some reason is not in the Trie.
