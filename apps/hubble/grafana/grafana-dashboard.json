@@ -24,7 +24,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -1773,13 +1772,13 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Hubble Dashboard",
   "uid": "af04c037-bd8f-484a-b93e-0cb4b7d3b026",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
