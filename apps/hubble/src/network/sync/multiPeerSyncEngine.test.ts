@@ -1,13 +1,11 @@
 import { jest } from "@jest/globals";
 import {
-  Ed25519Signer,
   Factories,
   getInsecureHubRpcClient,
   HubRpcClient,
   FarcasterNetwork,
   IdRegistryEvent,
   SignerAddMessage,
-  CastAddMessage,
   Message,
   TrieNodePrefix,
   HubInfoRequest,
@@ -22,8 +20,6 @@ import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
-import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
-import { deployIdRegistry, deployNameRegistry, publicClient } from "../../test/utils.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 
@@ -363,43 +359,6 @@ describe("Multi peer sync engine", () => {
     await engine2.stop();
   });
 
-  test("retries the id registry event if it is missing", async () => {
-    await engine1.mergeIdRegistryEvent(custodyEvent);
-    await engine1.mergeMessage(signerAdd);
-
-    // Add a cast to engine1
-    await addMessagesWithTimeDelta(engine1, [167]);
-
-    // Do not merge the custory event into engine2
-    const engine2 = new Engine(testDb2, network);
-    const hub2 = new MockHub(testDb2, engine2);
-
-    const { contractAddress: idRegistryAddress } = await deployIdRegistry();
-    if (!idRegistryAddress) throw new Error("Failed to deploy NameRegistry contract");
-
-    const { contractAddress: nameRegistryAddress } = await deployNameRegistry();
-    if (!nameRegistryAddress) throw new Error("Failed to deploy NameRegistry contract");
-
-    const ethEventsProvider = new EthEventsProvider(
-      hub2,
-      publicClient,
-      idRegistryAddress,
-      nameRegistryAddress,
-      1,
-      10000,
-      false,
-    );
-    const syncEngine2 = new SyncEngine(hub2, testDb2, ethEventsProvider);
-    const retrySpy = jest.spyOn(ethEventsProvider, "retryEventsFromBlock");
-
-    // Sync engine 2 with engine 1
-    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-
-    // Because do it without awaiting, we need to wait for the promise to resolve
-    await sleep(100);
-    expect(retrySpy).toHaveBeenCalled();
-  });
-
   describe("after migration", () => {
     let engine2: Engine;
     let syncEngine2: SyncEngine;
@@ -415,7 +374,7 @@ describe("Multi peer sync engine", () => {
       l2EventsProvider.retryEventsFromBlock = jest.fn();
       retryEventsMock = l2EventsProvider.retryEventsFromBlock;
 
-      syncEngine2 = new SyncEngine(hub2, testDb2, undefined, l2EventsProvider);
+      syncEngine2 = new SyncEngine(hub2, testDb2, l2EventsProvider);
 
       // Set up engine1
       custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid });
@@ -457,66 +416,6 @@ describe("Multi peer sync engine", () => {
       await sleep(100);
       expect(retryEventsMock).not.toHaveBeenCalled();
     });
-  });
-
-  test("Merge with multiple signers", async () => {
-    await engine1.mergeIdRegistryEvent(custodyEvent);
-
-    // Create 5 different signers
-    const signers: Ed25519Signer[] = await Promise.all(
-      Array.from({ length: 5 }, async (_) => {
-        const signer = Factories.Ed25519Signer.build();
-        const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
-        const signerAdd = await Factories.SignerAddMessage.create(
-          { data: { fid, network, signerAddBody: { signer: signerKey } } },
-          { transient: { signer: custodySigner } },
-        );
-        await engine1.mergeMessage(signerAdd);
-        return signer;
-      }),
-    );
-
-    // Create 2 messages for each signer
-    const castAdds: CastAddMessage[] = [];
-    for (const signer of signers) {
-      for (let i = 0; i < 2; i++) {
-        const castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
-        await engine1.mergeMessage(castAdd);
-        castAdds.push(castAdd);
-      }
-    }
-
-    // Make sure all messages exist
-    castAdds.forEach((castAdd) => {
-      expect(syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
-    });
-
-    // Create a new sync engine with a new test db
-    const engine2 = new Engine(testDb2, network);
-    const hub2 = new MockHub(testDb2, engine2);
-    await engine2.mergeIdRegistryEvent(custodyEvent);
-
-    const syncEngine2 = new SyncEngine(hub2, testDb2);
-    await syncEngine2.start();
-
-    // Try to merge all the messages, to see if it fetches the right signers
-    const results = await syncEngine2.mergeMessages(castAdds, clientForServer1);
-    expect(results.total).toEqual(castAdds.length);
-    expect(results.successCount).toEqual(castAdds.length);
-    expect(results.deferredCount).toEqual(0);
-    expect(results.errCount).toEqual(0);
-
-    // Make sure all messages exist
-    castAdds.forEach((castAdd) => {
-      expect(syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
-    });
-
-    // Make sure the root hashes are the same
-    expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
-    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
-
-    await syncEngine2.stop();
-    await engine2.stop();
   });
 
   test("recovers if there are missing messages in the engine", async () => {

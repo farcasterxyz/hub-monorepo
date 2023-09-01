@@ -26,7 +26,6 @@ import { peerIdFromBytes } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
-import { EthEventsProvider, GoerliEthConstants } from "./eth/ethEventsProvider.js";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine from "./network/sync/syncEngine.js";
@@ -151,9 +150,6 @@ export interface HubOptions {
 
   /** Rank RPCs and use the ones with best stability and latency */
   rankRpcs?: boolean;
-
-  /** Network URL(s) of the IdRegistry Contract */
-  ethRpcUrl?: string;
 
   /** ETH mainnet RPC URL(s) */
   ethMainnetRpcUrl?: string;
@@ -284,7 +280,6 @@ export class Hub implements HubInterface {
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
 
   engine: Engine;
-  ethRegistryProvider?: EthEventsProvider;
   fNameRegistryEventsProvider?: FNameRegistryEventsProvider;
   l2RegistryProvider?: L2EventsProvider;
 
@@ -292,24 +287,6 @@ export class Hub implements HubInterface {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode(this.rocksDB, this.options.network, this.options.gossipMetricsEnabled);
-
-    // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
-    // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
-    if (options.ethRpcUrl) {
-      this.ethRegistryProvider = EthEventsProvider.build(
-        this,
-        options.ethRpcUrl,
-        options.rankRpcs ?? false,
-        options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
-        options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
-        options.firstBlock ?? GoerliEthConstants.FirstBlock,
-        options.chunkSize ?? GoerliEthConstants.ChunkSize,
-        options.resyncEthEvents ?? false,
-      );
-    } else {
-      log.warn("No ETH RPC URL provided, unable to sync ETH contract events");
-      throw new HubError("bad_request.invalid_param", "Invalid eth testnet rpc url");
-    }
 
     if (!options.ethMainnetRpcUrl) {
       log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
@@ -362,13 +339,7 @@ export class Hub implements HubInterface {
     this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
 
     const profileSync = options.profileSync ?? false;
-    this.syncEngine = new SyncEngine(
-      this,
-      this.rocksDB,
-      this.ethRegistryProvider,
-      this.l2RegistryProvider,
-      profileSync,
-    );
+    this.syncEngine = new SyncEngine(this, this.rocksDB, this.l2RegistryProvider, profileSync);
 
     // If profileSync is true, exit after sync is complete
     if (profileSync) {
@@ -559,11 +530,6 @@ export class Hub implements HubInterface {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
 
-    // Start the ETH registry provider first
-    if (this.ethRegistryProvider) {
-      await this.ethRegistryProvider.start();
-    }
-
     // Start the L2 registry provider second
     if (this.l2RegistryProvider) {
       await this.l2RegistryProvider.start();
@@ -708,11 +674,6 @@ export class Hub implements HubInterface {
     this.gossipContactInfoJobScheduler.stop();
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
-
-    // Stop the ETH registry provider
-    if (this.ethRegistryProvider) {
-      await this.ethRegistryProvider.stop();
-    }
 
     // Stop the L2 registry provider
     if (this.l2RegistryProvider) {

@@ -36,7 +36,6 @@ Hubble Options:
 
 Ethereum Options:
   -m, --eth-mainnet-rpc-url <url>       RPC URL of a Mainnet ETH Node (or comma separated list of URLs)
-  -e, --eth-rpc-url <url>               RPC URL of a Goerli ETH Node (or comma separated list of URLs)
   -l, --l2-rpc-url <url>                RPC URL of a Goerli Optimism Node (or comma separated list of URLs)
   --rank-rpcs                           Rank the RPCs by latency/stability and use the fastest one (default: disabled)
   --fname-server-url <url>              The URL for the FName registry server (default: https://fnames.farcaster.xyz

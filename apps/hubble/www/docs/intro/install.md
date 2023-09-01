@@ -51,9 +51,6 @@ docker compose run hubble yarn identity create
 4. Create a .env file in `apps/hubble` with your Ethereum RPC endpoints:
 
 ```bash
-# Set this to your L1 Goerli ETH RPC URL
-ETH_RPC_URL=your-ETH-RPC-URL
-
 # Set this to your L1 Mainnet ETH RPC URL
 ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
 
@@ -114,7 +111,7 @@ To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the 
 
 1. `yarn identity create` to create a ID
 2. Follow the instructions to set [connect to a network](./networks.md)
-3. `yarn start --eth-rpc-url <your Goerli-ETH-RPC-URL> --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL> --l2-rpc-url <your Optimism-L2-RPC-URL>`
+3. `yarn start --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL> --l2-rpc-url <your Optimism-L2-RPC-URL>`
 
 ### Upgrading Hubble
 
