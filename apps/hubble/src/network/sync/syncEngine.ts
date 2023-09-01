@@ -530,7 +530,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<MergeResult> {
-    log.debug({ peerId }, "Perform sync: Start");
+    log.info({ peerId }, "Perform sync: Start");
 
     const start = Date.now();
 
@@ -549,9 +549,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         let progressBar: SingleBar | undefined;
 
         const missingMessages = otherSnapshot.numMessages - ourSnapshot.numMessages;
-        if (missingMessages > 10_000) {
+        if (missingMessages > 100_000) {
           this._currentSyncStatus.initialSync = true;
-          progressBar = addProgressBar("Initial Sync", missingMessages);
+          progressBar = addProgressBar(
+            ourSnapshot.numMessages === 0 ? "Initial Sync" : "Catchup Sync",
+            missingMessages,
+          );
         } else {
           this._currentSyncStatus.initialSync = false;
           finishAllProgressBars(true);
@@ -578,6 +581,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             "syncengine.sync_percent",
             avgPeerNumMessages > 0 ? Math.min(1, (await this.trie.items()) / avgPeerNumMessages) : 0,
           );
+
+          statsd().increment("syncengine.sync_messages.success", result.successCount);
+          statsd().increment("syncengine.sync_messages.error", result.errCount);
+          statsd().increment("syncengine.sync_messages.deferred", result.deferredCount);
         });
 
         log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
@@ -638,11 +645,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     let result = new MergeResult();
+    const start = Date.now();
     const messagesResult = await rpcClient.getAllMessagesBySyncIds(
       SyncIds.create({ syncIds }),
       new Metadata(),
       rpcDeadline(),
     );
+    statsd().timing("syncengine.peer.get_all_messages_by_syncids_ms", Date.now() - start);
+
     await messagesResult.match(
       async (msgs) => {
         // Make sure that the messages are actually for the SyncIDs
@@ -663,6 +673,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             "PeerError: Fetched Messages do not match SyncIDs requested",
           );
         } else {
+          statsd().increment("syncengine.peer_counts.get_all_messages_by_syncids", msgs.messages.length);
           result = await this.mergeMessages(msgs.messages, rpcClient);
         }
       },
@@ -778,11 +789,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
+    const start = Date.now();
     const theirNodeResult = await rpcClient.getSyncMetadataByPrefix(
       TrieNodePrefix.create({ prefix }),
       new Metadata(),
       rpcDeadline(),
     );
+    statsd().timing("syncengine.peer.get_syncmetadata_by_prefix_ms", Date.now() - start);
 
     if (theirNodeResult.isErr()) {
       log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
@@ -825,11 +838,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // If the other hub's node has fewer than the fetchMessagesThreshold, just fetch them all in go, otherwise, iterate through
     // the node's children and fetch them in batches.
     if (theirNode.numMessages <= fetchMessagesThreshold) {
+      const start = Date.now();
       const result = await rpcClient.getAllSyncIdsByPrefix(
         TrieNodePrefix.create({ prefix: theirNode.prefix }),
         new Metadata(),
         rpcDeadline(),
       );
+      statsd().timing("syncengine.peer.get_all_syncids_by_prefix_ms", Date.now() - start);
 
       if (result.isErr()) {
         log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
@@ -842,6 +857,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           );
           return;
         }
+        statsd().increment("syncengine.peer_counts.get_all_syncids_by_prefix", result.value.syncIds.length);
 
         // Strip out all syncIds that we already have. This can happen if our node has more messages than the other
         // hub at this node.
@@ -851,6 +867,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         if (result.value.syncIds.length === 1) {
           if (await this._trie.existsByBytes(missingHashes[0] as Uint8Array)) {
             missingHashes = [];
+            statsd().increment("syncengine.peer_counts.get_all_syncids_by_prefix_already_exists", 1);
           }
         }
         await onMissingHashes(missingHashes);
