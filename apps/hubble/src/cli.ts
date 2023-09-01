@@ -688,7 +688,9 @@ app
     );
     for (;;) {
       logger.warn(
-        "The 'status' command has been deprecated, and will be removed in a future release. Please use grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html",
+        "DEPRECATION WARNING:" +
+          "The 'status' command has been deprecated, and will be removed in a future release." +
+          "Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html",
       );
       const syncResult = await rpcClient.getSyncStatus(SyncStatusRequest.create({ peerId: cliOptions.peerId }));
       if (syncResult.isErr()) {
