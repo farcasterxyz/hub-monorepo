@@ -8,6 +8,9 @@ import {
   IdRegistryEvent,
   LinkAddMessage,
   Message,
+  MessageType,
+  OnChainEvent,
+  onChainEventTypeToJSON,
   ReactionAddMessage,
   ReactionType,
   reactionTypeToJSON,
@@ -15,19 +18,25 @@ import {
   toFarcasterTime,
   UserDataAddMessage,
   UserDataType,
+  UsernameProofMessage,
+  UserNameType,
+  utf8StringToBytes,
+  VerificationAddEthAddressMessage,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
+import { jest } from "@jest/globals";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import axios from "axios";
 import { faker } from "@faker-js/faker";
 import { DeepPartial } from "fishery";
 import { mergeDeepPartial } from "../../test/utils.js";
+import { publicClient } from "../../test/utils.js";
 
 const db = jestRocksDB("httpserver.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
-const engine = new Engine(db, network);
+const engine = new Engine(db, network, undefined, publicClient);
 const hub = new MockHub(db, engine);
 
 let httpServer: HttpAPIServer;
@@ -357,6 +366,145 @@ describe("httpServer", () => {
 
       expect(response3.status).toBe(200);
       expect(response3.data).toEqual(Message.toJSON(addBio));
+    });
+  });
+
+  describe("Storage APIs", () => {
+    test("getStorageLimits", async () => {
+      const url = getFullUrl(`/v1/storagelimits/${fid}`);
+      const response = await axiosGet(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data.limits.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Username proofs", () => {
+    let ensProof: UsernameProofMessage;
+    let proof: UsernameProofMessage;
+    const fname: string = "test.eth";
+    let currentFarcasterTime: number;
+
+    beforeAll(async () => {
+      const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(custodyAddress);
+      });
+      const timestampSec = Math.floor(Date.now() / 1000);
+      proof = await Factories.UsernameProofMessage.create(
+        {
+          data: {
+            fid,
+            usernameProofBody: Factories.UserNameProof.build({
+              name: utf8StringToBytes(fname)._unsafeUnwrap(),
+              fid,
+              owner: custodyEvent.to,
+              timestamp: timestampSec,
+              type: UserNameType.USERNAME_TYPE_ENS_L1,
+            }),
+            timestamp: toFarcasterTime(timestampSec * 1000)._unsafeUnwrap(),
+            type: MessageType.USERNAME_PROOF,
+          },
+        },
+        { transient: { signer } },
+      );
+    });
+
+    test("getUsernameProof", async () => {
+      expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
+
+      const url = getFullUrl(`/v1/usernameproof/${fname}`);
+      const response = await axiosGet(url);
+
+      expect(response.status).toBe(200);
+      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      expect(response.data).toEqual((Message.toJSON(proof) as any).data.usernameProofBody);
+
+      // Get via fid
+      const url2 = getFullUrl(`/v1/usernameproofs/${fid}`);
+      const response2 = await axiosGet(url2);
+
+      expect(response2.status).toBe(200);
+      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      expect(response2.data.proofs).toEqual([(Message.toJSON(proof) as any).data.usernameProofBody]);
+    });
+  });
+
+  describe("verification APIs", () => {
+    let verificationAdd: VerificationAddEthAddressMessage;
+
+    beforeAll(async () => {
+      verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+        { data: { fid, network } },
+        { transient: { signer } },
+      );
+    });
+
+    test("getVerification", async () => {
+      expect((await engine.mergeMessage(verificationAdd)).isOk()).toBeTruthy();
+
+      const address = verificationAdd.data.verificationAddEthAddressBody.address;
+      const url = getFullUrl(`/v1/verifications/${fid}?address=${bytesToHexString(address)._unsafeUnwrap()}`);
+      const response = await axiosGet(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual(Message.toJSON(verificationAdd));
+
+      // Get via fid
+      const url2 = getFullUrl(`/v1/verifications/${fid}`);
+      const response2 = await axiosGet(url2);
+
+      expect(response2.status).toBe(200);
+      expect(response2.data.messages).toEqual([Message.toJSON(verificationAdd)]);
+    });
+  });
+
+  describe("onchain event APIs", () => {
+    test("getOnChainEvent", async () => {
+      const onChainEvent = Factories.SignerOnChainEvent.build();
+
+      const fid = onChainEvent.fid;
+      const signer = bytesToHexString(onChainEvent.signerEventBody.key)._unsafeUnwrap();
+      const eventType = onChainEvent.type;
+
+      expect(await engine.mergeOnChainEvent(onChainEvent)).toBeTruthy();
+
+      const url = getFullUrl(`/v1/onchain/signers/${fid}?signer=${signer}`);
+      const response = await axiosGet(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual(OnChainEvent.toJSON(onChainEvent));
+
+      // Get via fid
+      const url2 = getFullUrl(`/v1/onchain/signers/${fid}`);
+      const response2 = await axiosGet(url2);
+
+      expect(response2.status).toBe(200);
+      expect(response2.data.events).toEqual([OnChainEvent.toJSON(onChainEvent)]);
+
+      // Get by type
+      const url3 = getFullUrl(`/v1/onchain/events/${fid}?type=${eventType}`);
+      const response3 = await axiosGet(url3);
+
+      expect(response3.status).toBe(200);
+      expect(response3.data.events).toEqual([OnChainEvent.toJSON(onChainEvent)]);
+
+      // Get by type name
+      const url4 = getFullUrl(`/v1/onchain/events/${fid}?type=${onChainEventTypeToJSON(eventType)}`);
+      const response4 = await axiosGet(url4);
+
+      expect(response4.status).toBe(200);
+      expect(response4.data.events).toEqual([OnChainEvent.toJSON(onChainEvent)]);
+
+      // Also do the IdRegistryEvent
+      const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
+      expect(await engine.mergeOnChainEvent(idRegistryEvent)).toBeTruthy();
+
+      const url5 = getFullUrl(`/v1/onchain/idregistryevent/${idRegistryEvent.idRegisterEventBody.to}`);
+      const response5 = await axiosGet(url5);
+
+      expect(response5.status).toBe(200);
+      expect(response5.data).toEqual(OnChainEvent.toJSON(idRegistryEvent));
     });
   });
 });

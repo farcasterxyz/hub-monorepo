@@ -4,10 +4,17 @@ import {
   HubServiceServer,
   Message,
   MessagesResponse,
+  OnChainEvent,
+  OnChainEventResponse,
+  StorageLimitsResponse,
+  UserNameProof,
+  UsernameProofsResponse,
   hexStringToBytes,
+  onChainEventTypeFromJSON,
   reactionTypeFromJSON,
   sendUnaryData,
   userDataTypeFromJSON,
+  utf8StringToBytes,
 } from "@farcaster/hub-nodejs";
 import fastify from "fastify";
 import { Result, err, ok } from "neverthrow";
@@ -24,13 +31,13 @@ const log = logger.child({ component: "HttpAPIServer" });
 // For a function call like getCast(call: ServerUnaryCall<_>, response), this will extract the ServerUnaryCall<_> type
 type FirstParameter<T> = T extends (arg1: infer U, ...args: unknown[]) => unknown ? U : never;
 
-// For a method like getCast, this will extract the call type, e.g. ServerUnaryCall<CastId, Message>
+// For a string like "getCast", this will extract the call type, e.g. ServerUnaryCall<CastId, Message>
 type CallTypeForMethod<M extends keyof HubServiceServer> = FirstParameter<HubServiceServer[M]>;
 
 // For a type like ServerUnaryCall<CastId, Message>, this will extract the CastId type
 type FirstGenericType<T> = T extends ServerUnaryCall<infer U, unknown> ? U : never;
 
-// For a method like getCast, this will extract the CastId type
+// For a string like "getCast", this will extract the CastId type
 type FirstTemplateParamType<M extends keyof HubServiceServer> = FirstGenericType<Parameters<HubServiceServer[M]>[0]>;
 
 // Represents the static toJSON method of a protobuf message
@@ -117,11 +124,7 @@ export class HttpAPIServer {
     this.app.get<{ Params: { fid: string; hash: string } }>("/v1/cast/:fid/:hash", (request, reply) => {
       const { fid, hash } = request.params;
 
-      const call = getCallObject(
-        "getCast",
-        { fid: parseInt(fid), hash: hexStringToBytes(hash)._unsafeUnwrap() },
-        request,
-      );
+      const call = getCallObject("getCast", { fid: parseInt(fid), hash: hexStringToBytes(hash).unwrapOr([]) }, request);
 
       this.grpcImpl.getCast(call, handleResponse(reply, Message));
     });
@@ -144,7 +147,7 @@ export class HttpAPIServer {
         const call = getCallObject(
           "getCastsByParent",
           {
-            parentCastId: { fid: parseInt(fid), hash: hexStringToBytes(hash)._unsafeUnwrap() },
+            parentCastId: { fid: parseInt(fid), hash: hexStringToBytes(hash).unwrapOr([]) },
             ...pageOptions,
           },
           request,
@@ -188,7 +191,7 @@ export class HttpAPIServer {
         "getReaction",
         {
           fid: parseInt(fid),
-          targetCastId: { fid: parseInt(target_fid), hash: hexStringToBytes(target_hash)._unsafeUnwrap() },
+          targetCastId: { fid: parseInt(target_fid), hash: hexStringToBytes(target_hash).unwrapOr([]) },
           reactionType: getProtobufType(request.query.reactionType, reactionTypeFromJSON) ?? 0,
         },
         request,
@@ -229,7 +232,7 @@ export class HttpAPIServer {
       const call = getCallObject(
         "getReactionsByCast",
         {
-          targetCastId: { fid: parseInt(target_fid), hash: hexStringToBytes(target_hash)._unsafeUnwrap() },
+          targetCastId: { fid: parseInt(target_fid), hash: hexStringToBytes(target_hash).unwrapOr([]) },
           reactionType: getProtobufType(request.query.reactionType, reactionTypeFromJSON),
           ...pageOptions,
         },
@@ -334,6 +337,103 @@ export class HttpAPIServer {
         }
       },
     );
+
+    //=================Storage API================
+    // /storagelimits/:fid
+    this.app.get<{ Params: { fid: string } }>("/v1/storagelimits/:fid", (request, reply) => {
+      const { fid } = request.params;
+
+      const call = getCallObject("getCurrentStorageLimitsByFid", { fid: parseInt(fid) }, request);
+      this.grpcImpl.getCurrentStorageLimitsByFid(call, handleResponse(reply, StorageLimitsResponse));
+    });
+
+    //===============Username Proofs=================
+    // /usernameproof/:name
+    this.app.get<{ Params: { name: string } }>("/v1/usernameproof/:name", (request, reply) => {
+      const { name } = request.params;
+
+      const fnameBytes = utf8StringToBytes(name).unwrapOr(new Uint8Array());
+
+      const call = getCallObject("getUsernameProof", { name: fnameBytes }, request);
+      this.grpcImpl.getUsernameProof(call, handleResponse(reply, UserNameProof));
+    });
+
+    // /usernameproofs/:fid
+    this.app.get<{ Params: { fid: string } }>("/v1/usernameproofs/:fid", (request, reply) => {
+      const { fid } = request.params;
+
+      const call = getCallObject("getUserNameProofsByFid", { fid: parseInt(fid) }, request);
+      this.grpcImpl.getUserNameProofsByFid(call, handleResponse(reply, UsernameProofsResponse));
+    });
+
+    //=============Verifications================
+    // /verifications/:fid?address=...
+    this.app.get<{ Params: { fid: string }; Querystring: { address: string } }>(
+      "/v1/verifications/:fid",
+      (request, reply) => {
+        const { fid } = request.params;
+        const { address } = request.query;
+
+        if (address) {
+          const call = getCallObject(
+            "getVerification",
+            { fid: parseInt(fid), address: hexStringToBytes(address).unwrapOr(new Uint8Array()) },
+            request,
+          );
+          this.grpcImpl.getVerification(call, handleResponse(reply, Message));
+        } else {
+          const call = getCallObject("getVerificationsByFid", { fid: parseInt(fid) }, request);
+          this.grpcImpl.getVerificationsByFid(call, handleResponse(reply, MessagesResponse));
+        }
+      },
+    );
+
+    //================On Chain Events================
+    // /onchain/signer/:fid?signer=...
+    this.app.get<{ Params: { fid: string }; Querystring: { signer: string } }>(
+      "/v1/onchain/signers/:fid",
+      (request, reply) => {
+        const { fid } = request.params;
+        const { signer } = request.query;
+
+        if (signer) {
+          const call = getCallObject(
+            "getOnChainSigner",
+            { fid: parseInt(fid), signer: hexStringToBytes(signer).unwrapOr(new Uint8Array()) },
+            request,
+          );
+          this.grpcImpl.getOnChainSigner(call, handleResponse(reply, OnChainEvent));
+        } else {
+          const call = getCallObject("getOnChainSignersByFid", { fid: parseInt(fid) }, request);
+          this.grpcImpl.getOnChainSignersByFid(call, handleResponse(reply, OnChainEventResponse));
+        }
+      },
+    );
+
+    // /onchain/events/:fid?type=...
+    this.app.get<{ Params: { fid: string }; Querystring: { type: string } & QueryPageParams }>(
+      "/v1/onchain/events/:fid",
+      (request, reply) => {
+        const { fid } = request.params;
+        const pageOptions = getPageOptions(request.query);
+        const eventType = getProtobufType(request.query.type, onChainEventTypeFromJSON) ?? 0;
+
+        const call = getCallObject("getOnChainEvents", { fid: parseInt(fid), eventType, ...pageOptions }, request);
+        this.grpcImpl.getOnChainEvents(call, handleResponse(reply, OnChainEventResponse));
+      },
+    );
+
+    // /onchain/idregistryevent/address
+    this.app.get<{ Params: { address: string } }>("/v1/onchain/idregistryevent/:address", (request, reply) => {
+      const { address } = request.params;
+
+      const call = getCallObject(
+        "getIdRegistryOnChainEventByAddress",
+        { address: hexStringToBytes(address).unwrapOr(new Uint8Array()) },
+        request,
+      );
+      this.grpcImpl.getIdRegistryOnChainEventByAddress(call, handleResponse(reply, OnChainEvent));
+    });
   }
 
   async start(ip = "0.0.0.0", port = 0): Promise<HubResult<string>> {
