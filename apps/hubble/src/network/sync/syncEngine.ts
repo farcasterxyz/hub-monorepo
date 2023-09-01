@@ -560,12 +560,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         if (missingMessages > 10_000) {
           this._currentSyncStatus.initialSync = true;
           progressBar = addProgressBar("Initial Sync", missingMessages);
-
-          if (ourSnapshot.numMessages === 0) {
-            // If we have no messages, we need to fetch all messages from the peer
-            // so start with the signers
-            await this.getAllSignersFromPeer(rpcClient, progressBar);
-          }
         } else {
           this._currentSyncStatus.initialSync = false;
           finishAllProgressBars(true);
@@ -624,72 +618,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     return fullSyncResult;
-  }
-
-  async getAllSignersFromPeer(rpcClient: HubRpcClient, progressBar?: SingleBar): Promise<boolean> {
-    // Get all signers from the peer to speed up the sync
-
-    // First, fetch all FIDs from the peer
-    let finished = false;
-    let pageToken: Uint8Array | undefined;
-    const fids: number[] = [];
-
-    do {
-      const fidRequest = FidRequest.create({ pageToken, pageSize: 1000 });
-      const fidResult = await rpcClient.getFids(fidRequest, new Metadata(), rpcDeadline());
-
-      if (fidResult.isErr()) {
-        log.error({ err: fidResult.error }, "Failed to fetch FIDs from peer");
-        return false;
-      }
-
-      const { fids: fetchedFids, nextPageToken } = fidResult.value;
-      fids.push(...fetchedFids);
-      if (!nextPageToken) {
-        finished = true;
-      } else {
-        pageToken = nextPageToken;
-      }
-    } while (!finished);
-
-    progressBar?.setTotal(progressBar.getTotal() + fids.length);
-
-    // Then, fetch all signers for the FIDs, in groups of 10
-    for (let i = 0; i < fids.length; i += 10) {
-      const fidsBatch = Array.from({ length: Math.min(10, fids.length - i) }, (_, j) => fids[i + j]);
-      await Promise.all(
-        fidsBatch.map(async (fid) => {
-          if (!fid || this._currentSyncStatus.interruptSync) {
-            return;
-          }
-
-          progressBar?.increment();
-
-          const signerResult = await rpcClient.getSignersByFid(
-            FidRequest.create({ fid }),
-            new Metadata(),
-            rpcDeadline(),
-          );
-          if (signerResult.isErr()) {
-            log.error({ err: signerResult.error }, "Failed to fetch signer from peer");
-
-            // Ignore this FID, we'll just sync the message without the signer
-            return;
-          }
-
-          const { messages } = signerResult.value;
-          for (const signer of messages) {
-            const signerResult = await this._hub.submitMessage(signer, "sync");
-            if (signerResult.isErr()) {
-              log.error({ err: signerResult.error, fid }, "Failed to submit signer");
-              break;
-            }
-          }
-        }),
-      );
-    }
-
-    return true;
   }
 
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
@@ -822,6 +750,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               "PeerError: Unexpected validation error",
             );
             this._currentSyncStatus.seriousValidationFailures += 1;
+            errCount += 1;
           }
         } else if (result.error.errCode === "bad_request.duplicate") {
           // This message has been merged into the DB, but for some reason is not in the Trie.
