@@ -8,7 +8,8 @@ let finished = false;
 // cannot be added (e.g. if the process is shutting down).
 // Call finishAllProgressBars() to stop all progress bars.
 export function addProgressBar(name: string, total: number): SingleBar | undefined {
-  if (finished) {
+  const isInTest = process.env["NODE_ENV"] === "test" || process.env["CI"];
+  if (finished || isInTest) {
     return undefined;
   }
 
