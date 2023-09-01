@@ -544,6 +544,7 @@ app
     if (!disableConsoleStatus) {
       console.log("\n Starting Hubble");
       console.log("------------------");
+      console.log("Please wait...This may take several minutes");
     }
 
     const hub = hubResult.value;
