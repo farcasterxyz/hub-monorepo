@@ -83,10 +83,20 @@ export interface Database {
     deletedAt: Date | null;
     timestamp: Date;
     fid: number;
-    custodyAddress: Uint8Array;
+    custodyAddress: Uint8Array | null;
     signer: Uint8Array;
     name: string | null;
-    hash: Uint8Array;
+    hash: Uint8Array | null;
+  };
+
+  storage: {
+    id: GeneratedAlways<string>;
+    createdAt: Generated<Date>;
+    updatedAt: Generated<Date>;
+    timestamp: Date;
+    fid: number;
+    units: number;
+    expiry: Date;
   };
 
   verifications: {
@@ -125,10 +135,11 @@ export interface Database {
 
   fnames: {
     fname: string;
+    fid: number;
     createdAt: Generated<Date>;
     updatedAt: Generated<Date>;
-    custodyAddress: Uint8Array;
-    expiresAt: Date;
+    custodyAddress: Uint8Array | null;
+    deletedAt: Date | null;
   };
 
   links: {

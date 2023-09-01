@@ -83,12 +83,13 @@ export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" 
 export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
-export const FARCASTER_VERSION = "2023.7.12";
+export const FARCASTER_VERSION = "2023.8.23";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
   { version: "2023.5.31", expiresAt: 1690329600000 }, // expires at 7/26/23 00:00 UTC
   { version: "2023.7.12", expiresAt: 1693958400000 }, // expires at 9/6/23 00:00 UTC
+  { version: "2023.8.23", expiresAt: 1697587200000 }, // expires at 10/18/23 00:00 UTC
 ];
 
 export interface HubInterface {
@@ -332,7 +333,8 @@ export class Hub implements HubInterface {
         options.l2RentExpiryOverride,
       );
     } else {
-      log.warn("No L2 RPC URL provided, not syncing with L2 contract events");
+      log.warn("No L2 RPC URL provided, unable to sync L2 contract events");
+      throw new HubError("bad_request.invalid_param", "Invalid l2 rpc url");
     }
 
     if (options.fnameServerUrl && options.fnameServerUrl !== "") {

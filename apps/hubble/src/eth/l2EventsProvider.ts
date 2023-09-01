@@ -31,10 +31,10 @@ const log = logger.child({
 });
 
 export class OptimismConstants {
-  public static StorageRegistryAddress = undefined;
-  public static KeyRegistryAddress = undefined;
-  public static IdRegistryAddress = undefined;
-  public static FirstBlock = 108222360; // ~Aug 14 2023 8pm UTC, approx 1.5 weeks before planned migration
+  public static StorageRegistryAddress = "0x00000000fcce7f938e7ae6d3c335bd6a1a7c593d" as const;
+  public static KeyRegistryAddress = "0x00000000fc9e66f1c6d86d750b4af47ff0cc343d" as const;
+  public static IdRegistryAddress = "0x00000000fcaf86937e41ba038b4fa40baa4b780a" as const;
+  public static FirstBlock = 108864739; // ~Aug 29 2023 5:00pm UTC
   public static ChunkSize = 1000;
   public static ChainId = 10; // OP mainnet
 }
@@ -623,6 +623,7 @@ export class L2EventsProvider {
         `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)})`,
       );
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
+      statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
       const idFilter = await this._publicClient.createContractEventFilter({
         address: this.idRegistryAddress,
@@ -671,6 +672,7 @@ export class L2EventsProvider {
 
     this._isHandlingBlock = true;
     log.info({ blockNumber }, `new block: ${blockNumber}`);
+    statsd().increment("l2events.blocks");
 
     // Get all blocks that have been confirmed into a single array and sort.
     const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);

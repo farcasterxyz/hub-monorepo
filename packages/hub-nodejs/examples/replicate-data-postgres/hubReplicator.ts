@@ -1,46 +1,55 @@
 import {
   CastAddMessage,
   CastRemoveMessage,
+  Embed,
+  getInsecureHubRpcClient,
+  getSSLHubRpcClient,
   HubRpcClient,
   IdRegistryEvent,
-  Message,
-  NameRegistryEvent,
-  ReactionAddMessage,
-  ReactionRemoveMessage,
-  SignerAddMessage,
-  SignerRemoveMessage,
-  LinkAddMessage,
-  LinkRemoveMessage,
-  UserDataAddMessage,
-  VerificationAddEthAddressMessage,
-  VerificationRemoveMessage,
   isCastAddMessage,
   isCastRemoveMessage,
+  isIdRegisterOnChainEvent,
+  isLinkAddMessage,
+  isLinkRemoveMessage,
   isMergeIdRegistryEventHubEvent,
   isMergeMessageHubEvent,
   isMergeNameRegistryEventHubEvent,
+  isMergeOnChainHubEvent,
+  isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isReactionAddMessage,
   isReactionRemoveMessage,
   isRevokeMessageHubEvent,
   isSignerAddMessage,
+  isSignerOnChainEvent,
   isSignerRemoveMessage,
+  isStorageRentOnChainEvent,
   isUserDataAddMessage,
-  isLinkAddMessage,
-  isLinkRemoveMessage,
   isVerificationAddEthAddressMessage,
   isVerificationRemoveMessage,
-  getSSLHubRpcClient,
-  getInsecureHubRpcClient,
-  Embed,
+  LinkAddMessage,
+  LinkRemoveMessage,
+  Message,
+  NameRegistryEvent,
+  OnChainEvent,
+  OnChainEventType,
+  ReactionAddMessage,
+  ReactionRemoveMessage,
+  SignerAddMessage,
+  SignerEventType,
+  SignerRemoveMessage,
+  UserDataAddMessage,
+  UserNameProof,
+  VerificationAddEthAddressMessage,
+  VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import { HubSubscriber } from "./hubSubscriber";
 import { Logger } from "pino";
 import { Database } from "./db";
 import { Kysely, sql } from "kysely";
 import { bytesToHex, farcasterTimeToDate } from "./util";
-import * as fastq from "fastq";
 import type { queueAsPromised } from "fastq";
+import * as fastq from "fastq";
 import prettyMilliseconds from "pretty-ms";
 import os from "node:os";
 
@@ -78,6 +87,15 @@ export class HubReplicator {
       } else if (isMergeNameRegistryEventHubEvent(hubEvent)) {
         this.log.info(`[Sync] Processing name registry event ${hubEvent.id}`);
         await this.onNameRegistryEvent(hubEvent.mergeNameRegistryEventBody.nameRegistryEvent);
+      } else if (isMergeOnChainHubEvent(hubEvent)) {
+        this.log.info(`[Sync] Processing onchain event ${hubEvent.id}`);
+        await this.onOnChainEvent(hubEvent.mergeOnChainEventBody.onChainEvent);
+      } else if (isMergeUsernameProofHubEvent(hubEvent)) {
+        this.log.info(`[Sync] Processing username proof event ${hubEvent.id}`);
+        await this.onUserNameProof(
+          hubEvent.mergeUsernameProofBody.usernameProof,
+          hubEvent.mergeUsernameProofBody.deletedUsernameProof,
+        );
       } else {
         this.log.warn(`[Sync] Unknown type ${hubEvent.type} of event ${hubEvent.id}. Ignoring`);
       }
@@ -156,9 +174,15 @@ export class HubReplicator {
   }
 
   private async processAllMessagesForFid(fid: number) {
-    await this.client
-      .getIdRegistryEvent({ fid })
-      .then((result) => result.map((event) => this.onIdRegistryEvent(event)));
+    for await (const events of this.getOnChainEventsByFidInBatchesOf(fid, MAX_PAGE_SIZE)) {
+      for (const event of events) {
+        await this.onOnChainEvent(event);
+      }
+    }
+
+    for (const proof of await this.getUserNameProofsByFid(fid)) {
+      await this.onUserNameProof(proof);
+    }
 
     // Fetch all messages serially in batches to reduce memory consumption.
     // Your implementation can likely do more in parallel, but we wanted an
@@ -175,6 +199,37 @@ export class HubReplicator {
         await this.onMergeMessages(messages);
       }
     }
+  }
+
+  private async *getOnChainEventsByFidInBatchesOf(fid: number, pageSize: number) {
+    const typesToFetch = [
+      OnChainEventType.EVENT_TYPE_ID_REGISTER,
+      OnChainEventType.EVENT_TYPE_SIGNER,
+      OnChainEventType.EVENT_TYPE_STORAGE_RENT,
+    ];
+    for (const eventType of typesToFetch) {
+      let result = await this.client.getOnChainEvents({ pageSize, fid, eventType });
+      for (;;) {
+        if (result.isErr()) {
+          throw new Error("Unable to backfill", { cause: result.error });
+        }
+
+        const { events, nextPageToken: pageToken } = result.value;
+
+        yield events;
+
+        if (!pageToken?.length) break;
+        result = await this.client.getOnChainEvents({ pageSize, pageToken, fid, eventType });
+      }
+    }
+  }
+
+  private async getUserNameProofsByFid(fid: number) {
+    const result = await this.client.getUserNameProofsByFid({ fid });
+    if (result.isErr()) {
+      throw new Error("Unable to backfill", { cause: result.error });
+    }
+    return result.value.proofs;
   }
 
   private async *getCastsByFidInBatchesOf(fid: number, pageSize: number) {
@@ -341,20 +396,93 @@ export class HubReplicator {
       .onConflict((oc) => oc.columns(["fid"]).doUpdateSet({ custodyAddress: event.to, updatedAt: new Date() }))
       .execute();
   }
+  private async onOnChainEvent(event: OnChainEvent) {
+    if (isIdRegisterOnChainEvent(event)) {
+      await this.db
+        .insertInto("fids")
+        .values({ fid: event.fid, custodyAddress: event.idRegisterEventBody.to })
+        .onConflict((oc) =>
+          oc.columns(["fid"]).doUpdateSet({ custodyAddress: event.idRegisterEventBody.to, updatedAt: new Date() }),
+        )
+        .execute();
+    } else if (isSignerOnChainEvent(event)) {
+      if (event.signerEventBody.eventType === SignerEventType.ADD) {
+        await this.db
+          .insertInto("signers")
+          .values({
+            fid: event.fid,
+            timestamp: new Date(event.blockTimestamp),
+            signer: event.signerEventBody.key,
+          })
+          // Do nothing on conflict since nothing should have changed if hash is the same.
+          // .onConflict((oc) => oc.columns(["fid", "signer"]).doNothing())
+          .execute();
+      } else if (event.signerEventBody.eventType === SignerEventType.REMOVE) {
+        await this.db
+          .updateTable("signers")
+          .where("fid", "=", event.fid)
+          .where("signer", "=", event.signerEventBody.key)
+          .set({ deletedAt: new Date(event.blockTimestamp) })
+          .execute();
+      }
+    } else if (isStorageRentOnChainEvent(event)) {
+      // TODO: Might need to handle idempotency here (check on blockhash and log index?)
+      await this.db
+        .insertInto("storage")
+        .values({
+          fid: event.fid,
+          timestamp: new Date(event.blockTimestamp),
+          units: event.storageRentEventBody.units,
+          expiry: new Date(event.storageRentEventBody.expiry),
+        })
+        .execute();
+    }
+  }
 
   private async onNameRegistryEvent(event: NameRegistryEvent) {
     const custodyAddress = event.to;
-    const expiresAt = farcasterTimeToDate(event.expiry);
 
     await this.db
       .insertInto("fnames")
       .values({
         fname: Buffer.from(event.fname).toString("utf8"),
+        fid: 0,
         custodyAddress,
-        expiresAt,
       })
-      .onConflict((oc) => oc.columns(["fname"]).doUpdateSet({ custodyAddress, expiresAt, updatedAt: new Date() }))
+      .onConflict((oc) => oc.columns(["fname"]).doUpdateSet({ custodyAddress, updatedAt: new Date() }))
       .execute();
+  }
+
+  private async onUserNameProof(proof?: UserNameProof, deletedProof?: UserNameProof) {
+    if (deletedProof) {
+      await this.db
+        .updateTable("fnames")
+        .where("fname", "=", Buffer.from(deletedProof.name).toString("utf8"))
+        .set({ deletedAt: new Date(deletedProof.timestamp), custodyAddress: null, fid: 0 })
+        .execute();
+    }
+
+    // Sending to fid 0 is treated as a delete
+    if (proof?.fid === 0) {
+      await this.db
+        .updateTable("fnames")
+        .where("fname", "=", Buffer.from(proof.name).toString("utf8"))
+        .set({ deletedAt: new Date(proof.timestamp), custodyAddress: null, fid: proof.fid })
+        .execute();
+    } else if (proof) {
+      const custodyAddress = proof.owner;
+      await this.db
+        .insertInto("fnames")
+        .values({
+          fname: Buffer.from(proof.name).toString("utf8"),
+          fid: proof.fid,
+          custodyAddress,
+        })
+        .onConflict((oc) =>
+          oc.columns(["fname"]).doUpdateSet({ custodyAddress, fid: proof.fid, deletedAt: null, updatedAt: new Date() }),
+        )
+        .execute();
+    }
   }
 
   private async onMergeMessages(messages: Message[]) {
@@ -555,7 +683,7 @@ export class HubReplicator {
         }),
       )
       // Do nothing on conflict since nothing should have changed if hash is the same.
-      .onConflict((oc) => oc.columns(["hash"]).doNothing())
+      // .onConflict((oc) => oc.columns(["signer", "fid"]).doNothing())
       .execute();
 
     for (const message of messages) {

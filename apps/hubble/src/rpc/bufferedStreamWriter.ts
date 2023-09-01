@@ -3,7 +3,8 @@ import { err, ok } from "neverthrow";
 
 export const STREAM_DRAIN_TIMEOUT_MS = 10_000;
 export const SLOW_CLIENT_GRACE_PERIOD_MS = 60_000;
-export const STREAM_MESSAGE_BUFFER_SIZE = 1000;
+// TODO: Make this configurable via CLI
+export const STREAM_MESSAGE_BUFFER_SIZE = 5_000;
 
 /**
  * A BufferedStreamWriter is a wrapper around a gRPC stream that will buffer messages when the stream is backed up.

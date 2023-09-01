@@ -23,7 +23,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { EthEventsProvider } from "../../eth/ethEventsProvider.js";
-import { Hub, HubInterface } from "../../hubble.js";
+import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
 import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "./syncId.js";
 import { TrieSnapshot } from "./trieNode.js";
@@ -156,6 +156,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _messagesSinceLastCompaction = 0;
   private _isCompacting = false;
 
+  // The latest sync snapshot for each peer
+  private _peerSyncSnapshot = new Map<string, TrieSnapshot>();
+
   // Has the syncengine started yet?
   private _started = false;
 
@@ -235,6 +238,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public get syncMergeQSize(): number {
     return this._syncMergeQ;
+  }
+
+  public avgPeerNumMessages(): number {
+    const filtered = Array.from(this._peerSyncSnapshot.values()).filter((snapshot) => snapshot.numMessages > 0);
+    const total = filtered.reduce((acc, snapshot) => acc + snapshot.numMessages, 0);
+    return filtered.length ? total / filtered.length : 0;
   }
 
   public isStarted(): boolean {
@@ -321,6 +330,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public async diffSyncIfRequired(hub: Hub, peerIdString?: string) {
     this.emit("syncStart");
+
+    // Log the version number for the dashboard
+    statsd().gauge(`farcaster.version.${FARCASTER_VERSION}`, 1);
+    statsd().gauge(`farcaster.hubversion.${APP_VERSION}`, 1);
 
     if (this.currentHubPeerContacts.size === 0) {
       log.warn("Diffsync: No peer contacts, skipping sync");
@@ -435,6 +448,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         "DiffSync: SyncStatus", // Search for this string in the logs to get summary of sync status
       );
 
+      // Save the peer's sync snapshot
+      this._peerSyncSnapshot.set(updatedPeerIdString, syncStatus.theirSnapshot);
+
       if (syncStatus.shouldSync === true) {
         log.info({ peerId }, "Diffsync: Starting Sync with peer");
         const start = Date.now();
@@ -544,12 +560,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         if (missingMessages > 10_000) {
           this._currentSyncStatus.initialSync = true;
           progressBar = addProgressBar("Initial Sync", missingMessages);
-
-          if (ourSnapshot.numMessages === 0) {
-            // If we have no messages, we need to fetch all messages from the peer
-            // so start with the signers
-            await this.getAllSignersFromPeer(rpcClient, progressBar);
-          }
         } else {
           this._currentSyncStatus.initialSync = false;
           finishAllProgressBars(true);
@@ -570,6 +580,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           const result = await this.fetchAndMergeMessages(missingIds, rpcClient);
           fullSyncResult.addResult(result);
           progressBar?.increment(result.total);
+
+          const avgPeerNumMessages = this.avgPeerNumMessages();
+          statsd().gauge(
+            "syncengine.sync_percent",
+            avgPeerNumMessages > 0 ? Math.min(1, (await this.trie.items()) / avgPeerNumMessages) : 0,
+          );
         });
 
         log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
@@ -598,72 +614,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     return fullSyncResult;
-  }
-
-  async getAllSignersFromPeer(rpcClient: HubRpcClient, progressBar?: SingleBar): Promise<boolean> {
-    // Get all signers from the peer to speed up the sync
-
-    // First, fetch all FIDs from the peer
-    let finished = false;
-    let pageToken: Uint8Array | undefined;
-    const fids: number[] = [];
-
-    do {
-      const fidRequest = FidRequest.create({ pageToken, pageSize: 1000 });
-      const fidResult = await rpcClient.getFids(fidRequest, new Metadata(), rpcDeadline());
-
-      if (fidResult.isErr()) {
-        log.error({ err: fidResult.error }, "Failed to fetch FIDs from peer");
-        return false;
-      }
-
-      const { fids: fetchedFids, nextPageToken } = fidResult.value;
-      fids.push(...fetchedFids);
-      if (!nextPageToken) {
-        finished = true;
-      } else {
-        pageToken = nextPageToken;
-      }
-    } while (!finished);
-
-    progressBar?.setTotal(progressBar.getTotal() + fids.length);
-
-    // Then, fetch all signers for the FIDs, in groups of 10
-    for (let i = 0; i < fids.length; i += 10) {
-      const fidsBatch = Array.from({ length: Math.min(10, fids.length - i) }, (_, j) => fids[i + j]);
-      await Promise.all(
-        fidsBatch.map(async (fid) => {
-          if (!fid || this._currentSyncStatus.interruptSync) {
-            return;
-          }
-
-          progressBar?.increment();
-
-          const signerResult = await rpcClient.getSignersByFid(
-            FidRequest.create({ fid }),
-            new Metadata(),
-            rpcDeadline(),
-          );
-          if (signerResult.isErr()) {
-            log.error({ err: signerResult.error }, "Failed to fetch signer from peer");
-
-            // Ignore this FID, we'll just sync the message without the signer
-            return;
-          }
-
-          const { messages } = signerResult.value;
-          for (const signer of messages) {
-            const signerResult = await this._hub.submitMessage(signer, "sync");
-            if (signerResult.isErr()) {
-              log.error({ err: signerResult.error, fid }, "Failed to submit signer");
-              break;
-            }
-          }
-        }),
-      );
-    }
-
-    return true;
   }
 
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
@@ -792,6 +742,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               "PeerError: Unexpected validation error",
             );
             this._currentSyncStatus.seriousValidationFailures += 1;
+            errCount += 1;
           }
         } else if (result.error.errCode === "bad_request.duplicate") {
           // This message has been merged into the DB, but for some reason is not in the Trie.
