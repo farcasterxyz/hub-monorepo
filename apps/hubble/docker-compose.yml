@@ -8,7 +8,6 @@ version: '3.9'
 services:
   hubble:
     image: farcasterxyz/hubble:latest
-    tty: true 
     restart: unless-stopped
     command: [
       "node", "--no-warnings",  "build/cli.js", "start",
