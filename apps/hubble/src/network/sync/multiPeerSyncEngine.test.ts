@@ -11,6 +11,7 @@ import {
   HubInfoRequest,
   getFarcasterTime,
   OnChainEvent,
+  CastAddMessage,
 } from "@farcaster/hub-nodejs";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../../hubble.js";
 import SyncEngine from "./syncEngine.js";
@@ -61,7 +62,7 @@ describe("Multi peer sync engine", () => {
         const result = await engine.mergeMessage(cast);
         expect(result.isOk()).toBeTruthy();
 
-        return Promise.resolve(cast);
+        return cast;
       }),
     );
   };
@@ -432,12 +433,55 @@ describe("Multi peer sync engine", () => {
 
     // Since the message is actually missing, it should be a no-op, and the missing message should disappear
     // from the sync trie
-    sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(signerAdd))) === true, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(signerAdd))) === true, 1000);
     expect(await syncEngine2.trie.exists(new SyncId(signerAdd))).toBeFalsy();
 
     // The root hashes should be the same, since nothing actually happened
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
     expect(await syncEngine1.trie.rootHash()).toEqual(EMPTY_HASH);
+  });
+
+  test("recovers if there are missing messages in the engine during sync", async () => {
+    const engine2 = new Engine(testDb2, network);
+    const hub2 = new MockHub(testDb2, engine2);
+    const syncEngine2 = new SyncEngine(hub2, testDb2);
+    await syncEngine2.start();
+
+    await engine2.mergeIdRegistryEvent(custodyEvent);
+    await engine1.mergeIdRegistryEvent(custodyEvent);
+
+    await engine2.mergeMessage(signerAdd);
+    await engine1.mergeMessage(signerAdd);
+
+    // We'll get 2 CastAdds
+    const castAdd1 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+    const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+
+    // CastAdd1 is added properly to both
+    expect(await engine2.mergeMessage(castAdd1)).toBeTruthy();
+    expect(await engine1.mergeMessage(castAdd1)).toBeTruthy();
+
+    // CastAdd2 is added only to the sync trie, but is missing from the engine
+    await syncEngine2.trie.insert(new SyncId(castAdd2));
+
+    // Wait for the sync trie to be updated
+    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 3, 1000);
+    await sleepWhile(async () => (await syncEngine1.trie.items()) !== 2, 1000);
+
+    // Attempt to sync engine2 <-- engine1. Engine1 has only singerAdd
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+    // The sync engine should realize that castAdd2 is not in it's engine, so it should be removed from the sync trie
+    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd2))) === true, 1000);
+
+    expect(await syncEngine2.trie.exists(new SyncId(castAdd2))).toBeFalsy();
+
+    // but the signerAdd should still be there along with castAdd1
+    expect(await syncEngine2.trie.exists(new SyncId(signerAdd))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(new SyncId(castAdd1))).toBeTruthy();
+
+    await syncEngine2.stop();
+    await engine2.stop();
   });
 
   test("recovers if messages are missing from the sync trie", async () => {
@@ -467,11 +511,14 @@ describe("Multi peer sync engine", () => {
 
     // Since the message isn't actually missing, it should be a no-op, and the missing message should
     // get added back to the sync trie
-    sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(signerAdd))) === false, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(signerAdd))) === false, 1000);
 
     // The root hashes should now be the same
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
     expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+    await syncEngine2.stop();
+    await engine2.stop();
   });
 
   test("syncEngine syncs with same numMessages but different hashes", async () => {

@@ -433,14 +433,17 @@ export default class Server {
           (messages) => {
             // Check the messages for corruption. If a message is blank, that means it was present
             // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
-            const corruptedMessages = messages.filter(
-              (message) => message.data === undefined || message.hash.length === 0,
-            );
+            const corruptedSyncIds = this.syncEngine?.findCorruptedSyncIDs(messages, request.syncIds);
 
-            if (corruptedMessages.length > 0) {
-              log.warn({ num: corruptedMessages.length }, "Found corrupted messages, rebuilding some syncIDs");
+            if ((corruptedSyncIds?.length ?? 0) > 0) {
+              log.warn(
+                { num: corruptedSyncIds?.length },
+                "Found corrupted messages while serving API, rebuilding some syncIDs",
+              );
+
               // Don't wait for this to finish, just return the messages we have.
-              this.syncEngine?.rebuildSyncIds(request.syncIds);
+              this.syncEngine?.revokeSyncIds(corruptedSyncIds ?? []);
+
               // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }

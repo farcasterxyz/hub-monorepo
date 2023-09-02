@@ -263,8 +263,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.info("Rebuilding sync trie complete");
   }
 
-  /** Rebuild the individual syncIDs in the Sync Trie */
-  public async rebuildSyncIds(syncIds: Uint8Array[]) {
+  /** Revoke the individual syncIDs in the Sync Trie */
+  public async revokeSyncIds(syncIds: Uint8Array[]) {
     for (const syncId of syncIds) {
       await this._trie.deleteByBytes(syncId);
     }
@@ -616,8 +616,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
-    const hashesBuf = syncIds.map((syncIdHash) => SyncId.pkFromSyncId(syncIdHash));
-    return ResultAsync.fromPromise(getManyMessages(this._db, hashesBuf), (e) => e as HubError);
+    const msgPKs = syncIds.map((syncId) => SyncId.pkFromSyncId(syncId));
+    return ResultAsync.fromPromise(getManyMessages(this._db, msgPKs), (e) => e as HubError);
   }
 
   /**
@@ -868,6 +868,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           if (await this._trie.existsByBytes(missingHashes[0] as Uint8Array)) {
             missingHashes = [];
             statsd().increment("syncengine.peer_counts.get_all_syncids_by_prefix_already_exists", 1);
+
+            if (ourNode?.prefix) {
+              const suspectSyncIDs = await this.trie.getAllValues(ourNode?.prefix);
+              const messagesResult = await this.getAllMessagesBySyncIds(suspectSyncIDs);
+
+              if (messagesResult.isOk()) {
+                const corruptedSyncIds = this.findCorruptedSyncIDs(messagesResult.value, suspectSyncIDs);
+
+                if (corruptedSyncIds.length > 0) {
+                  log.warn(
+                    { num: corruptedSyncIds.length },
+                    "Found corrupted messages during sync, rebuilding some syncIDs",
+                  );
+
+                  // Don't wait for this to finish, just return the messages we have.
+                  this.revokeSyncIds(corruptedSyncIds);
+                }
+              }
+            }
           }
         }
         await onMissingHashes(missingHashes);
@@ -875,7 +894,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } else if (theirNode.children) {
       const promises = [];
 
-      for (const [theirChildChar, theirChild] of theirNode.children.entries()) {
+      const entriesArray = [...theirNode.children.entries()]; // Convert entries to an array
+      const reversedEntries = entriesArray.reverse(); // Reverse the array
+
+      for (const [theirChildChar, theirChild] of reversedEntries) {
         // recursively fetch hashes for every node where the hashes don't match
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
           const r = this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes);
@@ -897,6 +919,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         `Their node has no children, but has more than ${fetchMessagesThreshold} messages`,
       );
     }
+  }
+
+  public findCorruptedSyncIDs(messages: Message[], syncIds: Uint8Array[]): Uint8Array[] {
+    return messages
+      .map((message, i) => (message.data === undefined || message.hash.length === 0 ? syncIds[i] : undefined))
+      .filter((i) => i !== undefined) as Uint8Array[];
   }
 
   /** ---------------------------------------------------------------------------------- */
