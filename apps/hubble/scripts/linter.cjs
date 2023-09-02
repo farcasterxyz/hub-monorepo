@@ -12,31 +12,19 @@ const path = require("path");
 
 const filePath = path.join(__dirname, "../grafana/grafana-dashboard.json");
 
-function checkDataSource(obj) {
-  // If the object is an array, iterate over its elements
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      if (!checkDataSource(item)) {
-        return false;
-      }
-    }
-  }
-  // If the object is an actual object, check for the "datasource" property
-  else if (typeof obj === "object" && obj !== null) {
-    if (obj.datasource && obj.datasource !== "Graphite") {
-      console.error(`The "datasource" property HAS TO BE  "Graphite" but it is "${JSON.stringify(obj.datasource)}"`);
-      return false;
-    }
+function checkDataSource(lineArray) {
+  let lineNumber = 0;
 
-    // Recursively check other properties
-    for (const key in obj) {
-      if (!checkDataSource(obj[key])) {
-        return false;
-      }
+  for (const line of lineArray) {
+    lineNumber++;
+
+    // Check if the current line contains the undesired datasource entry
+    if (line.includes('"datasource":') && !line.replaceAll(" ", "").includes('"datasource":"Graphite"')) {
+      return lineNumber;
     }
   }
 
-  return true;
+  return null;
 }
 
 fs.readFile(filePath, "utf-8", (err, data) => {
@@ -45,10 +33,16 @@ fs.readFile(filePath, "utf-8", (err, data) => {
     process.exit(1);
   }
 
-  const jsonData = JSON.parse(data);
+  // Split the content into lines
+  const lineArray = data.split("\n");
+  const errorLine = checkDataSource(lineArray);
 
-  if (!checkDataSource(jsonData)) {
-    console.error(`Error: ${filePath} contains a "datasource" that is not "Graphite"`);
+  if (errorLine !== null) {
+    console.error(`line ${errorLine}: ${lineArray[errorLine - 1]}`);
+    console.error(`Error: "datasource" has to be "Graphite"`);
+    console.error(`Replace with: "datasource": "Graphite"`);
+    console.error(`Error: ${filePath}`);
+
     process.exit(1);
   } else {
     console.log("✨ Custom linter passed");
