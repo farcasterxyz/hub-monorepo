@@ -494,6 +494,7 @@ app
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       rpcAuth,
       rpcRateLimit,
+      rpcSubscribePerIpLimit: cliOptions.rpcSubscribePerIpLimit ?? hubConfig.rpcSubscribePerIpLimit,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB,
       rebuildSyncTrie,
