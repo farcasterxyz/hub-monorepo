@@ -91,7 +91,7 @@ export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" 
 export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
-export const SNAPSHOT_S3_BUCKET = "adityapk-farcaster-snapshot";
+export const SNAPSHOT_S3_DEFAULT_BUCKET = "adityapk-farcaster-snapshot";
 export const S3_REGION = "us-east-1";
 
 export const FARCASTER_VERSION = "2023.8.23";
@@ -268,6 +268,9 @@ export interface HubOptions {
 
   /** Enable daily backups to S3 */
   enableSnapshotToS3?: boolean;
+
+  /** S3 bucket to upload snapshots to */
+  s3SnapshotBucket?: string;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -290,6 +293,8 @@ export class Hub implements HubInterface {
   private allowedPeerIds: string[] | undefined;
   private deniedPeerIds: string[];
 
+  private s3_snapshot_bucket: string;
+
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
@@ -309,6 +314,8 @@ export class Hub implements HubInterface {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode(this.rocksDB, this.options.network, this.options.gossipMetricsEnabled);
+
+    this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
     // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
     // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
@@ -717,7 +724,7 @@ export class Hub implements HubInterface {
       try {
         s3Result = await s3.send(
           new ListObjectsV2Command({
-            Bucket: SNAPSHOT_S3_BUCKET,
+            Bucket: this.s3_snapshot_bucket,
             Prefix: `${FarcasterNetwork[this.options.network].toString()}/`,
           }),
         );
@@ -733,14 +740,14 @@ export class Hub implements HubInterface {
 
       if (!latestSnapshot) {
         log.info(
-          { s3bucket: SNAPSHOT_S3_BUCKET, dir: FarcasterNetwork[this.options.network].toString() },
+          { s3bucket: this.s3_snapshot_bucket, dir: FarcasterNetwork[this.options.network].toString() },
           "no snapshots found in S3, skipping snapshot sync",
         );
         return;
       }
 
       const params = {
-        Bucket: SNAPSHOT_S3_BUCKET,
+        Bucket: this.s3_snapshot_bucket,
         Key: latestSnapshot.Key,
       };
 
@@ -1430,7 +1437,7 @@ export class Hub implements HubInterface {
     });
 
     const params = {
-      Bucket: SNAPSHOT_S3_BUCKET,
+      Bucket: this.s3_snapshot_bucket,
       Key: key,
       Body: fileStream,
     };

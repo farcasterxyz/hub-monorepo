@@ -67,4 +67,6 @@ export const Config = {
   // disableConsoleStatus: false,
   /** Enable backing up snapshots to S3 */
   // enableSnapshotToS3: false,
+  /** S3 bucket name */
+  // s3BucketName: '',
 };

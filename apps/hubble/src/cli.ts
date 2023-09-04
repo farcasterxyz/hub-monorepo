@@ -128,6 +128,7 @@ app
 
   // Snapshots
   .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
+  .option("--s3-snapshot-bucket <bucket>", "The S3 bucket to upload snapshots to")
   .option("--disable-snapshot-sync", "Disable syncing from snapshots. (default: enabled)")
 
   // Metrics
@@ -523,6 +524,7 @@ app
       directPeers,
       disableSnapshotSync: cliOptions.disableSnapshotSync ?? hubConfig.disableSnapshotSync ?? false,
       enableSnapshotToS3,
+      s3SnapshotBucket: cliOptions.s3SnapshotBucket ?? hubConfig.s3SnapshotBucket,
     };
 
     if (options.enableSnapshotToS3) {
