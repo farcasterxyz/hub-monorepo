@@ -998,31 +998,6 @@ describe("with listeners and workers", () => {
       // Revokes messages after 1 hr
       await worker.processJobs(Date.now() + 1000 * 60 * 60 + 5000);
       expect(revokedMessages).toContainEqual(signerAdd);
-      expect(revokedMessages).toContainEqual(castAdd);
-      expect(revokedMessages).toContainEqual(reactionAdd);
-      expect(revokedMessages).toContainEqual(linkAdd);
-    });
-
-    test("revokes messages when SignerAdd is pruned", async () => {
-      const event = HubEvent.create({
-        type: HubEventType.PRUNE_MESSAGE,
-        pruneMessageBody: { message: signerAdd },
-      });
-      liveEngine.eventHandler.emit("pruneMessage", event as PruneMessageHubEvent); // Hack to force prune
-      expect(revokedMessages).toEqual([]);
-      await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([castAdd, reactionAdd, linkAdd]);
-    });
-
-    test("revokes messages when SignerAdd is revoked", async () => {
-      const event = HubEvent.create({
-        type: HubEventType.REVOKE_MESSAGE,
-        revokeMessageBody: { message: signerAdd },
-      });
-      liveEngine.eventHandler.emit("revokeMessage", event as RevokeMessageHubEvent); // Hack to force revoke
-      expect(revokedMessages).toEqual([signerAdd]);
-      await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([signerAdd, castAdd, reactionAdd, linkAdd]);
     });
 
     test("revokes messages when onchain signer is removed", async () => {
@@ -1111,7 +1086,7 @@ describe("with listeners and workers", () => {
 
 describe("stop", () => {
   test("removes all event listeners", async () => {
-    const eventNames: (keyof StoreEvents)[] = ["mergeMessage", "mergeIdRegistryEvent", "pruneMessage", "revokeMessage"];
+    const eventNames: (keyof StoreEvents)[] = ["mergeMessage", "mergeIdRegistryEvent"];
     const scopedEngine = new Engine(db, FarcasterNetwork.TESTNET);
     for (const eventName of eventNames) {
       expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(0);

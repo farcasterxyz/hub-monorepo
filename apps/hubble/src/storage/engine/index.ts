@@ -31,11 +31,9 @@ import {
   OnChainEvent,
   OnChainEventResponse,
   OnChainEventType,
-  PruneMessageHubEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
-  RevokeMessageHubEvent,
   RevokeMessagesBySignerJobPayload,
   SignerAddMessage,
   SignerEventType,
@@ -58,14 +56,14 @@ import { Worker } from "worker_threads";
 import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
 import { TSHASH_LENGTH, UserPostfix } from "../db/types.js";
-import CastStore, { CAST_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/castStore.js";
-import LinkStore, { LINK_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/linkStore.js";
-import ReactionStore, { REACTION_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/reactionStore.js";
+import CastStore from "../stores/castStore.js";
+import LinkStore from "../stores/linkStore.js";
+import ReactionStore from "../stores/reactionStore.js";
 import SignerStore from "../stores/signerStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
-import UserDataStore, { USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/userDataStore.js";
-import VerificationStore, { VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/verificationStore.js";
+import UserDataStore from "../stores/userDataStore.js";
+import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
@@ -148,8 +146,6 @@ class Engine {
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
     this.handleMergeUsernameProofEvent = this.handleMergeUsernameProofEvent.bind(this);
-    this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
-    this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
     this.handleMergeOnChainEvent = this.handleMergeOnChainEvent.bind(this);
   }
 
@@ -196,8 +192,6 @@ class Engine {
     this.eventHandler.on("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.on("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.on("mergeMessage", this.handleMergeMessageEvent);
-    this.eventHandler.on("revokeMessage", this.handleRevokeMessageEvent);
-    this.eventHandler.on("pruneMessage", this.handlePruneMessageEvent);
     this.eventHandler.on("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     await this.eventHandler.syncCache();
@@ -219,8 +213,6 @@ class Engine {
     this.eventHandler.off("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.off("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.off("mergeMessage", this.handleMergeMessageEvent);
-    this.eventHandler.off("revokeMessage", this.handleRevokeMessageEvent);
-    this.eventHandler.off("pruneMessage", this.handlePruneMessageEvent);
     this.eventHandler.off("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     this._revokeSignerWorker.start();
@@ -811,23 +803,23 @@ class Engine {
       limits: [
         {
           storeType: StoreType.CASTS,
-          limit: CAST_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+          limit: this._castStore.pruneSizeLimit * units.value,
         },
         {
           storeType: StoreType.LINKS,
-          limit: LINK_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+          limit: this._linkStore.pruneSizeLimit * units.value,
         },
         {
           storeType: StoreType.REACTIONS,
-          limit: REACTION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+          limit: this._reactionStore.pruneSizeLimit * units.value,
         },
         {
           storeType: StoreType.USER_DATA,
-          limit: USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+          limit: this._userDataStore.pruneSizeLimit * units.value,
         },
         {
           storeType: StoreType.VERIFICATIONS,
-          limit: VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
+          limit: this._verificationStore.pruneSizeLimit * units.value,
         },
       ],
     });
@@ -1264,46 +1256,6 @@ class Engine {
       const payload = RevokeMessagesBySignerJobPayload.create({
         fid: message.data.fid,
         signer: message.data.signerRemoveBody.signer,
-      });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
-        );
-      }
-    }
-
-    return ok(undefined);
-  }
-
-  private async handlePruneMessageEvent(event: PruneMessageHubEvent): HubAsyncResult<void> {
-    const { message } = event.pruneMessageBody;
-
-    if (isSignerAddMessage(message)) {
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: message.data.fid,
-        signer: message.data.signerAddBody.signer,
-      });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
-        );
-      }
-    }
-
-    return ok(undefined);
-  }
-
-  private async handleRevokeMessageEvent(event: RevokeMessageHubEvent): HubAsyncResult<void> {
-    const { message } = event.revokeMessageBody;
-
-    if (isSignerAddMessage(message)) {
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: message.data.fid,
-        signer: message.data.signerAddBody.signer,
       });
       const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
       if (enqueueRevoke.isErr()) {

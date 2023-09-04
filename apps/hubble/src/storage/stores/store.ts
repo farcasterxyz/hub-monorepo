@@ -49,9 +49,9 @@ const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
   return true;
 };
 
-// Timestamp after which we stop pruning based on time limit. This is in preparation for mainnet migration,
-// since there is no time based pruning with storage based limits.
-const PRUNE_STOP_TIMESTAMP = new Date("2023-08-22").getTime();
+// Store size was meant to be halved and existing users were given 2 units of storage, but we did not reduce the size
+// So existing users currently have 2x more storage than intended. Pick a date in the future and reduce the size by half
+const STORE_SIZE_CORRECTION_TIMESTAMP = new Date("2023-09-06").getTime();
 
 export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _db: RocksDB;
@@ -330,16 +330,15 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   get pruneSizeLimit(): number {
+    if (Date.now() > STORE_SIZE_CORRECTION_TIMESTAMP) {
+      return this._pruneSizeLimit / 2;
+    }
     return this._pruneSizeLimit;
   }
 
   get pruneTimeLimit(): number | undefined {
-    // We're deprecating time based pruning, so pick a date in the future that all the hubs can use as a common point
-    // of reference to stop time based pruning. This is so we don't affect sync.
-    if (Date.now() > PRUNE_STOP_TIMESTAMP) {
-      return undefined;
-    }
-    return this._pruneTimeLimit;
+    // No more time based pruning after the migration
+    return undefined;
   }
 
   protected get PRUNE_SIZE_LIMIT_DEFAULT(): number {

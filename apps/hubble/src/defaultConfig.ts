@@ -12,8 +12,6 @@ const DEFAULT_NETWORK = 3; // Farcaster Devnet
 export const Config = {
   /** Path to a PeerId file */
   id: "./.hub/default_id.protobuf",
-  /** Network URL of the IdRegistry Contract */
-  // ethRpcUrl: '',
   /** ETH mainnet RPC URL */
   // ethMainnetRpcUrl: '',
   /** FName Registry Server URL */

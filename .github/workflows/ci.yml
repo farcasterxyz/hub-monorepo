@@ -36,7 +36,7 @@ jobs:
 
       - name: Run Hubble
         shell: bash
-        run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-rpc-url "https://eth-goerli.g.alchemy.com/v2/IvjMoCKt1hT66f9OJoL_dMXypnvQYUdd" --eth-mainnet-rpc-url "https://eth-mainnet.g.alchemy.com/v2/8cz__IXnQ5FK_GNYDlfooLzYhBAW7ta0" --l2-rpc-url "https://opt-mainnet.g.alchemy.com/v2/3xWX-cWV-an3IPXmVCRXX51PpQzc-8iJ" --network 3 --allowed-peers none'
+        run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && node build/cli.js start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-mainnet-rpc-url "https://eth-mainnet.g.alchemy.com/v2/8cz__IXnQ5FK_GNYDlfooLzYhBAW7ta0" --l2-rpc-url "https://opt-mainnet.g.alchemy.com/v2/3xWX-cWV-an3IPXmVCRXX51PpQzc-8iJ" --network 3 --allowed-peers none'
 
       - name: Download grpcurl
         shell: bash
@@ -105,7 +105,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           # Pinning until https://github.com/foundry-rs/foundry/issues/5749 is fixed
-          version: nightly-bff4ed912bb023d7bf9b20eda581aa4867a1cf70
+          version: nightly-ca67d15f4abd46394b324c50e21e66f306a1162d
 
       - name: Install dependencies
         run: yarn install

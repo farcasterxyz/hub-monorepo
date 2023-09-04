@@ -51,9 +51,6 @@ docker compose run hubble yarn identity create
 4. Create a .env file in `apps/hubble` with your Ethereum RPC endpoints:
 
 ```bash
-# Set this to your L1 Goerli ETH RPC URL
-ETH_RPC_URL=your-ETH-RPC-URL
-
 # Set this to your L1 Mainnet ETH RPC URL
 ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
 
@@ -77,7 +74,7 @@ Docker compose will start a Hubble container that exposes ports for networking a
 docker compose logs -f hubble
 ```
 
-8. Follow the instructions in the [monitoring section](#monitoring-hubble) to set up Grafana and view your Hub's status in real-time.
+8. Follow the instructions in the [monitoring](monitoring.md) instructions to set up Grafana and view your Hub's status in real-time.
 
 ### Upgrading Hubble
 
@@ -114,7 +111,7 @@ To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the 
 
 1. `yarn identity create` to create a ID
 2. Follow the instructions to set [connect to a network](./networks.md)
-3. `yarn start --eth-rpc-url <your Goerli-ETH-RPC-URL> --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL> --l2-rpc-url <your Optimism-L2-RPC-URL>`
+3. `yarn start --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL> --l2-rpc-url <your Optimism-L2-RPC-URL>`
 
 ### Upgrading Hubble
 
@@ -133,13 +130,6 @@ Check the logs to ensure your hub is running successfully:
 ```bash
 docker compose logs -f hubble
 ```
-
-Check the sync status to see how your Hub is doing:
-
-```bash
-docker compose exec hubble yarn status --insecure
-```
-
 
 Open up a shell inside the hubble container by running:
 

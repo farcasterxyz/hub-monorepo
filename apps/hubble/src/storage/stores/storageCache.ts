@@ -14,11 +14,12 @@ import {
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
-import { FID_BYTES, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
+import { FID_BYTES, OnChainEventPostfix, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
 import { logger } from "../../utils/logger.js";
 import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from "../db/message.js";
 import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
 import { forEachOnChainEvent } from "../db/onChainEvent.js";
+import { addProgressBar } from "../../utils/progressBars.js";
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
@@ -50,6 +51,19 @@ export class StorageCache {
 
     const start = Date.now();
 
+    let totalFids = 0;
+
+    await this._db.forEachIteratorByPrefix(
+      Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid])]),
+      async () => {
+        totalFids++;
+      },
+      { keys: false, values: false },
+    );
+
+    const progressBar = addProgressBar("Syncing storage cache", totalFids * 2);
+
+    let lastFid = 0;
     const prefix = Buffer.from([RootPrefix.User]);
     await this._db.forEachIteratorByPrefix(
       prefix,
@@ -57,12 +71,18 @@ export class StorageCache {
         const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
         if (postfix < UserMessagePostfixMax) {
           const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString("hex");
+          const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
           const count = usage.get(lookupKey) ?? 0;
           if (this._earliestTsHashes.get(lookupKey) === undefined) {
             const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
             this._earliestTsHashes.set(lookupKey, tsHash);
           }
           usage.set(lookupKey, count + 1);
+
+          if (lastFid !== fid) {
+            progressBar?.increment();
+            lastFid = fid;
+          }
         }
       },
       { values: false },
@@ -84,9 +104,13 @@ export class StorageCache {
                 ? existingSlot?.invalidateAt ?? rentEventBody.expiry
                 : rentEventBody.expiry,
           });
+          progressBar?.increment();
         }
       });
     }
+
+    progressBar?.update(progressBar?.getTotal());
+    progressBar?.stop();
 
     this._counts = usage;
     this._earliestTsHashes = new Map();
