@@ -24,7 +24,7 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
-import { prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "./syncId.js";
+import { formatPrefix, prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "./syncId.js";
 import { TrieSnapshot } from "./trieNode.js";
 import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -576,7 +576,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           "Divergence prefix",
         );
 
-        await this.fetchMissingHashesByPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
+        await this.compareNodeAtPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
           const result = await this.fetchAndMergeMessages(missingIds, rpcClient);
           fullSyncResult.addResult(result);
           progressBar?.increment(result.total);
@@ -786,15 +786,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return result;
   }
 
-  async fetchMissingHashesByPrefix(
+  async compareNodeAtPrefix(
     prefix: Uint8Array,
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
-  ): Promise<void> {
+  ): Promise<number> {
     // Check if we should interrupt the sync
     if (this._currentSyncStatus.interruptSync) {
       log.info("Interrupting sync");
-      return;
+      return -1;
     }
 
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
@@ -806,16 +806,20 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     );
     statsd().timing("syncengine.peer.get_syncmetadata_by_prefix_ms", Date.now() - start);
 
+    // console.log(ourNode?.hash, theirNodeResult.unwrapOr({ hash: "" }).hash);
+
     if (theirNodeResult.isErr()) {
       log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
+      return -2;
     } else if (theirNodeResult.value.numMessages === 0) {
       // If there are no messages, we're done, but something is probably wrong, since we should never have
       // a node with no messages.
       log.warn({ prefix, peerId: this._currentSyncStatus.peerId }, "No messages for prefix, skipping");
-      return;
+      return -3;
     } else if (ourNode?.hash === theirNodeResult.value.hash) {
       // Hashes match, we're done.
-      return;
+      console.log("Hashes match");
+      return 0;
     } else {
       await this.fetchMissingHashesByNode(
         fromNodeMetadataResponse(theirNodeResult.value),
@@ -823,7 +827,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         rpcClient,
         onMissingHashes,
       );
-      return;
+      return 1;
     }
   }
 
@@ -837,6 +841,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.info("Interrupting sync");
       return;
     }
+
+    const start = Date.now();
+    let fetchedMessages = 0;
+    let parallism = false;
+    let revokedSyncIds = 0;
+    let numChildrenFetched = 0;
+    let numChildrenSkipped = 0;
 
     let fetchMessagesThreshold = HASHES_PER_FETCH;
     // If we have more messages but the hashes still mismatch, we need to find the exact message that's missing.
@@ -892,32 +903,39 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
                   );
 
                   // Don't wait for this to finish, just return the messages we have.
-                  this.revokeSyncIds(corruptedSyncIds);
+                  await this.revokeSyncIds(corruptedSyncIds);
+                  revokedSyncIds = corruptedSyncIds.length;
                 }
               }
             }
           }
         }
+        fetchedMessages = missingHashes.length;
         await onMissingHashes(missingHashes);
       }
     } else if (theirNode.children) {
       const promises = [];
 
       const entriesArray = [...theirNode.children.entries()]; // Convert entries to an array
-      const reversedEntries = entriesArray.reverse(); // Reverse the array
+      // const reversedEntries = entriesArray.reverse(); // Reverse the array
 
-      for (const [theirChildChar, theirChild] of reversedEntries) {
+      for (const [theirChildChar, theirChild] of entriesArray) {
         // recursively fetch hashes for every node where the hashes don't match
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-          const r = this.fetchMissingHashesByPrefix(theirChild.prefix, rpcClient, onMissingHashes);
+          const r = this.compareNodeAtPrefix(theirChild.prefix, rpcClient, onMissingHashes);
+          numChildrenFetched += 1;
 
           // If we're fetching more than HASHES_PER_FETCH, we'll wait for the first batch to finish before starting
           // the next.
           if (theirNode.numMessages < HASHES_PER_FETCH * SYNC_PARALLELISM) {
             promises.push(r);
+            parallism = true;
           } else {
             await r;
           }
+        } else {
+          // Hashes match, not recursively fetching
+          numChildrenSkipped += 1;
         }
       }
 
@@ -926,6 +944,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.error(
         { theirNode, ourNode },
         `Their node has no children, but has more than ${fetchMessagesThreshold} messages`,
+      );
+    }
+
+    const end = Date.now();
+    if (this._syncProfiler) {
+      this._syncProfiler.writeNodeProfile(
+        `${formatPrefix(theirNode.prefix)}, ${end - start}, ${ourNode?.numMessages ?? 0}, ${
+          theirNode.numMessages
+        }, ${fetchedMessages}, ${revokedSyncIds}, ${numChildrenFetched}, ${numChildrenSkipped}, ${parallism}`,
       );
     }
   }

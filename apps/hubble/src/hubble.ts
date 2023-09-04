@@ -381,6 +381,9 @@ export class Hub implements HubInterface {
               profileLog.info({ method, p });
             }
 
+            // Close the file stream
+            profile.writeOutNodeProfiles();
+
             // Also write to console for easy copy/paste
             console.log("\nTotal Time\n");
             console.log(prettyPrintTable(profile.durationToPrettyPrintObject()));

@@ -63,51 +63,51 @@ export class StorageCache {
 
     const progressBar = addProgressBar("Syncing storage cache", totalFids * 2);
 
-    let lastFid = 0;
+    // let lastFid = 0;
     const prefix = Buffer.from([RootPrefix.User]);
-    await this._db.forEachIteratorByPrefix(
-      prefix,
-      async (key) => {
-        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-        if (postfix < UserMessagePostfixMax) {
-          const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString("hex");
-          const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
-          const count = usage.get(lookupKey) ?? 0;
-          if (this._earliestTsHashes.get(lookupKey) === undefined) {
-            const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
-            this._earliestTsHashes.set(lookupKey, tsHash);
-          }
-          usage.set(lookupKey, count + 1);
+    // await this._db.forEachIteratorByPrefix(
+    //   prefix,
+    //   async (key) => {
+    //     const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+    //     if (postfix < UserMessagePostfixMax) {
+    //       const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString("hex");
+    //       const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
+    //       const count = usage.get(lookupKey) ?? 0;
+    //       if (this._earliestTsHashes.get(lookupKey) === undefined) {
+    //         const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
+    //         this._earliestTsHashes.set(lookupKey, tsHash);
+    //       }
+    //       usage.set(lookupKey, count + 1);
 
-          if (lastFid !== fid) {
-            progressBar?.increment();
-            lastFid = fid;
-          }
-        }
-      },
-      { values: false },
-      15 * 60 * 1000, // 15 minutes
-    );
+    //       if (lastFid !== fid) {
+    //         progressBar?.increment();
+    //         lastFid = fid;
+    //       }
+    //     }
+    //   },
+    //   { values: false },
+    //   15 * 60 * 1000, // 15 minutes
+    // );
 
-    const time = getFarcasterTime();
-    if (time.isErr()) {
-      log.error({ err: time.error }, "could not obtain time");
-    } else {
-      await forEachOnChainEvent(this._db, OnChainEventType.EVENT_TYPE_STORAGE_RENT, (event) => {
-        const existingSlot = this._activeStorageSlots.get(event.fid);
-        if (isStorageRentOnChainEvent(event) && event.storageRentEventBody.expiry > time.value) {
-          const rentEventBody = event.storageRentEventBody;
-          this._activeStorageSlots.set(event.fid, {
-            units: rentEventBody.units + (existingSlot?.units ?? 0),
-            invalidateAt:
-              (existingSlot?.invalidateAt ?? rentEventBody.expiry) < rentEventBody.expiry
-                ? existingSlot?.invalidateAt ?? rentEventBody.expiry
-                : rentEventBody.expiry,
-          });
-          progressBar?.increment();
-        }
-      });
-    }
+    // const time = getFarcasterTime();
+    // if (time.isErr()) {
+    //   log.error({ err: time.error }, "could not obtain time");
+    // } else {
+    //   await forEachOnChainEvent(this._db, OnChainEventType.EVENT_TYPE_STORAGE_RENT, (event) => {
+    //     const existingSlot = this._activeStorageSlots.get(event.fid);
+    //     if (isStorageRentOnChainEvent(event) && event.storageRentEventBody.expiry > time.value) {
+    //       const rentEventBody = event.storageRentEventBody;
+    //       this._activeStorageSlots.set(event.fid, {
+    //         units: rentEventBody.units + (existingSlot?.units ?? 0),
+    //         invalidateAt:
+    //           (existingSlot?.invalidateAt ?? rentEventBody.expiry) < rentEventBody.expiry
+    //             ? existingSlot?.invalidateAt ?? rentEventBody.expiry
+    //             : rentEventBody.expiry,
+    //       });
+    //       progressBar?.increment();
+    //     }
+    //   });
+    // }
 
     progressBar?.update(progressBar?.getTotal());
     progressBar?.stop();

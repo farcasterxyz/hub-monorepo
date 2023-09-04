@@ -73,4 +73,18 @@ const prefixToTimestamp = (prefix: string): number => {
   return parseInt(prefix.padEnd(TIMESTAMP_LENGTH, "0"), 10);
 };
 
-export { SyncId, timestampToPaddedTimestampPrefix, prefixToTimestamp, TIMESTAMP_LENGTH, HASH_LENGTH };
+const prettyFormatPrefix = (prefix: Uint8Array): string => {
+  const timePart = Buffer.from(prefix.slice(0, TIMESTAMP_LENGTH)).toString();
+  const hashPart = Buffer.from(prefix.slice(TIMESTAMP_LENGTH)).toString("hex");
+
+  return `${timePart}${hashPart ? `/${hashPart}` : ""}`;
+};
+
+export {
+  SyncId,
+  timestampToPaddedTimestampPrefix,
+  prefixToTimestamp,
+  prettyFormatPrefix as formatPrefix,
+  TIMESTAMP_LENGTH,
+  HASH_LENGTH,
+};
