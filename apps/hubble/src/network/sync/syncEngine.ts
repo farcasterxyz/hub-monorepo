@@ -117,6 +117,7 @@ class CurrentSyncStatus {
   fidRetryMessageQ = new Map<number, Message[]>();
   seriousValidationFailures = 0;
   initialSync = false;
+  numParallelFetches = 0;
 
   constructor(peerId?: string) {
     if (peerId) {
@@ -844,7 +845,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     const start = Date.now();
     let fetchedMessages = 0;
-    let parallism = false;
     let revokedSyncIds = 0;
     let numChildrenFetched = 0;
     let numChildrenSkipped = 0;
@@ -917,9 +917,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       const promises = [];
 
       const entriesArray = [...theirNode.children.entries()]; // Convert entries to an array
-      // const reversedEntries = entriesArray.reverse(); // Reverse the array
+      const reversedEntries = entriesArray.reverse(); // Reverse the array
 
-      for (const [theirChildChar, theirChild] of entriesArray) {
+      for (const [theirChildChar, theirChild] of reversedEntries) {
         // recursively fetch hashes for every node where the hashes don't match
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
           const r = this.compareNodeAtPrefix(theirChild.prefix, rpcClient, onMissingHashes);
@@ -927,9 +927,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
           // If we're fetching more than HASHES_PER_FETCH, we'll wait for the first batch to finish before starting
           // the next.
-          if (theirNode.numMessages < HASHES_PER_FETCH * SYNC_PARALLELISM) {
+          if (this._currentSyncStatus.numParallelFetches < SYNC_PARALLELISM) {
             promises.push(r);
-            parallism = true;
+
+            this._currentSyncStatus.numParallelFetches += 1;
           } else {
             await r;
           }
@@ -939,7 +940,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         }
       }
 
-      await Promise.all(promises);
+      const r = await Promise.all(promises);
+      this._currentSyncStatus.numParallelFetches -= r.length;
     } else {
       log.error(
         { theirNode, ourNode },
@@ -952,7 +954,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this._syncProfiler.writeNodeProfile(
         `${formatPrefix(theirNode.prefix)}, ${end - start}, ${ourNode?.numMessages ?? 0}, ${
           theirNode.numMessages
-        }, ${fetchedMessages}, ${revokedSyncIds}, ${numChildrenFetched}, ${numChildrenSkipped}, ${parallism}`,
+        }, ${fetchedMessages}, ${revokedSyncIds}, ${numChildrenFetched}, ${numChildrenSkipped}, ${
+          this._currentSyncStatus.numParallelFetches
+        }`,
       );
     }
   }
