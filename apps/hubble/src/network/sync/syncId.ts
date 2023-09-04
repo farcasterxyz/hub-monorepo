@@ -42,7 +42,7 @@ class SyncId {
   static pkFromSyncId(syncId: Uint8Array): Buffer {
     const ts = syncId.slice(0, TIMESTAMP_LENGTH);
     const tsBE = Buffer.alloc(4);
-    tsBE.writeUInt32BE(parseInt(ts.toString(), 10), 0);
+    tsBE.writeUInt32BE(parseInt(Buffer.from(ts).toString(), 10), 0);
 
     const syncIDpart = syncId.slice(TIMESTAMP_LENGTH); // Skips the timestamp
 
