@@ -176,6 +176,7 @@ enum StoreType {
   STORE_TYPE_REACTIONS = 3;
   STORE_TYPE_USER_DATA = 4;
   STORE_TYPE_VERIFICATIONS = 5;
+  STORE_TYPE_USERNAME_PROOFS = 6;
 }
 
 message StorageLimit {
