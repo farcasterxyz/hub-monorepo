@@ -807,8 +807,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     );
     statsd().timing("syncengine.peer.get_syncmetadata_by_prefix_ms", Date.now() - start);
 
-    // console.log(ourNode?.hash, theirNodeResult.unwrapOr({ hash: "" }).hash);
-
     if (theirNodeResult.isErr()) {
       log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${prefix}`);
       return -2;
@@ -819,7 +817,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return -3;
     } else if (ourNode?.hash === theirNodeResult.value.hash) {
       // Hashes match, we're done.
-      console.log("Hashes match");
       return 0;
     } else {
       await this.fetchMissingHashesByNode(
