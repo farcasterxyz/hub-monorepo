@@ -255,6 +255,20 @@ created_at | `timestamp without time zone` | When the row was first created in t
 updated_at | `timestamp without time zone` | When the row was last updated.
 custody_address | `bytea` | ETH address of the wallet that owns the FID.
 
+### `fnames`
+
+Stores the FID and the associated Farcaster name.
+
+Column Name | Data Type | Description
+-- | -- | --
+fid | `bigint` | Farcaster ID (the user ID)
+fname | `text` | Farcaster username
+custody_address | `bytea` | ETH address of the wallet that owns the FID
+expires_at | `timestamp without time zone` | Lorem ipsum
+created_at | `timestamp without time zone` | When the row was first created in this DB
+updated_at | `timestamp without time zone` | When the row was last updated
+deleted_at | `timestamp without time zone` | Lorem ipsum
+
 ### `links`
 
 Represents a link between two FIDs (e.g. a follow, subscription, etc.)
@@ -270,3 +284,18 @@ created_at | `timestamp without time zone` | When the row was first created in t
 updated_at | `timestamp without time zone` | When the row was last updated
 display_timestamp | `timestamp without time zone` | When the row was last updated
 deleted_at | `timestamp without time zone` | When the link was considered deleted by the hub (e.g. in response to a `LinkRemoveMessage` message, etc.)
+
+### `storage`
+
+Lorem ipsum
+
+Column Name | Data Type | Description
+-- | -- | --
+id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
+fid | `bigint` | Farcaster ID (the user ID)
+expiry | `timestamp without time zone` | Lorem ipsum
+units | `bigint` | Lorem ipsum
+created_at | `timestamp without time zone` | When the row was first created in this DB
+updated_at | `timestamp without time zone` | When the row was last updated
+deleted_at | `timestamp without time zone` | When the row was considered deleted by the hub
+timestamp | `timestamp without time zone` | Message timestamp in UTC.
