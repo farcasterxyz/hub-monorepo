@@ -5,11 +5,11 @@ An example Node.js application that keeps a PostgresDB in sync with a Farcaster 
 1. A streaming process that will receive new messages from the Hub
 2. A backfill process that will receive older messages from the Hub
 
-When the app is run, both processes are kicked off to bring the database in sync. The streaming ensures that new messages are pushed to the DB. The backfill downloads older messages and can take 1 or more hours depending on your configuration. It is stateful and can be resumed safely without re-ingesting all the data. 
+When the app is run, both processes are kicked off to bring the database in sync. The streaming ensures that new messages are pushed to the DB. The backfill downloads older messages and can take 1 or more hours depending on your configuration. It is stateful and can be resumed safely without re-ingesting all the data.
 
 ## Run locally
 
-Sets up the Node.js application and Postgres DB locally using docker containers. We recommend using this for quick experimentation. 
+Sets up the Node.js application and Postgres DB locally using docker containers. We recommend using this for quick experimentation.
 
 ### Requirements
 
@@ -112,7 +112,7 @@ If you're done with the example and no longer need the data, you can delete the 
 
 ## Examples of SQL queries
 
-Once some data is populated, you can start to query it using SQL. Here are some examples: 
+Once some data is populated, you can start to query it using SQL. Here are some examples:
 
 Get the 10 most recent casts for a user:
 ```sql
@@ -264,10 +264,10 @@ Column Name | Data Type | Description
 fid | `bigint` | Farcaster ID (the user ID)
 fname | `text` | Farcaster username
 custody_address | `bytea` | ETH address of the wallet that owns the FID
-expires_at | `timestamp without time zone` | Lorem ipsum
+expires_at | `timestamp without time zone` | When the fname expires
 created_at | `timestamp without time zone` | When the row was first created in this DB
 updated_at | `timestamp without time zone` | When the row was last updated
-deleted_at | `timestamp without time zone` | Lorem ipsum
+deleted_at | `timestamp without time zone` | When the fname was deleted/removed
 
 ### `links`
 
@@ -287,14 +287,14 @@ deleted_at | `timestamp without time zone` | When the link was considered delete
 
 ### `storage`
 
-Lorem ipsum
+Stores how many units of storage each FID has purchased, and when it expires.
 
 Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
 fid | `bigint` | Farcaster ID (the user ID)
-expiry | `timestamp without time zone` | Lorem ipsum
-units | `bigint` | Lorem ipsum
+expiry | `timestamp without time zone` | When the allocated storage expires
+units | `bigint` | Number of storage units allocated
 created_at | `timestamp without time zone` | When the row was first created in this DB
 updated_at | `timestamp without time zone` | When the row was last updated
 deleted_at | `timestamp without time zone` | When the row was considered deleted by the hub
