@@ -4,6 +4,7 @@ import { createPublicClient, http } from "viem";
 import { Abi } from "abitype";
 import { accounts, localHttpUrl } from "./constants.js";
 import { IdRegistry, NameRegistry, StorageRegistry } from "../eth/abis.js";
+import { DeepPartial } from "fishery";
 
 export const anvilChain = {
   ...localhost,
@@ -153,3 +154,24 @@ export const deployStorageRegistry = async () => {
     ],
   });
 };
+
+// Deep merge two objects
+export function mergeDeepPartial<T>(obj1: DeepPartial<T>, obj2: DeepPartial<T>): DeepPartial<T> {
+  const merged: DeepPartial<T> = Object.assign({}, obj1);
+
+  for (const key in obj2) {
+    if (
+      typeof obj2[key] === "object" &&
+      obj2[key] !== null &&
+      typeof merged[key] === "object" &&
+      merged[key] !== null
+    ) {
+      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      merged[key] = mergeDeepPartial(merged[key] as DeepPartial<any>, obj2[key] as DeepPartial<any>);
+    } else {
+      merged[key] = obj2[key];
+    }
+  }
+
+  return merged;
+}
