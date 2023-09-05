@@ -2,6 +2,7 @@ import {
   CastAddMessage,
   fromFarcasterTime,
   getSSLHubRpcClient,
+  getInsecureHubRpcClient,
   HubAsyncResult,
   HubRpcClient,
   isCastAddMessage,

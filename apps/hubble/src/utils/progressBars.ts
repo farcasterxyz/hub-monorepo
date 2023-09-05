@@ -1,27 +1,34 @@
 import cliProgress, { SingleBar } from "cli-progress";
 import { logger } from "./logger.js";
 
-// The global multibar, to which all progress bars are added
-const multiBar = new cliProgress.MultiBar(
-  {
-    format: " {bar} {percentage}% | {name} | {value}/{total} | ETA: {eta_formatted}",
-    hideCursor: true,
-    clearOnComplete: false,
-    etaBuffer: 1_000,
-    autopadding: true,
-  },
-  cliProgress.Presets.shades_grey,
-);
+const allBars: SingleBar[] = [];
 let finished = false;
 
 // Add a progress bar to the console. Returns undefined if the progress bar
 // cannot be added (e.g. if the process is shutting down).
 // Call finishAllProgressBars() to stop all progress bars.
-export function addProgressBar(name: string, total: number, options?: cliProgress.Options): SingleBar | undefined {
-  if (finished) {
+export function addProgressBar(name: string, total: number): SingleBar | undefined {
+  const isInTest = process.env["NODE_ENV"] === "test" || process.env["CI"];
+  if (finished || isInTest) {
     return undefined;
   }
-  return multiBar.create(total, 0, { name, ...options });
+
+  const bar = new cliProgress.SingleBar(
+    {
+      format: ` {bar} {percentage}% | ${name} | {value}/{total} | ETA: {eta_formatted}`,
+      hideCursor: true,
+      clearOnComplete: false,
+      etaBuffer: 1_000,
+      autopadding: true,
+      noTTYOutput: true,
+      notTTYSchedule: 3000,
+    },
+    cliProgress.Presets.shades_grey,
+  );
+
+  bar.start(total, 0);
+  allBars.push(bar);
+  return bar;
 }
 
 // Finish all progress bars. This should be called when the process is shutting
@@ -47,7 +54,7 @@ export function finishAllProgressBars(showDelay = false): void {
         finished = true;
       }
 
-      multiBar.stop();
+      allBars.forEach((bar) => bar.stop());
       logger.flush();
     })();
   }

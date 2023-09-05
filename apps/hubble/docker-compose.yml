@@ -8,14 +8,12 @@ version: '3.9'
 services:
   hubble:
     image: farcasterxyz/hubble:latest
-    tty: true 
     restart: unless-stopped
     command: [
       "node", "--no-warnings",  "build/cli.js", "start",
       "--ip", "0.0.0.0",
       "--gossip-port", "2282",
-      "--rpc-port", "2283",
-      "--eth-rpc-url", "$ETH_RPC_URL",
+      "--rpc-port", "2283",      
       "--eth-mainnet-rpc-url", "$ETH_MAINNET_RPC_URL",
       "--l2-rpc-url", "$OPTIMISM_L2_RPC_URL",
       "--network", "${FC_NETWORK_ID:-1}",
