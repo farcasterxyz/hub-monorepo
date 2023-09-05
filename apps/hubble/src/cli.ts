@@ -123,6 +123,10 @@ app
     "--rpc-rate-limit <number>",
     "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
   )
+  .option(
+    "--rpc-subscribe-per-ip-limit <number>",
+    "Maximum RPC subscriptions per IP address (default: 4)",
+  )
 
   // Metrics
   .option(

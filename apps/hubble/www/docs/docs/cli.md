@@ -52,6 +52,7 @@ Networking Options:
   --announce-server-name <name>         Server name announced to peers, useful if SSL/TLS enabled. (default: "none")
   --direct-peers <peer-multiaddrs...>   A list of peers for libp2p to directly peer with (default: [])
   --rpc-rate-limit <number>             RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)
+  --rpc-subscribe-per-ip-limit <number> Maximum RPC subscriptions per IP address (default: 4)
 
 Debugging Options:
   --gossip-metrics-enabled              Generate tracing and metrics for the gossip network. (default: disabled)
