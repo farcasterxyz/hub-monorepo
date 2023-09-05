@@ -9,6 +9,7 @@ import {
   StorageLimitsResponse,
   UserNameProof,
   UsernameProofsResponse,
+  bytesToHexString,
   hexStringToBytes,
   onChainEventTypeFromJSON,
   reactionTypeFromJSON,
@@ -64,12 +65,71 @@ function handleResponse<M>(reply: fastify.FastifyReply, obj: StaticEncodable<M>)
       reply.code(400).send(JSON.stringify(err));
     } else {
       if (response) {
-        reply.send(obj.toJSON(response));
+        // Convert the protobuf object to JSON
+        const json = protoToJSON(response, obj);
+        reply.send(json);
       } else {
         reply.send(err);
       }
     }
   };
+}
+
+function convertB64ToHex(str: string): string {
+  try {
+    // Try to convert the string from base64 to hex
+    const bytesBuf = Buffer.from(str, "base64");
+
+    // Check if the decoded base64 string can be converted back to the original base64 string
+    // If it can, return the hex string, otherwise return the original string
+    return bytesBuf.toString("base64") === str ? bytesToHexString(bytesBuf).unwrapOr("") : str;
+  } catch {
+    // If an error occurs, return the original string
+    return str;
+  }
+}
+
+/**
+ * The protobuf format specifies encoding bytes as base64 strings, but we want to return hex strings
+ * to be consistent with the rest of the API, so we need to convert the base64 strings to hex strings
+ * before returning them.
+ */
+// rome-ignore lint/suspicious/noExplicitAny: <explanation>
+function transformHash(obj: any): any {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+
+  // These are the target keys that are base64 encoded, which should be converted to hex
+  const targetKeys = [
+    "hash",
+    "address",
+    "signer",
+    "blockHash",
+    "transactionHash",
+    "key",
+    "to",
+    "from",
+    "recoveryAddress",
+  ];
+
+  for (const key in obj) {
+    // rome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
+    if (obj.hasOwnProperty(key)) {
+      if (targetKeys.includes(key) && typeof obj[key] === "string") {
+        obj[key] = convertB64ToHex(obj[key]);
+      } else if (typeof obj[key] === "object") {
+        transformHash(obj[key]);
+      }
+    }
+  }
+
+  return obj;
+}
+
+// Generic function to convert protobuf objects to JSON
+export function protoToJSON<T>(message: T, obj: StaticEncodable<T>): unknown {
+  return transformHash(obj.toJSON(message));
 }
 
 // Get a protobuf enum value from a string or number

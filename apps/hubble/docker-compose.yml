@@ -34,18 +34,6 @@ services:
       options:
         max-size: "1g"
         max-file: "2"
-  
-  # Start if you want to expose your hub over grpc-web (for browser clients)
-  envoy:
-    image: envoyproxy/envoy:v1.26.1
-    depends_on:
-      - hubble
-    ports:
-      - '2285:2285'
-    volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
-    networks:
-      - my-network
 
   # Start this if you want perf metrics for your hubble node. Remember to start `grafana` as well.
   statsd:
