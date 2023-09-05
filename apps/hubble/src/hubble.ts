@@ -461,7 +461,14 @@ export class Hub implements HubInterface {
 
     // Snapshot Sync
     if (!this.options.disableSnapshotSync) {
-      await this.snapshotSync();
+      try {
+        const snapshotResult = await ResultAsync.fromPromise(this.snapshotSync(), (e) => e as Error);
+        if (snapshotResult.isErr()) {
+          log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to regular sync");
+        }
+      } catch (e) {
+        log.error({ error: e }, "failed to sync snapshot, falling back to regular sync");
+      }
     }
 
     if (this.options.enableSnapshotToS3) {
@@ -715,6 +722,8 @@ export class Hub implements HubInterface {
         return;
       }
 
+      log.info({ key: latestSnapshot.Key }, "found latest snapshot in S3");
+
       const params = {
         Bucket: this.s3_snapshot_bucket,
         Key: latestSnapshot.Key,
@@ -755,20 +764,23 @@ export class Hub implements HubInterface {
 
       progressBar?.update(totalSize);
       progressBar?.stop();
+      writeStream.close();
 
       if (streamResult.isErr()) {
         log.error({ error: streamResult.error }, "failed to stream snapshot from S3");
         return;
       }
 
+      log.info({ snapshotLocation, bytesWritten: writeStream.bytesWritten }, "snapshot downloaded from S3");
+
       // Extract the tar file
       const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation));
       if (extractResult.isErr()) {
-        log.error({ error: extractResult.error }, "failed to extract snapshot from S3");
+        log.error({ error: extractResult.error }, "failed to extract snapshot from S3. No snapshot sync");
         return;
       }
 
-      log.info({ dbLocation }, "snapshot extracted from S3");
+      log.info({ dbLocation, bytesWritten: writeStream.bytesWritten }, "snapshot extracted from S3");
       // Delete the tar file, ignore errors
       fs.unlink(snapshotLocation, () => {});
     }

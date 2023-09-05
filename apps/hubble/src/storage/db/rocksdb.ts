@@ -457,7 +457,6 @@ export async function createTarBackup(inputDir: string): Promise<Result<string, 
       });
   });
 }
-
 export async function extractTarBackup(tarFilePath: string, newTopLevelDir: string): Promise<Result<string, Error>> {
   // Output directory is the same name as the tar file without the extension
   const outputDir = path.dirname(tarFilePath);
@@ -479,17 +478,23 @@ export async function extractTarBackup(tarFilePath: string, newTopLevelDir: stri
       }
     });
 
+    const handleError = (e: Error) => {
+      log.error({ error: e, tarFilePath, outputDir }, "Error extracting tarball");
+      resolve(err(e));
+    };
+
     try {
       fs.createReadStream(tarFilePath)
+        .on("error", handleError)
         .pipe(gunzip) // Ungzip on the fly
+        .on("error", handleError)
         .pipe(parseStream)
         .on("end", () => {
           log.info({ tarFilePath, newTopLevelDir, outputDir }, "Tarball extracted with new top-level directory");
           resolve(ok(outputDir));
         });
     } catch (e) {
-      log.error({ error: e, tarFilePath, outputDir }, "Error extracting tarball");
-      resolve(err(e as Error));
+      handleError(e as Error);
     }
   });
 }
