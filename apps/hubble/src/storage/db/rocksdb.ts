@@ -8,6 +8,8 @@ import * as zlib from "zlib";
 import * as fs from "fs";
 import { err, ok, Result } from "neverthrow";
 import path from "path";
+import { Transform } from "stream";
+import { SingleBar } from "cli-progress";
 
 export const DB_DIRECTORY = ".rocks";
 export const MAX_DB_ITERATOR_OPEN_MILLISECONDS = 60 * 1000; // 1 min
@@ -438,14 +440,7 @@ export async function createTarBackup(inputDir: string): Promise<Result<string, 
 
   return new Promise((resolve) => {
     tar
-      .c(
-        {
-          gzip: true,
-          file: outputFilePath,
-          cwd: path.dirname(inputDir),
-        },
-        [path.basename(inputDir)],
-      )
+      .c({ gzip: true, file: outputFilePath, cwd: path.dirname(inputDir) }, [path.basename(inputDir)])
       .then(() => {
         const stats = fs.statSync(outputFilePath);
         log.info({ size: stats.size, outputFilePath, timeTakenMs: Date.now() - start }, "Tarball created");
@@ -457,9 +452,15 @@ export async function createTarBackup(inputDir: string): Promise<Result<string, 
       });
   });
 }
-export async function extractTarBackup(tarFilePath: string, newTopLevelDir: string): Promise<Result<string, Error>> {
+export async function extractTarBackup(
+  tarFilePath: string,
+  newTopLevelDir: string,
+  progressBar?: SingleBar,
+): Promise<Result<string, Error>> {
   // Output directory is the same name as the tar file without the extension
   const outputDir = path.dirname(tarFilePath);
+  const totalSize = progressBar?.getTotal() ?? 1;
+  let bytesProcessed = 0;
 
   return new Promise((resolve) => {
     const gunzip = zlib.createGunzip();
@@ -483,18 +484,33 @@ export async function extractTarBackup(tarFilePath: string, newTopLevelDir: stri
       resolve(err(e));
     };
 
+    const progressStream = new Transform({
+      transform(chunk, _encoding, callback) {
+        bytesProcessed += chunk.length;
+        progressBar?.update(bytesProcessed);
+        callback(null, chunk);
+      },
+    });
+
     try {
       fs.createReadStream(tarFilePath)
         .on("error", handleError)
+        .pipe(progressStream)
         .pipe(gunzip) // Ungzip on the fly
         .on("error", handleError)
         .pipe(parseStream)
         .on("end", () => {
           log.info({ tarFilePath, newTopLevelDir, outputDir }, "Tarball extracted with new top-level directory");
+
+          progressBar?.update(totalSize);
+          progressBar?.stop();
+
           resolve(ok(outputDir));
         });
     } catch (e) {
       handleError(e as Error);
+      progressBar?.update(totalSize);
+      progressBar?.stop();
     }
   });
 }

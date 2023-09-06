@@ -73,24 +73,19 @@ import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { statsd } from "./utils/statsd.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
-import {
-  S3Client,
-  PutObjectCommand,
-  ListObjectsV2Command,
-  HeadObjectCommand,
-  GetObjectCommand,
-} from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
-import * as stream from "stream";
+
 import * as fs from "fs";
+import axios from "axios";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
 export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
-export const SNAPSHOT_S3_DEFAULT_BUCKET = "adityapk-farcaster-snapshot";
+export const SNAPSHOT_S3_DEFAULT_BUCKET = "download.farcaster.xyz";
 export const S3_REGION = "us-east-1";
 
 export const FARCASTER_VERSION = "2023.8.23";
@@ -691,70 +686,40 @@ export class Hub implements HubInterface {
     if (dbFiles.isErr() || dbFiles.value.length === 0) {
       log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
 
-      const s3 = new S3Client({
-        region: S3_REGION,
-        signer: { sign: async (request) => request }, // Public bucket, no need to sign
-      });
+      // Step 1: Download latest.json to get the latest snapshot name
+      const network = FarcasterNetwork[this.options.network].toString();
+      const response = await axios.get(`https://download.farcaster.xyz/snapshots/${network}/latest.json`);
+      const { key } = response.data;
 
-      let s3Result;
-      try {
-        s3Result = await s3.send(
-          new ListObjectsV2Command({
-            Bucket: this.s3_snapshot_bucket,
-            Prefix: `${FarcasterNetwork[this.options.network].toString()}/`,
-          }),
-        );
-      } catch (e) {
-        log.error({ error: e }, "failed to list snapshots in S3");
+      const latestSnapshotKey = key as string;
+      const latestSnapshotName = path.basename(latestSnapshotKey);
+
+      if (!latestSnapshotKey) {
+        log.error({ data: response.data }, "No latest snapshot name found in latest.json");
         return;
       }
 
-      // Find the latest snapshot. This is the key with the highest "LastModified" timestamp.
-      const latestSnapshot = s3Result.Contents?.sort((a, b) => {
-        return (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0);
-      })[0];
+      log.info({ latestSnapshotKey, latestSnapshotName }, "found latest S3 snapshot");
 
-      if (!latestSnapshot) {
-        log.info(
-          { s3bucket: this.s3_snapshot_bucket, dir: FarcasterNetwork[this.options.network].toString() },
-          "no snapshots found in S3, skipping snapshot sync",
-        );
-        return;
-      }
+      // Step 2: Download the latest snapshot file
+      const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
+      const snapshotLocation = path.join(path.dirname(dbLocation), latestSnapshotName);
 
-      log.info({ key: latestSnapshot.Key }, "found latest snapshot in S3");
+      const writeStream = fs.createWriteStream(snapshotLocation);
 
-      const params = {
-        Bucket: this.s3_snapshot_bucket,
-        Key: latestSnapshot.Key,
-      };
+      const response2 = await axios.get(snapshotUrl, { responseType: "stream" });
+      response2.data.pipe(writeStream);
 
-      const head = await s3.send(new HeadObjectCommand(params));
-      const totalSize = head.ContentLength || 0;
-
-      const s3StreamResponse = await s3.send(new GetObjectCommand(params));
-
-      if (!(s3StreamResponse.Body instanceof stream.Readable)) {
-        throw new Error("Expected Body to be a readable stream");
-      }
-
-      const s3Stream: stream.Readable = s3StreamResponse.Body;
-      if (!s3Stream) {
-        log.error({ key: latestSnapshot.Key }, "failed to get snapshot from S3");
-        return;
-      }
-
+      // Setup a progress bar to show download progress
+      const totalSize = parseInt(response2.headers["content-length"], 10);
       let downloadedSize = 0;
       const progressBar = addProgressBar("Getting snapshot", totalSize);
 
-      s3Stream.on("data", (chunk) => {
+      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      response2.data.on("data", (chunk: any) => {
         downloadedSize += chunk.length;
         progressBar?.update(downloadedSize);
       });
-
-      const snapshotLocation = path.join(path.dirname(dbLocation), "snapshot.tar");
-      const writeStream = fs.createWriteStream(snapshotLocation);
-      s3Stream.pipe(writeStream);
 
       // Wait for the stream to finish
       const streamResult = await new Promise<Result<boolean, string>>((resolve) => {
@@ -774,7 +739,8 @@ export class Hub implements HubInterface {
       log.info({ snapshotLocation, bytesWritten: writeStream.bytesWritten }, "snapshot downloaded from S3");
 
       // Extract the tar file
-      const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation));
+      const extractProgressBar = addProgressBar("Extracting snapshot", totalSize);
+      const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation), extractProgressBar);
       if (extractResult.isErr()) {
         log.error({ error: extractResult.error }, "failed to extract snapshot from S3. No snapshot sync");
         return;
@@ -1395,14 +1361,16 @@ export class Hub implements HubInterface {
   }
 
   async uploadToS3(filePath: string): HubAsyncResult<string> {
+    const network = FarcasterNetwork[this.options.network].toString();
+
     const s3 = new S3Client({
       region: S3_REGION,
     });
 
-    // The AWS key is "{network}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
-    const key = `${FarcasterNetwork[this.options.network].toString()}/snapshot-${
-      new Date().toISOString().split("T")[0]
-    }-${Math.floor(Date.now() / 1000)}.tar.gz`;
+    // The AWS key is "snapshots/{network}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
+    const key = `snapshots/${network}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
+      Date.now() / 1000,
+    )}.tar.gz`;
 
     const start = Date.now();
     log.info({ filePath }, "Uploading snapshot to S3");
@@ -1412,14 +1380,21 @@ export class Hub implements HubInterface {
       log.error(`S3 File Error: ${err}`);
     });
 
-    const params = {
+    const targzParams = {
       Bucket: this.s3_snapshot_bucket,
       Key: key,
       Body: fileStream,
     };
 
+    const latestJsonParams = {
+      Bucket: this.s3_snapshot_bucket,
+      Key: `snapshots/${network}/latest.json`,
+      Body: JSON.stringify({ key, timestamp: Date.now(), serverDate: new Date().toISOString() }),
+    };
+
     try {
-      const result = await s3.send(new PutObjectCommand(params));
+      await s3.send(new PutObjectCommand(targzParams));
+      await s3.send(new PutObjectCommand(latestJsonParams));
       log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
       return ok(key);
     } catch (e: unknown) {
