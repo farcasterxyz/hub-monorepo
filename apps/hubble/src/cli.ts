@@ -15,7 +15,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { Result, ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
 import { exit } from "process";
-import { APP_VERSION, FARCASTER_VERSION, Hub, HubOptions } from "./hubble.js";
+import { APP_VERSION, FARCASTER_VERSION, Hub, HubOptions, S3_REGION } from "./hubble.js";
 import { logger } from "./utils/logger.js";
 import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo, parseAddress } from "./utils/p2p.js";
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
@@ -32,6 +32,7 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { goerli, mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
+import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -124,6 +125,11 @@ app
     "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
   )
 
+  // Snapshots
+  .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
+  .option("--s3-snapshot-bucket <bucket>", "The S3 bucket to upload snapshots to")
+  .option("--disable-snapshot-sync", "Disable syncing from snapshots. (default: enabled)")
+
   // Metrics
   .option(
     "--statsd-metrics-server <host>",
@@ -156,7 +162,7 @@ app
     const handleShutdownSignal = (signalName: string) => {
       logger.flush();
 
-      logger.warn(`${signalName} received`);
+      logger.warn(`signal '${signalName}' received`);
       if (!isExiting) {
         isExiting = true;
         hub
@@ -464,6 +470,13 @@ app
     const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
     const profileSync = cliOptions.profileSync ?? hubConfig.profileSync ?? false;
 
+    let enableSnapshotToS3 = cliOptions.enableSnapshotToS3 ?? hubConfig.enableSnapshotToS3 ?? false;
+    if (enableSnapshotToS3) {
+      // If we're uploading snapshots to S3, we need to make sure that the S3 credentials are set
+      const awsVerified = await verifyAWSCredentials();
+      enableSnapshotToS3 = awsVerified;
+    }
+
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
@@ -507,7 +520,23 @@ app
       testUsers: testUsers,
       gossipMetricsEnabled: cliOptions.gossipMetricsEnabled ?? false,
       directPeers,
+      disableSnapshotSync: cliOptions.disableSnapshotSync ?? hubConfig.disableSnapshotSync ?? false,
+      enableSnapshotToS3,
+      s3SnapshotBucket: cliOptions.s3SnapshotBucket ?? hubConfig.s3SnapshotBucket,
     };
+
+    if (options.enableSnapshotToS3) {
+      // Set the Hub to exit (and be automatically restarted) so that the snapshot is uploaded
+      // before the Hub starts syncing
+      // Calculate and set a timeout to run at 9:10 am UTC (2:10 am PST)
+      const millisTill9 = millisTillRestart();
+      logger.info({ millisTill9 }, "Scheduling Hub to exit at 9:10 am UTC to upload snapshot to S3");
+
+      setTimeout(async () => {
+        logger.info("Exiting Hub to upload snapshot to S3");
+        handleShutdownSignal("S3SnapshotUpload");
+      }, millisTill9);
+    }
 
     await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet, "L1");
     await startupCheck.rpcCheck(options.l2RpcUrl, optimism, "L2", options.l2ChainId);
@@ -879,3 +908,34 @@ const readPeerId = async (filePath: string) => {
 };
 
 app.parse(process.argv);
+
+///////////////////////////////////////////////////////////////
+//                        UTILS
+///////////////////////////////////////////////////////////////
+function millisTillRestart(): number {
+  // Calculate the number of milliseconds until 9:10 am UTC (2:10 am PST)
+  const now = new Date();
+  const timeAt9 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 10, 0, 0).getTime();
+
+  const millisTill9Tomorrow = timeAt9 + 24 * 60 * 60 * 1000 - now.getTime();
+  const millisTill9Today = timeAt9 - now.getTime();
+
+  return millisTill9Today > 0 ? millisTill9Today : millisTill9Tomorrow;
+}
+
+// Verify that we have access to the AWS credentials.
+// Either via environment variables or via the AWS credentials file
+async function verifyAWSCredentials(): Promise<boolean> {
+  const sts = new STSClient({ region: S3_REGION });
+
+  try {
+    const identity = await sts.send(new GetCallerIdentityCommand({}));
+
+    logger.info({ accountId: identity.Account }, "Verified AWS credentials");
+
+    return true;
+  } catch (error) {
+    logger.error({ err: error }, "Failed to verify AWS credentials. No S3 snapshot upload will be performed.");
+    return false;
+  }
+}

@@ -51,6 +51,8 @@ export const Config = {
   commitLockMaxPending: 1_000,
   /** Farcaster network */
   network: DEFAULT_NETWORK,
+  /** Don't allow snapshot sync */
+  // disableSnapshotSync: true,
   /** Start the admin server? */
   adminServerEnabled: false,
   /** The admin server bind host */
@@ -61,4 +63,8 @@ export const Config = {
   directPeers: [],
   /** Disable progress bars and immediately print logs instead */
   // disableConsoleStatus: false,
+  /** Enable backing up snapshots to S3 */
+  // enableSnapshotToS3: false,
+  /** S3 bucket name */
+  // s3BucketName: '',
 };

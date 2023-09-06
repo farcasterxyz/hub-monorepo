@@ -345,13 +345,17 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    const result = await this._db.forEachIterator(async (key, _value) => {
-      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
-      if (result.isErr()) {
-        return err(result.error);
-      }
-      return false;
-    }, iteratorOpts.value);
+    const result = await this._db.forEachIterator(
+      async (key, _value) => {
+        const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
+        if (result.isErr()) {
+          return err(result.error);
+        }
+        return false;
+      },
+      iteratorOpts.value,
+      10 * 60 * 1000, // 10 minutes
+    );
 
     if (result) {
       return err(result.error);

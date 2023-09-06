@@ -2,6 +2,7 @@ import { RootPrefix, UserMessagePostfixMax, UserPostfix } from "../storage/db/ty
 import { logger } from "../utils/logger.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import { createWriteStream, unlinkSync } from "fs";
+import { Result } from "neverthrow";
 
 // rome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'
 function getMaxValue(enumType: any): number {
@@ -310,7 +311,7 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
   );
 
   // Caclulate the individual message sizes
-  const valueStats = Array.from({ length: 7 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
+  const valueStats = Array.from({ length: 8 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
   const allFids = new Map<number, ValueStats[]>();
 
   // Iterate over all the keys in the DB
@@ -337,7 +338,7 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
               (userPostfixKeys[postfix] as KeysProfile).keyBytes += key?.length || 0;
               (userPostfixKeys[postfix] as KeysProfile).valueBytes += value?.length || 0;
 
-              if (postfix <= UserPostfix.UserDataMessage) {
+              if (postfix < UserMessagePostfixMax) {
                 const fid = key.slice(1, 5).readUint32BE();
 
                 let fidProfile;
@@ -346,7 +347,7 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
                     fidProfile = allFids.get(fid) as ValueStats[];
                   } else {
                     fidProfile = Array.from(
-                      { length: 7 },
+                      { length: 8 },
                       (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()),
                     );
                     allFids.set(fid, fidProfile);
@@ -400,7 +401,10 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
 
   if (fidProfileFileName) {
     // Remove file if it exists
-    unlinkSync(fidProfileFileName);
+    Result.fromThrowable(
+      () => unlinkSync(fidProfileFileName),
+      (e) => e,
+    )();
 
     // Open a CSV file for writing
     const csvStream = createWriteStream(fidProfileFileName);

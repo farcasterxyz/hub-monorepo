@@ -32,7 +32,7 @@ import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB from "./storage/db/rocksdb.js";
+import RocksDB, { createTarBackup, extractTarBackup } from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
@@ -53,14 +53,12 @@ import {
   getPublicIp,
   ipFamilyToString,
   p2pMultiAddrStr,
-  parseAddress,
 } from "./utils/p2p.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
 import { ensureAboveMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
 import { ValidateOrRevokeMessagesJobScheduler } from "./storage/jobs/validateOrRevokeMessagesJob.js";
 import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJob.js";
-import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
@@ -75,12 +73,20 @@ import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { statsd } from "./utils/statsd.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
-import { addProgressBar, finishAllProgressBars } from "./utils/progressBars.js";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import path from "path";
+import { addProgressBar } from "./utils/progressBars.js";
+
+import * as fs from "fs";
+import axios from "axios";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
 export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
+
+export const SNAPSHOT_S3_DEFAULT_BUCKET = "download.farcaster.xyz";
+export const S3_REGION = "us-east-1";
 
 export const FARCASTER_VERSION = "2023.8.23";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
@@ -247,6 +253,15 @@ export interface HubOptions {
 
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers?: AddrInfo[];
+
+  /** If set, snapshot sync is disabled */
+  disableSnapshotSync?: boolean;
+
+  /** Enable daily backups to S3 */
+  enableSnapshotToS3?: boolean;
+
+  /** S3 bucket to upload snapshots to */
+  s3SnapshotBucket?: string;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -269,6 +284,8 @@ export class Hub implements HubInterface {
   private allowedPeerIds: string[] | undefined;
   private deniedPeerIds: string[];
 
+  private s3_snapshot_bucket: string;
+
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
@@ -287,6 +304,8 @@ export class Hub implements HubInterface {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode(this.rocksDB, this.options.network, this.options.gossipMetricsEnabled);
+
+    this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
     if (!options.ethMainnetRpcUrl) {
       log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
@@ -357,6 +376,9 @@ export class Hub implements HubInterface {
               profileLog.info({ method, p });
             }
 
+            // Close the file stream
+            profile.writeOutNodeProfiles();
+
             // Also write to console for easy copy/paste
             console.log("\nTotal Time\n");
             console.log(prettyPrintTable(profile.durationToPrettyPrintObject()));
@@ -426,9 +448,41 @@ export class Hub implements HubInterface {
     if (!this.options.announceIp || this.options.announceIp.trim().length === 0) {
       const ipResult = await getPublicIp();
       if (ipResult.isErr()) {
-        log.error(`failed to fetch public IP address, using ${this.options.ipMultiAddr}`, { error: ipResult.error });
+        log.error({ error: ipResult.error }, `failed to fetch public IP address, using ${this.options.ipMultiAddr}`);
       } else {
         this.options.announceIp = ipResult.value;
+      }
+    }
+
+    // Snapshot Sync
+    if (!this.options.disableSnapshotSync) {
+      try {
+        const snapshotResult = await ResultAsync.fromPromise(this.snapshotSync(), (e) => e as Error);
+        if (snapshotResult.isErr()) {
+          log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to regular sync");
+        }
+      } catch (e) {
+        log.error({ error: e }, "failed to sync snapshot, falling back to regular sync");
+      }
+    }
+
+    if (this.options.enableSnapshotToS3) {
+      // Back up the DB before opening it
+      const tarResult = await createTarBackup(this.rocksDB.location);
+
+      if (tarResult.isOk()) {
+        // Upload to S3. Run this in the background so we don't block startup.
+        setTimeout(async () => {
+          const s3Result = await this.uploadToS3(tarResult.value);
+          if (s3Result.isErr()) {
+            log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
+          }
+
+          // Delete the tar file, ignore errors
+          fs.unlink(tarResult.value, () => {});
+        }, 10);
+      } else {
+        log.error({ error: tarResult.error }, "failed to create tar backup for S3");
       }
     }
 
@@ -617,6 +671,83 @@ export class Hub implements HubInterface {
       log.info({ allowedPeerIds, deniedPeerIds }, "Network config applied");
 
       return false;
+    }
+  }
+
+  async snapshotSync() {
+    // Check if the DB location is empty. If it is, we'll try to fetch a snapshot from S3.
+    const dbLocation = this.rocksDB.location;
+    const dbFiles = Result.fromThrowable(
+      () => fs.readdirSync(dbLocation),
+      (e) => e,
+    )();
+
+    if (dbFiles.isErr() || dbFiles.value.length === 0) {
+      log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
+
+      // Step 1: Download latest.json to get the latest snapshot name
+      const network = FarcasterNetwork[this.options.network].toString();
+      const response = await axios.get(`https://download.farcaster.xyz/snapshots/${network}/latest.json`);
+      const { key } = response.data;
+
+      const latestSnapshotKey = key as string;
+      const latestSnapshotName = path.basename(latestSnapshotKey);
+
+      if (!latestSnapshotKey) {
+        log.error({ data: response.data }, "No latest snapshot name found in latest.json");
+        return;
+      }
+
+      log.info({ latestSnapshotKey, latestSnapshotName }, "found latest S3 snapshot");
+
+      // Step 2: Download the latest snapshot file
+      const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
+      const snapshotLocation = path.join(path.dirname(dbLocation), latestSnapshotName);
+
+      const writeStream = fs.createWriteStream(snapshotLocation);
+
+      const response2 = await axios.get(snapshotUrl, { responseType: "stream" });
+      response2.data.pipe(writeStream);
+
+      // Setup a progress bar to show download progress
+      const totalSize = parseInt(response2.headers["content-length"], 10);
+      let downloadedSize = 0;
+      const progressBar = addProgressBar("Getting snapshot", totalSize);
+
+      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      response2.data.on("data", (chunk: any) => {
+        downloadedSize += chunk.length;
+        progressBar?.update(downloadedSize);
+      });
+
+      // Wait for the stream to finish
+      const streamResult = await new Promise<Result<boolean, string>>((resolve) => {
+        writeStream.on("finish", () => resolve(ok(true)));
+        writeStream.on("error", (e) => resolve(err(e.message)));
+      });
+
+      progressBar?.update(totalSize);
+      progressBar?.stop();
+      writeStream.close();
+
+      if (streamResult.isErr()) {
+        log.error({ error: streamResult.error }, "failed to stream snapshot from S3");
+        return;
+      }
+
+      log.info({ snapshotLocation, bytesWritten: writeStream.bytesWritten }, "snapshot downloaded from S3");
+
+      // Extract the tar file
+      const extractProgressBar = addProgressBar("Extracting snapshot", totalSize);
+      const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation), extractProgressBar);
+      if (extractResult.isErr()) {
+        log.error({ error: extractResult.error }, "failed to extract snapshot from S3. Snapshot sync disabled");
+        return;
+      }
+
+      log.info({ dbLocation, bytesWritten: writeStream.bytesWritten }, "snapshot extracted from S3");
+      // Delete the tar file, ignore errors
+      fs.unlink(snapshotLocation, () => {});
     }
   }
 
@@ -1226,5 +1357,47 @@ export class Hub implements HubInterface {
     }
 
     return true;
+  }
+
+  async uploadToS3(filePath: string): HubAsyncResult<string> {
+    const network = FarcasterNetwork[this.options.network].toString();
+
+    const s3 = new S3Client({
+      region: S3_REGION,
+    });
+
+    // The AWS key is "snapshots/{network}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
+    const key = `snapshots/${network}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
+      Date.now() / 1000,
+    )}.tar.gz`;
+
+    const start = Date.now();
+    log.info({ filePath }, "Uploading snapshot to S3");
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on("error", function (err) {
+      log.error(`S3 File Error: ${err}`);
+    });
+
+    const targzParams = {
+      Bucket: this.s3_snapshot_bucket,
+      Key: key,
+      Body: fileStream,
+    };
+
+    const latestJsonParams = {
+      Bucket: this.s3_snapshot_bucket,
+      Key: `snapshots/${network}/latest.json`,
+      Body: JSON.stringify({ key, timestamp: Date.now(), serverDate: new Date().toISOString() }),
+    };
+
+    try {
+      await s3.send(new PutObjectCommand(targzParams));
+      await s3.send(new PutObjectCommand(latestJsonParams));
+      log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
+      return ok(key);
+    } catch (e: unknown) {
+      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    }
   }
 }
