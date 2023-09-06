@@ -20,19 +20,19 @@ export const up = async (db: Kysely<any>) => {
     .alterTable("fnames")
     .alterColumn("expiresAt", (c) => c.dropNotNull())
     .alterColumn("custodyAddress", (c) => c.dropNotNull())
-    .addColumn("deletedAt", "timestamp")
+    .addColumn("deletedAt", "timestamptz")
     .execute();
 
   await db.schema
     .createTable("storage")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("units", "bigint", (col) => col.notNull())
-    .addColumn("expiry", "timestamp", (col) => col.notNull())
+    .addColumn("expiry", "timestamptz", (col) => col.notNull())
     .execute();
 };
 
@@ -45,7 +45,7 @@ export const down = async (db: Kysely<any>) => {
     .alterColumn("hash", (c) => c.setNotNull())
     .alterColumn("custodyAddress", (c) => c.setNotNull())
     .execute();
-  await db.schema.alterTable("signers").addUniqueConstraint("signers_hash_unique", ["hash"]).execute();
+  await db.schema.alterTable("signers").dropConstraint("signers_fid_signer_unique").execute();
   // await db.schema.alterTable("signers").dropConstraint("signers_fid_signer_unique").execute();
   await db.schema
     .alterTable("signers")
