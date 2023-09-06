@@ -19,7 +19,7 @@ export default defineConfig({
           { text: "Networks", link: "/intro/networks" },
           { text: "Monitoring", link: "/intro/monitoring" },
           { text: "Tutorials", link: "/intro/tutorials" },
-          { text: "Run a hub on AWS", link: "/intro/hub-aws/index" },
+          { text: "Run Hubble on AWS EC2", link: "/intro/hub-aws/index" },
         ],
       },
       {
