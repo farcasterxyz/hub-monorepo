@@ -34,11 +34,11 @@ export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): H
 };
 
 /** Rate limit by key for the limiter */
-export const rateLimitByKey = async (fid: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
+export const rateLimitByKey = async (key: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
   try {
-    await limiter.consume(fid);
+    await limiter.consume(key);
     return ok(true);
   } catch (e) {
-    return err(new HubError("unavailable", "Too many requests"));
+    return err(new HubError("unavailable", `Too many requests for ${key}`));
   }
 };

@@ -330,9 +330,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   get pruneSizeLimit(): number {
-    if (Date.now() > STORE_SIZE_CORRECTION_TIMESTAMP) {
-      return this._pruneSizeLimit / 2;
-    }
     return this._pruneSizeLimit;
   }
 
