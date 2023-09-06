@@ -142,12 +142,12 @@ All Farcaster messages retrieved from the hub are stored in this table. Messages
 Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
-created_at | `timestamp without time zone` | When the row was first created in this DB (not the same as the message timestamp!)
-updated_at | `timestamp without time zone` | When the row was last updated.
-deleted_at | `timestamp without time zone` | When the message was deleted by the hub (e.g. in response to a `CastRemove` message, etc.)
-pruned_at | `timestamp without time zone` | When the message was pruned by the hub.
-revoked_at | `timestamp without time zone` | When the message was revoked by the hub due to revocation of the signer that signed the message.
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB (not the same as the message timestamp!)
+updated_at | `timestamp with time zone` | When the row was last updated.
+deleted_at | `timestamp with time zone` | When the message was deleted by the hub (e.g. in response to a `CastRemove` message, etc.)
+pruned_at | `timestamp with time zone` | When the message was pruned by the hub.
+revoked_at | `timestamp with time zone` | When the message was revoked by the hub due to revocation of the signer that signed the message.
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
 fid | `bigint` | FID of the user that signed the message.
 message_type | `smallint` | Message type.
 hash | `bytea` | Message hash.
@@ -164,10 +164,10 @@ Represents a cast authored by a user.
 Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
-created_at | `timestamp without time zone` | When the row was first created in this DB (not the same as the message timestamp!)
-updated_at | `timestamp without time zone` | When the row was last updated.
-deleted_at | `timestamp without time zone` | When the cast was considered deleted by the hub (e.g. in response to a `CastRemove` message, etc.)
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB (not the same as the message timestamp!)
+updated_at | `timestamp with time zone` | When the row was last updated.
+deleted_at | `timestamp with time zone` | When the cast was considered deleted by the hub (e.g. in response to a `CastRemove` message, etc.)
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
 fid | `bigint` | FID of the user that signed the message.
 hash | `bytea` | Message hash.
 parent_hash | `bytea` | If this cast was a reply, the hash of the parent cast. `null` otherwise.
@@ -185,10 +185,10 @@ Represents a user reacting (liking or recasting) content.
 Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
-created_at | `timestamp without time zone` | When the row was first created in this DB (not the same as the message timestamp!)
-updated_at | `timestamp without time zone` | When the row was last updated.
-deleted_at | `timestamp without time zone` | When the reaction was considered deleted by the hub (e.g. in response to a `ReactionRemove` message, etc.)
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB (not the same as the message timestamp!)
+updated_at | `timestamp with time zone` | When the row was last updated.
+deleted_at | `timestamp with time zone` | When the reaction was considered deleted by the hub (e.g. in response to a `ReactionRemove` message, etc.)
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
 fid | `bigint` | FID of the user that signed the message.
 reaction_type | `smallint` | Type of reaction.
 hash | `bytea` | Message hash.
@@ -203,10 +203,10 @@ Represents a user verifying something on the network. Currently, the only verifi
 Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
-created_at | `timestamp without time zone` | When the row was first created in this DB (not the same as the message timestamp!)
-updated_at | `timestamp without time zone` | When the row was last updated.
-deleted_at | `timestamp without time zone` | When the verification was considered deleted by the hub (e.g. in response to a `VerificationRemove` message, etc.)
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB (not the same as the message timestamp!)
+updated_at | `timestamp with time zone` | When the row was last updated.
+deleted_at | `timestamp with time zone` | When the verification was considered deleted by the hub (e.g. in response to a `VerificationRemove` message, etc.)
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
 fid | `bigint` | FID of the user that signed the message.
 hash | `bytea` | Message hash.
 claim | `jsonb` | JSON object in the form `{"address": "0x...", "blockHash": "0x...", "ethSignature": "0x..."}`. See [specification](https://github.com/farcasterxyz/protocol/blob/main/docs/SPECIFICATION.md#15-verifications) for details.
@@ -218,10 +218,10 @@ Represents signers that users have registered as authorized to sign Farcaster me
 Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
-created_at | `timestamp without time zone` | When the row was first created in this DB (not the same as the message timestamp!)
-updated_at | `timestamp without time zone` | When the row was last updated.
-deleted_at | `timestamp without time zone` | When the signer was considered deleted by the hub (e.g. in response to a `SignerRemove` message, etc.)
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB (not the same as the message timestamp!)
+updated_at | `timestamp with time zone` | When the row was last updated.
+deleted_at | `timestamp with time zone` | When the signer was considered deleted by the hub (e.g. in response to a `SignerRemove` message, etc.)
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
 fid | `bigint` | FID of the user that signed the message.
 hash | `bytea` | Message hash.
 custody_address | `bytea` | The address of the FID that signed the `SignerAdd` message.
@@ -235,10 +235,10 @@ Represents data associated with a user (e.g. profile photo, bio, username, etc.)
 Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
-created_at | `timestamp without time zone` | When the row was first created in this DB (not the same as the message timestamp!)
-updated_at | `timestamp without time zone` | When the row was last updated.
-deleted_at | `timestamp without time zone` | When the data was considered deleted by the hub
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB (not the same as the message timestamp!)
+updated_at | `timestamp with time zone` | When the row was last updated.
+deleted_at | `timestamp with time zone` | When the data was considered deleted by the hub
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
 fid | `bigint` | FID of the user that signed the message.
 hash | `bytea` | Message hash.
 type | `smallint` | The type of user data (PFP, bio, username, etc.)
@@ -251,8 +251,8 @@ Stores the custody address that owns a given FID (i.e. a Farcaster user).
 Column Name | Data Type | Description
 -- | -- | --
 fid | `bigint` | Farcaster ID (the user ID)
-created_at | `timestamp without time zone` | When the row was first created in this DB (not the same as when the user was created!)
-updated_at | `timestamp without time zone` | When the row was last updated.
+created_at | `timestamp with time zone` | When the row was first created in this DB (not the same as when the user was created!)
+updated_at | `timestamp with time zone` | When the row was last updated.
 custody_address | `bytea` | ETH address of the wallet that owns the FID.
 
 ### `fnames`
@@ -264,10 +264,10 @@ Column Name | Data Type | Description
 fid | `bigint` | Farcaster ID (the user ID)
 fname | `text` | Farcaster username
 custody_address | `bytea` | ETH address of the wallet that owns the FID
-expires_at | `timestamp without time zone` | When the fname expires
-created_at | `timestamp without time zone` | When the row was first created in this DB
-updated_at | `timestamp without time zone` | When the row was last updated
-deleted_at | `timestamp without time zone` | When the fname was deleted/removed
+expires_at | `timestamp with time zone` | When the fname expires
+created_at | `timestamp with time zone` | When the row was first created in this DB
+updated_at | `timestamp with time zone` | When the row was last updated
+deleted_at | `timestamp with time zone` | When the fname was deleted/removed
 
 ### `links`
 
@@ -279,11 +279,11 @@ id | `string` | Generic identifier specific to this DB (a.k.a. [surrogate key](h
 fid | `bigint` | Farcaster ID (the user ID)
 target_fid | `bigint` | Farcaster ID of the target user
 type | `string` | Type of connection between users like `follow`
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
-created_at | `timestamp without time zone` | When the row was first created in this DB
-updated_at | `timestamp without time zone` | When the row was last updated
-display_timestamp | `timestamp without time zone` | When the row was last updated
-deleted_at | `timestamp without time zone` | When the link was considered deleted by the hub (e.g. in response to a `LinkRemoveMessage` message, etc.)
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB
+updated_at | `timestamp with time zone` | When the row was last updated
+display_timestamp | `timestamp with time zone` | When the row was last updated
+deleted_at | `timestamp with time zone` | When the link was considered deleted by the hub (e.g. in response to a `LinkRemoveMessage` message, etc.)
 
 ### `storage`
 
@@ -293,9 +293,9 @@ Column Name | Data Type | Description
 -- | -- | --
 id | `bigint` | Generic identifier specific to this DB (a.k.a. [surrogate key](https://en.wikipedia.org/wiki/Surrogate_key))
 fid | `bigint` | Farcaster ID (the user ID)
-expiry | `timestamp without time zone` | When the allocated storage expires
+expiry | `timestamp with time zone` | When the allocated storage expires
 units | `bigint` | Number of storage units allocated
-created_at | `timestamp without time zone` | When the row was first created in this DB
-updated_at | `timestamp without time zone` | When the row was last updated
-deleted_at | `timestamp without time zone` | When the row was considered deleted by the hub
-timestamp | `timestamp without time zone` | Message timestamp in UTC.
+created_at | `timestamp with time zone` | When the row was first created in this DB
+updated_at | `timestamp with time zone` | When the row was last updated
+deleted_at | `timestamp with time zone` | When the row was considered deleted by the hub
+timestamp | `timestamp with time zone` | Message timestamp in UTC.
