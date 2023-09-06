@@ -24,7 +24,7 @@ describe("test rate limits", () => {
       if (i < 10) {
         expect(result.isOk()).toBeTruthy();
       } else {
-        expect(result._unsafeUnwrapErr().message).toEqual("Too many requests");
+        expect(result._unsafeUnwrapErr().message).toEqual("Too many requests for testip");
       }
     }
   });
@@ -52,7 +52,7 @@ describe("test rate limits", () => {
       if (i < 10) {
         expect(result1.isOk()).toBeTruthy();
       } else {
-        expect(result1._unsafeUnwrapErr().message).toEqual("Too many requests");
+        expect(result1._unsafeUnwrapErr().message).toEqual("Too many requests for 3000");
       }
 
       // same key, but different rate limiter should pass till the 11th message
@@ -60,7 +60,7 @@ describe("test rate limits", () => {
       if (i < 11) {
         expect(result2.isOk()).toBeTruthy();
       } else {
-        expect(result2._unsafeUnwrapErr().message).toEqual("Too many requests");
+        expect(result2._unsafeUnwrapErr().message).toEqual("Too many requests for 3000");
       }
     }
   });
