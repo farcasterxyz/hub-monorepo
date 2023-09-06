@@ -104,21 +104,54 @@ TODO
 [TODO SCREENSHOT MISSING]
 
 ## Install Hubble
+We now have a machine that can run Hubble. Let's use it.
 
 ### Get alchemy keys
+Before we start, we will need to access nodes from:
+- Ethereum testnet goerli
+- Ethereum mainnet
+- Optimism mainnet
+
+[TODO why all 3?]
+
+You can pick whatever provider you like (or run the nodes on your own), but for the sake of this tutorial, we will just use Alchemy.
+
+Create 3 apps in their dashboard like this:
 ![Placeholder](./images/alchemy-setup.png)
 
+End get their respective RPC endpoints like this:
+
+[TODO SCREENSHOT MISSING]
+
+We will use the endpoints in the next step.
+
 ### Run install script
+Let's connect again to the EC2 instance and run the install script.
+
+```bash
+curl -sSL https://download.thehubble.xyz/bootstrap.sh | bash
+```
+
+After you execute it, the script will start downloading and setting up Hubble for you.
 ![Placeholder](./images/Hubble-install-script.png)
+
+After some time, the script will ask you to provide the RPC endpoints that we got from Alchemy.
 ![Placeholder](./images/Hubble-rpc-prompt.png)
+
+Once you correctly paste them, the script will resume building the hub.
 ![Placeholder](./images/Hubble-rpc-prompt-final.png)
+
+After the download and build phase ends, Hubble will start syncing with other hubs in the network.
 ![Placeholder](./images/Hubble-syncing-1.png)
 
-## Run Hubble
-
 ## Monitoring
-![Placeholder](./images/grafana-0.png)
+Since version x.x.x Hubble comes with a built-in Grafana dashboard that will help you monitor health and the sync status of your hub.
+
+To access it, you need to allow traffic to port 3000 on your machine in [previous section, link TODO] and navigate to the public IP address of your instance with port :3000, like this: **x.x.x.x:3000**
 ![Placeholder](./images/grafana-1.png)
+
+## Run Hubble
+TODO
 
 ## Upgrading Hubble
 TODO
