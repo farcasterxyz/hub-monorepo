@@ -8,6 +8,7 @@ import {
   UserNameProof,
   UserDataAddMessage,
   UserDataType,
+  USER_DATA_SIZE_LIMIT_DEFAULT,
 } from "@farcaster/hub-nodejs";
 import { ok, ResultAsync } from "neverthrow";
 import { makeUserKey } from "../db/message.js";
@@ -24,8 +25,6 @@ import { MessagesPage, PageOptions } from "../stores/types.js";
 import { eventCompare, usernameProofCompare } from "../stores/utils.js";
 import { Store } from "./store.js";
 import { Transaction } from "../db/rocksdb.js";
-
-export const USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT = 100;
 
 /**
  * Generates unique keys used to store or fetch UserDataAdd messages in the UserDataAdd set index
@@ -86,7 +85,7 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   override _removeMessageType = undefined;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT;
+    return USER_DATA_SIZE_LIMIT_DEFAULT;
   }
 
   /**

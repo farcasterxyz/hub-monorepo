@@ -5,6 +5,7 @@ export type {
   ClientOptions,
   ClientReadableStream,
   ClientUnaryCall,
+  sendUnaryData,
   ServiceError,
   ServerWritableStream,
 } from "@grpc/grpc-js";

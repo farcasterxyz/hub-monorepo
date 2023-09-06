@@ -6,6 +6,7 @@ import {
   HubError,
   MergeUsernameProofHubEvent,
   MessageType,
+  USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
   UserNameProof,
   UsernameProofMessage,
   UserNameType,
@@ -182,7 +183,7 @@ describe("usernameProofStore", () => {
       const sizePrunedStore = new UsernameProofStore(db, eventHandler, { pruneSizeLimit: 2 });
 
       test("defaults size limit", async () => {
-        expect(set.pruneSizeLimit).toEqual(10);
+        expect(set.pruneSizeLimit).toEqual(USERNAME_PROOFS_SIZE_LIMIT_DEFAULT);
         expect(set.pruneTimeLimit).toBeUndefined();
       });
 

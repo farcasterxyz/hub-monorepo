@@ -6,6 +6,7 @@ import {
   CastId,
   CastRemoveMessage,
   FarcasterNetwork,
+  getStoreLimits,
   hexStringToBytes,
   HubAsyncResult,
   HubError,
@@ -800,28 +801,7 @@ class Engine {
     }
 
     return ok({
-      limits: [
-        {
-          storeType: StoreType.CASTS,
-          limit: this._castStore.pruneSizeLimit * units.value,
-        },
-        {
-          storeType: StoreType.LINKS,
-          limit: this._linkStore.pruneSizeLimit * units.value,
-        },
-        {
-          storeType: StoreType.REACTIONS,
-          limit: this._reactionStore.pruneSizeLimit * units.value,
-        },
-        {
-          storeType: StoreType.USER_DATA,
-          limit: this._userDataStore.pruneSizeLimit * units.value,
-        },
-        {
-          storeType: StoreType.VERIFICATIONS,
-          limit: this._verificationStore.pruneSizeLimit * units.value,
-        },
-      ],
+      limits: getStoreLimits(units.value),
     });
   }
 
