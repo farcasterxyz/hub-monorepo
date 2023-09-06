@@ -5,14 +5,13 @@ import {
   MessageType,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
+  VERIFICATIONS_SIZE_LIMIT_DEFAULT,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import { makeUserKey } from "../db/message.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "./types.js";
 import { Store } from "./store.js";
-
-export const VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT = 50;
 
 /**
  * Generates a unique key used to store a VerificationAdds message key in the VerificationsAdds
@@ -94,7 +93,7 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
   override _removeMessageType = MessageType.VERIFICATION_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT;
+    return VERIFICATIONS_SIZE_LIMIT_DEFAULT;
   }
 
   /**
