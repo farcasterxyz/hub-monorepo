@@ -45,7 +45,7 @@ export const down = async (db: Kysely<any>) => {
     .alterColumn("hash", (c) => c.setNotNull())
     .alterColumn("custodyAddress", (c) => c.setNotNull())
     .execute();
-  await db.schema.alterTable("signers").dropConstraint("signers_fid_signer_unique").execute();
+  await db.schema.alterTable("signers").addUniqueConstraint("signers_hash_unique", ["hash"]).execute();
   // await db.schema.alterTable("signers").dropConstraint("signers_fid_signer_unique").execute();
   await db.schema
     .alterTable("signers")
