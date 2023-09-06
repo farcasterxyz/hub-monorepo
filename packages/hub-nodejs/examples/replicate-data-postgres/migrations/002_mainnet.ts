@@ -1,6 +1,6 @@
 import { Kysely, sql } from "kysely";
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const up = async (db: Kysely<any>) => {
   await db.schema.alterTable("fnames").addColumn("fid", "bigint").execute();
 
@@ -36,7 +36,7 @@ export const up = async (db: Kysely<any>) => {
     .execute();
 };
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const down = async (db: Kysely<any>) => {
   await db.schema.alterTable("fnames").dropColumn("fid").execute();
 

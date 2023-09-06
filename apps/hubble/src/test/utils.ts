@@ -20,15 +20,15 @@ export const anvilChain = {
 } as const satisfies Chain;
 
 const provider = {
-  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   on: (message: string, listener: (...args: any[]) => null) => {
     if (message === "accountsChanged") {
-      // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+      // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
       listener([accounts[0].address] as any);
     }
   },
   removeListener: () => null,
-  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   request: async ({ method, params }: any) => {
     if (method === "eth_requestAccounts") {
       return [accounts[0].address];
@@ -166,7 +166,7 @@ export function mergeDeepPartial<T>(obj1: DeepPartial<T>, obj2: DeepPartial<T>):
       typeof merged[key] === "object" &&
       merged[key] !== null
     ) {
-      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       merged[key] = mergeDeepPartial(merged[key] as DeepPartial<any>, obj2[key] as DeepPartial<any>);
     } else {
       merged[key] = obj2[key];

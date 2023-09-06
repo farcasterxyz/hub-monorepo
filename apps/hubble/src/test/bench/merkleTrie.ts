@@ -76,7 +76,7 @@ export const benchMerkleTrie = async ({
   while (i < syncIds.length) {
     let start = performance.now();
     for (let j = 0; j < cycle; j++) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       await trie.insert(syncIds[(i + j) % syncIds.length]!);
     }
     const insertDuration = performance.now() - start;
@@ -85,7 +85,7 @@ export const benchMerkleTrie = async ({
 
     start = performance.now();
     for (let j = 0; j < cycle; j++) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       await trie.getSnapshot(syncIds[(i - 1) % syncIds.length]!.syncId().slice(0, 10));
     }
     const snapshotDuration = performance.now() - start;

@@ -1,0 +1,10 @@
+{
+  "name": "biome-config-custom",
+  "version": "0.0.1",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@biomejs/biome": "1.1.0"
+  },
+  "private": true
+}

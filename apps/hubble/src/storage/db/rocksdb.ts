@@ -44,7 +44,7 @@ export class Iterator {
   async *[Symbol.asyncIterator]() {
     try {
       let kv: [Buffer | undefined, Buffer | undefined] | undefined;
-      // rome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code, to fix
+      // biome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code, to fix
       while ((kv = await this.next())) {
         yield kv;
       }
@@ -343,7 +343,7 @@ class RocksDB {
     }, timeoutMs);
 
     let returnValue: T | undefined | void;
-    // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     let caughtError: any;
 
     // The try/catch is outside the for loop so that we can catch errors thrown by the iterator

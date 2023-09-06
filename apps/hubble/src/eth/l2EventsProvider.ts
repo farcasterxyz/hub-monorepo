@@ -198,7 +198,7 @@ export class L2EventsProvider {
   /* -------------------------------------------------------------------------- */
 
   private async processStorageEvents(
-    // rome-ignore lint/suspicious/noExplicitAny: workaround viem bug
+    // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
     logs: OnLogsParameter<any, true, string>,
   ) {
     for (const event of logs) {
@@ -253,7 +253,7 @@ export class L2EventsProvider {
   }
 
   private async processKeyRegistryEvents(
-    // rome-ignore lint/suspicious/noExplicitAny: workaround viem bug
+    // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
     logs: OnLogsParameter<any, true, string>,
   ) {
     for (const event of logs) {
@@ -359,7 +359,7 @@ export class L2EventsProvider {
   }
 
   private async processIdRegistryEvents(
-    // rome-ignore lint/suspicious/noExplicitAny: workaround viem bug
+    // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
     logs: OnLogsParameter<any, true, string>,
   ) {
     for (const event of logs) {
