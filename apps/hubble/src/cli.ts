@@ -529,9 +529,8 @@ app
       // Set the Hub to exit (and be automatically restarted) so that the snapshot is uploaded
       // before the Hub starts syncing
       // Calculate and set a timeout to run at 9:10 am UTC (2:10 am PST)
-      const millisTill9 = millisTill9Am();
-
-      logger.info({ millisTill9 }, "Scheduling Hub to exit at 9:10 am UTC (2:10 am PST) to upload snapshot to S3");
+      const millisTill9 = millisTillRestart();
+      logger.info({ millisTill9 }, "Scheduling Hub to exit at 9:10 am UTC to upload snapshot to S3");
 
       setTimeout(async () => {
         logger.info("Exiting Hub to upload snapshot to S3");
@@ -913,7 +912,7 @@ app.parse(process.argv);
 ///////////////////////////////////////////////////////////////
 //                        UTILS
 ///////////////////////////////////////////////////////////////
-function millisTill9Am(): number {
+function millisTillRestart(): number {
   // Calculate the number of milliseconds until 9:10 am UTC (2:10 am PST)
   const now = new Date();
   const timeAt9 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 10, 0, 0).getTime();

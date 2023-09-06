@@ -99,8 +99,8 @@ export class SyncEngineProfiler {
 
     this._syncStartTime = 0;
 
-    // Open a new file called "profiler.log" and write to it
-    this.syncTrieNodeProfiles = fs.createWriteStream("nodeprofiles.log", { flags: "a" });
+    // Open a new file called "nodeprofiles.log" and write to it
+    this.syncTrieNodeProfiles = fs.createWriteStream("nodeprofiles.log");
   }
 
   public writeNodeProfile(nodeProfile: string) {

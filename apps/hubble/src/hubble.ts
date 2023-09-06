@@ -472,7 +472,6 @@ export class Hub implements HubInterface {
 
       if (tarResult.isOk()) {
         // Upload to S3. Run this in the background so we don't block startup.
-        // Don't bother gzipping the file, since it is mostly binary data, and it doesn't compress well.
         setTimeout(async () => {
           const s3Result = await this.uploadToS3(tarResult.value);
           if (s3Result.isErr()) {
@@ -742,7 +741,7 @@ export class Hub implements HubInterface {
       const extractProgressBar = addProgressBar("Extracting snapshot", totalSize);
       const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation), extractProgressBar);
       if (extractResult.isErr()) {
-        log.error({ error: extractResult.error }, "failed to extract snapshot from S3. No snapshot sync");
+        log.error({ error: extractResult.error }, "failed to extract snapshot from S3. Snapshot sync disabled");
         return;
       }
 
