@@ -202,10 +202,16 @@ export class L2EventsProvider {
     logs: OnLogsParameter<any, true, string>,
   ) {
     for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+      const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
       // Do nothing if the block is pending
-      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+      if (
+        blockHash === null ||
+        blockNumber === null ||
+        transactionHash === null ||
+        transactionIndex === null ||
+        logIndex === null
+      ) {
         continue;
       }
 
@@ -239,6 +245,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             undefined,
             undefined,
             undefined,
@@ -257,10 +264,16 @@ export class L2EventsProvider {
     logs: OnLogsParameter<any, true, string>,
   ) {
     for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+      const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
       // Do nothing if the block is pending
-      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+      if (
+        blockHash === null ||
+        blockNumber === null ||
+        transactionHash === null ||
+        transactionIndex === null ||
+        logIndex === null
+      ) {
         continue;
       }
 
@@ -288,6 +301,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             signerEventBody,
           );
         } else if (event.eventName === "Remove") {
@@ -309,6 +323,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             signerEventBody,
           );
         } else if (event.eventName === "AdminReset") {
@@ -330,6 +345,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             signerEventBody,
           );
         } else if (event.eventName === "Migrated") {
@@ -347,6 +363,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             undefined,
             SignerMigratedEventBody.create({ migratedAt: Number(migratedEvent.args.keysMigratedAt) }),
           );
@@ -363,10 +380,16 @@ export class L2EventsProvider {
     logs: OnLogsParameter<any, true, string>,
   ) {
     for (const event of logs) {
-      const { blockNumber, blockHash, transactionHash, transactionIndex } = event;
+      const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
       // Do nothing if the block is pending
-      if (blockHash === null || blockNumber === null || transactionHash === null || transactionIndex === null) {
+      if (
+        blockHash === null ||
+        blockNumber === null ||
+        transactionHash === null ||
+        transactionIndex === null ||
+        logIndex === null
+      ) {
         continue;
       }
 
@@ -392,6 +415,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             undefined,
             undefined,
             idRegisterEventBody,
@@ -416,6 +440,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             undefined,
             undefined,
             idRegisterEventBody,
@@ -439,6 +464,7 @@ export class L2EventsProvider {
             blockHash,
             transactionHash,
             transactionIndex,
+            logIndex,
             undefined,
             undefined,
             idRegisterEventBody,
@@ -731,7 +757,8 @@ export class L2EventsProvider {
     blockNumBigInt: bigint,
     blockHash: string,
     transactionHash: string,
-    index: number,
+    txIndex: number,
+    logIndex: number,
     signerEventBody?: SignerEventBody,
     signerMigratedEventBody?: SignerMigratedEventBody,
     idRegisterEventBody?: IdRegisterEventBody,
@@ -759,7 +786,8 @@ export class L2EventsProvider {
       blockHash: blockHashBytes,
       blockTimestamp: timestamp,
       transactionHash: transactionHashBytes,
-      logIndex: index,
+      txIndex: txIndex,
+      logIndex: logIndex,
       signerEventBody: signerEventBody,
       signerMigratedEventBody: signerMigratedEventBody,
       idRegisterEventBody: idRegisterEventBody,

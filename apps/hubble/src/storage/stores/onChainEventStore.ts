@@ -138,6 +138,17 @@ class OnChainEventStore {
    * Merges a rent ContractEvent into the StorageEventStore
    */
   async _mergeEvent(event: OnChainEvent): Promise<number> {
+    // Handle events that were merged with the incorrect index (using txIndex instead of logIndex if they exist)
+    const _badEvent = await ResultAsync.fromPromise(
+      getOnChainEvent(this._db, event.type, event.fid, event.blockNumber, event.txIndex),
+      () => undefined,
+    );
+    if (_badEvent.isOk()) {
+      const txn = putOnChainEventTransaction(this._db.transaction(), event);
+      txn.del(makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.txIndex));
+      await this._db.commit(txn);
+      throw new HubError("bad_request.duplicate", "onChainEvent already exists (txIndex updated)");
+    }
     const _existingEvent = await ResultAsync.fromPromise(
       getOnChainEvent(this._db, event.type, event.fid, event.blockNumber, event.logIndex),
       () => undefined,

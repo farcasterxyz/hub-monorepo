@@ -31,6 +31,27 @@ describe("OnChainEventStore", () => {
       await expect(set.mergeOnChainEvent(onChainEvent)).rejects.toThrow("already exists");
     });
 
+    describe("old events based on txIndex", () => {
+      test("replaces txIndex with logIndex if it exists", async () => {
+        // There was a bug where we were using txIndex instead of logIndex for ordering.
+        // If we re-merge the same event, then we should silently replace the old event with the correct one
+        const txIndex = 2;
+        const logIndex = 10;
+        const badOnChainEvent = Factories.SignerOnChainEvent.build({
+          logIndex: txIndex, // Log index was incorrectly set to txIndex
+          txIndex: 0, // Did not have this field
+        });
+        await set.mergeOnChainEvent(badOnChainEvent);
+        badOnChainEvent.txIndex = txIndex;
+        badOnChainEvent.logIndex = logIndex;
+        await expect(set.mergeOnChainEvent(badOnChainEvent)).rejects.toThrow("already exists");
+        const mergedEvents = await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER, badOnChainEvent.fid);
+        expect(mergedEvents).toHaveLength(1);
+        expect(mergedEvents[0]?.txIndex).toEqual(txIndex);
+        expect(mergedEvents[0]?.logIndex).toEqual(logIndex);
+      });
+    });
+
     describe("signers", () => {
       test("can add same signer for multiple fids", async () => {
         const firstSigner = Factories.SignerOnChainEvent.build();
