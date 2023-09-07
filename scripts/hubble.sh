@@ -5,7 +5,7 @@
 # itself in the process.
 
 # Define the version of this script
-CURRENT_VERSION="1"
+CURRENT_VERSION="2"
 
 REPO="farcasterxyz/hub-monorepo"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
