@@ -699,10 +699,11 @@
               "viz": false
             },
             "lineInterpolation": "stepBefore",
-            "lineWidth": 4,
+            "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
-              "type": "linear"
+              "log": 2,
+              "type": "log"
             },
             "showPoints": "auto",
             "spanNulls": true,

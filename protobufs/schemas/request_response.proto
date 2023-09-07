@@ -27,6 +27,8 @@ message HubInfoResponse {
   string nickname = 3;
   string root_hash = 4;
   DbStats db_stats = 5;
+  string peerId = 6;
+  uint64 hub_operator_fid = 7;
 }
 
 message DbStats {

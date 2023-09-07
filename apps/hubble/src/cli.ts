@@ -29,10 +29,11 @@ import { profileGossipServer } from "./profile/gossipProfile.js";
 import { initializeStatsd } from "./utils/statsd.js";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
-import { goerli, mainnet, optimism } from "viem/chains";
+import { mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
+import axios from "axios";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -71,6 +72,7 @@ app
   // Hubble Options
   .option("-n --network <network>", "ID of the Farcaster Network (default: 3 (devnet))", parseNetwork)
   .option("-i, --id <filepath>", "Path to the PeerId file.")
+  .option("--hub-operator-fid <fid>", "The FID of the hub operator")
   .option("-c, --config <filepath>", "Path to the config file.")
   .option("--db-name <name>", "The name of the RocksDB instance. (default: rocks.hub._default)")
   .option("--admin-server-enabled", "Enable the admin server. (default: disabled)")
@@ -523,7 +525,40 @@ app
       disableSnapshotSync: cliOptions.disableSnapshotSync ?? hubConfig.disableSnapshotSync ?? false,
       enableSnapshotToS3,
       s3SnapshotBucket: cliOptions.s3SnapshotBucket ?? hubConfig.s3SnapshotBucket,
+      hubOperatorFid: parseInt(cliOptions.hubOperatorFid ?? hubConfig.hubOperatorFid),
     };
+
+    // Startup check for Hub Operator FID
+    if (options.hubOperatorFid && !isNaN(options.hubOperatorFid)) {
+      try {
+        const fid = options.hubOperatorFid;
+        const response = await axios.get(`https://fnames.farcaster.xyz/transfers?fid=${fid}`);
+        const transfers = response.data.transfers;
+        if (transfers && transfers.length > 0) {
+          const usernameField = transfers[transfers.length - 1].username;
+          if (usernameField !== null && usernameField !== undefined) {
+            startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Hub Operator FID is ${fid}(${usernameField})`);
+          } else {
+            startupCheck.printStartupCheckStatus(
+              StartupCheckStatus.WARNING,
+              `Hub Operator FID is ${fid}, but no username was found`,
+            );
+          }
+        }
+      } catch (e) {
+        logger.error(e, `Error fetching username for Hub Operator FID ${options.hubOperatorFid}`);
+        startupCheck.printStartupCheckStatus(
+          StartupCheckStatus.WARNING,
+          `Hub Operator FID is ${options.hubOperatorFid}, but no username was found`,
+        );
+      }
+    } else {
+      startupCheck.printStartupCheckStatus(
+        StartupCheckStatus.WARNING,
+        "Hub Operator FID is not set",
+        "https://www.thehubble.xyz/intro/install.html#troubleshooting",
+      );
+    }
 
     if (options.enableSnapshotToS3) {
       // Set the Hub to exit (and be automatically restarted) so that the snapshot is uploaded
