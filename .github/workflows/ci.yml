@@ -76,6 +76,9 @@ jobs:
       # - name: Run audit
       #   run: yarn audit
 
+      - name: Run build
+        run: yarn build
+
       - name: Run linter
         run: yarn lint:ci
 
