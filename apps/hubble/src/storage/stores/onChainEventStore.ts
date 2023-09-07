@@ -9,6 +9,7 @@ import {
   OnChainEvent,
   OnChainEventType,
   SignerEventType,
+  SignerMigratedOnChainEvent,
   SignerOnChainEvent,
 } from "@farcaster/hub-nodejs";
 import RocksDB, { Transaction } from "../db/rocksdb.js";
@@ -17,14 +18,19 @@ import {
   getManyOnChainEvents,
   getOnChainEvent,
   getOnChainEventByKey,
+  getOnChainEventsPageByPrefix,
   makeIdRegisterEventByCustodyKey,
   makeIdRegisterEventByFidKey,
   makeOnChainEventIteratorPrefix,
   makeOnChainEventPrimaryKey,
+  makeOnChainEventSecondaryIteratorPrefix,
   makeSignerOnChainEventBySignerKey,
   putOnChainEventTransaction,
 } from "../db/onChainEvent.js";
 import { ok, ResultAsync } from "neverthrow";
+import { OnChainEventPostfix, RootPrefix } from "../db/types.js";
+import { getHubState, putHubState } from "../db/hubState.js";
+import { PageOptions } from "./types.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 
@@ -67,12 +73,44 @@ class OnChainEventStore {
     const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
     if (
       event.signerEventBody.eventType === SignerEventType.ADD &&
-      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.scheme)
+      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
     ) {
       return event;
     } else {
       throw new HubError("not_found", "no such active signer");
     }
+  }
+
+  async getFids(pageOptions: PageOptions = {}): Promise<{
+    fids: number[];
+    nextPageToken: Uint8Array | undefined;
+  }> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      return isIdRegisterOnChainEvent(event);
+    };
+    const result = await getOnChainEventsPageByPrefix(
+      this._db,
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.IdRegisterByFid),
+      filter,
+      pageOptions,
+    );
+    return { fids: result.events.map((event) => event.fid), nextPageToken: result.nextPageToken };
+  }
+
+  async getSignersByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<{ events: OnChainEvent[]; nextPageToken: Uint8Array | undefined }> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      // Return only active signers
+      return isSignerOnChainEvent(event) && event.signerEventBody.eventType === SignerEventType.ADD;
+    };
+    return getOnChainEventsPageByPrefix(
+      this._db,
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.SignerByFid, fid),
+      filter,
+      pageOptions,
+    );
   }
 
   async getIdRegisterEventByFid(fid: number): Promise<IdRegisterOnChainEvent> {
@@ -85,12 +123,15 @@ class OnChainEventStore {
     return getOnChainEventByKey(this._db, idRegisterEventPrimaryKey);
   }
 
-  async isSignerMigrated(): HubAsyncResult<boolean> {
-    const signerMigrated = await this.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED, 0);
-    if (signerMigrated.length > 0) {
-      return ok(true);
+  async getSignerMigratedAt(): HubAsyncResult<number> {
+    const signerMigrated = await this.getOnChainEvents<SignerMigratedOnChainEvent>(
+      OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
+      0,
+    );
+    if (signerMigrated[0]) {
+      return ok(signerMigrated[0].signerMigratedEventBody?.migratedAt);
     }
-    return ok(false);
+    return ok(0);
   }
 
   /**
@@ -187,6 +228,26 @@ class OnChainEventStore {
       }
     }
     return undefined;
+  }
+
+  static async clearEvents(db: RocksDB) {
+    let count = 0;
+    await db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.OnChainEvent]),
+      async (key, value) => {
+        if (!key || !value) {
+          return;
+        }
+        await db.del(key);
+        count++;
+      },
+      {},
+      1 * 60 * 60 * 1000,
+    );
+    const state = await getHubState(db);
+    state.lastL2Block = 0;
+    await putHubState(db, state);
+    return count;
   }
 }
 

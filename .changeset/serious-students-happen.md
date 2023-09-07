@@ -4,4 +4,4 @@
 "@farcaster/hubble": patch
 ---
 
-feat: Add "getting blockchain events" to hub status
+feat: Allow Hub operators to set an FID

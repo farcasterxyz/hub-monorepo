@@ -22,6 +22,7 @@ export enum StoreType {
   REACTIONS = 3,
   USER_DATA = 4,
   VERIFICATIONS = 5,
+  USERNAME_PROOFS = 6,
 }
 
 export function storeTypeFromJSON(object: any): StoreType {
@@ -44,6 +45,9 @@ export function storeTypeFromJSON(object: any): StoreType {
     case 5:
     case "STORE_TYPE_VERIFICATIONS":
       return StoreType.VERIFICATIONS;
+    case 6:
+    case "STORE_TYPE_USERNAME_PROOFS":
+      return StoreType.USERNAME_PROOFS;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
   }
@@ -63,6 +67,8 @@ export function storeTypeToJSON(object: StoreType): string {
       return "STORE_TYPE_USER_DATA";
     case StoreType.VERIFICATIONS:
       return "STORE_TYPE_VERIFICATIONS";
+    case StoreType.USERNAME_PROOFS:
+      return "STORE_TYPE_USERNAME_PROOFS";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
   }
@@ -106,6 +112,7 @@ export interface SyncStatusRequest {
 export interface SyncStatusResponse {
   isSyncing: boolean;
   syncStatus: SyncStatus[];
+  engineStarted: boolean;
 }
 
 export interface SyncStatus {
@@ -212,10 +219,14 @@ export interface RentRegistryEventsRequest {
 export interface OnChainEventRequest {
   fid: number;
   eventType: OnChainEventType;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
 }
 
 export interface OnChainEventResponse {
   events: OnChainEvent[];
+  nextPageToken?: Uint8Array | undefined;
 }
 
 export interface StorageLimitsResponse {
@@ -770,7 +781,7 @@ export const SyncStatusRequest = {
 };
 
 function createBaseSyncStatusResponse(): SyncStatusResponse {
-  return { isSyncing: false, syncStatus: [] };
+  return { isSyncing: false, syncStatus: [], engineStarted: false };
 }
 
 export const SyncStatusResponse = {
@@ -780,6 +791,9 @@ export const SyncStatusResponse = {
     }
     for (const v of message.syncStatus) {
       SyncStatus.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.engineStarted === true) {
+      writer.uint32(24).bool(message.engineStarted);
     }
     return writer;
   },
@@ -805,6 +819,13 @@ export const SyncStatusResponse = {
 
           message.syncStatus.push(SyncStatus.decode(reader, reader.uint32()));
           continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.engineStarted = reader.bool();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -818,6 +839,7 @@ export const SyncStatusResponse = {
     return {
       isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
       syncStatus: Array.isArray(object?.syncStatus) ? object.syncStatus.map((e: any) => SyncStatus.fromJSON(e)) : [],
+      engineStarted: isSet(object.engineStarted) ? Boolean(object.engineStarted) : false,
     };
   },
 
@@ -829,6 +851,7 @@ export const SyncStatusResponse = {
     } else {
       obj.syncStatus = [];
     }
+    message.engineStarted !== undefined && (obj.engineStarted = message.engineStarted);
     return obj;
   },
 
@@ -840,6 +863,7 @@ export const SyncStatusResponse = {
     const message = createBaseSyncStatusResponse();
     message.isSyncing = object.isSyncing ?? false;
     message.syncStatus = object.syncStatus?.map((e) => SyncStatus.fromPartial(e)) || [];
+    message.engineStarted = object.engineStarted ?? false;
     return message;
   },
 };
@@ -2323,7 +2347,7 @@ export const RentRegistryEventsRequest = {
 };
 
 function createBaseOnChainEventRequest(): OnChainEventRequest {
-  return { fid: 0, eventType: 0 };
+  return { fid: 0, eventType: 0, pageSize: undefined, pageToken: undefined, reverse: undefined };
 }
 
 export const OnChainEventRequest = {
@@ -2333,6 +2357,15 @@ export const OnChainEventRequest = {
     }
     if (message.eventType !== 0) {
       writer.uint32(16).int32(message.eventType);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(24).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(34).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(40).bool(message.reverse);
     }
     return writer;
   },
@@ -2358,6 +2391,27 @@ export const OnChainEventRequest = {
 
           message.eventType = reader.int32() as any;
           continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -2371,6 +2425,9 @@ export const OnChainEventRequest = {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       eventType: isSet(object.eventType) ? onChainEventTypeFromJSON(object.eventType) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
     };
   },
 
@@ -2378,6 +2435,10 @@ export const OnChainEventRequest = {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.eventType !== undefined && (obj.eventType = onChainEventTypeToJSON(message.eventType));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
     return obj;
   },
 
@@ -2389,18 +2450,24 @@ export const OnChainEventRequest = {
     const message = createBaseOnChainEventRequest();
     message.fid = object.fid ?? 0;
     message.eventType = object.eventType ?? 0;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };
 
 function createBaseOnChainEventResponse(): OnChainEventResponse {
-  return { events: [] };
+  return { events: [], nextPageToken: undefined };
 }
 
 export const OnChainEventResponse = {
   encode(message: OnChainEventResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     for (const v of message.events) {
       OnChainEvent.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
     }
     return writer;
   },
@@ -2419,6 +2486,13 @@ export const OnChainEventResponse = {
 
           message.events.push(OnChainEvent.decode(reader, reader.uint32()));
           continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -2429,7 +2503,10 @@ export const OnChainEventResponse = {
   },
 
   fromJSON(object: any): OnChainEventResponse {
-    return { events: Array.isArray(object?.events) ? object.events.map((e: any) => OnChainEvent.fromJSON(e)) : [] };
+    return {
+      events: Array.isArray(object?.events) ? object.events.map((e: any) => OnChainEvent.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
   },
 
   toJSON(message: OnChainEventResponse): unknown {
@@ -2439,6 +2516,8 @@ export const OnChainEventResponse = {
     } else {
       obj.events = [];
     }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
     return obj;
   },
 
@@ -2449,6 +2528,7 @@ export const OnChainEventResponse = {
   fromPartial<I extends Exact<DeepPartial<OnChainEventResponse>, I>>(object: I): OnChainEventResponse {
     const message = createBaseOnChainEventResponse();
     message.events = object.events?.map((e) => OnChainEvent.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
     return message;
   },
 };

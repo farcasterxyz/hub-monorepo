@@ -8,6 +8,7 @@ import {
   bytesCompare,
   isCastAddMessage,
   isCastRemoveMessage,
+  CASTS_SIZE_LIMIT_DEFAULT,
 } from "@farcaster/hub-nodejs";
 import { err, ok, ResultAsync } from "neverthrow";
 import {
@@ -22,8 +23,6 @@ import { Transaction } from "../db/rocksdb.js";
 import { RootPrefix, TRUE_VALUE, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
 import { Store } from "./store.js";
-
-export const CAST_PRUNE_SIZE_LIMIT_DEFAULT = 10_000;
 
 /**
  * Generates unique keys used to store or fetch CastAdd messages in the adds set index
@@ -134,7 +133,7 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   override _removeMessageType = MessageType.CAST_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return CAST_PRUNE_SIZE_LIMIT_DEFAULT;
+    return CASTS_SIZE_LIMIT_DEFAULT;
   }
 
   protected override get PRUNE_TIME_LIMIT_DEFAULT() {

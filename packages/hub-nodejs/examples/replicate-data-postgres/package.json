@@ -12,7 +12,7 @@
     "node": ">=16"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.9.1",
+    "@farcaster/hub-nodejs": "^0.10.5",
     "fastq": "^1.15.0",
     "kysely": "^0.24.2",
     "kysely-postgres-js": "^1.1.1",

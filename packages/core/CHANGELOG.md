@@ -1,5 +1,20 @@
 # @farcaster/core
 
+## 0.12.5
+
+### Patch Changes
+
+- e6180074: feat: enforce storage pruning 1 day after migration
+- bf1c44d2: feat: Update signer onchain event to store new fields and add additional RPC calls
+
+## 0.12.4
+
+### Patch Changes
+
+- e55e571f: feat: Add "getting blockchain events" to hub status
+- 1fcfd495: fix: fetching l2 events was not respecting --l2-first-block
+- c6d79cdb: feat: on chain event ordering updated to be more consistent
+
 ## 0.12.3
 
 ### Patch Changes

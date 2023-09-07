@@ -40,6 +40,7 @@ import {
   UsernameProofsResponse,
   OnChainEventResponse,
   SignerOnChainEvent,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -58,6 +59,7 @@ import {
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
+import { statsd } from "../utils/statsd.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -346,6 +348,11 @@ export default class Server {
             isSyncing: !this.syncEngine?.isSyncing(),
             nickname: APP_NICKNAME,
             rootHash: (await this.syncEngine?.trie.rootHash()) ?? "",
+            peerId: Result.fromThrowable(
+              () => this.hub?.identity ?? "",
+              (e) => e,
+            )().unwrapOr(""),
+            hubOperatorFid: this.hub?.hubOperatorFid ?? 0,
           });
 
           if (call.request.dbStats && this.syncEngine) {
@@ -369,11 +376,13 @@ export default class Server {
             callback(toServiceError(new HubError("bad_request", "Hub isn't initialized")));
             return;
           }
+
           let peersToCheck: string[];
           if (call.request.peerId && call.request.peerId.length > 0) {
             peersToCheck = [call.request.peerId];
           } else {
-            peersToCheck = this.gossipNode.allPeerIds();
+            // If no peerId is specified, check upto 20 peers
+            peersToCheck = this.gossipNode.allPeerIds().slice(0, 20);
           }
 
           const response = SyncStatusResponse.create({
@@ -382,24 +391,27 @@ export default class Server {
             engineStarted: this.syncEngine.isStarted(),
           });
 
-          for (const peerId of peersToCheck) {
-            const statusResult = await this.syncEngine.getSyncStatusForPeer(peerId, this.hub);
-            if (statusResult.isOk()) {
-              const status = statusResult.value;
-              response.isSyncing = status.isSyncing;
-              const peerStatus = SyncStatus.create({
-                peerId,
-                inSync: status.inSync,
-                shouldSync: status.shouldSync,
-                lastBadSync: status.lastBadSync,
-                divergencePrefix: status.divergencePrefix,
-                divergenceSecondsAgo: status.divergenceSecondsAgo,
-                ourMessages: status.ourSnapshot.numMessages,
-                theirMessages: status.theirSnapshot.numMessages,
-              });
-              response.syncStatus.push(peerStatus);
-            }
-          }
+          await Promise.all(
+            peersToCheck.map(async (peerId) => {
+              const statusResult = await this.syncEngine?.getSyncStatusForPeer(peerId, this.hub as HubInterface);
+              if (statusResult?.isOk()) {
+                const status = statusResult.value;
+                response.isSyncing = status.isSyncing;
+                response.syncStatus.push(
+                  SyncStatus.create({
+                    peerId,
+                    inSync: status.inSync,
+                    shouldSync: status.shouldSync,
+                    lastBadSync: status.lastBadSync,
+                    divergencePrefix: status.divergencePrefix,
+                    divergenceSecondsAgo: status.divergenceSecondsAgo,
+                    ourMessages: status.ourSnapshot.numMessages,
+                    theirMessages: status.theirSnapshot.numMessages,
+                  }),
+                );
+              }
+            }),
+          );
 
           callback(null, response);
         })();
@@ -426,14 +438,17 @@ export default class Server {
           (messages) => {
             // Check the messages for corruption. If a message is blank, that means it was present
             // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
-            const corruptedMessages = messages.filter(
-              (message) => message.data === undefined || message.hash.length === 0,
-            );
+            const corruptedSyncIds = this.syncEngine?.findCorruptedSyncIDs(messages, request.syncIds);
 
-            if (corruptedMessages.length > 0) {
-              log.warn({ num: corruptedMessages.length }, "Found corrupted messages, rebuilding some syncIDs");
+            if ((corruptedSyncIds?.length ?? 0) > 0) {
+              log.warn(
+                { num: corruptedSyncIds?.length },
+                "Found corrupted messages while serving API, rebuilding some syncIDs",
+              );
+
               // Don't wait for this to finish, just return the messages we have.
-              this.syncEngine?.rebuildSyncIds(request.syncIds);
+              this.syncEngine?.revokeSyncIds(corruptedSyncIds ?? []);
+
               // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }
@@ -493,6 +508,7 @@ export default class Server {
         // If someone is asking for our sync snapshot, that means we're getting incoming
         // connections
         this.incomingConnections += 1;
+        statsd().increment("rpc.get_sync_snapshot");
 
         const request = call.request;
 
@@ -871,6 +887,25 @@ export default class Server {
           },
         );
       },
+      getOnChainSignersByFid: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.debug({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer}`);
+
+        const { fid, pageSize, pageToken, reverse } = call.request;
+        const signersResult = await this.engine?.getOnChainSignersByFid(fid, {
+          pageSize,
+          pageToken,
+          reverse,
+        });
+        signersResult?.match(
+          (page: OnChainEventResponse) => {
+            callback(null, page);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
       getIdRegistryEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getIdRegistryEvent", req: call.request }, `RPC call from ${peer}`);
@@ -948,6 +983,21 @@ export default class Server {
         const idRegistryEventResult = await this.engine?.getIdRegistryEventByAddress(request.address);
         idRegistryEventResult?.match(
           (idRegistryEvent: IdRegistryEvent) => {
+            callback(null, idRegistryEvent);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      getIdRegistryOnChainEventByAddress: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.debug({ method: "getIdRegistryOnChainEventByAddress", req: call.request }, `RPC call from ${peer}`);
+
+        const request = call.request;
+        const idRegistryEventResult = await this.engine?.getIdRegistryOnChainEventByAddress(request.address);
+        idRegistryEventResult?.match(
+          (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
           },
           (err: HubError) => {

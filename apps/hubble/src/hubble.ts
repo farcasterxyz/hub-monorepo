@@ -7,7 +7,6 @@ import {
   IdRegistryEvent,
   Message,
   NameRegistryEvent,
-  UpdateNameRegistryEventExpiryJobPayload,
   HubAsyncResult,
   HubError,
   bytesToHexString,
@@ -20,28 +19,24 @@ import {
   NetworkLatencyMessage,
   OnChainEvent,
   onChainEventTypeToJSON,
+  ClientOptions,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
-import { EthEventsProvider, GoerliEthConstants } from "./eth/ethEventsProvider.js";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB from "./storage/db/rocksdb.js";
+import RocksDB, { createTarBackup, extractTarBackup } from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
-import {
-  UpdateNameRegistryEventExpiryJobQueue,
-  UpdateNameRegistryEventExpiryJobWorker,
-} from "./storage/jobs/updateNameRegistryEventExpiryJob.js";
 import { sleep } from "./utils/crypto.js";
 import {
   idRegistryEventToLog,
@@ -58,15 +53,12 @@ import {
   getPublicIp,
   ipFamilyToString,
   p2pMultiAddrStr,
-  parseAddress,
 } from "./utils/p2p.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
 import { ensureAboveMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
 import { ValidateOrRevokeMessagesJobScheduler } from "./storage/jobs/validateOrRevokeMessagesJob.js";
 import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJob.js";
-import { MAINNET_ALLOWED_PEERS } from "./allowedPeers.mainnet.js";
-import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
@@ -79,23 +71,36 @@ import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
 import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
+import { statsd } from "./utils/statsd.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import path from "path";
+import { addProgressBar } from "./utils/progressBars.js";
+
+import * as fs from "fs";
+import axios from "axios";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
 export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
-export const FARCASTER_VERSION = "2023.7.12";
+export const SNAPSHOT_S3_DEFAULT_BUCKET = "download.farcaster.xyz";
+export const S3_REGION = "us-east-1";
+
+export const FARCASTER_VERSION = "2023.8.23";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
   { version: "2023.5.31", expiresAt: 1690329600000 }, // expires at 7/26/23 00:00 UTC
   { version: "2023.7.12", expiresAt: 1693958400000 }, // expires at 9/6/23 00:00 UTC
+  { version: "2023.8.23", expiresAt: 1697587200000 }, // expires at 10/18/23 00:00 UTC
 ];
 
 export interface HubInterface {
   engine: Engine;
+  identity: string;
+  hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
   submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
@@ -104,7 +109,11 @@ export interface HubInterface {
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
-  getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined>;
+  getRPCClientForPeer(
+    peerId: PeerId,
+    peer: ContactInfoContent,
+    options?: Partial<ClientOptions>,
+  ): Promise<HubRpcClient | undefined>;
 }
 
 export interface HubOptions {
@@ -149,9 +158,6 @@ export interface HubOptions {
 
   /** Rank RPCs and use the ones with best stability and latency */
   rankRpcs?: boolean;
-
-  /** Network URL(s) of the IdRegistry Contract */
-  ethRpcUrl?: string;
 
   /** ETH mainnet RPC URL(s) */
   ethMainnetRpcUrl?: string;
@@ -249,6 +255,18 @@ export interface HubOptions {
 
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers?: AddrInfo[];
+
+  /** If set, snapshot sync is disabled */
+  disableSnapshotSync?: boolean;
+
+  /** Enable daily backups to S3 */
+  enableSnapshotToS3?: boolean;
+
+  /** S3 bucket to upload snapshots to */
+  s3SnapshotBucket?: string;
+
+  /** Hub Operator's FID */
+  hubOperatorFid?: number;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -271,6 +289,8 @@ export class Hub implements HubInterface {
   private allowedPeerIds: string[] | undefined;
   private deniedPeerIds: string[];
 
+  private s3_snapshot_bucket: string;
+
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
@@ -281,11 +301,7 @@ export class Hub implements HubInterface {
   private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
 
-  private updateNameRegistryEventExpiryJobQueue: UpdateNameRegistryEventExpiryJobQueue;
-  private updateNameRegistryEventExpiryJobWorker?: UpdateNameRegistryEventExpiryJobWorker;
-
   engine: Engine;
-  ethRegistryProvider?: EthEventsProvider;
   fNameRegistryEventsProvider?: FNameRegistryEventsProvider;
   l2RegistryProvider?: L2EventsProvider;
 
@@ -294,23 +310,7 @@ export class Hub implements HubInterface {
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode(this.rocksDB, this.options.network, this.options.gossipMetricsEnabled);
 
-    // Create the ETH registry provider, which will fetch ETH events and push them into the engine.
-    // Defaults to Goerli testnet, which is currently used for Production Farcaster Hubs.
-    if (options.ethRpcUrl) {
-      this.ethRegistryProvider = EthEventsProvider.build(
-        this,
-        options.ethRpcUrl,
-        options.rankRpcs ?? false,
-        options.idRegistryAddress ?? GoerliEthConstants.IdRegistryAddress,
-        options.nameRegistryAddress ?? GoerliEthConstants.NameRegistryAddress,
-        options.firstBlock ?? GoerliEthConstants.FirstBlock,
-        options.chunkSize ?? GoerliEthConstants.ChunkSize,
-        options.resyncEthEvents ?? false,
-      );
-    } else {
-      log.warn("No ETH RPC URL provided, unable to sync ETH contract events");
-      throw new HubError("bad_request.invalid_param", "Invalid eth testnet rpc url");
-    }
+    this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
     if (!options.ethMainnetRpcUrl) {
       log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
@@ -334,7 +334,8 @@ export class Hub implements HubInterface {
         options.l2RentExpiryOverride,
       );
     } else {
-      log.warn("No L2 RPC URL provided, not syncing with L2 contract events");
+      log.warn("No L2 RPC URL provided, unable to sync L2 contract events");
+      throw new HubError("bad_request.invalid_param", "Invalid l2 rpc url");
     }
 
     if (options.fnameServerUrl && options.fnameServerUrl !== "") {
@@ -359,17 +360,10 @@ export class Hub implements HubInterface {
       chain: mainnet,
       transport: fallback(transports, { rank: options.rankRpcs ?? false }),
     });
-
     this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
 
     const profileSync = options.profileSync ?? false;
-    this.syncEngine = new SyncEngine(
-      this,
-      this.rocksDB,
-      this.ethRegistryProvider,
-      this.l2RegistryProvider,
-      profileSync,
-    );
+    this.syncEngine = new SyncEngine(this, this.rocksDB, this.l2RegistryProvider, profileSync);
 
     // If profileSync is true, exit after sync is complete
     if (profileSync) {
@@ -386,6 +380,9 @@ export class Hub implements HubInterface {
             for (const [method, p] of profile.getAllMethodProfiles()) {
               profileLog.info({ method, p });
             }
+
+            // Close the file stream
+            profile.writeOutNodeProfiles();
 
             // Also write to console for easy copy/paste
             console.log("\nTotal Time\n");
@@ -414,9 +411,6 @@ export class Hub implements HubInterface {
     );
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
-    // Setup job queues
-    this.updateNameRegistryEventExpiryJobQueue = new UpdateNameRegistryEventExpiryJobQueue(this.rocksDB);
-
     // Setup job schedulers/workers
     this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
@@ -431,21 +425,9 @@ export class Hub implements HubInterface {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
     }
 
-    if (this.ethRegistryProvider) {
-      this.updateNameRegistryEventExpiryJobWorker = new UpdateNameRegistryEventExpiryJobWorker(
-        this.updateNameRegistryEventExpiryJobQueue,
-        this.rocksDB,
-        this.ethRegistryProvider,
-      );
-    }
-
+    // Allowed peers can be undefined, which means permissionless connections
     this.allowedPeerIds = this.options.allowedPeers;
-    if (this.options.network === FarcasterNetwork.MAINNET) {
-      // Mainnet is right now resitrcited to a few peers
-      // Append and de-dup the allowed peers
-      this.allowedPeerIds = [...new Set([...(this.allowedPeerIds ?? []), ...MAINNET_ALLOWED_PEERS])];
-    }
-
+    // Denied peers by default is an empty list
     this.deniedPeerIds = this.options.deniedPeers ?? [];
   }
 
@@ -455,6 +437,10 @@ export class Hub implements HubInterface {
 
   get gossipAddresses() {
     return this.gossipNode.multiaddrs ?? [];
+  }
+
+  get hubOperatorFid() {
+    return this.options.hubOperatorFid ?? 0;
   }
 
   /** Returns the Gossip peerId string of this Hub */
@@ -471,9 +457,41 @@ export class Hub implements HubInterface {
     if (!this.options.announceIp || this.options.announceIp.trim().length === 0) {
       const ipResult = await getPublicIp();
       if (ipResult.isErr()) {
-        log.error(`failed to fetch public IP address, using ${this.options.ipMultiAddr}`, { error: ipResult.error });
+        log.error({ error: ipResult.error }, `failed to fetch public IP address, using ${this.options.ipMultiAddr}`);
       } else {
         this.options.announceIp = ipResult.value;
+      }
+    }
+
+    // Snapshot Sync
+    if (!this.options.disableSnapshotSync) {
+      try {
+        const snapshotResult = await ResultAsync.fromPromise(this.snapshotSync(), (e) => e as Error);
+        if (snapshotResult.isErr()) {
+          log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to regular sync");
+        }
+      } catch (e) {
+        log.error({ error: e }, "failed to sync snapshot, falling back to regular sync");
+      }
+    }
+
+    if (this.options.enableSnapshotToS3) {
+      // Back up the DB before opening it
+      const tarResult = await createTarBackup(this.rocksDB.location);
+
+      if (tarResult.isOk()) {
+        // Upload to S3. Run this in the background so we don't block startup.
+        setTimeout(async () => {
+          const s3Result = await this.uploadToS3(tarResult.value);
+          if (s3Result.isErr()) {
+            log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
+          }
+
+          // Delete the tar file, ignore errors
+          fs.unlink(tarResult.value, () => {});
+        }, 10);
+      } else {
+        log.error({ error: tarResult.error }, "failed to create tar backup for S3");
       }
     }
 
@@ -518,6 +536,21 @@ export class Hub implements HubInterface {
       }
     }
 
+    // Get the Network ID from the DB
+    const dbNetworkResult = await this.getDbNetwork();
+    if (dbNetworkResult.isOk() && dbNetworkResult.value && dbNetworkResult.value !== this.options.network) {
+      throw new HubError(
+        "unavailable",
+        `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. Please reset the DB with the 'yarn dbreset' if this is intentional.`,
+      );
+    }
+
+    // Set the network in the DB
+    await this.setDbNetwork(this.options.network);
+    log.info(
+      `starting hub with Farcaster version ${FARCASTER_VERSION}, app version ${APP_VERSION} and network ${this.options.network}`,
+    );
+
     // Get the DB Schema version
     const dbSchemaVersion = await this.getDbSchemaVersion();
     if (dbSchemaVersion > LATEST_DB_SCHEMA_VERSION) {
@@ -540,21 +573,6 @@ export class Hub implements HubInterface {
       log.info({ dbSchemaVersion, latestDbSchemaVersion: LATEST_DB_SCHEMA_VERSION }, "DB schema is up-to-date");
     }
 
-    // Get the Network ID from the DB
-    const dbNetworkResult = await this.getDbNetwork();
-    if (dbNetworkResult.isOk() && dbNetworkResult.value && dbNetworkResult.value !== this.options.network) {
-      throw new HubError(
-        "unavailable",
-        `network mismatch: DB is ${dbNetworkResult.value}, but Hub is started with ${this.options.network}. Please reset the DB with the "dbreset" command if this is intentional.`,
-      );
-    }
-
-    // Set the network in the DB
-    await this.setDbNetwork(this.options.network);
-    log.info(
-      `starting hub with Farcaster version ${FARCASTER_VERSION}, app version ${APP_VERSION} and network ${this.options.network}`,
-    );
-
     // Fetch network config
     if (this.options.network === FarcasterNetwork.MAINNET) {
       const networkConfig = await fetchNetworkConfig();
@@ -565,8 +583,6 @@ export class Hub implements HubInterface {
         if (shouldExit) {
           throw new HubError("unavailable", "Quitting due to network config");
         }
-
-        log.info({ networkConfig }, "Network config applied");
       }
     }
     await this.engine.start();
@@ -577,11 +593,6 @@ export class Hub implements HubInterface {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
 
-    // Start the ETH registry provider first
-    if (this.ethRegistryProvider) {
-      await this.ethRegistryProvider.start();
-    }
-
     // Start the L2 registry provider second
     if (this.l2RegistryProvider) {
       await this.l2RegistryProvider.start();
@@ -590,28 +601,9 @@ export class Hub implements HubInterface {
     await this.fNameRegistryEventsProvider?.start();
 
     // Start the sync engine
-    await this.syncEngine.initialize(this.options.rebuildSyncTrie ?? false);
+    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
-    if (this.updateNameRegistryEventExpiryJobWorker) {
-      this.updateNameRegistryEventExpiryJobWorker.start();
-    }
-
-    let bootstrapAddrs = this.options.bootstrapAddrs ?? [];
-    // Add mainnet bootstrap addresses if none are provided
-    if (bootstrapAddrs.length === 0 && this.options.network === FarcasterNetwork.MAINNET) {
-      bootstrapAddrs = MAINNET_BOOTSTRAP_PEERS.map((a) => parseAddress(a))
-        .map((r) => {
-          if (r.isErr()) {
-            logger.warn(
-              { errorCode: r.error.errCode, message: r.error.message },
-              "Couldn't parse bootstrap address from MAINNET_BOOTSTRAP_PEERS, ignoring",
-            );
-          }
-          return r;
-        })
-        .filter((a) => a.isOk())
-        .map((a) => a._unsafeUnwrap());
-    }
+    const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
     // Start the Gossip node
     await this.gossipNode.start(bootstrapAddrs, {
@@ -664,17 +656,107 @@ export class Hub implements HubInterface {
     if (shouldExit) {
       return true;
     } else {
-      if (allowedPeerIds) {
-        this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
-        this.allowedPeerIds = allowedPeerIds;
-      }
+      this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
+      this.allowedPeerIds = allowedPeerIds;
 
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
 
-      log.info({ allowedPeerIds, deniedPeerIds }, "Updated Network Config");
+      if (!this.l2RegistryProvider?.ready) {
+        if (
+          networkConfig.storageRegistryAddress &&
+          networkConfig.keyRegistryAddress &&
+          networkConfig.idRegistryAddress
+        ) {
+          this.l2RegistryProvider?.setAddresses(
+            networkConfig.storageRegistryAddress,
+            networkConfig.keyRegistryAddress,
+            networkConfig.idRegistryAddress,
+          );
+          this.l2RegistryProvider?.start();
+        }
+      }
+
+      log.info({ allowedPeerIds, deniedPeerIds }, "Network config applied");
 
       return false;
+    }
+  }
+
+  async snapshotSync() {
+    // Check if the DB location is empty. If it is, we'll try to fetch a snapshot from S3.
+    const dbLocation = this.rocksDB.location;
+    const dbFiles = Result.fromThrowable(
+      () => fs.readdirSync(dbLocation),
+      (e) => e,
+    )();
+
+    if (dbFiles.isErr() || dbFiles.value.length === 0) {
+      log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
+
+      // Step 1: Download latest.json to get the latest snapshot name
+      const network = FarcasterNetwork[this.options.network].toString();
+      const response = await axios.get(`https://download.farcaster.xyz/snapshots/${network}/latest.json`);
+      const { key } = response.data;
+
+      const latestSnapshotKey = key as string;
+      const latestSnapshotName = path.basename(latestSnapshotKey);
+
+      if (!latestSnapshotKey) {
+        log.error({ data: response.data }, "No latest snapshot name found in latest.json");
+        return;
+      }
+
+      log.info({ latestSnapshotKey, latestSnapshotName }, "found latest S3 snapshot");
+
+      // Step 2: Download the latest snapshot file
+      const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
+      const snapshotLocation = path.join(path.dirname(dbLocation), latestSnapshotName);
+
+      const writeStream = fs.createWriteStream(snapshotLocation);
+
+      const response2 = await axios.get(snapshotUrl, { responseType: "stream" });
+      response2.data.pipe(writeStream);
+
+      // Setup a progress bar to show download progress
+      const totalSize = parseInt(response2.headers["content-length"], 10);
+      let downloadedSize = 0;
+      const progressBar = addProgressBar("Getting snapshot", totalSize);
+
+      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      response2.data.on("data", (chunk: any) => {
+        downloadedSize += chunk.length;
+        progressBar?.update(downloadedSize);
+      });
+
+      // Wait for the stream to finish
+      const streamResult = await new Promise<Result<boolean, string>>((resolve) => {
+        writeStream.on("finish", () => resolve(ok(true)));
+        writeStream.on("error", (e) => resolve(err(e.message)));
+      });
+
+      progressBar?.update(totalSize);
+      progressBar?.stop();
+      writeStream.close();
+
+      if (streamResult.isErr()) {
+        log.error({ error: streamResult.error }, "failed to stream snapshot from S3");
+        return;
+      }
+
+      log.info({ snapshotLocation, bytesWritten: writeStream.bytesWritten }, "snapshot downloaded from S3");
+
+      // Extract the tar file
+      const extractProgressBar = addProgressBar("Extracting snapshot", totalSize);
+      const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation), extractProgressBar);
+      if (extractResult.isErr()) {
+        log.error({ error: extractResult.error }, "failed to extract snapshot from S3. Snapshot sync disabled");
+        return;
+      }
+
+      log.info({ dbLocation, bytesWritten: writeStream.bytesWritten }, "snapshot extracted from S3");
+      // Delete the tar file, ignore errors
+      fs.unlink(snapshotLocation, () => {});
     }
   }
 
@@ -722,26 +804,16 @@ export class Hub implements HubInterface {
     // Stop admin, gossip and sync engine
     await Promise.all([this.adminServer.stop(), this.gossipNode.stop(), this.syncEngine.stop()]);
 
-    if (this.updateNameRegistryEventExpiryJobWorker) {
-      this.updateNameRegistryEventExpiryJobWorker.stop();
-    }
-
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();
     this.periodSyncJobScheduler.stop();
     this.pruneEventsJobScheduler.stop();
     this.checkFarcasterVersionJobScheduler.stop();
     this.testDataJobScheduler?.stop();
-    this.updateNameRegistryEventExpiryJobWorker?.stop();
     this.validateOrRevokeMessagesJobScheduler.stop();
     this.gossipContactInfoJobScheduler.stop();
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
-
-    // Stop the ETH registry provider
-    if (this.ethRegistryProvider) {
-      await this.ethRegistryProvider.stop();
-    }
 
     // Stop the L2 registry provider
     if (this.l2RegistryProvider) {
@@ -940,26 +1012,34 @@ export class Hub implements HubInterface {
   /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,
    *  and fall back to the non-SSL version
    */
-  private async getHubRpcClient(address: string): Promise<HubRpcClient> {
+  private async getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient> {
     return new Promise((resolve) => {
       try {
-        const sslClientResult = getSSLHubRpcClient(address);
+        const sslClientResult = getSSLHubRpcClient(address, options);
 
         sslClientResult.$.waitForReady(Date.now() + 2000, (err) => {
           if (!err) {
             resolve(sslClientResult);
           } else {
-            resolve(getInsecureHubRpcClient(address));
+            Result.fromThrowable(
+              () => sslClientResult.close(),
+              (e) => e as Error,
+            )();
+            resolve(getInsecureHubRpcClient(address, options));
           }
         });
       } catch (e) {
         // Fall back to insecure client
-        resolve(getInsecureHubRpcClient(address));
+        resolve(getInsecureHubRpcClient(address, options));
       }
     });
   }
 
-  public async getRPCClientForPeer(peerId: PeerId, peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
+  public async getRPCClientForPeer(
+    peerId: PeerId,
+    peer: ContactInfoContent,
+    options?: Partial<ClientOptions>,
+  ): Promise<HubRpcClient | undefined> {
     /*
      * Find the peer's addrs from our peer list because we cannot use the address
      * in the contact info directly
@@ -1009,7 +1089,7 @@ export class Hub implements HubInterface {
     };
 
     try {
-      return await this.getHubRpcClient(addressInfoToString(ai));
+      return await this.getHubRpcClient(addressInfoToString(ai), options);
     } catch (e) {
       log.error({ error: e, peer, peerId, addressInfo: ai }, "unable to connect to peer");
       // If the peer is unreachable (e.g. behind a firewall), remove it from our address book
@@ -1061,6 +1141,8 @@ export class Hub implements HubInterface {
       return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
     }
 
+    const start = Date.now();
+
     const mergeResult = await this.engine.mergeMessage(message);
 
     mergeResult.match(
@@ -1081,7 +1163,8 @@ export class Hub implements HubInterface {
         }
       },
       (e) => {
-        logMessage.warn({ errCode: e.errCode }, `submitMessage error: ${e.message}`);
+        logMessage.warn({ errCode: e.errCode, source }, `submitMessage error: ${e.message}`);
+        statsd().increment(`submit_message.error.${source}.${e.errCode}`);
       },
     );
 
@@ -1089,6 +1172,8 @@ export class Hub implements HubInterface {
     if (mergeResult.isOk() && source === "rpc") {
       void this.gossipNode.gossipMessage(message);
     }
+
+    statsd().timing("hub.merge_message", Date.now() - start);
 
     return mergeResult;
   }
@@ -1100,7 +1185,7 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logEvent.info(
+        logEvent.debug(
           `submitIdRegistryEvent success ${eventId}: fid ${event.fid} assigned to ${bytesToHexString(
             event.to,
           )._unsafeUnwrap()} in block ${event.blockNumber}`,
@@ -1121,7 +1206,7 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logEvent.info(
+        logEvent.debug(
           `submitNameRegistryEvent success ${eventId}: fname ${bytesToUtf8String(
             event.fname,
           )._unsafeUnwrap()} assigned to ${bytesToHexString(event.to)._unsafeUnwrap()} in block ${event.blockNumber}`,
@@ -1131,11 +1216,6 @@ export class Hub implements HubInterface {
         logEvent.warn({ errCode: e.errCode }, `submitNameRegistryEvent error: ${e.message}`);
       },
     );
-
-    if (!event.expiry) {
-      const payload = UpdateNameRegistryEventExpiryJobPayload.create({ fname: event.fname });
-      await this.updateNameRegistryEventExpiryJobQueue.enqueueJob(payload);
-    }
 
     return mergeResult;
   }
@@ -1147,10 +1227,14 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        logEvent.info(
-          `submitUserNameProof success ${eventId}: fname ${bytesToUtf8String(
-            usernameProof.name,
-          )._unsafeUnwrap()} assigned to fid: ${usernameProof.fid} at timestamp ${usernameProof.timestamp}`,
+        logEvent.debug(
+          {
+            eventId,
+            name: bytesToUtf8String(usernameProof.name).unwrapOr(""),
+            fid: usernameProof.fid,
+            timestamp: usernameProof.timestamp,
+          },
+          "submitUserNameProof success",
         );
       },
       (e) => {
@@ -1282,5 +1366,47 @@ export class Hub implements HubInterface {
     }
 
     return true;
+  }
+
+  async uploadToS3(filePath: string): HubAsyncResult<string> {
+    const network = FarcasterNetwork[this.options.network].toString();
+
+    const s3 = new S3Client({
+      region: S3_REGION,
+    });
+
+    // The AWS key is "snapshots/{network}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
+    const key = `snapshots/${network}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
+      Date.now() / 1000,
+    )}.tar.gz`;
+
+    const start = Date.now();
+    log.info({ filePath }, "Uploading snapshot to S3");
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on("error", function (err) {
+      log.error(`S3 File Error: ${err}`);
+    });
+
+    const targzParams = {
+      Bucket: this.s3_snapshot_bucket,
+      Key: key,
+      Body: fileStream,
+    };
+
+    const latestJsonParams = {
+      Bucket: this.s3_snapshot_bucket,
+      Key: `snapshots/${network}/latest.json`,
+      Body: JSON.stringify({ key, timestamp: Date.now(), serverDate: new Date().toISOString() }),
+    };
+
+    try {
+      await s3.send(new PutObjectCommand(targzParams));
+      await s3.send(new PutObjectCommand(latestJsonParams));
+      log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
+      return ok(key);
+    } catch (e: unknown) {
+      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    }
   }
 }

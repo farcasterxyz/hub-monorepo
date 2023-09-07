@@ -1,5 +1,5 @@
 import { ClientReadableStream, HubEvent, HubEventType, HubRpcClient } from "@farcaster/hub-nodejs";
-import { Result, ok, err } from "neverthrow";
+import { err, ok, Result } from "neverthrow";
 import { Logger } from "pino";
 import { TypedEmitter } from "tiny-typed-emitter";
 
@@ -56,6 +56,8 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
         HubEventType.PRUNE_MESSAGE,
         HubEventType.MERGE_ID_REGISTRY_EVENT,
         HubEventType.MERGE_NAME_REGISTRY_EVENT,
+        HubEventType.MERGE_ON_CHAIN_EVENT,
+        HubEventType.MERGE_USERNAME_PROOF,
       ],
       fromId,
     };

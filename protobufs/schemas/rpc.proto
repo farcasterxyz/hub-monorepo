@@ -32,8 +32,6 @@ service HubService {
   rpc GetUserData(UserDataRequest) returns (Message);
   rpc GetUserDataByFid(FidRequest) returns (MessagesResponse);
   rpc GetNameRegistryEvent(NameRegistryEventRequest) returns (NameRegistryEvent);
-  rpc GetOnChainEvents(OnChainEventRequest) returns (OnChainEventResponse);
-  rpc GetCurrentStorageLimitsByFid(FidRequest) returns (StorageLimitsResponse);
 
   // Username Proof
   rpc GetUsernameProof(UsernameProofRequest) returns (UserNameProof);
@@ -45,8 +43,15 @@ service HubService {
 
   // Signer
   rpc GetSigner(SignerRequest) returns (Message);
-  rpc GetOnChainSigner(SignerRequest) returns (OnChainEvent);
   rpc GetSignersByFid(FidRequest) returns (MessagesResponse);
+
+  // OnChain Events
+  rpc GetOnChainSigner(SignerRequest) returns (OnChainEvent);
+  rpc GetOnChainSignersByFid(FidRequest) returns (OnChainEventResponse);
+  rpc GetOnChainEvents(OnChainEventRequest) returns (OnChainEventResponse);
+  rpc GetIdRegistryOnChainEventByAddress(IdRegistryEventByAddressRequest) returns (OnChainEvent);
+  rpc GetCurrentStorageLimitsByFid(FidRequest) returns (StorageLimitsResponse);
+
   rpc GetIdRegistryEvent(IdRegistryEventRequest) returns (IdRegistryEvent);
   rpc GetIdRegistryEventByAddress(IdRegistryEventByAddressRequest) returns (IdRegistryEvent);
   rpc GetFids(FidsRequest) returns (FidsResponse);

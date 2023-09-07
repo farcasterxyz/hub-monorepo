@@ -5,4 +5,4 @@
 "@farcaster/hubble": patch
 ---
 
-feat: on chain event ordering updated to be more consistent
+feat: Add storage limit constants to core

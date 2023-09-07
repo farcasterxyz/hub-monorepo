@@ -176,3 +176,23 @@ describe("pruneEvents", () => {
     expect(allEvents3._unsafeUnwrap()).toMatchObject([eventArgs3, eventArgs4]);
   });
 });
+
+describe("getCurrentStorageUnitsForFid", () => {
+  const fid = Factories.Fid.build();
+
+  test("defaults to 1 before migration", async () => {
+    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(1));
+  });
+
+  test("defaults to 1 during migration pruning grace period", async () => {
+    // Assume migration happened 1 minute ago
+    eventHandler.signerMigrated(Date.now() / 1000 - 60);
+    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(1));
+  });
+
+  test("returns actual storage available after migration pruning grace period", async () => {
+    // Assume migration happened 2 days
+    eventHandler.signerMigrated(Date.now() / 1000 - 60 * 60 * 24 * 2);
+    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(0));
+  });
+});

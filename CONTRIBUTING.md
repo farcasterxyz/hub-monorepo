@@ -12,6 +12,8 @@
    4. [Creating the PR](#34-creating-the-pr)
    5. [Adding Changesets](#35-adding-changesets)
    6. [Releasing Versions](#36-releasing-versions)
+   7. [Working in Rust](#37-working-in-rust)
+   8. [DB Migrations](#38-db-migrations)
 4. [Troubleshooting](#4-troubleshooting)
 
 ## 1. How to Contribute
@@ -278,12 +280,13 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 2. Check that the version bumps are consistent with our versioning system
 3. Check that all CHANGELOG.mds represent the important changes made
 4. Check in all the files and merge the branch to main
-5. Checkout main, pull down to the merged commit (should be latest) and run `yarn changeset publish`
-6. Manually tag Hubble with `git tag -a @farcaster/hubble@<version>` if version was changed..
-7. Update the `@latest` tag: `git tag -f @latest`
-8. Push all tags to the remote repo: `git push origin @latest --force && git push origin HEAD --tags`
-9. Create a GitHub Release for Hubble, marking it as the latest.
-10. If this is a non-patch change, create an NFT for the release.
+5. Checkout main, pull down to the merged commit (should be latest) and run `yarn build`
+6. Publish changes by running `yarn changeset publish`
+7. Manually tag Hubble with `git tag -a @farcaster/hubble@<version>` if version was changed..
+8. Update the `@latest` tag: `git tag -f @latest`
+9. Push all tags to the remote repo: `git push origin @latest --force && git push origin HEAD --tags`
+10. Create a GitHub Release for Hubble, marking it as the latest.
+11. If this is a non-patch change, create an NFT for the release.
 
 ### 3.7 Working in Rust
 
@@ -293,6 +296,16 @@ To add new code to Rust,
 1. Add it to `packages/core/src/addon/`
 2. Add a bridge implementation and types into `packages/core/src/addon/addon.js` and `packages/core/src/addon/addon.d.ts`
 3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throught the project to transparently call into Rust from Typescript
+
+### 3.8 DB Migrations
+
+One-time changes to RocksDB and the data stored can be made as a part of migrations. Migrations are scripts that are run once, at startup. They are run blocking, so you can safely make big changes before the Hub starts running.
+
+1. Create a new function in `apps/hubble/src/db/migrations/` that executes the change and its associated tests
+2. Increment `LATEST_DB_SCHEMA_VERSION` in `migrations.ts`
+3. Add a new entry to the `migrations` constant with the migration number and the function to execute the migration in `migrations.ts`
+
+When users upgrade their hub and restart, the migration is executed at startup.
 
 ## 4. Troubleshooting
 

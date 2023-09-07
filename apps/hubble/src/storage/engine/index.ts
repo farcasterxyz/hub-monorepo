@@ -6,6 +6,7 @@ import {
   CastId,
   CastRemoveMessage,
   FarcasterNetwork,
+  getStoreLimits,
   hexStringToBytes,
   HubAsyncResult,
   HubError,
@@ -14,6 +15,7 @@ import {
   IdRegistryEvent,
   IdRegistryEventType,
   isSignerAddMessage,
+  isSignerMigratedOnChainEvent,
   isSignerOnChainEvent,
   isSignerRemoveMessage,
   isUserDataAddMessage,
@@ -30,11 +32,9 @@ import {
   OnChainEvent,
   OnChainEventResponse,
   OnChainEventType,
-  PruneMessageHubEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
-  RevokeMessageHubEvent,
   RevokeMessagesBySignerJobPayload,
   SignerAddMessage,
   SignerEventType,
@@ -57,14 +57,14 @@ import { Worker } from "worker_threads";
 import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
 import { TSHASH_LENGTH, UserPostfix } from "../db/types.js";
-import CastStore, { CAST_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/castStore.js";
-import LinkStore, { LINK_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/linkStore.js";
-import ReactionStore, { REACTION_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/reactionStore.js";
+import CastStore from "../stores/castStore.js";
+import LinkStore from "../stores/linkStore.js";
+import ReactionStore from "../stores/reactionStore.js";
 import SignerStore from "../stores/signerStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
-import UserDataStore, { USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/userDataStore.js";
-import VerificationStore, { VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT } from "../stores/verificationStore.js";
+import UserDataStore from "../stores/userDataStore.js";
+import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
@@ -89,8 +89,8 @@ class Engine {
   private _db: RocksDB;
   private _network: FarcasterNetwork;
   private _publicClient: PublicClient | undefined;
-  // Used to determine if hubs have migrated to onChain signers
-  private _isSignerMigrated = false;
+  // Used to determine when hubs have migrated to onChain signers
+  private _signerMigratedAt = 0;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -147,8 +147,6 @@ class Engine {
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
     this.handleMergeUsernameProofEvent = this.handleMergeUsernameProofEvent.bind(this);
-    this.handleRevokeMessageEvent = this.handleRevokeMessageEvent.bind(this);
-    this.handlePruneMessageEvent = this.handlePruneMessageEvent.bind(this);
     this.handleMergeOnChainEvent = this.handleMergeOnChainEvent.bind(this);
   }
 
@@ -195,21 +193,20 @@ class Engine {
     this.eventHandler.on("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.on("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.on("mergeMessage", this.handleMergeMessageEvent);
-    this.eventHandler.on("revokeMessage", this.handleRevokeMessageEvent);
-    this.eventHandler.on("pruneMessage", this.handlePruneMessageEvent);
     this.eventHandler.on("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     await this.eventHandler.syncCache();
-    const isMigrated = await this._onchainEventsStore.isSignerMigrated();
-    if (isMigrated.isOk()) {
-      this._isSignerMigrated = isMigrated.value;
+    const migratedAt = await this._onchainEventsStore.getSignerMigratedAt();
+    if (migratedAt.isOk()) {
+      this._signerMigratedAt = migratedAt.value;
+      this.eventHandler.signerMigrated(this._signerMigratedAt);
     } else {
       log.error(
-        { errCode: isMigrated.error.errCode },
-        `error checking if hubs have migrated to onChain signers: ${isMigrated.error.message}`,
+        { errCode: migratedAt.error.errCode },
+        `error checking if hubs have migrated to onChain signers: ${migratedAt.error.message}`,
       );
     }
-    log.info(`engine started (signer migrated: ${this._isSignerMigrated}`);
+    log.info(`engine started (signer migrated: ${this._signerMigratedAt})`);
   }
 
   async stop(): Promise<void> {
@@ -217,8 +214,6 @@ class Engine {
     this.eventHandler.off("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.off("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.off("mergeMessage", this.handleMergeMessageEvent);
-    this.eventHandler.off("revokeMessage", this.handleRevokeMessageEvent);
-    this.eventHandler.off("pruneMessage", this.handlePruneMessageEvent);
     this.eventHandler.off("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     this._revokeSignerWorker.start();
@@ -237,16 +232,28 @@ class Engine {
     return this._db;
   }
 
+  get isMigrated(): boolean {
+    return this._signerMigratedAt > 0;
+  }
+
   async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
 
   async mergeMessage(message: Message): HubAsyncResult<number> {
+    const validatedMessage = await this.validateMessage(message);
+    if (validatedMessage.isErr()) {
+      return err(validatedMessage.error);
+    }
+
     // Extract the FID that this message was signed by
     const fid = message.data?.fid ?? 0;
     const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
 
     if (storageUnits.isOk()) {
+      if (storageUnits.value === 0) {
+        return err(new HubError("bad_request.prunable", "no storage"));
+      }
       // We rate limit the number of messages that can be merged per FID
       const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
 
@@ -255,11 +262,6 @@ class Engine {
         logger.warn({ fid, err: rateLimitResult.error }, "rate limit exceeded for FID");
         return err(rateLimitResult.error);
       }
-    }
-
-    const validatedMessage = await this.validateMessage(message);
-    if (validatedMessage.isErr()) {
-      return err(validatedMessage.error);
     }
 
     // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
@@ -315,23 +317,19 @@ class Engine {
   }
 
   async mergeOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {
-    if (
-      event.type === OnChainEventType.EVENT_TYPE_SIGNER ||
-      event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED ||
-      event.type === OnChainEventType.EVENT_TYPE_ID_REGISTER ||
-      event.type === OnChainEventType.EVENT_TYPE_STORAGE_RENT
-    ) {
-      const result = await ResultAsync.fromPromise(
-        this._onchainEventsStore.mergeOnChainEvent(event),
-        (e) => e as HubError,
-      );
-      if (result.isOk() && event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED) {
-        this._isSignerMigrated = true;
-      }
-      return result;
+    const eventResult = await this.validateOnChainEvent(event);
+    if (eventResult.isErr()) {
+      return err(eventResult.error);
     }
-
-    return err(new HubError("bad_request.validation_failure", "invalid event type"));
+    const mergeResult = await ResultAsync.fromPromise(
+      this._onchainEventsStore.mergeOnChainEvent(event),
+      (e) => e as HubError,
+    );
+    if (mergeResult.isOk() && isSignerMigratedOnChainEvent(event)) {
+      this._signerMigratedAt = event.signerMigratedEventBody.migratedAt;
+      this.eventHandler.signerMigrated(event.signerMigratedEventBody.migratedAt);
+    }
+    return mergeResult;
   }
 
   async mergeUserNameProof(usernameProof: UserNameProof): HubAsyncResult<number> {
@@ -697,6 +695,15 @@ class Engine {
     return ResultAsync.fromPromise(this._onchainEventsStore.getActiveSigner(fid, signerPubKey), (e) => e as HubError);
   }
 
+  async getOnChainSignersByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<OnChainEventResponse> {
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(this._onchainEventsStore.getSignersByFid(fid, pageOptions), (e) => e as HubError);
+  }
+
   async getSignersByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<MessagesPage<SignerAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -714,11 +721,22 @@ class Engine {
     return ResultAsync.fromPromise(this._signerStore.getIdRegistryEventByAddress(address), (e) => e as HubError);
   }
 
+  async getIdRegistryOnChainEventByAddress(address: Uint8Array): HubAsyncResult<OnChainEvent> {
+    return ResultAsync.fromPromise(
+      this._onchainEventsStore.getIdRegisterEventByCustodyAddress(address),
+      (e) => e as HubError,
+    );
+  }
+
   async getFids(pageOptions: PageOptions = {}): HubAsyncResult<{
     fids: number[];
     nextPageToken: Uint8Array | undefined;
   }> {
-    return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
+    if (this._signerMigratedAt) {
+      return ResultAsync.fromPromise(this._onchainEventsStore.getFids(pageOptions), (e) => e as HubError);
+    } else {
+      return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
+    }
   }
 
   async getAllSignerMessagesByFid(
@@ -783,28 +801,7 @@ class Engine {
     }
 
     return ok({
-      limits: [
-        {
-          storeType: StoreType.CASTS,
-          limit: CAST_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
-        },
-        {
-          storeType: StoreType.LINKS,
-          limit: LINK_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
-        },
-        {
-          storeType: StoreType.REACTIONS,
-          limit: REACTION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
-        },
-        {
-          storeType: StoreType.USER_DATA,
-          limit: USER_DATA_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
-        },
-        {
-          storeType: StoreType.VERIFICATIONS,
-          limit: VERIFICATION_PRUNE_SIZE_LIMIT_DEFAULT * units.value,
-        },
-      ],
+      limits: getStoreLimits(units.value),
     });
   }
 
@@ -839,8 +836,22 @@ class Engine {
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
-
-    return ResultAsync.fromPromise(this._usernameProofStore.getUsernameProofsByFid(fid), (e) => e as HubError);
+    const proofs: UserNameProof[] = [];
+    const fnameProof = await ResultAsync.fromPromise(
+      this._userDataStore.getUserNameProofByFid(fid),
+      (e) => e as HubError,
+    );
+    if (fnameProof.isOk()) {
+      proofs.push(fnameProof.value);
+    }
+    const ensProofs = await ResultAsync.fromPromise(
+      this._usernameProofStore.getUsernameProofsByFid(fid),
+      (e) => e as HubError,
+    );
+    if (ensProofs.isOk()) {
+      proofs.push(...ensProofs.value);
+    }
+    return ok(proofs);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -925,6 +936,24 @@ class Engine {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
+  private async validateOnChainEvent(event: OnChainEvent): HubAsyncResult<OnChainEvent> {
+    if (!event) {
+      return err(new HubError("bad_request.validation_failure", "event is missing"));
+    }
+
+    if (
+      !(
+        event.type === OnChainEventType.EVENT_TYPE_SIGNER ||
+        event.type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED ||
+        event.type === OnChainEventType.EVENT_TYPE_ID_REGISTER ||
+        event.type === OnChainEventType.EVENT_TYPE_STORAGE_RENT
+      )
+    ) {
+      return err(new HubError("bad_request.validation_failure", "invalid event type"));
+    }
+    return ok(event);
+  }
+
   private async validateMessage(message: Message): HubAsyncResult<Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
@@ -943,7 +972,7 @@ class Engine {
 
     // 3. Check that the user has a custody address
     let custodyAddress: Uint8Array | undefined;
-    if (this._isSignerMigrated) {
+    if (this._signerMigratedAt) {
       const custodyEvent = await ResultAsync.fromPromise(
         this._onchainEventsStore.getIdRegisterEventByFid(message.data.fid),
         (e) => e as HubError,
@@ -970,7 +999,7 @@ class Engine {
     // 4. Check that the signer is valid
     if (isSignerAddMessage(message) || isSignerRemoveMessage(message)) {
       // TODO: should we be checking the timestamp instead?
-      if (this._isSignerMigrated) {
+      if (this._signerMigratedAt) {
         return err(
           new HubError(
             "bad_request.validation_failure",
@@ -991,7 +1020,7 @@ class Engine {
       }
     } else {
       let signerExists: boolean;
-      if (this._isSignerMigrated) {
+      if (this._signerMigratedAt) {
         const result = await ResultAsync.fromPromise(
           this._onchainEventsStore.getActiveSigner(message.data.fid, message.signer),
           (e) => e,
@@ -1010,7 +1039,7 @@ class Engine {
           return err(
             new HubError(
               "bad_request.validation_failure",
-              `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid} (migrated: ${this._isSignerMigrated})`,
+              `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid} (migrated: ${this._signerMigratedAt})`,
             ),
           );
         });
@@ -1207,46 +1236,6 @@ class Engine {
       const payload = RevokeMessagesBySignerJobPayload.create({
         fid: message.data.fid,
         signer: message.data.signerRemoveBody.signer,
-      });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
-        );
-      }
-    }
-
-    return ok(undefined);
-  }
-
-  private async handlePruneMessageEvent(event: PruneMessageHubEvent): HubAsyncResult<void> {
-    const { message } = event.pruneMessageBody;
-
-    if (isSignerAddMessage(message)) {
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: message.data.fid,
-        signer: message.data.signerAddBody.signer,
-      });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
-        );
-      }
-    }
-
-    return ok(undefined);
-  }
-
-  private async handleRevokeMessageEvent(event: RevokeMessageHubEvent): HubAsyncResult<void> {
-    const { message } = event.revokeMessageBody;
-
-    if (isSignerAddMessage(message)) {
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: message.data.fid,
-        signer: message.data.signerAddBody.signer,
       });
       const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
       if (enqueueRevoke.isErr()) {

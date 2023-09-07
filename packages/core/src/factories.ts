@@ -657,7 +657,8 @@ const SignerEventBodyFactory = Factory.define<protobufs.SignerEventBody>(() => {
   return SignerEventBody.create({
     key: Ed25519PPublicKeyFactory.build(),
     eventType: SignerEventType.ADD,
-    scheme: 1,
+    keyType: 1,
+    metadataType: 1,
   });
 });
 
@@ -687,7 +688,7 @@ const SignerMigratedOnChainEventFactory = Factory.define<SignerMigratedOnChainEv
     type: OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
     fid: 0,
     signerMigratedEventBody: SignerMigratedEventBody.create({
-      migratedAt: Math.floor(faker.datatype.datetime().getTime() / 1000),
+      migratedAt: Math.floor(Date.now() / 1000) + 48 * 60 * 60, // Default to 48 hours in the future so pruning is not enabled
     }),
   }) as protobufs.SignerMigratedOnChainEvent;
 });

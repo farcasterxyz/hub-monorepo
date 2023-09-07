@@ -1,5 +1,25 @@
 # @farcaster/hub-nodejs
 
+## 0.10.5
+
+### Patch Changes
+
+- bf1c44d2: feat: Update signer onchain event to store new fields and add additional RPC calls
+- Updated dependencies [e6180074]
+- Updated dependencies [bf1c44d2]
+  - @farcaster/core@0.12.5
+
+## 0.10.4
+
+### Patch Changes
+
+- e55e571f: feat: Add "getting blockchain events" to hub status
+- c6d79cdb: feat: on chain event ordering updated to be more consistent
+- Updated dependencies [e55e571f]
+- Updated dependencies [1fcfd495]
+- Updated dependencies [c6d79cdb]
+  - @farcaster/core@0.12.4
+
 ## 0.10.3
 
 ### Patch Changes

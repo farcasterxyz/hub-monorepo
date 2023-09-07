@@ -1,5 +1,6 @@
 import { HubRpcClient } from "@farcaster/hub-nodejs";
 import { formatNumber } from "../../profile/profile.js";
+import * as fs from "fs";
 
 // Class to collect stats
 export class MethodCallProfile {
@@ -86,6 +87,7 @@ export class MethodProfile {
 export class SyncEngineProfiler {
   private _methodProfiles: Map<string, MethodProfile>;
   private _syncStartTime: number;
+  private syncTrieNodeProfiles: fs.WriteStream;
 
   constructor() {
     this._methodProfiles = new Map();
@@ -96,6 +98,17 @@ export class SyncEngineProfiler {
     this._methodProfiles.set("mergeMessages", new MethodProfile("mergeMessages"));
 
     this._syncStartTime = 0;
+
+    // Open a new file called "nodeprofiles.log" and write to it
+    this.syncTrieNodeProfiles = fs.createWriteStream("nodeprofiles.log");
+  }
+
+  public writeNodeProfile(nodeProfile: string) {
+    this.syncTrieNodeProfiles.write(nodeProfile + "\n");
+  }
+
+  public writeOutNodeProfiles() {
+    this.syncTrieNodeProfiles.end();
   }
 
   public getAllMethodProfiles(): Map<string, MethodProfile> {
