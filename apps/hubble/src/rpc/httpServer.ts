@@ -172,6 +172,11 @@ export class HttpAPIServer {
 
     this.initHandlers();
 
+    // Handle binary data
+    this.app.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, function (req, body, done) {
+      done(null, body);
+    });
+
     this.app.setErrorHandler((error, request, reply) => {
       log.error({ err: error, errMsg: error.message, request }, "Error in http request");
       reply.code(500).send({ error: error.message });
@@ -189,6 +194,7 @@ export class HttpAPIServer {
       this.grpcImpl.getCast(call, handleResponse(reply, Message));
     });
 
+    // /casts/:fid?type=...
     this.app.get<{ Params: { fid: string }; Querystring: QueryPageParams }>("/v1/casts/:fid", (request, reply) => {
       const { fid } = request.params;
       const pageOptions = getPageOptions(request.query);
@@ -493,6 +499,58 @@ export class HttpAPIServer {
         request,
       );
       this.grpcImpl.getIdRegistryOnChainEventByAddress(call, handleResponse(reply, OnChainEvent));
+    });
+
+    //==================Submit Message==================
+    // POST /v1/submitMessage
+    this.app.post<{ Body: Buffer }>("/v1/submitMessage", (request, reply) => {
+      // Get the Body content-type
+      const contentType = request.headers["content-type"] as string;
+
+      let message;
+      if (contentType === "application/octet-stream") {
+        // The Posted Body is a serialized Message protobuf
+        const parsedMessage = Result.fromThrowable(
+          () => Message.decode(request.body),
+          (e) => e as Error,
+        )();
+
+        if (parsedMessage.isErr()) {
+          reply.code(400).send({
+            error:
+              "Could not parse Message. This API accepts only Message protobufs encoded into bytes (application/octet-stream)",
+            errorDetail: parsedMessage.error.message,
+          });
+          return;
+        } else {
+          message = parsedMessage.value;
+        }
+      } else if (contentType === "application/json") {
+        // The Posted Body is a JSON object
+        const parsedMessage = Result.fromThrowable(
+          () => Message.fromJSON(request.body),
+          (e) => e as Error,
+        )();
+
+        if (parsedMessage.isErr()) {
+          reply.code(400).send({
+            error: "Could not parse Message. This API accepts Message as JSON objects (application/json)",
+            errorDetail: parsedMessage.error.message,
+          });
+          return;
+        } else {
+          message = parsedMessage.value;
+        }
+      } else {
+        reply.code(400).send({
+          error: "Unsupported Media Type",
+          errorDetail: `Content-Type ${contentType} is not supported`,
+        });
+        return;
+      }
+
+      const call = getCallObject("submitMessage", message, request);
+      this.grpcImpl.submitMessage(call, handleResponse(reply, Message));
     });
   }
 

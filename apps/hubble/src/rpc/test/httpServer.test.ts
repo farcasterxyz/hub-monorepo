@@ -83,6 +83,59 @@ describe("httpServer", () => {
     await engine.mergeMessage(signerAdd);
   });
 
+  describe("submit APIs", () => {
+    let castAdd: CastAddMessage;
+
+    beforeAll(async () => {
+      castAdd = await Factories.CastAddMessage.create({ data: { fid, network, timestamp } }, { transient: { signer } });
+    });
+
+    test("submitCast binary", async () => {
+      const postConfig = { headers: { "Content-Type": "application/octet-stream" } };
+      const url = getFullUrl("/v1/submitMessage");
+
+      // Encode the message into a Buffer (of bytes)
+      const messageBytes = Buffer.from(Message.encode(castAdd).finish());
+      const response = await axios.post(url, messageBytes, postConfig);
+
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual(protoToJSON(castAdd, Message));
+
+      let errored = false;
+      try {
+        // Post bad data
+        await axios.post(url, Buffer.from("bad data"), postConfig);
+      } catch (e) {
+        errored = true;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        expect((e as any).response.status).toBe(400);
+      }
+      expect(errored).toBeTruthy();
+    });
+
+    test("submitCast json", async () => {
+      const postConfig = { headers: { "Content-Type": "application/json" } };
+      const url = getFullUrl("/v1/submitMessage");
+      const response = await axios.post(url, JSON.stringify(Message.toJSON(castAdd)), postConfig);
+
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual(protoToJSON(castAdd, Message));
+
+      let errored = false;
+      try {
+        // Post bad data
+        await axios.post(url, "bad data");
+      } catch (e) {
+        errored = true;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        expect((e as any).response.status).toBe(500);
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        expect((e as any).response.data.error).toContain("Unsupported Media Type");
+      }
+      expect(errored).toBeTruthy();
+    });
+  });
+
   describe("cast APIs", () => {
     let castAdd: CastAddMessage;
 
