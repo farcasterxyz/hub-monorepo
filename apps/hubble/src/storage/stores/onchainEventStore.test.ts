@@ -1,5 +1,5 @@
 import { jestRocksDB } from "../db/jestUtils.js";
-import OnChainEventStore from "./onChainEventStore.js";
+import OnChainEventStore, { MIGRATION_BLOCK } from "./onChainEventStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   Factories,
@@ -40,10 +40,12 @@ describe("OnChainEventStore", () => {
         const badSignerEvent = Factories.SignerOnChainEvent.build({
           logIndex: txIndex, // Log index was incorrectly set to txIndex
           txIndex: 0, // Did not have this field
+          blockNumber: MIGRATION_BLOCK - 100,
         });
         const badRegisterEvent = Factories.IdRegistryOnChainEvent.build({
           logIndex: txIndex, // Log index was incorrectly set to txIndex
           txIndex: 0, // Did not have this field
+          blockNumber: MIGRATION_BLOCK - 10,
         });
         await set.mergeOnChainEvent(badSignerEvent);
         await set.mergeOnChainEvent(badRegisterEvent);
