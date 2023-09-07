@@ -37,18 +37,45 @@ describe("OnChainEventStore", () => {
         // If we re-merge the same event, then we should silently replace the old event with the correct one
         const txIndex = 2;
         const logIndex = 10;
-        const badOnChainEvent = Factories.SignerOnChainEvent.build({
+        const badSignerEvent = Factories.SignerOnChainEvent.build({
           logIndex: txIndex, // Log index was incorrectly set to txIndex
           txIndex: 0, // Did not have this field
         });
-        await set.mergeOnChainEvent(badOnChainEvent);
-        badOnChainEvent.txIndex = txIndex;
-        badOnChainEvent.logIndex = logIndex;
-        await expect(set.mergeOnChainEvent(badOnChainEvent)).rejects.toThrow("already exists");
-        const mergedEvents = await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER, badOnChainEvent.fid);
-        expect(mergedEvents).toHaveLength(1);
-        expect(mergedEvents[0]?.txIndex).toEqual(txIndex);
-        expect(mergedEvents[0]?.logIndex).toEqual(logIndex);
+        const badRegisterEvent = Factories.IdRegistryOnChainEvent.build({
+          logIndex: txIndex, // Log index was incorrectly set to txIndex
+          txIndex: 0, // Did not have this field
+        });
+        await set.mergeOnChainEvent(badSignerEvent);
+        await set.mergeOnChainEvent(badRegisterEvent);
+        badSignerEvent.txIndex = txIndex;
+        badSignerEvent.logIndex = logIndex;
+        badRegisterEvent.txIndex = txIndex;
+        badRegisterEvent.logIndex = logIndex;
+
+        await expect(set.mergeOnChainEvent(badSignerEvent)).rejects.toThrow("already exists");
+        const signerEvents = await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER, badSignerEvent.fid);
+        expect(signerEvents).toHaveLength(1);
+        expect(signerEvents[0]?.txIndex).toEqual(txIndex);
+        expect(signerEvents[0]?.logIndex).toEqual(logIndex);
+
+        const onChainSigner = await set.getActiveSigner(badSignerEvent.fid, badSignerEvent.signerEventBody.key);
+        expect(onChainSigner.signerEventBody.key).toEqual(badSignerEvent.signerEventBody.key);
+
+        await expect(set.mergeOnChainEvent(badRegisterEvent)).rejects.toThrow("already exists");
+        const registerEvents = await set.getOnChainEvents(
+          OnChainEventType.EVENT_TYPE_ID_REGISTER,
+          badRegisterEvent.fid,
+        );
+        expect(registerEvents).toHaveLength(1);
+        expect(registerEvents[0]?.txIndex).toEqual(txIndex);
+        expect(registerEvents[0]?.logIndex).toEqual(logIndex);
+
+        const idRegisterByFid = await set.getIdRegisterEventByFid(badRegisterEvent.fid);
+        expect(idRegisterByFid).toEqual(badRegisterEvent);
+        const idRegisterByCustody = await set.getIdRegisterEventByCustodyAddress(
+          badRegisterEvent.idRegisterEventBody.to,
+        );
+        expect(idRegisterByCustody).toEqual(badRegisterEvent);
       });
     });
 

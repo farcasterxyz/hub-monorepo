@@ -145,7 +145,16 @@ class OnChainEventStore {
     );
     if (_badEvent.isOk()) {
       const txn = putOnChainEventTransaction(this._db.transaction(), event);
-      txn.del(makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.txIndex));
+      const incorrectPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.txIndex);
+      const correctPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.logIndex);
+      txn.del(incorrectPrimaryKey);
+      if (isSignerOnChainEvent(_badEvent.value)) {
+        txn.put(makeSignerOnChainEventBySignerKey(event.fid, _badEvent.value.signerEventBody.key), correctPrimaryKey);
+      } else if (isIdRegisterOnChainEvent(_badEvent.value)) {
+        txn
+          .put(makeIdRegisterEventByCustodyKey(_badEvent.value.idRegisterEventBody.to), correctPrimaryKey)
+          .put(makeIdRegisterEventByFidKey(event.fid), correctPrimaryKey);
+      }
       await this._db.commit(txn);
       throw new HubError("bad_request.duplicate", "onChainEvent already exists (txIndex updated)");
     }
