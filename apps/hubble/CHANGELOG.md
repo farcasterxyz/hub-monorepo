@@ -1,5 +1,31 @@
 # @farcaster/hubble
 
+## 1.5.2
+
+### Patch Changes
+
+- 2f2dd83d: feat: Snapshot sync
+- 40e017fe: fix: Fix progress bar for docker (non-TTY)
+- 6c12fee5: fix: Add custom linter for Grafana JSON
+- cff71488: chore: Remove Goerli RPC url and signer message logic
+- 52260bc8: chore: Deprecate "status" command
+- 0f83be8f: fix: Reformat grafana dashboard with descriptions
+- 316bcd3a: chore: Remove signer pre-sync for initial sync
+- 3c32cf21: fix: Supress progress logs during tests
+- 2ab99d95: feat: Add REST API
+- 7fd1f945: fix: Add progress bar for storage cache
+- aac4220f: chore: Add cli options documentation linter
+- 5cb9db86: feat: Sync latest messages first
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 5e5cfb15: fix: Ensure index keys are > UserMessagePostfixMax
+- ef65fd40: fix: Count peer validation errors during sync
+- bab7bba9: chore: Update the Grafana dashboard
+- 76a031e2: feat: Add storage limit constants to core
+- Updated dependencies [2ab99d95]
+- Updated dependencies [bc416dbe]
+- Updated dependencies [76a031e2]
+  - @farcaster/hub-nodejs@0.10.6
+
 ## 1.5.1
 
 ### Patch Changes

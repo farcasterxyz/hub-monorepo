@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.10.6
+
+### Patch Changes
+
+- 2ab99d95: feat: Add REST API
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 76a031e2: feat: Add storage limit constants to core
+- Updated dependencies [bc416dbe]
+- Updated dependencies [76a031e2]
+  - @farcaster/core@0.12.6
+
 ## 0.10.5
 
 ### Patch Changes
