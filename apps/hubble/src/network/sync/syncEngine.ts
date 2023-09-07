@@ -393,12 +393,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     try {
-      // First, get the latest state from the peer
+      // First, get the latest state and info from the peer
       const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
         TrieNodePrefix.create({ prefix: new Uint8Array() }),
         new Metadata(),
         rpcDeadline(),
       );
+      const peerInfo = await rpcClient.getInfo({ dbStats: false }, new Metadata(), rpcDeadline());
+
       if (peerStateResult.isErr()) {
         log.warn(
           { error: peerStateResult.error, errMsg: peerStateResult.error.message, peerId, peerContact },
@@ -429,6 +431,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.info(
         {
           peerId,
+          hubOperatorFid: peerInfo.map((info) => info.hubOperatorFid).unwrapOr(0),
           inSync: syncStatus.inSync,
           isSyncing: syncStatus.isSyncing,
           theirMessages: syncStatus.theirSnapshot.numMessages,

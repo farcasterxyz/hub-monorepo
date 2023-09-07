@@ -18,8 +18,8 @@ services:
       "--l2-rpc-url", "$OPTIMISM_L2_RPC_URL",
       "--network", "${FC_NETWORK_ID:-1}",
       "-b", "${BOOTSTRAP_NODE:-/dns/nemes.farcaster.xyz/tcp/2282}",
-      "--statsd-metrics-server", 
-      "$STATSD_METRICS_SERVER"
+      "--statsd-metrics-server", "$STATSD_METRICS_SERVER",
+      "--hub-operator-fid", "${HUB_OPERATOR_FID:-0}",
     ]
     ports:
       - '2282:2282' # Gossip
