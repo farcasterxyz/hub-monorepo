@@ -1,5 +1,5 @@
 # Run Hubble on AWS EC2
-![Placeholder](./images/mvp-fc-header.png)
+![Placeholder](https://pin.ski/3RfuhMu)
 
 ## Intro
 Setting up and running Hubble is easy, doesn't require any technical skills and usually takes less than 30 minutes of work and 2 hours of sync time.
@@ -52,7 +52,7 @@ Be careful to save it in the right and safe place, since it will be necessary to
 After you created the new key pair, make sure that it's selected in the menu.
 ![Placeholder](./images/ec2-setup-key-pair-selected.png)
 
-In the **Network settings* section, make sure to:
+In the **Network settings** section, make sure to:
 - *Allow SSH traffic*
 - from *Anywhere*
 ![Placeholder](./images/ec2-setup-create-security-group.png)
@@ -161,7 +161,9 @@ Once the syncing ends, you will start seeing logs.
 
 ![Placeholder](./images/hubble-syncing-100.png)
 
-Congrats! Now you're officially running a Farcaster hub. You can safely close your terminal and proceed to monitor your hub's status via Grafana.
+**Congrats!** Now you're officially running a Farcaster hub.
+
+You can safely close your terminal and proceed to monitor your hub's status via Grafana.
 
 ## Monitor Hubble
 Since version x.x.x Hubble comes with a built-in Grafana dashboard that will help you monitor health and the sync status of your hub.
