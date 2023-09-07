@@ -42,7 +42,7 @@ describe("gossip network tests", () => {
         const result = await n.connect(nodes[0] as GossipNode);
         expect(result.isOk()).toBeTruthy();
       }
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       const primaryTopic = nodes[0]!.primaryTopic();
       // Subscribe each node to the test topic
       nodes.forEach((n) => n.gossip?.subscribe(primaryTopic));

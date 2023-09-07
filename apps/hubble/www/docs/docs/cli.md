@@ -28,6 +28,7 @@ Start a Hub
 Hubble Options:
   -n --network <network>                ID of the Farcaster Network (default: 3 (devnet))
   -i, --id <filepath>                   Path to the PeerId file.
+  --hub-operator-fid <fid>              The FID of the hub operator. Optional.
   -c, --config <filepath>               Path to the config file.
   --db-name <name>                      The name of the RocksDB instance. (default: rocks.hub._default)
   --admin-server-enabled                Enable the admin server. (default: disabled)
@@ -36,12 +37,29 @@ Hubble Options:
 
 Ethereum Options:
   -m, --eth-mainnet-rpc-url <url>       RPC URL of a Mainnet ETH Node (or comma separated list of URLs)
-  -e, --eth-rpc-url <url>               RPC URL of a Goerli ETH Node (or comma separated list of URLs)
   -l, --l2-rpc-url <url>                RPC URL of a Goerli Optimism Node (or comma separated list of URLs)
   --rank-rpcs                           Rank the RPCs by latency/stability and use the fastest one (default: disabled)
-  --fname-server-url <url>              The URL for the FName registry server (default: https://fnames.farcaster.xyz
+  --fname-server-url <url>              The URL for the FName registry server (default: https://fnames.farcaster.xyz)
   --fir-address <address>               The address of the Farcaster ID Registry contract
   --first-block <number>                The block number to begin syncing events from Farcaster contracts
+
+L2 Options:
+  --l2-id-registry-address              The address of the L2 Farcaster ID Registry contract
+  --l2-key-registry-address <address>   The address of the L2 Farcaster Key Registry contract
+  --l2-storage-registry-address <address>  The address of the L2 Farcaster Storage Registry contract
+  --l2-resync-events                    Resync events from the L2 Farcaster contracts before starting (default: disabled)
+  --l2-first-block <number>             The block number to begin syncing events from L2 Farcaster contracts
+  --l2-chunk-size <number>              The number of events to fetch from L2 Farcaster contracts at a time
+  --l2-chain-id <number>                The chain ID of the L2 Farcaster contracts are deployed to
+  --l2-rent-expiry-override <number>    The storage rent expiry in seconds to use instead of the default 1 year (ONLY FOR TESTS)
+
+Snapshots Options:
+  --enable-snapshot-to-s3               Enable daily snapshots to be uploaded to S3. (default: disabled)
+  --s3-snapshot-bucket <bucket>         The S3 bucket to upload snapshots to
+  --disable-snapshot-sync               Disable syncing from snapshots. (default: enabled)
+
+Metrics:
+  --statsd-metrics-server <host>        The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)
 
 Networking Options:
   -a, --allowed-peers <peerIds...>      Only peer with specific peer ids. (default: all peers allowed)
@@ -52,7 +70,16 @@ Networking Options:
   --announce-ip <ip-address>            Public IP address announced to peers (default: fetched with external service)
   --announce-server-name <name>         Server name announced to peers, useful if SSL/TLS enabled. (default: "none")
   --direct-peers <peer-multiaddrs...>   A list of peers for libp2p to directly peer with (default: [])
+  --denied-peers <peerIds...>           Do not peer with specific peer ids. (default: no peers denied)
   --rpc-rate-limit <number>             RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)
+
+Snapshots Options:
+  --enable-snapshot-to-s3               Enable daily snapshots to be uploaded to S3. (default: disabled)
+  --s3-snapshot-bucket <bucket>         The S3 bucket to upload snapshots to
+  --disable-snapshot-sync               Disable syncing from snapshots. (default: enabled)
+
+Metrics:
+  --statsd-metrics-server <host>        The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)
 
 Debugging Options:
   --gossip-metrics-enabled              Generate tracing and metrics for the gossip network. (default: disabled)
@@ -64,7 +91,8 @@ Debugging Options:
   --commit-lock-timeout <number>        Rocks DB commit lock timeout in milliseconds (default: 500)
   --commit-lock-max-pending <number>    Rocks DB commit lock max pending jobs (default: 1000)
   --rpc-auth <username:password,...>    Require username-password auth for RPC submit. (default: disabled)
-
+  --disable-console-status              Immediately log to STDOUT, and disable console status and progressbars. (default: disabled)
+  
   --fnr-address <address>               The address of the Farcaster Name Registry contract
   -h, --help                            display help for command
   ```
@@ -93,6 +121,7 @@ Commands:
 Usage: yarn status [options]
 
 Reports the db and sync status of the hub
+WARNING: This command has been deprecated, and will be removed in a future release. Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html
 
 Options:
   -s, --server <url>     Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283) (default: "127.0.0.1:2283")

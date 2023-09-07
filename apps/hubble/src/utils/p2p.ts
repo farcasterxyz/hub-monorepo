@@ -34,6 +34,28 @@ export const extractIPAddress = (peerAddress: string): string | undefined => {
   }
 };
 
+export const hostPortFromString = (rawPeerAddress: string): HubResult<NodeAddress> => {
+  // Strip http:// and https:// from the beginning of the address if present
+  const peerAddress = rawPeerAddress.replace(/^(https?:\/\/)/, "");
+
+  const host = peerAddress.split(":")[0] || "";
+  const port = parseInt(peerAddress.split(":")[1] || "0", 10);
+
+  if (isNaN(port) || port === 0) {
+    return err(new HubError("bad_request", "invalid port"));
+  }
+
+  if (host === "") {
+    return err(new HubError("bad_request", "invalid host"));
+  }
+
+  return ok({
+    address: host,
+    port,
+    family: 4,
+  });
+};
+
 /** Checks that the IP address to bind to is valid and that the combined IP, transport, and port multiaddr is valid  */
 export const checkNodeAddrs = (listenIPAddr: string, listenCombinedAddr: string): HubResult<void> => {
   return Result.combine([checkIpAddr(listenIPAddr), checkCombinedAddr(listenCombinedAddr)]).map(() => undefined);
@@ -144,7 +166,7 @@ export const getPublicIp = async (): HubAsyncResult<string> => {
           resolve(ok(ip.toString()));
         });
       });
-      // rome-ignore lint/suspicious/noExplicitAny: error catching
+      // biome-ignore lint/suspicious/noExplicitAny: error catching
     } catch (err: any) {
       reject(new HubError("unavailable.network_failure", err));
     }

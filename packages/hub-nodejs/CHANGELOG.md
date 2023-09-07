@@ -1,5 +1,75 @@
 # @farcaster/hub-nodejs
 
+## 0.10.6
+
+### Patch Changes
+
+- 2ab99d95: feat: Add REST API
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 76a031e2: feat: Add storage limit constants to core
+- Updated dependencies [bc416dbe]
+- Updated dependencies [76a031e2]
+  - @farcaster/core@0.12.6
+
+## 0.10.5
+
+### Patch Changes
+
+- bf1c44d2: feat: Update signer onchain event to store new fields and add additional RPC calls
+- Updated dependencies [e6180074]
+- Updated dependencies [bf1c44d2]
+  - @farcaster/core@0.12.5
+
+## 0.10.4
+
+### Patch Changes
+
+- e55e571f: feat: Add "getting blockchain events" to hub status
+- c6d79cdb: feat: on chain event ordering updated to be more consistent
+- Updated dependencies [e55e571f]
+- Updated dependencies [1fcfd495]
+- Updated dependencies [c6d79cdb]
+  - @farcaster/core@0.12.4
+
+## 0.10.3
+
+### Patch Changes
+
+- Updated dependencies [41334ab8]
+  - @farcaster/core@0.12.3
+
+## 0.10.2
+
+### Patch Changes
+
+- Updated dependencies [afd2146f]
+  - @farcaster/core@0.12.2
+
+## 0.10.1
+
+### Patch Changes
+
+- Updated dependencies [cfec7767]
+  - @farcaster/core@0.12.1
+
+## 0.10.0
+
+### Minor Changes
+
+- 86149d32: Added storage limits RPC
+
+### Patch Changes
+
+- 3f180073: chore: Update grpc-js and setup grpc server timeouts
+- dcd7a149: feat: support migrating to l2
+- 67e9466e: feat: refactor storage rent events to on chain events
+- Updated dependencies [ec7734cf]
+- Updated dependencies [15fad467]
+- Updated dependencies [dcd7a149]
+- Updated dependencies [67e9466e]
+- Updated dependencies [86149d32]
+  - @farcaster/core@0.12.0
+
 ## 0.9.1
 
 ### Patch Changes

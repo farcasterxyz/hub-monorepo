@@ -94,6 +94,7 @@ export enum IdRegisterEventType {
   NONE = 0,
   REGISTER = 1,
   TRANSFER = 2,
+  CHANGE_RECOVERY = 3,
 }
 
 export function idRegisterEventTypeFromJSON(object: any): IdRegisterEventType {
@@ -107,6 +108,9 @@ export function idRegisterEventTypeFromJSON(object: any): IdRegisterEventType {
     case 2:
     case "ID_REGISTER_EVENT_TYPE_TRANSFER":
       return IdRegisterEventType.TRANSFER;
+    case 3:
+    case "ID_REGISTER_EVENT_TYPE_CHANGE_RECOVERY":
+      return IdRegisterEventType.CHANGE_RECOVERY;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegisterEventType");
   }
@@ -120,6 +124,8 @@ export function idRegisterEventTypeToJSON(object: IdRegisterEventType): string {
       return "ID_REGISTER_EVENT_TYPE_REGISTER";
     case IdRegisterEventType.TRANSFER:
       return "ID_REGISTER_EVENT_TYPE_TRANSFER";
+    case IdRegisterEventType.CHANGE_RECOVERY:
+      return "ID_REGISTER_EVENT_TYPE_CHANGE_RECOVERY";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum IdRegisterEventType");
   }
@@ -142,8 +148,10 @@ export interface OnChainEvent {
 
 export interface SignerEventBody {
   key: Uint8Array;
-  scheme: number;
+  keyType: number;
   eventType: SignerEventType;
+  metadata: Uint8Array;
+  metadataType: number;
 }
 
 export interface SignerMigratedEventBody {
@@ -154,6 +162,7 @@ export interface IdRegisterEventBody {
   to: Uint8Array;
   eventType: IdRegisterEventType;
   from: Uint8Array;
+  recoveryAddress: Uint8Array;
 }
 
 export interface StorageRentEventBody {
@@ -403,7 +412,7 @@ export const OnChainEvent = {
 };
 
 function createBaseSignerEventBody(): SignerEventBody {
-  return { key: new Uint8Array(), scheme: 0, eventType: 0 };
+  return { key: new Uint8Array(), keyType: 0, eventType: 0, metadata: new Uint8Array(), metadataType: 0 };
 }
 
 export const SignerEventBody = {
@@ -411,11 +420,17 @@ export const SignerEventBody = {
     if (message.key.length !== 0) {
       writer.uint32(10).bytes(message.key);
     }
-    if (message.scheme !== 0) {
-      writer.uint32(16).uint32(message.scheme);
+    if (message.keyType !== 0) {
+      writer.uint32(16).uint32(message.keyType);
     }
     if (message.eventType !== 0) {
       writer.uint32(24).int32(message.eventType);
+    }
+    if (message.metadata.length !== 0) {
+      writer.uint32(34).bytes(message.metadata);
+    }
+    if (message.metadataType !== 0) {
+      writer.uint32(40).uint32(message.metadataType);
     }
     return writer;
   },
@@ -439,7 +454,7 @@ export const SignerEventBody = {
             break;
           }
 
-          message.scheme = reader.uint32();
+          message.keyType = reader.uint32();
           continue;
         case 3:
           if (tag != 24) {
@@ -447,6 +462,20 @@ export const SignerEventBody = {
           }
 
           message.eventType = reader.int32() as any;
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.metadata = reader.bytes();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.metadataType = reader.uint32();
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -460,8 +489,10 @@ export const SignerEventBody = {
   fromJSON(object: any): SignerEventBody {
     return {
       key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
-      scheme: isSet(object.scheme) ? Number(object.scheme) : 0,
+      keyType: isSet(object.keyType) ? Number(object.keyType) : 0,
       eventType: isSet(object.eventType) ? signerEventTypeFromJSON(object.eventType) : 0,
+      metadata: isSet(object.metadata) ? bytesFromBase64(object.metadata) : new Uint8Array(),
+      metadataType: isSet(object.metadataType) ? Number(object.metadataType) : 0,
     };
   },
 
@@ -469,8 +500,11 @@ export const SignerEventBody = {
     const obj: any = {};
     message.key !== undefined &&
       (obj.key = base64FromBytes(message.key !== undefined ? message.key : new Uint8Array()));
-    message.scheme !== undefined && (obj.scheme = Math.round(message.scheme));
+    message.keyType !== undefined && (obj.keyType = Math.round(message.keyType));
     message.eventType !== undefined && (obj.eventType = signerEventTypeToJSON(message.eventType));
+    message.metadata !== undefined &&
+      (obj.metadata = base64FromBytes(message.metadata !== undefined ? message.metadata : new Uint8Array()));
+    message.metadataType !== undefined && (obj.metadataType = Math.round(message.metadataType));
     return obj;
   },
 
@@ -481,8 +515,10 @@ export const SignerEventBody = {
   fromPartial<I extends Exact<DeepPartial<SignerEventBody>, I>>(object: I): SignerEventBody {
     const message = createBaseSignerEventBody();
     message.key = object.key ?? new Uint8Array();
-    message.scheme = object.scheme ?? 0;
+    message.keyType = object.keyType ?? 0;
     message.eventType = object.eventType ?? 0;
+    message.metadata = object.metadata ?? new Uint8Array();
+    message.metadataType = object.metadataType ?? 0;
     return message;
   },
 };
@@ -544,7 +580,7 @@ export const SignerMigratedEventBody = {
 };
 
 function createBaseIdRegisterEventBody(): IdRegisterEventBody {
-  return { to: new Uint8Array(), eventType: 0, from: new Uint8Array() };
+  return { to: new Uint8Array(), eventType: 0, from: new Uint8Array(), recoveryAddress: new Uint8Array() };
 }
 
 export const IdRegisterEventBody = {
@@ -557,6 +593,9 @@ export const IdRegisterEventBody = {
     }
     if (message.from.length !== 0) {
       writer.uint32(26).bytes(message.from);
+    }
+    if (message.recoveryAddress.length !== 0) {
+      writer.uint32(34).bytes(message.recoveryAddress);
     }
     return writer;
   },
@@ -589,6 +628,13 @@ export const IdRegisterEventBody = {
 
           message.from = reader.bytes();
           continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.recoveryAddress = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -603,6 +649,7 @@ export const IdRegisterEventBody = {
       to: isSet(object.to) ? bytesFromBase64(object.to) : new Uint8Array(),
       eventType: isSet(object.eventType) ? idRegisterEventTypeFromJSON(object.eventType) : 0,
       from: isSet(object.from) ? bytesFromBase64(object.from) : new Uint8Array(),
+      recoveryAddress: isSet(object.recoveryAddress) ? bytesFromBase64(object.recoveryAddress) : new Uint8Array(),
     };
   },
 
@@ -612,6 +659,10 @@ export const IdRegisterEventBody = {
     message.eventType !== undefined && (obj.eventType = idRegisterEventTypeToJSON(message.eventType));
     message.from !== undefined &&
       (obj.from = base64FromBytes(message.from !== undefined ? message.from : new Uint8Array()));
+    message.recoveryAddress !== undefined &&
+      (obj.recoveryAddress = base64FromBytes(
+        message.recoveryAddress !== undefined ? message.recoveryAddress : new Uint8Array(),
+      ));
     return obj;
   },
 
@@ -624,6 +675,7 @@ export const IdRegisterEventBody = {
     message.to = object.to ?? new Uint8Array();
     message.eventType = object.eventType ?? 0;
     message.from = object.from ?? new Uint8Array();
+    message.recoveryAddress = object.recoveryAddress ?? new Uint8Array();
     return message;
   },
 };

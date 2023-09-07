@@ -42,7 +42,7 @@ class SyncId {
   static pkFromSyncId(syncId: Uint8Array): Buffer {
     const ts = syncId.slice(0, TIMESTAMP_LENGTH);
     const tsBE = Buffer.alloc(4);
-    tsBE.writeUInt32BE(parseInt(ts.toString(), 10), 0);
+    tsBE.writeUInt32BE(parseInt(Buffer.from(ts).toString(), 10), 0);
 
     const syncIDpart = syncId.slice(TIMESTAMP_LENGTH); // Skips the timestamp
 
@@ -57,6 +57,11 @@ class SyncId {
 
     return Buffer.from(pk);
   }
+
+  /** Return the message hash for the SyncID */
+  static hashFromSyncId(syncId: Uint8Array): Uint8Array {
+    return syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES + 1);
+  }
 }
 
 /** Normalizes the timestamp in seconds to fixed length to ensure consistent depth in the trie */
@@ -68,4 +73,18 @@ const prefixToTimestamp = (prefix: string): number => {
   return parseInt(prefix.padEnd(TIMESTAMP_LENGTH, "0"), 10);
 };
 
-export { SyncId, timestampToPaddedTimestampPrefix, prefixToTimestamp, TIMESTAMP_LENGTH, HASH_LENGTH };
+const prettyFormatPrefix = (prefix: Uint8Array): string => {
+  const timePart = Buffer.from(prefix.slice(0, TIMESTAMP_LENGTH)).toString();
+  const hashPart = Buffer.from(prefix.slice(TIMESTAMP_LENGTH)).toString("hex");
+
+  return `${timePart}${hashPart ? `/${hashPart}` : ""}`;
+};
+
+export {
+  SyncId,
+  timestampToPaddedTimestampPrefix,
+  prefixToTimestamp,
+  prettyFormatPrefix as formatPrefix,
+  TIMESTAMP_LENGTH,
+  HASH_LENGTH,
+};

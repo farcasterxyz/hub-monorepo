@@ -63,6 +63,7 @@ describe("mergeUserNameProof", () => {
     const proof = await Factories.UserNameProof.build();
     await set.mergeUserNameProof(proof);
     await expect(set.getUserNameProof(proof.name)).resolves.toEqual(proof);
+    await expect(set.getUserNameProofByFid(proof.fid)).resolves.toEqual(proof);
   });
 
   test("replaces existing proof with proof of greater timestamp", async () => {
@@ -75,6 +76,8 @@ describe("mergeUserNameProof", () => {
     });
     await set.mergeUserNameProof(newProof);
     await expect(set.getUserNameProof(existingProof.name)).resolves.toEqual(newProof);
+    // Secondary index is updated
+    await expect(set.getUserNameProofByFid(existingProof.fid)).resolves.toEqual(newProof);
   });
 
   test("does not merge if existing timestamp is greater", async () => {
@@ -101,6 +104,7 @@ describe("mergeUserNameProof", () => {
     });
     await set.mergeUserNameProof(newProof);
     await expect(set.getUserNameProof(existingProof.name)).rejects.toThrowError("NotFound");
+    await expect(set.getUserNameProofByFid(existingProof.fid)).rejects.toThrowError("NotFound");
   });
 
   test("does not delete existing proof if fid is 0 and timestamp is less than existing", async () => {

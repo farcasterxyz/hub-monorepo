@@ -6,6 +6,7 @@ import { FID_BYTES, TSHASH_LENGTH, UserMessagePostfixMax } from "../db/types.js"
 import RocksDB from "../db/rocksdb.js";
 import Engine from "../engine/index.js";
 import { makeUserKey } from "../db/message.js";
+import { statsd } from "../../utils/statsd.js";
 
 export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "0 1 * * *"; // Every day at 01:00 UTC
 
@@ -89,10 +90,13 @@ export class ValidateOrRevokeMessagesJobScheduler {
       }
     }
 
-    log.info(
-      { timeTakenMs: Date.now() - start, numFids, totalMessagesChecked },
-      "finished ValidateOrRevokeMessagesJob",
-    );
+    const timeTakenMs = Date.now() - start;
+    log.info({ timeTakenMs, numFids, totalMessagesChecked }, "finished ValidateOrRevokeMessagesJob");
+
+    // StatsD metrics
+    statsd().timing("validateOrRevokeMessagesJob.timeTakenMs", timeTakenMs);
+    statsd().gauge("validateOrRevokeMessagesJob.totalMessagesChecked", totalMessagesChecked);
+
     this._running = false;
     return ok(undefined);
   }

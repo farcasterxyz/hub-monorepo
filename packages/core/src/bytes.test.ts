@@ -4,6 +4,7 @@ import {
   bytesCompare,
   bytesDecrement,
   bytesIncrement,
+  bytesStartsWith,
   bytesToHexString,
   bytesToUtf8String,
   hexStringToBytes,
@@ -187,6 +188,25 @@ describe("bigIntToBytes", () => {
   for (const [input, output] of passingCases) {
     test(`converts bigint to byte array: ${input?.toString()}`, () => {
       expect(bigIntToBytes(input)).toEqual(ok(output));
+    });
+  }
+});
+
+describe("bytesStartsWith", () => {
+  const passingCases: [Uint8Array, Uint8Array, boolean][] = [
+    [new Uint8Array([1, 2, 3]), new Uint8Array([]), true],
+    [new Uint8Array([1, 2, 3]), new Uint8Array([1]), true],
+    [new Uint8Array([1, 2, 3]), new Uint8Array([1, 2]), true],
+    [new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 3]), true],
+    [new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 3, 4]), false],
+    [new Uint8Array([1, 2, 3]), new Uint8Array([2]), false],
+    [new Uint8Array([1, 2, 3]), new Uint8Array([2, 3]), false],
+    [new Uint8Array([1, 2, 3]), new Uint8Array([3]), false],
+  ];
+
+  for (const [input, prefix, output] of passingCases) {
+    test(`checks if byte array starts with prefix: ${input} ${prefix}`, () => {
+      expect(bytesStartsWith(input, prefix)).toEqual(output);
     });
   }
 });

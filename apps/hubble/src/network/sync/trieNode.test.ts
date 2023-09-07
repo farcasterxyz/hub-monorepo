@@ -116,6 +116,11 @@ describe("TrieNode", () => {
       expect(secondChild[1].isLeaf).toBeTruthy();
       expect(Buffer.from(secondChild[1].value ?? [])).toEqual(id2.syncId());
     });
+
+    test("Inserting wrong keylength throws", async () => {
+      const root = new TrieNode();
+      await expect(root.insert(Buffer.from([1, 2, 3]), db, new Map(), 3)).rejects.toThrow("Key length exceeded");
+    });
   });
 
   describe("delete", () => {

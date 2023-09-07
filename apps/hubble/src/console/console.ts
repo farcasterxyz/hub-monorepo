@@ -22,7 +22,7 @@ export interface ConsoleCommandInterface {
   commandName(): string;
   shortHelp(): string;
   help(): string;
-  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   object(): any;
 }
 

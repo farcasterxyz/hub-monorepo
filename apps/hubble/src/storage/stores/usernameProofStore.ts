@@ -4,6 +4,7 @@ import {
   HubEventType,
   isUsernameProofMessage,
   MessageType,
+  USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
   UserNameProof,
   UsernameProofMessage,
   UserNameType,
@@ -15,8 +16,6 @@ import { Transaction } from "../db/rocksdb.js";
 import { makeFidKey, makeTsHash, makeUserKey, readFidKey } from "../db/message.js";
 import { HubEventArgs } from "./storeEventHandler.js";
 
-const PRUNE_SIZE_LIMIT_DEFAULT = 10;
-
 /**
  * Generates a unique key used to store a UsernameProof Message
  *
@@ -25,7 +24,7 @@ const PRUNE_SIZE_LIMIT_DEFAULT = 10;
  * @returns RocksDB index key of the form <RootPrefix>:<fid?>:<tsHash?>
  */
 const makeUserNameProofByFidKey = (fid: number, name: Uint8Array): Buffer => {
-  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.UsernameProofMessage]), Buffer.from(name)]);
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.UserNameProofAdds]), Buffer.from(name)]);
 };
 
 const makeUserNameProofByNameKey = (name: Uint8Array): Buffer => {
@@ -57,7 +56,7 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
   override _removeMessageType = undefined;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return PRUNE_SIZE_LIMIT_DEFAULT;
+    return USERNAME_PROOFS_SIZE_LIMIT_DEFAULT;
   }
 
   /**

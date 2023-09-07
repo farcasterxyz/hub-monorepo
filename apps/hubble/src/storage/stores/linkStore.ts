@@ -6,6 +6,7 @@ import {
   MessageType,
   isLinkAddMessage,
   isLinkRemoveMessage,
+  LINKS_SIZE_LIMIT_DEFAULT,
 } from "@farcaster/hub-nodejs";
 import {
   getManyMessages,
@@ -20,8 +21,6 @@ import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./types.js";
 import { Store } from "./store.js";
 import { ResultAsync, err, ok } from "neverthrow";
 import { Transaction } from "../db/rocksdb.js";
-
-export const LINK_PRUNE_SIZE_LIMIT_DEFAULT = 2_500;
 
 const makeTargetKey = (target: number): Buffer => {
   return makeFidKey(target);
@@ -152,7 +151,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   override _removeMessageType = MessageType.LINK_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return LINK_PRUNE_SIZE_LIMIT_DEFAULT;
+    return LINKS_SIZE_LIMIT_DEFAULT;
   }
 
   override async buildSecondaryIndices(txn: Transaction, message: LinkAddMessage): HubAsyncResult<void> {
@@ -168,7 +167,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
     // Puts message key into the byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
-    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+    // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.put(byTargetKey, Buffer.from(message.data.linkBody.type));
 
     return ok(undefined);
@@ -187,7 +186,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
 
     // Delete the message key from byTarget index
     const byTargetKey = makeLinksByTargetKey(message.data.linkBody.targetFid, message.data.fid, tsHash.value);
-    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+    // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     txn = txn.del(byTargetKey);
 
     return ok(undefined);

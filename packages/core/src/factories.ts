@@ -657,7 +657,8 @@ const SignerEventBodyFactory = Factory.define<protobufs.SignerEventBody>(() => {
   return SignerEventBody.create({
     key: Ed25519PPublicKeyFactory.build(),
     eventType: SignerEventType.ADD,
-    scheme: 1,
+    keyType: 1,
+    metadataType: 1,
   });
 });
 
@@ -668,13 +669,17 @@ const SignerOnChainEventFactory = Factory.define<SignerOnChainEvent>(() => {
   }) as protobufs.SignerOnChainEvent;
 });
 
+const IdRegisterEventBodyFactory = Factory.define<protobufs.IdRegisterEventBody>(() => {
+  return IdRegisterEventBody.create({
+    eventType: IdRegisterEventType.REGISTER,
+    from: EthAddressFactory.build(),
+  });
+});
+
 const IdRegisterOnChainEventFactory = Factory.define<IdRegisterOnChainEvent>(() => {
   return OnChainEventFactory.build({
     type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
-    idRegisterEventBody: IdRegisterEventBody.create({
-      eventType: IdRegisterEventType.REGISTER,
-      from: EthAddressFactory.build(),
-    }),
+    idRegisterEventBody: IdRegisterEventBodyFactory.build(),
   }) as protobufs.IdRegisterOnChainEvent;
 });
 
@@ -683,7 +688,7 @@ const SignerMigratedOnChainEventFactory = Factory.define<SignerMigratedOnChainEv
     type: OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
     fid: 0,
     signerMigratedEventBody: SignerMigratedEventBody.create({
-      migratedAt: Math.floor(faker.datatype.datetime().getTime() / 1000),
+      migratedAt: Math.floor(Date.now() / 1000) + 48 * 60 * 60, // Default to 48 hours in the future so pruning is not enabled
     }),
   }) as protobufs.SignerMigratedOnChainEvent;
 });
@@ -770,6 +775,7 @@ export const Factories = {
   SignerEventBody: SignerEventBodyFactory,
   SignerOnChainEvent: SignerOnChainEventFactory,
   IdRegistryOnChainEvent: IdRegisterOnChainEventFactory,
+  IdRegistryEventBody: IdRegisterEventBodyFactory,
   SignerMigratedOnChainEvent: SignerMigratedOnChainEventFactory,
   StorageRentEventBody: StorageRentEventBodyFactory,
   StorageRentOnChainEvent: StorageRentOnChainEventFactory,

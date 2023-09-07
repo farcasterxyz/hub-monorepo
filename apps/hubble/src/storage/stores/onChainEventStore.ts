@@ -2,12 +2,14 @@ import {
   HubAsyncResult,
   HubError,
   HubEventType,
+  IdRegisterEventType,
   IdRegisterOnChainEvent,
   isIdRegisterOnChainEvent,
   isSignerOnChainEvent,
   OnChainEvent,
   OnChainEventType,
   SignerEventType,
+  SignerMigratedOnChainEvent,
   SignerOnChainEvent,
 } from "@farcaster/hub-nodejs";
 import RocksDB, { Transaction } from "../db/rocksdb.js";
@@ -16,14 +18,21 @@ import {
   getManyOnChainEvents,
   getOnChainEvent,
   getOnChainEventByKey,
-  makeSignerOnChainEventBySignerKey,
+  getOnChainEventsPageByPrefix,
+  makeIdRegisterEventByCustodyKey,
+  makeIdRegisterEventByFidKey,
   makeOnChainEventIteratorPrefix,
   makeOnChainEventPrimaryKey,
+  makeOnChainEventSecondaryIteratorPrefix,
+  makeSignerOnChainEventBySignerKey,
   putOnChainEventTransaction,
-  makeIdRegisterEventByFidKey,
-  makeIdRegisterEventByCustodyKey,
 } from "../db/onChainEvent.js";
 import { ok, ResultAsync } from "neverthrow";
+import { OnChainEventPostfix, RootPrefix } from "../db/types.js";
+import { getHubState, putHubState } from "../db/hubState.js";
+import { PageOptions } from "./types.js";
+
+const SUPPORTED_SIGNER_SCHEMES = [1];
 
 /**
  * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
@@ -45,7 +54,7 @@ class OnChainEventStore {
     return this._mergeEvent(event);
   }
 
-  async getOnChainEvents(type: OnChainEventType, fid: number): Promise<OnChainEvent[]> {
+  async getOnChainEvents<T extends OnChainEvent>(type: OnChainEventType, fid: number): Promise<T[]> {
     const keys: Buffer[] = [];
     await this._db.forEachIteratorByPrefix(
       makeOnChainEventIteratorPrefix(type, fid),
@@ -62,11 +71,46 @@ class OnChainEventStore {
   async getActiveSigner(fid: number, signer: Uint8Array): Promise<SignerOnChainEvent> {
     const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
     const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
-    if (event.signerEventBody.eventType === SignerEventType.ADD) {
+    if (
+      event.signerEventBody.eventType === SignerEventType.ADD &&
+      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
+    ) {
       return event;
     } else {
-      throw new HubError("not_found", "signer removed");
+      throw new HubError("not_found", "no such active signer");
     }
+  }
+
+  async getFids(pageOptions: PageOptions = {}): Promise<{
+    fids: number[];
+    nextPageToken: Uint8Array | undefined;
+  }> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      return isIdRegisterOnChainEvent(event);
+    };
+    const result = await getOnChainEventsPageByPrefix(
+      this._db,
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.IdRegisterByFid),
+      filter,
+      pageOptions,
+    );
+    return { fids: result.events.map((event) => event.fid), nextPageToken: result.nextPageToken };
+  }
+
+  async getSignersByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<{ events: OnChainEvent[]; nextPageToken: Uint8Array | undefined }> {
+    const filter = (event: OnChainEvent): event is OnChainEvent => {
+      // Return only active signers
+      return isSignerOnChainEvent(event) && event.signerEventBody.eventType === SignerEventType.ADD;
+    };
+    return getOnChainEventsPageByPrefix(
+      this._db,
+      makeOnChainEventSecondaryIteratorPrefix(OnChainEventPostfix.SignerByFid, fid),
+      filter,
+      pageOptions,
+    );
   }
 
   async getIdRegisterEventByFid(fid: number): Promise<IdRegisterOnChainEvent> {
@@ -79,12 +123,15 @@ class OnChainEventStore {
     return getOnChainEventByKey(this._db, idRegisterEventPrimaryKey);
   }
 
-  async isSignerMigrated(): HubAsyncResult<boolean> {
-    const signerMigrated = await this.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED, 0);
-    if (signerMigrated.length > 0) {
-      return ok(true);
+  async getSignerMigratedAt(): HubAsyncResult<number> {
+    const signerMigrated = await this.getOnChainEvents<SignerMigratedOnChainEvent>(
+      OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
+      0,
+    );
+    if (signerMigrated[0]) {
+      return ok(signerMigrated[0].signerMigratedEventBody?.migratedAt);
     }
-    return ok(false);
+    return ok(0);
   }
 
   /**
@@ -119,35 +166,88 @@ class OnChainEventStore {
 
   private async _handleSignerEvent(txn: Transaction, event: SignerOnChainEvent): Promise<Transaction> {
     const secondaryKey = makeSignerOnChainEventBySignerKey(event.fid, event.signerEventBody.key);
-    const existingEventKey = await ResultAsync.fromPromise(this._db.get(secondaryKey), () => undefined);
-    if (existingEventKey.isOk()) {
-      const primaryKey = existingEventKey.value;
-      const existingEventResult = await ResultAsync.fromPromise(
-        getOnChainEventByKey<SignerOnChainEvent>(this._db, primaryKey),
-        () => undefined,
-      );
-      if (existingEventResult.isErr()) {
-        throw new HubError("unavailable.storage_failure", `secondary index corrupted for ${secondaryKey}`);
-      } else {
-        const existingResult = existingEventResult.value;
-        if (
-          existingResult.signerEventBody.eventType === SignerEventType.REMOVE &&
-          event.signerEventBody.eventType === SignerEventType.ADD
-        ) {
-          throw new HubError("bad_request.conflict", "attempting to re-add removed key");
-        }
+    const existingEvent = await this._getEventBySecondaryKey<SignerOnChainEvent>(secondaryKey);
+    if (existingEvent) {
+      if (existingEvent.blockNumber > event.blockNumber) {
+        // If our existing event is newer, don't update the secondary index.
+        return txn;
+      } else if (
+        existingEvent.signerEventBody.eventType === SignerEventType.REMOVE &&
+        event.signerEventBody.eventType === SignerEventType.ADD
+      ) {
+        throw new HubError("bad_request.conflict", "attempting to re-add removed key");
       }
     }
+
+    if (event.signerEventBody.eventType === SignerEventType.ADMIN_RESET) {
+      const signerEvents = await this.getOnChainEvents<SignerOnChainEvent>(
+        OnChainEventType.EVENT_TYPE_SIGNER,
+        event.fid,
+      );
+      const signerAdd = signerEvents.find((value) => value.signerEventBody.eventType === SignerEventType.ADD);
+      if (signerAdd) {
+        return txn.put(
+          secondaryKey,
+          makeOnChainEventPrimaryKey(signerAdd.type, signerAdd.fid, signerAdd.blockNumber, signerAdd.logIndex),
+        );
+      }
+    }
+
     // Add to the secondary index if this is the first time add, or if it's an admin reset.
     return txn.put(secondaryKey, makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.logIndex));
   }
 
   private async _handleIdRegisterEvent(txn: Transaction, event: IdRegisterOnChainEvent): Promise<Transaction> {
-    // TODO: Handle out of order events (register after a transfer)
+    if (event.idRegisterEventBody.eventType === IdRegisterEventType.CHANGE_RECOVERY) {
+      // change recovery events are not indexed (id and custody address are the same)
+      return txn;
+    }
     const byFidKey = makeIdRegisterEventByFidKey(event.fid);
+    const existingEvent = await this._getEventBySecondaryKey<IdRegisterOnChainEvent>(byFidKey);
+    if (existingEvent && existingEvent.blockNumber > event.blockNumber) {
+      // If our existing event is newer, don't update the secondary index.
+      return txn;
+    }
     const byCustodyAddressKey = makeIdRegisterEventByCustodyKey(event.idRegisterEventBody.to);
     const primaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.logIndex);
     return txn.put(byFidKey, primaryKey).put(byCustodyAddressKey, primaryKey);
+  }
+
+  private async _getEventBySecondaryKey<T extends OnChainEvent>(secondaryKey: Buffer): Promise<T | undefined> {
+    const existingEventKey = await ResultAsync.fromPromise(this._db.get(secondaryKey), () => undefined);
+    if (existingEventKey.isOk()) {
+      const primaryKey = existingEventKey.value;
+      const existingEventResult = await ResultAsync.fromPromise(
+        getOnChainEventByKey<T>(this._db, primaryKey),
+        () => undefined,
+      );
+      if (existingEventResult.isErr()) {
+        throw new HubError("unavailable.storage_failure", `secondary index corrupted for ${secondaryKey}`);
+      } else {
+        return existingEventResult.value;
+      }
+    }
+    return undefined;
+  }
+
+  static async clearEvents(db: RocksDB) {
+    let count = 0;
+    await db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.OnChainEvent]),
+      async (key, value) => {
+        if (!key || !value) {
+          return;
+        }
+        await db.del(key);
+        count++;
+      },
+      {},
+      1 * 60 * 60 * 1000,
+    );
+    const state = await getHubState(db);
+    state.lastL2Block = 0;
+    await putHubState(db, state);
+    return count;
   }
 }
 

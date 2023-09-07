@@ -1,8 +1,15 @@
-import { bytesIncrement, HubError, isHubError } from "@farcaster/hub-nodejs";
+import { bytesIncrement, HubError, HubResult, isHubError } from "@farcaster/hub-nodejs";
 import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from "abstract-leveldown";
 import { mkdir } from "fs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import { logger } from "../../utils/logger.js";
+import * as tar from "tar";
+import * as zlib from "zlib";
+import * as fs from "fs";
+import { err, ok, Result } from "neverthrow";
+import path from "path";
+import { Transform } from "stream";
+import { SingleBar } from "cli-progress";
 
 export const DB_DIRECTORY = ".rocks";
 export const MAX_DB_ITERATOR_OPEN_MILLISECONDS = 60 * 1000; // 1 min
@@ -37,7 +44,7 @@ export class Iterator {
   async *[Symbol.asyncIterator]() {
     try {
       let kv: [Buffer | undefined, Buffer | undefined] | undefined;
-      // rome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code, to fix
+      // biome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code, to fix
       while ((kv = await this.next())) {
         yield kv;
       }
@@ -336,7 +343,7 @@ class RocksDB {
     }, timeoutMs);
 
     let returnValue: T | undefined | void;
-    // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     let caughtError: any;
 
     // The try/catch is outside the for loop so that we can catch errors thrown by the iterator
@@ -410,6 +417,100 @@ class RocksDB {
       });
     });
   }
+
+  async approximateSize(): Promise<number> {
+    return new Promise((resolve) => {
+      this._db.approximateSize(Buffer.from([0]), Buffer.from([255]), (e?: Error, size?: number) => {
+        resolve(size || -1);
+      });
+    });
+  }
 }
 
 export default RocksDB;
+
+export async function createTarBackup(inputDir: string): Promise<Result<string, Error>> {
+  // Output path is {dirname}-{date as yyyy-mm-dd}-{timestamp}.tar.gz
+  const outputFilePath = `${inputDir}-${new Date().toISOString().split("T")[0]}-${Math.floor(
+    Date.now() / 1000,
+  )}.tar.gz`;
+
+  const start = Date.now();
+  log.info({ inputDir, outputFilePath }, "Creating tarball");
+
+  return new Promise((resolve) => {
+    tar
+      .c({ gzip: true, file: outputFilePath, cwd: path.dirname(inputDir) }, [path.basename(inputDir)])
+      .then(() => {
+        const stats = fs.statSync(outputFilePath);
+        log.info({ size: stats.size, outputFilePath, timeTakenMs: Date.now() - start }, "Tarball created");
+        resolve(ok(outputFilePath));
+      })
+      .catch((e: Error) => {
+        log.error({ error: e, inputDir, outputFilePath }, "Error creating tarball");
+        resolve(err(e));
+      });
+  });
+}
+export async function extractTarBackup(
+  tarFilePath: string,
+  newTopLevelDir: string,
+  progressBar?: SingleBar,
+): Promise<Result<string, Error>> {
+  // Output directory is the same name as the tar file without the extension
+  const outputDir = path.dirname(tarFilePath);
+  const totalSize = progressBar?.getTotal() ?? 1;
+  let bytesProcessed = 0;
+
+  return new Promise((resolve) => {
+    const gunzip = zlib.createGunzip();
+    const parseStream = new tar.Parse();
+
+    parseStream.on("entry", (entry) => {
+      const newPath = path.join(outputDir, newTopLevelDir, ...entry.path.split(path.sep).slice(1));
+      const newDir = path.dirname(newPath);
+
+      if (entry.type === "Directory") {
+        fs.mkdirSync(newPath, { recursive: true });
+        entry.resume();
+      } else {
+        fs.mkdirSync(newDir, { recursive: true });
+        entry.pipe(fs.createWriteStream(newPath));
+      }
+    });
+
+    const handleError = (e: Error) => {
+      log.error({ error: e, tarFilePath, outputDir }, "Error extracting tarball");
+      resolve(err(e));
+    };
+
+    const progressStream = new Transform({
+      transform(chunk, _encoding, callback) {
+        bytesProcessed += chunk.length;
+        progressBar?.update(bytesProcessed);
+        callback(null, chunk);
+      },
+    });
+
+    try {
+      fs.createReadStream(tarFilePath)
+        .on("error", handleError)
+        .pipe(progressStream)
+        .pipe(gunzip) // Ungzip on the fly
+        .on("error", handleError)
+        .pipe(parseStream)
+        .on("end", () => {
+          log.info({ tarFilePath, newTopLevelDir, outputDir }, "Tarball extracted with new top-level directory");
+
+          progressBar?.update(totalSize);
+          progressBar?.stop();
+
+          resolve(ok(outputDir));
+        });
+    } catch (e) {
+      handleError(e as Error);
+      progressBar?.update(totalSize);
+      progressBar?.stop();
+    }
+  });
+}

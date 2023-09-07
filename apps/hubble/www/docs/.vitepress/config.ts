@@ -17,6 +17,7 @@ export default defineConfig({
           { text: "Hubble", link: "/intro/hubble" },
           { text: "Installation", link: "/intro/install" },
           { text: "Networks", link: "/intro/networks" },
+          { text: "Monitoring", link: "/intro/monitoring" },
           { text: "Tutorials", link: "/intro/tutorials" },
         ],
       },

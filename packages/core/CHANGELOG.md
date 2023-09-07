@@ -1,5 +1,58 @@
 # @farcaster/core
 
+## 0.12.6
+
+### Patch Changes
+
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 76a031e2: feat: Add storage limit constants to core
+
+## 0.12.5
+
+### Patch Changes
+
+- e6180074: feat: enforce storage pruning 1 day after migration
+- bf1c44d2: feat: Update signer onchain event to store new fields and add additional RPC calls
+
+## 0.12.4
+
+### Patch Changes
+
+- e55e571f: feat: Add "getting blockchain events" to hub status
+- 1fcfd495: fix: fetching l2 events was not respecting --l2-first-block
+- c6d79cdb: feat: on chain event ordering updated to be more consistent
+
+## 0.12.3
+
+### Patch Changes
+
+- 41334ab8: fix: Move rust code to apps/hubble, making core package PureJS
+
+## 0.12.2
+
+### Patch Changes
+
+- afd2146f: fix: Remove neon shim to get compilation working
+
+## 0.12.1
+
+### Patch Changes
+
+- cfec7767: fix: Disable the rust code path to make it pureJS for now
+
+## 0.12.0
+
+### Minor Changes
+
+- 86149d32: Added storage limits RPC
+
+### Patch Changes
+
+- ec7734cf: feat: Move blake3 hash into rust
+- 15fad467: feat: Add Rust to the toolchain and use rust for ed25519 signature verification
+- dcd7a149: feat: support migrating to l2
+- 67e9466e: feat: refactor storage rent events to on chain events
+
 ## 0.11.1
 
 ### Patch Changes

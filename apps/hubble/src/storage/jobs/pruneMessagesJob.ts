@@ -3,6 +3,7 @@ import { err, ok } from "neverthrow";
 import cron from "node-cron";
 import Engine from "../engine/index.js";
 import { logger } from "../../utils/logger.js";
+import { statsd } from "../../utils/statsd.js";
 
 export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = "0 * * * *"; // Every hour at :00
 
@@ -23,6 +24,11 @@ export class PruneMessagesJobScheduler {
 
   start(cronSchedule?: string) {
     this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PRUNE_MESSAGES_JOB_CRON, () => this.doJobs());
+
+    // Log the DB Size at startup
+    setTimeout(() => {
+      this.logDbSize();
+    }, 1000);
   }
 
   stop() {
@@ -33,6 +39,15 @@ export class PruneMessagesJobScheduler {
 
   status(): SchedulerStatus {
     return this._cronTask ? "started" : "stopped";
+  }
+
+  async logDbSize() {
+    this._engine
+      .getDb()
+      .approximateSize()
+      .then((size) => {
+        statsd().gauge("rocksdb.approximate_size", size || 0);
+      });
   }
 
   async doJobs(): HubAsyncResult<void> {
@@ -65,8 +80,10 @@ export class PruneMessagesJobScheduler {
     } while (!finished);
 
     log.info({ timeTakenMs: Date.now() - start }, "finished prune messages job");
-
     this._running = false;
+
+    this.logDbSize();
+
     return ok(undefined);
   }
 }

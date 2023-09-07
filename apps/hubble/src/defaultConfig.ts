@@ -12,8 +12,6 @@ const DEFAULT_NETWORK = 3; // Farcaster Devnet
 export const Config = {
   /** Path to a PeerId file */
   id: "./.hub/default_id.protobuf",
-  /** Network URL of the IdRegistry Contract */
-  // ethRpcUrl: '',
   /** ETH mainnet RPC URL */
   // ethMainnetRpcUrl: '',
   /** FName Registry Server URL */
@@ -27,8 +25,8 @@ export const Config = {
   /** An "allow list" of Peer Ids. Blocks all other connections */
   // allowedPeers: [
   //   '12D3KooWGNNs8uJkmJfThyrnESRBhfuNUAGeGrLb1PYssNnwQy11', // prod hub
-  //   '12D3KooWMDdQaMWCkQ8Gf3C6zdJdMEfFs8R2pw8YQw2HgoY8qhzA', // @adityapk00
   // ],
+  // deniedPeers: [],
   /** The IP address libp2p should listen on. */
   ip: "0.0.0.0",
   /** The IP address that libp2p should announce to peers */
@@ -53,10 +51,20 @@ export const Config = {
   commitLockMaxPending: 1_000,
   /** Farcaster network */
   network: DEFAULT_NETWORK,
+  /** Don't allow snapshot sync */
+  // disableSnapshotSync: true,
   /** Start the admin server? */
   adminServerEnabled: false,
   /** The admin server bind host */
   adminServerHost: "127.0.0.1",
+  /** StatsD server */
+  // statsdMetricsServer: "127.0.0.1:8125",
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers: [],
+  /** Disable progress bars and immediately print logs instead */
+  // disableConsoleStatus: false,
+  /** Enable backing up snapshots to S3 */
+  // enableSnapshotToS3: false,
+  /** S3 bucket name */
+  // s3BucketName: '',
 };

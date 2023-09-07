@@ -31,13 +31,14 @@ import { GossipMetricsRecorder } from "./gossipMetricsRecorder.js";
 import RocksDB from "storage/db/rocksdb.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
+import { statsd } from "../../utils/statsd.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
 
-const log = logger.child({ component: "Node" });
+const log = logger.child({ component: "GossipNode" });
 
 /** Events emitted by a Farcaster Gossip Node */
 interface NodeEvents {
@@ -61,6 +62,8 @@ interface NodeOptions {
   gossipPort?: number | undefined;
   /** A list of PeerIds that are allowed to connect to this node */
   allowedPeerIdStrs?: string[] | undefined;
+  /** A list of peerIds that are not allowed to connect to this node */
+  deniedPeerIdStrs?: string[] | undefined;
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers?: AddrInfo[] | undefined;
   /** Override peer scoring. Useful for tests */
@@ -158,6 +161,14 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       }
     }
     return this._node?.peerStore.get(peerId);
+  }
+
+  async isPeerAllowed(peerId: PeerId) {
+    if (this._connectionGater) {
+      return await this._connectionGater.filterMultiaddrForPeer(peerId);
+    } else {
+      return true;
+    }
   }
 
   /** Returns the GossipSub instance used by the Node */
@@ -270,7 +281,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           try {
             const publishResult = await gossip.publish(topic, encodedMessage.value);
             return ok(publishResult);
-            // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+            // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
           } catch (error: any) {
             log.error(error, "Failed to publish message");
             return err(new HubError("bad_request.duplicate", error));
@@ -310,7 +321,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         log.info({ identity: this.identity, address }, `Connected to peer at address: ${address}`);
         return ok(undefined);
       }
-      // rome-ignore lint/suspicious/noExplicitAny: error catching
+      // biome-ignore lint/suspicious/noExplicitAny: error catching
     } catch (error: any) {
       log.error(error, `Failed to connect to peer at address: ${address}`);
       return err(new HubError("unavailable", error));
@@ -323,6 +334,19 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
   }
 
+  updateStatsdPeerGauges() {
+    const [inbound, outbound] = this._node?.getConnections()?.reduce(
+      (acc, conn) => {
+        acc[conn.stat.direction === "inbound" ? 0 : 1]++;
+        return acc;
+      },
+      [0, 0],
+    ) || [0, 0];
+
+    statsd().gauge("gossip.peers.inbound", inbound);
+    statsd().gauge("gossip.peers.outbound", outbound);
+  }
+
   registerListeners() {
     this._node?.addEventListener("peer:connect", (event) => {
       log.info(
@@ -330,10 +354,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         "P2P Connection established",
       );
       this.emit("peerConnect", event.detail);
+      this.updateStatsdPeerGauges();
     });
     this._node?.addEventListener("peer:disconnect", (event) => {
       log.info({ peer: event.detail.remotePeer }, "P2P Connection disconnected");
       this.emit("peerDisconnect", event.detail);
+      this.updateStatsdPeerGauges();
     });
     this.gossip?.addEventListener("gossipsub:message", (event) => {
       log.debug({
@@ -346,6 +372,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
       if (this.gossipTopics().includes(event.detail.msg.topic)) {
         this.emit("message", event.detail.msg.topic, GossipNode.decodeMessage(event.detail.msg.data));
+        statsd().increment("gossip.messages");
       }
     });
   }
@@ -362,7 +389,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     });
     this.gossip?.addEventListener("message", (event) => {
       log.info(
-        // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
         { identity: this.identity, from: (event.detail as any)["from"] },
         `Received message for topic: ${event.detail.topic}`,
       );
@@ -392,8 +419,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._node?.getPeers()?.map((peer) => peer.toString()) ?? [];
   }
 
-  updateAllowedPeerIds(peerIds: string[]) {
+  updateAllowedPeerIds(peerIds: string[] | undefined) {
     this._connectionGater?.updateAllowedPeers(peerIds);
+  }
+
+  updateDeniedPeerIds(peerIds: string[]) {
+    statsd().gauge("gossip.denied_peers", peerIds.length);
+    this._connectionGater?.updateDeniedPeers(peerIds);
   }
 
   //TODO: Needs better typesafety
@@ -411,7 +443,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       }
       peerIdFromBytes(gossipMessage.peerId);
       return ok(GossipMessage.decode(Uint8Array.from(message)));
-      // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+      // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     } catch (error: any) {
       return err(new HubError("bad_request.parse_failure", error));
     }
@@ -423,6 +455,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   /* Attempts to dial all the addresses in the bootstrap list */
   public async bootstrap(bootstrapAddrs: Multiaddr[]): Promise<HubResult<void>> {
+    log.info({ bootstrapAddrs }, "Bootstrapping Gossip Node");
+
     if (bootstrapAddrs.length === 0) return ok(undefined);
     const results = await Promise.all(bootstrapAddrs.map((addr) => this.connectAddress(addr)));
 
@@ -490,16 +524,21 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
     if (options.allowedPeerIdStrs) {
       log.info(
-        { identity: this.identity, function: "createNode", allowedPeerIds: options.allowedPeerIdStrs },
+        {
+          identity: this.identity,
+          function: "createNode",
+          allowedPeerIds: options.allowedPeerIdStrs,
+          deniedPeerIds: options.deniedPeerIdStrs,
+        },
         "!!! PEER-ID RESTRICTIONS ENABLED !!!",
       );
     } else {
       log.warn(
-        { identity: this.identity, function: "createNode" },
+        { identity: this.identity, deniedPeerIds: options.deniedPeerIdStrs, function: "createNode" },
         "No PEER-ID RESTRICTIONS ENABLED. This node will accept connections from any peer",
       );
     }
-    this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs);
+    this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs, options.deniedPeerIdStrs);
 
     return ResultAsync.fromPromise(
       createLibp2p({

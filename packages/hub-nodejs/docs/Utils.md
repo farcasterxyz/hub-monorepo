@@ -133,13 +133,14 @@ HubErrorCode defines all the types of errors that can be raised in the Hub.
 
 ## Time
 
-Farcaster timestamps are counted as milliseconds since the Farcaster epoch, which began on Jan 1, 2021 00:00:00 UTC.
+Farcaster timestamps are counted as seconds since the Farcaster epoch, which began on Jan 1, 2021 00:00:00 UTC.
 
-Using a more recent epoch lets Farcaster use shorter 32-bit values to hold times which reduces the size of messages. Timestamps are usually measured as milliseconds since the Unix epoch and can be converted to Farcaster time by subtracting 1609459200000.
+Using a more recent epoch lets Farcaster use shorter 32-bit values to hold times which reduces the size of messages. Timestamps are usually measured as milliseconds since the Unix epoch and can be converted to Farcaster time by following this equation:\
+`Farcaster Time (seconds) = (Unix Time (milliseconds) / 1000) - 1609459200`
 
 ### getFarcasterTime
 
-Returns the current time in milliseconds as a Farcaster timestamp.
+Returns the current time in seconds as a Farcaster timestamp.
 
 #### Usage
 
@@ -152,15 +153,15 @@ console.log(timestamp); // 70117755
 
 #### Returns
 
-| Value               | Description                                                |
-| :------------------ | :--------------------------------------------------------- |
-| `HubResult<number>` | The current time in milliseconds as a Farcaster timestamp. |
+| Value               | Description                                           |
+| :------------------ |:------------------------------------------------------|
+| `HubResult<number>` | The current time in seconds as a Farcaster timestamp. |
 
 ---
 
 ### toFarcasterTime
 
-Converts a Unix milliseconds timestamp to a Farcaster milliseconds timestamp.
+Converts a Unix milliseconds timestamp to a Farcaster seconds timestamp.
 
 #### Usage
 
@@ -174,9 +175,9 @@ console.log(timestamp); // 70117500
 
 #### Returns
 
-| Value               | Description                                                  |
-| :------------------ | :----------------------------------------------------------- |
-| `HubResult<number>` | The converted time in milliseconds as a Farcaster timestamp. |
+| Value               | Description                                             |
+| :------------------ |:--------------------------------------------------------|
+| `HubResult<number>` | The converted time in seconds as a Farcaster timestamp. |
 
 #### Parameters
 
@@ -188,14 +189,14 @@ console.log(timestamp); // 70117500
 
 ### fromFarcasterTime
 
-Converts a Farcaster milliseconds timestamp to a Unix milliseconds timestamp.
+Converts a Farcaster seconds timestamp to a Unix milliseconds timestamp.
 
 #### Usage
 
 ```typescript
 import { fromFarcasterTime } from '@farcaster/hub-nodejs';
 
-const timestamp = 70160902; // Farcaster timestamp in milliseconds
+const timestamp = 70160902; // Farcaster timestamp in seconds
 const msTimestamp = fromFarcasterTime(timestamp)._unsafeUnwrap();
 console.log(msTimestamp); // 1679620102000
 ```
@@ -208,9 +209,9 @@ console.log(msTimestamp); // 1679620102000
 
 #### Parameters
 
-| Name   | Type     | Description                                                             |
-| :----- | :------- | :---------------------------------------------------------------------- |
-| `time` | `number` | The Farcaster timestamp in milliseconds to convert to a Unix timestamp. |
+| Name   | Type     | Description                                                        |
+| :----- | :------- |:-------------------------------------------------------------------|
+| `time` | `number` | The Farcaster timestamp in seconds to convert to a Unix timestamp. |
 
 ## Verifications
 

@@ -1,4 +1,12 @@
-import { Ed25519Signer, Factories, FarcasterNetwork, Message, PruneMessageHubEvent } from "@farcaster/hub-nodejs";
+import {
+  Ed25519Signer,
+  Factories,
+  FarcasterNetwork,
+  Message,
+  MessageType,
+  PruneMessageHubEvent,
+  VERIFICATIONS_SIZE_LIMIT_DEFAULT,
+} from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../db/jestUtils.js";
 import Engine from "../engine/index.js";
 import { seedSigner } from "../engine/seed.js";
@@ -19,7 +27,13 @@ const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed
     { transient: { signer } },
   );
   const linkAdd = await Factories.LinkAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
-  return engine.mergeMessages([castAdd, reactionAdd, linkAdd]);
+  const proofs = await Factories.VerificationAddEthAddressMessage.createList(
+    VERIFICATIONS_SIZE_LIMIT_DEFAULT + 1,
+    { data: { fid, timestamp } },
+    { transient: { signer } },
+  );
+
+  return engine.mergeMessages([castAdd, reactionAdd, linkAdd, ...proofs]);
 };
 
 let prunedMessages: Message[] = [];
@@ -77,10 +91,14 @@ describe("doJobs", () => {
 
         const links = await engine.getLinksByFid(fid);
         expect(links._unsafeUnwrap().messages.length).toEqual(1);
+
+        const verifications = await engine.getVerificationsByFid(fid);
+        expect(verifications._unsafeUnwrap().messages.length).toEqual(VERIFICATIONS_SIZE_LIMIT_DEFAULT + 1);
       }
 
       const nowOrig = Date.now;
-      Date.now = () => FARCASTER_EPOCH + (currentTime + 60 * 60 * 24 * 365 + 1) * 1000; // advance 1 year and 1 second
+      // advance 1 month to get beyond the PRUNE_STOP_TIMESTAMP
+      Date.now = () => FARCASTER_EPOCH + (currentTime + 60 * 60 * 24 * 30) * 1000;
       try {
         const result = await scheduler.doJobs();
         expect(result._unsafeUnwrap()).toEqual(undefined);
@@ -89,18 +107,23 @@ describe("doJobs", () => {
       }
 
       for (const fid of [fid1, fid2]) {
+        // These messages are not pruned (under size limit)
         const casts = await engine.getCastsByFid(fid);
-        expect(casts._unsafeUnwrap().messages).toEqual([]);
+        expect(casts._unsafeUnwrap().messages.length).toEqual(1);
 
         const reactions = await engine.getReactionsByFid(fid);
-        expect(reactions._unsafeUnwrap().messages).toEqual([]);
+        expect(reactions._unsafeUnwrap().messages.length).toEqual(1);
 
-        // These don't prune based on time
         const links = await engine.getLinksByFid(fid);
         expect(links._unsafeUnwrap().messages.length).toEqual(1);
+
+        // These are pruned based on size
+        const verifications = await engine.getVerificationsByFid(fid);
+        expect(verifications._unsafeUnwrap().messages.length).toEqual(25);
       }
 
-      expect(prunedMessages.length).toEqual(4);
+      expect(prunedMessages.length).toEqual(2); // 1 verification for each of the 2 fids
+      expect(prunedMessages.filter((m) => m.data?.type !== MessageType.VERIFICATION_ADD_ETH_ADDRESS)).toEqual([]);
     },
     15 * 1000,
   );

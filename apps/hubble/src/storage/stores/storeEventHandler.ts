@@ -48,6 +48,7 @@ import { logger } from "../../utils/logger.js";
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 1_000;
 const DEFAULT_LOCK_TIMEOUT = 500; // in ms
+const PRUNING_START_GRACE_PERIOD = 60 * 60 * 24 * 1000; // 1 day in ms
 
 type PrunableMessage =
   | CastAddMessage
@@ -184,6 +185,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _generator: HubEventIdGenerator;
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
+  private _signerMigratedAt = 0;
 
   constructor(db: RocksDB, options: StoreEventHandlerOptions = {}) {
     super();
@@ -199,7 +201,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   }
 
   async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
-    return await this._storageCache.getCurrentStorageUnitsForFid(fid);
+    const units = await this._storageCache.getCurrentStorageUnitsForFid(fid);
+
+    if (units.isOk() && units.value === 0) {
+      logger.debug({ fid }, "fid has no registered storage, would be pruned");
+    }
+
+    return units.map((u) => {
+      if (this.shouldEnforcePruning) {
+        return u;
+      }
+      return u > 0 ? u : 1;
+    });
   }
 
   async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
@@ -272,18 +285,12 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(units.error);
     }
 
-    if (units.value === 0) {
-      logger.debug({ fid: message.data.fid }, "fid has no registered storage, would be pruned");
-    }
-
-    const unitsMultiplier = units.value > 0 ? units.value : 1;
-
     const messageCount = await this.getCacheMessageCount(message.data.fid, set);
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }
 
-    if (messageCount.value < sizeLimit * unitsMultiplier) {
+    if (messageCount.value < sizeLimit * units.value) {
       return ok(false);
     }
 
@@ -314,7 +321,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         }
         const event = HubEvent.create({ ...eventArgs, id: eventId.value });
         // TODO: validate event
-        // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+        // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
         txn = putEventTransaction(txn, event);
 
         await this._db.commit(txn);
@@ -338,13 +345,17 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    const result = await this._db.forEachIterator(async (key, _value) => {
-      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
-      if (result.isErr()) {
-        return err(result.error);
-      }
-      return false;
-    }, iteratorOpts.value);
+    const result = await this._db.forEachIterator(
+      async (key, _value) => {
+        const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
+        if (result.isErr()) {
+          return err(result.error);
+        }
+        return false;
+      },
+      iteratorOpts.value,
+      10 * 60 * 1000, // 10 minutes
+    );
 
     if (result) {
       return err(result.error);
@@ -371,6 +382,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     return ok(undefined);
+  }
+
+  signerMigrated(migratedAt: number) {
+    this._signerMigratedAt = migratedAt;
+  }
+
+  get shouldEnforcePruning(): boolean {
+    if (!this._signerMigratedAt) {
+      return false;
+    }
+    const pruneStartInMs = this._signerMigratedAt * 1000 + PRUNING_START_GRACE_PERIOD;
+    return Date.now() > pruneStartInMs;
   }
 }
 

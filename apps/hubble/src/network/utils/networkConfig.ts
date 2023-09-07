@@ -1,7 +1,7 @@
 import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
 import semver from "semver";
 import https from "https";
-import { err, ok } from "neverthrow";
+import { Result, err, ok } from "neverthrow";
 import { logger } from "../../utils/logger.js";
 import vm from "vm";
 import { APP_VERSION } from "../../hubble.js";
@@ -15,20 +15,24 @@ const NETWORK_CONFIG_LOCATION =
 
 export type NetworkConfig = {
   network: number;
-  allowedPeers: string[];
+  allowedPeers: string[] | undefined;
   deniedPeers: string[];
   minAppVersion: string;
+  storageRegistryAddress: `0x${string}` | undefined;
+  keyRegistryAddress: `0x${string}` | undefined;
+  idRegistryAddress: `0x${string}` | undefined;
 };
 
 export type NetworkConfigResult = {
   allowedPeerIds: string[] | undefined;
+  deniedPeerIds: string[];
   shouldExit: boolean;
 };
 
 export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
   return new Promise((resolve) => {
     https
-      .get(NETWORK_CONFIG_LOCATION, (res) => {
+      .get(NETWORK_CONFIG_LOCATION, { timeout: 15 * 1000 }, (res) => {
         let data = "";
 
         res.on("data", (chunk) => {
@@ -36,10 +40,29 @@ export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
         });
 
         res.on("end", () => {
-          const script = new vm.Script(data);
-          // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+          const script = Result.fromThrowable(
+            () => new vm.Script(data),
+            (error) => error,
+          )();
+
+          if (script.isErr()) {
+            log.error({ error: script.error, data }, "Error parsing network config");
+            resolve(err(new HubError("unavailable.network_failure", script.error as Error)));
+            return;
+          }
+
+          // biome-ignore lint/suspicious/noExplicitAny: context has to be "any"
           const context: any = {};
-          script.runInNewContext(context);
+
+          const result = Result.fromThrowable(
+            () => script.value.runInNewContext(context),
+            (e) => e,
+          )();
+          if (result.isErr()) {
+            log.error({ error: result.error, data }, "Error running network config");
+            resolve(err(new HubError("unavailable.network_failure", result.error as Error)));
+            return;
+          }
 
           // Access the config object
           const config = context["config"] as NetworkConfig;
@@ -55,12 +78,13 @@ export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
 
 export function applyNetworkConfig(
   networkConfig: NetworkConfig,
-  existingPeerIds: string[] | undefined,
+  allowedPeerIds: string[] | undefined,
+  deniedPeerIds: string[],
   currentNetwork: number,
 ): NetworkConfigResult {
   if (networkConfig.network !== currentNetwork) {
     log.error({ networkConfig, network: currentNetwork }, "network config mismatch");
-    return { allowedPeerIds: existingPeerIds, shouldExit: false };
+    return { allowedPeerIds, deniedPeerIds, shouldExit: false };
   }
 
   // Refuse to start if we are below the minAppVersion
@@ -70,27 +94,29 @@ export function applyNetworkConfig(
     if (semver.lt(APP_VERSION, minAppVersion)) {
       const errMsg = "Hubble version is too old too start. Please update your node.";
       log.fatal({ minAppVersion, ourVersion: APP_VERSION }, errMsg);
-      return { allowedPeerIds: existingPeerIds, shouldExit: true };
+      return { allowedPeerIds, deniedPeerIds, shouldExit: true };
     }
   } else {
     log.error({ networkConfig }, "invalid minAppVersion");
   }
 
-  let newPeerIdList: string[] = [];
+  let newPeerIdList: string[] | undefined = allowedPeerIds;
+  let newDeniedPeerIdList: string[] = [];
 
   if (networkConfig.allowedPeers) {
     // Add the network.allowedPeers to the list of allowed peers
-    newPeerIdList = [...new Set([...(existingPeerIds ?? []), ...networkConfig.allowedPeers])];
+    newPeerIdList = [...new Set([...(allowedPeerIds ?? []), ...networkConfig.allowedPeers])];
   } else {
-    log.error({ networkConfig }, "network config does not contain 'allowedPeers'");
+    log.info({ networkConfig }, "network config does not contain 'allowedPeers'");
   }
 
   // Then remove the denied peers from this list
   if (networkConfig.deniedPeers) {
-    newPeerIdList = newPeerIdList.filter((peerId) => !networkConfig.deniedPeers.includes(peerId));
+    newPeerIdList = newPeerIdList?.filter((peerId) => !networkConfig.deniedPeers.includes(peerId));
+    newDeniedPeerIdList = [...new Set([...deniedPeerIds, ...networkConfig.deniedPeers])];
   } else {
-    log.error({ networkConfig }, "network config does not contain 'deniedPeers'");
+    log.info({ networkConfig }, "network config does not contain 'deniedPeers'");
   }
 
-  return { allowedPeerIds: newPeerIdList, shouldExit: false };
+  return { allowedPeerIds: newPeerIdList, deniedPeerIds: newDeniedPeerIdList, shouldExit: false };
 }

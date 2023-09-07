@@ -34,8 +34,10 @@ enum SignerEventType {
 
 message SignerEventBody {
   bytes key = 1;
-  uint32 scheme = 2;
+  uint32 key_type = 2;
   SignerEventType event_type = 3;
+  bytes metadata = 4;
+  uint32 metadata_type = 5;
 }
 
 message SignerMigratedEventBody {
@@ -46,12 +48,14 @@ enum IdRegisterEventType {
   ID_REGISTER_EVENT_TYPE_NONE = 0;
   ID_REGISTER_EVENT_TYPE_REGISTER = 1;
   ID_REGISTER_EVENT_TYPE_TRANSFER = 2;
+  ID_REGISTER_EVENT_TYPE_CHANGE_RECOVERY = 3;
 }
 
 message IdRegisterEventBody {
   bytes to = 1;
   IdRegisterEventType event_type = 2;
   bytes from = 3;
+  bytes recovery_address = 4;
 }
 
 message StorageRentEventBody {
