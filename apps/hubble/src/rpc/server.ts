@@ -348,7 +348,10 @@ export default class Server {
             isSyncing: !this.syncEngine?.isSyncing(),
             nickname: APP_NICKNAME,
             rootHash: (await this.syncEngine?.trie.rootHash()) ?? "",
-            peerId: this.hub?.identity ?? "",
+            peerId: Result.fromThrowable(
+              () => this.hub?.identity ?? "",
+              (e) => e,
+            )().unwrapOr(""),
             hubOperatorFid: this.hub?.hubOperatorFid ?? 0,
           });
 
