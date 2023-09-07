@@ -150,13 +150,13 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
     // Puts the message key into the ByParent index
     const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
     if (parent) {
-      // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
       txn = txn.put(makeCastsByParentKey(parent, message.data.fid, tsHash.value), TRUE_VALUE);
     }
 
     // Puts the message key into the ByMentions index
     for (const mentionFid of message.data.castAddBody.mentions) {
-      // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
       txn = txn.put(makeCastsByMentionKey(mentionFid, message.data.fid, tsHash.value), TRUE_VALUE);
     }
 
@@ -172,14 +172,14 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
 
     // Delete the message key from the ByMentions index
     for (const mentionFid of message.data.castAddBody.mentions) {
-      // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
       txn = txn.del(makeCastsByMentionKey(mentionFid, message.data.fid, tsHash.value));
     }
 
     // Delete the message key from the ByParent index
     const parent = message.data.castAddBody.parentCastId ?? message.data.castAddBody.parentUrl;
     if (parent) {
-      // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
       txn = txn.del(makeCastsByParentKey(parent, message.data.fid, tsHash.value));
     }
 

@@ -104,7 +104,7 @@ export class SyncEngineProfiler {
   }
 
   public writeNodeProfile(nodeProfile: string) {
-    this.syncTrieNodeProfiles.write(nodeProfile + "\n");
+    this.syncTrieNodeProfiles.write(`${nodeProfile}\n`);
   }
 
   public writeOutNodeProfiles() {
@@ -206,12 +206,12 @@ export class SyncEngineProfiler {
 
     return new Proxy(rpcClient, {
       get: function (target, prop, receiver) {
-        // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
         const origMethod = (target as any)[prop];
-        // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
         return async (...args: any[]) => {
           const start = Date.now();
-          // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
           const result = await origMethod.apply(this as any, args);
           const end = Date.now();
 

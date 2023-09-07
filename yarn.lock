@@ -894,6 +894,48 @@
   resolved "https://registry.npmjs.org/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
+"@biomejs/biome@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@biomejs/biome/-/biome-1.1.0.tgz#e4abe27d14860f615cd185b737938c8b3db6cf5a"
+  integrity sha512-0cDWzMdKhGq/xhmnEVRUHYp7OPGJdKP/Ykps+z20AeUNbwvxY6sKCtXYxnO2KRD34+3akSzhrzvknM4YsyiFlw==
+  optionalDependencies:
+    "@biomejs/cli-darwin-arm64" "1.1.0"
+    "@biomejs/cli-darwin-x64" "1.1.0"
+    "@biomejs/cli-linux-arm64" "1.1.0"
+    "@biomejs/cli-linux-x64" "1.1.0"
+    "@biomejs/cli-win32-arm64" "1.1.0"
+    "@biomejs/cli-win32-x64" "1.1.0"
+
+"@biomejs/cli-darwin-arm64@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@biomejs/cli-darwin-arm64/-/cli-darwin-arm64-1.1.0.tgz#b9809f1b5aaf2759192da19429d2e42922cdf2de"
+  integrity sha512-2NbviMV7029//HW3Dltk0BUDcprQCkBPpanleEewJ5rm86f4r9/ELzG0w6LhBsjt10Opy7RpY3Hd6B/WrIRSvw==
+
+"@biomejs/cli-darwin-x64@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@biomejs/cli-darwin-x64/-/cli-darwin-x64-1.1.0.tgz#34ed57b557af969175b691ce95f91cde730eb9b8"
+  integrity sha512-LuJNjGCBR8LScKTuIIl/mcNVDq2yGfBRYTUAplEmJB/I2/pj2jaD69idaN9AAOodA23i3G1IuZCh4a/8KhFs3g==
+
+"@biomejs/cli-linux-arm64@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@biomejs/cli-linux-arm64/-/cli-linux-arm64-1.1.0.tgz#e34680d265a527374d7ed86bc446a5527523408e"
+  integrity sha512-5D9waO1dB0nZg1TB9LNtc/PT9P5+sapF8J2NHPOzxttIWaM0NNUCJACCtJ8nDdd/pXXsFME2LYYrUeFSIBLD1Q==
+
+"@biomejs/cli-linux-x64@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.1.0.tgz#eba7e8500239202b94c1489d4a4ea5c140fb0b59"
+  integrity sha512-fsKs7kANBtTR8y/qqoWqIQPmkC7VtnsVN3sy5wmqzT7vjHyZPJoL1QDIiZlYDJO6pVBOjkRniNFCQhtXkZDfWA==
+
+"@biomejs/cli-win32-arm64@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@biomejs/cli-win32-arm64/-/cli-win32-arm64-1.1.0.tgz#1760e591f10680f78085b688bca0a465eab5d9a9"
+  integrity sha512-u/Q8IjfDFJh5lJx3bUJW2dS/qRtOdU31ZN750xQi5rot0zCHiIcVkQ+aLIREaftmWw4kbVCvJHnpSnZsNGLUqg==
+
+"@biomejs/cli-win32-x64@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/@biomejs/cli-win32-x64/-/cli-win32-x64-1.1.0.tgz#e47209dfcb0a30c862a6d2f8cddb982280f474dd"
+  integrity sha512-1KngaabxKQ0ai3P6UiL0d3tq6P5OQvZ9eVHhaqHkHnmY5th61+1EoILWu6zGKdKc2/O/HS+0qOgeFS8wTEHTaA==
+
 "@chainsafe/is-ip@^2.0.1":
   version "2.0.1"
   resolved "https://registry.npmjs.org/@chainsafe/is-ip/-/is-ip-2.0.1.tgz#62cb285669d91f88fd9fa285048dde3882f0993b"
@@ -2725,36 +2767,6 @@
   version "1.1.0"
   resolved "https://registry.npmjs.org/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
-
-"@rometools/cli-darwin-arm64@12.1.3":
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/@rometools/cli-darwin-arm64/-/cli-darwin-arm64-12.1.3.tgz#b00fe225e34047c4dac63588e237b11ebec47694"
-  integrity sha512-AmFTUDYjBuEGQp/Wwps+2cqUr+qhR7gyXAUnkL5psCuNCz3807TrUq/ecOoct5MIavGJTH6R4aaSL6+f+VlBEg==
-
-"@rometools/cli-darwin-x64@12.1.3":
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/@rometools/cli-darwin-x64/-/cli-darwin-x64-12.1.3.tgz#e5bbf02afb1aab7447e743092245dea992b4b29f"
-  integrity sha512-k8MbWna8q4LRlb005N2X+JS1UQ+s3ZLBBvwk4fP8TBxlAJXUz17jLLu/Fi+7DTTEmMhM84TWj4FDKW+rNar28g==
-
-"@rometools/cli-linux-arm64@12.1.3":
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/@rometools/cli-linux-arm64/-/cli-linux-arm64-12.1.3.tgz#e75b01b74c134edc811e21fa7e1e440602930d59"
-  integrity sha512-X/uLhJ2/FNA3nu5TiyeNPqiD3OZoFfNfRvw6a3ut0jEREPvEn72NI7WPijH/gxSz55znfQ7UQ6iM4DZumUknJg==
-
-"@rometools/cli-linux-x64@12.1.3":
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/@rometools/cli-linux-x64/-/cli-linux-x64-12.1.3.tgz#2b9f4a68079783f275d4d27df83e4fa2220ec6fc"
-  integrity sha512-csP17q1eWiUXx9z6Jr/JJPibkplyKIwiWPYNzvPCGE8pHlKhwZj3YHRuu7Dm/4EOqx0XFIuqqWZUYm9bkIC8xg==
-
-"@rometools/cli-win32-arm64@12.1.3":
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/@rometools/cli-win32-arm64/-/cli-win32-arm64-12.1.3.tgz#714acb67ac4ea4c15e2bc6aea4dd290c76c8efc6"
-  integrity sha512-RymHWeod57EBOJY4P636CgUwYA6BQdkQjh56XKk4pLEHO6X1bFyMet2XL7KlHw5qOTalzuzf5jJqUs+vf3jdXQ==
-
-"@rometools/cli-win32-x64@12.1.3":
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/@rometools/cli-win32-x64/-/cli-win32-x64-12.1.3.tgz#b4f53491d2ca8f1234b3613b7cc73418ad8d76bb"
-  integrity sha512-yHSKYidqJMV9nADqg78GYA+cZ0hS1twANAjiFibQdXj9aGzD+s/IzIFEIi/U/OBLvWYg/SCw0QVozi2vTlKFDQ==
 
 "@scure/base@~1.1.0":
   version "1.1.1"
@@ -5637,17 +5649,17 @@ fast-safe-stringify@^2.1.1:
   resolved "https://registry.npmjs.org/fast-safe-stringify/-/fast-safe-stringify-2.1.1.tgz#c406a83b6e70d9e35ce3b30a81141df30aeba884"
   integrity sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==
 
+fast-uri@^2.0.0, fast-uri@^2.1.0:
+  version "2.2.0"
+  resolved "https://registry.npmjs.org/fast-uri/-/fast-uri-2.2.0.tgz#519a0f849bef714aad10e9753d69d8f758f7445a"
+  integrity sha512-cIusKBIt/R/oI6z/1nyfe2FvGKVTohVRfvkOhvx0nCEW+xf5NoCXjAHcWp93uOUBchzYcsvPlrapAdX1uW+YGg==
+
 fast-xml-parser@4.2.5:
   version "4.2.5"
   resolved "https://registry.npmjs.org/fast-xml-parser/-/fast-xml-parser-4.2.5.tgz#a6747a09296a6cb34f2ae634019bf1738f3b421f"
   integrity sha512-B9/wizE4WngqQftFPmdaMYlXoJlJOYxGQOanC77fq9k8+Z0v5dDSVh+3glErdIROP//s/jgb7ZuxKfB8nVyo0g==
   dependencies:
     strnum "^1.0.5"
-    
-fast-uri@^2.0.0, fast-uri@^2.1.0:
-  version "2.2.0"
-  resolved "https://registry.npmjs.org/fast-uri/-/fast-uri-2.2.0.tgz#519a0f849bef714aad10e9753d69d8f758f7445a"
-  integrity sha512-cIusKBIt/R/oI6z/1nyfe2FvGKVTohVRfvkOhvx0nCEW+xf5NoCXjAHcWp93uOUBchzYcsvPlrapAdX1uW+YGg==
 
 fastify@^4.22.0:
   version "4.22.0"
@@ -8557,9 +8569,9 @@ prompts@^2.0.1:
     sisteransi "^1.0.5"
 
 protobufjs@^6.11.2, protobufjs@^6.11.3, protobufjs@^6.8.8:
-  version "6.11.3"
-  resolved "https://registry.npmjs.org/protobufjs/-/protobufjs-6.11.3.tgz#637a527205a35caa4f3e2a9a4a13ddffe0e7af74"
-  integrity sha512-xL96WDdCZYdU7Slin569tFX712BxsxslWwAfAhCYjQKGTq7dAU91Lomy6nLLhh/dyGhk/YH4TwTSRxTzhuHyZg==
+  version "6.11.4"
+  resolved "https://registry.npmjs.org/protobufjs/-/protobufjs-6.11.4.tgz#29a412c38bf70d89e537b6d02d904a6f448173aa"
+  integrity sha512-5kQWPaJHi1WoCpjTGszzQ32PG2F4+wRY6BmAT4Vfw56Q2FZ4YZzK20xUYQH4YkfehY1e6QSICrJquM6xXZNcrw==
   dependencies:
     "@protobufjs/aspromise" "^1.1.2"
     "@protobufjs/base64" "^1.1.2"
@@ -8576,9 +8588,9 @@ protobufjs@^6.11.2, protobufjs@^6.11.3, protobufjs@^6.8.8:
     long "^4.0.0"
 
 protobufjs@^7.0.0:
-  version "7.2.1"
-  resolved "https://registry.npmjs.org/protobufjs/-/protobufjs-7.2.1.tgz#939e76a8e69fd5c70b13f7dd78565d65ce20cdcb"
-  integrity sha512-L3pCItypTnPK27+CS8nuhZMYtsY+i8dqdq2vZsYHlG17CnWp1DWPQ/sos0vOKrj1fHEAzo3GBqSHLaeZyKUCDA==
+  version "7.2.5"
+  resolved "https://registry.npmjs.org/protobufjs/-/protobufjs-7.2.5.tgz#45d5c57387a6d29a17aab6846dcc283f9b8e7f2d"
+  integrity sha512-gGXRSXvxQ7UiPgfw8gevrfRWcTlSbOFg+p/N+JVJEK5VhueL2miT6qTymqAmjr1Q5WbOCyJbyrk6JfWKwlFn6A==
   dependencies:
     "@protobufjs/aspromise" "^1.1.2"
     "@protobufjs/base64" "^1.1.2"
@@ -8906,18 +8918,6 @@ rollup@^3.2.5:
   integrity sha512-lAbrdN7neYCg/8WaoWn/ckzCtz+jr70GFfYdlf50OF7387HTg+wiuiqJRFYawwSPpqfqDNYqK7smY/ks2iAudg==
   optionalDependencies:
     fsevents "~2.3.2"
-
-rome@12.1.3:
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/rome/-/rome-12.1.3.tgz#4d4d62cad16216843680bd3ca11a4c248134902a"
-  integrity sha512-e+ff72hxDpe/t5/Us7YRBVw3PBET7SeczTQNn6tvrWdrCaAw3qOukQQ+tDCkyFtS4yGsnhjrJbm43ctNbz27Yg==
-  optionalDependencies:
-    "@rometools/cli-darwin-arm64" "12.1.3"
-    "@rometools/cli-darwin-x64" "12.1.3"
-    "@rometools/cli-linux-arm64" "12.1.3"
-    "@rometools/cli-linux-x64" "12.1.3"
-    "@rometools/cli-win32-arm64" "12.1.3"
-    "@rometools/cli-win32-x64" "12.1.3"
 
 run-parallel@^1.1.9:
   version "1.2.0"

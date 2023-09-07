@@ -168,9 +168,9 @@ export const getDbClient = (connectionString: string) => {
           bigint: {
             to: 20,
             from: 20,
-            // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+            // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
             parse: (x: any) => Number(x),
-            // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+            // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
             serialize: (x: any) => x.toString(),
           },
         },
@@ -181,7 +181,7 @@ export const getDbClient = (connectionString: string) => {
   });
 };
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const migrateToLatest = async (db: Kysely<any>, log: Logger): Promise<Result<void, unknown>> => {
   const migrator = new Migrator({
     db,
@@ -211,7 +211,7 @@ export const migrateToLatest = async (db: Kysely<any>, log: Logger): Promise<Res
   return ok(undefined);
 };
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const migrateResetEntirely = async (db: Kysely<any>, log: Logger): Promise<Result<void, unknown>> => {
   const migrator = new Migrator({
     db,
@@ -241,7 +241,7 @@ export const migrateResetEntirely = async (db: Kysely<any>, log: Logger): Promis
   return ok(undefined);
 };
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const migrateOneUp = async (db: Kysely<any>, log: Logger): Promise<Result<void, unknown>> => {
   const migrator = new Migrator({
     db,

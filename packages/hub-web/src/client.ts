@@ -73,7 +73,7 @@ const wrapClient = <C extends object>(client: C) => {
         return (...args: unknown[]) => {
           const result = func.call(target, ...args);
           if (result instanceof Promise) {
-            // rome-ignore lint/suspicious/noExplicitAny: legacy from eslint migration
+            // biome-ignore lint/suspicious/noExplicitAny: legacy from eslint migration
             return (result as Promise<any>).then(
               (res) => ok(res),
               (e) => err(fromServiceError(e as GrpcWebError)),

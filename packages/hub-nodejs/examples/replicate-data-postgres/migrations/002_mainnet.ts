@@ -1,6 +1,6 @@
 import { Kysely, sql } from "kysely";
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const up = async (db: Kysely<any>) => {
   await db.schema.alterTable("fnames").addColumn("fid", "bigint").execute();
 
@@ -20,23 +20,23 @@ export const up = async (db: Kysely<any>) => {
     .alterTable("fnames")
     .alterColumn("expiresAt", (c) => c.dropNotNull())
     .alterColumn("custodyAddress", (c) => c.dropNotNull())
-    .addColumn("deletedAt", "timestamp")
+    .addColumn("deletedAt", "timestamptz")
     .execute();
 
   await db.schema
     .createTable("storage")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("units", "bigint", (col) => col.notNull())
-    .addColumn("expiry", "timestamp", (col) => col.notNull())
+    .addColumn("expiry", "timestamptz", (col) => col.notNull())
     .execute();
 };
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const down = async (db: Kysely<any>) => {
   await db.schema.alterTable("fnames").dropColumn("fid").execute();
 

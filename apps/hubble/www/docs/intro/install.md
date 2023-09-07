@@ -56,6 +56,8 @@ ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
 
 # Set this to your L2 Optimism Mainnet RPC URL
 OPTIMISM_L2_RPC_URL=your-L2-optimism-RPC-URL
+
+HUB_OPERATOR_FID=your-fid
 ```
 
 5. Follow the instructions to set [connect to a network](./networks.md).
@@ -111,7 +113,7 @@ To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the 
 
 1. `yarn identity create` to create a ID
 2. Follow the instructions to set [connect to a network](./networks.md)
-3. `yarn start --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL> --l2-rpc-url <your Optimism-L2-RPC-URL>`
+3. `yarn start --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL> --l2-rpc-url <your Optimism-L2-RPC-URL> --hub-operator-fid <your FID>`
 
 ### Upgrading Hubble
 
@@ -159,3 +161,7 @@ docker pull farcasterxyz/hubble:latest
 # Get a specific release (v1.4.0)
 docker pull farcasterxyz/hubble@v1.4.0
 ```
+
+- To set the Hub operator FID
+  * If you are running via docker or the script, please set this in your `.env` file: `HUB_OPERATOR_FID=your-fid`
+  * If you are running via source `yarn start --hub-operator-fid <your-fid>`

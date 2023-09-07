@@ -97,6 +97,8 @@ export interface HubInfoResponse {
   nickname: string;
   rootHash: string;
   dbStats: DbStats | undefined;
+  peerId: string;
+  hubOperatorFid: number;
 }
 
 export interface DbStats {
@@ -529,7 +531,15 @@ export const HubInfoRequest = {
 };
 
 function createBaseHubInfoResponse(): HubInfoResponse {
-  return { version: "", isSyncing: false, nickname: "", rootHash: "", dbStats: undefined };
+  return {
+    version: "",
+    isSyncing: false,
+    nickname: "",
+    rootHash: "",
+    dbStats: undefined,
+    peerId: "",
+    hubOperatorFid: 0,
+  };
 }
 
 export const HubInfoResponse = {
@@ -548,6 +558,12 @@ export const HubInfoResponse = {
     }
     if (message.dbStats !== undefined) {
       DbStats.encode(message.dbStats, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.peerId !== "") {
+      writer.uint32(50).string(message.peerId);
+    }
+    if (message.hubOperatorFid !== 0) {
+      writer.uint32(56).uint64(message.hubOperatorFid);
     }
     return writer;
   },
@@ -594,6 +610,20 @@ export const HubInfoResponse = {
 
           message.dbStats = DbStats.decode(reader, reader.uint32());
           continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.peerId = reader.string();
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.hubOperatorFid = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -610,6 +640,8 @@ export const HubInfoResponse = {
       nickname: isSet(object.nickname) ? String(object.nickname) : "",
       rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
       dbStats: isSet(object.dbStats) ? DbStats.fromJSON(object.dbStats) : undefined,
+      peerId: isSet(object.peerId) ? String(object.peerId) : "",
+      hubOperatorFid: isSet(object.hubOperatorFid) ? Number(object.hubOperatorFid) : 0,
     };
   },
 
@@ -620,6 +652,8 @@ export const HubInfoResponse = {
     message.nickname !== undefined && (obj.nickname = message.nickname);
     message.rootHash !== undefined && (obj.rootHash = message.rootHash);
     message.dbStats !== undefined && (obj.dbStats = message.dbStats ? DbStats.toJSON(message.dbStats) : undefined);
+    message.peerId !== undefined && (obj.peerId = message.peerId);
+    message.hubOperatorFid !== undefined && (obj.hubOperatorFid = Math.round(message.hubOperatorFid));
     return obj;
   },
 
@@ -636,6 +670,8 @@ export const HubInfoResponse = {
     message.dbStats = (object.dbStats !== undefined && object.dbStats !== null)
       ? DbStats.fromPartial(object.dbStats)
       : undefined;
+    message.peerId = object.peerId ?? "";
+    message.hubOperatorFid = object.hubOperatorFid ?? 0;
     return message;
   },
 };

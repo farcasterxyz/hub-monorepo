@@ -241,6 +241,11 @@ class Engine {
   }
 
   async mergeMessage(message: Message): HubAsyncResult<number> {
+    const validatedMessage = await this.validateMessage(message);
+    if (validatedMessage.isErr()) {
+      return err(validatedMessage.error);
+    }
+
     // Extract the FID that this message was signed by
     const fid = message.data?.fid ?? 0;
     const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
@@ -259,12 +264,7 @@ class Engine {
       }
     }
 
-    const validatedMessage = await this.validateMessage(message);
-    if (validatedMessage.isErr()) {
-      return err(validatedMessage.error);
-    }
-
-    // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+    // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     const setPostfix = typeToSetPostfix(message.data!.type);
 
     switch (setPostfix) {

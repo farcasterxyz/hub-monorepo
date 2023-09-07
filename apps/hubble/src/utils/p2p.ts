@@ -166,7 +166,7 @@ export const getPublicIp = async (): HubAsyncResult<string> => {
           resolve(ok(ip.toString()));
         });
       });
-      // rome-ignore lint/suspicious/noExplicitAny: error catching
+      // biome-ignore lint/suspicious/noExplicitAny: error catching
     } catch (err: any) {
       reject(new HubError("unavailable.network_failure", err));
     }

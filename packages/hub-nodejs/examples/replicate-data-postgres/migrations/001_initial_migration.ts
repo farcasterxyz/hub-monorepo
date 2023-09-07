@@ -1,6 +1,6 @@
 import { Kysely, sql } from "kysely";
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("hubSubscriptions")
@@ -11,12 +11,12 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("messages")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("prunedAt", "timestamp")
-    .addColumn("revokedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("prunedAt", "timestamptz")
+    .addColumn("revokedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("messageType", sql`smallint`, (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("hash", sql`bytea`, (col) => col.notNull())
@@ -33,10 +33,10 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("casts")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("hash", sql`bytea`, (col) => col.notNull())
     .addColumn("parentHash", sql`bytea`)
@@ -69,10 +69,10 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("reactions")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("reactionType", sql`smallint`, (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("hash", sql`bytea`, (col) => col.notNull())
@@ -101,10 +101,10 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("signers")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("hash", sql`bytea`, (col) => col.notNull())
     .addColumn("custodyAddress", sql`bytea`, (col) => col.notNull())
@@ -119,10 +119,10 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("verifications")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("hash", sql`bytea`, (col) => col.notNull())
     .addColumn("claim", "jsonb", (col) => col.notNull())
@@ -145,10 +145,10 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("userData")
     .addColumn("id", "bigint", (col) => col.generatedAlwaysAsIdentity().primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("hash", sql`bytea`, (col) => col.notNull())
     .addColumn("type", sql`smallint`, (col) => col.notNull())
@@ -163,18 +163,18 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("fids")
     .addColumn("fid", "bigint", (col) => col.primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
     .addColumn("custodyAddress", sql`bytea`, (col) => col.notNull())
     .execute();
 
   await db.schema
     .createTable("fnames")
     .addColumn("fname", "text", (col) => col.primaryKey())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
     .addColumn("custodyAddress", sql`bytea`, (col) => col.notNull())
-    .addColumn("expiresAt", "timestamp", (col) => col.notNull())
+    .addColumn("expiresAt", "timestamptz", (col) => col.notNull())
     .execute();
 
   await db.schema
@@ -183,18 +183,19 @@ export const up = async (db: Kysely<any>) => {
     .addColumn("fid", "bigint")
     .addColumn("targetFid", "bigint")
     .addColumn("hash", sql`bytea`, (col) => col.notNull())
-    .addColumn("timestamp", "timestamp", (col) => col.notNull())
-    .addColumn("createdAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("updatedAt", "timestamp", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("deletedAt", "timestamp")
+    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
+    .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
+    .addColumn("deletedAt", "timestamptz")
     .addColumn("type", "text")
-    .addColumn("displayTimestamp", "timestamp")
+    .addColumn("displayTimestamp", "timestamptz")
     .addUniqueConstraint("links_hash_unique", ["hash"])
     .addUniqueConstraint("links_fid_target_fid_type_unique", ["fid", "targetFid", "type"])
+
     .execute();
 };
 
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const down = async (db: Kysely<any>) => {
   await db.schema.dropTable("links").ifExists().execute();
   await db.schema.dropTable("fnames").ifExists().execute();

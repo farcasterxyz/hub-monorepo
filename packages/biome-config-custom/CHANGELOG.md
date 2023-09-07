@@ -1,4 +1,4 @@
-# rome-config-custom
+# biome-config-custom
 
 ## 0.0.1
 

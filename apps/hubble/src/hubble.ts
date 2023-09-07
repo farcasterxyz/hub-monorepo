@@ -99,6 +99,8 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
 
 export interface HubInterface {
   engine: Engine;
+  identity: string;
+  hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
   submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
@@ -262,6 +264,9 @@ export interface HubOptions {
 
   /** S3 bucket to upload snapshots to */
   s3SnapshotBucket?: string;
+
+  /** Hub Operator's FID */
+  hubOperatorFid?: number;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -432,6 +437,10 @@ export class Hub implements HubInterface {
 
   get gossipAddresses() {
     return this.gossipNode.multiaddrs ?? [];
+  }
+
+  get hubOperatorFid() {
+    return this.options.hubOperatorFid ?? 0;
   }
 
   /** Returns the Gossip peerId string of this Hub */
@@ -714,7 +723,7 @@ export class Hub implements HubInterface {
       let downloadedSize = 0;
       const progressBar = addProgressBar("Getting snapshot", totalSize);
 
-      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       response2.data.on("data", (chunk: any) => {
         downloadedSize += chunk.length;
         progressBar?.update(downloadedSize);
