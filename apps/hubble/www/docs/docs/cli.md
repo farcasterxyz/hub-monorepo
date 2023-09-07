@@ -28,7 +28,7 @@ Start a Hub
 Hubble Options:
   -n --network <network>                ID of the Farcaster Network (default: 3 (devnet))
   -i, --id <filepath>                   Path to the PeerId file.
-  --hub-operator-fid                    The FID of the hub operator. Optional.
+  --hub-operator-fid <fid>              The FID of the hub operator. Optional.
   -c, --config <filepath>               Path to the config file.
   --db-name <name>                      The name of the RocksDB instance. (default: rocks.hub._default)
   --admin-server-enabled                Enable the admin server. (default: disabled)
@@ -57,6 +57,7 @@ Snapshots Options:
   --enable-snapshot-to-s3               Enable daily snapshots to be uploaded to S3. (default: disabled)
   --s3-snapshot-bucket <bucket>         The S3 bucket to upload snapshots to
   --disable-snapshot-sync               Disable syncing from snapshots. (default: enabled)
+
 Metrics:
   --statsd-metrics-server <host>        The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)
 
