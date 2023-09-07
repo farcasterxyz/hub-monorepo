@@ -29,7 +29,7 @@ import { profileGossipServer } from "./profile/gossipProfile.js";
 import { initializeStatsd } from "./utils/statsd.js";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
-import { goerli, mainnet, optimism } from "viem/chains";
+import { mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
