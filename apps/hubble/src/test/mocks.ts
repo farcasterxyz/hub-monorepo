@@ -31,6 +31,9 @@ export class MockHub implements HubInterface {
     this.gossipNode = gossipNode;
   }
 
+  identity = "mock";
+  hubOperatorFid = 0;
+
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
     const result = await this.engine.mergeMessage(message);
 

@@ -135,6 +135,26 @@ validate_and_store() {
     done
 }
 
+store_operator_fid_env() {
+    local input
+    local response
+
+    read -p "> Your FID or farcaster username: " input
+
+    if [[ $input =~ ^-?[0-9]+$ ]]; then
+        response=$(curl -s "https://fnames.farcaster.xyz/transfers?fid=$input" | jq '.transfers[-1].to')
+    else
+        response=$(curl -s "https://fnames.farcaster.xyz/transfers?name=$input" | jq '.transfers[-1].to')
+    fi
+
+    if [ "$response" != "null" ] && [ "$response" != "" ]; then
+        echo "HUB_OPERATOR_FID=$response" >> .env        
+    else
+        echo "Not a valid FID or username. Not updating HUB_OPERATOR_FID."
+        echo "HUB_OPERATOR_FID=0" >> .env
+    fi
+}
+
 key_exists() {
     local key=$1
     grep -q "^$key=" .env
@@ -160,6 +180,10 @@ write_env_file() {
 
     if ! key_exists "OPTIMISM_L2_RPC_URL"; then
         validate_and_store "Optimism L2 Mainnet" "0xa" "OPTIMISM_L2_RPC_URL"
+    fi
+
+    if ! key_exists "HUB_OPERATOR_FID"; then
+        store_operator_fid_env
     fi
 
     echo "✅ .env file updated."

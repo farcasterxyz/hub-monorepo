@@ -6,6 +6,7 @@ module.exports = function clidocs() {
   const docFileName = "www/docs/docs/cli.md";
 
   try {
+    // Step 1: Get the list of all options from the CLI
     const helpOutput = execSync("node --no-warnings build/cli.js start --help").toString();
 
     const optionNames = [];
