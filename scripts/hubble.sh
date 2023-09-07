@@ -5,7 +5,7 @@
 # itself in the process.
 
 # Define the version of this script
-CURRENT_VERSION="2"
+CURRENT_VERSION="3"
 
 REPO="farcasterxyz/hub-monorepo"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
@@ -81,22 +81,36 @@ self_upgrade() {
     tmp_file=$(mktemp)
     fetch_file_from_repo "$SCRIPT_FILE_PATH" "$tmp_file"
 
-    local latest_version
-    latest_version=$(awk -F'="' '/^CURRENT_VERSION=/ { print $2 }' "$tmp_file" | tr -d '"')
+    local current_hash
+    local new_hash
 
-    # Compare the versions
-    if [[ "$latest_version" > "$CURRENT_VERSION" ]]; then
-        echo "Newer version found ($latest_version). Upgrading..."
+    # Determine the appropriate hash command to use
+    if command -v sha256sum > /dev/null; then
+        hash_cmd="sha256sum"
+    elif command -v shasum > /dev/null; then
+        hash_cmd="shasum -a 256"
+    else
+        echo "Error: No suitable hash command found."
+        exit 1
+    fi
+
+    # Get the hash of the current script and the new file
+    current_hash=$($hash_cmd "$0" | awk '{ print $1 }')
+    new_hash=$($hash_cmd "$tmp_file" | awk '{ print $1 }')
+
+    # Compare the hashes
+    if [[ "$new_hash" != "$current_hash" ]]; then
+        echo "New version found. Upgrading..."
         mv "$tmp_file" "$0" # Overwrite the current script
-        chmod +x "$0"       # Ensure the script remains executable
+        chmod +rx "$0"      # Ensure the script remains executable
         echo "✅ Upgrade complete. Restarting with new version..."
         echo ""
-        exec "$0" "$1" || echo "Exec failed with status: $?"
+        exec "$0" "$@" || echo "Exec failed with status: $?"
 
         # Exit the script because we already "exec"ed the script above
         exit 0
     else
-        echo "✅ Latest Script Version: $CURRENT_VERSION."
+        echo "✅ Latest Script Version."
         rm -f "$tmp_file"  # Clean up temporary file if no upgrade was needed
     fi
 }
