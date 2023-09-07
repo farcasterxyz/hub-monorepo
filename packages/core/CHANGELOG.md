@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.12.6
+
+### Patch Changes
+
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 76a031e2: feat: Add storage limit constants to core
+
 ## 0.12.5
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @farcaster/hub-web
 
+## 0.6.3
+
+### Patch Changes
+
+- 76a031e2: feat: Add storage limit constants to core
+- Updated dependencies [bc416dbe]
+- Updated dependencies [76a031e2]
+  - @farcaster/core@0.12.6
+
 ## 0.6.2
 
 ### Patch Changes
