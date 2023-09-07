@@ -602,8 +602,10 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     const addsKey = this.makeAddKey(message as any);
 
-    // Run only in TEST
-    if (process.env["NODE_ENV"] === "test") {
+    // Run only in TEST. This is a bit of a footgun, so we'll make an exception and run some checks
+    // here. When using a message key for the Removes index, the Postfix must be > UserMessagePostfixMax
+    // to avoid collisions with the Messages undex
+    if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
       // Ensure that the Adds key is using a Postfix > UserMessagePostfixMax
       const keypostfix = addsKey.readUint8(1 + FID_BYTES);
       if (keypostfix <= UserMessagePostfixMax) {
@@ -667,8 +669,10 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     const removesKey = this.makeRemoveKey(message as any);
 
-    // Run only in TEST
-    if (process.env["NODE_ENV"] === "test") {
+    // Run only in TEST. This is a bit of a footgun, so we'll make an exception and run some checks
+    // here. When using a message key for the Removes index, the Postfix must be > UserMessagePostfixMax
+    // to avoid collisions with the Messages undex
+    if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
       // Ensure that the Removes key is using a Postfix > UserMessagePostfixMax
       const keypostfix = removesKey.readUint8(1 + FID_BYTES);
       if (keypostfix <= UserMessagePostfixMax) {
