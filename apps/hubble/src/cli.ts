@@ -541,7 +541,7 @@ app
           } else {
             startupCheck.printStartupCheckStatus(
               StartupCheckStatus.WARNING,
-              `Hub Operator FID is ${fid}, but not username was found`,
+              `Hub Operator FID is ${fid}, but no username was found`,
             );
           }
         }
@@ -549,11 +549,15 @@ app
         logger.error(e, `Error fetching username for Hub Operator FID ${options.hubOperatorFid}`);
         startupCheck.printStartupCheckStatus(
           StartupCheckStatus.WARNING,
-          `Hub Operator FID is ${options.hubOperatorFid}, but not username was found`,
+          `Hub Operator FID is ${options.hubOperatorFid}, but no username was found`,
         );
       }
     } else {
-      startupCheck.printStartupCheckStatus(StartupCheckStatus.WARNING, "Hub Operator FID is not set");
+      startupCheck.printStartupCheckStatus(
+        StartupCheckStatus.WARNING,
+        "Hub Operator FID is not set",
+        "https://www.thehubble.xyz/intro/install.html#troubleshooting",
+      );
     }
 
     if (options.enableSnapshotToS3) {

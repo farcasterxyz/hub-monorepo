@@ -161,3 +161,7 @@ docker pull farcasterxyz/hubble:latest
 # Get a specific release (v1.4.0)
 docker pull farcasterxyz/hubble@v1.4.0
 ```
+
+- To set the Hub operator FID
+  * If you are running via docker or the script, please set this in your `.env` file: `HUB_OPERATOR_FID=your-fid`
+  * If you are running via source `yarn start --hub-operator-fid <your-fid>`
