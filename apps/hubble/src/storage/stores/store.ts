@@ -22,7 +22,7 @@ import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
 import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
 import AsyncLock from "async-lock";
-import { TSHASH_LENGTH, UserMessagePostfix } from "../db/types.js";
+import { FID_BYTES, TSHASH_LENGTH, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { logger } from "../../utils/logger.js";
 
@@ -601,6 +601,23 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     // Puts the message into the TAdds Set index
     // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     const addsKey = this.makeAddKey(message as any);
+
+    // Run only in TEST. This is a bit of a footgun, so we'll make an exception and run some checks
+    // here. When using a message key for the Removes index, the Postfix must be > UserMessagePostfixMax
+    // to avoid collisions with the Messages undex
+    if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
+      // Ensure that the Adds key is using a Postfix > UserMessagePostfixMax
+      const keypostfix = addsKey.readUint8(1 + FID_BYTES);
+      if (keypostfix <= UserMessagePostfixMax) {
+        // It's using a message postfix key. Not allowed!
+        return err(
+          new HubError(
+            "unauthorized",
+            "Don't use a message key for the Adds index! Postfix must be > UserMessagePostfixMax",
+          ),
+        );
+      }
+    }
     addTxn = addTxn.put(addsKey, Buffer.from(tsHash.value));
 
     const build = await this.buildSecondaryIndices(addTxn, message);
@@ -651,6 +668,24 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     // Puts message key into the TRemoves Set index
     // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     const removesKey = this.makeRemoveKey(message as any);
+
+    // Run only in TEST. This is a bit of a footgun, so we'll make an exception and run some checks
+    // here. When using a message key for the Removes index, the Postfix must be > UserMessagePostfixMax
+    // to avoid collisions with the Messages undex
+    if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
+      // Ensure that the Removes key is using a Postfix > UserMessagePostfixMax
+      const keypostfix = removesKey.readUint8(1 + FID_BYTES);
+      if (keypostfix <= UserMessagePostfixMax) {
+        // It's using a message postfix key. Not allowed!
+        return err(
+          new HubError(
+            "unauthorized",
+            "Don't use a message key for the Removes index! Postfix must be > UserMessagePostfixMax",
+          ),
+        );
+      }
+    }
+
     removeTxn = removeTxn.put(removesKey, Buffer.from(tsHash.value));
 
     return ok(removeTxn);
