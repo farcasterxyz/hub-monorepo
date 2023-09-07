@@ -72,6 +72,7 @@ Networking Options:
   --direct-peers <peer-multiaddrs...>   A list of peers for libp2p to directly peer with (default: [])
   --denied-peers <peerIds...>           Do not peer with specific peer ids. (default: no peers denied)
   --rpc-rate-limit <number>             RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)
+  --rpc-subscribe-per-ip-limit <number> Maximum RPC subscriptions per IP address (default: 4)
 
 Snapshots Options:
   --enable-snapshot-to-s3               Enable daily snapshots to be uploaded to S3. (default: disabled)

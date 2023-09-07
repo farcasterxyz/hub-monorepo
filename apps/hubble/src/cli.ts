@@ -126,6 +126,7 @@ app
     "--rpc-rate-limit <number>",
     "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
   )
+  .option("--rpc-subscribe-per-ip-limit <number>", "Maximum RPC subscriptions per IP address. (default: 4)")
 
   // Snapshots
   .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
@@ -509,6 +510,7 @@ app
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       rpcAuth,
       rpcRateLimit,
+      rpcSubscribePerIpLimit: cliOptions.rpcSubscribePerIpLimit ?? hubConfig.rpcSubscribePerIpLimit,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB,
       rebuildSyncTrie,

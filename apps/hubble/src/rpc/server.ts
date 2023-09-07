@@ -63,8 +63,8 @@ import { statsd } from "../utils/statsd.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
-export const SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
-export const SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
+export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
+export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
 
 export type RpcUsers = Map<string, string[]>;
 
@@ -238,7 +238,7 @@ export default class Server {
 
   private rpcUsers: RpcUsers;
   private submitMessageRateLimiter: RateLimiterMemory;
-  private subscribeIpLimiter = new IpConnectionLimiter(SUBSCRIBE_PERIP_LIMIT, SUBSCRIBE_GLOBAL_LIMIT);
+  private subscribeIpLimiter: IpConnectionLimiter;
 
   constructor(
     hub?: HubInterface,
@@ -247,6 +247,7 @@ export default class Server {
     gossipNode?: GossipNode,
     rpcAuth?: string,
     rpcRateLimit?: number,
+    rpcSubscribePerIpLimit?: number,
   ) {
     this.hub = hub;
     this.engine = engine;
@@ -274,6 +275,10 @@ export default class Server {
     log.info({ rpcRateLimit }, "RPC rate limit enabled");
 
     this.submitMessageRateLimiter = new RateLimiterMemory(rateLimitPerMinute);
+    this.subscribeIpLimiter = new IpConnectionLimiter(
+      rpcSubscribePerIpLimit ?? DEFAULT_SUBSCRIBE_PERIP_LIMIT,
+      DEFAULT_SUBSCRIBE_GLOBAL_LIMIT,
+    );
   }
 
   async start(ip = "0.0.0.0", port = 0): Promise<number> {
