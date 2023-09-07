@@ -1,5 +1,6 @@
 import {
   HubError,
+  HubEvent,
   HubResult,
   HubServiceServer,
   Message,
@@ -94,7 +95,7 @@ function convertB64ToHex(str: string): string {
  * to be consistent with the rest of the API, so we need to convert the base64 strings to hex strings
  * before returning them.
  */
-// rome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 function transformHash(obj: any): any {
   if (obj === null || typeof obj !== "object") {
     return obj;
@@ -114,7 +115,7 @@ function transformHash(obj: any): any {
   ];
 
   for (const key in obj) {
-    // rome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
+    // biome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
     if (obj.hasOwnProperty(key)) {
       if (targetKeys.includes(key) && typeof obj[key] === "string") {
         obj[key] = convertB64ToHex(obj[key]);
@@ -525,22 +526,6 @@ export class HttpAPIServer {
         } else {
           message = parsedMessage.value;
         }
-      } else if (contentType === "application/json") {
-        // The Posted Body is a JSON object
-        const parsedMessage = Result.fromThrowable(
-          () => Message.fromJSON(request.body),
-          (e) => e as Error,
-        )();
-
-        if (parsedMessage.isErr()) {
-          reply.code(400).send({
-            error: "Could not parse Message. This API accepts Message as JSON objects (application/json)",
-            errorDetail: parsedMessage.error.message,
-          });
-          return;
-        } else {
-          message = parsedMessage.value;
-        }
       } else {
         reply.code(400).send({
           error: "Unsupported Media Type",
@@ -551,6 +536,15 @@ export class HttpAPIServer {
 
       const call = getCallObject("submitMessage", message, request);
       this.grpcImpl.submitMessage(call, handleResponse(reply, Message));
+    });
+
+    //==================Events==================
+    // /event/:id
+    this.app.get<{ Params: { id: string } }>("/v1/event/:id", (request, reply) => {
+      const { id } = request.params;
+
+      const call = getCallObject("getEvent", { id: parseInt(id) }, request);
+      this.grpcImpl.getEvent(call, handleResponse(reply, HubEvent));
     });
   }
 
