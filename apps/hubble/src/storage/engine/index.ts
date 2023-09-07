@@ -264,7 +264,7 @@ class Engine {
       }
     }
 
-    // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+    // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     const setPostfix = typeToSetPostfix(message.data!.type);
 
     switch (setPostfix) {

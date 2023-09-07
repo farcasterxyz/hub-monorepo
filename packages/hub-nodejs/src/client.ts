@@ -62,7 +62,7 @@ const promisifyClient = <C extends Client>(client: C) => {
       if (key === "close") return () => target.close;
 
       const func = target[key];
-      // rome-ignore lint/suspicious/noExplicitAny: any is needed here because of the grpc-js types
+      // biome-ignore lint/suspicious/noExplicitAny: any is needed here because of the grpc-js types
       if (typeof func === "function" && (func as any).responseStream === false) {
         return (...args: unknown[]) =>
           new Promise((resolve, _reject) =>
@@ -77,7 +77,7 @@ const promisifyClient = <C extends Client>(client: C) => {
           );
       }
 
-      // rome-ignore lint/suspicious/noExplicitAny: any is needed here because of the grpc-js types
+      // biome-ignore lint/suspicious/noExplicitAny: any is needed here because of the grpc-js types
       if (typeof func === "function" && (func as any).responseStream === true) {
         return (...args: unknown[]) => {
           return new Promise((resolve) => {

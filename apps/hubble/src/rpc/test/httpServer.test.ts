@@ -417,7 +417,7 @@ describe("httpServer", () => {
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
-      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       expect(response.data).toEqual((Message.toJSON(proof) as any).data.usernameProofBody);
 
       // Get via fid
@@ -425,7 +425,7 @@ describe("httpServer", () => {
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
-      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       expect(response2.data.proofs).toEqual([(Message.toJSON(proof) as any).data.usernameProofBody]);
     });
   });
@@ -512,7 +512,7 @@ describe("httpServer", () => {
 async function axiosGet(url: string) {
   try {
     return await axios.get(url);
-    // rome-ignore lint/suspicious/noExplicitAny: Catch axios errors
+    // biome-ignore lint/suspicious/noExplicitAny: Catch axios errors
   } catch (error: any) {
     return { status: error?.response?.status, data: error?.response?.data };
   }

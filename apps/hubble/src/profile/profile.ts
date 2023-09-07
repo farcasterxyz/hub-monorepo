@@ -4,7 +4,7 @@ import RocksDB from "../storage/db/rocksdb.js";
 import { createWriteStream, unlinkSync } from "fs";
 import { Result } from "neverthrow";
 
-// rome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'
+// biome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'
 function getMaxValue(enumType: any): number {
   let maxValue = 0;
 

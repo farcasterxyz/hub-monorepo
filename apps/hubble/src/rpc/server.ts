@@ -449,7 +449,7 @@ export default class Server {
               // Don't wait for this to finish, just return the messages we have.
               this.syncEngine?.revokeSyncIds(corruptedSyncIds ?? []);
 
-              // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+              // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }
 

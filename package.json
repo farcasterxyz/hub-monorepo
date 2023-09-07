@@ -41,6 +41,6 @@
     "typescript": "^5.0.2"
   },
   "lint-staged": {
-    "*.ts": ["rome check"]
+    "*.ts": ["biome check"]
   }
 }

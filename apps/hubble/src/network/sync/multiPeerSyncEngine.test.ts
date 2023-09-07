@@ -370,7 +370,7 @@ describe("Multi peer sync engine", () => {
     beforeEach(async () => {
       engine2 = new Engine(testDb2, network);
       const hub2 = new MockHub(testDb2, engine2);
-      // rome-ignore lint/suspicious/noExplicitAny: mock used only in tests
+      // biome-ignore lint/suspicious/noExplicitAny: mock used only in tests
       const l2EventsProvider = jest.fn() as any;
       l2EventsProvider.retryEventsFromBlock = jest.fn();
       retryEventsMock = l2EventsProvider.retryEventsFromBlock;

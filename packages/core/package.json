@@ -27,8 +27,8 @@
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
     "protoc": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/protobufs/generated/ --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=false,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=../../protobufs/schemas  ../../protobufs/schemas/*",
-    "lint": "rome format src/ --write && rome check src/ --apply",
-    "lint:ci": "rome ci src/",
+    "lint": "biome format src/ --write && biome check src/ --apply",
+    "lint:ci": "biome ci src/",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
     "prepublishOnly": "yarn run build"
@@ -39,12 +39,12 @@
     "@farcaster/fishery": "2.2.3",
     "@types/ffi-napi": "^4.0.7",
     "@types/ref-napi": "^3.0.7",
+    "biome-config-custom": "*",
     "eslint-config-custom": "*",
     "ethers": "^6.6.1",
     "ethers5": "npm:ethers@^5.7.0",
     "node-gyp": "^9.4.0",
     "prettier-config-custom": "*",
-    "rome-config-custom": "*",
     "ts-proto": "^1.146.0"
   }
 }

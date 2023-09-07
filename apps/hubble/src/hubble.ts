@@ -723,7 +723,7 @@ export class Hub implements HubInterface {
       let downloadedSize = 0;
       const progressBar = addProgressBar("Getting snapshot", totalSize);
 
-      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       response2.data.on("data", (chunk: any) => {
         downloadedSize += chunk.length;
         progressBar?.update(downloadedSize);

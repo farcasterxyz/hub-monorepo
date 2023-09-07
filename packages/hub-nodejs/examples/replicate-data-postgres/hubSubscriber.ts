@@ -93,7 +93,7 @@ export class HubSubscriber extends TypedEmitter<HubEvents> {
         fnLog.debug(`Processing event ${event.id} (${event.type})`);
         this.emit("event", event);
       }
-      // rome-ignore lint/suspicious/noExplicitAny: error catching
+      // biome-ignore lint/suspicious/noExplicitAny: error catching
     } catch (e: any) {
       this.log.info(`Hub event stream processing halted ${e.message}`);
     }
