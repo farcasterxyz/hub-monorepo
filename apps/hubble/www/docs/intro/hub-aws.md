@@ -244,5 +244,7 @@ Upgrade Hubble to the latest version by running
 cd ~/hubble && ./hubble.sh upgrade
 ```
 
+The script will restart your hub and download the newest version.
+
 ### Troubleshooting
-Contact us on Telegram
+Contact us on [Telegram](https://t.me/farcasterdevchat)
