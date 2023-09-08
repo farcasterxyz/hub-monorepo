@@ -147,7 +147,6 @@ app
   )
   .option("--profile-sync", "Profile a full hub sync and exit. (default: disabled)")
   .option("--rebuild-sync-trie", "Rebuild the sync trie before starting (default: disabled)")
-  .option("--resync-eth-events", "Resync events from the Farcaster contracts before starting (default: disabled)")
   .option("--resync-name-events", "Resync events from the Fname server before starting (default: disabled)")
   .option(
     "--chunk-size <number>",
@@ -515,7 +514,6 @@ app
       resetDB,
       rebuildSyncTrie,
       profileSync,
-      resyncEthEvents: cliOptions.resyncEthEvents ?? hubConfig.resyncEthEvents ?? false,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
       commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
