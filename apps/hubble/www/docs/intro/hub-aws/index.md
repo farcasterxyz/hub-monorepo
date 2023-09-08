@@ -1,7 +1,9 @@
 # Run Hubble on AWS EC2
-![Final outcome, displaying a Grafana dashboard on AWS](https://pin.ski/3RfuhMu)
+![Final outcome, displaying a Grafana dashboard on AWS](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmf1Yp7BTjhkYqLoLHjKfobjtBBkBVtWYYSRkfDa1XorPv)
 
 ## Intro
+This is a step-by-step guide to setting up Hubble on AWS and monitoring it with Grafana.
+
 Setting up and running Hubble is easy and doesn't require any technical skills.
 
 It usually takes less than 30 minutes of work and 2 hours of sync time.
@@ -22,14 +24,13 @@ By the end of this tutorial you will know how to:
 
 ## Set up AWS EC2
 ### Create and set up EC2 instance
-TODO
 Let's start by going to AWS EC2 main dashboard. Our goal is to launch an instance, which can be done either from the main page or by going to the list of all instances.
 
 Wherever you are, hit the "Launch instance" button.
 ![Placeholder](./images/aws-ec2-instances.png)
 ![Placeholder](./images/aws-ec2-instances-launch.png)
 
-You will see the EC2 instance configuration menu.
+You will get redirected ti the EC2 instance configuration menu.
 
 Pick a name for your instance, in our case it's `farcaster-hub-tutorial`
 ![Give your instance a name](./images/ec2-setup-name.png)
@@ -60,7 +61,7 @@ After you created the new key pair, make sure that it's selected in the menu.
 In the **Network settings** section, make sure to *allow SSH traffic* from *Anywhere*.
 ![Allow SSH traffic](./images/ec2-setup-create-security-group.png)
 
-In the **Network settings** section, increase the storage to **20 GiB**:
+In the **Configure storage** section, increase the storage to **20 GiB**:
 ![Increase instance storage](./images/ec2-setup-storage.png)
 
 This is everything that we need from the EC2 instance setup menu.
@@ -89,7 +90,6 @@ From there, click **Edit inbound rules**...
 ...and specify additional ports:
 - 2283
 - 2282
-- 3000 (optional, if you want to [access the grafana dashboard from your computer](#access-grafana-in-your-browser))
 
 Accept traffic from anywhere by selecting 0.0.0.0/0 option in the source.
 
@@ -177,23 +177,44 @@ Hubble comes with a built-in Grafana dashboard that will help you monitor health
 
 ![Grafana dashboard](./images/grafana-99.png)
 
-### Access Grafana locally
-TODO
+### Access Grafana
+Grafana is running on port :3000 of your EC2 instance.
 
-### Access Grafana in your browser
+To access it in your browser you will have to setup port forwarding from your instance to your local machine like this:
 
+```bash
+ssh -L3000:localhost:3000 ubuntu@youripaddress -i farcaster-hub-tutorial-kp.cer
+```
 
-
-To access Grafana from an external source (like your computer), you need to:
-
-1. Allow traffic to port 3000 on your machine in as described [earlier](#configure-network-permissions).
-2. Navigate to the public IP address of your instance with port :3000, like this: **youripaddress:3000**
-3. Setup a login page with your credentials so nobody else can access the dashboard.
+Once you ran this command, you should be able to access grafana easily on `localhost:3000`
 
 ### Understand your Grafana dashboard
 
-TODO
+Grafana contains all metrics and charts that you may need to monitor the health of your hub and the network.
+
+Let's go over some of them
 ![Grafana dashboard](./images/grafana-99.png)
+
+#### Message Sync
+#### Peers
+
+#### Blocks processed
+
+#### Farcaster messages
+
+#### Incoming gossip
+
+#### Inbound gossip connections
+
+#### Gossip peers
+
+#### Sync duration
+
+#### Merge latency
+
+#### Merge queue size
+
+
 
 ## Appendix
 ### Upgrading Hubble
