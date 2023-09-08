@@ -209,9 +209,6 @@ export interface HubOptions {
   /** Resync l2 events */
   l2ResyncEvents?: boolean;
 
-  /** Resync events */
-  resyncEthEvents?: boolean;
-
   /** Resync fname events */
   resyncNameEvents?: boolean;
 

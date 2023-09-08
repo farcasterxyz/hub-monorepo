@@ -85,8 +85,7 @@ Metrics:
 Debugging Options:
   --gossip-metrics-enabled              Generate tracing and metrics for the gossip network. (default: disabled)
   --profile-sync                        Profile a full hub sync and exit. (default: disabled)
-  --rebuild-sync-trie                   Rebuild the sync trie before starting (default: disabled)
-  --resync-eth-events                   Resync events from the Farcaster contracts before starting (default: disabled)
+  --rebuild-sync-trie                   Rebuild the sync trie before starting (default: disabled)  
   --resync-name-events                  Resync events from the Fname server before starting (default: disabled)
   --chunk-size <number>                 The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)
   --commit-lock-timeout <number>        Rocks DB commit lock timeout in milliseconds (default: 500)
