@@ -27,49 +27,49 @@ By the end of this tutorial you will know how to:
 Let's start by going to AWS EC2 main dashboard. Our goal is to launch an instance, which can be done either from the main page or by going to the list of all instances.
 
 Wherever you are, hit the "Launch instance" button.
-![Placeholder](./images/aws-ec2-instances.png)
-![Placeholder](./images/aws-ec2-instances-launch.png)
+![Placeholder](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmPspHaUziz1ZGKhY1DgNQTMMbGZqVrmPbxRDQZtLkqGrx)
+![Placeholder](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmbcd1bzXHNxALUTq5fP9yMcPWQUYfUEgMKKSwrBHqdmMf)
 
-You will get redirected ti the EC2 instance configuration menu.
+You will get redirected to the EC2 instance configuration menu.
 
-Pick a name for your instance, in our case it's `farcaster-hub-tutorial`
-![Give your instance a name](./images/ec2-setup-name.png)
+Pick a name for your instance, in our case it is `farcaster-hub-tutorial`
+![Give your instance a name](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmcBLhfXxUWkssZooVbzd2PLUn1XTAg4SYj5Sf7NFdJ8Qx)
 
 In the **Application and OS Images** section, choose:
 - Ubuntu Server 22.04 LTS (HVM)
 - SSD Volume Type
 - 64-bit (x86)
-![Select instance os images](./images/ec2-setup-ami.png)
+![Select instance os images](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmR3qW7dbNQm77XBSTD5gV1xtyztU6TLtQG4fAxRBpRzaM)
 In the **Instance type** section, select *m5.large*
-![Select isntance type](./images/ec2-setup-instance-type.png)
+![Select isntance type](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmUZnWD15jULjvvzXh42Y2GYvQX9B4sLAqpfXhKfX3iK2b)
 
 Now you will need a key pair to securely connect to your instance.
 
 Click *"Create new key pair"*...
-![Empty key pair selection](./images/ec2-setup-empty-keypair.png)
+![Empty key pair selection](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmf5VQNo7p8aJvuwtVJUknAQWXVvfBZKhGkVkzjWpcmx2L)
 
 ... and choose:
 - RSA encryption type
 - .pem file format
 
 Be careful to save it in the right and safe place, since it will be necessary to connect the instance.
-![Create a key pair](./images/ec2-setup-create-key-pair.png)
+![Create a key pair](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmR6h6yzkQZEd3YVkX12AAsZgDcij8sPxU9XHtKfv1yV5L)
 
 After you created the new key pair, make sure that it's selected in the menu.
-![Key pair selected](./images/ec2-setup-key-pair-selected.png)
+![Key pair selected](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmRhEhYJ11VdpfFRVCWDdQtuZvonFVmnC2ZHAufp13Jtfa)
 
 In the **Network settings** section, make sure to *allow SSH traffic* from *Anywhere*.
-![Allow SSH traffic](./images/ec2-setup-create-security-group.png)
+![Allow SSH traffic](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmSCZMuVMhQzLZkHnTT3HZGvYiAgqF8x6hn8yiu4CiKT4S)
 
 In the **Configure storage** section, increase the storage to **20 GiB**:
-![Increase instance storage](./images/ec2-setup-storage.png)
+![Increase instance storage](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmPSsygfAG56uBfztnq2A2cLrHSPQe52QLYFvJfXdpMesA)
 
 This is everything that we need from the EC2 instance setup menu.
 
 Press **Launch instance** and wait a moment for AWS to process your request.
 
 Once this is done, your instance will display in this list.
-![Launch instance](./images/ec2-instance-ready.png)
+![Launch instance](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmcyNDrNrWo8ZXJEwwSEryKYDo9h2YF9BdQ7fjMzEtk1Us)
 
 ### Configure network permissions
 
@@ -77,15 +77,15 @@ To make sure that Hubble can talk to the rest of the network, we need to setup I
 
 Click on **instance ID** from the previous menu, navigate to to **Security** tab.
 
-![Dsiplay instance details](./images/ec2-instance-details.png)
+![Dsiplay instance details](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmVKbod4TR4Q5dSgSYNhm5fjw7QYCKXyAG8FGSfqmdDeye)
 
 Then, click on the name of your security group.
 
-![Click on security group name](./images/ec2-setup-sg.png)
+![Click on security group name](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmRLrvnkeG4URGTdjKvY2pGKNq5WhxFEbi36B1G2XYkAgJ)
 
 
 From there, click **Edit inbound rules**...
-![Click on edit inbound rules](./images/ec2-security-group-details.png)
+![Click on edit inbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmf7eawCoZjnxfiPwGs2V657jRqCuxP8pZBKhpfcjEpMRq)
 
 ...and specify additional ports:
 - 2283
@@ -93,7 +93,7 @@ From there, click **Edit inbound rules**...
 
 Accept traffic from anywhere by selecting 0.0.0.0/0 option in the source.
 
-![Edit inbound rules](./images/ec2-security-group-inbound-edit.png)
+![Edit inbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmPd3Sqni2Tfs6eTKTrFQNQW9F1WGv33QHmNx7G8JmjT83)
 
 Repeat the process for **outbound rules**.
 
@@ -104,12 +104,12 @@ Use the following ports:
 
 again, leaving them accessible from anywhere.
 
-![Edit outbound rules](./images/ec2-security-group-outbound-edit.png)
+![Edit outbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZkTQXbd9JaziNRCXjgbWAqJfiLfbq4ssNfDTuYbpwAVo)
 
 After you finished adding the new rules, this is how the menu should look like:
 
-![Final inbound rules](./images/ec2-security-group-inbound-final.png)
-![Final outbound rules](./images/ec2-security-group-outbound-final.png)
+![Final inbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmXodGxTSsiwfuzG9ggsxG6AD9NUWp9cLxXFp1HDMepSRk)
+![Final outbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmSZ3ieuXjK3HWC63XCUvBzBfSr3rMSSzQuenAwtbdyT48)
 
 **And we are done!** Your EC2 instance is ready.
 
@@ -131,7 +131,7 @@ ssh ubuntu@youripaddress -i your-keypair-filename.cer
 ```
 
 
-![Connect to EC2](./images/ec2-connect.png)
+![Connect to EC2](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmSESoCoh3jnyU1URCSGsptix4UYq9SQmgfoyQkHnRoVVM)
 
 ## Install Hubble
 We now have a machine that can run Hubble. Let's use it.
