@@ -44,6 +44,7 @@ const DEFAULT_PEER_ID_LOCATION = `${DEFAULT_PEER_ID_DIR}/${DEFAULT_PEER_ID_FILEN
 const DEFAULT_CHUNK_SIZE = 10000;
 const DEFAULT_FNAME_SERVER_URL = "https://fnames.farcaster.xyz";
 
+const DEFAULT_HTTP_API_PORT = 2281;
 const DEFAULT_GOSSIP_PORT = 2282;
 const DEFAULT_RPC_PORT = 2283;
 
@@ -115,6 +116,7 @@ app
   .option("-b, --bootstrap <peer-multiaddrs...>", "Peers to bootstrap gossip and sync from. (default: none)")
   .option("-g, --gossip-port <port>", `Port to use for gossip (default: ${DEFAULT_GOSSIP_PORT})`)
   .option("-r, --rpc-port <port>", `Port to use for gRPC  (default: ${DEFAULT_RPC_PORT})`)
+  .option("--httpApiPort <port>", `Port to use for HTTP API (default: ${DEFAULT_HTTP_API_PORT})`)
   .option("--ip <ip-address>", 'IP address to listen on (default: "127.0.0.1")')
   .option("--announce-ip <ip-address>", "Public IP address announced to peers (default: fetched with external service)")
   .option(
@@ -507,6 +509,7 @@ app
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       deniedPeers: cliOptions.deniedPeers ?? hubConfig.deniedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
+      httpApiPort: cliOptions.httpApiPort ?? hubConfig.httpApiPort ?? DEFAULT_HTTP_API_PORT,
       rpcAuth,
       rpcRateLimit,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,

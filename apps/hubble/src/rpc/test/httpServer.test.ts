@@ -125,7 +125,7 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(castAdd)).isOk()).toBeTruthy();
 
       // Get a http client for port 2181
-      const url = getFullUrl("/v1/events?fromId=0");
+      const url = getFullUrl("/v1/events?fromEventId=0");
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -143,7 +143,7 @@ describe("httpServer", () => {
       expect(response0.data.mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Get the events starting after the signerAdd but before the castAdd
-      const url1 = getFullUrl(`/v1/events?fromId=${signerAddEventId + 1}`);
+      const url1 = getFullUrl(`/v1/events?fromEventId=${signerAddEventId + 1}`);
       const response1 = await axiosGet(url1);
 
       expect(response1.status).toBe(200);
@@ -151,7 +151,7 @@ describe("httpServer", () => {
       expect(response1.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Now, get the events starting at the last eventID
-      const url2 = getFullUrl(`/v1/events?fromId=${castAddEventId}`);
+      const url2 = getFullUrl(`/v1/events?fromEventId=${castAddEventId}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
@@ -159,7 +159,7 @@ describe("httpServer", () => {
       expect(response2.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Getthe events starting at the nextEventId  should return nothing
-      const url3 = getFullUrl(`/v1/events?fromId=${response2.data.nextPageEventId}`);
+      const url3 = getFullUrl(`/v1/events?fromEventId=${response2.data.nextPageEventId}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);

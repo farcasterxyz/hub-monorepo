@@ -150,6 +150,9 @@ export interface HubOptions {
   /** Port for the RPC Client */
   rpcPort?: number;
 
+  /** Port for the HTTP API Server */
+  httpApiPort?: number;
+
   /** Username and Password to use for RPC submit methods */
   rpcAuth?: string;
 
@@ -591,8 +594,8 @@ export class Hub implements HubInterface {
     await this.engine.start();
 
     // Start the RPC server
-    await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ? this.options.rpcPort : 0);
-    await this.httpApiServer.start(this.options.rpcServerHost);
+    await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
+    await this.httpApiServer.start(this.options.rpcServerHost, this.options.httpApiPort ?? 0);
     if (this.options.adminServerEnabled) {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }

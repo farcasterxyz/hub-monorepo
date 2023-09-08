@@ -552,10 +552,10 @@ export class HttpAPIServer {
     });
 
     // /events?fromId=...
-    this.app.get<{ Querystring: { fromId: string } }>("/v1/events", (request, reply) => {
-      const { fromId } = request.query;
+    this.app.get<{ Querystring: { fromEventId: string } }>("/v1/events", (request, reply) => {
+      const { fromEventId } = request.query;
 
-      this.engine.getEvents(parseInt(fromId)).then((resp) => {
+      this.engine.getEvents(parseInt(fromEventId)).then((resp) => {
         if (resp.isErr()) {
           reply.code(400).send({ error: resp.error.message });
         } else {
@@ -575,7 +575,7 @@ export class HttpAPIServer {
           resolve(err(new HubError("unavailable.network_failure", `Failed to start http server: ${e.message}`)));
         }
 
-        log.info({ address, port }, "Started http API server");
+        log.info({ address }, "Started http API server");
         resolve(ok(address));
       });
     });
