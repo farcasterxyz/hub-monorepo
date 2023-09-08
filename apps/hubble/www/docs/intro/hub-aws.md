@@ -12,7 +12,7 @@ By the end of this tutorial you will know how to:
 - [Setup an AWS EC2 instance suitable for running Hubble](#set-up-aws-ec2)
 - [Install and run Hubble](#install-hubble)
 - [Use the built-in Grafana dashboard to monitor your hub](#monitor-hubble)
-- [Keep your hub up to date and troubleshoot problems](#appendix)
+- [Keep your hub up to date and how to troubleshoot problems](#appendix)
 
 This tutorial is using Hubble version 1.5.2 and Farcaster protocol version 2023.08.23.
 
@@ -21,14 +21,14 @@ This tutorial is using Hubble version 1.5.2 and Farcaster protocol version 2023.
 - [Alchemy](https://www.alchemy.com/) account
 
 ### Costs
-- AWS setup selected in this tutorial may cost up to $100/month
+- AWS setup recommended in this tutorial may cost up to $100/month
 - Alchemy usage should stay within the free tier
 
 ## Set up AWS EC2
 ### Create and set up EC2 instance
-Let's start by going to AWS EC2 main dashboard. Our goal is to launch an instance, which can be done either from the main page or by going to the list of all instances.
+Let's start by going to AWS EC2 main dashboard. Our goal is to launch an instance, which can be done either from the main page or from the list of all instances.
 
-Wherever you are, hit the "Launch instance" button.
+Wherever you are, hit the **Launch instance** button.
 ![Placeholder](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmPspHaUziz1ZGKhY1DgNQTMMbGZqVrmPbxRDQZtLkqGrx)
 ![Placeholder](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmbcd1bzXHNxALUTq5fP9yMcPWQUYfUEgMKKSwrBHqdmMf)
 
@@ -43,7 +43,7 @@ In the **Application and OS Images** section, choose:
 - 64-bit (x86)
 ![Select instance os images](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmR3qW7dbNQm77XBSTD5gV1xtyztU6TLtQG4fAxRBpRzaM)
 In the **Instance type** section, select *m5.large*
-![Select isntance type](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmUZnWD15jULjvvzXh42Y2GYvQX9B4sLAqpfXhKfX3iK2b)
+![Select instance type](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmUZnWD15jULjvvzXh42Y2GYvQX9B4sLAqpfXhKfX3iK2b)
 
 Now you will need a key pair to securely connect to your instance.
 
@@ -75,11 +75,11 @@ Once this is done, your instance will display in this list.
 
 ### Configure network permissions
 
-To make sure that Hubble can talk to the rest of the network, we need to setup Inbound and Outbound traffic rules.
+To make sure that Hubble can talk to the rest of the network, we need to setup *Inbound* and *Outbound* traffic rules.
 
 Click on **instance ID** from the previous menu, navigate to to **Security** tab.
 
-![Dsiplay instance details](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmVKbod4TR4Q5dSgSYNhm5fjw7QYCKXyAG8FGSfqmdDeye)
+![Display instance details](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmVKbod4TR4Q5dSgSYNhm5fjw7QYCKXyAG8FGSfqmdDeye)
 
 Then, click on the name of your security group.
 
@@ -93,9 +93,9 @@ From there, click **Edit inbound rules**...
 - 2283
 - 2282
 
-Accept traffic from anywhere by selecting 0.0.0.0/0 option in the source.
+Accept traffic from anywhere in the *Source* column.
 
-![Edit inbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmPd3Sqni2Tfs6eTKTrFQNQW9F1WGv33QHmNx7G8JmjT83)
+![Edit inbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZkTQXbd9JaziNRCXjgbWAqJfiLfbq4ssNfDTuYbpwAVo)
 
 Repeat the process for **outbound rules**.
 
@@ -104,9 +104,9 @@ Use the following ports:
 - 2282
 - 443
 
-again, leaving them accessible from anywhere.
+similarly, putting *Anywhere* in the *Destination* column.
 
-![Edit outbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZkTQXbd9JaziNRCXjgbWAqJfiLfbq4ssNfDTuYbpwAVo)
+![Edit outbound rules](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmPd3Sqni2Tfs6eTKTrFQNQW9F1WGv33QHmNx7G8JmjT83)
 
 After you finished adding the new rules, this is how the menu should look like:
 
@@ -120,30 +120,31 @@ Let's leave AWS dashboard and test the connection to your new machine.
 ### Connect to your instance
 To connect to your ec2 instance, go to your terminal and find the key pair that you generated [earlier](#ec2-instance-setup).
 
-Furst, let's restrict permissions to the keys by running:
+First, let's restrict permissions to the keys by running:
 
 ```bash
 chmod 400 your-keypair-filename.cer
 ```
 
-And connect to your instance with
+And connect to your instance with:
 
 ```bash
 ssh ubuntu@youripaddress -i your-keypair-filename.cer
 ```
 
+Once everything works, you should be allowed to ssh into the machine like below
 
 ![Connect to EC2](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmSESoCoh3jnyU1URCSGsptix4UYq9SQmgfoyQkHnRoVVM)
 
 ## Install Hubble
-We now have a machine that can run Hubble. Let's use it.
+We now have a machine that can run Hubble. Let's install it.
 
 ### Get alchemy keys
 Before we start, we will need to access RPC endpoints from Ethereum and Optimism.
 
-You can pick whatever provider you like (or run the nodes on your own), but for the sake of this tutorial, we will just use Alchemy.
+You can pick whatever provider you like, or even run the nodes on your own. For the sake of this tutorial, we will use Alchemy.
 
-Create 3 apps in their dashboard like this:
+Create 2 apps in their dashboard like this:
 ![Setup Alchemy](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmVR8cWmok9SaMLkb67rrpzG3JXyru8Xd3WGdhXBhH2Cxe)
 
 End get their respective RPC endpoints like this:
@@ -163,12 +164,14 @@ After you execute it, the script will start downloading and setting up Hubble fo
 ![Run install script](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmTTgZxUgae3sJdie3uAuXwufocHL5RwHPsfhL2Rkx26Hf)
 
 After some time, the script will ask you to provide the RPC endpoints and your Farcaster username.
+
+Since version 1.5.2 hubs can set their operators, which helps the hub runners communicate.
 ![Provide RPC URLs to the script](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmc75HtwESNDcTCVEEL5vyv2pSA7b76uSLXQKib5UKMUUQ)
 
-Once you correctly paste them, the script will resume building the hub.
+Once you correctly provide all information, the script will resume building the hub.
 ![RPC URLs after the input](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZFgXX3ZvrLCox353oFEZAyAj2ttCLeossozFTBdrgkuD)
 
-After the download and build phase ends, Hubble will start syncing with other hubs in the network.
+After the download and build phases end, Hubble will start syncing with other hubs in the network.
 
 Since version 1.5.2, Hubble by default downloads data from a snapshot and the process usually takes less than 5 minutes.
 ![Hubble starting syncing](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmRsLdgcai2nwG4SUsbvhk1GcuFrPFLg85PqMgVvDaCL8M)
@@ -195,7 +198,7 @@ To access it in your browser you will have to setup port forwarding from your in
 ssh -L3000:localhost:3000 ubuntu@youripaddress -i farcaster-hub-tutorial-kp.cer
 ```
 
-Once you ran this command, you should be able to access grafana easily at `localhost:3000`
+Once you run this command, you should be able to access grafana easily at `localhost:3000`
 
 ### Understand your Grafana dashboard
 
@@ -205,14 +208,13 @@ Let's go over some of them
 
 #### Status
 ![Grafana status metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZeHfEAqmmLE5D4YZd8o1kTLefsqW58KGhq9K4PB4cqdN)
-**Message Sync** is a percantage of messages in your hub compared to last sync. It should be around 98-100%. If you are significantly below that, something may be wrong with your hub.
+**Message Sync** is a percentage of messages in your hub compared to last sync. It should be around 98-100%. If you are significantly below that, something may be wrong with your hub.
 
-**Peers** is a number of known peers in your network that you may receive messages from. Occasionally you may sync with one of them.
+**Peers** is a number of known peers in your network that you may receive messages from or sync with.
 
-**Blocks Processed** is a number of blocks that are being processed for Farcaster Contracts events. May shoot up if you are just starting your hub, but should be roughly between 1 and 3 every 10 seconds. If it stops you are not syncing with FC contracts and do not receive new FIDs.
+**Blocks Processed** is a number of blocks that are being processed for Farcaster Contracts events. May spike up if you are just starting your hub, but usually should be roughly between 1 and 3 every 10 seconds. If it stops, it means that you are not syncing with FC contracts and do not receive new FIDs.
 
-**Farcaster Messages** is a total number of Farcaster messages stored in your hub. In general it should grow over time, but in may go down if many people decide to delete their content at once or they didn't pay for storage.
-
+**Farcaster Messages** is the total number of Farcaster messages stored in your hub. In general it should grow over time, but in may go down if many people decide to delete their content at the same time or they didn't pay for storage.
 
 #### Sync metrics
 ![Grafana sync metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZF1aRnZ2HCrcfHdKnPwGfetYb5AAqEjG6LqegTW3jUuX)
@@ -222,14 +224,14 @@ Let's go over some of them
 
 **Gossip peers** is a number of inbound and outbound peers that you are connected with over a given period of time.
 
-**Sync duration** — every couple of minutes your hub will perform a full sync with a peer. This metrics shows how long it took,
+**Sync duration** — every couple of minutes your hub will perform a full sync with a peer. This metrics shows how long it took.
 
-**Blocked peers** is a count of all peers who has been blocked by the network due to a bad peer reputation. For now it's usually 0.
+**Blocked peers** is a count of all peers that have been blocked by the network due to a bad peer reputation. For now it's usually 0.
 
 
 #### Perf metrics
 ![Grafana perf metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmarf16LTn1j6gHbiLL9c82xpj8duvk259AFYpYnBjEfM3)
-**Merge latency** is time needed to merge a newly received message into the Hub's DB. Generally should be within few milisecons. If it suddenly spikes up, it usually means that something is broken or you are running low on resources.
+**Merge latency** is time needed to merge a newly received message into the Hub's DB. Generally should be within few milliseconds. If it suddenly spikes up, it usually means that something is broken or you are running low on resources.
 
 **Merge queue size** is a number of messages waiting to get merged. Sometimes spikes on a higher load, however if it spikes too often, it may mean that something is broken.
 
