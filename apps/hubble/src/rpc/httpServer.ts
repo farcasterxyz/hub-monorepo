@@ -18,12 +18,13 @@ import {
   userDataTypeFromJSON,
   utf8StringToBytes,
 } from "@farcaster/hub-nodejs";
+import { ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
 import { Result, err, ok } from "neverthrow";
 import { logger } from "../utils/logger.js";
-import { PageOptions } from "storage/stores/types.js";
-import { ServerUnaryCall } from "@grpc/grpc-js";
-import { DeepPartial } from "storage/stores/store.js";
+import { PageOptions } from "../storage/stores/types.js";
+import { DeepPartial } from "../storage/stores/store.js";
+import Engine from "../storage/engine/index.js";
 
 const log = logger.child({ component: "HttpAPIServer" });
 
@@ -166,10 +167,13 @@ function getPageOptions(query: QueryPageParams): PageOptions {
 
 export class HttpAPIServer {
   grpcImpl: HubServiceServer;
+  engine: Engine;
+
   app = fastify();
 
-  constructor(grpcImpl: HubServiceServer) {
+  constructor(grpcImpl: HubServiceServer, engine: Engine) {
     this.grpcImpl = grpcImpl;
+    this.engine = engine;
 
     this.initHandlers();
 
@@ -546,6 +550,21 @@ export class HttpAPIServer {
       const call = getCallObject("getEvent", { id: parseInt(id) }, request);
       this.grpcImpl.getEvent(call, handleResponse(reply, HubEvent));
     });
+
+    // /events?fromId=...
+    this.app.get<{ Querystring: { fromId: string } }>("/v1/events", (request, reply) => {
+      const { fromId } = request.query;
+
+      this.engine.getEvents(parseInt(fromId)).then((resp) => {
+        if (resp.isErr()) {
+          reply.code(400).send({ error: resp.error.message });
+        } else {
+          const nextPageEventId = resp.value.nextPageEventId;
+          const events = resp.value.events.map((event) => protoToJSON(event, HubEvent));
+          reply.send({ nextPageEventId, events });
+        }
+      });
+    });
   }
 
   async start(ip = "0.0.0.0", port = 0): Promise<HubResult<string>> {
@@ -556,6 +575,7 @@ export class HttpAPIServer {
           resolve(err(new HubError("unavailable.network_failure", `Failed to start http server: ${e.message}`)));
         }
 
+        log.info({ address, port }, "Started http API server");
         resolve(ok(address));
       });
     });
@@ -563,5 +583,6 @@ export class HttpAPIServer {
 
   async stop() {
     await this.app.close();
+    log.info("Stopped http API server");
   }
 }

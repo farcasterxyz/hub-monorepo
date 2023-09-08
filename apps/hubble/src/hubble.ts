@@ -76,9 +76,9 @@ import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migr
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
-
 import * as fs from "fs";
 import axios from "axios";
+import { HttpAPIServer } from "./rpc/httpServer.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -283,6 +283,8 @@ export class Hub implements HubInterface {
   private gossipNode: GossipNode;
   private rpcServer: Server;
   private adminServer: AdminServer;
+  private httpApiServer: HttpAPIServer;
+
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
@@ -409,6 +411,7 @@ export class Hub implements HubInterface {
       options.rpcAuth,
       options.rpcRateLimit,
     );
+    this.httpApiServer = new HttpAPIServer(this.rpcServer.getImpl(), this.engine);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers
@@ -589,6 +592,7 @@ export class Hub implements HubInterface {
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ? this.options.rpcPort : 0);
+    await this.httpApiServer.start(this.options.rpcServerHost);
     if (this.options.adminServerEnabled) {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
@@ -799,10 +803,16 @@ export class Hub implements HubInterface {
     clearInterval(this.contactTimer);
 
     // First, stop the RPC/Gossip server so we don't get any more messages
+
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine
-    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(), this.syncEngine.stop()]);
+    await Promise.all([
+      this.httpApiServer.stop(),
+      this.adminServer.stop(),
+      this.gossipNode.stop(),
+      this.syncEngine.stop(),
+    ]);
 
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();

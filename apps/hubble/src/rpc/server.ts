@@ -234,6 +234,8 @@ export default class Server {
   private listenIp: string;
   private port: number;
 
+  private impl: HubServiceServer;
+
   private incomingConnections = 0;
 
   private rpcUsers: RpcUsers;
@@ -264,7 +266,8 @@ export default class Server {
       log.info({ num_users: this.rpcUsers.size }, "RPC auth enabled");
     }
 
-    this.grpcServer.addService(HubServiceService, this.getImpl());
+    this.impl = this.makeImpl();
+    this.grpcServer.addService(HubServiceService, this.impl);
 
     // Submit message are rate limited by default to 20k per minute
     const rateLimitPerMinute = SUBMIT_MESSAGE_RATE_LIMIT;
@@ -299,15 +302,15 @@ export default class Server {
     return new Promise((resolve, reject) => {
       if (force) {
         this.grpcServer.forceShutdown();
-        log.info({ component: "gRPC Server" }, "Force shutdown succeeded");
+        log.info("Force shutdown succeeded");
         resolve();
       } else {
         this.grpcServer.tryShutdown((err) => {
           if (err) {
-            log.error({ component: "gRPC Server" }, `Shutdown failed: ${err}`);
+            log.error(`Shutdown failed: ${err}`);
             reject(err);
           } else {
-            log.info({ component: "gRPC Server" }, "Shutdown succeeded");
+            log.info("Shutdown succeeded");
             resolve();
           }
         });
@@ -337,6 +340,10 @@ export default class Server {
   }
 
   getImpl = (): HubServiceServer => {
+    return this.impl;
+  };
+
+  makeImpl = (): HubServiceServer => {
     return {
       getInfo: (call, callback) => {
         (async () => {

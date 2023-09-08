@@ -48,7 +48,7 @@ function getFullUrl(path: string) {
 
 beforeAll(async () => {
   const server = new Server(hub, engine, new SyncEngine(hub, db));
-  httpServer = new HttpAPIServer(server.getImpl());
+  httpServer = new HttpAPIServer(server.getImpl(), engine);
   httpServerAddress = (await httpServer.start())._unsafeUnwrap();
 });
 
@@ -111,6 +111,60 @@ describe("httpServer", () => {
         expect((e as any).response.status).toBe(400);
       }
       expect(errored).toBeTruthy();
+    });
+  });
+
+  describe("HubEvents APIs", () => {
+    let castAdd: CastAddMessage;
+
+    beforeAll(async () => {
+      castAdd = await Factories.CastAddMessage.create({ data: { fid, network, timestamp } }, { transient: { signer } });
+    });
+
+    test("getHubEvents", async () => {
+      expect((await engine.mergeMessage(castAdd)).isOk()).toBeTruthy();
+
+      // Get a http client for port 2181
+      const url = getFullUrl("/v1/events?fromId=0");
+      const response = await axiosGet(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data.events.length).toEqual(3); // idRegistry, signerAdd, castAdd
+      expect(response.data.events[2].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
+
+      const signerAddEventId = response.data.events[1].id;
+      const castAddEventId = response.data.events[2].id;
+
+      // Get the castAdd event directly by ID
+      const url0 = getFullUrl(`/v1/event/${castAddEventId}`);
+      const response0 = await axiosGet(url0);
+
+      expect(response0.status).toBe(200);
+      expect(response0.data.mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
+
+      // Get the events starting after the signerAdd but before the castAdd
+      const url1 = getFullUrl(`/v1/events?fromId=${signerAddEventId + 1}`);
+      const response1 = await axiosGet(url1);
+
+      expect(response1.status).toBe(200);
+      expect(response1.data.events.length).toEqual(1);
+      expect(response1.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
+
+      // Now, get the events starting at the last eventID
+      const url2 = getFullUrl(`/v1/events?fromId=${castAddEventId}`);
+      const response2 = await axiosGet(url2);
+
+      expect(response2.status).toBe(200);
+      expect(response2.data.events.length).toEqual(1);
+      expect(response2.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
+
+      // Getthe events starting at the nextEventId  should return nothing
+      const url3 = getFullUrl(`/v1/events?fromId=${response2.data.nextPageEventId}`);
+      const response3 = await axiosGet(url3);
+
+      expect(response3.status).toBe(200);
+      expect(response3.data.events.length).toEqual(0);
+      expect(response3.data.nextPageEventId).toBe(response2.data.nextPageEventId + 1);
     });
   });
 

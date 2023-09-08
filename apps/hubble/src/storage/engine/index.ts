@@ -62,7 +62,7 @@ import LinkStore from "../stores/linkStore.js";
 import ReactionStore from "../stores/reactionStore.js";
 import SignerStore from "../stores/signerStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
-import { MessagesPage, PageOptions } from "../stores/types.js";
+import { DEFAULT_PAGE_SIZE, MessagesPage, PageOptions } from "../stores/types.js";
 import UserDataStore from "../stores/userDataStore.js";
 import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
@@ -493,6 +493,10 @@ class Engine {
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {
     return this.eventHandler.getEvent(id);
+  }
+
+  async getEvents(startId: number): HubAsyncResult<{ events: HubEvent[]; nextPageEventId: number }> {
+    return this.eventHandler.getEventsPage(startId, DEFAULT_PAGE_SIZE);
   }
 
   /* -------------------------------------------------------------------------- */
