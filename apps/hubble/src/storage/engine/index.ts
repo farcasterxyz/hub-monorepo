@@ -73,8 +73,9 @@ import { normalize } from "viem/ens";
 import os from "os";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
-import { getRateLimiterForTotalMessages, rateLimitByKey } from "../../utils/rateLimits.js";
+import { isRateLimitedByKey, consumeRateLimitByKey, getRateLimiterForTotalMessages } from "../../utils/rateLimits.js";
 import { nativeValidationMethods } from "../../rustfunctions.js";
+import { RateLimiterAbstract } from "rate-limiter-flexible";
 
 const log = logger.child({
   component: "Engine",
@@ -249,21 +250,30 @@ class Engine {
     // Extract the FID that this message was signed by
     const fid = message.data?.fid ?? 0;
     const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
+    let limiter: RateLimiterAbstract | undefined;
 
     if (storageUnits.isOk()) {
       if (storageUnits.value === 0) {
         return err(new HubError("bad_request.prunable", "no storage"));
       }
       // We rate limit the number of messages that can be merged per FID
-      const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
-
-      const rateLimitResult = await rateLimitByKey(`${fid}`, limiter);
-      if (rateLimitResult.isErr()) {
-        logger.warn({ fid, err: rateLimitResult.error }, "rate limit exceeded for FID");
-        return err(rateLimitResult.error);
+      limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
+      const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
+      if (isRateLimited) {
+        logger.warn({ fid }, "rate limit exceeded for FID");
+        return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
       }
     }
 
+    const mergeResult = await this.mergeMessageToStore(message);
+    if (mergeResult.isOk() && limiter) {
+      consumeRateLimitByKey(`${fid}`, limiter);
+    }
+
+    return mergeResult;
+  }
+
+  async mergeMessageToStore(message: Message): HubAsyncResult<number> {
     // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     const setPostfix = typeToSetPostfix(message.data!.type);
 
