@@ -52,8 +52,9 @@ describe("OnChainEventStore", () => {
         badSignerEvent.txIndex = txIndex;
         badSignerEvent.logIndex = logIndex;
         badRegisterEvent.txIndex = txIndex;
-        badRegisterEvent.logIndex = logIndex;
+        badRegisterEvent.logIndex = txIndex; // Assume log index is the same as tx index
 
+        await expect(set.mergeOnChainEvent(badSignerEvent)).rejects.toThrow("already exists");
         await expect(set.mergeOnChainEvent(badSignerEvent)).rejects.toThrow("already exists");
         const signerEvents = await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER, badSignerEvent.fid);
         expect(signerEvents).toHaveLength(1);
@@ -64,13 +65,14 @@ describe("OnChainEventStore", () => {
         expect(onChainSigner.signerEventBody.key).toEqual(badSignerEvent.signerEventBody.key);
 
         await expect(set.mergeOnChainEvent(badRegisterEvent)).rejects.toThrow("already exists");
+        await expect(set.mergeOnChainEvent(badRegisterEvent)).rejects.toThrow("already exists");
         const registerEvents = await set.getOnChainEvents(
           OnChainEventType.EVENT_TYPE_ID_REGISTER,
           badRegisterEvent.fid,
         );
         expect(registerEvents).toHaveLength(1);
         expect(registerEvents[0]?.txIndex).toEqual(txIndex);
-        expect(registerEvents[0]?.logIndex).toEqual(logIndex);
+        expect(registerEvents[0]?.logIndex).toEqual(txIndex);
 
         const idRegisterByFid = await set.getIdRegisterEventByFid(badRegisterEvent.fid);
         expect(idRegisterByFid).toEqual(badRegisterEvent);

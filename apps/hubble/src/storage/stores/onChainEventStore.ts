@@ -31,6 +31,7 @@ import { ok, ResultAsync } from "neverthrow";
 import { OnChainEventPostfix, RootPrefix } from "../db/types.js";
 import { getHubState, putHubState } from "../db/hubState.js";
 import { PageOptions } from "./types.js";
+import { logger } from "../../utils/logger.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 export const MIGRATION_BLOCK = 108911959;
@@ -146,10 +147,12 @@ class OnChainEventStore {
         () => undefined,
       );
       if (_badEvent.isOk()) {
-        const txn = putOnChainEventTransaction(this._db.transaction(), event);
         const incorrectPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.txIndex);
         const correctPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.logIndex);
+        const txn = this._db.transaction();
         txn.del(incorrectPrimaryKey);
+        putOnChainEventTransaction(txn, event);
+
         if (isSignerOnChainEvent(_badEvent.value)) {
           txn.put(makeSignerOnChainEventBySignerKey(event.fid, _badEvent.value.signerEventBody.key), correctPrimaryKey);
         } else if (isIdRegisterOnChainEvent(_badEvent.value)) {
@@ -245,7 +248,7 @@ class OnChainEventStore {
         () => undefined,
       );
       if (existingEventResult.isErr()) {
-        throw new HubError("unavailable.storage_failure", `secondary index corrupted for ${secondaryKey}`);
+        logger.warn(`secondary index corrupted for ${secondaryKey.toString("hex")}`);
       } else {
         return existingEventResult.value;
       }
