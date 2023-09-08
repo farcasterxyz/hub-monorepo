@@ -1,5 +1,5 @@
 # Run Hubble on AWS EC2
-![Final outcome, displaying a Grafana dashboard on AWS](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmf1Yp7BTjhkYqLoLHjKfobjtBBkBVtWYYSRkfDa1XorPv)
+![Final outcome, displaying a Grafana dashboard on AWS](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZGStcArThRY1GL2HjqmwtS8jyjfe4SqMjdGuDwGALjHv)
 
 ## Intro
 This is a step-by-step guide to setting up Hubble on AWS and monitoring it with Grafana.
