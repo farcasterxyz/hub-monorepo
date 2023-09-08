@@ -159,6 +159,9 @@ export interface HubOptions {
   /** Enable IP Rate limiting */
   rpcRateLimit?: number;
 
+  /** Overrides the maximum limit for RPC subscribers per IP address. Default is set to 4 */
+  rpcSubscribePerIpLimit?: number;
+
   /** Rank RPCs and use the ones with best stability and latency */
   rankRpcs?: boolean;
 
@@ -413,6 +416,7 @@ export class Hub implements HubInterface {
       this.gossipNode,
       options.rpcAuth,
       options.rpcRateLimit,
+      options.rpcSubscribePerIpLimit,
     );
     this.httpApiServer = new HttpAPIServer(this.rpcServer.getImpl(), this.engine);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);

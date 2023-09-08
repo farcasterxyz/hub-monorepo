@@ -25,7 +25,7 @@ import {
   OnChainEvent,
   isMergeOnChainHubEvent,
 } from "@farcaster/hub-nodejs";
-import Server, { SUBSCRIBE_PERIP_LIMIT } from "../server.js";
+import Server from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -40,9 +40,18 @@ let client: HubRpcClient;
 
 const rpcUser = "rpcUser";
 const rpcPass = "rpcPass";
+const testRpcSubscribePerIpLimit = 5;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, undefined, undefined, `${rpcUser}:${rpcPass}`);
+  server = new Server(
+    hub,
+    engine,
+    undefined,
+    undefined,
+    `${rpcUser}:${rpcPass}`,
+    undefined,
+    testRpcSubscribePerIpLimit,
+  );
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
@@ -260,7 +269,7 @@ describe("subscribe", () => {
       const streams = [];
 
       // All these should succeed
-      for (let i = 0; i < SUBSCRIBE_PERIP_LIMIT; i++) {
+      for (let i = 0; i < testRpcSubscribePerIpLimit; i++) {
         const stream = await client.subscribe({ eventTypes: [] });
         expect(stream.isOk()).toBe(true);
         streams.push(stream._unsafeUnwrap());
