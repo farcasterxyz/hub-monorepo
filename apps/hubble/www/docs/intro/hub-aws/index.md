@@ -118,6 +118,14 @@ Let's leave AWS dashboard and test the connection to your new machine.
 ### Connect to your instance
 To connect to your ec2 instance, go to your terminal and find the key pair that you generated [earlier](#ec2-instance-setup).
 
+Furst, let's restrict permissions to the keys by running:
+
+```bash
+chmod 400 your-keypair-filename.cer
+```
+
+And connect to your instance with
+
 ```bash
 ssh ubuntu@youripaddress -i your-keypair-filename.cer
 ```
@@ -175,10 +183,10 @@ You can safely close your terminal and proceed to monitor your hub's status via 
 ## Monitor Hubble
 Hubble comes with a built-in Grafana dashboard that will help you monitor health and the sync status of your hub.
 
-![Grafana dashboard](./images/grafana-99.png)
+![Grafana dashboard](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmeoS4UHAFspF5G1bsTGpiqh8BBGGE7xsZzGM8jzDUuLUG)
 
 ### Access Grafana
-Grafana is running on port :3000 of your EC2 instance.
+Grafana is running on port 3000 of your EC2 instance.
 
 To access it in your browser you will have to setup port forwarding from your instance to your local machine like this:
 
@@ -186,7 +194,7 @@ To access it in your browser you will have to setup port forwarding from your in
 ssh -L3000:localhost:3000 ubuntu@youripaddress -i farcaster-hub-tutorial-kp.cer
 ```
 
-Once you ran this command, you should be able to access grafana easily on `localhost:3000`
+Once you ran this command, you should be able to access grafana easily at `localhost:3000`
 
 ### Understand your Grafana dashboard
 
@@ -195,6 +203,7 @@ Grafana contains all metrics and charts that you may need to monitor the health 
 Let's go over some of them
 
 #### Status
+![Grafana status metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZeHfEAqmmLE5D4YZd8o1kTLefsqW58KGhq9K4PB4cqdN)
 **Message Sync** is a percantage of messages in your hub compared to last sync. It should be around 98-100%. If you are significantly below that, something may be wrong with your hub.
 
 **Peers** is a number of known peers in your network that you may receive messages from. Occasionally you may sync with one of them.
@@ -203,11 +212,9 @@ Let's go over some of them
 
 **Farcaster Messages** is a total number of Farcaster messages stored in your hub. In general it should grow over time, but in may go down if many people decide to delete their content at once or they didn't pay for storage.
 
-![Grafana status metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZeHfEAqmmLE5D4YZd8o1kTLefsqW58KGhq9K4PB4cqdN)
-
 
 #### Sync metrics
-
+![Grafana sync metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZF1aRnZ2HCrcfHdKnPwGfetYb5AAqEjG6LqegTW3jUuX)
 **Incoming gossip** is a number of messages being gossiped to you over a given period of time.
 
 **Inbound gossip connections** is a number of peers (other hubs) sending messages directly to you. You don't want this number to go to 0 as it will affect your peer score and network health.
@@ -218,11 +225,9 @@ Let's go over some of them
 
 **Blocked peers** is a count of all peers who has been blocked by the network due to a bad peer reputation. For now it's usually 0.
 
-![Grafana sync metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZF1aRnZ2HCrcfHdKnPwGfetYb5AAqEjG6LqegTW3jUuX)
-
 
 #### Perf metrics
-
+![Grafana perf metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmarf16LTn1j6gHbiLL9c82xpj8duvk259AFYpYnBjEfM3)
 **Merge latency** is time needed to merge a newly received message into the Hub's DB. Generally should be within few milisecons. If it suddenly spikes up, it usually means that something is broken or you are running low on resources.
 
 **Merge queue size** is a number of messages waiting to get merged. Sometimes spikes on a higher load, however if it spikes too often, it may mean that something is broken.
@@ -230,10 +235,6 @@ Let's go over some of them
 **Merkle Trie Queue Size** is number of messages waiting to be added to the merkle sync trie. Again, should stay flat and low.
 
 **DB Size on disk** is the storage needed to store all the messages, should be proportional to the total message count.
-
-
-![Grafana perf metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmarf16LTn1j6gHbiLL9c82xpj8duvk259AFYpYnBjEfM3)
-
 
 
 ## Appendix
