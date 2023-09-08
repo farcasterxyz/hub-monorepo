@@ -144,6 +144,7 @@ export interface OnChainEvent {
   signerMigratedEventBody?: SignerMigratedEventBody | undefined;
   idRegisterEventBody?: IdRegisterEventBody | undefined;
   storageRentEventBody?: StorageRentEventBody | undefined;
+  txIndex: number;
 }
 
 export interface SignerEventBody {
@@ -185,6 +186,7 @@ function createBaseOnChainEvent(): OnChainEvent {
     signerMigratedEventBody: undefined,
     idRegisterEventBody: undefined,
     storageRentEventBody: undefined,
+    txIndex: 0,
   };
 }
 
@@ -225,6 +227,9 @@ export const OnChainEvent = {
     }
     if (message.storageRentEventBody !== undefined) {
       StorageRentEventBody.encode(message.storageRentEventBody, writer.uint32(98).fork()).ldelim();
+    }
+    if (message.txIndex !== 0) {
+      writer.uint32(104).uint32(message.txIndex);
     }
     return writer;
   },
@@ -320,6 +325,13 @@ export const OnChainEvent = {
 
           message.storageRentEventBody = StorageRentEventBody.decode(reader, reader.uint32());
           continue;
+        case 13:
+          if (tag != 104) {
+            break;
+          }
+
+          message.txIndex = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -349,6 +361,7 @@ export const OnChainEvent = {
       storageRentEventBody: isSet(object.storageRentEventBody)
         ? StorageRentEventBody.fromJSON(object.storageRentEventBody)
         : undefined,
+      txIndex: isSet(object.txIndex) ? Number(object.txIndex) : 0,
     };
   },
 
@@ -377,6 +390,7 @@ export const OnChainEvent = {
     message.storageRentEventBody !== undefined && (obj.storageRentEventBody = message.storageRentEventBody
       ? StorageRentEventBody.toJSON(message.storageRentEventBody)
       : undefined);
+    message.txIndex !== undefined && (obj.txIndex = Math.round(message.txIndex));
     return obj;
   },
 
@@ -407,6 +421,7 @@ export const OnChainEvent = {
     message.storageRentEventBody = (object.storageRentEventBody !== undefined && object.storageRentEventBody !== null)
       ? StorageRentEventBody.fromPartial(object.storageRentEventBody)
       : undefined;
+    message.txIndex = object.txIndex ?? 0;
     return message;
   },
 };

@@ -23,6 +23,7 @@ message OnChainEvent {
     IdRegisterEventBody id_register_event_body = 11;
     StorageRentEventBody storage_rent_event_body = 12;
   }
+  uint32 tx_index = 13;
 }
 
 enum SignerEventType {

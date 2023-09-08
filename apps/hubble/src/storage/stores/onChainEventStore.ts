@@ -33,6 +33,7 @@ import { getHubState, putHubState } from "../db/hubState.js";
 import { PageOptions } from "./types.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
+export const MIGRATION_BLOCK = 108911959;
 
 /**
  * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
@@ -138,6 +139,28 @@ class OnChainEventStore {
    * Merges a rent ContractEvent into the StorageEventStore
    */
   async _mergeEvent(event: OnChainEvent): Promise<number> {
+    if (event.blockNumber <= MIGRATION_BLOCK) {
+      // Handle events that were merged with the incorrect index (using txIndex instead of logIndex if they exist)
+      const _badEvent = await ResultAsync.fromPromise(
+        getOnChainEvent(this._db, event.type, event.fid, event.blockNumber, event.txIndex),
+        () => undefined,
+      );
+      if (_badEvent.isOk()) {
+        const txn = putOnChainEventTransaction(this._db.transaction(), event);
+        const incorrectPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.txIndex);
+        const correctPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.logIndex);
+        txn.del(incorrectPrimaryKey);
+        if (isSignerOnChainEvent(_badEvent.value)) {
+          txn.put(makeSignerOnChainEventBySignerKey(event.fid, _badEvent.value.signerEventBody.key), correctPrimaryKey);
+        } else if (isIdRegisterOnChainEvent(_badEvent.value)) {
+          txn
+            .put(makeIdRegisterEventByCustodyKey(_badEvent.value.idRegisterEventBody.to), correctPrimaryKey)
+            .put(makeIdRegisterEventByFidKey(event.fid), correctPrimaryKey);
+        }
+        await this._db.commit(txn);
+        throw new HubError("bad_request.duplicate", "onChainEvent already exists (txIndex updated)");
+      }
+    }
     const _existingEvent = await ResultAsync.fromPromise(
       getOnChainEvent(this._db, event.type, event.fid, event.blockNumber, event.logIndex),
       () => undefined,
