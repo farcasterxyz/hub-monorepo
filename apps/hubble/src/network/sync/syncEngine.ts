@@ -38,6 +38,7 @@ import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 import os from "os";
 import { addProgressBar, finishAllProgressBars } from "../../utils/progressBars.js";
 import { SingleBar } from "cli-progress";
+import { SemVer } from "semver";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -327,8 +328,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this.emit("syncStart");
 
     // Log the version number for the dashboard
-    statsd().gauge(`farcaster.version.${FARCASTER_VERSION}`, 1);
-    statsd().gauge(`farcaster.hubversion.${APP_VERSION}`, 1);
+    const fcversion = new SemVer(FARCASTER_VERSION);
+    statsd().gauge("farcaster.fcversion.major", fcversion.major);
+    statsd().gauge("farcaster.fcversion.minor", fcversion.minor);
+    statsd().gauge("farcaster.fcversion.patch", fcversion.patch);
+
+    const appversion = new SemVer(APP_VERSION);
+    statsd().gauge("farcaster.appversion.major", appversion.major);
+    statsd().gauge("farcaster.appversion.minor", appversion.minor);
+    statsd().gauge("farcaster.appversion.patch", appversion.patch);
 
     if (this.currentHubPeerContacts.size === 0) {
       log.warn("Diffsync: No peer contacts, skipping sync");

@@ -20,6 +20,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
+  "id": 1,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -340,7 +341,7 @@
     },
     {
       "datasource": "Graphite",
-      "description": "The Hubble version and the Farcaster Protocol version.",
+      "description": "The Farcaster Protocol version.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -353,10 +354,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -365,7 +362,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
+        "w": 4,
         "x": 0,
         "y": 5
       },
@@ -381,21 +378,77 @@
           "values": false
         },
         "text": {
-          "titleSize": 26,
-          "valueSize": 1
+          "titleSize": 8,
+          "valueSize": 32
         },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "pluginVersion": "10.0.3",
       "targets": [
         {
           "datasource": "Graphite",
           "refId": "A",
-          "target": "aliasByNode(stats.gauges.hubble.farcaster.*.*.*.*, 5, 6, 7)",
+          "target": "aliasByNode(stats.gauges.hubble.farcaster.fcversion.*, 5)",
           "textEditor": true
         }
       ],
-      "title": "Hubble Version",
+      "title": "Protocol Version",
+      "type": "stat"
+    },
+    {
+      "datasource": "Graphite",
+      "description": "The Hubble App version ",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 5
+      },
+      "id": 31,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 8,
+          "valueSize": 32
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "datasource": "Graphite",
+          "refId": "A",
+          "target": "aliasByNode(stats.gauges.hubble.farcaster.appversion.*, 5)",
+          "textEditor": true
+        }
+      ],
+      "title": "App Version",
       "type": "stat"
     },
     {
@@ -817,7 +870,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": ["sum"],
           "fields": "",
           "values": false
         },
@@ -1120,8 +1173,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1206,8 +1258,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1306,8 +1357,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1415,8 +1465,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1537,8 +1586,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1621,8 +1669,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1719,8 +1766,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
