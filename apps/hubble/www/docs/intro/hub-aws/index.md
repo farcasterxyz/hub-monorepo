@@ -1,5 +1,5 @@
 # Run Hubble on AWS EC2
-![Placeholder](https://pin.ski/3RfuhMu)
+![Final outcome, displaying a Grafana dashboard on AWS](https://pin.ski/3RfuhMu)
 
 ## Intro
 Setting up and running Hubble is easy and doesn't require any technical skills.
@@ -22,6 +22,7 @@ By the end of this tutorial you will know how to:
 
 ## Set up AWS EC2
 ### Create and set up EC2 instance
+TODO
 Let's start by going to AWS EC2 main dashboard. Our goal is to launch an instance, which can be done either from the main page or by going to the list of all instances.
 
 Wherever you are, hit the "Launch instance" button.
@@ -31,43 +32,43 @@ Wherever you are, hit the "Launch instance" button.
 You will see the EC2 instance configuration menu.
 
 Pick a name for your instance, in our case it's `farcaster-hub-tutorial`
-![Placeholder](./images/ec2-setup-name.png)
+![Give your instance a name](./images/ec2-setup-name.png)
 
 In the **Application and OS Images** section, choose:
 - Ubuntu Server 22.04 LTS (HVM)
 - SSD Volume Type
 - 64-bit (x86)
-![Placeholder](./images/ec2-setup-ami.png)
+![Select instance os images](./images/ec2-setup-ami.png)
 In the **Instance type** section, select *m5.large*
-![Placeholder](./images/ec2-setup-instance-type.png)
+![Select isntance type](./images/ec2-setup-instance-type.png)
 
 Now you will need a key pair to securely connect to your instance.
 
 Click *"Create new key pair"*...
-![Placeholder](./images/ec2-setup-empty-keypair.png)
+![Empty key pair selection](./images/ec2-setup-empty-keypair.png)
 
 ... and choose:
 - RSA encryption type
 - .pem file format
 
 Be careful to save it in the right and safe place, since it will be necessary to connect the instance.
-![Placeholder](./images/ec2-setup-create-key-pair.png)
+![Create a key pair](./images/ec2-setup-create-key-pair.png)
 
 After you created the new key pair, make sure that it's selected in the menu.
-![Placeholder](./images/ec2-setup-key-pair-selected.png)
+![Key pair selected](./images/ec2-setup-key-pair-selected.png)
 
 In the **Network settings** section, make sure to *allow SSH traffic* from *Anywhere*.
-![Placeholder](./images/ec2-setup-create-security-group.png)
+![Allow SSH traffic](./images/ec2-setup-create-security-group.png)
 
 In the **Network settings** section, increase the storage to **20 GiB**:
-![Placeholder](./images/ec2-setup-storage.png)
+![Increase instance storage](./images/ec2-setup-storage.png)
 
 This is everything that we need from the EC2 instance setup menu.
 
 Press **Launch instance** and wait a moment for AWS to process your request.
 
 Once this is done, your instance will display in this list.
-![Placeholder](./images/ec2-instance-ready.png)
+![Launch instance](./images/ec2-instance-ready.png)
 
 ### Configure network permissions
 
@@ -75,15 +76,15 @@ To make sure that Hubble can talk to the rest of the network, we need to setup I
 
 Click on **instance ID** from the previous menu, navigate to to **Security** tab.
 
-![Placeholder](./images/ec2-instance-details.png)
+![Dsiplay instance details](./images/ec2-instance-details.png)
 
 Then, click on the name of your security group.
 
-![Placeholder](./images/ec2-setup-sg.png)
+![Click on security group name](./images/ec2-setup-sg.png)
 
 
 From there, click **Edit inbound rules**...
-![Placeholder](./images/ec2-security-group-details.png)
+![Click on edit inbound rules](./images/ec2-security-group-details.png)
 
 ...and specify additional ports:
 - 2283
@@ -92,7 +93,7 @@ From there, click **Edit inbound rules**...
 
 Accept traffic from anywhere by selecting 0.0.0.0/0 option in the source.
 
-![Placeholder](./images/ec2-security-group-inbound-edit.png)
+![Edit inbound rules](./images/ec2-security-group-inbound-edit.png)
 
 Repeat the process for **outbound rules**.
 
@@ -103,12 +104,12 @@ Use the following ports:
 
 again, leaving them accessible from anywhere.
 
-![Placeholder](./images/ec2-security-group-outbound-edit.png)
+![Edit outbound rules](./images/ec2-security-group-outbound-edit.png)
 
 After you finished adding the new rules, this is how the menu should look like:
 
-![Placeholder](./images/ec2-security-group-inbound-final.png)
-![Placeholder](./images/ec2-security-group-outbound-final.png)
+![Final inbound rules](./images/ec2-security-group-inbound-final.png)
+![Final outbound rules](./images/ec2-security-group-outbound-final.png)
 
 **And we are done!** Your EC2 instance is ready.
 
@@ -122,7 +123,7 @@ ssh ubuntu@youripaddress -i your-keypair-filename.cer
 ```
 
 
-![Placeholder](./images/ec2-connect.png)
+![Connect to EC2](./images/ec2-connect.png)
 
 ## Install Hubble
 We now have a machine that can run Hubble. Let's use it.
@@ -136,11 +137,11 @@ Before we start, we will need to access nodes from:
 You can pick whatever provider you like (or run the nodes on your own), but for the sake of this tutorial, we will just use Alchemy.
 
 Create 3 apps in their dashboard like this:
-![Placeholder](./images/alchemy-setup.png)
+![Setup Alchemy](./images/alchemy-setup.png)
 
 End get their respective RPC endpoints like this:
 
-![Placeholder](./images/alchemy-get-rpc.png)
+![Get RPC URL](./images/alchemy-get-rpc.png)
 
 We will use the endpoints in the next step.
 
@@ -152,20 +153,20 @@ curl -sSL https://download.thehubble.xyz/bootstrap.sh | bash
 ```
 
 After you execute it, the script will start downloading and setting up Hubble for you.
-![Placeholder](./images/Hubble-install-script.png)
+![Run install script](./images/Hubble-install-script.png)
 
 After some time, the script will ask you to provide the RPC endpoints that we got from Alchemy.
-![Placeholder](./images/Hubble-rpc-prompt.png)
+![Provide RPC URLs to the script](./images/Hubble-rpc-prompt.png)
 
 Once you correctly paste them, the script will resume building the hub.
-![Placeholder](./images/Hubble-rpc-prompt-final.png)
+![RPC URLs after the input](./images/Hubble-rpc-prompt-final.png)
 
 After the download and build phase ends, Hubble will start syncing with other hubs in the network. It should take roughly 2 hours to get to the fully synced status.
-![Placeholder](./images/Hubble-syncing-1.png)
+![Hubble starting syncing](./images/Hubble-syncing-1.png)
 
 Once the syncing ends, you will start seeing logs.
 
-![Placeholder](./images/hubble-syncing-100.png)
+![Hubble synced](./images/hubble-syncing-100.png)
 
 **Congrats!** Now you're officially running a Farcaster hub.
 
@@ -174,7 +175,7 @@ You can safely close your terminal and proceed to monitor your hub's status via 
 ## Monitor Hubble
 Hubble comes with a built-in Grafana dashboard that will help you monitor health and the sync status of your hub.
 
-![Placeholder](./images/grafana-99.png)
+![Grafana dashboard](./images/grafana-99.png)
 
 ### Access Grafana locally
 TODO
@@ -192,7 +193,7 @@ To access Grafana from an external source (like your computer), you need to:
 ### Understand your Grafana dashboard
 
 TODO
-![Placeholder](./images/grafana-99.png)
+![Grafana dashboard](./images/grafana-99.png)
 
 ## Appendix
 ### Upgrading Hubble
