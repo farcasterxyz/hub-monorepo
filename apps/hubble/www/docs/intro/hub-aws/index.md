@@ -193,26 +193,46 @@ Once you ran this command, you should be able to access grafana easily on `local
 Grafana contains all metrics and charts that you may need to monitor the health of your hub and the network.
 
 Let's go over some of them
-![Grafana dashboard](./images/grafana-99.png)
 
-#### Message Sync
-#### Peers
+#### Status
+**Message Sync** is a percantage of messages in your hub compared to last sync. It should be around 98-100%. If you are significantly below that, something may be wrong with your hub.
 
-#### Blocks processed
+**Peers** is a number of known peers in your network that you may receive messages from. Occasionally you may sync with one of them.
 
-#### Farcaster messages
+**Blocks Processed** is a number of blocks that are being processed for Farcaster Contracts events. May shoot up if you are just starting your hub, but should be roughly between 1 and 3 every 10 seconds. If it stops you are not syncing with FC contracts and do not receive new FIDs.
 
-#### Incoming gossip
+**Farcaster Messages** is a total number of Farcaster messages stored in your hub. In general it should grow over time, but in may go down if many people decide to delete their content at once or they didn't pay for storage.
 
-#### Inbound gossip connections
+![Grafana status metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZeHfEAqmmLE5D4YZd8o1kTLefsqW58KGhq9K4PB4cqdN)
 
-#### Gossip peers
 
-#### Sync duration
+#### Sync metrics
 
-#### Merge latency
+**Incoming gossip** is a number of messages being gossiped to you over a given period of time.
 
-#### Merge queue size
+**Inbound gossip connections** is a number of peers (other hubs) sending messages directly to you. You don't want this number to go to 0 as it will affect your peer score and network health.
+
+**Gossip peers** is a number of inbound and outbound peers that you are connected with over a given period of time.
+
+**Sync duration** — every couple of minutes your hub will perform a full sync with a peer. This metrics shows how long it took,
+
+**Blocked peers** is a count of all peers who has been blocked by the network due to a bad peer reputation. For now it's usually 0.
+
+![Grafana sync metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZF1aRnZ2HCrcfHdKnPwGfetYb5AAqEjG6LqegTW3jUuX)
+
+
+#### Perf metrics
+
+**Merge latency** is time needed to merge a newly received message into the Hub's DB. Generally should be within few milisecons. If it suddenly spikes up, it usually means that something is broken or you are running low on resources.
+
+**Merge queue size** is a number of messages waiting to get merged. Sometimes spikes on a higher load, however if it spikes too often, it may mean that something is broken.
+
+**Merkle Trie Queue Size** is number of messages waiting to be added to the merkle sync trie. Again, should stay flat and low.
+
+**DB Size on disk** is the storage needed to store all the messages, should be proportional to the total message count.
+
+
+![Grafana perf metrics](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmarf16LTn1j6gHbiLL9c82xpj8duvk259AFYpYnBjEfM3)
 
 
 
