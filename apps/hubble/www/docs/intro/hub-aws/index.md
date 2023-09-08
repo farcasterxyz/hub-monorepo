@@ -137,19 +137,16 @@ ssh ubuntu@youripaddress -i your-keypair-filename.cer
 We now have a machine that can run Hubble. Let's use it.
 
 ### Get alchemy keys
-Before we start, we will need to access nodes from:
-- Ethereum testnet goerli (todo: remove once tutorial migrates to 1.5.2)
-- Ethereum mainnet
-- Optimism mainnet
+Before we start, we will need to access RPC endpoints from Ethereum and Optimism.
 
 You can pick whatever provider you like (or run the nodes on your own), but for the sake of this tutorial, we will just use Alchemy.
 
 Create 3 apps in their dashboard like this:
-![Setup Alchemy](./images/alchemy-setup.png)
+![Setup Alchemy](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmVR8cWmok9SaMLkb67rrpzG3JXyru8Xd3WGdhXBhH2Cxe)
 
 End get their respective RPC endpoints like this:
 
-![Get RPC URL](./images/alchemy-get-rpc.png)
+![Get RPC URL](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmVrVK3X1s7hrBJhmdciBy1fjU696NKSSkdAZQZpN3nYot)
 
 We will use the endpoints in the next step.
 
@@ -161,20 +158,22 @@ curl -sSL https://download.thehubble.xyz/bootstrap.sh | bash
 ```
 
 After you execute it, the script will start downloading and setting up Hubble for you.
-![Run install script](./images/Hubble-install-script.png)
+![Run install script](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmTTgZxUgae3sJdie3uAuXwufocHL5RwHPsfhL2Rkx26Hf)
 
-After some time, the script will ask you to provide the RPC endpoints that we got from Alchemy.
-![Provide RPC URLs to the script](./images/Hubble-rpc-prompt.png)
+After some time, the script will ask you to provide the RPC endpoints and your Farcaster username.
+![Provide RPC URLs to the script](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/Qmc75HtwESNDcTCVEEL5vyv2pSA7b76uSLXQKib5UKMUUQ)
 
 Once you correctly paste them, the script will resume building the hub.
-![RPC URLs after the input](./images/Hubble-rpc-prompt-final.png)
+![RPC URLs after the input](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmZFgXX3ZvrLCox353oFEZAyAj2ttCLeossozFTBdrgkuD)
 
-After the download and build phase ends, Hubble will start syncing with other hubs in the network. It should take roughly 2 hours to get to the fully synced status.
-![Hubble starting syncing](./images/Hubble-syncing-1.png)
+After the download and build phase ends, Hubble will start syncing with other hubs in the network.
 
-Once the syncing ends, you will start seeing logs.
+Since version 1.5.2, Hubble by default downloads data from a snapshot and the process usually takes less than 5 minutes.
+![Hubble starting syncing](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmRsLdgcai2nwG4SUsbvhk1GcuFrPFLg85PqMgVvDaCL8M)
 
-![Hubble synced](./images/hubble-syncing-100.png)
+Once the syncing ends, you will start receiving logs.
+
+![Hubble synced](https://moccasin-worried-snake-754.mypinata.cloud/ipfs/QmV3cr2dCvgWUJhSvnBDcD1Xk9trEzc3MkFPjqQZmtFGvH)
 
 **Congrats!** Now you're officially running a Farcaster hub.
 
