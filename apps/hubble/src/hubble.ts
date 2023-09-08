@@ -32,12 +32,14 @@ import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB, { createTarBackup, extractTarBackup } from "./storage/db/rocksdb.js";
+import RocksDB, { createTarBackup } from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
+import * as tar from "tar";
+import * as zlib from "zlib";
 import {
   idRegistryEventToLog,
   logger,
@@ -76,9 +78,9 @@ import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migr
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
-
 import * as fs from "fs";
 import axios from "axios";
+import { SingleBar } from "cli-progress";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -469,13 +471,9 @@ export class Hub implements HubInterface {
 
     // Snapshot Sync
     if (!this.options.disableSnapshotSync) {
-      try {
-        const snapshotResult = await ResultAsync.fromPromise(this.snapshotSync(), (e) => e as Error);
-        if (snapshotResult.isErr()) {
-          log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to regular sync");
-        }
-      } catch (e) {
-        log.error({ error: e }, "failed to sync snapshot, falling back to regular sync");
+      const snapshotResult = await this.snapshotSync();
+      if (snapshotResult.isErr()) {
+        log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to regular sync");
       }
     }
 
@@ -687,81 +685,93 @@ export class Hub implements HubInterface {
     }
   }
 
-  async snapshotSync() {
-    // Check if the DB location is empty. If it is, we'll try to fetch a snapshot from S3.
-    const dbLocation = this.rocksDB.location;
-    const dbFiles = Result.fromThrowable(
-      () => fs.readdirSync(dbLocation),
-      (e) => e,
-    )();
+  async snapshotSync(): HubAsyncResult<boolean> {
+    return new Promise((resolve) => {
+      (async () => {
+        let progressBar: SingleBar | undefined;
 
-    if (dbFiles.isErr() || dbFiles.value.length === 0) {
-      log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
+        try {
+          const dbLocation = this.rocksDB.location;
+          const dbFiles = Result.fromThrowable(
+            () => fs.readdirSync(dbLocation),
+            (e) => e,
+          )();
 
-      // Step 1: Download latest.json to get the latest snapshot name
-      const network = FarcasterNetwork[this.options.network].toString();
-      const response = await axios.get(`https://download.farcaster.xyz/snapshots/${network}/latest.json`);
-      const { key } = response.data;
+          if (dbFiles.isErr() || dbFiles.value.length === 0) {
+            log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
 
-      const latestSnapshotKey = key as string;
-      const latestSnapshotName = path.basename(latestSnapshotKey);
+            const network = FarcasterNetwork[this.options.network].toString();
+            const response = await axios.get(`https://download.farcaster.xyz/snapshots/${network}/latest.json`);
+            const { key } = response.data;
 
-      if (!latestSnapshotKey) {
-        log.error({ data: response.data }, "No latest snapshot name found in latest.json");
-        return;
-      }
+            if (!key) {
+              log.error({ data: response.data }, "No latest snapshot name found in latest.json");
+              resolve(err(new HubError("unavailable", "No latest snapshot name found in latest.json")));
+              return;
+            }
 
-      log.info({ latestSnapshotKey, latestSnapshotName }, "found latest S3 snapshot");
+            const latestSnapshotKey = key as string;
+            log.info({ latestSnapshotKey }, "found latest S3 snapshot");
 
-      // Step 2: Download the latest snapshot file
-      const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
-      const snapshotLocation = path.join(path.dirname(dbLocation), latestSnapshotName);
+            const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
+            const response2 = await axios.get(snapshotUrl, { responseType: "stream" });
+            const totalSize = parseInt(response2.headers["content-length"], 10);
 
-      const writeStream = fs.createWriteStream(snapshotLocation);
+            let downloadedSize = 0;
+            progressBar = addProgressBar("Getting snapshot", totalSize);
 
-      const response2 = await axios.get(snapshotUrl, { responseType: "stream" });
-      response2.data.pipe(writeStream);
+            const handleError = (e: Error) => {
+              log.error({ error: e }, "Error extracting snapshot");
+              progressBar?.stop();
+              resolve(err(new HubError("unavailable", "Error extracting snapshot")));
+            };
 
-      // Setup a progress bar to show download progress
-      const totalSize = parseInt(response2.headers["content-length"], 10);
-      let downloadedSize = 0;
-      const progressBar = addProgressBar("Getting snapshot", totalSize);
+            const gunzip = zlib.createGunzip();
+            const parseStream = new tar.Parse();
 
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      response2.data.on("data", (chunk: any) => {
-        downloadedSize += chunk.length;
-        progressBar?.update(downloadedSize);
-      });
+            // We parse the tar file and extract it into the DB location, which might be different
+            // than the location it was originally created in. So, we transform the top-level
+            // directory name to the DB location.
+            parseStream.on("entry", (entry) => {
+              const newPath = path.join(dbLocation, ...entry.path.split(path.sep).slice(1));
+              const newDir = path.dirname(newPath);
 
-      // Wait for the stream to finish
-      const streamResult = await new Promise<Result<boolean, string>>((resolve) => {
-        writeStream.on("finish", () => resolve(ok(true)));
-        writeStream.on("error", (e) => resolve(err(e.message)));
-      });
+              if (entry.type === "Directory") {
+                fs.mkdirSync(newPath, { recursive: true });
+                entry.resume();
+              } else {
+                fs.mkdirSync(newDir, { recursive: true });
+                entry.pipe(fs.createWriteStream(newPath));
+              }
+            });
 
-      progressBar?.update(totalSize);
-      progressBar?.stop();
-      writeStream.close();
+            parseStream.on("end", () => {
+              log.info({ dbLocation }, "Snapshot extracted from S3");
+              progressBar?.stop();
+              resolve(ok(true));
+            });
 
-      if (streamResult.isErr()) {
-        log.error({ error: streamResult.error }, "failed to stream snapshot from S3");
-        return;
-      }
-
-      log.info({ snapshotLocation, bytesWritten: writeStream.bytesWritten }, "snapshot downloaded from S3");
-
-      // Extract the tar file
-      const extractProgressBar = addProgressBar("Extracting snapshot", totalSize);
-      const extractResult = await extractTarBackup(snapshotLocation, path.basename(dbLocation), extractProgressBar);
-      if (extractResult.isErr()) {
-        log.error({ error: extractResult.error }, "failed to extract snapshot from S3. Snapshot sync disabled");
-        return;
-      }
-
-      log.info({ dbLocation, bytesWritten: writeStream.bytesWritten }, "snapshot extracted from S3");
-      // Delete the tar file, ignore errors
-      fs.unlink(snapshotLocation, () => {});
-    }
+            response2.data
+              .on("error", handleError)
+              // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+              .on("data", (chunk: any) => {
+                downloadedSize += chunk.length;
+                progressBar?.update(downloadedSize);
+              })
+              .pipe(gunzip)
+              .on("error", handleError)
+              .pipe(parseStream)
+              .on("error", handleError);
+          } else {
+            resolve(ok(false));
+          }
+        } catch (error) {
+          log.error({ error }, "An error occurred during snapshot synchronization");
+          progressBar?.stop();
+          resolve(err(new HubError("unavailable", "An error occurred during snapshot synchronization")));
+        }
+      })();
+    });
   }
 
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {

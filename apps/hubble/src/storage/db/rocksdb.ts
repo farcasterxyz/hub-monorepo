@@ -4,12 +4,9 @@ import { mkdir } from "fs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import { logger } from "../../utils/logger.js";
 import * as tar from "tar";
-import * as zlib from "zlib";
 import * as fs from "fs";
 import { err, ok, Result } from "neverthrow";
 import path from "path";
-import { Transform } from "stream";
-import { SingleBar } from "cli-progress";
 
 export const DB_DIRECTORY = ".rocks";
 export const MAX_DB_ITERATOR_OPEN_MILLISECONDS = 60 * 1000; // 1 min
@@ -450,67 +447,5 @@ export async function createTarBackup(inputDir: string): Promise<Result<string, 
         log.error({ error: e, inputDir, outputFilePath }, "Error creating tarball");
         resolve(err(e));
       });
-  });
-}
-export async function extractTarBackup(
-  tarFilePath: string,
-  newTopLevelDir: string,
-  progressBar?: SingleBar,
-): Promise<Result<string, Error>> {
-  // Output directory is the same name as the tar file without the extension
-  const outputDir = path.dirname(tarFilePath);
-  const totalSize = progressBar?.getTotal() ?? 1;
-  let bytesProcessed = 0;
-
-  return new Promise((resolve) => {
-    const gunzip = zlib.createGunzip();
-    const parseStream = new tar.Parse();
-
-    parseStream.on("entry", (entry) => {
-      const newPath = path.join(outputDir, newTopLevelDir, ...entry.path.split(path.sep).slice(1));
-      const newDir = path.dirname(newPath);
-
-      if (entry.type === "Directory") {
-        fs.mkdirSync(newPath, { recursive: true });
-        entry.resume();
-      } else {
-        fs.mkdirSync(newDir, { recursive: true });
-        entry.pipe(fs.createWriteStream(newPath));
-      }
-    });
-
-    const handleError = (e: Error) => {
-      log.error({ error: e, tarFilePath, outputDir }, "Error extracting tarball");
-      resolve(err(e));
-    };
-
-    const progressStream = new Transform({
-      transform(chunk, _encoding, callback) {
-        bytesProcessed += chunk.length;
-        progressBar?.update(bytesProcessed);
-        callback(null, chunk);
-      },
-    });
-
-    try {
-      fs.createReadStream(tarFilePath)
-        .on("error", handleError)
-        .pipe(progressStream)
-        .pipe(gunzip) // Ungzip on the fly
-        .on("error", handleError)
-        .pipe(parseStream)
-        .on("end", () => {
-          log.info({ tarFilePath, newTopLevelDir, outputDir }, "Tarball extracted with new top-level directory");
-
-          progressBar?.update(totalSize);
-          progressBar?.stop();
-
-          resolve(ok(outputDir));
-        });
-    } catch (e) {
-      handleError(e as Error);
-      progressBar?.update(totalSize);
-      progressBar?.stop();
-    }
   });
 }
