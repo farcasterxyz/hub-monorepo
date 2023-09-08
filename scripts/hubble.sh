@@ -15,6 +15,7 @@ DOCKER_COMPOSE_FILE_PATH="apps/hubble/docker-compose.yml"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
 GRAFANA_DASHBOARD_JSON_PATH="apps/hubble/grafana/grafana-dashboard.json"
 GRAFANA_INI_PATH="apps/hubble/grafana/grafana.ini"
+ENVOY_CONFIG_PATH="apps/hubble/envoy/envoy.yaml"
 
 install_jq() {
     if command -v jq >/dev/null 2>&1; then
@@ -122,6 +123,9 @@ fetch_latest_docker_compose_and_dashboard() {
     mkdir -p grafana
     chmod 777 grafana
     fetch_file_from_repo "$GRAFANA_INI_PATH" "grafana/grafana.ini"
+    mkdir -p envoy
+    chmod 777 envoy
+    fetch_file_from_repo "$ENVOY_CONFIG_PATH" "envoy/envoy.yaml"
 }
 
 validate_and_store() {
