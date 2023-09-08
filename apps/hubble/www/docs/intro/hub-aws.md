@@ -6,7 +6,7 @@ This is a step-by-step guide to setting up Hubble on AWS and monitoring it with 
 
 Setting up and running Hubble is easy and doesn't require any technical skills.
 
-It usually takes less than 30 minutes of work and 2 hours of sync time.
+It usually takes less than 30 minutes to complete the whole process.
 
 By the end of this tutorial you will know how to:
 - [Setup an AWS EC2 instance suitable for running Hubble](#set-up-aws-ec2)
