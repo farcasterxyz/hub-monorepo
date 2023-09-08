@@ -757,22 +757,6 @@ export default class Server {
           },
         );
       },
-      getNameRegistryEvent: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getNameRegistryEvent", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-
-        const nameRegistryEventResult = await this.engine?.getNameRegistryEvent(request.name);
-        nameRegistryEventResult?.match(
-          (nameRegistryEvent: NameRegistryEvent) => {
-            callback(null, nameRegistryEvent);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
       getUsernameProof: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer}`);
