@@ -1,5 +1,11 @@
 import { RateLimiterMemory } from "rate-limiter-flexible";
-import { getRateLimiterForTotalMessages, rateLimitByIp, rateLimitByKey } from "./rateLimits.js";
+import {
+  isRateLimitedByKey,
+  getRateLimiterForTotalMessages,
+  rateLimitByIp,
+  rateLimitByKey,
+  consumeRateLimitByKey,
+} from "./rateLimits.js";
 import { sleep } from "./crypto.js";
 
 describe("test rate limits", () => {
@@ -29,16 +35,39 @@ describe("test rate limits", () => {
     }
   });
 
+  test("test rate limiting via consumeRateLimit/isRateLimited", async () => {
+    // 10 Requests should be fine
+    for (let i = 0; i < 10; i++) {
+      expect(await isRateLimitedByKey("3000", Limit10PerSecond)).toBeFalsy();
+      await consumeRateLimitByKey("3000", Limit10PerSecond);
+    }
+
+    // Sleep for 1 second to reset the rate limiter
+    await sleep(1100);
+
+    // 11th+ request should fail
+    for (let i = 0; i < 20; i++) {
+      if (i < 10) {
+        expect(await isRateLimitedByKey("3000", Limit10PerSecond)).toBeFalsy();
+        await consumeRateLimitByKey("3000", Limit10PerSecond);
+      } else {
+        expect(await isRateLimitedByKey("3000", Limit10PerSecond)).toBeTruthy();
+      }
+    }
+  });
+
   test("test dynamic rate limiting", async () => {
     // 10 Requests should be fine for 1st set of messages
     const rateLimiter1 = getRateLimiterForTotalMessages(10, 1);
     const rateLimiter2 = getRateLimiterForTotalMessages(11, 1);
 
     for (let i = 0; i < 10; i++) {
+      expect(await isRateLimitedByKey("3000", rateLimiter1)).toBeFalsy();
       const result1 = await rateLimitByKey("3000", rateLimiter1);
       expect(result1.isOk()).toBeTruthy();
 
       // same key, but different rate limiter should also be fine
+      expect(await isRateLimitedByKey("3000", rateLimiter2)).toBeFalsy();
       const result2 = await rateLimitByKey("3000", rateLimiter2);
       expect(result2.isOk()).toBeTruthy();
     }
@@ -60,6 +89,7 @@ describe("test rate limits", () => {
       if (i < 11) {
         expect(result2.isOk()).toBeTruthy();
       } else {
+        expect(await isRateLimitedByKey("3000", rateLimiter2)).toBeTruthy();
         expect(result2._unsafeUnwrapErr().message).toEqual("Too many requests for 3000");
       }
     }
