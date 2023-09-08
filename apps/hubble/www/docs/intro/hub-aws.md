@@ -14,6 +14,8 @@ By the end of this tutorial you will know how to:
 - [Use the built-in Grafana dashboard to monitor your hub](#monitor-hubble)
 - [Keep your hub up to date and troubleshoot problems](#appendix)
 
+This tutorial is using Hubble version 1.5.2 and Farcaster protocol version 2023.08.23.
+
 ### Requirements
 - [AWS](https://aws.amazon.com/) account
 - [Alchemy](https://www.alchemy.com/) account
