@@ -478,12 +478,14 @@ if [ "$1" == "logs" ]; then
     exit 0
 fi
 
-# If run without args, show a help
-if [ $# -eq 0 ]; then
+# If run without args OR with "help", show a help
+if [ $# -eq 0 ] || [ "$1" == "help" ]; then
     echo "hubble.sh - Install or upgrade Hubble"
-    echo "Usage: hubble.sh [command]"
-    echo "  upgrade: Upgrade an existing installation of Hubble"
-    echo "  logs: Show the logs of the Hubble service"
-    echo "  help: Show this help"
+    echo "Usage:     hubble.sh [command]"
+    echo "  upgrade  Upgrade an existing installation of Hubble"
+    echo "  logs     Show the logs of the Hubble service"
+    echo "  up       Start Hubble and Grafana dashboard"
+    echo "  down     Stop Hubble and Grafana dashboard"
+    echo "  help     Show this help"
     exit 0
 fi
