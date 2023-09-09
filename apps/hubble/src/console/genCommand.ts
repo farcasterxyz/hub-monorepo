@@ -4,7 +4,6 @@ import {
   getAuthMetadata,
   HubRpcClient,
   FarcasterNetwork,
-  Message,
   Metadata,
 } from "@farcaster/hub-nodejs";
 import { ConsoleCommandInterface } from "./console.js";
@@ -84,8 +83,9 @@ class GenMessages {
     const signer = Factories.Ed25519Signer.build();
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
-    const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-    const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent, this.metadata);
+    const idRegisterBody = Factories.IdRegistryEventBody.build({ to: custodySignerKey });
+    const custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid, idRegisterEventBody: idRegisterBody });
+    const idResult = await this.adminRpcClient.submitOnChainEvent(custodyEvent, this.metadata);
 
     if (idResult.isOk()) {
       this.numSuccessMessages++;

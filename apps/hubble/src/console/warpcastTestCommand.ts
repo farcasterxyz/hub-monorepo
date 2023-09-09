@@ -44,8 +44,9 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
     const custodySigner = Factories.Eip712Signer.build();
     const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
 
-    const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-    const _idResult = await this.adminClient.submitIdRegistryEvent(custodyEvent, new Metadata());
+    const idRegisterBody = Factories.IdRegistryEventBody.build({ to: custodySignerKey });
+    const custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid, idRegisterEventBody: idRegisterBody });
+    const _idResult = await this.adminClient.submitOnChainEvent(custodyEvent, new Metadata());
 
     const signerAdd = await Factories.SignerAddMessage.create(
       {

@@ -12,23 +12,16 @@ import {
   HubError,
   HubEvent,
   HubResult,
-  IdRegistryEvent,
-  IdRegistryEventType,
-  isSignerAddMessage,
-  isSignerMigratedOnChainEvent,
   isSignerOnChainEvent,
   isSignerRemoveMessage,
   isUserDataAddMessage,
   isUsernameProofMessage,
   LinkAddMessage,
   LinkRemoveMessage,
-  MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
   MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
   Message,
-  NameRegistryEvent,
-  NameRegistryEventType,
   OnChainEvent,
   OnChainEventResponse,
   OnChainEventType,
@@ -36,12 +29,9 @@ import {
   ReactionRemoveMessage,
   ReactionType,
   RevokeMessagesBySignerJobPayload,
-  SignerAddMessage,
   SignerEventType,
   SignerOnChainEvent,
-  SignerRemoveMessage,
   StorageLimitsResponse,
-  StoreType,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -51,7 +41,7 @@ import {
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
-import { err, ok, Result, ResultAsync } from "neverthrow";
+import { err, ok, ResultAsync } from "neverthrow";
 import fs from "fs";
 import { Worker } from "worker_threads";
 import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from "../db/message.js";
@@ -60,7 +50,6 @@ import { TSHASH_LENGTH, UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
 import LinkStore from "../stores/linkStore.js";
 import ReactionStore from "../stores/reactionStore.js";
-import SignerStore from "../stores/signerStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
 import UserDataStore from "../stores/userDataStore.js";
@@ -90,12 +79,9 @@ class Engine {
   private _db: RocksDB;
   private _network: FarcasterNetwork;
   private _publicClient: PublicClient | undefined;
-  // Used to determine when hubs have migrated to onChain signers
-  private _signerMigratedAt = 0;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
-  private _signerStore: SignerStore;
   private _castStore: CastStore;
   private _userDataStore: UserDataStore;
   private _verificationStore: VerificationStore;
@@ -122,7 +108,6 @@ class Engine {
 
     this._linkStore = new LinkStore(db, this.eventHandler);
     this._reactionStore = new ReactionStore(db, this.eventHandler);
-    this._signerStore = new SignerStore(db, this.eventHandler);
     this._castStore = new CastStore(db, this.eventHandler);
     this._userDataStore = new UserDataStore(db, this.eventHandler);
     this._verificationStore = new VerificationStore(db, this.eventHandler);
@@ -134,7 +119,6 @@ class Engine {
     this._totalPruneSize =
       this._linkStore.pruneSizeLimit +
       this._reactionStore.pruneSizeLimit +
-      this._signerStore.pruneSizeLimit +
       this._castStore.pruneSizeLimit +
       this._userDataStore.pruneSizeLimit +
       this._verificationStore.pruneSizeLimit +
@@ -146,7 +130,6 @@ class Engine {
     this._revokeSignerWorker = new RevokeMessagesBySignerJobWorker(this._revokeSignerQueue, db, this);
 
     this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
-    this.handleMergeIdRegistryEvent = this.handleMergeIdRegistryEvent.bind(this);
     this.handleMergeUsernameProofEvent = this.handleMergeUsernameProofEvent.bind(this);
     this.handleMergeOnChainEvent = this.handleMergeOnChainEvent.bind(this);
   }
@@ -191,28 +174,16 @@ class Engine {
       }
     }
 
-    this.eventHandler.on("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.on("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.on("mergeMessage", this.handleMergeMessageEvent);
     this.eventHandler.on("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     await this.eventHandler.syncCache();
-    const migratedAt = await this._onchainEventsStore.getSignerMigratedAt();
-    if (migratedAt.isOk()) {
-      this._signerMigratedAt = migratedAt.value;
-      this.eventHandler.signerMigrated(this._signerMigratedAt);
-    } else {
-      log.error(
-        { errCode: migratedAt.error.errCode },
-        `error checking if hubs have migrated to onChain signers: ${migratedAt.error.message}`,
-      );
-    }
-    log.info(`engine started (signer migrated: ${this._signerMigratedAt})`);
+    log.info("engine started");
   }
 
   async stop(): Promise<void> {
     log.info("stopping engine");
-    this.eventHandler.off("mergeIdRegistryEvent", this.handleMergeIdRegistryEvent);
     this.eventHandler.off("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.off("mergeMessage", this.handleMergeMessageEvent);
     this.eventHandler.off("mergeOnChainEvent", this.handleMergeOnChainEvent);
@@ -231,10 +202,6 @@ class Engine {
 
   getDb(): RocksDB {
     return this._db;
-  }
-
-  get isMigrated(): boolean {
-    return this._signerMigratedAt > 0;
   }
 
   async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
@@ -289,9 +256,6 @@ class Engine {
       case UserPostfix.ReactionMessage: {
         return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
       }
-      case UserPostfix.SignerMessage: {
-        return ResultAsync.fromPromise(this._signerStore.merge(message), (e) => e as HubError);
-      }
       case UserPostfix.CastMessage: {
         return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
       }
@@ -310,22 +274,6 @@ class Engine {
     }
   }
 
-  async mergeIdRegistryEvent(event: IdRegistryEvent): HubAsyncResult<number> {
-    if (event.type === IdRegistryEventType.REGISTER || event.type === IdRegistryEventType.TRANSFER) {
-      return ResultAsync.fromPromise(this._signerStore.mergeIdRegistryEvent(event), (e) => e as HubError);
-    }
-
-    return err(new HubError("bad_request.validation_failure", "invalid event type"));
-  }
-
-  async mergeNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
-    if (event.type === NameRegistryEventType.TRANSFER || event.type === NameRegistryEventType.RENEW) {
-      return ResultAsync.fromPromise(this._userDataStore.mergeNameRegistryEvent(event), (e) => e as HubError);
-    }
-
-    return err(new HubError("bad_request.validation_failure", "invalid event type"));
-  }
-
   async mergeOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {
     const eventResult = await this.validateOnChainEvent(event);
     if (eventResult.isErr()) {
@@ -335,10 +283,6 @@ class Engine {
       this._onchainEventsStore.mergeOnChainEvent(event),
       (e) => e as HubError,
     );
-    if (mergeResult.isOk() && isSignerMigratedOnChainEvent(event)) {
-      this._signerMigratedAt = event.signerMigratedEventBody.migratedAt;
-      this.eventHandler.signerMigrated(event.signerMigratedEventBody.migratedAt);
-    }
     return mergeResult;
   }
 
@@ -376,9 +320,6 @@ class Engine {
         }
         case UserPostfix.ReactionMessage: {
           return this._reactionStore.revoke(message.value);
-        }
-        case UserPostfix.SignerMessage: {
-          return this._signerStore.revoke(message.value);
         }
         case UserPostfix.CastMessage: {
           return this._castStore.revoke(message.value);
@@ -434,9 +375,6 @@ class Engine {
       );
     };
 
-    const signerResult = await this._signerStore.pruneMessages(fid);
-    logPruneResult(signerResult, "signer");
-
     const castResult = await this._castStore.pruneMessages(fid);
     logPruneResult(castResult, "cast");
 
@@ -468,9 +406,6 @@ class Engine {
         }
         case UserPostfix.ReactionMessage: {
           return this._reactionStore.revoke(message);
-        }
-        case UserPostfix.SignerMessage: {
-          return this._signerStore.revoke(message);
         }
         case UserPostfix.CastMessage: {
           return this._castStore.revoke(message);
@@ -677,20 +612,6 @@ class Engine {
   /*                              Signer Store Methods                          */
   /* -------------------------------------------------------------------------- */
 
-  async getSigner(fid: number, signerPubKey: Uint8Array): HubAsyncResult<SignerAddMessage> {
-    const validatedFid = validations.validateFid(fid);
-    if (validatedFid.isErr()) {
-      return err(validatedFid.error);
-    }
-
-    const validatedPubKey = validations.validateEd25519PublicKey(signerPubKey);
-    if (validatedPubKey.isErr()) {
-      return err(validatedPubKey.error);
-    }
-
-    return ResultAsync.fromPromise(this._signerStore.getSignerAdd(fid, signerPubKey), (e) => e as HubError);
-  }
-
   async getActiveSigner(fid: number, signerPubKey: Uint8Array): HubAsyncResult<SignerOnChainEvent> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -714,21 +635,8 @@ class Engine {
     return ResultAsync.fromPromise(this._onchainEventsStore.getSignersByFid(fid, pageOptions), (e) => e as HubError);
   }
 
-  async getSignersByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<MessagesPage<SignerAddMessage>> {
-    const validatedFid = validations.validateFid(fid);
-    if (validatedFid.isErr()) {
-      return err(validatedFid.error);
-    }
-
-    return ResultAsync.fromPromise(this._signerStore.getSignerAddsByFid(fid, pageOptions), (e) => e as HubError);
-  }
-
-  async getIdRegistryEvent(fid: number): HubAsyncResult<IdRegistryEvent> {
-    return ResultAsync.fromPromise(this._signerStore.getIdRegistryEvent(fid), (e) => e as HubError);
-  }
-
-  async getIdRegistryEventByAddress(address: Uint8Array): HubAsyncResult<IdRegistryEvent> {
-    return ResultAsync.fromPromise(this._signerStore.getIdRegistryEventByAddress(address), (e) => e as HubError);
+  async getIdRegistryOnChainEvent(fid: number): HubAsyncResult<OnChainEvent> {
+    return ResultAsync.fromPromise(this._onchainEventsStore.getIdRegisterEventByFid(fid), (e) => e as HubError);
   }
 
   async getIdRegistryOnChainEventByAddress(address: Uint8Array): HubAsyncResult<OnChainEvent> {
@@ -742,18 +650,7 @@ class Engine {
     fids: number[];
     nextPageToken: Uint8Array | undefined;
   }> {
-    if (this._signerMigratedAt) {
-      return ResultAsync.fromPromise(this._onchainEventsStore.getFids(pageOptions), (e) => e as HubError);
-    } else {
-      return ResultAsync.fromPromise(this._signerStore.getFids(pageOptions), (e) => e as HubError);
-    }
-  }
-
-  async getAllSignerMessagesByFid(
-    fid: number,
-    pageOptions: PageOptions = {},
-  ): HubAsyncResult<MessagesPage<SignerAddMessage | SignerRemoveMessage>> {
-    return ResultAsync.fromPromise(this._signerStore.getAllSignerMessagesByFid(fid, pageOptions), (e) => e as HubError);
+    return ResultAsync.fromPromise(this._onchainEventsStore.getFids(pageOptions), (e) => e as HubError);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -776,15 +673,6 @@ class Engine {
     }
 
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByFid(fid, pageOptions), (e) => e as HubError);
-  }
-
-  async getNameRegistryEvent(fname: Uint8Array): HubAsyncResult<NameRegistryEvent> {
-    const validatedFname = validations.validateFname(fname);
-    if (validatedFname.isErr()) {
-      return err(validatedFname.error);
-    }
-
-    return ResultAsync.fromPromise(this._userDataStore.getNameRegistryEvent(fname), (e) => e as HubError);
   }
 
   async getOnChainEvents(type: OnChainEventType, fid: number): HubAsyncResult<OnChainEventResponse> {
@@ -982,24 +870,17 @@ class Engine {
 
     // 3. Check that the user has a custody address
     let custodyAddress: Uint8Array | undefined;
-    if (this._signerMigratedAt) {
-      const custodyEvent = await ResultAsync.fromPromise(
-        this._onchainEventsStore.getIdRegisterEventByFid(message.data.fid),
-        (e) => e as HubError,
+    const custodyEvent = await ResultAsync.fromPromise(
+      this._onchainEventsStore.getIdRegisterEventByFid(message.data.fid),
+      (e) => e as HubError,
+    );
+    if (custodyEvent.isErr()) {
+      log.error(
+        { errCode: custodyEvent.error.errCode, errMessage: custodyEvent.error.message },
+        `failed to get v2 custody event for ${message.data.fid}`,
       );
-      if (custodyEvent.isErr()) {
-        log.error(
-          { errCode: custodyEvent.error.errCode, errMessage: custodyEvent.error.message },
-          `failed to get v2 custody event for ${message.data.fid}`,
-        );
-      } else {
-        custodyAddress = custodyEvent.value.idRegisterEventBody.to;
-      }
     } else {
-      const custodyEvent = await this.getIdRegistryEvent(message.data.fid);
-      if (custodyEvent.isOk()) {
-        custodyAddress = custodyEvent.value.to;
-      }
+      custodyAddress = custodyEvent.value.idRegisterEventBody.to;
     }
 
     if (!custodyAddress) {
@@ -1007,53 +888,21 @@ class Engine {
     }
 
     // 4. Check that the signer is valid
-    if (isSignerAddMessage(message) || isSignerRemoveMessage(message)) {
-      // TODO: should we be checking the timestamp instead?
-      if (this._signerMigratedAt) {
+    const result = await ResultAsync.fromPromise(
+      this._onchainEventsStore.getActiveSigner(message.data.fid, message.signer),
+      (e) => e,
+    );
+    const signerExists = result.isOk();
+    if (!signerExists) {
+      const hex = bytesToHexString(message.signer);
+      return hex.andThen((signerHex) => {
         return err(
           new HubError(
             "bad_request.validation_failure",
-            "signer add/remove messages are not supported on migrated hubs",
+            `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid}`,
           ),
         );
-      }
-      if (bytesCompare(message.signer, custodyAddress) !== 0) {
-        const hex = Result.combine([bytesToHexString(message.signer), bytesToHexString(custodyAddress)]);
-        return hex.andThen(([signerHex, custodyHex]) => {
-          return err(
-            new HubError(
-              "bad_request.validation_failure",
-              `invalid signer: signer ${signerHex} does not match custody address ${custodyHex}`,
-            ),
-          );
-        });
-      }
-    } else {
-      let signerExists: boolean;
-      if (this._signerMigratedAt) {
-        const result = await ResultAsync.fromPromise(
-          this._onchainEventsStore.getActiveSigner(message.data.fid, message.signer),
-          (e) => e,
-        );
-        signerExists = result.isOk();
-      } else {
-        const result = await ResultAsync.fromPromise(
-          this._signerStore.getSignerAdd(message.data.fid, message.signer),
-          (e) => e,
-        );
-        signerExists = result.isOk();
-      }
-      if (!signerExists) {
-        const hex = bytesToHexString(message.signer);
-        return hex.andThen((signerHex) => {
-          return err(
-            new HubError(
-              "bad_request.validation_failure",
-              `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid} (migrated: ${this._signerMigratedAt})`,
-            ),
-          );
-        });
-      }
+      });
     }
 
     // 5. For fname add UserDataAdd messages, check that the user actually owns the fname
@@ -1159,28 +1008,6 @@ class Engine {
         return err(new HubError("bad_request.validation_failure", `ens name does not belong to fid: ${nameProof.fid}`));
       }
     }
-    return ok(undefined);
-  }
-
-  private async handleMergeIdRegistryEvent(event: MergeIdRegistryEventHubEvent): HubAsyncResult<void> {
-    const { idRegistryEvent } = event.mergeIdRegistryEventBody;
-    const fromAddress = idRegistryEvent.from;
-    if (fromAddress && fromAddress.length > 0) {
-      // Revoke signer messages
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: idRegistryEvent.fid,
-        signer: fromAddress,
-      });
-      const oneHourFromNow = Date.now() + 60 * 60 * 1000;
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload, oneHourFromNow);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
-        );
-      }
-    }
-
     return ok(undefined);
   }
 

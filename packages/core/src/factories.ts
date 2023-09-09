@@ -662,10 +662,12 @@ const SignerEventBodyFactory = Factory.define<protobufs.SignerEventBody>(() => {
   });
 });
 
-const SignerOnChainEventFactory = Factory.define<SignerOnChainEvent>(() => {
+const SignerOnChainEventFactory = Factory.define<SignerOnChainEvent, { signer?: Uint8Array }>(({ transientParams }) => {
   return OnChainEventFactory.build({
     type: OnChainEventType.EVENT_TYPE_SIGNER,
-    signerEventBody: SignerEventBodyFactory.build(),
+    signerEventBody: transientParams.signer
+      ? SignerEventBodyFactory.build({ key: transientParams.signer })
+      : SignerEventBodyFactory.build(),
   }) as protobufs.SignerOnChainEvent;
 });
 
@@ -676,12 +678,16 @@ const IdRegisterEventBodyFactory = Factory.define<protobufs.IdRegisterEventBody>
   });
 });
 
-const IdRegisterOnChainEventFactory = Factory.define<IdRegisterOnChainEvent>(() => {
-  return OnChainEventFactory.build({
-    type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
-    idRegisterEventBody: IdRegisterEventBodyFactory.build(),
-  }) as protobufs.IdRegisterOnChainEvent;
-});
+const IdRegisterOnChainEventFactory = Factory.define<IdRegisterOnChainEvent, { to?: Uint8Array }>(
+  ({ transientParams }) => {
+    return OnChainEventFactory.build({
+      type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
+      idRegisterEventBody: transientParams.to
+        ? IdRegisterEventBodyFactory.build({ to: transientParams.to })
+        : IdRegisterEventBodyFactory.build(),
+    }) as protobufs.IdRegisterOnChainEvent;
+  },
+);
 
 const SignerMigratedOnChainEventFactory = Factory.define<SignerMigratedOnChainEvent>(() => {
   return OnChainEventFactory.build({

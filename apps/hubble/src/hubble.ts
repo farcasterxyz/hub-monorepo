@@ -104,8 +104,6 @@ export interface HubInterface {
   identity: string;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
@@ -1185,48 +1183,6 @@ export class Hub implements HubInterface {
     }
 
     statsd().timing("hub.merge_message", Date.now() - start);
-
-    return mergeResult;
-  }
-
-  async submitIdRegistryEvent(event: IdRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
-    const logEvent = log.child({ event: idRegistryEventToLog(event), source });
-
-    const mergeResult = await this.engine.mergeIdRegistryEvent(event);
-
-    mergeResult.match(
-      (eventId) => {
-        logEvent.debug(
-          `submitIdRegistryEvent success ${eventId}: fid ${event.fid} assigned to ${bytesToHexString(
-            event.to,
-          )._unsafeUnwrap()} in block ${event.blockNumber}`,
-        );
-      },
-      (e) => {
-        logEvent.warn({ errCode: e.errCode }, `submitIdRegistryEvent error: ${e.message}`);
-      },
-    );
-
-    return mergeResult;
-  }
-
-  async submitNameRegistryEvent(event: NameRegistryEvent, source?: HubSubmitSource): HubAsyncResult<number> {
-    const logEvent = log.child({ event: nameRegistryEventToLog(event), source });
-
-    const mergeResult = await this.engine.mergeNameRegistryEvent(event);
-
-    mergeResult.match(
-      (eventId) => {
-        logEvent.debug(
-          `submitNameRegistryEvent success ${eventId}: fname ${bytesToUtf8String(
-            event.fname,
-          )._unsafeUnwrap()} assigned to ${bytesToHexString(event.to)._unsafeUnwrap()} in block ${event.blockNumber}`,
-        );
-      },
-      (e) => {
-        logEvent.warn({ errCode: e.errCode }, `submitNameRegistryEvent error: ${e.message}`);
-      },
-    );
 
     return mergeResult;
   }
