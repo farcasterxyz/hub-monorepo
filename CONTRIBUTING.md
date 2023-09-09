@@ -237,12 +237,12 @@ if (combinedResults.isErr()) {
 
 ---
 
-### 3.4. Creating the PR
+### 3.4. Creating a PR
 
-All submissions must be opened as a Pull Request and reviewed and approved by a project member. The CI build process
-will ensure that all tests pass and that all linters have been run correctly. In addition, you should ensure that:
+All submissions must be opened as a Pull Request and reviewed and approved by a project member. The CI process
+will ensure that all tests pass and that all linters got run correctly. In addition, ensure that:
 
-- The PR titles _must_ follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) specification
+- All PR titles _must_ follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) specification
 - Commit titles _should_ follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) specification
 
 As an example, a good PR title would look like this:
