@@ -9,6 +9,7 @@ import {
   HubRpcClient,
   IdRegistryEvent,
   Message,
+  OnChainEvent,
   SignerAddMessage,
   UserDataAddMessage,
   UserDataRequest,
@@ -54,8 +55,9 @@ const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
 let custodySignerKey: Uint8Array;
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 
 let pfpAdd: UserDataAddMessage;
 let displayAdd: UserDataAddMessage;
@@ -67,12 +69,9 @@ let addEnsName: UserDataAddMessage;
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   pfpAdd = await Factories.UserDataAddMessage.create(
     { data: { fid, userDataBody: { type: UserDataType.PFP } } },
@@ -134,8 +133,9 @@ beforeAll(async () => {
 
 describe("getUserData", () => {
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds", async () => {
@@ -184,8 +184,9 @@ describe("getUserData", () => {
 
 describe("getUserDataByFid", () => {
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds", async () => {

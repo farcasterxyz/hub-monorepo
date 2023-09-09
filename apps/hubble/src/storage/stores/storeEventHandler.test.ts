@@ -6,6 +6,7 @@ import { UserPostfix } from "../db/types.js";
 import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
 import { getFarcasterTime } from "@farcaster/core";
+import OnChainEventStore from "./onChainEventStore.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
@@ -131,7 +132,7 @@ describe("isPrunable", () => {
 describe("pruneEvents", () => {
   test("deletes events based on time limit", async () => {
     const message1 = await Factories.Message.create();
-    const idRegistryEvent = Factories.IdRegistryEvent.build();
+    const idRegistryEvent = Factories.IdRegistryOnChainEvent.build();
     const message2 = await Factories.Message.create();
     const message3 = await Factories.Message.create();
 
@@ -139,7 +140,10 @@ describe("pruneEvents", () => {
       type: HubEventType.MERGE_MESSAGE,
       mergeMessageBody: { message: message1, deletedMessages: [] },
     };
-    const eventArgs2 = { type: HubEventType.MERGE_ID_REGISTRY_EVENT, mergeIdRegistryEventBody: { idRegistryEvent } };
+    const eventArgs2 = {
+      type: HubEventType.MERGE_ON_CHAIN_EVENT,
+      mergeOnChainEventBody: { onChainEvent: idRegistryEvent },
+    };
     const eventArgs3 = { type: HubEventType.PRUNE_MESSAGE, pruneMessageBody: { message: message2 } };
     const eventArgs4 = {
       type: HubEventType.MERGE_MESSAGE,
@@ -180,19 +184,14 @@ describe("pruneEvents", () => {
 describe("getCurrentStorageUnitsForFid", () => {
   const fid = Factories.Fid.build();
 
-  test("defaults to 1 before migration", async () => {
-    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(1));
-  });
-
-  test("defaults to 1 during migration pruning grace period", async () => {
-    // Assume migration happened 1 minute ago
-    eventHandler.signerMigrated(Date.now() / 1000 - 60);
-    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(1));
-  });
-
-  test("returns actual storage available after migration pruning grace period", async () => {
-    // Assume migration happened 2 days
-    eventHandler.signerMigrated(Date.now() / 1000 - 60 * 60 * 24 * 2);
+  test("returns 0 if no storage event", async () => {
     expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(0));
+  });
+
+  test("returns actual storage based on units rented", async () => {
+    const storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+    const onChainEventStore = new OnChainEventStore(db, eventHandler);
+    await onChainEventStore.mergeOnChainEvent(storageEvent);
+    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(storageEvent.storageRentEventBody.units));
   });
 });

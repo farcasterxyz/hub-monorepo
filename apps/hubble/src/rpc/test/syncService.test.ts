@@ -7,6 +7,7 @@ import {
   HubInfoRequest,
   HubRpcClient,
   IdRegistryEvent,
+  OnChainEvent,
   SignerAddMessage,
   SyncStatusRequest,
 } from "@farcaster/hub-nodejs";
@@ -43,27 +44,26 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 let castAdd: CastAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
 describe("getInfo", () => {
   test("succeeds", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
 
     const result = await client.getInfo(HubInfoRequest.create({ dbStats: true }));
@@ -76,8 +76,9 @@ describe("getInfo", () => {
 
 describe("getSyncStatus", () => {
   test("succeeds", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
 
     const result = await client.getSyncStatus(SyncStatusRequest.create());
