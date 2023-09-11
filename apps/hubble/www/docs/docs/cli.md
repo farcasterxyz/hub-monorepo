@@ -82,8 +82,7 @@ Snapshots Options:
 Metrics:
   --statsd-metrics-server <host>        The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)
 
-Debugging Options:
-  --gossip-metrics-enabled              Generate tracing and metrics for the gossip network. (default: disabled)
+Debugging Options:  
   --profile-sync                        Profile a full hub sync and exit. (default: disabled)
   --rebuild-sync-trie                   Rebuild the sync trie before starting (default: disabled)  
   --resync-name-events                  Resync events from the Fname server before starting (default: disabled)

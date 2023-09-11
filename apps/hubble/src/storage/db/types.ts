@@ -56,7 +56,9 @@ export enum RootPrefix {
   /* Used to store fname server name proofs */
   FNameUserNameProof = 17,
   /* Used to store gossip network metrics */
-  GossipMetrics = 18,
+  // Deprecated, DO NOT USE
+  // GossipMetrics = 18,
+
   /* Used to index user submited username proofs */
   UserNameProofByName = 19,
 
