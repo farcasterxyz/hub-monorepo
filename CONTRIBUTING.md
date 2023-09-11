@@ -287,6 +287,7 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 9. Push all tags to the remote repo: `git push origin @latest --force && git push origin HEAD --tags`
 10. Create a GitHub Release for Hubble, marking it as the latest.
 11. If this is a non-patch change, create an NFT for the release.
+12. Make sure that the Docker image for the latest release gets built and published to [Docker hub](https://hub.docker.com/r/farcasterxyz/hubble/tags).
 
 ### 3.7 Working in Rust
 
