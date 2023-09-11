@@ -70,7 +70,6 @@ import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from 
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
 import { PublicClient } from "viem";
 import { normalize } from "viem/ens";
-import os from "os";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
 import { isRateLimitedByKey, consumeRateLimitByKey, getRateLimiterForTotalMessages } from "../../utils/rateLimits.js";
