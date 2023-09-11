@@ -15,12 +15,7 @@ import {
   StorageLimit,
   StorageLimitsResponse,
   StoreType,
-  CASTS_SIZE_LIMIT_DEFAULT,
-  REACTIONS_SIZE_LIMIT_DEFAULT,
-  LINKS_SIZE_LIMIT_DEFAULT,
-  USER_DATA_SIZE_LIMIT_DEFAULT,
-  VERIFICATIONS_SIZE_LIMIT_DEFAULT,
-  USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
+  getDefaultStoreLimit,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -111,12 +106,12 @@ describe("server rpc tests", () => {
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       // Default storage limits
       expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([
-        CASTS_SIZE_LIMIT_DEFAULT,
-        LINKS_SIZE_LIMIT_DEFAULT,
-        REACTIONS_SIZE_LIMIT_DEFAULT,
-        USER_DATA_SIZE_LIMIT_DEFAULT,
-        USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
-        VERIFICATIONS_SIZE_LIMIT_DEFAULT,
+        getDefaultStoreLimit(StoreType.CASTS),
+        getDefaultStoreLimit(StoreType.LINKS),
+        getDefaultStoreLimit(StoreType.REACTIONS),
+        getDefaultStoreLimit(StoreType.USER_DATA),
+        getDefaultStoreLimit(StoreType.USERNAME_PROOFS),
+        getDefaultStoreLimit(StoreType.VERIFICATIONS),
       ]);
     });
 
@@ -129,22 +124,28 @@ describe("server rpc tests", () => {
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       const storageLimits = StorageLimitsResponse.fromJSON(result._unsafeUnwrap()).limits;
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: CASTS_SIZE_LIMIT_DEFAULT, storeType: StoreType.CASTS }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.CASTS), storeType: StoreType.CASTS }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: REACTIONS_SIZE_LIMIT_DEFAULT, storeType: StoreType.REACTIONS }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.REACTIONS), storeType: StoreType.REACTIONS }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: LINKS_SIZE_LIMIT_DEFAULT, storeType: StoreType.LINKS }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.LINKS), storeType: StoreType.LINKS }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: USER_DATA_SIZE_LIMIT_DEFAULT, storeType: StoreType.USER_DATA }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.USER_DATA), storeType: StoreType.USER_DATA }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: VERIFICATIONS_SIZE_LIMIT_DEFAULT, storeType: StoreType.VERIFICATIONS }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.VERIFICATIONS),
+          storeType: StoreType.VERIFICATIONS,
+        }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: USERNAME_PROOFS_SIZE_LIMIT_DEFAULT, storeType: StoreType.USERNAME_PROOFS }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS),
+          storeType: StoreType.USERNAME_PROOFS,
+        }),
       );
 
       // add 2 more units
@@ -155,24 +156,12 @@ describe("server rpc tests", () => {
       await engine.mergeOnChainEvent(rentEvent2);
       const result2 = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       const newLimits = StorageLimitsResponse.fromJSON(result2._unsafeUnwrap()).limits;
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: CASTS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.CASTS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: REACTIONS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.REACTIONS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: LINKS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.LINKS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: USER_DATA_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.USER_DATA }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: VERIFICATIONS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.VERIFICATIONS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: USERNAME_PROOFS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.USERNAME_PROOFS }),
-      );
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5000 * 3, storeType: StoreType.CASTS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 2500 * 3, storeType: StoreType.REACTIONS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 1250 * 3, storeType: StoreType.LINKS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 50 * 3, storeType: StoreType.USER_DATA }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 25 * 3, storeType: StoreType.VERIFICATIONS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5 * 3, storeType: StoreType.USERNAME_PROOFS }));
     });
   });
 });

@@ -8,7 +8,8 @@ import {
   bytesCompare,
   isCastAddMessage,
   isCastRemoveMessage,
-  CASTS_SIZE_LIMIT_DEFAULT,
+  getDefaultStoreLimit,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { err, ok, ResultAsync } from "neverthrow";
 import {
@@ -133,7 +134,7 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   override _removeMessageType = MessageType.CAST_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return CASTS_SIZE_LIMIT_DEFAULT;
+    return getDefaultStoreLimit(StoreType.CASTS);
   }
 
   protected override get PRUNE_TIME_LIMIT_DEFAULT() {

@@ -2,11 +2,12 @@ import { jestRocksDB } from "../db/jestUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   Factories,
+  getDefaultStoreLimit,
   getFarcasterTime,
   HubError,
   MergeUsernameProofHubEvent,
   MessageType,
-  USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
+  StoreType,
   UserNameProof,
   UsernameProofMessage,
   UserNameType,
@@ -183,7 +184,7 @@ describe("usernameProofStore", () => {
       const sizePrunedStore = new UsernameProofStore(db, eventHandler, { pruneSizeLimit: 2 });
 
       test("defaults size limit", async () => {
-        expect(set.pruneSizeLimit).toEqual(USERNAME_PROOFS_SIZE_LIMIT_DEFAULT);
+        expect(set.pruneSizeLimit).toEqual(getDefaultStoreLimit(StoreType.USERNAME_PROOFS));
         expect(set.pruneTimeLimit).toBeUndefined();
       });
 

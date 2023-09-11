@@ -1,17 +1,19 @@
 import {
-  Factories,
-  HubError,
   bytesDecrement,
   bytesIncrement,
+  Factories,
+  getDefaultStoreLimit,
   getFarcasterTime,
+  HubError,
   LinkAddMessage,
+  LinkBody,
+  LinkRemoveMessage,
   MergeMessageHubEvent,
   Message,
   MessageType,
   PruneMessageHubEvent,
-  LinkBody,
-  LinkRemoveMessage,
   RevokeMessageHubEvent,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -815,6 +817,17 @@ describe("pruneMessages", () => {
 
   describe("with size limit", () => {
     const sizePrunedStore = new LinkStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test("size limit changes in the future", () => {
+      expect(getDefaultStoreLimit(StoreType.LINKS)).toEqual(1250);
+      const nowOrig = Date.now;
+      try {
+        Date.now = () => new Date("2023-10-01").getTime();
+        expect(getDefaultStoreLimit(StoreType.LINKS)).toEqual(2500);
+      } finally {
+        Date.now = nowOrig;
+      }
+    });
 
     test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
