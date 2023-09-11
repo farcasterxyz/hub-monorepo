@@ -286,7 +286,7 @@ setup_grafana() {
 
     # Step 5: Import the dashboard. The API takes a slighly different format than the JSON import
     # in the UI, so we need to convert the JSON file first.
-    jq 'if .dashboard then . else {dashboard: ., folderId: 0, overwrite: true} end' "grafana-dashboard.json" > "grafana-dashboard.api.json"
+    jq '{dashboard: (del(.id) | . + {id: null}), folderId: 0, overwrite: true}' "grafana-dashboard.json" > "grafana-dashboard.api.json"
     
     response=$(curl -s -X "POST" "$grafana_url/api/dashboards/db" \
         -u "$credentials" \
