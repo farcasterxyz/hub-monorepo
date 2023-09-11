@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.7
+
+### Patch Changes
+
+- 08b652e: fix: Add txIndex to onchain events, fix wrong index being used in the primary key
+
 ## 0.12.6
 
 ### Patch Changes
