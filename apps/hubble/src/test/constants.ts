@@ -11,5 +11,5 @@ export const accounts = [
   },
 ] as const;
 
-export const workerId = Number(process.env["JEST_WORKER_ID"] ?? 1);
+export const workerId = Number(process.env["VITEST_WORKER_ID"] ?? 1);
 export const localHttpUrl = `http://127.0.0.1:8545/${workerId}`;

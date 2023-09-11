@@ -1,12 +1,13 @@
 import { ok } from "neverthrow";
 import { Factories, HubEvent, HubEventType, getFarcasterTime } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import { makeTsHash, putMessage } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
+import { describe, beforeEach, test, expect } from "vitest";
 
-const db = jestRocksDB("engine.storageCache.test");
+const db = testRocksDB("engine.storageCache.test");
 
 let cache: StorageCache;
 

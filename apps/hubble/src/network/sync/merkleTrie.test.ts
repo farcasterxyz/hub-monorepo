@@ -2,16 +2,17 @@ import { blake3 } from "@noble/hashes/blake3";
 import { DbTrieNode } from "@farcaster/hub-nodejs";
 import { MerkleTrie } from "../sync/merkleTrie.js";
 import { NetworkFactories } from "../utils/factories.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { TIMESTAMP_LENGTH } from "./syncId.js";
 import { EMPTY_HASH } from "./trieNode.js";
+import { describe, test, expect, beforeEach } from "vitest";
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
-const db = jestRocksDB("protobufs.network.merkleTrie.test");
-const db2 = jestRocksDB("protobufs.network.merkleTrie2.test");
+const db = testRocksDB("protobufs.network.merkleTrie.test");
+const db2 = testRocksDB("protobufs.network.merkleTrie2.test");
 
 let trie: MerkleTrie;
 

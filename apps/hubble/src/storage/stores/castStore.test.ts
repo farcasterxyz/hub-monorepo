@@ -12,7 +12,7 @@ import {
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
 } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import CastStore from "./castStore.js";
@@ -20,9 +20,9 @@ import StoreEventHandler from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
 import { err, ok } from "neverthrow";
 import { faker } from "@faker-js/faker";
-import { FARCASTER_EPOCH } from "@farcaster/core";
+import { describe, beforeAll, beforeEach, afterAll, test, expect } from "vitest";
 
-const db = jestRocksDB("protobufs.castStore.test");
+const db = testRocksDB("protobufs.castStore.test");
 const eventHandler = new StoreEventHandler(db);
 const store = new CastStore(db, eventHandler);
 const fid = Factories.Fid.build();

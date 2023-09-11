@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { beforeAll, describe, test, expect } from "vitest";
 import * as protobufs from "./protobufs";
 import { err, ok } from "neverthrow";
 import * as builders from "./builders";

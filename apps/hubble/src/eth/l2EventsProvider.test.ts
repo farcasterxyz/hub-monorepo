@@ -1,6 +1,6 @@
 import { bytesToHexString, Factories, FarcasterNetwork, OnChainEventType } from "@farcaster/hub-nodejs";
 import { StorageRegistry } from "./abis.js";
-import { jestRocksDB } from "../storage/db/jestUtils.js";
+import { testRocksDB } from "../storage/db/testUtils.js";
 import Engine from "../storage/engine/index.js";
 import { MockHub } from "../test/mocks.js";
 import { deployStorageRegistry, publicClient, testClient, walletClientWithAccount } from "../test/utils.js";
@@ -10,8 +10,9 @@ import { L2EventsProvider, OptimismConstants } from "./l2EventsProvider.js";
 import { Transport } from "viem";
 import OnChainEventStore from "../storage/stores/onChainEventStore.js";
 import StoreEventHandler from "../storage/stores/storeEventHandler.js";
+import { beforeAll, afterAll, describe, test, expect, beforeEach, afterEach } from "vitest";
 
-const db = jestRocksDB("protobufs.l2EventsProvider.test");
+const db = testRocksDB("protobufs.l2EventsProvider.test");
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const hub = new MockHub(db, engine);
 const onChainEventStore = new OnChainEventStore(db, new StoreEventHandler(db));

@@ -22,13 +22,13 @@ import {
 import { Ok } from "neverthrow";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import Server from "../server.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
-import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
+import { vi, describe, test, expect, beforeAll, afterAll, beforeEach } from "vitest";
 
-const db = jestRocksDB("protobufs.rpc.userdataservice.test");
+const db = testRocksDB("protobufs.rpc.userdataservice.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network, undefined, publicClient);
 const hub = new MockHub(db, engine);
@@ -100,7 +100,7 @@ beforeAll(async () => {
 
   const custodySignerAddress = bytesToHexString(custodySignerKey)._unsafeUnwrap();
 
-  jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+  vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
     return Promise.resolve(custodySignerAddress);
   });
   ensNameProof = await Factories.UsernameProofMessage.create(

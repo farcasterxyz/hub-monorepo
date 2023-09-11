@@ -1,5 +1,6 @@
 import { Factories } from "./factories";
 import { makeVerificationEthAddressClaim } from "./verifications";
+import { describe, test, expect } from "vitest";
 
 describe("makeVerificationEthAddressClaim", () => {
   test("succeeds", () => {

@@ -3,7 +3,7 @@ import {
   FNameRegistryEventsProvider,
   FNameTransfer,
 } from "./fnameRegistryEventsProvider.js";
-import { jestRocksDB } from "../storage/db/jestUtils.js";
+import { testRocksDB } from "../storage/db/testUtils.js";
 import Engine from "../storage/engine/index.js";
 import { ViemLocalEip712Signer, makeUserNameProofClaim, FarcasterNetwork } from "@farcaster/core";
 import { MockHub } from "../test/mocks.js";
@@ -11,6 +11,7 @@ import { getUserNameProof } from "../storage/db/nameRegistryEvent.js";
 import { utf8ToBytes } from "@noble/curves/abstract/utils";
 import { generatePrivateKey, privateKeyToAccount, PrivateKeyAccount, Address } from "viem/accounts";
 import { bytesToHex } from "viem";
+import { describe, test, expect, beforeEach, afterEach, it } from "vitest";
 
 class MockFnameRegistryClient implements FNameRegistryClientInterface {
   private transfersToReturn: FNameTransfer[][] = [];
@@ -76,7 +77,7 @@ class MockFnameRegistryClient implements FNameRegistryClientInterface {
 }
 
 describe("fnameRegistryEventsProvider", () => {
-  const db = jestRocksDB("protobufs.fnameRegistry.test");
+  const db = testRocksDB("protobufs.fnameRegistry.test");
   const engine = new Engine(db, FarcasterNetwork.TESTNET);
   const hub = new MockHub(db, engine);
   let provider: FNameRegistryEventsProvider;

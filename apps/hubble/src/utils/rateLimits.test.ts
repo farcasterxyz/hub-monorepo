@@ -7,6 +7,7 @@ import {
   consumeRateLimitByKey,
 } from "./rateLimits.js";
 import { sleep } from "./crypto.js";
+import { describe, test, expect } from "vitest";
 
 describe("test rate limits", () => {
   const Limit10PerSecond = new RateLimiterMemory({

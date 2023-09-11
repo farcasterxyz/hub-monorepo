@@ -1,6 +1,7 @@
 import { blake3 } from "@noble/hashes/blake3";
 import { nativeBlake3Hash20, nativeEd25519Verify } from "./rustfunctions.js";
 import { Factories, ed25519 } from "@farcaster/hub-nodejs";
+import { describe, test, expect } from "vitest";
 
 describe("blake3 tests", () => {
   test("hashes match rust", () => {

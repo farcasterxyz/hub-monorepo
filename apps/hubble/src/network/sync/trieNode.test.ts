@@ -2,7 +2,8 @@ import { Factories, hexStringToBytes, utf8StringToBytes } from "@farcaster/hub-n
 import { TIMESTAMP_LENGTH } from "./syncId.js";
 import { EMPTY_HASH, TrieNode } from "./trieNode.js";
 import { NetworkFactories } from "../utils/factories.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
+import { describe, test, expect } from "vitest";
 
 // Safety: fs inputs are always safe in tests
 
@@ -11,7 +12,7 @@ const sharedDate = new Date(1665182332000);
 const sharedPrefixHashA = "09bc3dad4e7f2a77bbb2cccbecb06febfc6a4321";
 const sharedPrefixHashB = "09bc3dad4e7f2a77bbb2cccbecb06febfc6b1234";
 
-const db = jestRocksDB("protobufs.network.trienode.test");
+const db = testRocksDB("protobufs.network.trienode.test");
 
 describe("TrieNode", () => {
   // Traverse the node until we find a leaf or path splits into multiple choices

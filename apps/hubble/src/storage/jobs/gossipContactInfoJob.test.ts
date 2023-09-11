@@ -1,10 +1,11 @@
 import { GossipContactInfoJobScheduler } from "./gossipContactInfoJob.js";
 import { MockHub } from "../../test/mocks.js";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import Engine from "../engine/index.js";
 import { FarcasterNetwork } from "@farcaster/core";
+import { describe, test, expect } from "vitest";
 
-const db = jestRocksDB("jobs.GossipContactInfoJobScheduler.test");
+const db = testRocksDB("jobs.GossipContactInfoJobScheduler.test");
 
 describe("GossipContactInfoJobScheduler", () => {
   test("doJobs", async () => {

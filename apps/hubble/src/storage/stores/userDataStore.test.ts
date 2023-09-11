@@ -10,14 +10,15 @@ import {
   UserDataAddMessage,
   UserDataType,
 } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import UserDataStore from "./userDataStore.js";
 import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { err } from "neverthrow";
+import { describe, beforeAll, beforeEach, expect, test, afterAll } from "vitest";
 
-const db = jestRocksDB("protobufs.userDataSet.test");
+const db = testRocksDB("protobufs.userDataSet.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new UserDataStore(db, eventHandler);
 const fid = Factories.Fid.build();

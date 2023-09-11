@@ -1,20 +1,27 @@
-import { CastAddMessage, CastRemoveMessage, NobleEd25519Signer, makeCastAdd } from "@farcaster/hub-nodejs";
+import {
+  CastAddMessage,
+  CastRemoveMessage,
+  NobleEd25519Signer,
+  makeCastAdd,
+  getFarcasterTime,
+  Factories,
+  HubAsyncResult,
+  HubError,
+  Message,
+  MessageType,
+  isCastAddMessage,
+} from "@farcaster/hub-nodejs";
 import * as ed from "@noble/ed25519";
 import { DeepPartial, Store } from "./store.js";
-import { MessageType, HubAsyncResult } from "@farcaster/hub-nodejs";
 import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { Message } from "@farcaster/hub-nodejs";
-import { isCastAddMessage } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import { ResultAsync, ok } from "neverthrow";
-import { HubError } from "@farcaster/hub-nodejs";
 import { Transaction } from "../db/rocksdb.js";
-import { Factories } from "@farcaster/hub-nodejs";
-import { getFarcasterTime } from "@farcaster/hub-nodejs";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
+import { describe, test, expect } from "vitest";
 
-const db = jestRocksDB("protobufs.generalStore.test");
+const db = testRocksDB("protobufs.generalStore.test");
 const eventHandler = new StoreEventHandler(db);
 
 class TestStore extends Store<CastAddMessage, CastRemoveMessage> {

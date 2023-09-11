@@ -1,5 +1,6 @@
 import RocksDB from "../rocksdb.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./migrations.js";
+import { describe, beforeAll, afterAll, test, expect } from "vitest";
 
 const dbName = "migrations.test.db";
 

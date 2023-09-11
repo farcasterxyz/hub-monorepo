@@ -20,18 +20,18 @@ import {
   ClientReadableStream,
   UserNameProof,
   isMergeUsernameProofHubEvent,
-  Metadata,
   getAuthMetadata,
   OnChainEvent,
   isMergeOnChainHubEvent,
 } from "@farcaster/hub-nodejs";
 import Server from "../server.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
 import { sleep } from "../../utils/crypto.js";
+import { describe, expect, test, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 
-const db = jestRocksDB("rpc.eventService.test");
+const db = testRocksDB("rpc.eventService.test");
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const hub = new MockHub(db, engine);
 

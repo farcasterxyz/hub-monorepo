@@ -4,6 +4,7 @@ import { hexStringToBytes } from "../bytes";
 import * as eip712 from "./eip712";
 import { ViemLocalEip712Signer } from "../signers";
 import { makeUserNameProofClaim } from "../userNameProof";
+import { describe, test, expect } from "vitest";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);

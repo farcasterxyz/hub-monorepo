@@ -1,5 +1,6 @@
 import { Eip712Signer, Factories } from "@farcaster/hub-nodejs";
 import Engine from "../engine/index.js";
+import { expect } from "vitest";
 
 /** Util to seed engine with all the data needed to make a signer valid for an fid */
 export const seedSigner = async (

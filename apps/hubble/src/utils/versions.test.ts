@@ -7,6 +7,7 @@ import {
 } from "../utils/versions.js";
 import { ok } from "neverthrow";
 import { FARCASTER_VERSION, FARCASTER_VERSIONS_SCHEDULE } from "../hubble.js";
+import { describe, test, expect } from "vitest";
 
 describe("versions tests", () => {
   describe("isBelowMinFarcasterVersion", () => {

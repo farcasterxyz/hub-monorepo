@@ -11,6 +11,7 @@ import {
   utf8StringToBytes,
 } from "./bytes";
 import { HubError } from "./errors";
+import { describe, test, expect } from "vitest";
 
 describe("bytesCompare", () => {
   const cases: [Uint8Array, Uint8Array, number][] = [

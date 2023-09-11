@@ -2,6 +2,7 @@ import { faker } from "@faker-js/faker";
 import RocksDB from "../rocksdb.js";
 import { RootPrefix, UserPostfix } from "../types.js";
 import { performDbMigrations } from "./migrations.js";
+import { describe, beforeAll, afterAll, test, expect } from "vitest";
 
 const dbName = "usernameproof.migration.test.db";
 

@@ -11,8 +11,10 @@
     "ignore": [
       "src/abstract-leveldown.d.ts",
       "src/rocksdb.d.ts",
+      "packages/core/dist/*",
       "packages/core/src/protobufs/generated/*",
       "packages/hub-nodejs/src/generated/*",
+      "packages/hub-web/dist/",
       "packages/hub-web/src/generated/*"
     ]
   },
@@ -27,8 +29,10 @@
     "ignore": [
       "src/abstract-leveldown.d.ts",
       "src/rocksdb.d.ts",
+      "packages/core/dist/*",
       "packages/core/src/protobufs/generated/*",
       "packages/hub-nodejs/src/generated/*",
+      "packages/hub-web/dist/",
       "packages/hub-web/src/generated/*"
     ]
   }

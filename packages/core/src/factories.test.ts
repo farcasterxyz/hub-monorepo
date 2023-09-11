@@ -2,6 +2,7 @@ import * as protobufs from "./protobufs";
 import { ok } from "neverthrow";
 import { Factories } from "./factories";
 import * as validations from "./validations";
+import { describe, test, expect } from "vitest";
 
 describe("CastAddMessageFactory", () => {
   test("generates a valid CastAdd", async () => {

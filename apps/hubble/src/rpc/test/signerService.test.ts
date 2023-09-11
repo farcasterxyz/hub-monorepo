@@ -21,11 +21,12 @@ import {
 import { ok } from "neverthrow";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import Server from "../server.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
+import { describe, test, expect, beforeAll, afterAll, beforeEach } from "vitest";
 
-const db = jestRocksDB("protobufs.rpc.signerService.test");
+const db = testRocksDB("protobufs.rpc.signerService.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);

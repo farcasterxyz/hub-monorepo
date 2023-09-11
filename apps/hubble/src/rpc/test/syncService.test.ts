@@ -1,4 +1,4 @@
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import {
   CastAddMessage,
   Factories,
@@ -15,8 +15,9 @@ import { MockHub } from "../../test/mocks.js";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { GossipNode } from "../../network/p2p/gossipNode.js";
+import { describe, test, expect, beforeAll, afterAll } from "vitest";
 
-const db = jestRocksDB("protobufs.rpc.syncService.test");
+const db = testRocksDB("protobufs.rpc.syncService.test");
 const network = FarcasterNetwork.TESTNET;
 const mockGossipNode = {
   allPeerIds: () => ["test"],

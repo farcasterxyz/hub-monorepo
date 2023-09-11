@@ -7,14 +7,15 @@ import {
   PruneMessageHubEvent,
   VERIFICATIONS_SIZE_LIMIT_DEFAULT,
 } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import Engine from "../engine/index.js";
 import { seedSigner } from "../engine/seed.js";
 import { PruneMessagesJobScheduler } from "./pruneMessagesJob.js";
 import { FARCASTER_EPOCH, getFarcasterTime } from "@farcaster/core";
 import { setReferenceDateForTest } from "../../utils/versions.js";
+import { describe, expect, test, beforeAll, beforeEach, afterAll } from "vitest";
 
-const db = jestRocksDB("jobs.pruneMessagesJob.test");
+const db = testRocksDB("jobs.pruneMessagesJob.test");
 
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const scheduler = new PruneMessagesJobScheduler(engine);
@@ -43,7 +44,18 @@ const pruneMessageListener = (event: PruneMessageHubEvent) => {
 };
 
 beforeAll(async () => {
+  // failing?
+  console.log("beforeAll pruneMessagesJob - db status", db.status);
+  // console.log(engine);
+  if (db.status !== "open") {
+    console.log("here");
+    await db.open();
+    console.log(db.status);
+  }
+  // HubError: IO error: lock hold by current process, acquire time 1694397328 acquiring thread 6231044096: \
+  // .rocks/jobs.pruneMessagesJob.test/LOCK: No locks available
   await engine.start();
+  console.log("beforeAll pruneMessagesJob - engine started");
   setReferenceDateForTest(100000000000000000000000);
   engine.eventHandler.on("pruneMessage", pruneMessageListener);
 });

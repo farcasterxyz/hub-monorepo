@@ -1,5 +1,6 @@
 import { BufferedStreamWriter, STREAM_MESSAGE_BUFFER_SIZE } from "../bufferedStreamWriter.js";
 import { HubEvent, SubscribeRequest, ServerWritableStream } from "@farcaster/hub-nodejs";
+import { describe, test, expect, beforeEach, afterEach } from "vitest";
 
 type StreamMessage = { data: number };
 

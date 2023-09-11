@@ -8,8 +8,6 @@ import {
   FarcasterNetwork,
   hexStringToBytes,
   HubError,
-  HubEvent,
-  HubEventType,
   IdRegistryEvent,
   IdRegistryEventType,
   LinkAddMessage,
@@ -22,7 +20,6 @@ import {
   NameRegistryEvent,
   NameRegistryEventType,
   OnChainEventType,
-  PruneMessageHubEvent,
   ReactionAddMessage,
   ReactionType,
   RevokeMessageHubEvent,
@@ -38,7 +35,7 @@ import {
   VerificationAddEthAddressMessage,
 } from "@farcaster/hub-nodejs";
 import { err, Ok, ok } from "neverthrow";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import Engine from "../engine/index.js";
 import SignerStore from "../stores/signerStore.js";
 import { sleep } from "../../utils/crypto.js";
@@ -48,10 +45,10 @@ import { makeVerificationEthAddressClaim } from "@farcaster/core";
 import { setReferenceDateForTest } from "../../utils/versions.js";
 import { getUserNameProof } from "../db/nameRegistryEvent.js";
 import { publicClient } from "../../test/utils.js";
-import { jest } from "@jest/globals";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
+import { vi, describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 
-const db = jestRocksDB("protobufs.engine.test");
+const db = testRocksDB("protobufs.engine.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network, undefined, publicClient);
 
@@ -486,7 +483,7 @@ describe("mergeMessage", () => {
     });
 
     afterEach(async () => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
       engine.eventHandler.off("mergeUsernameProofEvent", handleUsernameProofEvent);
     });
 
@@ -526,7 +523,7 @@ describe("mergeMessage", () => {
     });
 
     test("fails gracefully when resolving an unregistered name", async () => {
-      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(null);
       });
       const result = await engine.mergeMessage(await createProof("akjsdhkhaasd.eth"));
@@ -536,7 +533,7 @@ describe("mergeMessage", () => {
 
     test("fails when resolved address does not match proof", async () => {
       const message = await createProof("test.eth");
-      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(randomEthAddress);
       });
       const result = await engine.mergeMessage(message);
@@ -546,7 +543,7 @@ describe("mergeMessage", () => {
 
     test("fails when resolved address does not match custody address or verification address", async () => {
       await engine.mergeMessage(verificationAdd);
-      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(randomEthAddress);
       });
       const message = await createProof("test.eth", null, randomEthAddress);
@@ -557,7 +554,7 @@ describe("mergeMessage", () => {
 
     test("succeeds for valid proof for custody address", async () => {
       const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
-      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(custodyAddress);
       });
       const message = await createProof("test.eth", null, custodyAddress);
@@ -574,7 +571,7 @@ describe("mergeMessage", () => {
       const verificationAddress = bytesToHexString(
         verificationAdd.data.verificationAddEthAddressBody.address,
       )._unsafeUnwrap();
-      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(verificationAddress);
       });
       const message = await createProof("test.eth", null, verificationAddress);
@@ -588,7 +585,7 @@ describe("mergeMessage", () => {
 
     test("getUsernameProofsByFid returns all proofs for fid including fname proofs", async () => {
       const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
-      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(custodyAddress);
       });
       const message = await createProof("test.eth", null, custodyAddress);
@@ -619,7 +616,7 @@ describe("mergeMessage", () => {
           verificationAdd.data.verificationAddEthAddressBody.address,
         )._unsafeUnwrap();
 
-        jest.spyOn(publicClient, "getEnsAddress").mockImplementation((opts) => {
+        vi.spyOn(publicClient, "getEnsAddress").mockImplementation((opts) => {
           if (opts.name === "test.eth") {
             return Promise.resolve(custodyAddress);
           } else if (opts.name === "test123.eth") {
@@ -672,7 +669,7 @@ describe("mergeMessage", () => {
         expect((await engine.getUserData(fid, UserDataType.USERNAME))._unsafeUnwrap()).toMatchObject(userDataAdd2);
       });
       test("fails when custody address no longer owns the ens", async () => {
-        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
           return Promise.resolve(randomEthAddress);
         });
 
@@ -698,7 +695,7 @@ describe("mergeMessage", () => {
         expect(result._unsafeUnwrapErr().message).toMatch("ens name does not belong to fid");
       });
       test("fails when unable to resolve ens name", async () => {
-        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
           throw new Error("Unable to resolve ens name");
         });
 
@@ -712,7 +709,7 @@ describe("mergeMessage", () => {
         expect(result.isOk()).toBeTruthy();
         expect((await engine.getUserData(fid, UserDataType.USERNAME))._unsafeUnwrap()).toMatchObject(userDataAdd);
 
-        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
           return Promise.resolve(randomEthAddress);
         });
         const revokeResult = await engine.validateOrRevokeMessage(test1Message);
@@ -726,7 +723,7 @@ describe("mergeMessage", () => {
       let mergedMessage: Message;
       beforeEach(async () => {
         const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
-        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
           return Promise.resolve(custodyAddress);
         });
         mergedMessage = await createProof("test3.eth", null, custodyAddress);
@@ -735,7 +732,7 @@ describe("mergeMessage", () => {
         usernameProofEvents = [];
       });
       test("revokes an ens message when ens is no longer valid", async () => {
-        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
           return Promise.resolve(randomEthAddress);
         });
         const result = await engine.validateOrRevokeMessage(mergedMessage);
@@ -747,7 +744,7 @@ describe("mergeMessage", () => {
         expect(usernameProofEvents[0]?.usernameProof).toBeUndefined();
       });
       test("does not revoke a message when address resolution temporarily fails", async () => {
-        jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
           throw new Error("test");
         });
         const result = await engine.validateOrRevokeMessage(mergedMessage);

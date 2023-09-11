@@ -14,14 +14,15 @@ import {
   SignerAddMessage,
   SignerRemoveMessage,
 } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import { getMessage, makeFidKey, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import SignerStore from "./signerStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import { err } from "neverthrow";
+import { describe, beforeAll, beforeEach, afterAll, test, expect, afterEach } from "vitest";
 
-const db = jestRocksDB("protobufs.signerStore.test");
+const db = testRocksDB("protobufs.signerStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new SignerStore(db, eventHandler);
 const signer = Factories.Ed25519Signer.build();

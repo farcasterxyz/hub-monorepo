@@ -5,7 +5,7 @@ export default async () => {
   // instances and proxying requests to them. Especially for local development, this is much faster
   // than running the tests serially.
   //
-  // In jest, each worker is assigned a unique, numerical id (`process.env.JEST_WORKED_ID`). We
+  // In vitest, each worker is assigned a unique, numerical id (`process.env.VITEST_WORKED_ID`). We
   // append this id to the local rpc url (e.g. `http://127.0.0.1:8545/<ID>`).
   //
   // Whenever a request hits the proxy server at this url, it spawns (or reuses) an anvil instance

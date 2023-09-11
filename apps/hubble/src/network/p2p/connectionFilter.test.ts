@@ -3,6 +3,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 import { multiaddr } from "@multiformats/multiaddr";
 import { ConnectionFilter } from "./connectionFilter.js";
+import { describe, test, expect, beforeAll } from "vitest";
 
 let allowedPeerId: PeerId;
 let blockedPeerId: PeerId;

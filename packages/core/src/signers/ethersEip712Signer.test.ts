@@ -1,6 +1,7 @@
 import { Wallet } from "ethers";
 import { EthersEip712Signer } from "./ethersEip712Signer";
 import { testEip712Signer } from "./testUtils";
+import { describe } from "vitest";
 
 describe("EthersEip712Signer", () => {
   describe("with ethers Wallet", () => {

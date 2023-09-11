@@ -2,6 +2,7 @@ import RocksDB from "../rocksdb.js";
 import { performDbMigrations } from "./migrations.js";
 import { Factories, UserNameProof } from "@farcaster/hub-nodejs";
 import { getFNameProofByFid, makeFNameUserNameProofKey } from "../nameRegistryEvent.js";
+import { describe, test, expect, beforeAll, afterAll } from "vitest";
 
 const dbName = "fnameproof.migration.test.db";
 

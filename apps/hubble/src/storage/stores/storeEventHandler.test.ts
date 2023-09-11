@@ -1,13 +1,14 @@
 import { CastAddMessage, Factories, HubEvent, HubEventType } from "@farcaster/hub-nodejs";
 import { ok, Result } from "neverthrow";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import { getMessage, makeTsHash, putMessage, putMessageTransaction } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
 import { getFarcasterTime } from "@farcaster/core";
+import { describe, beforeAll, beforeEach, afterAll, test, expect } from "vitest";
 
-const db = jestRocksDB("stores.storeEventHandler.test");
+const db = testRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
 
 let events: HubEvent[] = [];

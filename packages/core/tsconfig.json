@@ -8,5 +8,5 @@
     "isolatedModules": true
   },
   "include": ["src/index.ts"],
-  "exclude": ["build", "node_modules", "jest.config.ts"]
+  "exclude": ["build", "node_modules", "vitest.config.ts"]
 }

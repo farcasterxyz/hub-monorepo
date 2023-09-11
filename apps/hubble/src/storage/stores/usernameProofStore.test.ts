@@ -1,4 +1,4 @@
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   Factories,
@@ -12,8 +12,9 @@ import {
   UserNameType,
 } from "@farcaster/hub-nodejs";
 import UsernameProofStore from "./usernameProofStore.js";
+import { describe, beforeAll, beforeEach, expect, test, afterAll } from "vitest";
 
-const db = jestRocksDB("protobufs.usernameProofSet.test");
+const db = testRocksDB("protobufs.usernameProofSet.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new UsernameProofStore(db, eventHandler);
 const fid = Factories.Fid.build();

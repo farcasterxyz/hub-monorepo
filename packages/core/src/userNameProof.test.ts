@@ -1,6 +1,7 @@
 import { Factories } from "./factories";
 import { makeUserNameProofClaim } from "./userNameProof";
 import { bytesToHexString } from "./bytes";
+import { describe, test, expect } from "vitest";
 
 describe("makeUserNameProofClaim", () => {
   test("succeeds", () => {

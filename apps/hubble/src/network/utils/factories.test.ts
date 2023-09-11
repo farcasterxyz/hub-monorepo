@@ -3,6 +3,7 @@ import { isPeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import { GOSSIP_PROTOCOL_VERSION } from "../p2p/protocol.js";
 import { NetworkFactories } from "./factories.js";
+import { describe, test, expect, beforeAll } from "vitest";
 
 describe("GossipMessageFactory", () => {
   let message: Message;

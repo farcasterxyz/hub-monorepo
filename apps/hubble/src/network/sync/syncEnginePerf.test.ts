@@ -7,14 +7,15 @@ import {
   CastAddMessage,
 } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import { MockHub } from "../../test/mocks.js";
 import { MockRpcClient } from "./mock.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { getFarcasterTime } from "@farcaster/core";
+import { describe, test, expect, beforeAll } from "vitest";
 
-const testDb = jestRocksDB("engine.syncEnginePerf.test");
-const testDb2 = jestRocksDB("engine2.syncEnginePerf.test");
+const testDb = testRocksDB("engine.syncEnginePerf.test");
+const testDb2 = testRocksDB("engine2.syncEnginePerf.test");
 
 const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();

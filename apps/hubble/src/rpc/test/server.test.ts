@@ -1,4 +1,4 @@
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import {
   Factories,
   FarcasterNetwork,
@@ -27,8 +27,9 @@ import { MockHub } from "../../test/mocks.js";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { Ok } from "neverthrow";
+import { describe, test, expect, beforeAll, afterAll, beforeEach } from "vitest";
 
-const db = jestRocksDB("protobufs.rpc.server.test");
+const db = testRocksDB("protobufs.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);

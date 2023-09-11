@@ -1,13 +1,14 @@
 import { IdRegistryEvent, bytesCompare, Factories, HubError } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "./jestUtils.js";
+import { testRocksDB } from "./testUtils.js";
 import {
   getIdRegistryEvent,
   getIdRegistryEventByCustodyAddress,
   makeIdRegistryEventPrimaryKey,
   putIdRegistryEvent,
 } from "./idRegistryEvent.js";
+import { describe, test, expect, beforeAll } from "vitest";
 
-const db = jestRocksDB("storage.db.idRegistryEvent.test");
+const db = testRocksDB("storage.db.idRegistryEvent.test");
 const custodySigner = Factories.Eip712Signer.build();
 let custodySignerKey: Uint8Array;
 let idRegistryEvent: IdRegistryEvent;

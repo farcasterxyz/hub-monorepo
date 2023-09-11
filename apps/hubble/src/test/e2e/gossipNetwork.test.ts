@@ -2,7 +2,8 @@ import { GossipNode } from "../../network/p2p/gossipNode.js";
 import { sleep } from "../../utils/crypto.js";
 import { NetworkFactories } from "../../network/utils/factories.js";
 import { GossipMessage } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "../..//storage/db/jestUtils.js";
+import { describe, test, expect, beforeAll, beforeEach, afterEach } from "vitest";
+
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 

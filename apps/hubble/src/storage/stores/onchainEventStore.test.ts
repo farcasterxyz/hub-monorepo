@@ -1,4 +1,4 @@
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import OnChainEventStore, { MIGRATION_BLOCK } from "./onChainEventStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
@@ -12,8 +12,9 @@ import {
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import { getHubState, putHubState } from "../db/hubState.js";
+import { describe, test, expect, beforeAll, beforeEach, afterAll } from "vitest";
 
-const db = jestRocksDB("protobufs.onChainEventStore.test");
+const db = testRocksDB("protobufs.onChainEventStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new OnChainEventStore(db, eventHandler);
 

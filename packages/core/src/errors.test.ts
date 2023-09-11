@@ -1,4 +1,5 @@
 import { HubError } from "./errors";
+import { describe, test, expect } from "vitest";
 
 describe("HubError", () => {
   test("can be instantiated", () => {

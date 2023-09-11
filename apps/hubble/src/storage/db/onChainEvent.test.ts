@@ -1,5 +1,5 @@
 import { bytesCompare, Factories, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "./jestUtils.js";
+import { testRocksDB } from "./testUtils.js";
 import {
   getManyOnChainEvents,
   getOnChainEvent,
@@ -7,8 +7,9 @@ import {
   makeOnChainEventPrimaryKey,
   putOnChainEventTransaction,
 } from "./onChainEvent.js";
+import { describe, test, expect, beforeEach } from "vitest";
 
-const db = jestRocksDB("storage.db.onChainEvent.test");
+const db = testRocksDB("storage.db.onChainEvent.test");
 let onChainEvent: OnChainEvent;
 let anotherEvent: OnChainEvent;
 

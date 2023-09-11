@@ -1,6 +1,7 @@
 import { err, ok } from "neverthrow";
 import { HubError } from "./errors";
 import { FARCASTER_EPOCH, fromFarcasterTime, toFarcasterTime } from "./time";
+import { describe, test, expect } from "vitest";
 
 describe("toFarcasterTime", () => {
   test("returns seconds since 01/01/2021", () => {

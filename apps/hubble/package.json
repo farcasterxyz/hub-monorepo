@@ -32,8 +32,8 @@
     "console": "node build/cli.js console",
     "profile": "node --max-old-space-size=4096 build/cli.js profile",
     "status": "node build/cli.js status",
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest",
-    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" vitest",
+    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules vitest --ci --forceExit --coverage"
   },
   "devDependencies": {
     "@libp2p/interface-mocks": "^9.0.0",

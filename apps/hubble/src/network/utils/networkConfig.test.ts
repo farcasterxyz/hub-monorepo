@@ -1,6 +1,7 @@
 import semver from "semver";
 import { APP_VERSION } from "../../hubble.js";
 import { applyNetworkConfig } from "./networkConfig.js";
+import { describe, test, expect } from "vitest";
 
 describe("networkConfig", () => {
   const network = 2;

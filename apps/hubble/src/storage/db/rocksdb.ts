@@ -248,6 +248,7 @@ class RocksDB {
   iterator(options?: AbstractRocksDB.IteratorOptions, timeoutMs = MAX_DB_ITERATOR_OPEN_MILLISECONDS): Iterator {
     const stackTrace = new Error().stack || "<no stacktrace>";
 
+    if (this._db.status !== "open") console.log(this._db.status);
     const iterator = new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
     this._openIterators.add({
       id: this._openIteratorId++,
@@ -426,7 +427,7 @@ class RocksDB {
 
 export default RocksDB;
 
-export async function createTarBackup(inputDir: string): Promise<Result<string, Error>> {
+export const createTarBackup = async (inputDir: string): Promise<Result<string, Error>> => {
   // Output path is {dirname}-{date as yyyy-mm-dd}-{timestamp}.tar.gz
   const outputFilePath = `${inputDir}-${new Date().toISOString().split("T")[0]}-${Math.floor(
     Date.now() / 1000,
@@ -448,4 +449,4 @@ export async function createTarBackup(inputDir: string): Promise<Result<string, 
         resolve(err(e));
       });
   });
-}
+};

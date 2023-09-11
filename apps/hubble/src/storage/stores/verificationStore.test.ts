@@ -12,14 +12,15 @@ import {
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "../db/jestUtils.js";
+import { testRocksDB } from "../db/testUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import VerificationStore from "./verificationStore.js";
 import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { err } from "neverthrow";
+import { describe, test, expect, beforeAll, beforeEach, afterAll } from "vitest";
 
-const db = jestRocksDB("verificationStore.test");
+const db = testRocksDB("verificationStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new VerificationStore(db, eventHandler);
 const fid = Factories.Fid.build();

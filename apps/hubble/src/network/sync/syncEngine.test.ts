@@ -18,17 +18,17 @@ import { ok } from "neverthrow";
 import { anything, instance, mock, when } from "ts-mockito";
 import SyncEngine from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { sleepWhile } from "../../utils/crypto.js";
 import { NetworkFactories } from "../../network/utils/factories.js";
 import { HubInterface } from "../../hubble.js";
 import { MockHub } from "../../test/mocks.js";
-import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
+import { vi, describe, test, expect, beforeAll, beforeEach, afterEach } from "vitest";
 
-const testDb = jestRocksDB("engine.syncEngine.test");
-const testDb2 = jestRocksDB("engine2.syncEngine.test");
+const testDb = testRocksDB("engine.syncEngine.test");
+const testDb2 = testRocksDB("engine2.syncEngine.test");
 
 const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();
@@ -160,7 +160,7 @@ describe("SyncEngine", () => {
 
   test("trie is updated for username proof messages", async () => {
     const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
-    jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+    vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
       return Promise.resolve(custodyAddress);
     });
     const timestampSec = Math.floor(Date.now() / 1000);

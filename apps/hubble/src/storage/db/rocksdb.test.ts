@@ -1,11 +1,11 @@
 import { faker } from "@faker-js/faker";
 import { HubError } from "@farcaster/hub-nodejs";
 import { existsSync, mkdirSync, rmdirSync } from "fs";
-import { jestRocksDB } from "./jestUtils.js";
+import { testRocksDB } from "./testUtils.js";
 import RocksDB, { MAX_DB_ITERATOR_OPEN_MILLISECONDS } from "./rocksdb.js";
-import { jest } from "@jest/globals";
 import { ResultAsync } from "neverthrow";
 import { sleep } from "../../utils/crypto.js";
+import { vi, describe, beforeAll, afterAll, test, expect, beforeEach, afterEach } from "vitest";
 
 //Safety: fs is safe to use in tests
 
@@ -91,7 +91,7 @@ describe("clear", () => {
 });
 
 describe("with db", () => {
-  const db = jestRocksDB("binaryrocksdb.test");
+  const db = testRocksDB("binaryrocksdb.test");
 
   describe("location", () => {
     test("returns db location", () => {
@@ -380,8 +380,8 @@ describe("open iterator check", () => {
   let db: RocksDB;
 
   beforeAll(async () => {
-    jest.useFakeTimers();
-    // Creating a separate db here so that jest.useFakeTimers takes effect
+    vi.useFakeTimers();
+    // Creating a separate db here so that vi.useFakeTimers takes effect
     // when setInterval is called in the RocksDB constructor
     db = new RocksDB(randomDbName());
     await expect(db.open()).resolves.toEqual(undefined);
@@ -390,11 +390,11 @@ describe("open iterator check", () => {
   afterAll(async () => {
     expect(db.status).toEqual("open");
     await db.destroy();
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   test("warns on open iterators", async () => {
-    Date.now = jest.fn(() => 0);
+    Date.now = vi.fn(() => 0);
     const closedIterator = db.iterator();
     await closedIterator.end();
 
@@ -407,10 +407,10 @@ describe("open iterator check", () => {
     expect(hangingIterator.isOpen).toEqual(true);
 
     // Move time forward to expire hangingIterator
-    Date.now = jest.fn(() => MAX_DB_ITERATOR_OPEN_MILLISECONDS);
+    Date.now = vi.fn(() => MAX_DB_ITERATOR_OPEN_MILLISECONDS);
 
     // Hanging iterator should be left beind in list
-    jest.advanceTimersByTime(MAX_DB_ITERATOR_OPEN_MILLISECONDS);
+    vi.advanceTimersByTime(MAX_DB_ITERATOR_OPEN_MILLISECONDS);
     expect([...db.openIterators].filter((x) => x.iterator === closedIterator).length).toEqual(0);
     expect([...db.openIterators].filter((x) => x.iterator === hangingIterator).length).toEqual(1);
   });

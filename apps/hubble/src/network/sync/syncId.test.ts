@@ -1,6 +1,7 @@
 import { Factories, FarcasterNetwork, Message } from "@farcaster/hub-nodejs";
 import { SyncId } from "./syncId.js";
 import { makeMessagePrimaryKeyFromMessage } from "../../storage/db/message.js";
+import { describe, test, expect, beforeAll } from "vitest";
 
 let message: Message;
 

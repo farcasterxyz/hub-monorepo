@@ -1,5 +1,5 @@
 import { HttpAPIServer } from "../httpServer.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import {
   bytesToHexString,
   CastAddMessage,
@@ -25,7 +25,6 @@ import {
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
-import { jest } from "@jest/globals";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import axios from "axios";
@@ -33,8 +32,9 @@ import { faker } from "@faker-js/faker";
 import { DeepPartial } from "fishery";
 import { mergeDeepPartial } from "../../test/utils.js";
 import { publicClient } from "../../test/utils.js";
+import { vi, describe, test, expect, beforeAll, afterAll, beforeEach } from "vitest";
 
-const db = jestRocksDB("httpserver.rpc.server.test");
+const db = testRocksDB("httpserver.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network, undefined, publicClient);
 const hub = new MockHub(db, engine);
@@ -42,9 +42,7 @@ const hub = new MockHub(db, engine);
 let httpServer: HttpAPIServer;
 let httpServerAddress: string;
 
-function getFullUrl(path: string) {
-  return `${httpServerAddress}${path}`;
-}
+const getFullUrl = (path: string) => `${httpServerAddress}${path}`;
 
 beforeAll(async () => {
   const server = new Server(hub, engine, new SyncEngine(hub, db));
@@ -382,12 +380,12 @@ describe("httpServer", () => {
   describe("Username proofs", () => {
     let ensProof: UsernameProofMessage;
     let proof: UsernameProofMessage;
-    const fname: string = "test.eth";
+    const fname = "test.eth";
     let currentFarcasterTime: number;
 
     beforeAll(async () => {
       const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
-      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+      vi.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(custodyAddress);
       });
       const timestampSec = Math.floor(Date.now() / 1000);
@@ -509,11 +507,11 @@ describe("httpServer", () => {
   });
 });
 
-async function axiosGet(url: string) {
+const axiosGet = async (url: string) => {
   try {
     return await axios.get(url);
     // biome-ignore lint/suspicious/noExplicitAny: Catch axios errors
   } catch (error: any) {
     return { status: error?.response?.status, data: error?.response?.data };
   }
-}
+};

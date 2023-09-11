@@ -8,6 +8,7 @@ import {
   p2pMultiAddrStr,
   parseAddress,
 } from "./p2p.js";
+import { describe, test, expect } from "vitest";
 
 describe("p2p utils tests", () => {
   test("parse a valid multiaddr", async () => {

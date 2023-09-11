@@ -10,18 +10,19 @@ import {
   ContactInfoContent,
   GossipVersion,
 } from "@farcaster/hub-nodejs";
-import { multiaddr } from "@multiformats/multiaddr/";
+import { multiaddr } from "@multiformats/multiaddr";
 import { GossipNode } from "./gossipNode.js";
 import Server from "../../rpc/server.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { testRocksDB } from "../../storage/db/testUtils.js";
 import { MockHub } from "../../test/mocks.js";
 import SyncEngine from "../sync/syncEngine.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { sleep } from "../../utils/crypto.js";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
+import { describe, test, expect, beforeAll } from "vitest";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
-const db = jestRocksDB("network.p2p.gossipNode.test");
+const db = testRocksDB("network.p2p.gossipNode.test");
 
 describe("GossipNode", () => {
   test("start fails if IpMultiAddr has port or transport addrs", async () => {

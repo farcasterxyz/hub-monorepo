@@ -6,7 +6,7 @@ import {
   Factories,
   HubError,
 } from "@farcaster/hub-nodejs";
-import { jestRocksDB } from "./jestUtils.js";
+import { testRocksDB } from "./testUtils.js";
 import { TRUE_VALUE, UserPostfix } from "./types.js";
 import {
   getAllMessagesByFid,
@@ -20,8 +20,9 @@ import {
   putMessage,
   typeToSetPostfix,
 } from "./message.js";
+import { describe, test, expect, beforeAll } from "vitest";
 
-const db = jestRocksDB("storage.db.message.test");
+const db = testRocksDB("storage.db.message.test");
 
 const signer = Factories.Ed25519Signer.build();
 
