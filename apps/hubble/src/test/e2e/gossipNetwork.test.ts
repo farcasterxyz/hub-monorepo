@@ -8,7 +8,6 @@ const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 const TEST_TIMEOUT_SHORT = 10 * 1000;
-const db = jestRocksDB("GossipNetworkTest");
 
 describe("gossip network tests", () => {
   /**
@@ -19,7 +18,7 @@ describe("gossip network tests", () => {
   let nodes: GossipNode[];
 
   beforeAll(async () => {
-    nodes = [...Array(NUM_NODES)].map(() => new GossipNode(db));
+    nodes = [...Array(NUM_NODES)].map(() => new GossipNode());
     messageStore = new Map();
   });
 

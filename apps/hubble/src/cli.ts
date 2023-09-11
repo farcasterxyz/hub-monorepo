@@ -138,7 +138,6 @@ app
     "--statsd-metrics-server <host>",
     'The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)',
   )
-  .option("--gossip-metrics-enabled", "Generate tracing and metrics for the gossip network. (default: disabled)")
 
   // Debugging options
   .option(
@@ -520,7 +519,6 @@ app
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
       testUsers: testUsers,
-      gossipMetricsEnabled: cliOptions.gossipMetricsEnabled ?? false,
       directPeers,
       disableSnapshotSync: cliOptions.disableSnapshotSync ?? hubConfig.disableSnapshotSync ?? false,
       enableSnapshotToS3,
