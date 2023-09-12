@@ -18,8 +18,12 @@ export default defineConfig({
           { text: "Installation", link: "/intro/install" },
           { text: "Networks", link: "/intro/networks" },
           { text: "Monitoring", link: "/intro/monitoring" },
-          { text: "Tutorials", link: "/intro/tutorials" },
-          { text: "Run Hubble on AWS EC2", link: "/intro/hub-aws" },
+          {
+            text: "Tutorials", link: "/intro/tutorials", collapsed: true, items: [
+              { text: "AWS", link: "/tutorials/aws" },
+              { text: "Digital Ocean", link: "https://warpcast.notion.site/Set-up-Hubble-on-DigitalOcean-Public-e38173c487874c91828665e73eac94c1" },
+            ]
+          },
         ],
       },
       {
