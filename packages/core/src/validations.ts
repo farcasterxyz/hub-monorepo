@@ -153,16 +153,7 @@ export const validateMessage = async (
     return err(new HubError("bad_request.validation_failure", "signer is missing"));
   }
 
-  const eip712SignerRequired = false;
-  if (message.signatureScheme === protobufs.SignatureScheme.EIP712 && eip712SignerRequired) {
-    const verificationResult = await eip712.verifyMessageHashSignature(hash, signature, signer);
-    if (verificationResult.isErr()) {
-      return err(verificationResult.error);
-    }
-    if (!verificationResult.value) {
-      return err(new HubError("bad_request.validation_failure", "signature does not match signer"));
-    }
-  } else if (message.signatureScheme === protobufs.SignatureScheme.ED25519 && !eip712SignerRequired) {
+  if (message.signatureScheme === protobufs.SignatureScheme.ED25519) {
     const signatureIsValid = await validationMethods.ed25519_verify(signature, hash, signer);
 
     if (!signatureIsValid) {
