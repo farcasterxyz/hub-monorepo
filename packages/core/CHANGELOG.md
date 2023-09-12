@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.8
+
+### Patch Changes
+
+- 4893e02d: fix: Update links store size to be 2500 in the future
+
 ## 0.12.7
 
 ### Patch Changes
