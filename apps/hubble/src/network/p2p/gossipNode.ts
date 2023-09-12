@@ -27,8 +27,6 @@ import { logger } from "../../utils/logger.js";
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
-import { GossipMetricsRecorder } from "./gossipMetricsRecorder.js";
-import RocksDB from "storage/db/rocksdb.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
@@ -70,6 +68,16 @@ interface NodeOptions {
   scoreThresholds?: Partial<PeerScoreThresholds>;
 }
 
+export type GossipNodeMethods = {
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  [K in keyof GossipNode as GossipNode[K] extends (...args: any[]) => any ? K : never]: GossipNode[K];
+};
+
+export type GossipNodeProps = {
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  [K in keyof GossipNode]: GossipNode[K] extends (...args: any) => any ? GossipNode[K] : never;
+};
+
 /**
  * A GossipNode allows a Hubble instance to connect and gossip messages to its peers.
  *
@@ -81,16 +89,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
-  private _metricsRecorder?: GossipMetricsRecorder;
 
   private _connectionGater?: ConnectionFilter;
 
-  constructor(db: RocksDB, network?: FarcasterNetwork, networkLatencyMessagesEnabled?: boolean) {
+  constructor(network?: FarcasterNetwork) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
-    if (networkLatencyMessagesEnabled) {
-      this._metricsRecorder = new GossipMetricsRecorder(this, db);
-    }
   }
 
   /** Returns the PeerId (public key) of this node */
@@ -106,11 +110,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   /** Returns the node's libp2p AddressBook */
   get addressBook() {
     return this._node?.peerStore.addressBook;
-  }
-
-  /** Returns the node's metrics recorder object */
-  get metricsRecorder() {
-    return this._metricsRecorder;
   }
 
   /** Returs the node's network */
@@ -204,9 +203,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     // Also start the periodic job to make sure we have peers
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
 
-    // Start sending network latency pings if enabled
-    await this._metricsRecorder?.start();
-
     return ok(undefined);
   }
 
@@ -218,7 +214,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async stop() {
     await this._node?.stop();
     this._periodicPeerCheckJob?.stop();
-    await this._metricsRecorder?.stop();
 
     log.info({ identity: this.identity }, "Stopped libp2p...");
   }
@@ -247,18 +242,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       version: GOSSIP_PROTOCOL_VERSION,
     });
     return this.publish(gossipMessage);
-  }
-
-  async recordMessageReceipt(gossipMessage: GossipMessage) {
-    this._metricsRecorder?.recordMessageReceipt(gossipMessage);
-  }
-
-  async recordMessageMerge(mergeTime: number) {
-    this._metricsRecorder?.recordMessageMerge(mergeTime);
-  }
-
-  async recordLatencyAckMessageReceipt(ackMessage: AckMessageBody) {
-    this._metricsRecorder?.recordLatencyAckMessageReceipt(ackMessage);
   }
 
   /** Publishes a Gossip Message to the network */

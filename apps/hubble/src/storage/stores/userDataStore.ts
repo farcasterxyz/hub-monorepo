@@ -8,7 +8,8 @@ import {
   UserNameProof,
   UserDataAddMessage,
   UserDataType,
-  USER_DATA_SIZE_LIMIT_DEFAULT,
+  getDefaultStoreLimit,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { ok, ResultAsync } from "neverthrow";
 import { makeUserKey } from "../db/message.js";
@@ -83,7 +84,7 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   override _removeMessageType = undefined;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return USER_DATA_SIZE_LIMIT_DEFAULT;
+    return getDefaultStoreLimit(StoreType.USER_DATA);
   }
 
   /**

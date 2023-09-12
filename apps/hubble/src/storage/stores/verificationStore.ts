@@ -1,11 +1,12 @@
 import {
+  getDefaultStoreLimit,
   HubAsyncResult,
   isVerificationAddEthAddressMessage,
   isVerificationRemoveMessage,
   MessageType,
+  StoreType,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
-  VERIFICATIONS_SIZE_LIMIT_DEFAULT,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import { makeUserKey } from "../db/message.js";
@@ -93,7 +94,7 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
   override _removeMessageType = MessageType.VERIFICATION_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return VERIFICATIONS_SIZE_LIMIT_DEFAULT;
+    return getDefaultStoreLimit(StoreType.VERIFICATIONS);
   }
 
   /**

@@ -250,9 +250,6 @@ export interface HubOptions {
   /** Cron schedule for prune events job */
   pruneEventsJobCron?: string;
 
-  /** Periodically send network latency ping messages to the gossip network and log metrics */
-  gossipMetricsEnabled?: boolean;
-
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
   directPeers?: AddrInfo[];
 
@@ -308,7 +305,7 @@ export class Hub implements HubInterface {
   constructor(options: HubOptions) {
     this.options = options;
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.rocksDB, this.options.network, this.options.gossipMetricsEnabled);
+    this.gossipNode = new GossipNode(this.options.network);
 
     this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
@@ -891,8 +888,6 @@ export class Hub implements HubInterface {
       return Promise.resolve(err(peerIdResult.error));
     }
 
-    this.gossipNode.recordMessageReceipt(gossipMessage);
-
     if (gossipMessage.message) {
       const message = gossipMessage.message;
 
@@ -907,12 +902,7 @@ export class Hub implements HubInterface {
       }
 
       // Merge the message
-      const submitStartTimestamp = Date.now();
       const result = await this.submitMessage(message, "gossip");
-      if (result.isOk()) {
-        const submitEndTimestamp = Date.now();
-        this.gossipNode.recordMessageMerge(submitEndTimestamp - submitStartTimestamp);
-      }
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
@@ -996,7 +986,7 @@ export class Hub implements HubInterface {
     }
     // Respond to ping message with an ack message
     if (message.ackMessage) {
-      this.gossipNode.recordLatencyAckMessageReceipt(message.ackMessage);
+      log.warn("GossipMetricsRecorder: received ack message, ignoring");
     } else if (message.pingMessage) {
       const pingMessage = message.pingMessage;
       const ackMessage = AckMessageBody.create({

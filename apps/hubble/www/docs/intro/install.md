@@ -57,6 +57,7 @@ ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL
 # Set this to your L2 Optimism Mainnet RPC URL
 OPTIMISM_L2_RPC_URL=your-L2-optimism-RPC-URL
 
+# Set this to your Farcaster FID
 HUB_OPERATOR_FID=your-fid
 ```
 

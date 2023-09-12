@@ -136,7 +136,7 @@ class GossipTestNode {
   recievedMessages = new Map<number, number>(); // Id -> timestamp
 
   constructor() {
-    this.gossipNode = new GossipNode({} as RocksDB);
+    this.gossipNode = new GossipNode();
   }
 
   async start() {

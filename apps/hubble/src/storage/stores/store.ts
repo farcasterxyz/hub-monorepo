@@ -49,10 +49,6 @@ const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
   return true;
 };
 
-// Store size was meant to be halved and existing users were given 2 units of storage, but we did not reduce the size
-// So existing users currently have 2x more storage than intended. Pick a date in the future and reduce the size by half
-const STORE_SIZE_CORRECTION_TIMESTAMP = new Date("2023-09-06").getTime();
-
 export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _db: RocksDB;
   protected _eventHandler: StoreEventHandler;
