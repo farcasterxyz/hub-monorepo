@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.5.4
+
+### Patch Changes
+
+- 0805122c: fix: Grafana issue where incoming sync count was not correct
+- 4893e02d: fix: Update links store size to be 2500 in the future
+- 5dc7d113: chore: Remove GossipMetricsRecorder (Use grafana dashboard instead)
+- 8d21803e: feat: Add "up" and "down" commands to hubble.sh
+  - @farcaster/hub-nodejs@0.10.8
+
 ## 1.5.3
 
 ### Patch Changes
