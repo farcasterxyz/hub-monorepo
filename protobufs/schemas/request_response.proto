@@ -230,10 +230,6 @@ message LinksByTargetRequest {
   optional bool reverse = 5;
 }
 
-message IdRegistryEventRequest {
-  uint64 fid = 1;
-}
-
 message IdRegistryEventByAddressRequest {
   bytes address = 1;
 }

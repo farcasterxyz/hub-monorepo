@@ -8,7 +8,6 @@ import {
   Metadata,
   getAdminRpcClient,
   getAuthMetadata,
-  getFarcasterTime,
   getInsecureHubRpcClient,
   getSSLHubRpcClient,
 } from "@farcaster/hub-nodejs";
@@ -83,8 +82,9 @@ async function profileSubmitMessages(
   const signer = Factories.Ed25519Signer.build();
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
-  const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-  const idResult = await adminRpcClient.submitIdRegistryEvent(custodyEvent, metadata);
+  const idRegisterBody = Factories.IdRegistryEventBody.build({ to: custodySignerKey });
+  const custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid, idRegisterEventBody: idRegisterBody });
+  const idResult = await adminRpcClient.submitOnChainEvent(custodyEvent, metadata);
   if (!idResult.isOk()) {
     throw `Failed to submit custody event for fid ${fid}: ${idResult.error}`;
   }
@@ -99,15 +99,11 @@ async function profileSubmitMessages(
     throw `Failed to submit rent event for fid ${fid}: ${rentResult.error}. NOTE: RPC profile only works on devnet`;
   }
 
-  const signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  const signerAdd = await Factories.SignerOnChainEvent.create({ fid }, { transient: { signer: signerKey } });
 
   let totalTimeTakenMs = 0;
 
-  const { result, timeTakenMs } = await submitMessage(signerAdd, metadata);
-  totalTimeTakenMs += timeTakenMs;
+  const result = await adminRpcClient.submitOnChainEvent(signerAdd, metadata);
   if (!result.isOk()) {
     throw `Failed to submit signer add message for fid ${fid}: ${result.error}`;
   }

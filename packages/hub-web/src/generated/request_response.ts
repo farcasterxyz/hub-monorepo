@@ -97,6 +97,8 @@ export interface HubInfoResponse {
   nickname: string;
   rootHash: string;
   dbStats: DbStats | undefined;
+  peerId: string;
+  hubOperatorFid: number;
 }
 
 export interface DbStats {
@@ -276,10 +278,6 @@ export interface LinksByTargetRequest {
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
   reverse?: boolean | undefined;
-}
-
-export interface IdRegistryEventRequest {
-  fid: number;
 }
 
 export interface IdRegistryEventByAddressRequest {
@@ -529,7 +527,15 @@ export const HubInfoRequest = {
 };
 
 function createBaseHubInfoResponse(): HubInfoResponse {
-  return { version: "", isSyncing: false, nickname: "", rootHash: "", dbStats: undefined };
+  return {
+    version: "",
+    isSyncing: false,
+    nickname: "",
+    rootHash: "",
+    dbStats: undefined,
+    peerId: "",
+    hubOperatorFid: 0,
+  };
 }
 
 export const HubInfoResponse = {
@@ -548,6 +554,12 @@ export const HubInfoResponse = {
     }
     if (message.dbStats !== undefined) {
       DbStats.encode(message.dbStats, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.peerId !== "") {
+      writer.uint32(50).string(message.peerId);
+    }
+    if (message.hubOperatorFid !== 0) {
+      writer.uint32(56).uint64(message.hubOperatorFid);
     }
     return writer;
   },
@@ -594,6 +606,20 @@ export const HubInfoResponse = {
 
           message.dbStats = DbStats.decode(reader, reader.uint32());
           continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.peerId = reader.string();
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.hubOperatorFid = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -610,6 +636,8 @@ export const HubInfoResponse = {
       nickname: isSet(object.nickname) ? String(object.nickname) : "",
       rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
       dbStats: isSet(object.dbStats) ? DbStats.fromJSON(object.dbStats) : undefined,
+      peerId: isSet(object.peerId) ? String(object.peerId) : "",
+      hubOperatorFid: isSet(object.hubOperatorFid) ? Number(object.hubOperatorFid) : 0,
     };
   },
 
@@ -620,6 +648,8 @@ export const HubInfoResponse = {
     message.nickname !== undefined && (obj.nickname = message.nickname);
     message.rootHash !== undefined && (obj.rootHash = message.rootHash);
     message.dbStats !== undefined && (obj.dbStats = message.dbStats ? DbStats.toJSON(message.dbStats) : undefined);
+    message.peerId !== undefined && (obj.peerId = message.peerId);
+    message.hubOperatorFid !== undefined && (obj.hubOperatorFid = Math.round(message.hubOperatorFid));
     return obj;
   },
 
@@ -636,6 +666,8 @@ export const HubInfoResponse = {
     message.dbStats = (object.dbStats !== undefined && object.dbStats !== null)
       ? DbStats.fromPartial(object.dbStats)
       : undefined;
+    message.peerId = object.peerId ?? "";
+    message.hubOperatorFid = object.hubOperatorFid ?? 0;
     return message;
   },
 };
@@ -3227,62 +3259,6 @@ export const LinksByTargetRequest = {
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
     message.reverse = object.reverse ?? undefined;
-    return message;
-  },
-};
-
-function createBaseIdRegistryEventRequest(): IdRegistryEventRequest {
-  return { fid: 0 };
-}
-
-export const IdRegistryEventRequest = {
-  encode(message: IdRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.fid !== 0) {
-      writer.uint32(8).uint64(message.fid);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): IdRegistryEventRequest {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseIdRegistryEventRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.fid = longToNumber(reader.uint64() as Long);
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): IdRegistryEventRequest {
-    return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
-  },
-
-  toJSON(message: IdRegistryEventRequest): unknown {
-    const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<IdRegistryEventRequest>, I>>(base?: I): IdRegistryEventRequest {
-    return IdRegistryEventRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<IdRegistryEventRequest>, I>>(object: I): IdRegistryEventRequest {
-    const message = createBaseIdRegistryEventRequest();
-    message.fid = object.fid ?? 0;
     return message;
   },
 };

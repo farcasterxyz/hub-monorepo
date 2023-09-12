@@ -19,11 +19,11 @@ describe("syncFromDb", () => {
     const usage = [
       {
         fid: Factories.Fid.build(),
-        usage: { cast: 3, reaction: 2, verification: 4, userData: 1, signer: 0, storage: 2 },
+        usage: { cast: 3, reaction: 2, verification: 4, userData: 1, storage: 2 },
       },
       {
         fid: Factories.Fid.build(),
-        usage: { cast: 2, reaction: 3, verification: 0, userData: 2, signer: 5, storage: 2 },
+        usage: { cast: 2, reaction: 3, verification: 0, userData: 2, storage: 2 },
       },
     ];
     for (const fidUsage of usage) {
@@ -44,11 +44,6 @@ describe("syncFromDb", () => {
 
       for (let i = 0; i < fidUsage.usage.userData; i++) {
         const message = await Factories.UserDataAddMessage.create({ data: { fid: fidUsage.fid } });
-        await putMessage(db, message);
-      }
-
-      for (let i = 0; i < fidUsage.usage.signer; i++) {
-        const message = await Factories.SignerAddMessage.create({ data: { fid: fidUsage.fid } });
         await putMessage(db, message);
       }
 
@@ -76,9 +71,6 @@ describe("syncFromDb", () => {
       );
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.UserDataMessage)).resolves.toEqual(
         ok(fidUsage.usage.userData),
-      );
-      await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.SignerMessage)).resolves.toEqual(
-        ok(fidUsage.usage.signer),
       );
       await expect(cache.getCurrentStorageUnitsForFid(fidUsage.fid)).resolves.toEqual(ok(4));
     }
@@ -204,14 +196,14 @@ describe("processEvent", () => {
 
   test("count is decremented with revoke message event", async () => {
     const fid = Factories.Fid.build();
-    const message = await Factories.SignerAddMessage.create({ data: { fid } });
+    const message = await Factories.CastAddMessage.create({ data: { fid } });
     const event = HubEvent.create({ type: HubEventType.REVOKE_MESSAGE, revokeMessageBody: { message } });
 
     await putMessage(db, message);
     await cache.syncFromDb();
-    await expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).resolves.toEqual(ok(1));
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
     cache.processEvent(event);
-    await expect(cache.getMessageCount(fid, UserPostfix.SignerMessage)).resolves.toEqual(ok(0));
+    await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(0));
   });
 
   test("sets earliest tsHash with merge cast message event", async () => {

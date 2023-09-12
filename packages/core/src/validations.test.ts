@@ -707,88 +707,6 @@ describe("validateVerificationRemoveBody", () => {
   });
 });
 
-describe("validateSignerAddBody", () => {
-  test("succeeds", async () => {
-    const body = Factories.SignerAddBody.build();
-    expect(validations.validateSignerAddBody(body)).toEqual(ok(body));
-  });
-
-  describe("fails", () => {
-    let body: protobufs.SignerAddBody;
-    let hubErrorMessage: string;
-
-    afterEach(() => {
-      expect(validations.validateSignerAddBody(body)).toEqual(
-        err(new HubError("bad_request.validation_failure", hubErrorMessage)),
-      );
-    });
-
-    test("when signer is missing", () => {
-      body = Factories.SignerAddBody.build({
-        signer: undefined,
-      });
-      hubErrorMessage = "publicKey is missing";
-    });
-
-    test("with invalid signer", () => {
-      body = Factories.SignerAddBody.build({
-        signer: Factories.Bytes.build({}, { transient: { length: 33 } }),
-      });
-      hubErrorMessage = "publicKey must be 32 bytes";
-    });
-
-    test("with name as empty string", () => {
-      body = Factories.SignerAddBody.build({ name: "" });
-      hubErrorMessage = "name cannot be empty string";
-    });
-
-    test("with name > 32 chars", () => {
-      body = Factories.SignerAddBody.build({ name: faker.random.alphaNumeric(33) });
-      hubErrorMessage = "name > 32 bytes";
-    });
-
-    test("with name > 32 bytes", () => {
-      let name = "";
-      for (let i = 0; i < 10; i++) {
-        name = `${name}🔥`;
-      }
-      body = Factories.SignerAddBody.build({ name });
-    });
-  });
-});
-
-describe("validateSignerRemoveBody", () => {
-  test("succeeds", async () => {
-    const body = Factories.SignerRemoveBody.build();
-    expect(validations.validateSignerRemoveBody(body)).toEqual(ok(body));
-  });
-
-  describe("fails", () => {
-    let body: protobufs.SignerRemoveBody;
-    let hubErrorMessage: string;
-
-    afterEach(() => {
-      expect(validations.validateSignerRemoveBody(body)).toEqual(
-        err(new HubError("bad_request.validation_failure", hubErrorMessage)),
-      );
-    });
-
-    test("when signer is missing", () => {
-      body = Factories.SignerRemoveBody.build({
-        signer: undefined,
-      });
-      hubErrorMessage = "publicKey is missing";
-    });
-
-    test("with invalid signer", () => {
-      body = Factories.SignerRemoveBody.build({
-        signer: Factories.Bytes.build({}, { transient: { length: 33 } }),
-      });
-      hubErrorMessage = "publicKey must be 32 bytes";
-    });
-  });
-});
-
 describe("validateUserDataAddBody", () => {
   test("succeeds", async () => {
     const body = Factories.UserDataBody.build();
@@ -897,29 +815,9 @@ describe("validateMessage", () => {
     expect(result._unsafeUnwrap()).toEqual(message);
   });
 
-  test("succeeds with EIP712 signer", async () => {
-    const message = await Factories.Message.create(
-      { data: Factories.SignerAddData.build() },
-      { transient: { signer: ethSigner } },
-    );
-
-    const result = await validations.validateMessage(message);
-    expect(result._unsafeUnwrap()).toEqual(message);
-  });
-
   test("fails with EIP712 signer and non-signer message type", async () => {
     // Default message type is CastAdd
     const message = await Factories.Message.create({}, { transient: { signer: ethSigner } });
-    const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signatureScheme")));
-  });
-
-  test("fails with Ed25519 signer and signer message type", async () => {
-    const message = await Factories.Message.create(
-      { data: Factories.SignerAddData.build() },
-      { transient: { signer } },
-    );
-
     const result = await validations.validateMessage(message);
     expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signatureScheme")));
   });

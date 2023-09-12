@@ -55,7 +55,7 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
         hash || faker.datatype.hexadecimal({ length: HASH_LENGTH * 2 }),
       )._unsafeUnwrap();
 
-      const signerMessage = await Factories.SignerAddMessage.create({
+      const signerMessage = await Factories.CastAddMessage.create({
         hash: hashBytes,
         data: { fid: fid || Factories.Fid.build(), timestamp: (date || faker.date.recent()).getTime() / 1000 },
       });

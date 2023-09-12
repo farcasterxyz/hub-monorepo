@@ -13,6 +13,7 @@ import {
   UserNameType,
 } from "@farcaster/hub-nodejs";
 import UsernameProofStore from "./usernameProofStore.js";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.usernameProofSet.test");
 const eventHandler = new StoreEventHandler(db);
@@ -49,6 +50,8 @@ describe("usernameProofStore", () => {
     fname = Factories.Fname.build();
     currentFarcasterTime = getFarcasterTime()._unsafeUnwrap();
     ensProof = await buildProof(fid, fname, currentFarcasterTime, UserNameType.USERNAME_TYPE_ENS_L1);
+    const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+    await db.commit(putOnChainEventTransaction(db.transaction(), rent));
   });
 
   beforeEach(async () => {

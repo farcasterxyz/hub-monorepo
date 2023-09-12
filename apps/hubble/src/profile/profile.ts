@@ -247,6 +247,7 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
     new KeysProfile("Indexes"),
     new KeysProfile("Sync Trie Data"),
     new KeysProfile("Hub Events"),
+    new KeysProfile("OnChain Events"),
     new KeysProfile("Others"),
   ];
 
@@ -257,18 +258,16 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
 
     if (i === RootPrefix.User) {
       index = 0;
-    } else if (
-      (i >= RootPrefix.CastsByParent && i <= RootPrefix.ReactionsByTarget) ||
-      i === RootPrefix.IdRegistryEventByCustodyAddress ||
-      i === RootPrefix.NameRegistryEventsByExpiry
-    ) {
+    } else if (i >= RootPrefix.CastsByParent && i <= RootPrefix.ReactionsByTarget) {
       index = 1;
     } else if (i === RootPrefix.SyncMerkleTrieNode) {
       index = 2;
     } else if (i === RootPrefix.HubEvents) {
       index = 3;
-    } else {
+    } else if (i === RootPrefix.OnChainEvent) {
       index = 4;
+    } else {
+      index = 5;
     }
 
     const profile = dataTypePrefixes[index] as KeysProfile;

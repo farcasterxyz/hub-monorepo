@@ -44,14 +44,6 @@ export class MockHub implements HubInterface {
     return result;
   }
 
-  async submitIdRegistryEvent(event: IdRegistryEvent): HubAsyncResult<number> {
-    return this.engine.mergeIdRegistryEvent(event);
-  }
-
-  async submitNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
-    return this.engine.mergeNameRegistryEvent(event);
-  }
-
   async submitUserNameProof(proof: UserNameProof): HubAsyncResult<number> {
     return this.engine.mergeUserNameProof(proof);
   }

@@ -7,13 +7,11 @@ import {
   getInsecureHubRpcClient,
   HubResult,
   HubRpcClient,
-  IdRegistryEvent,
   Message,
   MessagesResponse,
+  OnChainEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
-  SignerAddMessage,
-  SignerRemoveMessage,
   UserDataAddMessage,
   UserDataType,
   VerificationAddEthAddressMessage,
@@ -49,18 +47,16 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 });
 
 const assertMessagesMatchResult = (result: HubResult<MessagesResponse>, messages: Message[]) => {
@@ -81,8 +77,9 @@ describe("getAllCastMessagesByFid", () => {
   });
 
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds", async () => {
@@ -112,8 +109,9 @@ describe("getAllReactionMessagesByFid", () => {
   });
 
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds", async () => {
@@ -146,8 +144,9 @@ describe("getAllVerificationMessagesByFid", () => {
   });
 
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds", async () => {
@@ -163,57 +162,6 @@ describe("getAllVerificationMessagesByFid", () => {
   });
 });
 
-describe("getAllSignerMessagesByFid", () => {
-  let signerRemove: SignerRemoveMessage;
-
-  beforeAll(async () => {
-    signerRemove = await Factories.SignerRemoveMessage.create(
-      { data: { fid, network, timestamp: signerAdd.data.timestamp + 1 } },
-      { transient: { signer: custodySigner } },
-    );
-  });
-
-  beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-  });
-
-  test("succeeds", async () => {
-    await engine.mergeMessage(signerAdd);
-    await engine.mergeMessage(signerRemove);
-    const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid }));
-    assertMessagesMatchResult(result, [signerAdd, signerRemove]);
-  });
-
-  test("returns pageSize results", async () => {
-    await engine.mergeMessage(signerAdd);
-    await engine.mergeMessage(signerRemove);
-    const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid, pageSize: 1 }));
-    assertMessagesMatchResult(result, [signerAdd]);
-  });
-
-  test("returns all signer messages when pageSize > events", async () => {
-    await engine.mergeMessage(signerAdd);
-    await engine.mergeMessage(signerRemove);
-    const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid, pageSize: 3 }));
-    assertMessagesMatchResult(result, [signerAdd, signerRemove]);
-  });
-
-  test("returns results after pageToken", async () => {
-    await engine.mergeMessage(signerAdd);
-    await engine.mergeMessage(signerRemove);
-    const page1Result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid, pageSize: 1 }));
-    const page2Result = await client.getAllSignerMessagesByFid(
-      FidRequest.create({ fid, pageSize: 1, pageToken: page1Result._unsafeUnwrap().nextPageToken }),
-    );
-    assertMessagesMatchResult(page2Result, [signerRemove]);
-  });
-
-  test("returns empty array without messages", async () => {
-    const result = await client.getAllSignerMessagesByFid(FidRequest.create({ fid }));
-    assertMessagesMatchResult(result, []);
-  });
-});
-
 describe("getAllUserDataMessagesByFid", () => {
   let userDataAdd: UserDataAddMessage;
 
@@ -225,8 +173,9 @@ describe("getAllUserDataMessagesByFid", () => {
   });
 
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds", async () => {

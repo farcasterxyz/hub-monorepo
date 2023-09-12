@@ -20,7 +20,7 @@ import StoreEventHandler from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
 import { err, ok } from "neverthrow";
 import { faker } from "@faker-js/faker";
-import { FARCASTER_EPOCH } from "@farcaster/core";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.castStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -37,6 +37,8 @@ beforeAll(async () => {
   castRemove = await Factories.CastRemoveMessage.create({
     data: { fid, castRemoveBody: { targetHash: castAdd.hash } },
   });
+  const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
 beforeEach(async () => {

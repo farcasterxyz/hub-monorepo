@@ -12,20 +12,16 @@ import {
   HubInfoResponse,
   HubServiceServer,
   HubServiceService,
-  IdRegistryEvent,
   LinkAddMessage,
   LinkRemoveMessage,
   Message,
   MessagesResponse,
   Metadata,
-  NameRegistryEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
   Server as GrpcServer,
   ServerCredentials,
   ServiceError,
-  SignerAddMessage,
-  SignerRemoveMessage,
   status,
   StorageLimitsResponse,
   SyncIds,
@@ -757,22 +753,6 @@ export default class Server {
           },
         );
       },
-      getNameRegistryEvent: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getNameRegistryEvent", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-
-        const nameRegistryEventResult = await this.engine?.getNameRegistryEvent(request.name);
-        nameRegistryEventResult?.match(
-          (nameRegistryEvent: NameRegistryEvent) => {
-            callback(null, nameRegistryEvent);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
       getUsernameProof: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer}`);
@@ -841,22 +821,6 @@ export default class Server {
           },
         );
       },
-      getSigner: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getSigner", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-
-        const signerResult = await this.engine?.getSigner(request.fid, request.signer);
-        signerResult?.match(
-          (signer: SignerAddMessage) => {
-            callback(null, signer);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
       getOnChainSigner: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getOnChainSigner", req: call.request }, `RPC call from ${peer}`);
@@ -867,25 +831,6 @@ export default class Server {
         signerResult?.match(
           (signer: SignerOnChainEvent) => {
             callback(null, signer);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
-      getSignersByFid: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getSignersByFid", req: call.request }, `RPC call from ${peer}`);
-
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const signersResult = await this.engine?.getSignersByFid(fid, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
-        signersResult?.match(
-          (page: MessagesPage<SignerAddMessage>) => {
-            callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -905,21 +850,6 @@ export default class Server {
         signersResult?.match(
           (page: OnChainEventResponse) => {
             callback(null, page);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
-      getIdRegistryEvent: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getIdRegistryEvent", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-        const idRegistryEventResult = await this.engine?.getIdRegistryEvent(request.fid);
-        idRegistryEventResult?.match(
-          (idRegistryEvent: IdRegistryEvent) => {
-            callback(null, idRegistryEvent);
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -980,14 +910,14 @@ export default class Server {
           },
         );
       },
-      getIdRegistryEventByAddress: async (call, callback) => {
+      getIdRegistryOnChainEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getIdRegistryEventByAddress", req: call.request }, `RPC call from ${peer}`);
+        log.debug({ method: "getIdRegistryOnChainEvent", req: call.request }, `RPC call from ${peer}`);
 
         const request = call.request;
-        const idRegistryEventResult = await this.engine?.getIdRegistryEventByAddress(request.address);
+        const idRegistryEventResult = await this.engine?.getIdRegistryOnChainEvent(request.fid);
         idRegistryEventResult?.match(
-          (idRegistryEvent: IdRegistryEvent) => {
+          (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
           },
           (err: HubError) => {
@@ -1111,25 +1041,6 @@ export default class Server {
           },
         );
       },
-      getAllSignerMessagesByFid: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllSignerMessagesByFid", req: call.request }, `RPC call from ${peer}`);
-
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const result = await this.engine?.getAllSignerMessagesByFid(fid, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
-        result?.match(
-          (page: MessagesPage<SignerAddMessage | SignerRemoveMessage>) => {
-            callback(null, messagesPageToResponse(page));
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
       getAllUserDataMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer}`);
@@ -1217,8 +1128,6 @@ export default class Server {
           this.engine?.eventHandler.off("mergeMessage", eventListener);
           this.engine?.eventHandler.off("pruneMessage", eventListener);
           this.engine?.eventHandler.off("revokeMessage", eventListener);
-          this.engine?.eventHandler.off("mergeIdRegistryEvent", eventListener);
-          this.engine?.eventHandler.off("mergeNameRegistryEvent", eventListener);
           this.engine?.eventHandler.off("mergeUsernameProofEvent", eventListener);
           this.engine?.eventHandler.off("mergeOnChainEvent", eventListener);
 
@@ -1305,8 +1214,6 @@ export default class Server {
           this.engine?.eventHandler.on("mergeMessage", eventListener);
           this.engine?.eventHandler.on("pruneMessage", eventListener);
           this.engine?.eventHandler.on("revokeMessage", eventListener);
-          this.engine?.eventHandler.on("mergeIdRegistryEvent", eventListener);
-          this.engine?.eventHandler.on("mergeNameRegistryEvent", eventListener);
           this.engine?.eventHandler.on("mergeUsernameProofEvent", eventListener);
           this.engine?.eventHandler.on("mergeOnChainEvent", eventListener);
         } else {
@@ -1317,10 +1224,6 @@ export default class Server {
               this.engine?.eventHandler.on("pruneMessage", eventListener);
             } else if (eventType === HubEventType.REVOKE_MESSAGE) {
               this.engine?.eventHandler.on("revokeMessage", eventListener);
-            } else if (eventType === HubEventType.MERGE_ID_REGISTRY_EVENT) {
-              this.engine?.eventHandler.on("mergeIdRegistryEvent", eventListener);
-            } else if (eventType === HubEventType.MERGE_NAME_REGISTRY_EVENT) {
-              this.engine?.eventHandler.on("mergeNameRegistryEvent", eventListener);
             } else if (eventType === HubEventType.MERGE_USERNAME_PROOF) {
               this.engine?.eventHandler.on("mergeUsernameProofEvent", eventListener);
             } else if (eventType === HubEventType.MERGE_ON_CHAIN_EVENT) {

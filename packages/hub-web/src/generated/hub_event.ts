@@ -1,9 +1,7 @@
 /* eslint-disable */
 import Long from "long";
 import _m0 from "protobufjs/minimal";
-import { IdRegistryEvent } from "./id_registry_event";
 import { Message } from "./message";
-import { NameRegistryEvent } from "./name_registry_event";
 import { OnChainEvent } from "./onchain_event";
 import { UserNameProof } from "./username_proof";
 
@@ -12,8 +10,11 @@ export enum HubEventType {
   MERGE_MESSAGE = 1,
   PRUNE_MESSAGE = 2,
   REVOKE_MESSAGE = 3,
-  MERGE_ID_REGISTRY_EVENT = 4,
-  MERGE_NAME_REGISTRY_EVENT = 5,
+  /**
+   * MERGE_USERNAME_PROOF - Deprecated
+   *  HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT = 4;
+   *  HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT = 5;
+   */
   MERGE_USERNAME_PROOF = 6,
   /**
    * MERGE_ON_CHAIN_EVENT - Deprecated
@@ -37,12 +38,6 @@ export function hubEventTypeFromJSON(object: any): HubEventType {
     case 3:
     case "HUB_EVENT_TYPE_REVOKE_MESSAGE":
       return HubEventType.REVOKE_MESSAGE;
-    case 4:
-    case "HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT":
-      return HubEventType.MERGE_ID_REGISTRY_EVENT;
-    case 5:
-    case "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT":
-      return HubEventType.MERGE_NAME_REGISTRY_EVENT;
     case 6:
     case "HUB_EVENT_TYPE_MERGE_USERNAME_PROOF":
       return HubEventType.MERGE_USERNAME_PROOF;
@@ -64,10 +59,6 @@ export function hubEventTypeToJSON(object: HubEventType): string {
       return "HUB_EVENT_TYPE_PRUNE_MESSAGE";
     case HubEventType.REVOKE_MESSAGE:
       return "HUB_EVENT_TYPE_REVOKE_MESSAGE";
-    case HubEventType.MERGE_ID_REGISTRY_EVENT:
-      return "HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT";
-    case HubEventType.MERGE_NAME_REGISTRY_EVENT:
-      return "HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT";
     case HubEventType.MERGE_USERNAME_PROOF:
       return "HUB_EVENT_TYPE_MERGE_USERNAME_PROOF";
     case HubEventType.MERGE_ON_CHAIN_EVENT:
@@ -90,14 +81,6 @@ export interface RevokeMessageBody {
   message: Message | undefined;
 }
 
-export interface MergeIdRegistryEventBody {
-  idRegistryEvent: IdRegistryEvent | undefined;
-}
-
-export interface MergeNameRegistryEventBody {
-  nameRegistryEvent: NameRegistryEvent | undefined;
-}
-
 export interface MergeOnChainEventBody {
   onChainEvent: OnChainEvent | undefined;
 }
@@ -114,9 +97,14 @@ export interface HubEvent {
   id: number;
   mergeMessageBody?: MergeMessageBody | undefined;
   pruneMessageBody?: PruneMessageBody | undefined;
-  revokeMessageBody?: RevokeMessageBody | undefined;
-  mergeIdRegistryEventBody?: MergeIdRegistryEventBody | undefined;
-  mergeNameRegistryEventBody?: MergeNameRegistryEventBody | undefined;
+  revokeMessageBody?:
+    | RevokeMessageBody
+    | undefined;
+  /**
+   * Deprecated
+   *    MergeIdRegistryEventBody merge_id_registry_event_body = 6;
+   *    MergeNameRegistryEventBody merge_name_registry_event_body = 7;
+   */
   mergeUsernameProofBody?:
     | MergeUserNameProofBody
     | undefined;
@@ -323,131 +311,6 @@ export const RevokeMessageBody = {
   },
 };
 
-function createBaseMergeIdRegistryEventBody(): MergeIdRegistryEventBody {
-  return { idRegistryEvent: undefined };
-}
-
-export const MergeIdRegistryEventBody = {
-  encode(message: MergeIdRegistryEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.idRegistryEvent !== undefined) {
-      IdRegistryEvent.encode(message.idRegistryEvent, writer.uint32(10).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): MergeIdRegistryEventBody {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseMergeIdRegistryEventBody();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.idRegistryEvent = IdRegistryEvent.decode(reader, reader.uint32());
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): MergeIdRegistryEventBody {
-    return {
-      idRegistryEvent: isSet(object.idRegistryEvent) ? IdRegistryEvent.fromJSON(object.idRegistryEvent) : undefined,
-    };
-  },
-
-  toJSON(message: MergeIdRegistryEventBody): unknown {
-    const obj: any = {};
-    message.idRegistryEvent !== undefined &&
-      (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MergeIdRegistryEventBody>, I>>(base?: I): MergeIdRegistryEventBody {
-    return MergeIdRegistryEventBody.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<MergeIdRegistryEventBody>, I>>(object: I): MergeIdRegistryEventBody {
-    const message = createBaseMergeIdRegistryEventBody();
-    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
-      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
-      : undefined;
-    return message;
-  },
-};
-
-function createBaseMergeNameRegistryEventBody(): MergeNameRegistryEventBody {
-  return { nameRegistryEvent: undefined };
-}
-
-export const MergeNameRegistryEventBody = {
-  encode(message: MergeNameRegistryEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.nameRegistryEvent !== undefined) {
-      NameRegistryEvent.encode(message.nameRegistryEvent, writer.uint32(10).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): MergeNameRegistryEventBody {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseMergeNameRegistryEventBody();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.nameRegistryEvent = NameRegistryEvent.decode(reader, reader.uint32());
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): MergeNameRegistryEventBody {
-    return {
-      nameRegistryEvent: isSet(object.nameRegistryEvent)
-        ? NameRegistryEvent.fromJSON(object.nameRegistryEvent)
-        : undefined,
-    };
-  },
-
-  toJSON(message: MergeNameRegistryEventBody): unknown {
-    const obj: any = {};
-    message.nameRegistryEvent !== undefined && (obj.nameRegistryEvent = message.nameRegistryEvent
-      ? NameRegistryEvent.toJSON(message.nameRegistryEvent)
-      : undefined);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MergeNameRegistryEventBody>, I>>(base?: I): MergeNameRegistryEventBody {
-    return MergeNameRegistryEventBody.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<MergeNameRegistryEventBody>, I>>(object: I): MergeNameRegistryEventBody {
-    const message = createBaseMergeNameRegistryEventBody();
-    message.nameRegistryEvent = (object.nameRegistryEvent !== undefined && object.nameRegistryEvent !== null)
-      ? NameRegistryEvent.fromPartial(object.nameRegistryEvent)
-      : undefined;
-    return message;
-  },
-};
-
 function createBaseMergeOnChainEventBody(): MergeOnChainEventBody {
   return { onChainEvent: undefined };
 }
@@ -639,8 +502,6 @@ function createBaseHubEvent(): HubEvent {
     mergeMessageBody: undefined,
     pruneMessageBody: undefined,
     revokeMessageBody: undefined,
-    mergeIdRegistryEventBody: undefined,
-    mergeNameRegistryEventBody: undefined,
     mergeUsernameProofBody: undefined,
     mergeOnChainEventBody: undefined,
   };
@@ -662,12 +523,6 @@ export const HubEvent = {
     }
     if (message.revokeMessageBody !== undefined) {
       RevokeMessageBody.encode(message.revokeMessageBody, writer.uint32(42).fork()).ldelim();
-    }
-    if (message.mergeIdRegistryEventBody !== undefined) {
-      MergeIdRegistryEventBody.encode(message.mergeIdRegistryEventBody, writer.uint32(50).fork()).ldelim();
-    }
-    if (message.mergeNameRegistryEventBody !== undefined) {
-      MergeNameRegistryEventBody.encode(message.mergeNameRegistryEventBody, writer.uint32(58).fork()).ldelim();
     }
     if (message.mergeUsernameProofBody !== undefined) {
       MergeUserNameProofBody.encode(message.mergeUsernameProofBody, writer.uint32(66).fork()).ldelim();
@@ -720,20 +575,6 @@ export const HubEvent = {
 
           message.revokeMessageBody = RevokeMessageBody.decode(reader, reader.uint32());
           continue;
-        case 6:
-          if (tag != 50) {
-            break;
-          }
-
-          message.mergeIdRegistryEventBody = MergeIdRegistryEventBody.decode(reader, reader.uint32());
-          continue;
-        case 7:
-          if (tag != 58) {
-            break;
-          }
-
-          message.mergeNameRegistryEventBody = MergeNameRegistryEventBody.decode(reader, reader.uint32());
-          continue;
         case 8:
           if (tag != 66) {
             break;
@@ -766,12 +607,6 @@ export const HubEvent = {
       revokeMessageBody: isSet(object.revokeMessageBody)
         ? RevokeMessageBody.fromJSON(object.revokeMessageBody)
         : undefined,
-      mergeIdRegistryEventBody: isSet(object.mergeIdRegistryEventBody)
-        ? MergeIdRegistryEventBody.fromJSON(object.mergeIdRegistryEventBody)
-        : undefined,
-      mergeNameRegistryEventBody: isSet(object.mergeNameRegistryEventBody)
-        ? MergeNameRegistryEventBody.fromJSON(object.mergeNameRegistryEventBody)
-        : undefined,
       mergeUsernameProofBody: isSet(object.mergeUsernameProofBody)
         ? MergeUserNameProofBody.fromJSON(object.mergeUsernameProofBody)
         : undefined,
@@ -792,13 +627,6 @@ export const HubEvent = {
     message.revokeMessageBody !== undefined && (obj.revokeMessageBody = message.revokeMessageBody
       ? RevokeMessageBody.toJSON(message.revokeMessageBody)
       : undefined);
-    message.mergeIdRegistryEventBody !== undefined && (obj.mergeIdRegistryEventBody = message.mergeIdRegistryEventBody
-      ? MergeIdRegistryEventBody.toJSON(message.mergeIdRegistryEventBody)
-      : undefined);
-    message.mergeNameRegistryEventBody !== undefined &&
-      (obj.mergeNameRegistryEventBody = message.mergeNameRegistryEventBody
-        ? MergeNameRegistryEventBody.toJSON(message.mergeNameRegistryEventBody)
-        : undefined);
     message.mergeUsernameProofBody !== undefined && (obj.mergeUsernameProofBody = message.mergeUsernameProofBody
       ? MergeUserNameProofBody.toJSON(message.mergeUsernameProofBody)
       : undefined);
@@ -825,14 +653,6 @@ export const HubEvent = {
     message.revokeMessageBody = (object.revokeMessageBody !== undefined && object.revokeMessageBody !== null)
       ? RevokeMessageBody.fromPartial(object.revokeMessageBody)
       : undefined;
-    message.mergeIdRegistryEventBody =
-      (object.mergeIdRegistryEventBody !== undefined && object.mergeIdRegistryEventBody !== null)
-        ? MergeIdRegistryEventBody.fromPartial(object.mergeIdRegistryEventBody)
-        : undefined;
-    message.mergeNameRegistryEventBody =
-      (object.mergeNameRegistryEventBody !== undefined && object.mergeNameRegistryEventBody !== null)
-        ? MergeNameRegistryEventBody.fromPartial(object.mergeNameRegistryEventBody)
-        : undefined;
     message.mergeUsernameProofBody =
       (object.mergeUsernameProofBody !== undefined && object.mergeUsernameProofBody !== null)
         ? MergeUserNameProofBody.fromPartial(object.mergeUsernameProofBody)

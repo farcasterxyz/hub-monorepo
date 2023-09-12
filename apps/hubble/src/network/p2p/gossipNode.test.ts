@@ -3,12 +3,11 @@ import {
   getInsecureHubRpcClient,
   HubRpcClient,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   Message,
   GossipMessage,
   ContactInfoContent,
   GossipVersion,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { multiaddr } from "@multiformats/multiaddr/";
 import { GossipNode } from "./gossipNode.js";
@@ -137,8 +136,9 @@ describe("GossipNode", () => {
 
     let server: Server;
     let client: HubRpcClient;
-    let custodyEvent: IdRegistryEvent;
-    let signerAdd: SignerAddMessage;
+    let custodyEvent: OnChainEvent;
+    let signerEvent: OnChainEvent;
+    let storageEvent: OnChainEvent;
     let castAdd: Message;
     let peerId: PeerId;
 
@@ -146,12 +146,9 @@ describe("GossipNode", () => {
       peerId = await createEd25519PeerId();
       const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
       const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-      custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-      signerAdd = await Factories.SignerAddMessage.create(
-        { data: { fid, network, signerAddBody: { signer: signerKey } } },
-        { transient: { signer: custodySigner } },
-      );
+      custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+      signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+      storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
       castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
     });
@@ -170,13 +167,14 @@ describe("GossipNode", () => {
       const port = await server.start();
       client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
-      await hub.submitIdRegistryEvent(custodyEvent);
+      await hub.submitOnChainEvent(custodyEvent);
+      await hub.submitOnChainEvent(signerEvent);
+      await hub.submitOnChainEvent(storageEvent);
 
       // Messages from rpc are gossiped
-      await client.submitMessage(signerAdd);
       await client.submitMessage(castAdd);
 
-      expect(numMessagesGossiped).toEqual(2);
+      expect(numMessagesGossiped).toEqual(1);
 
       // Directly merged messages don't gossip
       numMessagesGossiped = 0;
@@ -194,26 +192,11 @@ describe("GossipNode", () => {
       await node.start([]);
       await node.gossipMessage(castAdd);
       // should be detected as a duplicate
-      let result = await node.gossipMessage(castAdd);
+      const result = await node.gossipMessage(castAdd);
       result.forEach((res) => {
         expect(res.isErr()).toBeTruthy();
         expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
       });
-
-      const gossipMessage = GossipMessage.create({
-        idRegistryEvent: custodyEvent,
-        topics: [node.primaryTopic()],
-        peerId: node.peerId?.toBytes() ?? new Uint8Array(),
-        version: GossipVersion.V1_1,
-      });
-
-      await node.publish(gossipMessage);
-      result = await node.publish(gossipMessage);
-      result.forEach((res) => {
-        expect(res.isErr()).toBeTruthy();
-        expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
-      });
-
       await node.stop();
     });
 
@@ -259,13 +242,6 @@ describe("GossipNode", () => {
 
       gossipMessage = GossipMessage.create({
         message: castAdd,
-        topics: ["foobar"],
-        peerId: peerId.toBytes(),
-      });
-      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
-
-      gossipMessage = GossipMessage.create({
-        idRegistryEvent: custodyEvent,
         topics: ["foobar"],
         peerId: peerId.toBytes(),
       });

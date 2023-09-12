@@ -6,6 +6,7 @@ import {
   Metadata,
   FarcasterNetwork,
   UserDataType,
+  SignerEventType,
 } from "@farcaster/hub-nodejs";
 import { ConsoleCommandInterface } from "./console.js";
 
@@ -44,16 +45,12 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
     const custodySigner = Factories.Eip712Signer.build();
     const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
 
-    const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-    const _idResult = await this.adminClient.submitIdRegistryEvent(custodyEvent, new Metadata());
+    const idRegisterBody = Factories.IdRegistryEventBody.build({ to: custodySignerKey });
+    const custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid, idRegisterEventBody: idRegisterBody });
+    const _idResult = await this.adminClient.submitOnChainEvent(custodyEvent, new Metadata());
 
-    const signerAdd = await Factories.SignerAddMessage.create(
-      {
-        data: { fid, network, signerAddBody: { signer: signerKey } },
-      },
-      { transient: { signer: custodySigner } },
-    );
-    const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
+    const signerAdd = await Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+    const _msgResult = await this.adminClient.submitOnChainEvent(signerAdd, new Metadata());
 
     return { fid, signer, custodySigner };
   }
@@ -90,13 +87,8 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       // Verify a new Eth address
       const signer = Factories.Ed25519Signer.build();
       const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
-      const signerAdd = await Factories.SignerAddMessage.create(
-        {
-          data: { fid, network, signerAddBody: { signer: signerKey } },
-        },
-        { transient: { signer: custodySigner } },
-      );
-      const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
+      const signerAdd = await Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+      const _msgResult = await this.adminClient.submitOnChainEvent(signerAdd, new Metadata());
 
       const verification = await Factories.VerificationAddEthAddressMessage.create(
         { data: { fid, network } },
@@ -106,17 +98,17 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
     }
 
     // And then revoke the signer
-    const signerRevoke = await Factories.SignerRemoveMessage.create(
-      { data: { fid, network, signerAddBody: { signer: signerKey } } },
-      { transient: { signer: custodySigner } },
-    );
-    const _msgResult = await this.rpcClient.submitMessage(signerRevoke, new Metadata());
+    const signerRevoke = await Factories.SignerOnChainEvent.build({
+      fid,
+      signerEventBody: Factories.SignerEventBody.build({ eventType: SignerEventType.REMOVE, key: signerKey }),
+    });
+    const _msgResult = await this.adminClient.submitOnChainEvent(signerRevoke, new Metadata());
   }
 
   private async highVolumeActions() {
     const nextFid = 200_000;
     const network = FarcasterNetwork.MAINNET;
-    const { fid, signer, custodySigner } = await this.getSigners(nextFid, network);
+    const { fid, signer } = await this.getSigners(nextFid, network);
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
     // 1. 10_000 CastAdd messages and reactions
@@ -141,13 +133,8 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       for (let i = 0; i < 100; i++) {
         // Verify a new Eth address
         const signer = Factories.Ed25519Signer.build();
-        const signerAdd = await Factories.SignerAddMessage.create(
-          {
-            data: { fid, network, signerAddBody: { signer: signerKey } },
-          },
-          { transient: { signer: custodySigner } },
-        );
-        const _msgResult = await this.rpcClient.submitMessage(signerAdd, new Metadata());
+        const signerAdd = await Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+        const _msgResult = await this.adminClient.submitOnChainEvent(signerAdd, new Metadata());
 
         const verification = await Factories.VerificationAddEthAddressMessage.create(
           { data: { fid, network } },

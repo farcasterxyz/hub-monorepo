@@ -280,10 +280,6 @@ export interface LinksByTargetRequest {
   reverse?: boolean | undefined;
 }
 
-export interface IdRegistryEventRequest {
-  fid: number;
-}
-
 export interface IdRegistryEventByAddressRequest {
   address: Uint8Array;
 }
@@ -3263,62 +3259,6 @@ export const LinksByTargetRequest = {
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
     message.reverse = object.reverse ?? undefined;
-    return message;
-  },
-};
-
-function createBaseIdRegistryEventRequest(): IdRegistryEventRequest {
-  return { fid: 0 };
-}
-
-export const IdRegistryEventRequest = {
-  encode(message: IdRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.fid !== 0) {
-      writer.uint32(8).uint64(message.fid);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): IdRegistryEventRequest {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseIdRegistryEventRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.fid = longToNumber(reader.uint64() as Long);
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): IdRegistryEventRequest {
-    return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
-  },
-
-  toJSON(message: IdRegistryEventRequest): unknown {
-    const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<IdRegistryEventRequest>, I>>(base?: I): IdRegistryEventRequest {
-    return IdRegistryEventRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<IdRegistryEventRequest>, I>>(object: I): IdRegistryEventRequest {
-    const message = createBaseIdRegistryEventRequest();
-    message.fid = object.fid ?? 0;
     return message;
   },
 };

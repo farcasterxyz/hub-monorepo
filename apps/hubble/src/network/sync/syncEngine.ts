@@ -31,7 +31,7 @@ import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
 import { statsd } from "../../utils/statsd.js";
 import { logger } from "../../utils/logger.js";
-import { RootPrefix } from "../../storage/db/types.js";
+import { OnChainEventPostfix, RootPrefix } from "../../storage/db/types.js";
 import { bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
@@ -1027,7 +1027,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let numFnames = 0;
 
     await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.IdRegistryEvent]),
+      Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid]),
       () => {
         numFids += 1;
       },

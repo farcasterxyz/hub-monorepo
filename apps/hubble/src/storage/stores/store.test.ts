@@ -174,10 +174,9 @@ describe("store", () => {
       await store.merge(castAddFid4._unsafeUnwrap());
     }
 
-    // For now, this should match the storage size, we follow existing behavior
-    // for users without storage rent. Adjust this later.
+    // This user has no storage, so all messages should be pruned
     const pruneCount2 = await store.pruneMessages(2);
-    expect(pruneCount2._unsafeUnwrap()).toHaveLength(100);
+    expect(pruneCount2._unsafeUnwrap()).toHaveLength(200);
 
     // This user has two slots, should be double.
     const pruneCount3 = await store.pruneMessages(3);

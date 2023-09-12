@@ -3,9 +3,7 @@ import {
   Factories,
   getFarcasterTime,
   HubRpcClient,
-  IdRegistryEvent,
   MessageType,
-  SignerAddMessage,
   Message,
   ReactionType,
   TrieNodeMetadataResponse,
@@ -13,6 +11,7 @@ import {
   utf8StringToBytes,
   UserNameType,
   toFarcasterTime,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import { anything, instance, mock, when } from "ts-mockito";
@@ -26,6 +25,7 @@ import { HubInterface } from "../../hubble.js";
 import { MockHub } from "../../test/mocks.js";
 import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
+import { IdRegisterOnChainEvent } from "@farcaster/core";
 
 const testDb = jestRocksDB("engine.syncEngine.test");
 const testDb2 = jestRocksDB("engine2.syncEngine.test");
@@ -35,20 +35,17 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: IdRegisterOnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 let castAdd: Message;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
-
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
@@ -92,11 +89,14 @@ describe("SyncEngine", () => {
   test("trie is updated on successful merge", async () => {
     const existingItems = await syncEngine.trie.items();
 
-    const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
+    const rcustody = await engine.mergeOnChainEvent(custodyEvent);
     expect(rcustody.isOk()).toBeTruthy();
 
-    const rsigneradd = await engine.mergeMessage(signerAdd);
+    const rsigneradd = await engine.mergeOnChainEvent(signerEvent);
     expect(rsigneradd.isOk()).toBeTruthy();
+
+    const rstorage = await engine.mergeOnChainEvent(storageEvent);
+    expect(rstorage.isOk()).toBeTruthy();
 
     const result = await engine.mergeMessage(castAdd);
     expect(result.isOk()).toBeTruthy();
@@ -104,8 +104,8 @@ describe("SyncEngine", () => {
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
 
-    // Two messages (signerAdd + castAdd) was added to the trie
-    expect((await syncEngine.trie.items()) - existingItems).toEqual(2);
+    // Two messages (signerEvent + castAdd) was added to the trie
+    expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
   });
 
@@ -125,8 +125,10 @@ describe("SyncEngine", () => {
   });
 
   test("trie is updated when a message is removed", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
+
     let result = await engine.mergeMessage(castAdd);
 
     expect(result.isOk()).toBeTruthy();
@@ -159,7 +161,7 @@ describe("SyncEngine", () => {
   });
 
   test("trie is updated for username proof messages", async () => {
-    const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
+    const custodyAddress = bytesToHexString(custodyEvent.idRegisterEventBody.to)._unsafeUnwrap();
     jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
       return Promise.resolve(custodyAddress);
     });
@@ -171,7 +173,7 @@ describe("SyncEngine", () => {
           usernameProofBody: Factories.UserNameProof.build({
             name: utf8StringToBytes("test.eth")._unsafeUnwrap(),
             fid,
-            owner: custodyEvent.to,
+            owner: custodyEvent.idRegisterEventBody.to,
             timestamp: timestampSec,
             type: UserNameType.USERNAME_TYPE_ENS_L1,
           }),
@@ -185,14 +187,15 @@ describe("SyncEngine", () => {
     const existingItems = await syncEngine.trie.items();
     expect(existingItems).toEqual(0);
 
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
 
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
 
     // SignerAdd and Username proof is added to the trie
-    expect((await syncEngine.trie.items()) - existingItems).toEqual(2);
+    expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
     expect(await syncEngine.trie.exists(new SyncId(proof))).toBeTruthy();
   });
 
@@ -205,11 +208,14 @@ describe("SyncEngine", () => {
   });
 
   test("trie is updated when message with higher order is merged", async () => {
-    const rcustody = await engine.mergeIdRegistryEvent(custodyEvent);
+    const rcustody = await engine.mergeOnChainEvent(custodyEvent);
     expect(rcustody.isOk()).toBeTruthy();
 
-    const rsigneradd = await engine.mergeMessage(signerAdd);
+    const rsigneradd = await engine.mergeOnChainEvent(signerEvent);
     expect(rsigneradd.isOk()).toBeTruthy();
+
+    const rstorage = await engine.mergeOnChainEvent(storageEvent);
+    expect(rstorage.isOk()).toBeTruthy();
 
     const currentTime = getFarcasterTime()._unsafeUnwrap();
 
@@ -235,7 +241,7 @@ describe("SyncEngine", () => {
 
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
-    expect(await syncEngine.trie.items()).toEqual(2); // signerAdd + reaction1
+    expect(await syncEngine.trie.items()).toEqual(1); // reaction1
 
     // Then merging the second reaction should also succeed and remove reaction1
     result = await engine.mergeMessage(reaction2);
@@ -243,15 +249,16 @@ describe("SyncEngine", () => {
 
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
-    expect(await syncEngine.trie.items()).toEqual(2); // signerAdd + reaction2 (reaction1 is removed)
+    expect(await syncEngine.trie.items()).toEqual(1); // reaction2 (reaction1 is removed)
 
     // Create a new engine and sync engine
     testDb2.clear();
     const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
     const hub2 = new MockHub(testDb2, engine2);
     const syncEngine2 = new SyncEngine(hub2, testDb2);
-    await engine2.mergeIdRegistryEvent(custodyEvent);
-    await engine2.mergeMessage(signerAdd);
+    await engine2.mergeOnChainEvent(custodyEvent);
+    await engine2.mergeOnChainEvent(signerEvent);
+    await engine2.mergeOnChainEvent(storageEvent);
 
     // Only merge reaction2
     result = await engine2.mergeMessage(reaction2);
@@ -259,7 +266,7 @@ describe("SyncEngine", () => {
 
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
-    expect(await syncEngine2.trie.items()).toEqual(2); // signerAdd + reaction2
+    expect(await syncEngine2.trie.items()).toEqual(1); //reaction2
 
     // Roothashes must match
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
@@ -321,8 +328,9 @@ describe("SyncEngine", () => {
   });
 
   test("syncStatus.shouldSync is false when excludedHashes match", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
     await addMessagesWithTimestamps([167, 169, 172]);
     expect(
@@ -332,8 +340,9 @@ describe("SyncEngine", () => {
   });
 
   test("syncStatus.shouldSync is true when hashes dont match", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
     await addMessagesWithTimestamps([167, 169, 172]);
     const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
@@ -343,8 +352,9 @@ describe("SyncEngine", () => {
   });
 
   test("syncStatus.shouldSync is false if we didnt merge any messages successfully recently", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     const mockRPCClient = mock<HubRpcClient>();
     const rpcClient = instance(mockRPCClient);
 
@@ -368,11 +378,12 @@ describe("SyncEngine", () => {
   });
 
   test("getSyncStats is correct", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
+    await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeUserNameProof(Factories.UserNameProof.build());
     await engine.mergeUserNameProof(Factories.UserNameProof.build());
-    await engine.mergeMessage(signerAdd);
-    await addMessagesWithTimestamps([167, 169]);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
+    await addMessagesWithTimestamps([167, 169, 170]);
 
     const stats = await syncEngine.getDbStats();
     expect(stats.numFids).toEqual(1);
@@ -381,18 +392,19 @@ describe("SyncEngine", () => {
   });
 
   test("initialize populates the trie with all existing messages", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
     const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
-    expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
+    expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
 
     const syncEngine2 = new SyncEngine(hub, testDb);
     await syncEngine2.start();
 
     // Make sure all messages exist
-    expect(await syncEngine2.trie.items()).toEqual(4);
+    expect(await syncEngine2.trie.items()).toEqual(3);
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
     expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
@@ -402,18 +414,19 @@ describe("SyncEngine", () => {
   });
 
   test("Rebuild trie from engine messages", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
     const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
-    expect(await syncEngine.trie.items()).toEqual(4); // signerAdd + 3 messages
+    expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
 
     const syncEngine2 = new SyncEngine(hub, testDb);
     await syncEngine2.start(true); // Rebuild from engine messages
 
     // Make sure all messages exist
-    expect(await syncEngine2.trie.items()).toEqual(4);
+    expect(await syncEngine2.trie.items()).toEqual(3);
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
     expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
@@ -423,8 +436,9 @@ describe("SyncEngine", () => {
   });
 
   test("getSnapshot should use a prefix of 10-seconds resolution timestamp", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
     const nowOrig = Date.now;
     Date.now = () => 1683074200000;
