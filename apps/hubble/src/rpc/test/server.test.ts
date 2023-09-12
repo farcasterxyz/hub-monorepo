@@ -6,12 +6,10 @@ import {
   getInsecureHubRpcClient,
   HubResult,
   HubRpcClient,
-  IdRegistryEvent,
   OnChainEvent,
   OnChainEventRequest,
   OnChainEventResponse,
   OnChainEventType,
-  SignerAddMessage,
   StorageLimit,
   StorageLimitsResponse,
   StoreType,
@@ -56,7 +54,7 @@ beforeAll(async () => {
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
   signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
-  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
   await engine.mergeOnChainEvent(custodyEvent);
   await engine.mergeOnChainEvent(signerEvent);
   await engine.mergeOnChainEvent(storageEvent);

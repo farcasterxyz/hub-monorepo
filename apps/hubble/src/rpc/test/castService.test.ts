@@ -2,8 +2,6 @@ import { faker } from "@faker-js/faker";
 import {
   Message,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   CastAddMessage,
   CastId,
   FidRequest,

@@ -34,8 +34,6 @@ import {
   LinkRemoveMessage,
   ReactionAddMessage,
   ReactionRemoveMessage,
-  SignerAddMessage,
-  SignerRemoveMessage,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
@@ -51,8 +49,6 @@ type PrunableMessage =
   | CastRemoveMessage
   | ReactionAddMessage
   | ReactionRemoveMessage
-  | SignerAddMessage
-  | SignerRemoveMessage
   | UserDataAddMessage
   | VerificationAddEthAddressMessage
   | VerificationRemoveMessage
@@ -169,7 +165,6 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _generator: HubEventIdGenerator;
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
-  private _signerMigratedAt = 0;
 
   constructor(db: RocksDB, options: StoreEventHandlerOptions = {}) {
     super();

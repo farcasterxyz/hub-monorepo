@@ -105,12 +105,9 @@ class GenMessages {
       console.log(`Failed to submit rent event for fid ${fid}: ${rentResult.error}`);
     }
 
-    const signerAdd = await Factories.SignerAddMessage.create(
-      { data: { fid, network: this.network, signerAddBody: { signer: signerKey } } },
-      { transient: { signer: custodySigner } },
-    );
+    const signerAdd = await Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
 
-    const signerResult = await this.rpcClient.submitMessage(signerAdd, this.metadata);
+    const signerResult = await this.adminRpcClient.submitOnChainEvent(signerAdd, this.metadata);
     if (signerResult.isOk()) {
       this.numSuccessMessages++;
     } else {

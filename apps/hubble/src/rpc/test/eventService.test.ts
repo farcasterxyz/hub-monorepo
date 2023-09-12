@@ -1,9 +1,6 @@
 import {
   Message,
   FarcasterNetwork,
-  IdRegistryEvent,
-  NameRegistryEvent,
-  SignerAddMessage,
   CastAddMessage,
   ReactionAddMessage,
   HubEventType,

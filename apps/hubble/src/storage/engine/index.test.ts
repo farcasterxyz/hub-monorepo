@@ -915,7 +915,7 @@ describe("with listeners and workers", () => {
 
 describe("stop", () => {
   test("removes all event listeners", async () => {
-    const eventNames: (keyof StoreEvents)[] = ["mergeMessage", "mergeOnChainEvent", "mergeUsernameProofEvent"];
+    const eventNames: (keyof StoreEvents)[] = ["mergeOnChainEvent", "mergeUsernameProofEvent"];
     const scopedEngine = new Engine(db, FarcasterNetwork.TESTNET);
     for (const eventName of eventNames) {
       expect(scopedEngine.eventHandler.listenerCount(eventName)).toEqual(0);

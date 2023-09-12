@@ -12,9 +12,6 @@ import { normalize } from "viem/ens";
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
-/** Message types that must be signed by EIP712 signer */
-export const EIP712_MESSAGE_TYPES = [protobufs.MessageType.SIGNER_ADD, protobufs.MessageType.SIGNER_REMOVE];
-
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
 
@@ -156,7 +153,7 @@ export const validateMessage = async (
     return err(new HubError("bad_request.validation_failure", "signer is missing"));
   }
 
-  const eip712SignerRequired = EIP712_MESSAGE_TYPES.includes(data.type);
+  const eip712SignerRequired = false;
   if (message.signatureScheme === protobufs.SignatureScheme.EIP712 && eip712SignerRequired) {
     const verificationResult = await eip712.verifyMessageHashSignature(hash, signature, signer);
     if (verificationResult.isErr()) {
@@ -227,10 +224,6 @@ export const validateMessageData = async <T extends protobufs.MessageData>(data:
     !!data.linkBody
   ) {
     bodyResult = validateLinkBody(data.linkBody);
-  } else if (validType.value === protobufs.MessageType.SIGNER_ADD && !!data.signerAddBody) {
-    bodyResult = validateSignerAddBody(data.signerAddBody);
-  } else if (validType.value === protobufs.MessageType.SIGNER_REMOVE && !!data.signerRemoveBody) {
-    bodyResult = validateSignerRemoveBody(data.signerRemoveBody);
   } else if (validType.value === protobufs.MessageType.USER_DATA_ADD && !!data.userDataBody) {
     bodyResult = validateUserDataAddBody(data.userDataBody);
   } else if (
@@ -574,29 +567,6 @@ export const validateUsernameProofBody = (
     );
   }
   return ok(body);
-};
-
-export const validateSignerAddBody = (body: protobufs.SignerAddBody): HubResult<protobufs.SignerAddBody> => {
-  if (body.name !== undefined) {
-    const textUtf8BytesResult = utf8StringToBytes(body.name);
-    if (textUtf8BytesResult.isErr()) {
-      return err(new HubError("bad_request.invalid_param", "name cannot be encoded as utf8"));
-    }
-
-    if (textUtf8BytesResult.value.length === 0) {
-      return err(new HubError("bad_request.validation_failure", "name cannot be empty string"));
-    }
-
-    if (textUtf8BytesResult.value.length > 32) {
-      return err(new HubError("bad_request.validation_failure", "name > 32 bytes"));
-    }
-  }
-
-  return validateEd25519PublicKey(body.signer).map(() => body);
-};
-
-export const validateSignerRemoveBody = (body: protobufs.SignerRemoveBody): HubResult<protobufs.SignerRemoveBody> => {
-  return validateEd25519PublicKey(body.signer).map(() => body);
 };
 
 export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {

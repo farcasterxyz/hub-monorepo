@@ -1,7 +1,6 @@
 /* eslint-disable */
 import Long from "long";
 import _m0 from "protobufjs/minimal";
-import { IdRegistryEvent } from "./id_registry_event";
 import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON, Message } from "./message";
 
 export enum GossipVersion {
@@ -68,8 +67,13 @@ export interface NetworkLatencyMessage {
 }
 
 export interface GossipMessage {
-  message?: Message | undefined;
-  idRegistryEvent?: IdRegistryEvent | undefined;
+  message?:
+    | Message
+    | undefined;
+  /**
+   * Deprecated
+   *  IdRegistryEvent id_registry_event = 2;
+   */
   contactInfoContent?: ContactInfoContent | undefined;
   networkLatencyMessage?: NetworkLatencyMessage | undefined;
   topics: string[];
@@ -585,7 +589,6 @@ export const NetworkLatencyMessage = {
 function createBaseGossipMessage(): GossipMessage {
   return {
     message: undefined,
-    idRegistryEvent: undefined,
     contactInfoContent: undefined,
     networkLatencyMessage: undefined,
     topics: [],
@@ -598,9 +601,6 @@ export const GossipMessage = {
   encode(message: GossipMessage, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.message !== undefined) {
       Message.encode(message.message, writer.uint32(10).fork()).ldelim();
-    }
-    if (message.idRegistryEvent !== undefined) {
-      IdRegistryEvent.encode(message.idRegistryEvent, writer.uint32(18).fork()).ldelim();
     }
     if (message.contactInfoContent !== undefined) {
       ContactInfoContent.encode(message.contactInfoContent, writer.uint32(26).fork()).ldelim();
@@ -633,13 +633,6 @@ export const GossipMessage = {
           }
 
           message.message = Message.decode(reader, reader.uint32());
-          continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.idRegistryEvent = IdRegistryEvent.decode(reader, reader.uint32());
           continue;
         case 3:
           if (tag != 26) {
@@ -688,7 +681,6 @@ export const GossipMessage = {
   fromJSON(object: any): GossipMessage {
     return {
       message: isSet(object.message) ? Message.fromJSON(object.message) : undefined,
-      idRegistryEvent: isSet(object.idRegistryEvent) ? IdRegistryEvent.fromJSON(object.idRegistryEvent) : undefined,
       contactInfoContent: isSet(object.contactInfoContent)
         ? ContactInfoContent.fromJSON(object.contactInfoContent)
         : undefined,
@@ -704,8 +696,6 @@ export const GossipMessage = {
   toJSON(message: GossipMessage): unknown {
     const obj: any = {};
     message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
-    message.idRegistryEvent !== undefined &&
-      (obj.idRegistryEvent = message.idRegistryEvent ? IdRegistryEvent.toJSON(message.idRegistryEvent) : undefined);
     message.contactInfoContent !== undefined && (obj.contactInfoContent = message.contactInfoContent
       ? ContactInfoContent.toJSON(message.contactInfoContent)
       : undefined);
@@ -731,9 +721,6 @@ export const GossipMessage = {
     const message = createBaseGossipMessage();
     message.message = (object.message !== undefined && object.message !== null)
       ? Message.fromPartial(object.message)
-      : undefined;
-    message.idRegistryEvent = (object.idRegistryEvent !== undefined && object.idRegistryEvent !== null)
-      ? IdRegistryEvent.fromPartial(object.idRegistryEvent)
       : undefined;
     message.contactInfoContent = (object.contactInfoContent !== undefined && object.contactInfoContent !== null)
       ? ContactInfoContent.fromPartial(object.contactInfoContent)

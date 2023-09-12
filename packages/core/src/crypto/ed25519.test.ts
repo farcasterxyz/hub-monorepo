@@ -23,7 +23,7 @@ describe("getPublicKey", () => {
 
 describe("signMessageHash", () => {
   test("succeeds", async () => {
-    const messageData = Factories.SignerAddData.build();
+    const messageData = Factories.CastAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
     const signature = await ed25519.signMessageHash(hash, privateKey);
@@ -34,7 +34,7 @@ describe("signMessageHash", () => {
 
 describe("verifyMessageHashSignature", () => {
   test("succeeds with valid signature", async () => {
-    const messageData = Factories.SignerAddData.build();
+    const messageData = Factories.CastAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
     const signature = await ed25519.signMessageHash(hash, privateKey);
@@ -43,7 +43,7 @@ describe("verifyMessageHashSignature", () => {
   });
 
   test("fails with invalid signature", async () => {
-    const messageData = Factories.SignerAddData.build();
+    const messageData = Factories.CastAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
     const isValid = await ed25519.verifyMessageHashSignature(randomBytes(32), hash, privateKey);

@@ -1,8 +1,6 @@
 import {
   Message,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   LinkAddMessage,
   LinkRequest,
   LinksByFidRequest,

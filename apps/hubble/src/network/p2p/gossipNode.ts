@@ -2,7 +2,6 @@ import { gossipsub, GossipSub } from "@chainsafe/libp2p-gossipsub";
 import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
 import { noise } from "@chainsafe/libp2p-noise";
 import {
-  AckMessageBody,
   ContactInfoContent,
   FarcasterNetwork,
   GossipMessage,
@@ -464,10 +463,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // check if message is a Farcaster Protocol Message
       const protocolMessage = GossipNode.decodeMessage(message.data);
       if (protocolMessage.isOk() && protocolMessage.value.version === GossipVersion.V1_1) {
-        if (protocolMessage.value.message !== undefined)
+        if (protocolMessage.value.message !== undefined) {
           return protocolMessage.unwrapOr(undefined)?.message?.hash ?? new Uint8Array();
-        if (protocolMessage.value.idRegistryEvent !== undefined)
-          return protocolMessage.value.idRegistryEvent?.transactionHash ?? new Uint8Array();
+        }
       }
     }
     return msgIdFnStrictSign(message);

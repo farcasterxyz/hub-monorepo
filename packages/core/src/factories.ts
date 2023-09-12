@@ -156,8 +156,6 @@ const MessageTypeFactory = Factory.define<protobufs.MessageType>(() => {
     protobufs.MessageType.CAST_REMOVE,
     protobufs.MessageType.REACTION_ADD,
     protobufs.MessageType.REACTION_REMOVE,
-    protobufs.MessageType.SIGNER_ADD,
-    protobufs.MessageType.SIGNER_REMOVE,
     protobufs.MessageType.USER_DATA_ADD,
     protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
     protobufs.MessageType.VERIFICATION_REMOVE,
@@ -178,11 +176,7 @@ const MessageFactory = Factory.define<protobufs.Message, { signer?: Ed25519Signe
       }
 
       // Set signer
-      const isEip712Signer =
-        message.data.type === protobufs.MessageType.SIGNER_ADD ||
-        message.data.type === protobufs.MessageType.SIGNER_REMOVE;
-      const signer: Signer =
-        transientParams.signer ?? (isEip712Signer ? Eip712SignerFactory.build() : Ed25519SignerFactory.build());
+      const signer: Signer = transientParams.signer ?? Ed25519SignerFactory.build();
 
       // Generate signature
       if (message.signature.length === 0) {
@@ -375,59 +369,6 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
       { data: ReactionRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
       { transient: transientParams },
     ) as protobufs.ReactionRemoveMessage;
-  },
-);
-
-const SignerAddBodyFactory = Factory.define<protobufs.SignerAddBody>(() => {
-  return protobufs.SignerAddBody.create({
-    name: faker.random.alphaNumeric(16),
-    signer: Ed25519PPublicKeyFactory.build(),
-  });
-});
-
-const SignerAddDataFactory = Factory.define<protobufs.SignerAddData>(() => {
-  return MessageDataFactory.build({
-    signerAddBody: SignerAddBodyFactory.build(),
-    type: protobufs.MessageType.SIGNER_ADD,
-  }) as protobufs.SignerAddData;
-});
-
-const SignerAddMessageFactory = Factory.define<protobufs.SignerAddMessage, { signer?: Eip712Signer }>(
-  ({ onCreate, transientParams }) => {
-    onCreate((message) => {
-      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.SignerAddMessage>;
-    });
-
-    return MessageFactory.build(
-      { data: SignerAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.EIP712 },
-      { transient: transientParams },
-    ) as protobufs.SignerAddMessage;
-  },
-);
-
-const SignerRemoveBodyFactory = Factory.define<protobufs.SignerRemoveBody>(() => {
-  return protobufs.SignerRemoveBody.create({
-    signer: Ed25519PPublicKeyFactory.build(),
-  });
-});
-
-const SignerRemoveDataFactory = Factory.define<protobufs.SignerRemoveData>(() => {
-  return MessageDataFactory.build({
-    signerRemoveBody: SignerRemoveBodyFactory.build(),
-    type: protobufs.MessageType.SIGNER_REMOVE,
-  }) as protobufs.SignerRemoveData;
-});
-
-const SignerRemoveMessageFactory = Factory.define<protobufs.SignerRemoveMessage, { signer?: Eip712Signer }>(
-  ({ onCreate, transientParams }) => {
-    onCreate((message) => {
-      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.SignerRemoveMessage>;
-    });
-
-    return MessageFactory.build(
-      { data: SignerRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.EIP712 },
-      { transient: transientParams },
-    ) as protobufs.SignerRemoveMessage;
   },
 );
 
@@ -758,12 +699,6 @@ export const Factories = {
   ReactionAddMessage: ReactionAddMessageFactory,
   ReactionRemoveData: ReactionRemoveDataFactory,
   ReactionRemoveMessage: ReactionRemoveMessageFactory,
-  SignerAddBody: SignerAddBodyFactory,
-  SignerRemoveBody: SignerRemoveBodyFactory,
-  SignerAddData: SignerAddDataFactory,
-  SignerAddMessage: SignerAddMessageFactory,
-  SignerRemoveData: SignerRemoveDataFactory,
-  SignerRemoveMessage: SignerRemoveMessageFactory,
   VerificationEthAddressClaim: VerificationEthAddressClaimFactory,
   VerificationAddEthAddressBody: VerificationAddEthAddressBodyFactory,
   VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,

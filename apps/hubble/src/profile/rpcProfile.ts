@@ -99,15 +99,11 @@ async function profileSubmitMessages(
     throw `Failed to submit rent event for fid ${fid}: ${rentResult.error}. NOTE: RPC profile only works on devnet`;
   }
 
-  const signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  const signerAdd = await Factories.SignerOnChainEvent.create({ fid }, { transient: { signer: signerKey } });
 
   let totalTimeTakenMs = 0;
 
-  const { result, timeTakenMs } = await submitMessage(signerAdd, metadata);
-  totalTimeTakenMs += timeTakenMs;
+  const result = await adminRpcClient.submitOnChainEvent(signerAdd, metadata);
   if (!result.isOk()) {
     throw `Failed to submit signer add message for fid ${fid}: ${result.error}`;
   }

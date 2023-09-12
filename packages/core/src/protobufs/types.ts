@@ -86,26 +86,6 @@ export type VerificationRemoveMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
-export type SignerAddData = protobufs.MessageData & {
-  type: protobufs.MessageType.SIGNER_ADD;
-  signerAddBody: protobufs.SignerAddBody;
-};
-
-export type SignerAddMessage = protobufs.Message & {
-  data: SignerAddData;
-  signatureScheme: protobufs.SignatureScheme.EIP712;
-};
-
-export type SignerRemoveData = protobufs.MessageData & {
-  type: protobufs.MessageType.SIGNER_REMOVE;
-  signerRemoveBody: protobufs.SignerRemoveBody;
-};
-
-export type SignerRemoveMessage = protobufs.Message & {
-  data: SignerRemoveData;
-  signatureScheme: protobufs.SignatureScheme.EIP712;
-};
-
 export type UserDataAddData = protobufs.MessageData & {
   type: protobufs.MessageType.USER_DATA_ADD;
   userDataBody: protobufs.UserDataBody;

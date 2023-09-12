@@ -4,8 +4,6 @@ import {
   getInsecureHubRpcClient,
   HubRpcClient,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   Message,
   CastId,
   OnChainEvent,

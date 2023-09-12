@@ -6,9 +6,7 @@ import {
   getInsecureHubRpcClient,
   HubInfoRequest,
   HubRpcClient,
-  IdRegistryEvent,
   OnChainEvent,
-  SignerAddMessage,
   SyncStatusRequest,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";

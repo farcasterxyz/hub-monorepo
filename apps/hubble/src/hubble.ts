@@ -4,9 +4,7 @@ import {
   GossipAddressInfo,
   GossipMessage,
   HubState,
-  IdRegistryEvent,
   Message,
-  NameRegistryEvent,
   HubAsyncResult,
   HubError,
   bytesToHexString,
@@ -40,15 +38,7 @@ import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
-import {
-  idRegistryEventToLog,
-  logger,
-  messageToLog,
-  messageTypeToName,
-  nameRegistryEventToLog,
-  onChainEventToLog,
-  usernameProofToLog,
-} from "./utils/logger.js";
+import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
 import {
   addressInfoFromGossip,
   addressInfoToString,

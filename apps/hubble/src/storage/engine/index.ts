@@ -13,12 +13,10 @@ import {
   HubEvent,
   HubResult,
   isSignerOnChainEvent,
-  isSignerRemoveMessage,
   isUserDataAddMessage,
   isUsernameProofMessage,
   LinkAddMessage,
   LinkRemoveMessage,
-  MergeMessageHubEvent,
   MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
   Message,
@@ -124,7 +122,6 @@ class Engine {
     this._revokeSignerQueue = new RevokeMessagesBySignerJobQueue(db);
     this._revokeSignerWorker = new RevokeMessagesBySignerJobWorker(this._revokeSignerQueue, db, this);
 
-    this.handleMergeMessageEvent = this.handleMergeMessageEvent.bind(this);
     this.handleMergeUsernameProofEvent = this.handleMergeUsernameProofEvent.bind(this);
     this.handleMergeOnChainEvent = this.handleMergeOnChainEvent.bind(this);
   }
@@ -165,7 +162,6 @@ class Engine {
     }
 
     this.eventHandler.on("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
-    this.eventHandler.on("mergeMessage", this.handleMergeMessageEvent);
     this.eventHandler.on("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     await this.eventHandler.syncCache();
@@ -175,7 +171,6 @@ class Engine {
   async stop(): Promise<void> {
     log.info("stopping engine");
     this.eventHandler.off("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
-    this.eventHandler.off("mergeMessage", this.handleMergeMessageEvent);
     this.eventHandler.off("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
     this._revokeSignerWorker.start();
@@ -1046,26 +1041,6 @@ class Engine {
                 e.message
               }`,
             ),
-        );
-      }
-    }
-
-    return ok(undefined);
-  }
-
-  private async handleMergeMessageEvent(event: MergeMessageHubEvent): HubAsyncResult<void> {
-    const { message } = event.mergeMessageBody;
-
-    if (isSignerRemoveMessage(message)) {
-      const payload = RevokeMessagesBySignerJobPayload.create({
-        fid: message.data.fid,
-        signer: message.data.signerRemoveBody.signer,
-      });
-      const enqueueRevoke = await this._revokeSignerQueue.enqueueJob(payload);
-      if (enqueueRevoke.isErr()) {
-        log.error(
-          { errCode: enqueueRevoke.error.errCode },
-          `failed to enqueue revoke signer job: ${enqueueRevoke.error.message}`,
         );
       }
     }
