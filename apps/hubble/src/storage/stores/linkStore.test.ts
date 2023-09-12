@@ -19,6 +19,7 @@ import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import LinkStore from "./linkStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.linkStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -57,6 +58,8 @@ beforeAll(async () => {
   linkRemoveEndorse = await Factories.LinkRemoveMessage.create({
     data: { fid, linkBody: endorseBody, timestamp: linkAddEndorse.data.timestamp + 1 },
   });
+  const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
 beforeEach(async () => {

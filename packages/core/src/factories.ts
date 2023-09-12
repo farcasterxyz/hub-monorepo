@@ -707,12 +707,16 @@ const StorageRentEventBodyFactory = Factory.define<protobufs.StorageRentEventBod
   });
 });
 
-const StorageRentOnChainEventFactory = Factory.define<StorageRentOnChainEvent>(() => {
-  return OnChainEventFactory.build({
-    type: OnChainEventType.EVENT_TYPE_STORAGE_RENT,
-    storageRentEventBody: StorageRentEventBodyFactory.build(),
-  }) as protobufs.StorageRentOnChainEvent;
-});
+const StorageRentOnChainEventFactory = Factory.define<StorageRentOnChainEvent, { units?: number }>(
+  ({ transientParams }) => {
+    return OnChainEventFactory.build({
+      type: OnChainEventType.EVENT_TYPE_STORAGE_RENT,
+      storageRentEventBody: transientParams.units
+        ? StorageRentEventBodyFactory.build({ units: transientParams.units })
+        : StorageRentEventBodyFactory.build(),
+    }) as protobufs.StorageRentOnChainEvent;
+  },
+);
 
 export const Factories = {
   Fid: FidFactory,

@@ -18,6 +18,7 @@ import VerificationStore from "./verificationStore.js";
 import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { err } from "neverthrow";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("verificationStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -46,6 +47,8 @@ beforeAll(async () => {
       verificationRemoveBody: { address: ethSignerKey },
     },
   });
+  const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
 beforeEach(async () => {
