@@ -48,6 +48,7 @@ let custodyEvent: OnChainEvent;
 let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 let castAdd: CastAddMessage;
+let castAdd2: CastAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -57,6 +58,7 @@ beforeAll(async () => {
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+  castAdd2 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
 describe("getInfo", () => {
@@ -65,6 +67,7 @@ describe("getInfo", () => {
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
+    await engine.mergeMessage(castAdd2);
 
     const result = await client.getInfo(HubInfoRequest.create({ dbStats: true }));
     expect(result.isOk()).toBeTruthy();

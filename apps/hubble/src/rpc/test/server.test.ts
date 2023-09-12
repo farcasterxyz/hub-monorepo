@@ -62,15 +62,12 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
   signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+  await engine.mergeOnChainEvent(custodyEvent);
+  await engine.mergeOnChainEvent(signerEvent);
+  await engine.mergeOnChainEvent(storageEvent);
 });
 
 describe("server rpc tests", () => {
-  beforeEach(async () => {
-    await engine.mergeOnChainEvent(custodyEvent);
-    await engine.mergeOnChainEvent(signerEvent);
-    await engine.mergeOnChainEvent(storageEvent);
-  });
-
   describe("getOnChainEvents", () => {
     const assertEventsMatchResult = (result: HubResult<OnChainEventResponse>, events: OnChainEvent[]) => {
       expect(result._unsafeUnwrap().events.map((e) => OnChainEvent.toJSON(e))).toEqual(
@@ -79,19 +76,15 @@ describe("server rpc tests", () => {
     };
 
     test("succeeds", async () => {
-      const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
       const idRegistryEvent2 = Factories.IdRegistryOnChainEvent.build({ fid: fid + 1 });
-      const signerEvent = Factories.SignerOnChainEvent.build({ fid });
       const signerEvent2 = Factories.SignerOnChainEvent.build({ blockNumber: signerEvent.blockNumber + 1, fid });
-      await expect(engine.mergeOnChainEvent(idRegistryEvent)).resolves.toBeInstanceOf(Ok);
       await expect(engine.mergeOnChainEvent(idRegistryEvent2)).resolves.toBeInstanceOf(Ok);
-      await expect(engine.mergeOnChainEvent(signerEvent)).resolves.toBeInstanceOf(Ok);
       await expect(engine.mergeOnChainEvent(signerEvent2)).resolves.toBeInstanceOf(Ok);
 
       const idResult = await client.getOnChainEvents(
         OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER, fid }),
       );
-      assertEventsMatchResult(idResult, [idRegistryEvent]);
+      assertEventsMatchResult(idResult, [custodyEvent]);
 
       const signerResult = await client.getOnChainEvents(
         OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_SIGNER, fid }),
@@ -99,7 +92,7 @@ describe("server rpc tests", () => {
       assertEventsMatchResult(signerResult, [signerEvent, signerEvent2]);
 
       const emptyResult = await client.getOnChainEvents(
-        OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_STORAGE_RENT, fid }),
+        OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_STORAGE_RENT, fid: fid + 1 }),
       );
       expect(emptyResult._unsafeUnwrap().events.length).toEqual(0);
     });
@@ -107,24 +100,12 @@ describe("server rpc tests", () => {
 
   describe("getCurrentStorageLimitsByFid", () => {
     test("succeeds for user with no storage", async () => {
-      const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
-      // Default storage limits
-      expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([
-        CASTS_SIZE_LIMIT_DEFAULT,
-        LINKS_SIZE_LIMIT_DEFAULT,
-        REACTIONS_SIZE_LIMIT_DEFAULT,
-        USER_DATA_SIZE_LIMIT_DEFAULT,
-        USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
-        VERIFICATIONS_SIZE_LIMIT_DEFAULT,
-      ]);
+      const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid: fid - 1 }));
+      // zero storage
+      expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([0, 0, 0, 0, 0, 0]);
     });
 
     test("succeeds for user with storage", async () => {
-      const rentEvent = Factories.StorageRentOnChainEvent.build({
-        fid,
-        storageRentEventBody: Factories.StorageRentEventBody.build({ units: 1 }),
-      });
-      await engine.mergeOnChainEvent(rentEvent);
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       const storageLimits = StorageLimitsResponse.fromJSON(result._unsafeUnwrap()).limits;
       expect(storageLimits).toContainEqual(

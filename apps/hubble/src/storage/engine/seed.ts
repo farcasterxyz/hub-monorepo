@@ -22,7 +22,7 @@ export const seedSigner = async (
   /** Generate and merge Signer and storage events linking the signer to the fid and allocating storage for messages */
 
   const signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signer } });
-  const storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+  const storageEvent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
   await expect(engine.mergeOnChainEvent(signerEvent)).resolves.toBeInstanceOf(Ok);
   await expect(engine.mergeOnChainEvent(storageEvent)).resolves.toBeInstanceOf(Ok);
 
