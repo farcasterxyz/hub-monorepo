@@ -755,7 +755,7 @@
               "tooltip": false,
               "viz": false
             },
-            "lineInterpolation": "stepBefore",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -814,7 +814,7 @@
         {
           "refCount": 0,
           "refId": "A",
-          "target": "stats.timers.hubble.syncengine.sync_time_ms.mean"
+          "target": "stats.timers.hubble.syncengine.sync_time_ms.sum"
         }
       ],
       "title": "Sync Duration",
