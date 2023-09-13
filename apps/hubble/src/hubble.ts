@@ -71,6 +71,7 @@ import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
 import axios from "axios";
 import { SingleBar } from "cli-progress";
+import { exportToProtobuf } from "@libp2p/peer-id-factory";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -423,8 +424,8 @@ export class Hub implements HubInterface {
     return this.rpcServer.address;
   }
 
-  get gossipAddresses() {
-    return this.gossipNode.multiaddrs ?? [];
+  get gossipAddresses(): Multiaddr[] {
+    return this.gossipNode.multiaddrs() ?? [];
   }
 
   get hubOperatorFid() {
@@ -433,10 +434,10 @@ export class Hub implements HubInterface {
 
   /** Returns the Gossip peerId string of this Hub */
   get identity(): string {
-    if (!this.gossipNode.isStarted() || !this.gossipNode.peerId) {
+    if (!this.gossipNode.isStarted() || !this.gossipNode.peerId()) {
       throw new HubError("unavailable", "cannot start gossip node without identity");
     }
-    return this.gossipNode.peerId.toString();
+    return this.gossipNode.peerId()?.toString() ?? "";
   }
 
   /* Start the GossipNode and RPC server  */
@@ -589,9 +590,11 @@ export class Hub implements HubInterface {
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
+    const peerId = this.options.peerId ? exportToProtobuf(this.options.peerId) : undefined;
+
     // Start the Gossip node
     await this.gossipNode.start(bootstrapAddrs, {
-      peerId: this.options.peerId,
+      peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
       gossipPort: this.options.gossipPort,
@@ -600,7 +603,7 @@ export class Hub implements HubInterface {
       directPeers: this.options.directPeers,
     });
 
-    this.registerEventHandlers();
+    await this.registerEventHandlers();
 
     // Start cron tasks
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
@@ -897,9 +900,6 @@ export class Hub implements HubInterface {
     } else if (gossipMessage.contactInfoContent) {
       await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
       return ok(undefined);
-    } else if (gossipMessage.networkLatencyMessage) {
-      await this.handleNetworkLatencyMessage(gossipMessage.networkLatencyMessage);
-      return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
@@ -911,7 +911,7 @@ export class Hub implements HubInterface {
     if (gossipAddress) {
       const addressInfo = addressInfoFromGossip(gossipAddress);
       if (addressInfo.isErr()) {
-        log.error(addressInfo.error, "unable to parse gossip address for peer");
+        log.error({ error: addressInfo.error, gossipAddress }, "unable to parse gossip address for peer");
         return;
       }
 
@@ -966,35 +966,6 @@ export class Hub implements HubInterface {
       if (syncResult.isErr()) {
         log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
       }
-    }
-  }
-
-  private async handleNetworkLatencyMessage(message: NetworkLatencyMessage) {
-    if (!this.gossipNode.peerId) {
-      log.error("gossipNode has no peerId");
-      return;
-    }
-    // Respond to ping message with an ack message
-    if (message.ackMessage) {
-      log.warn("GossipMetricsRecorder: received ack message, ignoring");
-    } else if (message.pingMessage) {
-      const pingMessage = message.pingMessage;
-      const ackMessage = AckMessageBody.create({
-        pingOriginPeerId: pingMessage.pingOriginPeerId,
-        ackOriginPeerId: this.gossipNode.peerId.toBytes(),
-        pingTimestamp: pingMessage.pingTimestamp,
-        ackTimestamp: Date.now(),
-      });
-      const networkLatencyMessage = NetworkLatencyMessage.create({
-        ackMessage,
-      });
-      const ackGossipMessage = GossipMessage.create({
-        networkLatencyMessage,
-        topics: [this.gossipNode.primaryTopic()],
-        peerId: this.gossipNode.peerId.toBytes(),
-        version: GOSSIP_PROTOCOL_VERSION,
-      });
-      await this.gossipNode.publish(ackGossipMessage);
     }
   }
 
@@ -1054,22 +1025,24 @@ export class Hub implements HubInterface {
     }
 
     log.info({ peerId }, "falling back to addressbook lookup for peer");
-    const peerInfo = await this.gossipNode.getPeerInfo(peerId);
-    if (!peerInfo) {
+    const peerAddresses = await this.gossipNode.getPeerAddresses(peerId);
+    if (!peerAddresses) {
       log.info({ function: "getRPCClientForPeer", peer }, `failed to find peer's address to request simple sync`);
 
       return;
     }
 
     // sorts addresses by Public IPs first
-    const addr = peerInfo.addresses.sort((a, b) => publicAddressesFirst(a, b))[0];
+    const addr = peerAddresses.sort((a, b) =>
+      publicAddressesFirst({ multiaddr: a, isCertified: false }, { multiaddr: b, isCertified: false }),
+    )[0];
     if (addr === undefined) {
       log.info({ function: "getRPCClientForPeer", peer }, "peer found but no address is available to request sync");
 
       return;
     }
 
-    const nodeAddress = addr.multiaddr.nodeAddress();
+    const nodeAddress = addr.nodeAddress();
     const ai = {
       address: nodeAddress.address,
       family: ipFamilyToString(nodeAddress.family),
@@ -1087,10 +1060,10 @@ export class Hub implements HubInterface {
     }
   }
 
-  private registerEventHandlers() {
+  private async registerEventHandlers() {
     // Subscribes to all relevant topics
-    this.gossipNode.gossip?.subscribe(this.gossipNode.primaryTopic());
-    this.gossipNode.gossip?.subscribe(this.gossipNode.contactInfoTopic());
+    await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
+    await this.gossipNode.subscribe(this.gossipNode.contactInfoTopic());
 
     this.gossipNode.on("message", async (_topic, message) => {
       await message.match(

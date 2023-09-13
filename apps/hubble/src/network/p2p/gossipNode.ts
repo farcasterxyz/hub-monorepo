@@ -1,6 +1,5 @@
-import { gossipsub, GossipSub } from "@chainsafe/libp2p-gossipsub";
 import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
-import { noise } from "@chainsafe/libp2p-noise";
+import { Worker } from "worker_threads";
 import {
   ContactInfoContent,
   FarcasterNetwork,
@@ -8,27 +7,26 @@ import {
   GossipVersion,
   HubAsyncResult,
   HubError,
+  HubErrorCode,
   HubResult,
   Message,
 } from "@farcaster/hub-nodejs";
 import { Connection } from "@libp2p/interface-connection";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes } from "@libp2p/peer-id";
-import { mplex } from "@libp2p/mplex";
-import { pubsubPeerDiscovery } from "@libp2p/pubsub-peer-discovery";
-import { tcp } from "@libp2p/tcp";
-import { Multiaddr } from "@multiformats/multiaddr";
-import { createLibp2p, Libp2p } from "libp2p";
-import { err, ok, Result, ResultAsync } from "neverthrow";
+import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
+import { err, ok, Result } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import { ConnectionFilter } from "./connectionFilter.js";
 import { logger } from "../../utils/logger.js";
-import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
-import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
+import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
+import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
+import EventEmitter from "events";
+import fs from "fs";
+import path from "path";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
@@ -48,9 +46,9 @@ interface NodeEvents {
 }
 
 /** Optional arguments provided when creating a Farcaster Gossip Node */
-interface NodeOptions {
+export interface NodeOptions {
   /** A libp2p PeerId to use as the node's identity. A random key pair is generated if undefined */
-  peerId?: PeerId | undefined;
+  peerId?: Uint8Array | undefined;
   /** A IP address that the node binds to, provided in MultiAddr format */
   ipMultiAddr?: string | undefined;
   /** An external IP address that is announced to peers */
@@ -67,15 +65,48 @@ interface NodeOptions {
   scoreThresholds?: Partial<PeerScoreThresholds>;
 }
 
-export type GossipNodeMethods = {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  [K in keyof GossipNode as GossipNode[K] extends (...args: any[]) => any ? K : never]: GossipNode[K];
+export interface LibP2PNodeMethodsInterface {
+  addToAddressBook: (peerId: Uint8Array, multiaddr: Uint8Array) => Promise<void>;
+  removeFromAddressBook: (peerId: Uint8Array) => Promise<void>;
+  getFromAddressBook: (peerId: Uint8Array) => Promise<Uint8Array[]>;
+  allPeerIds: () => Promise<string[]>;
+  makeNode: (options: NodeOptions) => Promise<{ success: boolean; errorMessage: string }>;
+  start: () => Promise<{ peerId: Uint8Array; multiaddrs: Uint8Array[] }>;
+  stop: () => Promise<void>;
+  connectAddress: (multiaddr: Uint8Array) => Promise<{ success: boolean; errorMessage: string }>;
+  connectionStats: () => Promise<{ inbound: number; outbound: number }>;
+  getPeerAddresses: (peerId: Uint8Array) => Promise<Uint8Array[]>;
+  isPeerAllowed: (peerId: Uint8Array) => Promise<boolean>;
+  updateAllowedPeerIds: (peerIds: string[] | undefined) => Promise<void>;
+  updateDeniedPeerIds: (peerIds: string[]) => Promise<void>;
+  subscribe: (topic: string) => Promise<void>;
+  gossipMessage: (
+    message: Uint8Array,
+  ) => Promise<{ success: boolean; errorType: string; errorMessage: string; peerIds: Uint8Array[] }>;
+  gossipContactInfo: (
+    contactInfo: Uint8Array,
+  ) => Promise<{ success: boolean; errorType: string; errorMessage: string; peerIds: Uint8Array[] }>;
+}
+
+export type LibP2PNodeMethodNames = keyof LibP2PNodeMethodsInterface;
+
+type LibP2PMethodReturnType<MethodName extends keyof LibP2PNodeMethodsInterface> = ReturnType<
+  LibP2PNodeMethodsInterface[MethodName]
+>;
+
+export type LibP2PNodeMethodMessage<MethodName extends LibP2PNodeMethodNames> = {
+  method: MethodName;
+  args: Parameters<LibP2PNodeMethodsInterface[MethodName]>;
+  methodCallId: number;
 };
 
-export type GossipNodeProps = {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  [K in keyof GossipNode]: GossipNode[K] extends (...args: any) => any ? GossipNode[K] : never;
-};
+export type LibP2PNodeMethodGenericMessage = {
+  [K in LibP2PNodeMethodNames]: {
+    method: K;
+    args: Parameters<LibP2PNodeMethodsInterface[K]>;
+    methodCallId: number;
+  };
+}[LibP2PNodeMethodNames];
 
 /**
  * A GossipNode allows a Hubble instance to connect and gossip messages to its peers.
@@ -85,30 +116,74 @@ export type GossipNodeProps = {
  * interact with the network.
  */
 export class GossipNode extends TypedEmitter<NodeEvents> {
-  private _node?: Libp2p;
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
 
-  private _connectionGater?: ConnectionFilter;
+  private _nodeWorker?: Worker;
+  private _nodeMethodCallId = 0;
+  private _nodeMethodCallMap = new Map<number, { resolve: Function; reject: Function }>();
+
+  private _nodeEvents = new EventEmitter();
+
+  private _peerId?: PeerId;
+  private _multiaddrs?: Multiaddr[];
+  private _isStarted = false;
 
   constructor(network?: FarcasterNetwork) {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
+
+    const workerPath = new URL("../../../build/network/p2p/gossipNodeWorker.js", import.meta.url);
+    this._nodeWorker = new Worker(workerPath, { workerData: { network: this._network } });
+
+    // console.log("Worker path", workerPath, ":", this._nodeWorker?.threadId);
+
+    this._nodeWorker?.addListener("message", (event) => {
+      // Check if this is a node event
+      // console.log("Recieved message from worker", JSON.stringify(event, null, 2));
+
+      if (event.event) {
+        const nodeEvent = event.event;
+        // console.log("Parent thread rebroadcasting ", JSON.stringify(nodeEvent, null, 2));
+        this._nodeEvents.emit(nodeEvent.eventName, JSON.parse(nodeEvent.detail));
+      } else {
+        const result = event;
+        const methodCall = this._nodeMethodCallMap.get(result.methodCallId);
+        if (methodCall) {
+          this._nodeMethodCallMap.delete(result.methodCallId);
+          if (result.error) {
+            methodCall.reject(result.error);
+          } else {
+            methodCall.resolve(result.result);
+          }
+        }
+      }
+    });
+  }
+
+  async callMethod<MethodName extends LibP2PNodeMethodNames>(
+    method: MethodName,
+    ...args: Parameters<LibP2PNodeMethodsInterface[MethodName]>
+  ): Promise<LibP2PMethodReturnType<MethodName>> {
+    const methodCallId = this._nodeMethodCallId++;
+    const methodCall = { method, args, methodCallId };
+
+    const result = new Promise<LibP2PMethodReturnType<MethodName>>((resolve, reject) => {
+      this._nodeMethodCallMap.set(methodCallId, { resolve, reject });
+      this._nodeWorker?.postMessage(methodCall);
+    });
+
+    return result;
   }
 
   /** Returns the PeerId (public key) of this node */
-  get peerId() {
-    return this._node?.peerId;
+  peerId(): PeerId | undefined {
+    return this._peerId;
   }
 
   /** Returns the node's addresses in MultiAddr form, including unreachable local addresses */
-  get multiaddrs() {
-    return this._node?.getMultiaddrs();
-  }
-
-  /** Returns the node's libp2p AddressBook */
-  get addressBook() {
-    return this._node?.peerStore.addressBook;
+  multiaddrs(): Multiaddr[] {
+    return this._multiaddrs ?? [];
   }
 
   /** Returs the node's network */
@@ -117,63 +192,30 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {
-    if (!this.addressBook) {
-      log.error({}, "address book missing for gossipNode");
-    } else {
-      const addResult = await ResultAsync.fromPromise(
-        this.addressBook.add(peerId, [multiaddr]),
-        (error) => new HubError("unavailable", error as Error),
-      );
-      if (addResult.isErr()) {
-        log.error({ error: addResult.error, peerId }, "failed to add contact info to address book");
-      }
-    }
+    await this.callMethod("addToAddressBook", exportToProtobuf(peerId), multiaddr.bytes);
   }
 
   /** Removes the peer from the address book and hangs up on them */
   async removePeerFromAddressBook(peerId: PeerId) {
-    if (this._node) {
-      const hangupResult = await ResultAsync.fromPromise(
-        this._node.hangUp(peerId),
-        (error) => new HubError("unavailable", error as Error),
-      );
-      if (hangupResult.isErr()) {
-        log.error({ error: hangupResult.error, peerId }, "failed to hang up peer");
-      }
-    }
-
-    if (!this.addressBook) {
-      log.error({}, "address book missing for gossipNode");
-    } else {
-      return this.addressBook.delete(peerId);
-    }
+    await this.callMethod("removeFromAddressBook", exportToProtobuf(peerId));
   }
 
   /** Returns the libp2p Peer instance after updating the connections in the AddressBook */
-  async getPeerInfo(peerId: PeerId) {
-    const existingConnections = this._node?.getConnections(peerId);
-    for (const conn of existingConnections ?? []) {
-      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
-      if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
-      }
-    }
-    return this._node?.peerStore.get(peerId);
+  async getPeerAddresses(peerId: PeerId): Promise<Multiaddr[]> {
+    return (await this.callMethod("getPeerAddresses", exportToProtobuf(peerId))).map((addr: Uint8Array) =>
+      multiaddr(addr),
+    );
   }
 
   async isPeerAllowed(peerId: PeerId) {
-    if (this._connectionGater) {
-      return await this._connectionGater.filterMultiaddrForPeer(peerId);
-    } else {
-      return true;
-    }
+    return await this.callMethod("isPeerAllowed", exportToProtobuf(peerId));
   }
 
   /** Returns the GossipSub instance used by the Node */
-  get gossip() {
-    const pubsub = this._node?.pubsub;
-    return pubsub ? (pubsub as GossipSub) : undefined;
-  }
+  // get gossip() {
+  //   const pubsub = this._node?.pubsub;
+  //   return pubsub ? (pubsub as GossipSub) : undefined;
+  // }
 
   /**
    * Initializes the libp2p node, which must be done before any configuration or communication.
@@ -182,19 +224,20 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
    * @param options         Options to configure node
    */
   async start(bootstrapAddrs: Multiaddr[], options?: NodeOptions): HubAsyncResult<void> {
-    const createResult = await this.createNode(options ?? {});
-    if (createResult.isErr()) return err(createResult.error);
+    const createResult = await this.callMethod("makeNode", options ?? {});
 
-    this._node = createResult.value;
+    if (!createResult.success) return err(new HubError("unavailable", createResult.errorMessage));
 
-    this.registerListeners();
-    // this.registerDebugListeners();
+    await this.registerListeners();
+    //await this.registerDebugListeners();
 
-    await this._node.start();
-    log.info(
-      { identity: this.identity, addresses: this._node.getMultiaddrs().map((a) => a.toString()) },
-      "Starting libp2p",
-    );
+    const { peerId, multiaddrs } = await this.callMethod("start");
+
+    this._peerId = await createFromProtobuf(peerId);
+    this._multiaddrs = multiaddrs.map((m) => multiaddr(m));
+    this._isStarted = true;
+
+    log.info({ identity: this.identity, addresses: this.multiaddrs().map((m) => m.toString()) }, "Starting libp2p");
 
     // Wait for a few seconds for everything to initialize before connecting to bootstrap nodes
     setTimeout(() => this.bootstrap(bootstrapAddrs), 1 * 1000);
@@ -206,80 +249,52 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   isStarted() {
-    return this._node?.isStarted();
+    return this._isStarted;
   }
 
   /** Removes the node from the libp2p network and tears down pubsub */
   async stop() {
-    await this._node?.stop();
+    await this.callMethod("stop");
+    await this._nodeWorker?.terminate();
     this._periodicPeerCheckJob?.stop();
 
     log.info({ identity: this.identity }, "Stopped libp2p...");
   }
 
-  get identity() {
-    return this.peerId?.toString();
+  get identity(): string | undefined {
+    return this._peerId?.toString();
   }
 
   /** Serializes and publishes a Farcaster Message to the network */
-  async gossipMessage(message: Message): Promise<HubResult<PublishResult>[]> {
-    const gossipMessage = GossipMessage.create({
-      message,
-      topics: [this.primaryTopic()],
-      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-      version: GOSSIP_PROTOCOL_VERSION,
-    });
-    return this.publish(gossipMessage);
+  async gossipMessage(message: Message): Promise<HubResult<PublishResult>> {
+    const result = await this.callMethod("gossipMessage", Message.encode(message).finish());
+    if (result.success) {
+      const peerIds = await Promise.all(
+        result.peerIds.map(async (peerId: Uint8Array) => await createFromProtobuf(peerId)),
+      );
+      return ok({ recipients: peerIds });
+    } else {
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage));
+    }
   }
 
   /** Serializes and publishes this node's ContactInfo to the network */
-  async gossipContactInfo(contactInfo: ContactInfoContent): Promise<HubResult<PublishResult>[]> {
-    const gossipMessage = GossipMessage.create({
-      contactInfoContent: contactInfo,
-      topics: [this.contactInfoTopic()],
-      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
-      version: GOSSIP_PROTOCOL_VERSION,
-    });
-    return this.publish(gossipMessage);
-  }
-
-  /** Publishes a Gossip Message to the network */
-  async publish(message: GossipMessage): Promise<HubResult<PublishResult>[]> {
-    const topics = message.topics;
-    const encodedMessage = GossipNode.encodeMessage(message);
-
-    log.debug({ identity: this.identity }, `Publishing message to topics: ${topics}`);
-    if (this.gossip === undefined) {
-      return [err(new HubError("unavailable", new Error("GossipSub not initialized")))];
-    }
-    const gossip = this.gossip;
-
-    if (encodedMessage.isErr()) {
-      log.error(encodedMessage.error, "Failed to publish message.");
-      return [err(encodedMessage.error)];
-    } else {
-      const results = await Promise.all(
-        topics.map(async (topic) => {
-          try {
-            const publishResult = await gossip.publish(topic, encodedMessage.value);
-            return ok(publishResult);
-            // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-          } catch (error: any) {
-            log.error(error, "Failed to publish message");
-            return err(new HubError("bad_request.duplicate", error));
-          }
-        }),
+  async gossipContactInfo(contactInfo: ContactInfoContent): Promise<HubResult<PublishResult>> {
+    const result = await this.callMethod("gossipContactInfo", ContactInfoContent.encode(contactInfo).finish());
+    if (result.success) {
+      const peerIds = await Promise.all(
+        result.peerIds.map(async (peerId: Uint8Array) => await createFromProtobuf(peerId)),
       );
-
-      log.debug({ identity: this.identity, results }, "Published to gossip peers");
-      return results;
+      return ok({ recipients: peerIds });
+    } else {
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage));
     }
   }
 
   /** Connects to a peer GossipNode */
   async connect(peerNode: GossipNode): Promise<HubResult<void>> {
-    const multiaddrs = peerNode.multiaddrs;
-    if (!multiaddrs) {
+    const multiaddrs = peerNode.multiaddrs();
+    if (!multiaddrs || multiaddr.length === 0) {
       return err(new HubError("unavailable", { message: "no peer id" }));
     }
 
@@ -295,124 +310,19 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   /** Connect to a peer Gossip Node using a specific address */
   async connectAddress(address: Multiaddr): Promise<HubResult<void>> {
-    log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
-    try {
-      const conn = await this._node?.dial(address);
-
-      if (conn) {
-        log.info({ identity: this.identity, address }, `Connected to peer at address: ${address}`);
-        return ok(undefined);
-      }
-      // biome-ignore lint/suspicious/noExplicitAny: error catching
-    } catch (error: any) {
-      log.error(error, `Failed to connect to peer at address: ${address}`);
-      return err(new HubError("unavailable", error));
+    const result = await this.callMethod("connectAddress", address.bytes);
+    if (result.success) {
+      return ok(undefined);
+    } else {
+      return err(new HubError("unavailable", result.errorMessage));
     }
-    return err(new HubError("unavailable", { message: `cannot connect to peer: ${address}` }));
   }
 
-  /** Return if we have any inbound P2P connections */
-  hasInboundConnections(): boolean {
-    return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
-  }
-
-  updateStatsdPeerGauges() {
-    const [inbound, outbound] = this._node?.getConnections()?.reduce(
-      (acc, conn) => {
-        acc[conn.stat.direction === "inbound" ? 0 : 1]++;
-        return acc;
-      },
-      [0, 0],
-    ) || [0, 0];
+  async updateStatsdPeerGauges() {
+    const { inbound, outbound } = await this.callMethod("connectionStats");
 
     statsd().gauge("gossip.peers.inbound", inbound);
     statsd().gauge("gossip.peers.outbound", outbound);
-  }
-
-  registerListeners() {
-    this._node?.addEventListener("peer:connect", (event) => {
-      log.info(
-        { peer: event.detail.remotePeer, addrs: event.detail.remoteAddr, type: event.detail.stat.direction },
-        "P2P Connection established",
-      );
-      this.emit("peerConnect", event.detail);
-      this.updateStatsdPeerGauges();
-    });
-    this._node?.addEventListener("peer:disconnect", (event) => {
-      log.info({ peer: event.detail.remotePeer }, "P2P Connection disconnected");
-      this.emit("peerDisconnect", event.detail);
-      this.updateStatsdPeerGauges();
-    });
-    this.gossip?.addEventListener("gossipsub:message", (event) => {
-      log.debug({
-        identity: this.identity,
-        gossipMessageId: event.detail.msgId,
-        from: event.detail.propagationSource,
-        topic: event.detail.msg.topic,
-      });
-
-      // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
-      if (this.gossipTopics().includes(event.detail.msg.topic)) {
-        this.emit("message", event.detail.msg.topic, GossipNode.decodeMessage(event.detail.msg.data));
-        statsd().increment("gossip.messages");
-      }
-    });
-  }
-
-  registerDebugListeners() {
-    this._node?.addEventListener("peer:discovery", (event) => {
-      log.info({ identity: this.identity }, `Found peer: ${event.detail.multiaddrs}  }`);
-    });
-    this._node?.addEventListener("peer:connect", (event) => {
-      log.info({ identity: this.identity }, `Connection established to: ${event.detail.remotePeer.toString()}`);
-    });
-    this._node?.addEventListener("peer:disconnect", (event) => {
-      log.info({ identity: this.identity }, `Disconnected from: ${event.detail.remotePeer.toString()} `);
-    });
-    this.gossip?.addEventListener("message", (event) => {
-      log.info(
-        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-        { identity: this.identity, from: (event.detail as any)["from"] },
-        `Received message for topic: ${event.detail.topic}`,
-      );
-    });
-    this.gossip?.addEventListener("subscription-change", (event) => {
-      log.info(
-        { identity: this.identity },
-        `Subscription change: ${event.detail.subscriptions.map((value) => {
-          value.topic;
-        })}`,
-      );
-    });
-  }
-
-  primaryTopic() {
-    return `f_network_${this._network}_primary`;
-  }
-  contactInfoTopic() {
-    return `f_network_${this._network}_contact_info`;
-  }
-
-  gossipTopics() {
-    return [this.primaryTopic(), this.contactInfoTopic()];
-  }
-
-  allPeerIds(): string[] {
-    return this._node?.getPeers()?.map((peer) => peer.toString()) ?? [];
-  }
-
-  updateAllowedPeerIds(peerIds: string[] | undefined) {
-    this._connectionGater?.updateAllowedPeers(peerIds);
-  }
-
-  updateDeniedPeerIds(peerIds: string[]) {
-    statsd().gauge("gossip.denied_peers", peerIds.length);
-    this._connectionGater?.updateDeniedPeers(peerIds);
-  }
-
-  //TODO: Needs better typesafety
-  static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
-    return ok(GossipMessage.encode(message).finish());
   }
 
   static decodeMessage(message: Uint8Array): HubResult<GossipMessage> {
@@ -429,6 +339,120 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     } catch (error: any) {
       return err(new HubError("bad_request.parse_failure", error));
     }
+  }
+
+  async subscribe(topic: string) {
+    await this.callMethod("subscribe", topic);
+  }
+
+  async registerListeners() {
+    this._nodeEvents?.addListener("peer:connect", (detail) => {
+      // console.log("Peer Connected", JSON.stringify(detail, null, 2));
+      log.info(
+        { peer: detail.remotePeer, addrs: detail.remoteAddr, type: detail.stat.direction },
+        "P2P Connection established",
+      );
+      this.emit("peerConnect", detail);
+      this.updateStatsdPeerGauges();
+    });
+    this._nodeEvents?.addListener("peer:disconnect", (detail) => {
+      log.info({ peer: detail.remotePeer }, "P2P Connection disconnected");
+      this.emit("peerDisconnect", detail);
+      this.updateStatsdPeerGauges();
+    });
+    this._nodeEvents?.addListener("gossipsub:message", (detail) => {
+      log.debug({
+        identity: this.identity,
+        gossipMessageId: detail.msgId,
+        from: detail.propagationSource,
+        topic: detail.msg.topic,
+      });
+
+      // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
+      if (this.gossipTopics().includes(detail.msg.topic)) {
+        try {
+          let data: Buffer;
+          if (detail.msg.data.type === "Buffer") {
+            data = Buffer.from(detail.msg.data.data);
+          } else {
+            data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
+          }
+          this.emit("message", detail.msg.topic, GossipNode.decodeMessage(data));
+        } catch (e) {
+          logger.error({ e, data: detail.msg.data }, "Failed to decode message");
+        }
+        statsd().increment("gossip.messages");
+      }
+    });
+  }
+
+  registerDebugListeners() {
+    this._nodeEvents?.addListener("peer:discovery", (detail) => {
+      log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}  }`);
+    });
+    this._nodeEvents?.addListener("peer:connect", (detail) => {
+      log.info({ identity: this.identity }, `Connection established to: ${detail.remotePeer.toString()}`);
+    });
+    this._nodeEvents?.addListener("peer:disconnect", (detail) => {
+      log.info({ identity: this.identity }, `Disconnected from: ${detail.remotePeer.toString()} `);
+    });
+    this._nodeEvents?.addListener("message", (detail) => {
+      log.info(
+        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+        { identity: this.identity, from: (detail as any)["from"] },
+        `Received message for topic: ${detail.topic}`,
+      );
+    });
+    this._nodeEvents?.addListener("subscription-change", (detail) => {
+      log.info(
+        { identity: this.identity },
+        `Subscription change: ${
+          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+          detail.subscriptions.map((value: any) => {
+            value.topic;
+          })
+        }`,
+      );
+    });
+  }
+
+  public static primaryTopicForNetwork(network: FarcasterNetwork) {
+    return `f_network_${network}_primary`;
+  }
+
+  public static contactInfoTopicForNetwork(network: FarcasterNetwork) {
+    return `f_network_${network}_contact_info`;
+  }
+
+  primaryTopic(): string {
+    return GossipNode.primaryTopicForNetwork(this._network);
+  }
+
+  contactInfoTopic(): string {
+    return GossipNode.contactInfoTopicForNetwork(this._network);
+  }
+
+  gossipTopics() {
+    return [GossipNode.primaryTopicForNetwork(this._network), GossipNode.contactInfoTopicForNetwork(this._network)];
+  }
+
+  /** Return if we have any inbound P2P connections */
+  async hasInboundConnections(): Promise<boolean> {
+    const { inbound } = await this.callMethod("connectionStats");
+    return inbound > 0;
+  }
+
+  async allPeerIds(): Promise<string[]> {
+    return await this.callMethod("allPeerIds");
+  }
+
+  updateAllowedPeerIds(peerIds: string[] | undefined) {
+    this.callMethod("updateAllowedPeerIds", peerIds);
+  }
+
+  updateDeniedPeerIds(peerIds: string[]) {
+    statsd().gauge("gossip.denied_peers", peerIds.length);
+    this.callMethod("updateDeniedPeerIds", peerIds);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -449,94 +473,5 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     }
 
     return ok(undefined);
-  }
-
-  /* Generates a message ID for gossip messages
-   *
-   * Specifically overrides the default behavior for Farcaster Protocol Messages that are created by user interactions
-   *
-   * @param message - The message to generate an ID for
-   * @returns The message ID as an Uint8Array
-   */
-  public getMessageId(message: GossipSubMessage): Uint8Array {
-    if (message.topic.includes(this.primaryTopic())) {
-      // check if message is a Farcaster Protocol Message
-      const protocolMessage = GossipNode.decodeMessage(message.data);
-      if (protocolMessage.isOk() && protocolMessage.value.version === GossipVersion.V1_1) {
-        if (protocolMessage.value.message !== undefined) {
-          return protocolMessage.unwrapOr(undefined)?.message?.hash ?? new Uint8Array();
-        }
-      }
-    }
-    return msgIdFnStrictSign(message);
-  }
-
-  /** Creates a Libp2p node with GossipSub */
-  private async createNode(options: NodeOptions): Promise<HubResult<Libp2p>> {
-    const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
-    const listenPort = options.gossipPort ?? 0;
-    const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
-    const peerDiscoveryTopic = `_farcaster.${this._network}.peer_discovery`;
-
-    let announceMultiAddrStrList: string[] = [];
-    if (options.announceIp && options.gossipPort) {
-      const announceMultiAddr = addressInfoFromParts(options.announceIp, options.gossipPort).map((addressInfo) =>
-        ipMultiAddrStrFromAddressInfo(addressInfo),
-      );
-      if (announceMultiAddr.isOk() && announceMultiAddr.value.isOk()) {
-        // If we have a valid announce IP, use it
-        const announceIpMultiaddr = announceMultiAddr.value.value;
-        announceMultiAddrStrList = [`${announceIpMultiaddr}/tcp/${options.gossipPort}`];
-      }
-    }
-
-    const checkResult = checkNodeAddrs(listenIPMultiAddr, listenMultiAddrStr);
-    if (checkResult.isErr()) return err(new HubError("unavailable", checkResult.error));
-
-    const gossip = gossipsub({
-      emitSelf: false,
-      allowPublishToZeroPeers: true,
-      globalSignaturePolicy: "StrictSign",
-      msgIdFn: this.getMessageId.bind(this),
-      directPeers: options.directPeers || [],
-      canRelayMessage: true,
-      scoreThresholds: { ...options.scoreThresholds },
-    });
-
-    if (options.allowedPeerIdStrs) {
-      log.info(
-        {
-          identity: this.identity,
-          function: "createNode",
-          allowedPeerIds: options.allowedPeerIdStrs,
-          deniedPeerIds: options.deniedPeerIdStrs,
-        },
-        "!!! PEER-ID RESTRICTIONS ENABLED !!!",
-      );
-    } else {
-      log.warn(
-        { identity: this.identity, deniedPeerIds: options.deniedPeerIdStrs, function: "createNode" },
-        "No PEER-ID RESTRICTIONS ENABLED. This node will accept connections from any peer",
-      );
-    }
-    this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs, options.deniedPeerIdStrs);
-
-    return ResultAsync.fromPromise(
-      createLibp2p({
-        // Only set optional fields if defined to avoid errors
-        ...(options.peerId && { peerId: options.peerId }),
-        connectionGater: this._connectionGater,
-        addresses: {
-          listen: [listenMultiAddrStr],
-          announce: announceMultiAddrStrList,
-        },
-        transports: [tcp()],
-        streamMuxers: [mplex()],
-        connectionEncryption: [noise()],
-        pubsub: gossip,
-        peerDiscovery: [pubsubPeerDiscovery({ topics: [peerDiscoveryTopic] })],
-      }),
-      (e) => new HubError("unavailable", { message: "failed to create libp2p node", cause: e as Error }),
-    );
   }
 }

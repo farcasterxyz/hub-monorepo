@@ -281,7 +281,7 @@ export default class Server {
     return new Promise((resolve, reject) => {
       this.grpcServer.bindAsync(`${ip}:${port}`, ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
-          logger.error({ component: "gRPC Server", err }, "Failed to start gRPC Server");
+          logger.error({ component: "gRPC Server", err }, "Failed to start gRPC Server. Is the port already in use?");
           reject(err);
         } else {
           this.grpcServer.start();
@@ -383,7 +383,7 @@ export default class Server {
             peersToCheck = [call.request.peerId];
           } else {
             // If no peerId is specified, check upto 20 peers
-            peersToCheck = this.gossipNode.allPeerIds().slice(0, 20);
+            peersToCheck = (await this.gossipNode.allPeerIds()).slice(0, 20);
           }
 
           const response = SyncStatusResponse.create({
