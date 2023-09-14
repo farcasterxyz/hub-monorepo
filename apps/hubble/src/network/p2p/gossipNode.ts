@@ -65,48 +65,55 @@ export interface NodeOptions {
   scoreThresholds?: Partial<PeerScoreThresholds>;
 }
 
-export interface LibP2PNodeMethodsInterface {
+// A common return type for several methods on the libp2p node.
+// Includes a success flag, an error message and an optional error type
+type SuccessOrError = { success: boolean; errorMessage: string | undefined; errorType: string | undefined };
+
+// An interface that defines the methods that can be called on the libp2p node
+export interface LibP2PNodeInterface {
   addToAddressBook: (peerId: Uint8Array, multiaddr: Uint8Array) => Promise<void>;
   removeFromAddressBook: (peerId: Uint8Array) => Promise<void>;
   getFromAddressBook: (peerId: Uint8Array) => Promise<Uint8Array[]>;
   allPeerIds: () => Promise<string[]>;
-  makeNode: (options: NodeOptions) => Promise<{ success: boolean; errorMessage: string }>;
+  makeNode: (options: NodeOptions) => Promise<SuccessOrError>;
   start: () => Promise<{ peerId: Uint8Array; multiaddrs: Uint8Array[] }>;
   stop: () => Promise<void>;
-  connectAddress: (multiaddr: Uint8Array) => Promise<{ success: boolean; errorMessage: string }>;
+  connectAddress: (multiaddr: Uint8Array) => Promise<SuccessOrError>;
   connectionStats: () => Promise<{ inbound: number; outbound: number }>;
   getPeerAddresses: (peerId: Uint8Array) => Promise<Uint8Array[]>;
   isPeerAllowed: (peerId: Uint8Array) => Promise<boolean>;
   updateAllowedPeerIds: (peerIds: string[] | undefined) => Promise<void>;
   updateDeniedPeerIds: (peerIds: string[]) => Promise<void>;
   subscribe: (topic: string) => Promise<void>;
-  gossipMessage: (
-    message: Uint8Array,
-  ) => Promise<{ success: boolean; errorType: string; errorMessage: string; peerIds: Uint8Array[] }>;
-  gossipContactInfo: (
-    contactInfo: Uint8Array,
-  ) => Promise<{ success: boolean; errorType: string; errorMessage: string; peerIds: Uint8Array[] }>;
+  gossipMessage: (message: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
+  gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
 }
 
-export type LibP2PNodeMethodNames = keyof LibP2PNodeMethodsInterface;
+// Extract the method names (as strings) from the LibP2PNodeInterface
+export type LibP2PInterfaceMethodNames = keyof LibP2PNodeInterface;
 
-type LibP2PMethodReturnType<MethodName extends keyof LibP2PNodeMethodsInterface> = ReturnType<
-  LibP2PNodeMethodsInterface[MethodName]
+// Extract the return type of a method from the LibP2PNodeInterface, keyed by method name (as string)
+export type LibP2PNodeMethodReturnType<MethodName extends keyof LibP2PNodeInterface> = ReturnType<
+  LibP2PNodeInterface[MethodName]
 >;
 
-export type LibP2PNodeMethodMessage<MethodName extends LibP2PNodeMethodNames> = {
+// A message sent to the worker thread to call a method on the libp2p node. Includes the method names, the correctly typed params
+// and a unique id to match the response to the correct method call
+export type LibP2PNodeMessage<MethodName extends LibP2PInterfaceMethodNames> = {
   method: MethodName;
-  args: Parameters<LibP2PNodeMethodsInterface[MethodName]>;
+  args: Parameters<LibP2PNodeInterface[MethodName]>;
   methodCallId: number;
 };
 
+// A union of all the possible LibP2PNodeMessage types, keyed by method name. This is used to type the worker thread's
+// message handler
 export type LibP2PNodeMethodGenericMessage = {
-  [K in LibP2PNodeMethodNames]: {
+  [K in LibP2PInterfaceMethodNames]: {
     method: K;
-    args: Parameters<LibP2PNodeMethodsInterface[K]>;
+    args: Parameters<LibP2PNodeInterface[K]>;
     methodCallId: number;
   };
-}[LibP2PNodeMethodNames];
+}[LibP2PInterfaceMethodNames];
 
 /**
  * A GossipNode allows a Hubble instance to connect and gossip messages to its peers.
@@ -114,6 +121,14 @@ export type LibP2PNodeMethodGenericMessage = {
  * Hubble instances communicate using the gossipsub protocol implemented by libp2p. Each GossipNode
  * wraps around a libp2p node which manages the gossip network and provides convenience methods to
  * interact with the network.
+ *
+ * NOTE:
+ *
+ * 1. The actual libp2p node is run in a worker thread, and method calls are sent to the worker
+ * thread via messages.
+ * 2. When sending data across to the worker thread, we use protobufs to serialize the data. This is
+ * because the worker thread runs in a separate process and we cannot pass objects directly, but only send
+ * primitive types like strings, byte arrays and numbers.
  */
 export class GossipNode extends TypedEmitter<NodeEvents> {
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
@@ -133,20 +148,20 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     super();
     this._network = network ?? FarcasterNetwork.NONE;
 
+    // Create a worker thread to run the libp2p node. The path is relative to the current file
+    // We use the "../../../" so that it works when running tests from the root directory
+    // and also in prod
     const workerPath = new URL("../../../build/network/p2p/gossipNodeWorker.js", import.meta.url);
     this._nodeWorker = new Worker(workerPath, { workerData: { network: this._network } });
 
-    // console.log("Worker path", workerPath, ":", this._nodeWorker?.threadId);
-
     this._nodeWorker?.addListener("message", (event) => {
-      // Check if this is a node event
-      // console.log("Recieved message from worker", JSON.stringify(event, null, 2));
-
+      // Check if this is a libp2p node event. These are events generated by the libp2p node and are
+      // rebroadcast to any listeners
       if (event.event) {
         const nodeEvent = event.event;
-        // console.log("Parent thread rebroadcasting ", JSON.stringify(nodeEvent, null, 2));
         this._nodeEvents.emit(nodeEvent.eventName, JSON.parse(nodeEvent.detail));
       } else {
+        // Result of a method call. Pick the correct method call from the map and resolve/reject the promise
         const result = event;
         const methodCall = this._nodeMethodCallMap.get(result.methodCallId);
         if (methodCall) {
@@ -161,14 +176,16 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     });
   }
 
-  async callMethod<MethodName extends LibP2PNodeMethodNames>(
+  // A typed wrapper around the worker.postMessage method, to make sure we don't make any type mistakes
+  // when calling the method
+  async callMethod<MethodName extends LibP2PInterfaceMethodNames>(
     method: MethodName,
-    ...args: Parameters<LibP2PNodeMethodsInterface[MethodName]>
-  ): Promise<LibP2PMethodReturnType<MethodName>> {
+    ...args: Parameters<LibP2PNodeInterface[MethodName]>
+  ): Promise<LibP2PNodeMethodReturnType<MethodName>> {
     const methodCallId = this._nodeMethodCallId++;
     const methodCall = { method, args, methodCallId };
 
-    const result = new Promise<LibP2PMethodReturnType<MethodName>>((resolve, reject) => {
+    const result = new Promise<LibP2PNodeMethodReturnType<MethodName>>((resolve, reject) => {
       this._nodeMethodCallMap.set(methodCallId, { resolve, reject });
       this._nodeWorker?.postMessage(methodCall);
     });
@@ -225,8 +242,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
    */
   async start(bootstrapAddrs: Multiaddr[], options?: NodeOptions): HubAsyncResult<void> {
     const createResult = await this.callMethod("makeNode", options ?? {});
-
-    if (!createResult.success) return err(new HubError("unavailable", createResult.errorMessage));
+    if (!createResult.success) return err(new HubError("unavailable", createResult.errorMessage as string));
 
     await this.registerListeners();
     //await this.registerDebugListeners();
@@ -274,7 +290,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       );
       return ok({ recipients: peerIds });
     } else {
-      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage));
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage as string));
     }
   }
 
@@ -287,7 +303,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       );
       return ok({ recipients: peerIds });
     } else {
-      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage));
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage as string));
     }
   }
 
@@ -314,7 +330,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     if (result.success) {
       return ok(undefined);
     } else {
-      return err(new HubError("unavailable", result.errorMessage));
+      return err(new HubError("unavailable", result.errorMessage as string));
     }
   }
 

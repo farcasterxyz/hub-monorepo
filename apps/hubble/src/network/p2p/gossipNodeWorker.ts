@@ -2,7 +2,14 @@ import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import * as MultiAddr from "@multiformats/multiaddr";
 import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
-import { LibP2PNodeMethodMessage, LibP2PNodeMethodGenericMessage, NodeOptions, GossipNode } from "./gossipNode.js";
+import {
+  LibP2PNodeMessage,
+  LibP2PNodeMethodGenericMessage,
+  NodeOptions,
+  GossipNode,
+  LibP2PNodeMethodReturnType,
+  LibP2PNodeInterface,
+} from "./gossipNode.js";
 import {
   ContactInfoContent,
   FarcasterNetwork,
@@ -30,6 +37,9 @@ import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const log = logger.child({ component: "LibP2PNodeWorker" });
 
+/**
+ * A wrapper around a libp2p node that is designed to run in a worker thread.
+ */
 export class LibP2PNode {
   _node?: Libp2p;
   private _connectionGater?: ConnectionFilter;
@@ -384,19 +394,33 @@ export class LibP2PNode {
 
 const libp2pNode = new LibP2PNode(workerData?.network as FarcasterNetwork);
 
+// This function is a no-op at runtime, but exists to typecheck the return values
+// the worker thread sends back to the main thread. Getting this wrong will cause
+// difficult bugs, so better to let the compiler check it for us.
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+function makeResult<MethodName extends keyof LibP2PNodeInterface>(
+  result: UnwrapPromise<LibP2PNodeMethodReturnType<MethodName>>,
+) {
+  return result;
+}
+
 parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
   // console.log("Received message from parent thread", msg);
   const { method, methodCallId } = msg;
 
   switch (method) {
     case "makeNode": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"makeNode">;
+      const specificMsg = msg as LibP2PNodeMessage<"makeNode">;
       const [options] = specificMsg.args;
 
       const node = await libp2pNode.makeNode(options);
       parentPort?.postMessage({
         methodCallId,
-        result: { success: node.isOk(), errorMessage: node.isErr() ? node.error.message : undefined },
+        result: makeResult<"makeNode">({
+          success: node.isOk(),
+          errorMessage: node.isErr() ? node.error.message : undefined,
+          errorType: node.isErr() ? node.error.errCode : undefined,
+        }),
       });
       break;
     }
@@ -404,14 +428,14 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       await libp2pNode.start();
 
       const peerId = libp2pNode.peerId ? exportToProtobuf(libp2pNode.peerId) : new Uint8Array();
-      const multiaddrs = libp2pNode._node?.getMultiaddrs().map((m) => m.bytes);
+      const multiaddrs = libp2pNode._node?.getMultiaddrs().map((m) => m.bytes) ?? [];
 
-      parentPort?.postMessage({ methodCallId, result: { peerId, multiaddrs } });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"start">({ peerId, multiaddrs }) });
       break;
     }
     case "stop": {
       await libp2pNode.stop();
-      parentPort?.postMessage({ methodCallId, result: undefined });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"stop">(undefined) });
 
       // Exit the worker thread
       setTimeout(() => process.exit(0), 1000);
@@ -419,83 +443,92 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
     }
     case "allPeerIds": {
       const peerIds = libp2pNode.allPeerIds();
-      parentPort?.postMessage({ methodCallId, result: peerIds });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"allPeerIds">(peerIds) });
       break;
     }
     case "addToAddressBook": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"addToAddressBook">;
+      const specificMsg = msg as LibP2PNodeMessage<"addToAddressBook">;
       const [peerId, multiaddr] = specificMsg.args;
 
       await libp2pNode.addPeerToAddressBook(await createFromProtobuf(peerId), MultiAddr.multiaddr(multiaddr));
-      parentPort?.postMessage({ methodCallId, result: undefined });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"addToAddressBook">(undefined) });
       break;
     }
     case "removeFromAddressBook": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"removeFromAddressBook">;
+      const specificMsg = msg as LibP2PNodeMessage<"removeFromAddressBook">;
       const [peerId] = specificMsg.args;
 
       await libp2pNode.removePeerFromAddressBook(await createFromProtobuf(peerId));
-      parentPort?.postMessage({ methodCallId, result: undefined });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"removeFromAddressBook">(undefined) });
       break;
     }
     case "connectAddress": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"connectAddress">;
+      const specificMsg = msg as LibP2PNodeMessage<"connectAddress">;
       const [multiaddr] = specificMsg.args;
 
       const result = await libp2pNode.connectAddress(MultiAddr.multiaddr(multiaddr));
       parentPort?.postMessage({
         methodCallId,
-        result: { success: result?.isOk(), errorMessage: result?.isErr() ? result.error.message : undefined },
+        result: makeResult<"connectAddress">({
+          success: result?.isOk(),
+          errorType: result?.isErr() ? result.error.errCode : undefined,
+          errorMessage: result?.isErr() ? result.error.message : undefined,
+        }),
       });
       break;
     }
     case "connectionStats": {
       const stats = await libp2pNode.connectionStats();
-      parentPort?.postMessage({ methodCallId, result: stats });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"connectionStats">(stats) });
       break;
     }
     case "getPeerAddresses": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"getPeerAddresses">;
+      const specificMsg = msg as LibP2PNodeMessage<"getPeerAddresses">;
       const [peerId] = specificMsg.args;
 
       const addresses = await libp2pNode.getPeerAddresses(await createFromProtobuf(peerId));
-      parentPort?.postMessage({ methodCallId, result: addresses?.map((addr) => addr.bytes) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"getPeerAddresses">(addresses?.map((addr) => addr.bytes)),
+      });
       break;
     }
     case "isPeerAllowed": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"isPeerAllowed">;
+      const specificMsg = msg as LibP2PNodeMessage<"isPeerAllowed">;
       const [peerId] = specificMsg.args;
 
-      const result = await libp2pNode.isPeerAllowed(await createFromProtobuf(peerId));
-      parentPort?.postMessage({ methodCallId, result });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"isPeerAllowed">(await libp2pNode.isPeerAllowed(await createFromProtobuf(peerId))),
+      });
       break;
     }
     case "updateAllowedPeerIds": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"updateAllowedPeerIds">;
+      const specificMsg = msg as LibP2PNodeMessage<"updateAllowedPeerIds">;
       const [peerIds] = specificMsg.args;
 
       libp2pNode.updateAllowedPeerIds(peerIds);
-      parentPort?.postMessage({ methodCallId, result: undefined });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"updateAllowedPeerIds">(undefined) });
       break;
     }
     case "updateDeniedPeerIds": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"updateDeniedPeerIds">;
+      const specificMsg = msg as LibP2PNodeMessage<"updateDeniedPeerIds">;
       const [peerIds] = specificMsg.args;
 
       libp2pNode.updateDeniedPeerIds(peerIds);
-      parentPort?.postMessage({ methodCallId, result: undefined });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"updateDeniedPeerIds">(undefined) });
       break;
     }
     case "subscribe": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"subscribe">;
+      const specificMsg = msg as LibP2PNodeMessage<"subscribe">;
       const [topic] = specificMsg.args;
 
       libp2pNode.subscribe(topic);
-      parentPort?.postMessage({ methodCallId, result: undefined });
+      parentPort?.postMessage({ methodCallId, result: makeResult<"subscribe">(undefined) });
       break;
     }
     case "gossipMessage": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"gossipMessage">;
+      const specificMsg = msg as LibP2PNodeMessage<"gossipMessage">;
       const [message] = specificMsg.args;
 
       const publishResult = Result.combine(await libp2pNode.gossipMessage(Message.decode(message)));
@@ -503,17 +536,17 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
 
       parentPort?.postMessage({
         methodCallId,
-        result: {
+        result: makeResult<"gossipMessage">({
           success: publishResult.isOk(),
           errorMessage: publishResult.isErr() ? publishResult.error.message : undefined,
           errorType: publishResult.isErr() ? publishResult.error.errCode : undefined,
-          peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : undefined,
-        },
+          peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : [],
+        }),
       });
       break;
     }
     case "gossipContactInfo": {
-      const specificMsg = msg as LibP2PNodeMethodMessage<"gossipContactInfo">;
+      const specificMsg = msg as LibP2PNodeMessage<"gossipContactInfo">;
       const [contactInfo] = specificMsg.args;
 
       const publishResult = Result.combine(await libp2pNode.gossipContactInfo(ContactInfoContent.decode(contactInfo)));
@@ -521,12 +554,12 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
 
       parentPort?.postMessage({
         methodCallId,
-        result: {
+        result: makeResult<"gossipContactInfo">({
           success: publishResult.isOk(),
           errorMessage: publishResult.isErr() ? publishResult.error.message : undefined,
           errorType: publishResult.isErr() ? publishResult.error.errCode : undefined,
-          peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : undefined,
-        },
+          peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : [],
+        }),
       });
       break;
     }
