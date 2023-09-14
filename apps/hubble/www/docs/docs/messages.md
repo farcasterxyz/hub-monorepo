@@ -25,7 +25,7 @@ A MessageData object contains properties common to all MessagesTypes and wraps a
 | fid       | uint64                                                                                                                                                                                                                                                                                                                                                 |       | Farcaster ID of the user producing the message |
 | timestamp | uint32                                                                                                                                                                                                                                                                                                                                                 |       | Farcaster epoch timestamp in seconds           |
 | network   | [FarcasterNetwork](#FarcasterNetwork)                                                                                                                                                                                                                                                                                                                  |       | Farcaster network the message is intended for  |
-| body      | [CastAddBody](#CastAddBody), <br> [CastRemoveBody](#CastRemoveBody), <br> [ReactionBody](#ReactionBody), <br>[VerificationAddEthAddressBody](#VerificationAddEthAddressBody), <br>[VerificationRemoveBody](#VerificationRemoveBody), <br>[SignerAddBody](#SignerAddBody), <br>[SignerRemoveBody](#SignerRemoveBody),<br> [UserDataBody](#UserDataBody), ,<br> [LinkBody](#LinkBody), ,<br> [UserNameProof](#UserNameProof) | oneOf | Properties specific to the MessageType         |
+| body      | [CastAddBody](#CastAddBody), <br> [CastRemoveBody](#CastRemoveBody), <br> [ReactionBody](#ReactionBody), <br>[VerificationAddEthAddressBody](#VerificationAddEthAddressBody), <br>[VerificationRemoveBody](#VerificationRemoveBody), <br> [UserDataBody](#UserDataBody),<br> [LinkBody](#LinkBody),<br> [UserNameProof](#UserNameProof) | oneOf | Properties specific to the MessageType         |
 
 ### 1.2 HashScheme
 
@@ -61,8 +61,6 @@ Type of the MessageBody
 | MESSAGE_TYPE_LINK_REMOVE                  | 6      | Remove a Link from a target                               |
 | MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS | 7      | Add a Verification of an Ethereum Address                 |
 | MESSAGE_TYPE_VERIFICATION_REMOVE          | 8      | Remove a Verification                                     |
-| MESSAGE_TYPE_SIGNER_ADD                   | 9      | Add a new Ed25519 key pair that signs messages for a user |
-| MESSAGE_TYPE_SIGNER_REMOVE                | 10     | Remove an Ed25519 key pair that signs messages for a user |
 | MESSAGE_TYPE_USER_DATA_ADD                | 11     | Add metadata about a user                                 |
 | MESSAGE_TYPE_USERNAME_PROOF               | 12     | Add or replace a username proof                           |
 
@@ -77,32 +75,11 @@ Farcaster network the message is intended for
 | FARCASTER_NETWORK_TESTNET | 2      | Public test network    |
 | FARCASTER_NETWORK_DEVNET  | 3      | Private test network   |
 
-## 2. Signer
-
-A signer is a delta that authorizes a new key pair to sign Messages on behalf of the user.
-
-### 2.1 SignerAddBody
-
-Adds or removes an Ed25519 key pair that signs messages for a user
-
-| Field  | Type   | Label | Description                                    |
-| ------ | ------ | ----- | ---------------------------------------------- |
-| signer | bytes  |       | Public key of the Ed25519 key pair             |
-| name?  | string |       | (optional) Human-readable label for the signer |
-
-### 2.1 SignerRemoveBody
-
-Adds or removes an Ed25519 key pair that signs messages for a user
-
-| Field  | Type  | Label | Description                        |
-| ------ | ----- | ----- | ---------------------------------- |
-| signer | bytes |       | Public key of the Ed25519 key pair |
-
-## 3. UserData
+## 2. UserData
 
 A UserData is a delta that contains metadata information about the user.
 
-### 3.1 UserDataBody
+### 2.1 UserDataBody
 
 Adds metadata about a user
 
@@ -111,7 +88,7 @@ Adds metadata about a user
 | type  | [UserDataType](#UserDataType) |       | Type of metadata      |
 | value | string                        |       | Value of the metadata |
 
-### 3.2 UserDataType
+### 2.2 UserDataType
 
 Type of UserData
 
@@ -124,11 +101,11 @@ Type of UserData
 | USER_DATA_TYPE_URL      | 5      | URL of the user                       |
 | USER_DATA_TYPE_USERNAME | 6      | Preferred Farcaster Name for the user |
 
-## 4. Cast
+## 3. Cast
 
 A Cast is a delta that represents a new public update from a user. Casts can be added and removed at any time by the user.
 
-### 4.1 CastAddBody
+### 3.1 CastAddBody
 
 Adds a new Cast
 
@@ -150,7 +127,7 @@ Adds a new Cast
 | cast_id | [CastId](#CastId) |  |  |
 
 
-### 4.2 CastRemoveBody
+### 3.2 CastRemoveBody
 
 Removes an existing Cast
 
@@ -158,7 +135,7 @@ Removes an existing Cast
 | ----------- | ----- | ----- | -------------------------- |
 | target_hash | bytes |       | Hash of the cast to remove |
 
-### 4.3 CastId
+### 3.3 CastId
 
 Identifier used to look up a Cast
 
@@ -167,11 +144,11 @@ Identifier used to look up a Cast
 | fid   | uint64 |       | Fid of the user who created the cast |
 | hash  | bytes  |       | Hash of the cast                     |
 
-## 5. Reaction
+## 4. Reaction
 
 A Reaction is a delta that is applied by a user to a specific Cast.
 
-### 5.1 ReactionBody
+### 4.1 ReactionBody
 
 Adds or removes a Reaction from a Cast
 
@@ -181,7 +158,7 @@ Adds or removes a Reaction from a Cast
 | target_cast_id | [CastId](#CastId)             |       | CastId of the Cast to react to |
 | target_url     | [string](#string)             |       | URL to react to                |
 
-### 5.2 ReactionType
+### 4.2 ReactionType
 
 Type of Reaction
 
@@ -192,10 +169,10 @@ Type of Reaction
 | REACTION_TYPE_RECAST | 2      | Share target cast to the user&#39;s audience |
 
 
-## 6. Link
+## 5. Link
 
 
-### 6.1 LinkBody
+### 5.1 LinkBody
 
 Adds or removes a Link
 
@@ -206,11 +183,11 @@ Adds or removes a Link
 | target_fid | [uint64](#uint64) |  | The fid the link relates to |
 
 
-## 7. Verification
+## 6. Verification
 
 A Verification is a delta that contains a bi-directional signature proving that an fid has control over an Ethereum address.
 
-### 7.1 VerificationAddEthAddressBody
+### 6.1 VerificationAddEthAddressBody
 
 Adds a Verification of ownership of an Ethereum Address
 
@@ -220,7 +197,7 @@ Adds a Verification of ownership of an Ethereum Address
 | eth_signature | bytes |       | Signature produced by the user&#39;s Ethereum address         |
 | block_hash    | bytes |       | Hash of the latest Ethereum block when the claim was produced |
 
-### 7.2 VerificationRemoveBody
+### 6.2 VerificationRemoveBody
 
 Removes a Verification of any type
 

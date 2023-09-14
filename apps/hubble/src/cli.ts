@@ -83,8 +83,6 @@ app
   .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a Mainnet ETH Node (or comma separated list of URLs)")
   .option("--rank-rpcs", "Rank the RPCs by latency/stability and use the fastest one (default: disabled)")
   .option("--fname-server-url <url>", `The URL for the FName registry server (default: ${DEFAULT_FNAME_SERVER_URL}`)
-  .option("--fir-address <address>", "The address of the Farcaster ID Registry contract")
-  .option("--first-block <number>", "The block number to begin syncing events from Farcaster contracts", parseNumber)
 
   // L2 Options
   .option("-l, --l2-rpc-url <url>", "RPC URL of a mainnet Optimism Node (or comma separated list of URLs)")
@@ -155,9 +153,6 @@ app
   .option("--commit-lock-timeout <number>", "Rocks DB commit lock timeout in milliseconds (default: 500)", parseNumber)
   .option("--commit-lock-max-pending <number>", "Rocks DB commit lock max pending jobs (default: 1000)", parseNumber)
   .option("--rpc-auth <username:password,...>", "Require username-password auth for RPC submit. (default: disabled)")
-
-  // To be deprecated
-  .option("--fnr-address <address>", "The address of the Farcaster Name Registry contract")
 
   .action(async (cliOptions) => {
     const handleShutdownSignal = (signalName: string) => {
@@ -489,9 +484,6 @@ app
       ethMainnetRpcUrl: cliOptions.ethMainnetRpcUrl ?? hubConfig.ethMainnetRpcUrl,
       fnameServerUrl: cliOptions.fnameServerUrl ?? hubConfig.fnameServerUrl ?? DEFAULT_FNAME_SERVER_URL,
       rankRpcs: cliOptions.rankRpcs ?? hubConfig.rankRpcs ?? false,
-      idRegistryAddress: cliOptions.firAddress ?? hubConfig.firAddress,
-      nameRegistryAddress: cliOptions.fnrAddress ?? hubConfig.fnrAddress,
-      firstBlock: cliOptions.firstBlock ?? hubConfig.firstBlock,
       chunkSize: cliOptions.chunkSize ?? hubConfig.chunkSize ?? DEFAULT_CHUNK_SIZE,
       l2RpcUrl: cliOptions.l2RpcUrl ?? hubConfig.l2RpcUrl,
       l2IdRegistryAddress: cliOptions.l2IdRegistryAddress ?? hubConfig.l2IdRegistryAddress,

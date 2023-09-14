@@ -162,12 +162,6 @@ export interface HubOptions {
   /** Network URL(s) of the StorageRegistry Contract */
   l2RpcUrl?: string;
 
-  /** Address of the IdRegistry contract  */
-  idRegistryAddress?: `0x${string}`;
-
-  /** Address of the NameRegistryAddress contract  */
-  nameRegistryAddress?: `0x${string}`;
-
   /** Address of the Id Registry contract  */
   l2IdRegistryAddress?: `0x${string}`;
 
@@ -176,9 +170,6 @@ export interface HubOptions {
 
   /** Address of the StorageRegistry contract  */
   l2StorageRegistryAddress?: `0x${string}`;
-
-  /** Block number to begin syncing events from  */
-  firstBlock?: number;
 
   /** Number of blocks to batch when syncing historical events  */
   chunkSize?: number;
