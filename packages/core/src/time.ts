@@ -35,3 +35,11 @@ export const toFarcasterTime = (time: number): HubResult<number> => {
 export const fromFarcasterTime = (time: number): HubResult<number> => {
   return ok(time * 1000 + FARCASTER_EPOCH);
 };
+
+/** Extracts the timestamp from an event ID. */
+export const extractEventTimestamp = (eventId: number): number => {
+  const binaryEventId = eventId.toString(2);
+  const SEQUENCE_BITS = 12;
+  const binaryTimestamp = binaryEventId.slice(0, binaryEventId.length - SEQUENCE_BITS);
+  return parseInt(binaryTimestamp, 2) + FARCASTER_EPOCH;
+};
