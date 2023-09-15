@@ -156,8 +156,8 @@ const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => 
 };
 
 export type StoreEventHandlerOptions = {
-  lockMaxPending?: number;
-  lockTimeout?: number;
+  lockMaxPending?: number | undefined;
+  lockTimeout?: number | undefined;
 };
 
 class StoreEventHandler extends TypedEmitter<StoreEvents> {

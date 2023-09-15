@@ -136,7 +136,7 @@ class Engine {
       try {
         if (fs.existsSync(workerPath)) {
           this._validationWorker = new Worker(workerPath);
-          logger.info({ workerPath }, "created validation worker thread");
+          log.info({ workerPath }, "created validation worker thread");
 
           this._validationWorker.on("message", (data) => {
             const { id, message, errCode, errMessage } = data;
@@ -150,14 +150,14 @@ class Engine {
                 resolve(err(new HubError(errCode, errMessage)));
               }
             } else {
-              logger.warn({ id }, "validation worker promise.response not found");
+              log.warn({ id }, "validation worker promise.response not found");
             }
           });
         } else {
-          logger.warn({ workerPath }, "validation.worker.js not found, falling back to main thread");
+          log.warn({ workerPath }, "validation.worker.js not found, falling back to main thread");
         }
       } catch (e) {
-        logger.warn({ workerPath, e }, "failed to create validation worker, falling back to main thread");
+        log.warn({ workerPath, e }, "failed to create validation worker, falling back to main thread");
       }
     }
 
@@ -176,8 +176,9 @@ class Engine {
     this._revokeSignerWorker.start();
 
     if (this._validationWorker) {
-      this._validationWorker.terminate();
+      await this._validationWorker.terminate();
       this._validationWorker = undefined;
+      log.info("validation worker thread terminated");
     }
     log.info("engine stopped");
   }
@@ -209,7 +210,7 @@ class Engine {
       limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
       const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
       if (isRateLimited) {
-        logger.warn({ fid }, "rate limit exceeded for FID");
+        log.warn({ fid }, "rate limit exceeded for FID");
         return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
       }
     }
