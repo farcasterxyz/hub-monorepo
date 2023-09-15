@@ -228,12 +228,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return await this.callMethod("isPeerAllowed", exportToProtobuf(peerId));
   }
 
-  /** Returns the GossipSub instance used by the Node */
-  // get gossip() {
-  //   const pubsub = this._node?.pubsub;
-  //   return pubsub ? (pubsub as GossipSub) : undefined;
-  // }
-
   /**
    * Initializes the libp2p node, which must be done before any configuration or communication.
    *
