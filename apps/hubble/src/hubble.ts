@@ -205,10 +205,10 @@ export interface HubOptions {
   rebuildSyncTrie?: boolean;
 
   /** Commit lock timeout in ms */
-  commitLockTimeout: number;
+  commitLockTimeout?: number;
 
   /** Commit lock queue size */
-  commitLockMaxPending: number;
+  commitLockMaxPending?: number;
 
   /** Enables the Admin Server */
   adminServerEnabled?: boolean;
@@ -219,11 +219,7 @@ export interface HubOptions {
   /** Periodically add casts & reactions for the following test users */
   testUsers?: TestUser[];
 
-  /**
-   * Only allows the Hub to connect to and advertise local IP addresses
-   *
-   * Only used by tests
-   */
+  /** Only allows the Hub to connect to and advertise local IP addresses (Only used by tests) */
   localIpAddrsOnly?: boolean;
 
   /** Cron schedule for prune messages job */
@@ -249,7 +245,7 @@ export interface HubOptions {
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
-const randomDbName = () => {
+export const randomDbName = () => {
   return `rocksdb.tmp.${(new Date().getUTCDate() * Math.random()).toString(36).substring(2)}`;
 };
 
@@ -286,10 +282,6 @@ export class Hub implements HubInterface {
 
   constructor(options: HubOptions) {
     this.options = options;
-    this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.options.network);
-
-    this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
     if (!options.ethMainnetRpcUrl) {
       log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");
@@ -327,6 +319,11 @@ export class Hub implements HubInterface {
       log.warn("No FName Registry URL provided, unable to sync fname events");
       throw new HubError("bad_request.invalid_param", "Invalid fname server url");
     }
+
+    this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
+    this.gossipNode = new GossipNode(this.options.network);
+
+    this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
       lockMaxPending: options.commitLockMaxPending,
@@ -429,6 +426,10 @@ export class Hub implements HubInterface {
       throw new HubError("unavailable", "cannot start gossip node without identity");
     }
     return this.gossipNode.peerId()?.toString() ?? "";
+  }
+
+  async syncWithPeerId(peerId: string): Promise<void> {
+    await this.syncEngine.diffSyncIfRequired(this, peerId);
   }
 
   /* Start the GossipNode and RPC server  */

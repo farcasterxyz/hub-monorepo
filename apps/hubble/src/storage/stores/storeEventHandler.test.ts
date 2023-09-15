@@ -1,11 +1,11 @@
-import { CastAddMessage, Factories, HubEvent, HubEventType } from "@farcaster/hub-nodejs";
+import { CastAddMessage, Factories, FARCASTER_EPOCH, HubEvent, HubEventType } from "@farcaster/hub-nodejs";
 import { ok, Result } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { getMessage, makeTsHash, putMessage, putMessageTransaction } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
-import { getFarcasterTime } from "@farcaster/core";
+import { getFarcasterTime, extractEventTimestamp } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
@@ -56,6 +56,17 @@ describe("HubEventIdGenerator", () => {
     const generator = new HubEventIdGenerator({ lastTimestamp: currentTimestamp, lastIndex: 4094 });
     expect(generator.generateId({ currentTimestamp }).isOk()).toEqual(true);
     expect(generator.generateId({ currentTimestamp }).isErr()).toEqual(true);
+  });
+
+  test("can parse timestamps from event id", async () => {
+    const currentTimestamp = Date.now();
+    const generator = new HubEventIdGenerator({
+      lastTimestamp: currentTimestamp,
+      lastIndex: 0,
+      epoch: FARCASTER_EPOCH,
+    });
+    const id = generator.generateId({ currentTimestamp })._unsafeUnwrap();
+    expect(extractEventTimestamp(id)).toEqual(currentTimestamp);
   });
 });
 
