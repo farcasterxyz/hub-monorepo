@@ -427,6 +427,10 @@ export class Hub implements HubInterface {
     return this.gossipNode.peerId.toString();
   }
 
+  async syncWithPeerId(peerId: string): Promise<void> {
+    await this.syncEngine.diffSyncIfRequired(this, peerId);
+  }
+
   /* Start the GossipNode and RPC server  */
   async start() {
     // See if we have to fetch the IP address

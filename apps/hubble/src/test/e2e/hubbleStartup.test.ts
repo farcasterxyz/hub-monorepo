@@ -1,50 +1,14 @@
 import { Factories, FarcasterNetwork, bytesToHexString } from "@farcaster/hub-nodejs";
-import { deployStorageRegistry, testClient } from "../utils.js";
+import { deployStorageRegistry } from "../utils.js";
 import { Hub, HubOptions, randomDbName } from "../../hubble.js";
 import { localHttpUrl } from "../constants.js";
 import { sleep } from "../../utils/crypto.js";
-import { FastifyInstance } from "fastify";
 import { DB_DIRECTORY } from "../../storage/db/rocksdb.js";
-import fastify from "fastify";
 import fs from "fs";
 import { Result } from "neverthrow";
+import { TestFNameRegistryServer } from "./testFnameRegistryServer.js";
 
 const TEST_TIMEOUT_SHORT = 10_000;
-
-export class TestFNameRegistryServer {
-  private server?: FastifyInstance;
-  private port = 0;
-
-  public async start(): Promise<string> {
-    this.server = fastify();
-
-    this.server.get("/transfers", async (request, reply) => {
-      reply.send({ transfers: [] });
-    });
-
-    this.server.get("/signer", async (request, reply) => {
-      reply.send({ signer: bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap() });
-    });
-
-    try {
-      await this.server.listen({ port: this.port, host: "localhost" });
-      const address = this.server.server.address();
-      const port = typeof address === "string" ? 0 : address?.port;
-      return `http://localhost:${port}`;
-    } catch (err) {
-      console.log(err);
-      throw err;
-    }
-  }
-
-  public async stop(): Promise<void> {
-    try {
-      await this.server?.close();
-    } catch (err) {
-      console.log(err);
-    }
-  }
-}
 
 let storageRegistryAddress: `0x${string}`;
 let keyRegistryAddress: `0x${string}`;
@@ -56,7 +20,7 @@ let rocksDBName: string;
 
 let hubOptions: HubOptions;
 
-describe("hubble startuup tests", () => {
+describe("hubble startup tests", () => {
   beforeEach(async () => {
     const { contractAddress: storageAddr } = await deployStorageRegistry();
     if (!storageAddr) throw new Error("Failed to deploy StorageRegistry contract");
@@ -94,7 +58,6 @@ describe("hubble startuup tests", () => {
   test(
     "Starts up with no errors",
     async () => {
-      const client = testClient;
       let hub;
 
       try {
