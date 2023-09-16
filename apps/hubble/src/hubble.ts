@@ -65,7 +65,7 @@ import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { statsd } from "./utils/statsd.js";
 import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
@@ -466,6 +466,9 @@ export class Hub implements HubInterface {
 
           // Delete the tar file, ignore errors
           fs.unlink(tarResult.value, () => {});
+
+          // Cleanup old files from S3
+          this.deleteOldSnapshotsFromS3();
         }, 10);
       } else {
         log.error({ error: tarResult.error }, "failed to create tar backup for S3");
@@ -1317,6 +1320,78 @@ export class Hub implements HubInterface {
       await s3.send(new PutObjectCommand(latestJsonParams));
       log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
       return ok(key);
+    } catch (e: unknown) {
+      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    }
+  }
+
+  async listS3Snapshots(): HubAsyncResult<
+    Array<{ Key: string | undefined; Size: number | undefined; LastModified: Date | undefined }>
+  > {
+    const network = FarcasterNetwork[this.options.network].toString();
+
+    const s3 = new S3Client({
+      region: S3_REGION,
+    });
+
+    const params = {
+      Bucket: this.s3_snapshot_bucket,
+      Prefix: `snapshots/${network}/`,
+    };
+
+    try {
+      const response = await s3.send(new ListObjectsV2Command(params));
+
+      if (response.Contents) {
+        return ok(
+          response.Contents.map((item) => ({
+            Key: item.Key,
+            Size: item.Size,
+            LastModified: item.LastModified,
+          })),
+        );
+      } else {
+        return ok([]);
+      }
+    } catch (e: unknown) {
+      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    }
+  }
+
+  async deleteOldSnapshotsFromS3(): HubAsyncResult<void> {
+    try {
+      const fileListResult = await this.listS3Snapshots();
+
+      if (!fileListResult.isOk()) {
+        return err(new HubError("unavailable.network_failure", fileListResult.error.message));
+      }
+
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+      const oldFiles = fileListResult.value
+        .filter((file) => (file.LastModified ? new Date(file.LastModified) < oneMonthAgo : false))
+        .slice(0, 10);
+
+      if (oldFiles.length === 0) {
+        return ok(undefined);
+      }
+
+      log.warn({ oldFiles }, "Deleting old snapshot files from S3");
+
+      const deleteParams = {
+        Bucket: this.s3_snapshot_bucket,
+        Delete: {
+          Objects: oldFiles.map((file) => ({ Key: file.Key })),
+        },
+      };
+
+      const s3 = new S3Client({
+        region: S3_REGION,
+      });
+
+      await s3.send(new DeleteObjectsCommand(deleteParams));
+      return ok(undefined);
     } catch (e: unknown) {
       return err(new HubError("unavailable.network_failure", (e as Error).message));
     }
