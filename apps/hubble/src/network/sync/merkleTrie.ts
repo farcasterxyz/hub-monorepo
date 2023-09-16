@@ -353,10 +353,10 @@ class MerkleTrie {
       }
 
       await this._db.commit(txn);
-      logger.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
-
       this._pendingDbUpdates.clear();
       this._root.unloadChildren();
+
+      logger.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
     };
 
     if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {

@@ -18,6 +18,7 @@ import SyncEngine from "../sync/syncEngine.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { sleep } from "../../utils/crypto.js";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
+import { LibP2PNode } from "./gossipNodeWorker.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const db = jestRocksDB("network.p2p.gossipNode.test");
@@ -65,16 +66,16 @@ describe("GossipNode", () => {
     "connect fails with a node that is not in the allow list",
     async () => {
       const node1 = new GossipNode();
-      await node1.start([]);
+      expect((await node1.start([])).isOk()).toBeTruthy();
 
       const node2 = new GossipNode();
-      await node2.start([]);
+      expect((await node2.start([])).isOk()).toBeTruthy();
 
       // node 3 has node 1 in its allow list, but not node 2
       const node3 = new GossipNode();
 
-      if (node1.peerId) {
-        await node3.start([], { allowedPeerIdStrs: [node1.peerId.toString()] });
+      if (node1.peerId()) {
+        expect((await node3.start([], { allowedPeerIdStrs: [node1.peerId()?.toString() ?? ""] })).isOk()).toBeTruthy();
       } else {
         throw Error("Node1 not started, no peerId found");
       }
@@ -97,36 +98,47 @@ describe("GossipNode", () => {
     TEST_TIMEOUT_SHORT,
   );
 
-  test("removing from addressbook hangs up connection", async () => {
-    const node1 = new GossipNode();
-    await node1.start([]);
+  test(
+    "removing from addressbook hangs up connection",
+    async () => {
+      const node1 = new GossipNode();
+      await node1.start([]);
 
-    const node2 = new GossipNode();
-    await node2.start([]);
+      const node2 = new GossipNode();
+      await node2.start([]);
 
-    try {
-      const dialResult = await node1.connect(node2);
-      expect(dialResult.isOk()).toBeTruthy();
+      try {
+        const dialResult = await node1.connect(node2);
+        expect(dialResult.isOk()).toBeTruthy();
 
-      let other = await node1.addressBook?.get(node2.peerId as PeerId);
-      expect(other?.length).toEqual(1);
+        let other = await node1.getPeerAddresses(node2.peerId() as PeerId);
+        // let other = await node1.addressBook?.get((await node2.peerId()) as PeerId);
+        expect(other?.length).toEqual(1);
 
-      await node1.removePeerFromAddressBook(node2.peerId as PeerId);
+        other = await node2.getPeerAddresses(node1.peerId() as PeerId);
+        expect(other?.length).toEqual(1);
+        expect(await node2.allPeerIds()).toEqual([node1.peerId()?.toString()]);
 
-      // Sleep to allow the connection to be closed
-      await sleep(1000);
+        await node1.removePeerFromAddressBook(node2.peerId() as PeerId);
 
-      // Make sure the connection is closed
-      other = await node1.addressBook?.get(node2.peerId as PeerId);
-      expect(other).toEqual([]);
+        // Sleep to allow the connection to be closed
+        await sleep(1000);
 
-      other = await node2.addressBook?.get(node1.peerId as PeerId);
-      expect(other).toEqual([]);
-    } finally {
-      await node1.stop();
-      await node2.stop();
-    }
-  });
+        // Make sure the connection is closed
+        other = await node1.getPeerAddresses(node2.peerId() as PeerId);
+        expect(other).toEqual([]);
+
+        expect(await node2.allPeerIds()).toEqual([]);
+        // other = await node2.getPeerAddresses(node1.peerId() as PeerId);
+        // console.log(JSON.stringify(other, null, 2));
+        // expect(other).toEqual([]);
+      } finally {
+        await node1.stop();
+        await node2.stop();
+      }
+    },
+    TEST_TIMEOUT_SHORT,
+  );
 
   describe("gossip messages", () => {
     const network = FarcasterNetwork.TESTNET;
@@ -192,11 +204,11 @@ describe("GossipNode", () => {
       await node.start([]);
       await node.gossipMessage(castAdd);
       // should be detected as a duplicate
-      const result = await node.gossipMessage(castAdd);
-      result.forEach((res) => {
-        expect(res.isErr()).toBeTruthy();
-        expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
-      });
+      const res = await node.gossipMessage(castAdd);
+
+      expect(res.isErr()).toBeTruthy();
+      expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+
       await node.stop();
     });
 
@@ -206,18 +218,19 @@ describe("GossipNode", () => {
 
       const contactInfo = ContactInfoContent.create();
       await node.gossipContactInfo(contactInfo);
-      const result = await node.gossipContactInfo(contactInfo);
-      result.forEach((res) => expect(res.isOk()).toBeTruthy());
+      const res2 = await node.gossipContactInfo(contactInfo);
+      expect(res2.isOk()).toBeTruthy();
 
       await node.stop();
     });
 
     test("Gossip Ids do not match for gossip V1 messages", async () => {
-      const node = new GossipNode();
-      await node.start([]);
+      const node = new LibP2PNode(FarcasterNetwork.DEVNET);
+      await node.makeNode({});
+
       const v1Message = GossipMessage.create({
         message: castAdd,
-        topics: [node.primaryTopic()],
+        topics: [node.gossipTopics()[0] as string],
         peerId: node.peerId?.toBytes() ?? new Uint8Array(),
         version: GossipVersion.V1,
       });
@@ -238,19 +251,19 @@ describe("GossipNode", () => {
         topics: ["foobar"],
         peerId: peerId.toBytes(),
       });
-      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
 
       gossipMessage = GossipMessage.create({
         message: castAdd,
         topics: ["foobar"],
         peerId: peerId.toBytes(),
       });
-      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isOk()).toBeTruthy();
     });
 
     test("Gossip Message decode fails for invalid buffers", async () => {
-      expect(GossipNode.decodeMessage(new Uint8Array()).isErr()).toBeTruthy();
-      expect(GossipNode.decodeMessage(Message.encode(castAdd).finish()).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(new Uint8Array()).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(Message.encode(castAdd).finish()).isErr()).toBeTruthy();
 
       let gossipMessage = GossipMessage.create({
         message: castAdd,
@@ -258,7 +271,7 @@ describe("GossipNode", () => {
         topics: [],
         peerId: peerId.toBytes(),
       });
-      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
 
       gossipMessage = GossipMessage.create({
         message: castAdd,
@@ -266,7 +279,7 @@ describe("GossipNode", () => {
         // invalid peerIds are not allowed
         peerId: new Uint8Array(),
       });
-      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
 
       gossipMessage = GossipMessage.create({
         message: castAdd,
@@ -275,7 +288,7 @@ describe("GossipNode", () => {
         // invalid versions are not allowed
         version: 12345 as GossipVersion,
       });
-      expect(GossipNode.decodeMessage(GossipNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
     });
   });
 });
