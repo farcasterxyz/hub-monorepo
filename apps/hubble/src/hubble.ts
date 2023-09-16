@@ -1366,6 +1366,11 @@ export class Hub implements HubInterface {
         return err(new HubError("unavailable.network_failure", fileListResult.error.message));
       }
 
+      if (fileListResult.value.length < 2) {
+        log.warn({ fileList: fileListResult.value }, "Not enough snapshot files to delete");
+        return ok(undefined);
+      }
+
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
