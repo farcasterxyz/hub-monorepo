@@ -1,11 +1,11 @@
 import { bytesCompare, DbTrieNode, HubError } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
 import { TIMESTAMP_LENGTH } from "./syncId.js";
-import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from "../../utils/crypto.js";
 import { NodeMetadata } from "./merkleTrie.js";
 import { nativeBlake3Hash20 } from "../../rustfunctions.js";
+import { DBGetter } from "./merkleTrieWorker.js";
 
 export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString("hex");
 export const MAX_VALUES_RETURNED_PER_CALL = 1024;
@@ -70,7 +70,7 @@ class TrieNode {
    */
   public async insert(
     key: Uint8Array,
-    db: RocksDB,
+    dbGetter: DBGetter,
     dbUpdatesMap: Map<Buffer, Buffer>,
     current_index = 0,
   ): Promise<TrieNodeOpResult> {
@@ -88,7 +88,7 @@ class TrieNode {
       // freed and leak memory.
       this._key = key === undefined ? undefined : new Uint8Array(key);
 
-      await this._updateHash(key.slice(0, current_index), db);
+      await this._updateHash(key.slice(0, current_index), dbGetter);
       this._items += 1;
 
       // Also save to db
@@ -104,7 +104,7 @@ class TrieNode {
       }
 
       // If the key is different, and a value exists, then split the node
-      await this._splitLeafNode(current_index, db, dbUpdatesMap);
+      await this._splitLeafNode(current_index, dbGetter, dbUpdatesMap);
     }
 
     if (!this._children.has(char)) {
@@ -112,14 +112,14 @@ class TrieNode {
     }
 
     // Recurse into a non-leaf node and instruct it to insert the value
-    const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
-    const result = await child.insert(key, db, dbUpdatesMap, current_index + 1);
+    const child = await this._getOrLoadChild(key.slice(0, current_index), char, dbGetter);
+    const result = await child.insert(key, dbGetter, dbUpdatesMap, current_index + 1);
 
     const status = result.status;
 
     if (status) {
       this._items += 1;
-      await this._updateHash(key.slice(0, current_index), db);
+      await this._updateHash(key.slice(0, current_index), dbGetter);
 
       // Save the current node to DB
       this.saveToDBTx(dbUpdatesMap, key.slice(0, current_index));
@@ -139,7 +139,7 @@ class TrieNode {
    */
   public async delete(
     key: Uint8Array,
-    db: RocksDB,
+    dbGetter: DBGetter,
     dbUpdatesMap: Map<Buffer, Buffer>,
     current_index = 0,
   ): Promise<TrieNodeOpResult> {
@@ -163,8 +163,8 @@ class TrieNode {
       return { status: false, dbUpdatesMap };
     }
 
-    const childTrieNode = await this._getOrLoadChild(key.slice(0, current_index), char, db);
-    const result = await childTrieNode.delete(key, db, dbUpdatesMap, current_index + 1);
+    const childTrieNode = await this._getOrLoadChild(key.slice(0, current_index), char, dbGetter);
+    const result = await childTrieNode.delete(key, dbGetter, dbUpdatesMap, current_index + 1);
 
     const status = result.status;
 
@@ -179,19 +179,19 @@ class TrieNode {
           // Delete this node
           this.deleteFromDbTx(dbUpdatesMap, key.slice(0, current_index));
 
-          await this._updateHash(key.slice(0, current_index), db);
+          await this._updateHash(key.slice(0, current_index), dbGetter);
           return { status: true, dbUpdatesMap };
         }
       }
 
       if (this._items === 1 && this._children.size === 1 && current_index >= TIMESTAMP_LENGTH) {
         const char = this._children.keys().next().value;
-        const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
+        const child = await this._getOrLoadChild(key.slice(0, current_index), char, dbGetter);
 
         if (child._key) {
           this._key = child._key;
           this._children.delete(char);
-          await this._updateHash(key.slice(0, current_index), db);
+          await this._updateHash(key.slice(0, current_index), dbGetter);
 
           // Delete child
           const childPrefix = Buffer.concat([key.slice(0, current_index), new Uint8Array([char])]);
@@ -199,7 +199,7 @@ class TrieNode {
         }
       }
 
-      await this._updateHash(key.slice(0, current_index), db);
+      await this._updateHash(key.slice(0, current_index), dbGetter);
       this.saveToDBTx(dbUpdatesMap, key.slice(0, current_index));
     }
 
@@ -211,7 +211,7 @@ class TrieNode {
    * @param key - The key to look for
    * @param current_index - The index of the current character in the key (only used internally)
    */
-  public async exists(key: Uint8Array, db: RocksDB, current_index = 0): Promise<boolean> {
+  public async exists(key: Uint8Array, dbGetter: DBGetter, current_index = 0): Promise<boolean> {
     if (this.isLeaf && bytesCompare(this._key ?? new Uint8Array(), key) === 0) {
       return true;
     }
@@ -224,15 +224,15 @@ class TrieNode {
       return false;
     }
 
-    const child = await this._getOrLoadChild(key.slice(0, current_index), char, db);
-    const exists = (await child.exists(key, db, current_index + 1)) || false;
+    const child = await this._getOrLoadChild(key.slice(0, current_index), char, dbGetter);
+    const exists = (await child.exists(key, dbGetter, current_index + 1)) || false;
 
     return exists;
   }
 
   // Generates a snapshot for the current node and below until the prefix. currentIndex is the index of the prefix the method
   // is operating on
-  public async getSnapshot(prefix: Uint8Array, db: RocksDB, currentIndex = 0): Promise<TrieSnapshot> {
+  public async getSnapshot(prefix: Uint8Array, dbGetter: DBGetter, currentIndex = 0): Promise<TrieSnapshot> {
     const excludedHashes: string[] = [];
     let numMessages = 0;
 
@@ -241,7 +241,7 @@ class TrieNode {
       const currentPrefix = prefix.subarray(0, i);
       const char = prefix.at(i) as number;
 
-      const excludedHash = await currentNode._excludedHash(currentPrefix, char, db);
+      const excludedHash = await currentNode._excludedHash(currentPrefix, char, dbGetter);
       excludedHashes.push(excludedHash.hash);
       numMessages += excludedHash.items;
 
@@ -252,7 +252,7 @@ class TrieNode {
           numMessages,
         };
       }
-      currentNode = await currentNode._getOrLoadChild(currentPrefix, char, db);
+      currentNode = await currentNode._getOrLoadChild(currentPrefix, char, dbGetter);
     }
 
     excludedHashes.push(Buffer.from(currentNode.hash).toString("hex"));
@@ -284,7 +284,7 @@ class TrieNode {
     return undefined;
   }
 
-  public async getNode(prefix: Uint8Array, db: RocksDB, current_index = 0): Promise<TrieNode | undefined> {
+  public async getNode(prefix: Uint8Array, dbGetter: DBGetter, current_index = 0): Promise<TrieNode | undefined> {
     if (current_index === prefix.length) {
       return this;
     }
@@ -292,16 +292,16 @@ class TrieNode {
     if (!this._children.has(char)) {
       return undefined;
     }
-    const child = await this._getOrLoadChild(prefix.slice(0, current_index), char, db);
-    const node = await child.getNode(prefix, db, current_index + 1);
+    const child = await this._getOrLoadChild(prefix.slice(0, current_index), char, dbGetter);
+    const node = await child.getNode(prefix, dbGetter, current_index + 1);
 
     return node;
   }
 
-  public async getNodeMetadata(prefix: Uint8Array, db: RocksDB): Promise<NodeMetadata> {
+  public async getNodeMetadata(prefix: Uint8Array, dbGetter: DBGetter): Promise<NodeMetadata> {
     const result = new Map<number, NodeMetadata>();
     for (const [char] of this.children) {
-      const child = await this._getOrLoadChild(prefix, char, db);
+      const child = await this._getOrLoadChild(prefix, char, dbGetter);
       const newPrefix = Buffer.concat([prefix, Buffer.from([char])]);
       result.set(char, {
         numMessages: child.items,
@@ -317,14 +317,14 @@ class TrieNode {
     return this._children.entries();
   }
 
-  public async getAllValues(prefix: Uint8Array, db: RocksDB): Promise<Uint8Array[]> {
+  public async getAllValues(prefix: Uint8Array, dbGetter: DBGetter): Promise<Uint8Array[]> {
     if (this.isLeaf) {
       return this._key ? [this._key] : [];
     }
     const values: Uint8Array[] = [];
     for (const [char] of this._children) {
-      const child = await this._getOrLoadChild(prefix, char, db);
-      values.push(...(await child.getAllValues(Buffer.concat([prefix, Buffer.from([char])]), db)));
+      const child = await this._getOrLoadChild(prefix, char, dbGetter);
+      values.push(...(await child.getAllValues(Buffer.concat([prefix, Buffer.from([char])]), dbGetter)));
 
       // Prevent this from growing indefinitely, since it could potentially load the whole trie.
       // Limit to 1024 values.
@@ -391,7 +391,7 @@ class TrieNode {
     return dbUpdatesMap;
   }
 
-  private async _getOrLoadChild(prefix: Uint8Array, char: number, db: RocksDB): Promise<TrieNode> {
+  private async _getOrLoadChild(prefix: Uint8Array, char: number, dbGetter: DBGetter): Promise<TrieNode> {
     const child = this._children.get(char);
     if (child instanceof TrieNode) {
       return child as TrieNode;
@@ -399,14 +399,14 @@ class TrieNode {
       // The key to load is this node's key + the char
       const childPrefix = Buffer.concat([prefix, Buffer.from([char])]);
       const childKey = TrieNode.makePrimaryKey(childPrefix);
-      const childBytes = await ResultAsync.fromPromise(db.get(childKey), (e) => {
+      const childBytes = await ResultAsync.fromPromise(dbGetter(childKey), (e) => {
         return new Error(`Failed to load child node: ${e}. Prefix: ${prefix.toString()}, char: ${char}`);
       });
       if (childBytes.isErr()) {
         // TODO: Should we throw here?
         throw childBytes.error;
       } else {
-        const childNode = TrieNode.deserialize(childBytes.value);
+        const childNode = TrieNode.deserialize(new Uint8Array(childBytes.value ?? new Uint8Array()));
         this._children.set(char, childNode);
 
         // Sort the child chars
@@ -420,14 +420,14 @@ class TrieNode {
   private async _excludedHash(
     prefix: Uint8Array,
     prefixChar: number,
-    db: RocksDB,
+    dbGetter: DBGetter,
   ): Promise<{ items: number; hash: string }> {
     // Create a buffer to hold all the data.
     const childHashes: Buffer[] = [];
 
     let excludedItems = 0;
     for (const [char] of this._children) {
-      const child = await this._getOrLoadChild(prefix, char, db);
+      const child = await this._getOrLoadChild(prefix, char, dbGetter);
       if (prefixChar !== char) {
         // Add data to the buffer instead of updating the hash.
         childHashes.push(Buffer.from(child.hash));
@@ -455,7 +455,7 @@ class TrieNode {
   // the next char in its key
   private async _splitLeafNode(
     current_index: number,
-    db: RocksDB,
+    dbGetter: DBGetter,
     dbUpdatesMap: Map<Buffer, Buffer>,
   ): Promise<Map<Buffer, Buffer>> {
     if (!this._key) {
@@ -466,12 +466,12 @@ class TrieNode {
     const newChildChar = this._key.at(current_index) as number;
     this._addChild(newChildChar);
     const newChild = this._children.get(newChildChar) as TrieNode;
-    await newChild.insert(this._key, db, dbUpdatesMap, current_index + 1);
+    await newChild.insert(this._key, dbGetter, dbUpdatesMap, current_index + 1);
 
     const prefix = this._key.slice(0, current_index);
 
     this._key = undefined;
-    await this._updateHash(prefix, db);
+    await this._updateHash(prefix, dbGetter);
 
     // Save the current node to the DB
     this.saveToDBTx(dbUpdatesMap, prefix);
@@ -479,7 +479,7 @@ class TrieNode {
     return dbUpdatesMap;
   }
 
-  private async _updateHash(prefix: Uint8Array, db: RocksDB) {
+  private async _updateHash(prefix: Uint8Array, dbGetter: DBGetter): Promise<void> {
     let digest: Uint8Array;
     if (this.isLeaf) {
       digest = blake3Truncate160(this.value);
@@ -494,7 +494,7 @@ class TrieNode {
           // Add the child hash to the buffer.
           childHashes.push(Buffer.from(childHash));
         } else {
-          const child = await this._getOrLoadChild(prefix, char, db);
+          const child = await this._getOrLoadChild(prefix, char, dbGetter);
           // Add the child's hash to the buffer.
           childHashes.push(Buffer.from(child.hash));
         }

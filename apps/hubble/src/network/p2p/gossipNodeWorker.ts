@@ -24,7 +24,6 @@ import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } f
 import { Libp2p, createLibp2p } from "libp2p";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
-import { logger } from "../../utils/logger.js";
 import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
@@ -33,9 +32,19 @@ import { pubsubPeerDiscovery } from "@libp2p/pubsub-peer-discovery";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
+import { Logger } from "../../utils/logger.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
-const log = logger.child({ component: "LibP2PNodeWorker" });
+
+// We use a proxy to log messages to the main thread
+const log = new Proxy<Logger>({} as Logger, {
+  get: (_target, prop) => {
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    return (...args: any[]) => {
+      parentPort?.postMessage({ log: { level: prop, logObj: args[0], message: args[1] } });
+    };
+  },
+});
 
 /**
  * A wrapper around a libp2p node that is designed to run in a worker thread.
