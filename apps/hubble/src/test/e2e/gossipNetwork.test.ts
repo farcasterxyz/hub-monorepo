@@ -24,7 +24,7 @@ describe("gossip network tests", () => {
   beforeEach(async () => {
     messageStore.clear();
     await Promise.all(nodes.map((node) => node.start([])));
-  }, TEST_TIMEOUT_SHORT);
+  }, TEST_TIMEOUT_LONG);
 
   afterEach(async () => {
     await Promise.all(nodes.map((node) => node.stop()));

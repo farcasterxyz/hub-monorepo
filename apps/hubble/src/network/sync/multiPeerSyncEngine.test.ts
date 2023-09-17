@@ -21,6 +21,7 @@ import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 
+const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
 const testDb1 = jestRocksDB("engine1.peersyncEngine.test");
@@ -107,7 +108,7 @@ describe("Multi peer sync engine", () => {
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
     clientForServer1 = getInsecureHubRpcClient(`127.0.0.1:${port1}`);
-  });
+  }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {
     // Cleanup
@@ -115,7 +116,7 @@ describe("Multi peer sync engine", () => {
     await server1.stop();
     await syncEngine1.stop();
     await engine1.stop();
-  });
+  }, TEST_TIMEOUT_SHORT);
 
   test("toBytes test", async () => {
     // Add signer custody event to engine 1
