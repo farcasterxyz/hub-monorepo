@@ -447,7 +447,7 @@ describe("SyncEngine", () => {
       Date.now = () => 1683074200000 + 167 * 1000;
       const result = await syncEngine.getSnapshot();
       const snapshot = result._unsafeUnwrap();
-      expect((snapshot.prefix as Buffer).toString("utf8")).toEqual("0073615160");
+      expect(Buffer.from(snapshot.prefix).toString("utf8")).toEqual("0073615160");
     } finally {
       Date.now = nowOrig;
     }
@@ -470,7 +470,7 @@ describe("SyncEngine", () => {
 
       const trie = syncEngine.trie;
 
-      const prefixToTest = Buffer.from("1665182343");
+      const prefixToTest = new Uint8Array(Buffer.from("1665182343"));
       const oldSnapshot = await trie.getSnapshot(prefixToTest);
       trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
 
@@ -479,7 +479,7 @@ describe("SyncEngine", () => {
         await trie.getSnapshot(prefixToTest),
         oldSnapshot.excludedHashes,
       );
-      expect(divergencePrefix).toEqual(Buffer.from("16651823"));
+      expect(divergencePrefix).toEqual(new Uint8Array(Buffer.from("16651823")));
 
       // divergence prefix should be the full prefix, if snapshots are the same
       const currentSnapshot = await trie.getSnapshot(prefixToTest);
@@ -494,7 +494,7 @@ describe("SyncEngine", () => {
       expect(divergencePrefix.length).toEqual(0);
 
       // divergence prefix should be our prefix if provided hashes are longer
-      const with5 = Buffer.concat([prefixToTest, Buffer.from("5")]);
+      const with5 = Buffer.concat([prefixToTest, new Uint8Array(Buffer.from("5"))]);
       divergencePrefix = await syncEngine.getDivergencePrefix(await trie.getSnapshot(with5), [
         ...currentSnapshot.excludedHashes,
         "different",

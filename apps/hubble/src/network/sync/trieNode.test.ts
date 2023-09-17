@@ -85,7 +85,7 @@ describe("TrieNode", () => {
       }
 
       expect(node.isLeaf).toEqual(true);
-      expect(Buffer.from(node.value ?? [])).toEqual(id.syncId());
+      expect(node.value).toEqual(id.syncId());
     });
 
     test("inserting another key with a common prefix splits the node", async () => {
@@ -118,11 +118,11 @@ describe("TrieNode", () => {
       // hash1 node
       expect(firstChild[0]).toEqual(hash1[firstDiffPos]);
       expect(firstChild[1].isLeaf).toBeTruthy();
-      expect(Buffer.from(firstChild[1].value ?? [])).toEqual(id1.syncId());
+      expect(firstChild[1].value).toEqual(id1.syncId());
       // hash2 node
       expect(secondChild[0]).toEqual(hash2[firstDiffPos]);
       expect(secondChild[1].isLeaf).toBeTruthy();
-      expect(Buffer.from(secondChild[1].value ?? [])).toEqual(id2.syncId());
+      expect(secondChild[1].value).toEqual(id2.syncId());
     });
 
     test("Inserting wrong keylength throws", async () => {

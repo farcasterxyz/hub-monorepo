@@ -85,6 +85,9 @@ class MerkleTrieImpl {
       this._lock.writeLock(async (release) => {
         this._root = new TrieNode();
         this._pendingDbUpdates.clear();
+
+        resolve();
+        release();
       });
     });
   }
@@ -96,7 +99,7 @@ class MerkleTrieImpl {
         if (rootBytes && rootBytes.length > 0) {
           this._root = TrieNode.deserialize(rootBytes);
           log.info(
-            { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this.items },
+            { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this._root.items },
             "Merkle Trie loaded from DB",
           );
         }

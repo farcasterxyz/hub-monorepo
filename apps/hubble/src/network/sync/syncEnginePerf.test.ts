@@ -74,7 +74,7 @@ describe("SyncEnginePerfTest", () => {
         Date.now = () => 1683074200000 + 200 * 1000;
 
         const snapshot2 = (await syncEngine2.getSnapshot())._unsafeUnwrap();
-        expect((snapshot2.prefix as Buffer).toString("utf8")).toEqual("0073615");
+        expect(Buffer.from(snapshot2.prefix).toString("utf8")).toEqual("0073615");
         // Force a non-existent prefix (the original bug #536 is fixed)
         snapshot2.prefix = Buffer.from("00306622", "hex");
 

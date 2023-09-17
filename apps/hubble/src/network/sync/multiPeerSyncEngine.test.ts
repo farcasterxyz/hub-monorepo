@@ -20,7 +20,6 @@ import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
-import { Ok } from "neverthrow";
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -362,7 +361,7 @@ describe("Multi peer sync engine", () => {
       await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
       expect(fetchMessagesSpy).toHaveBeenCalledTimes(1);
-      expect(fetchMessagesSpy).toHaveBeenCalledWith([new SyncId(msgs[0] as Message).syncId()]);
+      expect(fetchMessagesSpy).toHaveBeenCalledWith([Buffer.from(new SyncId(msgs[0] as Message).syncId())]);
 
       // Also assert the root hashes are the same
       expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
@@ -404,6 +403,12 @@ describe("Multi peer sync engine", () => {
       await engine2.mergeOnChainEvent(migratedEvent);
       await addMessagesWithTimeDelta(engine1, [167]);
     });
+
+    afterEach(async () => {
+      await syncEngine2.stop();
+      await engine2.stop();
+    });
+
     test("retries the id registry event block if it's missing", async () => {
       await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
@@ -447,11 +452,14 @@ describe("Multi peer sync engine", () => {
     // Since the message is actually missing, it should be a no-op, and the missing message should disappear
     // from the sync trie
     await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd))) === true, 1000);
-    // expect(await syncEngine2.trie.exists(new SyncId(signerEvent))).toBeFalsy();
+    expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
 
     // The root hashes should be the same, since nothing actually happened
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
     expect(await syncEngine1.trie.rootHash()).toEqual(EMPTY_HASH);
+
+    await syncEngine2.stop();
+    await engine2.stop();
   });
 
   test("recovers if there are missing messages in the engine during sync", async () => {

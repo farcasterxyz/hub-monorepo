@@ -89,6 +89,9 @@ describe("MerkleTrie", () => {
       expect(await firstTrie.rootHash()).toEqual(await secondTrie.rootHash());
       expect(await firstTrie.items()).toEqual(await secondTrie.items());
       expect(await firstTrie.items()).toEqual(2);
+
+      await firstTrie.stop();
+      await secondTrie.stop();
     });
 
     test(
@@ -107,6 +110,9 @@ describe("MerkleTrie", () => {
         expect(await firstTrie.rootHash()).toBeTruthy();
         expect(await firstTrie.items()).toEqual(await secondTrie.items());
         expect(await firstTrie.items()).toEqual(25);
+
+        await firstTrie.stop();
+        await secondTrie.stop();
       },
       TEST_TIMEOUT_LONG,
     );
@@ -205,6 +211,7 @@ describe("MerkleTrie", () => {
 
         // expect all the items to be in the trie
         await Promise.all(syncIds.map(async (syncId) => expect(await trie2.exists(syncId)).toBeTruthy()));
+        await trie2.stop();
 
         // Delete half the items from the first trie
         await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)));
@@ -227,6 +234,7 @@ describe("MerkleTrie", () => {
         await Promise.all(
           syncIds.slice(syncIds.length / 2).map(async (syncId) => expect(await trie3.exists(syncId)).toBeTruthy()),
         );
+        await trie3.stop();
       },
       TEST_TIMEOUT_LONG,
     );
@@ -236,6 +244,10 @@ describe("MerkleTrie", () => {
     beforeEach(async () => {
       trie = new MerkleTrie(db);
       await trie.initialize();
+    });
+
+    afterEach(async () => {
+      await trie.stop();
     });
 
     test("deletes an item", async () => {
@@ -296,6 +308,9 @@ describe("MerkleTrie", () => {
       expect(await firstTrie.rootHash()).toBeTruthy();
       expect(await firstTrie.items()).toEqual(await secondTrie.items());
       expect(await firstTrie.items()).toEqual(1);
+
+      await firstTrie.stop();
+      await secondTrie.stop();
     });
 
     test("Deleting single node deletes all nodes from the DB", async () => {
@@ -430,6 +445,8 @@ describe("MerkleTrie", () => {
       expect(await trie2.rootHash()).not.toEqual(rootHash);
       expect(await trie2.exists(syncId1)).toBeFalsy();
       expect(await trie2.exists(syncId2)).toBeTruthy();
+
+      await trie2.stop();
     });
 
     test("delete after unloading some nodes", async () => {
@@ -464,6 +481,10 @@ describe("MerkleTrie", () => {
       await trie.initialize();
     });
 
+    afterEach(async () => {
+      await trie.stop();
+    });
+
     test("returns undefined if prefix is not present", async () => {
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
 
@@ -495,6 +516,8 @@ describe("MerkleTrie", () => {
       expect(nodeMetadata?.children?.size).toEqual(2);
       expect(nodeMetadata?.children?.get(new Uint8Array(Buffer.from("3"))[0] as number)).toBeDefined();
       expect(nodeMetadata?.children?.get(new Uint8Array(Buffer.from("4"))[0] as number)).toBeDefined();
+
+      await trie.stop();
     });
   });
 
@@ -506,6 +529,8 @@ describe("MerkleTrie", () => {
       expect(snapshot.prefix).toEqual(new Uint8Array(Buffer.from("1665182343")));
       expect(snapshot.numMessages).toEqual(1);
       expect(snapshot.excludedHashes.length).toEqual("1665182343".length + 1);
+
+      await trie.stop();
     });
 
     test("returns early when prefix is only partially present", async () => {
@@ -530,6 +555,8 @@ describe("MerkleTrie", () => {
       expect(snapshot4.prefix).toEqual(new Uint8Array(Buffer.from("")));
       expect(snapshot4.numMessages).toEqual(2);
       expect(snapshot4.excludedHashes.length).toEqual("".length + 1);
+
+      await trie.stop();
     });
 
     test("excluded hashes excludes the prefix char at every level", async () => {
@@ -588,6 +615,8 @@ describe("MerkleTrie", () => {
         expectedLastHash, // 3 (hash of the 5 child node hash)
         leafHash,
       ]);
+
+      await trie.stop();
     });
   });
 
@@ -598,6 +627,8 @@ describe("MerkleTrie", () => {
     expect(values?.length).toEqual(3);
     values = await trie.getAllValues(new Uint8Array(Buffer.from("166518233")));
     expect(values?.length).toEqual(1);
+
+    await trie.stop();
   });
 
   test("getAllValues returns all values for child nodes after unloadChildren", async () => {
@@ -610,5 +641,7 @@ describe("MerkleTrie", () => {
     expect(values?.length).toEqual(3);
     values = await trie.getAllValues(new Uint8Array(Buffer.from("166518233")));
     expect(values?.length).toEqual(1);
+
+    await trie.stop();
   });
 });

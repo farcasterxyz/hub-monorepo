@@ -280,7 +280,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // First, save the trie to disk
     await this._trie.commitToDb();
-    await this._trie.stop();
 
     // Wait for syncing to stop.
     try {
@@ -292,6 +291,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     } catch (e) {
       log.error({ err: e }, "Interrupting sync timed out");
     }
+
+    await this._trie.stop();
 
     this._started = false;
     this._currentSyncStatus.interruptSync = false;
