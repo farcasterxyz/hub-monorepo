@@ -49,6 +49,10 @@ describe("MerkleTrie", () => {
       await trie.initialize();
     });
 
+    afterEach(async () => {
+      await trie.stop();
+    });
+
     test("succeeds inserting a single item", async () => {
       const syncId = await NetworkFactories.SyncId.create();
 
@@ -177,7 +181,7 @@ describe("MerkleTrie", () => {
       const rootHash = await trie.rootHash();
 
       // Unload the trie
-      (await trie.getNode(new Uint8Array()))?.unloadChildren();
+      await trie.unloadChildrenAtPrefix(new Uint8Array());
 
       // Expect the root hash to be the same
       expect(await trie.rootHash()).toEqual(rootHash);
@@ -439,7 +443,7 @@ describe("MerkleTrie", () => {
       const rootHash = await trie.rootHash();
 
       // Unload all the children of the first node
-      (await trie.getNode(new Uint8Array()))?.unloadChildren();
+      await trie.unloadChildrenAtPrefix(new Uint8Array());
 
       // Now try deleting syncId1
       expect(await trie.deleteBySyncId(syncId1)).toBeTruthy();
@@ -465,7 +469,7 @@ describe("MerkleTrie", () => {
 
       await trie.insert(syncId);
 
-      expect(await trie.getTrieNodeMetadata(Buffer.from("166518234"))).toBeUndefined();
+      expect(await trie.getTrieNodeMetadata(new Uint8Array(Buffer.from("166518234")))).toBeUndefined();
     });
 
     test("returns the root metadata if the prefix is empty", async () => {
@@ -483,14 +487,14 @@ describe("MerkleTrie", () => {
 
     test("returns the correct metadata if prefix is present", async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
-      const nodeMetadata = await trie.getTrieNodeMetadata(Buffer.from("16651823"));
+      const nodeMetadata = await trie.getTrieNodeMetadata(new Uint8Array(Buffer.from("16651823")));
 
       expect(nodeMetadata).toBeDefined();
       expect(nodeMetadata?.numMessages).toEqual(2);
-      expect(nodeMetadata?.prefix).toEqual(Buffer.from("16651823"));
+      expect(nodeMetadata?.prefix).toEqual(new Uint8Array(Buffer.from("16651823")));
       expect(nodeMetadata?.children?.size).toEqual(2);
-      expect(nodeMetadata?.children?.get(Buffer.from("3")[0] as number)).toBeDefined();
-      expect(nodeMetadata?.children?.get(Buffer.from("4")[0] as number)).toBeDefined();
+      expect(nodeMetadata?.children?.get(new Uint8Array(Buffer.from("3"))[0] as number)).toBeDefined();
+      expect(nodeMetadata?.children?.get(new Uint8Array(Buffer.from("4"))[0] as number)).toBeDefined();
     });
   });
 
@@ -498,8 +502,8 @@ describe("MerkleTrie", () => {
     test("returns basic information", async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
 
-      const snapshot = await trie.getSnapshot(Buffer.from("1665182343"));
-      expect(snapshot.prefix).toEqual(Buffer.from("1665182343"));
+      const snapshot = await trie.getSnapshot(new Uint8Array(Buffer.from("1665182343")));
+      expect(snapshot.prefix).toEqual(new Uint8Array(Buffer.from("1665182343")));
       expect(snapshot.numMessages).toEqual(1);
       expect(snapshot.excludedHashes.length).toEqual("1665182343".length + 1);
     });
@@ -507,40 +511,40 @@ describe("MerkleTrie", () => {
     test("returns early when prefix is only partially present", async () => {
       const trie = await trieWithIds([1665182332, 1665182343]);
 
-      const snapshot = await trie.getSnapshot(Buffer.from("1677123"));
-      expect(snapshot.prefix).toEqual(Buffer.from("16"));
+      const snapshot = await trie.getSnapshot(new Uint8Array(Buffer.from("1677123")));
+      expect(snapshot.prefix).toEqual(new Uint8Array(Buffer.from("16")));
       expect(snapshot.numMessages).toEqual(2);
       expect(snapshot.excludedHashes.length).toEqual("16".length + 1);
 
-      const snapshot2 = await trie.getSnapshot(Buffer.from("167"));
-      expect(snapshot2.prefix).toEqual(Buffer.from("16"));
+      const snapshot2 = await trie.getSnapshot(new Uint8Array(Buffer.from("167")));
+      expect(snapshot2.prefix).toEqual(new Uint8Array(Buffer.from("16")));
       expect(snapshot2.numMessages).toEqual(2);
       expect(snapshot2.excludedHashes.length).toEqual("16".length + 1);
 
-      const snapshot3 = await trie.getSnapshot(Buffer.from("16"));
-      expect(snapshot3.prefix).toEqual(Buffer.from("16"));
+      const snapshot3 = await trie.getSnapshot(new Uint8Array(Buffer.from("16")));
+      expect(snapshot3.prefix).toEqual(new Uint8Array(Buffer.from("16")));
       expect(snapshot3.numMessages).toEqual(0);
       expect(snapshot3.excludedHashes.length).toEqual("16".length + 1);
 
-      const snapshot4 = await trie.getSnapshot(Buffer.from("222"));
-      expect(snapshot4.prefix).toEqual(Buffer.from(""));
+      const snapshot4 = await trie.getSnapshot(new Uint8Array(Buffer.from("222")));
+      expect(snapshot4.prefix).toEqual(new Uint8Array(Buffer.from("")));
       expect(snapshot4.numMessages).toEqual(2);
       expect(snapshot4.excludedHashes.length).toEqual("".length + 1);
     });
 
     test("excluded hashes excludes the prefix char at every level", async () => {
       const trie = await trieWithIds([1665182332, 1665182343, 1665182345, 1665182351]);
-      let snapshot = await trie.getSnapshot(Buffer.from("1665182351"));
-      let node = await trie.getTrieNodeMetadata(Buffer.from("16651823"));
+      let snapshot = await trie.getSnapshot(new Uint8Array(Buffer.from("1665182351")));
+      let node = await trie.getTrieNodeMetadata(new Uint8Array(Buffer.from("16651823")));
       // We expect the excluded hash to be the hash of the 3 and 4 child nodes, and excludes the 5 child node
       const expectedHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(Buffer.from(node?.children?.get(Buffer.from("3")[0] as number)?.hash || "", "hex"))
-          .update(Buffer.from(node?.children?.get(Buffer.from("4")[0] as number)?.hash || "", "hex"))
+          .update(Buffer.from(node?.children?.get(new Uint8Array(Buffer.from("3"))[0] as number)?.hash || "", "hex"))
+          .update(Buffer.from(node?.children?.get(new Uint8Array(Buffer.from("4"))[0] as number)?.hash || "", "hex"))
           .digest(),
       ).toString("hex");
-      let leafHash = (await trie.getTrieNodeMetadata(Buffer.from("1665182351")))?.hash;
+      let leafHash = (await trie.getTrieNodeMetadata(new Uint8Array(Buffer.from("1665182351"))))?.hash;
       expect(snapshot.excludedHashes).toEqual([
         EMPTY_HASH, // 1, these are empty because there are no other children at this level
         EMPTY_HASH, // 6
@@ -555,20 +559,22 @@ describe("MerkleTrie", () => {
         leafHash,
       ]);
 
-      snapshot = await trie.getSnapshot(Buffer.from("1665182343"));
-      node = await trie.getTrieNodeMetadata(Buffer.from("166518234"));
+      snapshot = await trie.getSnapshot(new Uint8Array(Buffer.from("1665182343")));
+      node = await trie.getTrieNodeMetadata(new Uint8Array(Buffer.from("166518234")));
       const expectedLastHash = Buffer.from(
-        blake3(Buffer.from(node?.children?.get(Buffer.from("5")[0] as number)?.hash || "", "hex"), { dkLen: 20 }),
+        blake3(Buffer.from(node?.children?.get(new Uint8Array(Buffer.from("5"))[0] as number)?.hash || "", "hex"), {
+          dkLen: 20,
+        }),
       ).toString("hex");
-      node = await trie.getTrieNodeMetadata(Buffer.from("16651823"));
+      node = await trie.getTrieNodeMetadata(new Uint8Array(Buffer.from("16651823")));
       const expectedPenultimateHash = Buffer.from(
         blake3
           .create({ dkLen: 20 })
-          .update(Buffer.from(node?.children?.get(Buffer.from("3")[0] as number)?.hash || "", "hex"))
-          .update(Buffer.from(node?.children?.get(Buffer.from("5")[0] as number)?.hash || "", "hex"))
+          .update(Buffer.from(node?.children?.get(new Uint8Array(Buffer.from("3"))[0] as number)?.hash || "", "hex"))
+          .update(Buffer.from(node?.children?.get(new Uint8Array(Buffer.from("5"))[0] as number)?.hash || "", "hex"))
           .digest(),
       ).toString("hex");
-      leafHash = (await trie.getTrieNodeMetadata(Buffer.from("1665182343")))?.hash;
+      leafHash = (await trie.getTrieNodeMetadata(new Uint8Array(Buffer.from("1665182343"))))?.hash;
       expect(snapshot.excludedHashes).toEqual([
         EMPTY_HASH, // 1
         EMPTY_HASH, // 6
@@ -588,9 +594,9 @@ describe("MerkleTrie", () => {
   test("getAllValues returns all values for child nodes", async () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
-    let values = await trie.getAllValues(Buffer.from("16651823"));
+    let values = await trie.getAllValues(new Uint8Array(Buffer.from("16651823")));
     expect(values?.length).toEqual(3);
-    values = await trie.getAllValues(Buffer.from("166518233"));
+    values = await trie.getAllValues(new Uint8Array(Buffer.from("166518233")));
     expect(values?.length).toEqual(1);
   });
 
@@ -598,11 +604,11 @@ describe("MerkleTrie", () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
     // Unload all the children of the first node
-    (await trie.getNode(new Uint8Array()))?.unloadChildren();
+    await trie.unloadChildrenAtPrefix(new Uint8Array());
 
-    let values = await trie.getAllValues(Buffer.from("16651823"));
+    let values = await trie.getAllValues(new Uint8Array(Buffer.from("16651823")));
     expect(values?.length).toEqual(3);
-    values = await trie.getAllValues(Buffer.from("166518233"));
+    values = await trie.getAllValues(new Uint8Array(Buffer.from("166518233")));
     expect(values?.length).toEqual(1);
   });
 });

@@ -37,13 +37,13 @@ export interface MerkleTrieInterface {
   insert(syncIdBytes: Uint8Array): Promise<boolean>;
   delete(syncIdBytes: Uint8Array): Promise<boolean>;
   exists(syncIdBytes: Uint8Array): Promise<boolean>;
-  getNode(prefix: Uint8Array): Promise<TrieNode | undefined>;
   getSnapshot(prefix: Uint8Array): Promise<TrieSnapshot>;
   getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined>;
   getAllValues(prefix: Uint8Array): Promise<Uint8Array[]>;
   items(): Promise<number>;
   rootHash(): Promise<string>;
   commitToDb(): Promise<void>;
+  unloadChildrenAtPrefix(prefix: Uint8Array): Promise<void>;
 }
 
 export type MerkleTrieInterfaceMethodNames = keyof MerkleTrieInterface;
@@ -161,6 +161,10 @@ class MerkleTrie {
     return result;
   }
 
+  public async stop(): Promise<void> {
+    await this._worker?.terminate();
+  }
+
   public async initialize(): Promise<void> {
     return this.callMethod("initialize");
   }
@@ -214,7 +218,7 @@ class MerkleTrie {
   }
 
   public async deleteByBytes(id: Uint8Array): Promise<boolean> {
-    return this.callMethod("delete", id);
+    return this.callMethod("delete", new Uint8Array(id));
   }
 
   /**
@@ -228,32 +232,28 @@ class MerkleTrie {
    * Check if we already have this syncID (expressed as bytes)
    */
   public async existsByBytes(id: Uint8Array): Promise<boolean> {
-    return this.callMethod("exists", id);
+    return this.callMethod("exists", new Uint8Array(id));
   }
 
   /**
    * Get a snapshot of the trie at a given prefix.
    */
   public async getSnapshot(prefix: Uint8Array): Promise<TrieSnapshot> {
-    return this.callMethod("getSnapshot", prefix);
+    return this.callMethod("getSnapshot", new Uint8Array(prefix));
   }
 
   /**
    * Get the metadata for a node in the trie at the given prefix.
    */
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {
-    return this.callMethod("getTrieNodeMetadata", prefix);
-  }
-
-  public async getNode(prefix: Uint8Array): Promise<TrieNode | undefined> {
-    return this.callMethod("getNode", prefix);
+    return this.callMethod("getTrieNodeMetadata", new Uint8Array(prefix));
   }
 
   /**
    * Get all the values at the prefix.
    */
   public async getAllValues(prefix: Uint8Array): Promise<Uint8Array[]> {
-    return this.callMethod("getAllValues", prefix);
+    return this.callMethod("getAllValues", new Uint8Array(prefix));
   }
 
   public async items(): Promise<number> {
@@ -267,6 +267,10 @@ class MerkleTrie {
   // Save the cached DB updates to the DB
   public async commitToDb(): Promise<void> {
     return this.callMethod("commitToDb");
+  }
+
+  public async unloadChildrenAtPrefix(prefix: Uint8Array): Promise<void> {
+    return this.callMethod("unloadChildrenAtPrefix", prefix);
   }
 }
 

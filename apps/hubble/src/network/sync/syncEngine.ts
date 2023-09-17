@@ -280,6 +280,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // First, save the trie to disk
     await this._trie.commitToDb();
+    await this._trie.stop();
 
     // Wait for syncing to stop.
     try {

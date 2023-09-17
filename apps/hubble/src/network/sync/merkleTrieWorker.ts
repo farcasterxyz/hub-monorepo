@@ -53,7 +53,7 @@ class MerkleTrieImpl {
       this._dbCallId++;
       this._dbGetCallMap.set(this._dbCallId, { resolve });
 
-      parentPort?.postMessage({ dbGet: { key, callId: this._dbCallId } });
+      parentPort?.postMessage({ dbGetCallId: this._dbCallId, key: Uint8Array.from(key) });
     });
   }
 
@@ -92,17 +92,13 @@ class MerkleTrieImpl {
   async initialize(): Promise<void> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
-        try {
-          const rootBytes = await this._dbGet(TrieNode.makePrimaryKey(new Uint8Array()));
-          if (rootBytes && rootBytes.length > 0) {
-            this._root = TrieNode.deserialize(rootBytes);
-            log.info(
-              { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this.items },
-              "Merkle Trie loaded from DB",
-            );
-          }
-        } catch (e) {
-          // There is no Root node in the DB, just use an empty one
+        const rootBytes = await this._dbGet(TrieNode.makePrimaryKey(new Uint8Array()));
+        if (rootBytes && rootBytes.length > 0) {
+          this._root = TrieNode.deserialize(rootBytes);
+          log.info(
+            { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this.items },
+            "Merkle Trie loaded from DB",
+          );
         }
 
         resolve();
@@ -351,19 +347,23 @@ function makeResult<MethodName extends keyof MerkleTrieInterface>(
 parentPort?.on(
   "message",
   async (
-    msg: MerkleTrieInterfaceMethodGenericMessage & { dbCallId: number; value: Uint8Array; dbKeyValuesCallId: number },
+    msg: MerkleTrieInterfaceMethodGenericMessage & {
+      dbGetCallId: number;
+      value: Uint8Array;
+      dbKeyValuesCallId: number;
+    },
   ) => {
     // console.log("Received message from parent thread", msg);
-    const { dbCallId, value, dbKeyValuesCallId, method, methodCallId } = msg;
+    const { dbGetCallId, value, dbKeyValuesCallId, method, methodCallId } = msg;
 
     // First check if this message is a response to a DB get call
-    if (dbCallId) {
-      const dbGetCall = merkleTrie._dbGetCallMap.get(dbCallId);
+    if (dbGetCallId) {
+      const dbGetCall = merkleTrie._dbGetCallMap.get(dbGetCallId);
       if (!dbGetCall) {
-        log.error({ value }, `Received response for unknown DB get call ID ${dbCallId}`);
+        log.error({ value }, `Received response for unknown DB get call ID ${dbGetCallId}`);
       }
-      merkleTrie._dbGetCallMap.delete(dbCallId);
-      dbGetCall?.resolve(Buffer.from(value));
+      merkleTrie._dbGetCallMap.delete(dbGetCallId);
+      dbGetCall?.resolve(value ? Buffer.from(value) : undefined);
 
       return;
     }
@@ -426,13 +426,6 @@ parentPort?.on(
         parentPort?.postMessage({ methodCallId, result: makeResult<"getTrieNodeMetadata">(result) });
         break;
       }
-      case "getNode": {
-        const specificMsg = msg as MerkleTrieInterfaceMessage<"getNode">;
-        const [prefix] = specificMsg.args;
-        const result = await merkleTrie.getNode(prefix);
-        parentPort?.postMessage({ methodCallId, result: makeResult<"getNode">(result) });
-        break;
-      }
       case "getAllValues": {
         const specificMsg = msg as MerkleTrieInterfaceMessage<"getAllValues">;
         const [prefix] = specificMsg.args;
@@ -453,6 +446,14 @@ parentPort?.on(
       case "commitToDb": {
         await merkleTrie.commitToDb();
         parentPort?.postMessage({ methodCallId, result: makeResult<"commitToDb">(undefined) });
+        break;
+      }
+      case "unloadChildrenAtPrefix": {
+        const specificMsg = msg as MerkleTrieInterfaceMessage<"unloadChildrenAtPrefix">;
+        const [prefix] = specificMsg.args;
+        const node = await merkleTrie.getNode(prefix);
+        node?.unloadChildren();
+        parentPort?.postMessage({ methodCallId, result: makeResult<"unloadChildrenAtPrefix">(undefined) });
         break;
       }
     }
