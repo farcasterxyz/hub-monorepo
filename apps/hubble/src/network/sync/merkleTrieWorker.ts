@@ -85,6 +85,7 @@ class MerkleTrieImpl {
       this._lock.writeLock(async (release) => {
         this._root = new TrieNode();
         this._pendingDbUpdates.clear();
+        this._callsSinceLastUnload = 0;
 
         resolve();
         release();
@@ -102,6 +103,9 @@ class MerkleTrieImpl {
             { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this._root.items },
             "Merkle Trie loaded from DB",
           );
+        } else {
+          log.info("Merkle Trie initialized with empty root node");
+          this._root = new TrieNode();
         }
 
         resolve();
@@ -356,8 +360,8 @@ parentPort?.on(
       dbKeyValuesCallId: number;
     },
   ) => {
-    // console.log("Received message from parent thread", msg);
     const { dbGetCallId, value, dbKeyValuesCallId, method, methodCallId } = msg;
+    // console.log("Received message from parent thread: ", method);
 
     // First check if this message is a response to a DB get call
     if (dbGetCallId) {

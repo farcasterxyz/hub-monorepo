@@ -81,21 +81,28 @@ export type MerkleTrieInterfaceMethodGenericMessage = {
  */
 class MerkleTrie {
   private _worker;
+  private _terminateWorkerOnStop = false;
+
   private _nodeMethodCallId = 0;
   private _nodeMethodCallMap = new Map<number, { resolve: Function; reject: Function }>();
 
   private _db: RocksDB;
 
-  constructor(rocksDb: RocksDB) {
+  constructor(rocksDb: RocksDB, worker?: Worker, terminateWorkerOnStop = true) {
     this._db = rocksDb;
+    this._terminateWorkerOnStop = terminateWorkerOnStop;
 
-    const workerPath = new URL("../../../build/network/sync/merkleTrieWorker.js", import.meta.url);
-    this._worker = new Worker(workerPath, {
-      workerData: { statsdInitialization: getStatusdInitialization() },
-    });
+    if (worker) {
+      this._worker = worker;
+    } else {
+      const workerPath = new URL("../../../build/network/sync/merkleTrieWorker.js", import.meta.url);
+      this._worker = new Worker(workerPath, {
+        workerData: { statsdInitialization: getStatusdInitialization() },
+      });
+    }
 
     this._worker.addListener("message", async (event) => {
-      // console.log("Received message from worker thread", msg);
+      // console.log("Received message from worker thread", event);
       if (event.dbGetCallId) {
         const value = await ResultAsync.fromPromise(this._db.get(Buffer.from(event.key)), (e) => e as Error);
         if (value.isErr()) {
@@ -162,8 +169,15 @@ class MerkleTrie {
   }
 
   public async stop(): Promise<void> {
-    this._worker.removeAllListeners();
-    await this._worker?.terminate();
+    this._worker.removeAllListeners("message");
+
+    if (this._terminateWorkerOnStop) {
+      await this._worker?.terminate();
+    }
+  }
+
+  public getWorker(): Worker {
+    return this._worker;
   }
 
   public async initialize(): Promise<void> {

@@ -24,19 +24,26 @@ const TEST_TIMEOUT_SHORT = 10 * 1000;
 const db = jestRocksDB("network.p2p.gossipNode.test");
 
 describe("GossipNode", () => {
+  let node: GossipNode;
+
+  beforeEach(() => {
+    node = new GossipNode();
+  });
+
+  afterEach(async () => {
+    await node.stop();
+  });
+
   test("start fails if IpMultiAddr has port or transport addrs", async () => {
-    const node = new GossipNode();
     const options = { ipMultiAddr: "/ip4/127.0.0.1/tcp/8080" };
     const error = (await node.start([], options))._unsafeUnwrapErr();
 
     expect(error.errCode).toEqual("unavailable");
     expect(error.message).toMatch("unexpected multiaddr transport/port information");
     expect(node.isStarted()).toBeFalsy();
-    await node.stop();
   });
 
   test("start fails if multiaddr format is invalid", async () => {
-    const node = new GossipNode();
     // an IPv6 being supplied as an IPv4
     const options = { ipMultiAddr: "/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a" };
     expect((await node.start([], options))._unsafeUnwrapErr().errCode).toEqual("unavailable");
@@ -45,11 +52,9 @@ describe("GossipNode", () => {
     expect(error.errCode).toEqual("unavailable");
     expect(error.message).toMatch("invalid multiaddr");
     expect(node.isStarted()).toBeFalsy();
-    await node.stop();
   });
 
   test("connect fails with a node that has not started", async () => {
-    const node = new GossipNode();
     await node.start([]);
 
     let result = await node.connectAddress(multiaddr());
@@ -58,15 +63,12 @@ describe("GossipNode", () => {
     const offlineNode = new GossipNode();
     result = await node.connect(offlineNode);
     expect(result.isErr()).toBeTruthy();
-
-    await node.stop();
   });
 
   test(
     "connect fails with a node that is not in the allow list",
     async () => {
-      const node1 = new GossipNode();
-      expect((await node1.start([])).isOk()).toBeTruthy();
+      expect((await node.start([])).isOk()).toBeTruthy();
 
       const node2 = new GossipNode();
       expect((await node2.start([])).isOk()).toBeTruthy();
@@ -74,14 +76,14 @@ describe("GossipNode", () => {
       // node 3 has node 1 in its allow list, but not node 2
       const node3 = new GossipNode();
 
-      if (node1.peerId()) {
-        expect((await node3.start([], { allowedPeerIdStrs: [node1.peerId()?.toString() ?? ""] })).isOk()).toBeTruthy();
+      if (node.peerId()) {
+        expect((await node3.start([], { allowedPeerIdStrs: [node.peerId()?.toString() ?? ""] })).isOk()).toBeTruthy();
       } else {
         throw Error("Node1 not started, no peerId found");
       }
 
       try {
-        let dialResult = await node1.connect(node3);
+        let dialResult = await node.connect(node3);
         expect(dialResult.isOk()).toBeTruthy();
 
         dialResult = await node2.connect(node3);
@@ -90,7 +92,6 @@ describe("GossipNode", () => {
         dialResult = await node3.connect(node2);
         expect(dialResult.isErr()).toBeTruthy();
       } finally {
-        await node1.stop();
         await node2.stop();
         await node3.stop();
       }
@@ -101,36 +102,34 @@ describe("GossipNode", () => {
   test(
     "removing from addressbook hangs up connection",
     async () => {
-      const node1 = new GossipNode();
-      await node1.start([]);
+      await node.start([]);
 
       const node2 = new GossipNode();
       await node2.start([]);
 
       try {
-        const dialResult = await node1.connect(node2);
+        const dialResult = await node.connect(node2);
         expect(dialResult.isOk()).toBeTruthy();
 
-        let other = await node1.getPeerAddresses(node2.peerId() as PeerId);
+        let other = await node.getPeerAddresses(node2.peerId() as PeerId);
         expect(other?.length).toEqual(1);
 
         // We have at least 1 address for node1
-        other = await node2.getPeerAddresses(node1.peerId() as PeerId);
-        expect(other?.length).toBeGreaterThan(1);
-        expect(await node2.allPeerIds()).toContain(node1.peerId()?.toString());
+        other = await node2.getPeerAddresses(node.peerId() as PeerId);
+        expect(other?.length).toBeGreaterThanOrEqual(1);
+        expect(await node2.allPeerIds()).toContain(node.peerId()?.toString());
 
-        await node1.removePeerFromAddressBook(node2.peerId() as PeerId);
+        await node.removePeerFromAddressBook(node2.peerId() as PeerId);
 
         // Sleep to allow the connection to be closed
-        await sleepWhile(async () => (await node1.getPeerAddresses(node2.peerId() as PeerId)).length > 0, 10 * 1000);
+        await sleepWhile(async () => (await node.getPeerAddresses(node2.peerId() as PeerId)).length > 0, 10 * 1000);
 
         // Make sure the connection is closed
-        other = await node1.getPeerAddresses(node2.peerId() as PeerId);
+        other = await node.getPeerAddresses(node2.peerId() as PeerId);
         expect(other).toEqual([]);
 
         expect(await node2.allPeerIds()).toEqual([]);
       } finally {
-        await node1.stop();
         await node2.stop();
       }
     },
@@ -197,7 +196,6 @@ describe("GossipNode", () => {
     });
 
     test("Gossip Ids match for farcaster protocol messages", async () => {
-      const node = new GossipNode();
       await node.start([]);
       await node.gossipMessage(castAdd);
       // should be detected as a duplicate
@@ -205,20 +203,15 @@ describe("GossipNode", () => {
 
       expect(res.isErr()).toBeTruthy();
       expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
-
-      await node.stop();
     });
 
     test("Gossip Ids do not match for gossip internal messages", async () => {
-      const node = new GossipNode();
       await node.start([]);
 
       const contactInfo = ContactInfoContent.create();
       await node.gossipContactInfo(contactInfo);
       const res2 = await node.gossipContactInfo(contactInfo);
       expect(res2.isOk()).toBeTruthy();
-
-      await node.stop();
     });
 
     test("Gossip Ids do not match for gossip V1 messages", async () => {
@@ -238,7 +231,6 @@ describe("GossipNode", () => {
       result.forEach((res) => {
         expect(res.isOk()).toBeTruthy();
       });
-      await node.stop();
     });
 
     test("Gossip Message decode works for valid messages", async () => {

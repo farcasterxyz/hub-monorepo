@@ -7,6 +7,7 @@ import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { TIMESTAMP_LENGTH } from "./syncId.js";
 import { EMPTY_HASH } from "./trieNode.js";
+import { Worker } from "worker_threads";
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
@@ -43,16 +44,28 @@ describe("MerkleTrie", () => {
     return count;
   };
 
+  let reusedWorker: Worker | undefined = undefined;
+
+  beforeEach(async () => {
+    if (reusedWorker) {
+      trie = new MerkleTrie(db, reusedWorker, false);
+    } else {
+      trie = new MerkleTrie(db, undefined, false);
+    }
+    await trie.initialize();
+    reusedWorker = trie.getWorker();
+  });
+
+  afterEach(async () => {
+    await trie.callMethod("clear");
+    await trie.stop();
+  });
+
+  afterAll(async () => {
+    await reusedWorker?.terminate();
+  });
+
   describe("insert", () => {
-    beforeEach(async () => {
-      trie = new MerkleTrie(db);
-      await trie.initialize();
-    });
-
-    afterEach(async () => {
-      await trie.stop();
-    });
-
     test("succeeds inserting a single item", async () => {
       const syncId = await NetworkFactories.SyncId.create();
 
@@ -241,15 +254,6 @@ describe("MerkleTrie", () => {
   });
 
   describe("delete", () => {
-    beforeEach(async () => {
-      trie = new MerkleTrie(db);
-      await trie.initialize();
-    });
-
-    afterEach(async () => {
-      await trie.stop();
-    });
-
     test("deletes an item", async () => {
       const syncId = await NetworkFactories.SyncId.create();
 
@@ -476,15 +480,6 @@ describe("MerkleTrie", () => {
   });
 
   describe("getNodeMetadata", () => {
-    beforeEach(async () => {
-      trie = new MerkleTrie(db);
-      await trie.initialize();
-    });
-
-    afterEach(async () => {
-      await trie.stop();
-    });
-
     test("returns undefined if prefix is not present", async () => {
       const syncId = await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182332000) } });
 

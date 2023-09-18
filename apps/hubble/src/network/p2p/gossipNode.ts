@@ -132,7 +132,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
 
-  private _nodeWorker?: Worker;
+  private _nodeWorker: Worker;
   private _nodeMethodCallId = 0;
   private _nodeMethodCallMap = new Map<number, { resolve: Function; reject: Function }>();
 
