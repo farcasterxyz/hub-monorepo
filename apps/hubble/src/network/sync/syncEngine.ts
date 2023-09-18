@@ -292,6 +292,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.error({ err: e }, "Interrupting sync timed out");
     }
 
+    await this._trie.stop();
+
     this._started = false;
     this._currentSyncStatus.interruptSync = false;
   }

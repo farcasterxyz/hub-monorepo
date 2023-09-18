@@ -27,6 +27,9 @@ import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
 
+const TEST_TIMEOUT_SHORT = 60 * 1000;
+const SLEEPWHILE_TIMEOUT = 10 * 1000;
+
 const testDb = jestRocksDB("engine.syncEngine.test");
 const testDb2 = jestRocksDB("engine2.syncEngine.test");
 
@@ -50,21 +53,22 @@ beforeAll(async () => {
 });
 
 describe("SyncEngine", () => {
+  jest.setTimeout(TEST_TIMEOUT_SHORT);
+
   let syncEngine: SyncEngine;
   let hub: HubInterface;
   let engine: Engine;
 
   beforeEach(async () => {
-    // await testDb.clear();
     engine = new Engine(testDb, FarcasterNetwork.TESTNET, undefined, publicClient);
     hub = new MockHub(testDb, engine);
     syncEngine = new SyncEngine(hub, testDb);
-  });
+  }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {
     await syncEngine.stop();
     await engine.stop();
-  });
+  }, TEST_TIMEOUT_SHORT);
 
   const addMessagesWithTimestamps = async (timeDelta: number[]) => {
     const results = await Promise.all(
@@ -81,7 +85,7 @@ describe("SyncEngine", () => {
       }),
     );
 
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
     await syncEngine.trie.commitToDb();
     return results;
   };
@@ -102,7 +106,7 @@ describe("SyncEngine", () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     // Two messages (signerEvent + castAdd) was added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
@@ -118,7 +122,7 @@ describe("SyncEngine", () => {
     expect(result.isErr()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine.trie.items()).toEqual(0);
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
@@ -144,7 +148,7 @@ describe("SyncEngine", () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const id = new SyncId(castRemove);
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
@@ -192,7 +196,7 @@ describe("SyncEngine", () => {
     await engine.mergeOnChainEvent(storageEvent);
     expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
 
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     // SignerAdd and Username proof is added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
@@ -240,7 +244,7 @@ describe("SyncEngine", () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
     expect(await syncEngine.trie.items()).toEqual(1); // reaction1
 
     // Then merging the second reaction should also succeed and remove reaction1
@@ -248,7 +252,7 @@ describe("SyncEngine", () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
     expect(await syncEngine.trie.items()).toEqual(1); // reaction2 (reaction1 is removed)
 
     // Create a new engine and sync engine
@@ -265,7 +269,7 @@ describe("SyncEngine", () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
     expect(await syncEngine2.trie.items()).toEqual(1); //reaction2
 
     // Roothashes must match
@@ -413,45 +417,53 @@ describe("SyncEngine", () => {
     await syncEngine2.stop();
   });
 
-  test("Rebuild trie from engine messages", async () => {
-    await engine.mergeOnChainEvent(custodyEvent);
-    await engine.mergeOnChainEvent(signerEvent);
-    await engine.mergeOnChainEvent(storageEvent);
+  test(
+    "Rebuild trie from engine messages",
+    async () => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
 
-    const messages = await addMessagesWithTimestamps([167, 169, 172]);
+      const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
-    expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
+      expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
 
-    const syncEngine2 = new SyncEngine(hub, testDb);
-    await syncEngine2.start(true); // Rebuild from engine messages
+      const syncEngine2 = new SyncEngine(hub, testDb);
+      await syncEngine2.start(true); // Rebuild from engine messages
 
-    // Make sure all messages exist
-    expect(await syncEngine2.trie.items()).toEqual(3);
-    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
-    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
+      // Make sure all messages exist
+      expect(await syncEngine2.trie.items()).toEqual(3);
+      expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+      expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
 
-    await syncEngine2.stop();
-  });
+      await syncEngine2.stop();
+    },
+    TEST_TIMEOUT_SHORT,
+  );
 
-  test("getSnapshot should use a prefix of 10-seconds resolution timestamp", async () => {
-    await engine.mergeOnChainEvent(custodyEvent);
-    await engine.mergeOnChainEvent(signerEvent);
-    await engine.mergeOnChainEvent(storageEvent);
+  test(
+    "getSnapshot should use a prefix of 10-seconds resolution timestamp",
+    async () => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
 
-    const nowOrig = Date.now;
-    Date.now = () => 1683074200000;
-    try {
-      await addMessagesWithTimestamps([160, 169, 172]);
-      Date.now = () => 1683074200000 + 167 * 1000;
-      const result = await syncEngine.getSnapshot();
-      const snapshot = result._unsafeUnwrap();
-      expect((snapshot.prefix as Buffer).toString("utf8")).toEqual("0073615160");
-    } finally {
-      Date.now = nowOrig;
-    }
-  });
+      const nowOrig = Date.now;
+      Date.now = () => 1683074200000;
+      try {
+        await addMessagesWithTimestamps([160, 169, 172]);
+        Date.now = () => 1683074200000 + 167 * 1000;
+        const result = await syncEngine.getSnapshot();
+        const snapshot = result._unsafeUnwrap();
+        expect(Buffer.from(snapshot.prefix).toString("utf8")).toEqual("0073615160");
+      } finally {
+        Date.now = nowOrig;
+      }
+    },
+    TEST_TIMEOUT_SHORT,
+  );
 
   describe("getDivergencePrefix", () => {
     const trieWithIds = async (timestamps: number[]) => {
@@ -470,7 +482,7 @@ describe("SyncEngine", () => {
 
       const trie = syncEngine.trie;
 
-      const prefixToTest = Buffer.from("1665182343");
+      const prefixToTest = new Uint8Array(Buffer.from("1665182343"));
       const oldSnapshot = await trie.getSnapshot(prefixToTest);
       trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
 
@@ -479,7 +491,7 @@ describe("SyncEngine", () => {
         await trie.getSnapshot(prefixToTest),
         oldSnapshot.excludedHashes,
       );
-      expect(divergencePrefix).toEqual(Buffer.from("16651823"));
+      expect(divergencePrefix).toEqual(new Uint8Array(Buffer.from("16651823")));
 
       // divergence prefix should be the full prefix, if snapshots are the same
       const currentSnapshot = await trie.getSnapshot(prefixToTest);
@@ -494,7 +506,7 @@ describe("SyncEngine", () => {
       expect(divergencePrefix.length).toEqual(0);
 
       // divergence prefix should be our prefix if provided hashes are longer
-      const with5 = Buffer.concat([prefixToTest, Buffer.from("5")]);
+      const with5 = Buffer.concat([prefixToTest, new Uint8Array(Buffer.from("5"))]);
       divergencePrefix = await syncEngine.getDivergencePrefix(await trie.getSnapshot(with5), [
         ...currentSnapshot.excludedHashes,
         "different",

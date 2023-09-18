@@ -1,16 +1,12 @@
 import { Result, ResultAsync } from "neverthrow";
-import ReadWriteLock from "rwlock";
+import { Worker } from "worker_threads";
 import { HubError, Message } from "@farcaster/hub-nodejs";
 import { SyncId } from "./syncId.js";
 import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { FID_BYTES, HASH_LENGTH, RootPrefix, UserMessagePostfixMax } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
-import { statsd } from "../../utils/statsd.js";
-
-// The number of messages to process before unloading the trie from memory
-// Approx 25k * 10 nodes * 65 bytes per node = approx 16MB of cached data
-const TRIE_UNLOAD_THRESHOLD = 25_000;
+import { getStatusdInitialization } from "../../utils/statsd.js";
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -27,9 +23,48 @@ export type NodeMetadata = {
   children?: Map<number, NodeMetadata>;
 };
 
-const log = logger.child({
-  component: "SyncMerkleTrie",
-});
+const log = logger.child({ component: "SyncMerkleTrie" });
+const workerLog = logger.child({ component: "SyncMerkleTrieWorker" });
+
+export interface MerkleTrieKV {
+  key: Uint8Array;
+  value: Uint8Array;
+}
+
+// This is the interface that a Merkle trie needs to implement. It is currently implemented by
+// a worker thread, but it could be moved to native code
+export interface MerkleTrieInterface {
+  initialize(): Promise<void>;
+  clear(): Promise<void>;
+  insert(syncIdBytes: Uint8Array): Promise<boolean>;
+  delete(syncIdBytes: Uint8Array): Promise<boolean>;
+  exists(syncIdBytes: Uint8Array): Promise<boolean>;
+  getSnapshot(prefix: Uint8Array): Promise<TrieSnapshot>;
+  getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined>;
+  getAllValues(prefix: Uint8Array): Promise<Uint8Array[]>;
+  items(): Promise<number>;
+  rootHash(): Promise<string>;
+  commitToDb(): Promise<void>;
+  unloadChildrenAtPrefix(prefix: Uint8Array): Promise<void>;
+}
+
+// Typescript types to make sending messages to the worker thread type-safe
+export type MerkleTrieInterfaceMethodNames = keyof MerkleTrieInterface;
+export type MerkleTrieInterfaceMethodReturnType<MethodName extends MerkleTrieInterfaceMethodNames> = ReturnType<
+  MerkleTrieInterface[MethodName]
+>;
+export type MerkleTrieInterfaceMessage<MethodName extends MerkleTrieInterfaceMethodNames> = {
+  method: MethodName;
+  args: Parameters<MerkleTrieInterface[MethodName]>;
+  methodCallId: number;
+};
+export type MerkleTrieInterfaceMethodGenericMessage = {
+  [K in MerkleTrieInterfaceMethodNames]: {
+    method: K;
+    args: Parameters<MerkleTrieInterface[K]>;
+    methodCallId: number;
+  };
+}[MerkleTrieInterfaceMethodNames];
 
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
@@ -41,45 +76,121 @@ const log = logger.child({
  * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/.
  *
  *
- * Note: MerkleTrie and TrieNode are not thread-safe, which is ok because there are no async
- * methods. DO NOT add async methods without considering impact on concurrency-safety.
+ * The Merkle trie is implemented in a worker thread, so that it doesn't block the main thread.
+ * The communication between the worker thread and the main thread is done via messages, both ways.
+ * API calls to the worker thread are tracked in the _nodeMethodCallMap map, so that the correct
+ * promises can be resolved/rejected when the worker thread returns the result of the method call.
+ *
+ * The worker thread can also make API calls to the main thread, to get data from the DB or for logging.
+ * The main thread listens for messages from the worker thread and handles them accordingly, sending the
+ * result of the method call back to the worker thread.
+ *
  */
 class MerkleTrie {
-  private _root: TrieNode;
+  private _worker;
+  private _terminateWorkerOnStop = false;
+
+  private _nodeMethodCallId = 0;
+  private _nodeMethodCallMap = new Map<number, { resolve: Function; reject: Function }>();
+
   private _db: RocksDB;
-  private _lock: ReadWriteLock;
 
-  private _pendingDbUpdates = new Map<Buffer, Buffer>();
-
-  private _callsSinceLastUnload = 0;
-
-  constructor(rocksDb: RocksDB) {
+  constructor(rocksDb: RocksDB, worker?: Worker, terminateWorkerOnStop = true) {
     this._db = rocksDb;
-    this._lock = new ReadWriteLock();
+    this._terminateWorkerOnStop = terminateWorkerOnStop;
 
-    this._root = new TrieNode();
+    // We allow worker threads to be cached and reused (mainly useful for testing)
+    if (worker) {
+      this._worker = worker;
+    } else {
+      const workerPath = new URL("../../../build/network/sync/merkleTrieWorker.js", import.meta.url);
+      this._worker = new Worker(workerPath, {
+        workerData: { statsdInitialization: getStatusdInitialization() },
+      });
+    }
+
+    this._worker.addListener("message", async (event) => {
+      // console.log("Received message from worker thread", event);
+      if (event.dbGetCallId) {
+        const value = await ResultAsync.fromPromise(this._db.get(Buffer.from(event.key)), (e) => e as Error);
+        if (value.isErr()) {
+          log.warn({ key: event.key, error: value.error }, "Error getting value from DB");
+          this._worker.postMessage({
+            dbGetCallId: event.dbGetCallId,
+            value: undefined,
+          });
+        } else {
+          this._worker.postMessage({
+            dbGetCallId: event.dbGetCallId,
+            value: value.value,
+          });
+        }
+      } else if (event.dbKeyValuesCallId) {
+        const keyValues = event.dbKeyValues as MerkleTrieKV[];
+        const txn = this._db.transaction();
+
+        // Collect all the pending DB updates into a single transaction batch
+        for (const { key, value } of keyValues) {
+          if (value && value.length > 0) {
+            txn.put(Buffer.from(key), Buffer.from(value));
+          } else {
+            txn.del(Buffer.from(key));
+          }
+        }
+
+        await this._db.commit(txn);
+        this._worker.postMessage({
+          dbKeyValuesCallId: event.dbKeyValuesCallId,
+        });
+      } else if (event.log) {
+        // Log event from the libp2p worker thread.
+        const { level, logObj, message } = event.log;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        (workerLog as any)[level](logObj, message);
+      } else {
+        // Result of a method call. Pick the correct method call from the map and resolve/reject the promise
+        const result = event;
+        const methodCall = this._nodeMethodCallMap.get(result.methodCallId);
+        if (methodCall) {
+          this._nodeMethodCallMap.delete(result.methodCallId);
+          methodCall.resolve(result.result);
+        }
+      }
+    });
+  }
+
+  // A typed wrapper around the worker.postMessage method, to make sure we don't make any type mistakes
+  // when calling the method
+  async callMethod<MethodName extends MerkleTrieInterfaceMethodNames>(
+    method: MethodName,
+    ...args: Parameters<MerkleTrieInterface[MethodName]>
+  ): Promise<MerkleTrieInterfaceMethodReturnType<MethodName>> {
+    const methodCallId = this._nodeMethodCallId++;
+    const methodCall = { method, args, methodCallId };
+
+    const result = new Promise<MerkleTrieInterfaceMethodReturnType<MethodName>>((resolve, reject) => {
+      this._nodeMethodCallMap.set(methodCallId, { resolve, reject });
+      this._worker?.postMessage(methodCall);
+    });
+
+    return result;
+  }
+
+  public async stop(): Promise<void> {
+    this._worker.removeAllListeners("message");
+
+    if (this._terminateWorkerOnStop) {
+      await this._worker?.terminate();
+    }
+  }
+
+  // For testing only. Exposes the worker thread so we can send it messages directly
+  public getWorker(): Worker {
+    return this._worker;
   }
 
   public async initialize(): Promise<void> {
-    return new Promise((resolve) => {
-      this._lock.writeLock(async (release) => {
-        try {
-          const rootBytes = await this._db.get(TrieNode.makePrimaryKey(new Uint8Array()));
-          if (rootBytes && rootBytes.length > 0) {
-            this._root = TrieNode.deserialize(rootBytes);
-            log.info(
-              { rootHash: Buffer.from(this._root.hash).toString("hex"), items: this.items },
-              "Merkle Trie loaded from DB",
-            );
-          }
-        } catch (e) {
-          // There is no Root node in the DB, just use an empty one
-        }
-
-        resolve();
-        release();
-      });
-    });
+    return this.callMethod("initialize");
   }
 
   public async rebuild(): Promise<void> {
@@ -93,7 +204,7 @@ class MerkleTrie {
     }
 
     // Brand new empty root node
-    this._root = new TrieNode();
+    await this.callMethod("clear");
 
     // Rebuild the trie by iterating over all the messages in the db
     const prefix = Buffer.from([RootPrefix.User]);
@@ -123,259 +234,67 @@ class MerkleTrie {
   }
 
   public async insert(id: SyncId): Promise<boolean> {
-    return new Promise((resolve) => {
-      this._lock.writeLock(async (release) => {
-        try {
-          const { status, dbUpdatesMap } = await this._root.insert(id.syncId(), this._db, new Map());
-          statsd().gauge("merkle_trie.num_messages", this._root.items);
-
-          this._updatePendingDbUpdates(dbUpdatesMap);
-
-          // Write the transaction to the DB
-          await this._unloadFromMemory(true);
-
-          resolve(status);
-        } catch (e) {
-          log.error({ e }, "Insert Error");
-
-          resolve(false);
-        }
-
-        release();
-      });
-    });
+    return this.callMethod("insert", id.syncId());
   }
 
   public async deleteBySyncId(id: SyncId): Promise<boolean> {
-    return this.deleteByBytes(id.syncId());
+    return this.callMethod("delete", id.syncId());
   }
 
   public async deleteByBytes(id: Uint8Array): Promise<boolean> {
-    return new Promise((resolve) => {
-      this._lock.writeLock(async (release) => {
-        try {
-          const { status, dbUpdatesMap } = await this._root.delete(id, this._db, new Map());
-          this._updatePendingDbUpdates(dbUpdatesMap);
-          await this._unloadFromMemory(true);
-
-          resolve(status);
-        } catch (e) {
-          log.error({ e }, "Delete Error");
-
-          resolve(false);
-        }
-
-        release();
-      });
-    });
+    return this.callMethod("delete", new Uint8Array(id));
   }
 
   /**
    * Check if the SyncId exists in the trie.
    */
   public async exists(id: SyncId): Promise<boolean> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const r = await this._root.exists(id.syncId(), this._db);
-
-        await this._unloadFromMemory(false);
-
-        resolve(r);
-        release();
-      });
-    });
+    return this.callMethod("exists", id.syncId());
   }
 
   /**
    * Check if we already have this syncID (expressed as bytes)
    */
   public async existsByBytes(id: Uint8Array): Promise<boolean> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const r = await this._root.exists(id, this._db);
-
-        await this._unloadFromMemory(false);
-
-        resolve(r);
-        release();
-      });
-    });
+    return this.callMethod("exists", new Uint8Array(id));
   }
 
   /**
    * Get a snapshot of the trie at a given prefix.
    */
   public async getSnapshot(prefix: Uint8Array): Promise<TrieSnapshot> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const r = await this._root.getSnapshot(prefix, this._db);
-
-        await this._unloadFromMemory(false);
-
-        resolve(r);
-
-        release();
-      });
-    });
+    return this.callMethod("getSnapshot", new Uint8Array(prefix));
   }
 
   /**
    * Get the metadata for a node in the trie at the given prefix.
    */
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const node = await this._root.getNode(prefix, this._db);
-
-        await this._unloadFromMemory(false);
-
-        if (node === undefined) {
-          resolve(undefined);
-        } else {
-          const md = await node.getNodeMetadata(prefix, this._db);
-
-          await this._unloadFromMemory(false);
-          resolve(md);
-        }
-
-        release();
-      });
-    });
-  }
-
-  public async getNode(prefix: Uint8Array): Promise<TrieNode | undefined> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const r = await this._root.getNode(prefix, this._db);
-
-        await this._unloadFromMemory(false);
-
-        resolve(r);
-        release();
-      });
-    });
+    return this.callMethod("getTrieNodeMetadata", new Uint8Array(prefix));
   }
 
   /**
-   * Get all the values at the prefix. This is a recursive operation.
-   * TODO: This method might become very expensive, since it loads all the nodes under the trie at the given prefix,
-   * so we should probably check the size of the trie before calling this method.
+   * Get all the values at the prefix.
    */
   public async getAllValues(prefix: Uint8Array): Promise<Uint8Array[]> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        const node = await this._root.getNode(prefix, this._db);
-        await this._unloadFromMemory(false);
-
-        if (node === undefined) {
-          resolve([]);
-        } else {
-          const r = await node.getAllValues(prefix, this._db);
-
-          await this._unloadFromMemory(false);
-          resolve(r);
-        }
-
-        release();
-      });
-    });
+    return this.callMethod("getAllValues", new Uint8Array(prefix));
   }
 
   public async items(): Promise<number> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        resolve(this._root.items);
-        release();
-      });
-    });
+    return this.callMethod("items");
   }
 
   public async rootHash(): Promise<string> {
-    return new Promise((resolve) => {
-      this._lock.readLock(async (release) => {
-        resolve(Buffer.from(this._root.hash).toString("hex"));
-        release();
-      });
-    });
+    return this.callMethod("rootHash");
   }
 
   // Save the cached DB updates to the DB
   public async commitToDb(): Promise<void> {
-    return new Promise((resolve) => {
-      this._lock.writeLock(async (release) => {
-        await this._unloadFromMemory(true, true);
-
-        resolve(undefined);
-        release();
-      });
-    });
+    return this.callMethod("commitToDb");
   }
 
-  /** Incoporate the DB updates from the trie operation into the cached DB updates
-   * Note that this method only updates the cache, and does not write to the DB.
-   * call commitToDb() to write the cached DB updates to the DB.
-   */
-  private _updatePendingDbUpdates(dbUpdatesMap: Map<Buffer, Buffer>): void {
-    for (const [key, value] of dbUpdatesMap) {
-      this._pendingDbUpdates.set(key, value);
-    }
-  }
-
-  /**
-   * Check if we need to unload the trie from memory. This is not protected by a lock, since it is only called
-   * from within a lock.
-   */
-  private async _unloadFromMemory(writeLocked: boolean, force = false) {
-    // Every TRIE_UNLOAD_THRESHOLD calls, we unload the trie from memory to avoid memory leaks.
-    // Every call in this class usually loads one root-to-leaf path of the trie, so
-    // we unload the trie from memory every TRIE_UNLOAD_THRESHOLD calls. This allows us to keep the
-    // most recently used parts of the trie in memory, while still "garbage collecting"
-    // the rest of the trie.
-
-    // Fn that does the actual unloading
-    const doUnload = async () => {
-      this._callsSinceLastUnload = 0;
-
-      if (this._pendingDbUpdates.size === 0) {
-        // Trie has no pending DB updates, skipping unload
-        return;
-      }
-
-      const txn = this._db.transaction();
-
-      // Collect all the pending DB updates into a single transaction batch
-      for (const [key, value] of this._pendingDbUpdates) {
-        if (value && value.length > 0) {
-          txn.put(key, value);
-        } else {
-          txn.del(key);
-        }
-      }
-
-      await this._db.commit(txn);
-      this._pendingDbUpdates.clear();
-      this._root.unloadChildren();
-
-      logger.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
-    };
-
-    if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
-      // If we are only read locked, we need to upgrade to a write lock
-      if (!writeLocked) {
-        this._lock.writeLock(async (release) => {
-          try {
-            await doUnload();
-          } finally {
-            release();
-          }
-        });
-      } else {
-        // We're already write locked, so we can just do the unload
-        await doUnload();
-      }
-    } else {
-      this._callsSinceLastUnload++;
-    }
+  public async unloadChildrenAtPrefix(prefix: Uint8Array): Promise<void> {
+    return this.callMethod("unloadChildrenAtPrefix", prefix);
   }
 }
 
