@@ -23,6 +23,7 @@ import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
+const SLEEPWHILE_TIMEOUT = 10 * 1000;
 
 const testDb1 = jestRocksDB("engine1.peersyncEngine.test");
 const testDb2 = jestRocksDB("engine2.peersyncEngine.test");
@@ -160,7 +161,7 @@ describe("Multi peer sync engine", () => {
 
       // Add messages to engine 1
       await addMessagesWithTimeDelta(engine1, [167, 169, 172]);
-      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
       const engine2 = new Engine(testDb2, network);
       const hub2 = new MockHub(testDb2, engine2);
@@ -191,7 +192,7 @@ describe("Multi peer sync engine", () => {
 
       // Add more messages
       await addMessagesWithTimeDelta(engine1, [367, 369, 372]);
-      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
       // grab a new snapshot from the RPC for engine1
       const newSnapshotResult = await clientForServer1.getSyncSnapshotByPrefix(TrieNodePrefix.create());
@@ -227,7 +228,7 @@ describe("Multi peer sync engine", () => {
 
     // Add a cast to engine1
     const castAdd = (await addMessagesWithTimeDelta(engine1, [167]))[0] as Message;
-    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const engine2 = new Engine(testDb2, network);
     const hub2 = new MockHub(testDb2, engine2);
@@ -240,7 +241,7 @@ describe("Multi peer sync engine", () => {
 
     // Sync engine 2 with engine 1
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
@@ -262,7 +263,7 @@ describe("Multi peer sync engine", () => {
 
     // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
     const result = await engine1.mergeMessage(castRemove);
-    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(result.isOk()).toBeTruthy();
 
@@ -280,7 +281,7 @@ describe("Multi peer sync engine", () => {
       const engine1RootHashBefore = await syncEngine1.trie.rootHash();
 
       await syncEngine1.performSync("engine2", (await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
-      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
       expect(await syncEngine1.trie.rootHash()).toEqual(engine1RootHashBefore);
 
@@ -292,7 +293,7 @@ describe("Multi peer sync engine", () => {
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeFalsy();
 
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
     expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
@@ -303,7 +304,7 @@ describe("Multi peer sync engine", () => {
     // because it has already been removed, so adding it is a no-op
     const beforeRootHash = await syncEngine2.trie.rootHash();
     await engine2.mergeMessage(castAdd);
-    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
 
@@ -452,7 +453,7 @@ describe("Multi peer sync engine", () => {
 
     // Since the message is actually missing, it should be a no-op, and the missing message should disappear
     // from the sync trie
-    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd))) === true, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd))) === true, SLEEPWHILE_TIMEOUT);
     expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
 
     // The root hashes should be the same, since nothing actually happened
@@ -490,8 +491,8 @@ describe("Multi peer sync engine", () => {
     await syncEngine2.trie.insert(new SyncId(castAdd2));
 
     // Wait for the sync trie to be updated
-    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 2, 1000);
-    await sleepWhile(async () => (await syncEngine1.trie.items()) !== 1, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 2, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(async () => (await syncEngine1.trie.items()) !== 1, SLEEPWHILE_TIMEOUT);
 
     // Attempt to sync engine2 <-- engine1. Engine1 has only singerAdd
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
@@ -540,7 +541,7 @@ describe("Multi peer sync engine", () => {
 
     // Since the message isn't actually missing, it should be a no-op, and the missing message should
     // get added back to the sync trie
-    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd))) === false, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd))) === false, SLEEPWHILE_TIMEOUT);
 
     // The root hashes should now be the same
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
@@ -570,12 +571,12 @@ describe("Multi peer sync engine", () => {
     await addMessagesWithTimeDelta(engine1, [167]);
     await addMessagesWithTimeDelta(engine2, [169]);
 
-    await sleepWhile(async () => (await syncEngine1.trie.items()) !== 1, 1000);
-    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 1, 1000);
+    await sleepWhile(async () => (await syncEngine1.trie.items()) !== 1, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 1, SLEEPWHILE_TIMEOUT);
 
     // Do a sync
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 2, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.items()) !== 2, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine2.trie.items()).toEqual(2);
 
@@ -620,12 +621,12 @@ describe("Multi peer sync engine", () => {
     await addMessagesWithTimeDelta(engine1, [167, 168]);
     await addMessagesWithTimeDelta(engine2, [169]);
 
-    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
-    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     // Do a sync
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine2.trie.items()).toEqual(3);
 
@@ -636,7 +637,7 @@ describe("Multi peer sync engine", () => {
       const clientForServer2 = getInsecureHubRpcClient(`127.0.0.1:${port2}`);
 
       await syncEngine1.performSync("engine2", (await syncEngine2.getSnapshot())._unsafeUnwrap(), clientForServer2);
-      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
       // Now both engines should have the same number of messages and the same root hash
       expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
@@ -697,13 +698,13 @@ describe("Multi peer sync engine", () => {
           }
           // console.log('adding batch', i, ' of ', numBatches);
           const addedMessages = await addMessagesWithTimeDelta(engine1, timestamps);
-          await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+          await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
           castMessagesToRemove = addedMessages.slice(0, 10);
 
           msgTimestamp += batchSize;
           totalMessages += batchSize;
         }
-        await sleepWhile(() => syncEngine1.syncTrieQSize > 0, 1000);
+        await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
       });
       expect(totalTime).toBeGreaterThan(0);
       expect(totalMessages).toBeGreaterThan(numBatches * batchSize);

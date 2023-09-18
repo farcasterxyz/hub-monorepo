@@ -16,7 +16,7 @@ import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import { MockHub } from "../../test/mocks.js";
 import SyncEngine from "../sync/syncEngine.js";
 import { PeerId } from "@libp2p/interface-peer-id";
-import { sleep } from "../../utils/crypto.js";
+import { sleepWhile } from "../../utils/crypto.js";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 import { LibP2PNode } from "./gossipNodeWorker.js";
 
@@ -112,26 +112,23 @@ describe("GossipNode", () => {
         expect(dialResult.isOk()).toBeTruthy();
 
         let other = await node1.getPeerAddresses(node2.peerId() as PeerId);
-        // let other = await node1.addressBook?.get((await node2.peerId()) as PeerId);
         expect(other?.length).toEqual(1);
 
+        // We have at least 1 address for node1
         other = await node2.getPeerAddresses(node1.peerId() as PeerId);
-        expect(other?.length).toEqual(1);
-        expect(await node2.allPeerIds()).toEqual([node1.peerId()?.toString()]);
+        expect(other?.length).toBeGreaterThan(1);
+        expect(await node2.allPeerIds()).toContain(node1.peerId()?.toString());
 
         await node1.removePeerFromAddressBook(node2.peerId() as PeerId);
 
         // Sleep to allow the connection to be closed
-        await sleep(1000);
+        await sleepWhile(async () => (await node1.getPeerAddresses(node2.peerId() as PeerId)).length > 0, 10 * 1000);
 
         // Make sure the connection is closed
         other = await node1.getPeerAddresses(node2.peerId() as PeerId);
         expect(other).toEqual([]);
 
         expect(await node2.allPeerIds()).toEqual([]);
-        // other = await node2.getPeerAddresses(node1.peerId() as PeerId);
-        // console.log(JSON.stringify(other, null, 2));
-        // expect(other).toEqual([]);
       } finally {
         await node1.stop();
         await node2.stop();

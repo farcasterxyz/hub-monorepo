@@ -162,6 +162,7 @@ class MerkleTrie {
   }
 
   public async stop(): Promise<void> {
+    this._worker.removeAllListeners();
     await this._worker?.terminate();
   }
 

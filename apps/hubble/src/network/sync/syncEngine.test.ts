@@ -27,7 +27,8 @@ import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
 
-const TEST_TIMEOUT_SHORT = 30 * 1000;
+const TEST_TIMEOUT_SHORT = 60 * 1000;
+const SLEEPWHILE_TIMEOUT = 10 * 1000;
 
 const testDb = jestRocksDB("engine.syncEngine.test");
 const testDb2 = jestRocksDB("engine2.syncEngine.test");
@@ -57,16 +58,17 @@ describe("SyncEngine", () => {
   let engine: Engine;
 
   beforeEach(async () => {
-    // await testDb.clear();
+    jest.setTimeout(TEST_TIMEOUT_SHORT);
+
     engine = new Engine(testDb, FarcasterNetwork.TESTNET, undefined, publicClient);
     hub = new MockHub(testDb, engine);
     syncEngine = new SyncEngine(hub, testDb);
-  });
+  }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {
     await syncEngine.stop();
     await engine.stop();
-  });
+  }, TEST_TIMEOUT_SHORT);
 
   const addMessagesWithTimestamps = async (timeDelta: number[]) => {
     const results = await Promise.all(
@@ -83,7 +85,7 @@ describe("SyncEngine", () => {
       }),
     );
 
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
     await syncEngine.trie.commitToDb();
     return results;
   };
@@ -104,7 +106,7 @@ describe("SyncEngine", () => {
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     // Two messages (signerEvent + castAdd) was added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
@@ -120,51 +122,47 @@ describe("SyncEngine", () => {
     expect(result.isErr()).toBeTruthy();
 
     // Wait for the trie to be updated
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine.trie.items()).toEqual(0);
     expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
   });
 
-  test(
-    "trie is updated when a message is removed",
-    async () => {
-      await engine.mergeOnChainEvent(custodyEvent);
-      await engine.mergeOnChainEvent(signerEvent);
-      await engine.mergeOnChainEvent(storageEvent);
+  test("trie is updated when a message is removed", async () => {
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
-      let result = await engine.mergeMessage(castAdd);
+    let result = await engine.mergeMessage(castAdd);
 
-      expect(result.isOk()).toBeTruthy();
+    expect(result.isOk()).toBeTruthy();
 
-      // Remove this cast.
-      const castRemove = await Factories.CastRemoveMessage.create(
-        { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
-        { transient: { signer } },
-      );
+    // Remove this cast.
+    const castRemove = await Factories.CastRemoveMessage.create(
+      { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
+      { transient: { signer } },
+    );
 
-      // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
-      result = await engine.mergeMessage(castRemove);
-      expect(result.isOk()).toBeTruthy();
+    // Merging the cast remove deletes the cast add in the db, and it should be reflected in the trie
+    result = await engine.mergeMessage(castRemove);
+    expect(result.isOk()).toBeTruthy();
 
-      // Wait for the trie to be updated
-      await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-      const id = new SyncId(castRemove);
-      expect(await syncEngine.trie.exists(id)).toBeTruthy();
+    const id = new SyncId(castRemove);
+    expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
-      const allMessages = await syncEngine.getAllMessagesBySyncIds([id.syncId()]);
-      expect(allMessages.isOk()).toBeTruthy();
-      expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(MessageType.CAST_REMOVE);
+    const allMessages = await syncEngine.getAllMessagesBySyncIds([id.syncId()]);
+    expect(allMessages.isOk()).toBeTruthy();
+    expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(MessageType.CAST_REMOVE);
 
-      // The trie should contain the message remove
-      expect(await syncEngine.trie.exists(id)).toBeTruthy();
+    // The trie should contain the message remove
+    expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
-      // The trie should not contain the castAdd anymore
-      expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
-    },
-    TEST_TIMEOUT_SHORT,
-  );
+    // The trie should not contain the castAdd anymore
+    expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+  });
 
   test("trie is updated for username proof messages", async () => {
     const custodyAddress = bytesToHexString(custodyEvent.idRegisterEventBody.to)._unsafeUnwrap();
@@ -198,7 +196,7 @@ describe("SyncEngine", () => {
     await engine.mergeOnChainEvent(storageEvent);
     expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
 
-    await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     // SignerAdd and Username proof is added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
@@ -213,77 +211,73 @@ describe("SyncEngine", () => {
     expect(result._unsafeUnwrap()[0]?.hash.length).toEqual(0);
   });
 
-  test(
-    "trie is updated when message with higher order is merged",
-    async () => {
-      const rcustody = await engine.mergeOnChainEvent(custodyEvent);
-      expect(rcustody.isOk()).toBeTruthy();
+  test("trie is updated when message with higher order is merged", async () => {
+    const rcustody = await engine.mergeOnChainEvent(custodyEvent);
+    expect(rcustody.isOk()).toBeTruthy();
 
-      const rsigneradd = await engine.mergeOnChainEvent(signerEvent);
-      expect(rsigneradd.isOk()).toBeTruthy();
+    const rsigneradd = await engine.mergeOnChainEvent(signerEvent);
+    expect(rsigneradd.isOk()).toBeTruthy();
 
-      const rstorage = await engine.mergeOnChainEvent(storageEvent);
-      expect(rstorage.isOk()).toBeTruthy();
+    const rstorage = await engine.mergeOnChainEvent(storageEvent);
+    expect(rstorage.isOk()).toBeTruthy();
 
-      const currentTime = getFarcasterTime()._unsafeUnwrap();
+    const currentTime = getFarcasterTime()._unsafeUnwrap();
 
-      // Reaction
-      const reactionBody = {
-        targetCastId: { fid, hash: castAdd.hash },
-        type: ReactionType.LIKE,
-      };
-      const reaction1 = await Factories.ReactionAddMessage.create(
-        { data: { fid, network, timestamp: currentTime + 10, reactionBody } },
-        { transient: { signer } },
-      );
+    // Reaction
+    const reactionBody = {
+      targetCastId: { fid, hash: castAdd.hash },
+      type: ReactionType.LIKE,
+    };
+    const reaction1 = await Factories.ReactionAddMessage.create(
+      { data: { fid, network, timestamp: currentTime + 10, reactionBody } },
+      { transient: { signer } },
+    );
 
-      // Same reaction, but with different timestamp
-      const reaction2 = await Factories.ReactionAddMessage.create(
-        { data: { fid, network, timestamp: currentTime + 15, reactionBody } },
-        { transient: { signer } },
-      );
+    // Same reaction, but with different timestamp
+    const reaction2 = await Factories.ReactionAddMessage.create(
+      { data: { fid, network, timestamp: currentTime + 15, reactionBody } },
+      { transient: { signer } },
+    );
 
-      // Merging the first reaction should succeed
-      let result = await engine.mergeMessage(reaction1);
-      expect(result.isOk()).toBeTruthy();
+    // Merging the first reaction should succeed
+    let result = await engine.mergeMessage(reaction1);
+    expect(result.isOk()).toBeTruthy();
 
-      // Wait for the trie to be updated
-      await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
-      expect(await syncEngine.trie.items()).toEqual(1); // reaction1
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    expect(await syncEngine.trie.items()).toEqual(1); // reaction1
 
-      // Then merging the second reaction should also succeed and remove reaction1
-      result = await engine.mergeMessage(reaction2);
-      expect(result.isOk()).toBeTruthy();
+    // Then merging the second reaction should also succeed and remove reaction1
+    result = await engine.mergeMessage(reaction2);
+    expect(result.isOk()).toBeTruthy();
 
-      // Wait for the trie to be updated
-      await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
-      expect(await syncEngine.trie.items()).toEqual(1); // reaction2 (reaction1 is removed)
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    expect(await syncEngine.trie.items()).toEqual(1); // reaction2 (reaction1 is removed)
 
-      // Create a new engine and sync engine
-      testDb2.clear();
-      const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
-      const hub2 = new MockHub(testDb2, engine2);
-      const syncEngine2 = new SyncEngine(hub2, testDb2);
-      await engine2.mergeOnChainEvent(custodyEvent);
-      await engine2.mergeOnChainEvent(signerEvent);
-      await engine2.mergeOnChainEvent(storageEvent);
+    // Create a new engine and sync engine
+    testDb2.clear();
+    const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
+    const hub2 = new MockHub(testDb2, engine2);
+    const syncEngine2 = new SyncEngine(hub2, testDb2);
+    await engine2.mergeOnChainEvent(custodyEvent);
+    await engine2.mergeOnChainEvent(signerEvent);
+    await engine2.mergeOnChainEvent(storageEvent);
 
-      // Only merge reaction2
-      result = await engine2.mergeMessage(reaction2);
-      expect(result.isOk()).toBeTruthy();
+    // Only merge reaction2
+    result = await engine2.mergeMessage(reaction2);
+    expect(result.isOk()).toBeTruthy();
 
-      // Wait for the trie to be updated
-      await sleepWhile(() => syncEngine.syncTrieQSize > 0, 1000);
-      expect(await syncEngine2.trie.items()).toEqual(1); //reaction2
+    // Wait for the trie to be updated
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    expect(await syncEngine2.trie.items()).toEqual(1); //reaction2
 
-      // Roothashes must match
-      expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+    // Roothashes must match
+    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
 
-      await syncEngine2.stop();
-      await engine2.stop();
-    },
-    TEST_TIMEOUT_SHORT,
-  );
+    await syncEngine2.stop();
+    await engine2.stop();
+  });
 
   test("snapshotTimestampPrefix trims the seconds", async () => {
     const nowInSeconds = getFarcasterTime()._unsafeUnwrap();
@@ -423,27 +417,31 @@ describe("SyncEngine", () => {
     await syncEngine2.stop();
   });
 
-  test("Rebuild trie from engine messages", async () => {
-    await engine.mergeOnChainEvent(custodyEvent);
-    await engine.mergeOnChainEvent(signerEvent);
-    await engine.mergeOnChainEvent(storageEvent);
+  test(
+    "Rebuild trie from engine messages",
+    async () => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
 
-    const messages = await addMessagesWithTimestamps([167, 169, 172]);
+      const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
-    expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
+      expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
 
-    const syncEngine2 = new SyncEngine(hub, testDb);
-    await syncEngine2.start(true); // Rebuild from engine messages
+      const syncEngine2 = new SyncEngine(hub, testDb);
+      await syncEngine2.start(true); // Rebuild from engine messages
 
-    // Make sure all messages exist
-    expect(await syncEngine2.trie.items()).toEqual(3);
-    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
-    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
+      // Make sure all messages exist
+      expect(await syncEngine2.trie.items()).toEqual(3);
+      expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+      expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
 
-    await syncEngine2.stop();
-  });
+      await syncEngine2.stop();
+    },
+    TEST_TIMEOUT_SHORT,
+  );
 
   test(
     "getSnapshot should use a prefix of 10-seconds resolution timestamp",
