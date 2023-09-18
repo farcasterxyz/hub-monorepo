@@ -31,6 +31,8 @@ export interface MerkleTrieKV {
   value: Uint8Array;
 }
 
+// This is the interface that a Merkle trie needs to implement. It is currently implemented by
+// a worker thread, but it could be moved to native code
 export interface MerkleTrieInterface {
   initialize(): Promise<void>;
   clear(): Promise<void>;
@@ -46,18 +48,16 @@ export interface MerkleTrieInterface {
   unloadChildrenAtPrefix(prefix: Uint8Array): Promise<void>;
 }
 
+// Typescript types to make sending messages to the worker thread type-safe
 export type MerkleTrieInterfaceMethodNames = keyof MerkleTrieInterface;
-
 export type MerkleTrieInterfaceMethodReturnType<MethodName extends MerkleTrieInterfaceMethodNames> = ReturnType<
   MerkleTrieInterface[MethodName]
 >;
-
 export type MerkleTrieInterfaceMessage<MethodName extends MerkleTrieInterfaceMethodNames> = {
   method: MethodName;
   args: Parameters<MerkleTrieInterface[MethodName]>;
   methodCallId: number;
 };
-
 export type MerkleTrieInterfaceMethodGenericMessage = {
   [K in MerkleTrieInterfaceMethodNames]: {
     method: K;
@@ -76,8 +76,15 @@ export type MerkleTrieInterfaceMethodGenericMessage = {
  * https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/.
  *
  *
- * Note: MerkleTrie and TrieNode are not thread-safe, which is ok because there are no async
- * methods. DO NOT add async methods without considering impact on concurrency-safety.
+ * The Merkle trie is implemented in a worker thread, so that it doesn't block the main thread.
+ * The communication between the worker thread and the main thread is done via messages, both ways.
+ * API calls to the worker thread are tracked in the _nodeMethodCallMap map, so that the correct
+ * promises can be resolved/rejected when the worker thread returns the result of the method call.
+ *
+ * The worker thread can also make API calls to the main thread, to get data from the DB or for logging.
+ * The main thread listens for messages from the worker thread and handles them accordingly, sending the
+ * result of the method call back to the worker thread.
+ *
  */
 class MerkleTrie {
   private _worker;
@@ -92,6 +99,7 @@ class MerkleTrie {
     this._db = rocksDb;
     this._terminateWorkerOnStop = terminateWorkerOnStop;
 
+    // We allow worker threads to be cached and reused (mainly useful for testing)
     if (worker) {
       this._worker = worker;
     } else {
@@ -176,6 +184,7 @@ class MerkleTrie {
     }
   }
 
+  // For testing only. Exposes the worker thread so we can send it messages directly
   public getWorker(): Worker {
     return this._worker;
   }

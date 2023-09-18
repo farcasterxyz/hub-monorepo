@@ -50,6 +50,7 @@ beforeAll(async () => {
 });
 
 describe("Multi peer sync engine", () => {
+  jest.setTimeout(TEST_TIMEOUT_LONG);
   const addMessagesWithTimeDelta = async (engine: Engine, timeDelta: number[]) => {
     return await Promise.all(
       timeDelta.map(async (t) => {

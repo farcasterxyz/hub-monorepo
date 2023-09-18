@@ -53,13 +53,13 @@ beforeAll(async () => {
 });
 
 describe("SyncEngine", () => {
+  jest.setTimeout(TEST_TIMEOUT_SHORT);
+
   let syncEngine: SyncEngine;
   let hub: HubInterface;
   let engine: Engine;
 
   beforeEach(async () => {
-    jest.setTimeout(TEST_TIMEOUT_SHORT);
-
     engine = new Engine(testDb, FarcasterNetwork.TESTNET, undefined, publicClient);
     hub = new MockHub(testDb, engine);
     syncEngine = new SyncEngine(hub, testDb);

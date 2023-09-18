@@ -8,7 +8,9 @@ import { RootPrefix } from "../../storage/db/types.js";
 import { TIMESTAMP_LENGTH } from "./syncId.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { Worker } from "worker_threads";
+import { jest } from "@jest/globals";
 
+const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
 
 const db = jestRocksDB("protobufs.network.merkleTrie.test");
@@ -17,6 +19,8 @@ const db2 = jestRocksDB("protobufs.network.merkleTrie2.test");
 let trie: MerkleTrie;
 
 describe("MerkleTrie", () => {
+  jest.setTimeout(TEST_TIMEOUT_SHORT);
+
   const trieWithIds = async (timestamps: number[]) => {
     const syncIds = await Promise.all(
       timestamps.map(async (t) => {

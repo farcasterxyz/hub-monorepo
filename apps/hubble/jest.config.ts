@@ -17,7 +17,7 @@ const jestConfig: Config = {
   },
   globalSetup: "<rootDir>/src/test/globalSetup.js",
   globalTeardown: "<rootDir>/src/test/globalTeardown.js",
-  maxWorkers: "25%",
+  maxWorkers: "50%",
 };
 
 export default jestConfig;

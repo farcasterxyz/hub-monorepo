@@ -26,8 +26,18 @@ const log = new Proxy<Logger>({} as Logger, {
   },
 });
 
+// A type to get key/values from the DB
 export type DBGetter = (key: Buffer) => Promise<Buffer | undefined>;
 
+// An implementation of a Merkle Trie that uses RocksDB as the backing store.
+//
+// Note 1: While all the data for the merkle trie is cached in this worker thread, the DB can only
+// be accessed via the main thread. This is because RocksDB is not thread safe, and we don't want
+// to have to deal with locking the DB.
+// So, to get data from the DB, we send a message to the main thread, which then reads the data
+// from the DB and sends it back to this thread.
+//
+// Logging is also done on the main thread, since we don't want to have to deal the log caching
 class MerkleTrieImpl {
   private _root: TrieNode;
   private _lock: ReadWriteLock;
@@ -48,6 +58,7 @@ class MerkleTrieImpl {
     }
   }
 
+  // Get a DB value from the main thread
   private async _dbGet(key: Buffer): Promise<Buffer | undefined> {
     return new Promise((resolve) => {
       this._dbCallId++;
@@ -57,6 +68,7 @@ class MerkleTrieImpl {
     });
   }
 
+  // Write DB values to the DB via the main thread
   private async _dbPut(dbKeyValues: MerkleTrieKV[]): Promise<void> {
     return new Promise((resolve) => {
       this._dbCallId++;
@@ -351,6 +363,9 @@ function makeResult<MethodName extends keyof MerkleTrieInterface>(
   return result;
 }
 
+// The main thread sends messages to the worker thread via the parentPort
+// and we listen for them here. We then call the appropriate method on the
+// MerkleTrieImpl instance and send the result back to the main thread.
 parentPort?.on(
   "message",
   async (
@@ -401,21 +416,27 @@ parentPort?.on(
       case "insert": {
         const specificMsg = msg as MerkleTrieInterfaceMessage<"insert">;
         const [syncIdBytes] = specificMsg.args;
+        const start = Date.now();
         const result = await merkleTrie.insert(syncIdBytes);
+        statsd().timing("merkle_trie.insert", Date.now() - start);
         parentPort?.postMessage({ methodCallId, result: makeResult<"insert">(result) });
         break;
       }
       case "delete": {
         const specificMsg = msg as MerkleTrieInterfaceMessage<"delete">;
         const [syncIdBytes] = specificMsg.args;
+        const start = Date.now();
         const result = await merkleTrie.delete(syncIdBytes);
+        statsd().timing("merkle_trie.delete", Date.now() - start);
         parentPort?.postMessage({ methodCallId, result: makeResult<"delete">(result) });
         break;
       }
       case "exists": {
         const specificMsg = msg as MerkleTrieInterfaceMessage<"exists">;
         const [syncIdBytes] = specificMsg.args;
+        const start = Date.now();
         const result = await merkleTrie.exists(syncIdBytes);
+        statsd().timing("merkle_trie.exists", Date.now() - start);
         parentPort?.postMessage({ methodCallId, result: makeResult<"exists">(result) });
         break;
       }
