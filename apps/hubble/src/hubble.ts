@@ -575,7 +575,6 @@ export class Hub implements HubInterface {
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
-    await this.httpApiServer.start(this.options.rpcServerHost, this.options.httpApiPort ?? 0);
     if (this.options.adminServerEnabled) {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
