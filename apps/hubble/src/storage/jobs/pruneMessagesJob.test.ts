@@ -12,8 +12,9 @@ import { jestRocksDB } from "../db/jestUtils.js";
 import Engine from "../engine/index.js";
 import { seedSigner } from "../engine/seed.js";
 import { PruneMessagesJobScheduler } from "./pruneMessagesJob.js";
-import { FARCASTER_EPOCH, getFarcasterTime } from "@farcaster/core";
+import { bytesCompare, FARCASTER_EPOCH, getFarcasterTime } from "@farcaster/core";
 import { setReferenceDateForTest } from "../../utils/versions.js";
+import { makeTsHash } from "../../storage/db/message.js";
 
 const db = jestRocksDB("jobs.pruneMessagesJob.test");
 
@@ -32,6 +33,15 @@ const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed
     getDefaultStoreLimit(StoreType.VERIFICATIONS) + 1,
     { data: { fid, timestamp } },
     { transient: { signer } },
+  );
+
+  // Sort the proofs by tsHash, they are inserted in such a way that every insert succeeds (not pruned)
+  // because the earlier ones will get pruned
+  proofs.sort((a, b) =>
+    bytesCompare(
+      makeTsHash(a.data.timestamp, a.hash)._unsafeUnwrap(),
+      makeTsHash(b.data.timestamp, b.hash)._unsafeUnwrap(),
+    ),
   );
 
   return engine.mergeMessages([castAdd, reactionAdd, linkAdd, ...proofs]);
@@ -74,14 +84,16 @@ describe("doJobs", () => {
       const signer1 = Factories.Ed25519Signer.build();
       const signer1Key = (await signer1.getSignerKey())._unsafeUnwrap();
       await seedSigner(engine, fid1, signer1Key);
-      await seedMessagesFromTimestamp(engine, fid1, signer1, currentTime);
+      let results = await seedMessagesFromTimestamp(engine, fid1, signer1, currentTime);
+      results.forEach((r) => expect(r.isOk()).toBeTruthy());
 
       const fid2 = Factories.Fid.build();
 
       const signer2 = Factories.Ed25519Signer.build();
       const signer2Key = (await signer2.getSignerKey())._unsafeUnwrap();
       await seedSigner(engine, fid2, signer2Key);
-      await seedMessagesFromTimestamp(engine, fid2, signer2, currentTime);
+      results = await seedMessagesFromTimestamp(engine, fid2, signer2, currentTime);
+      results.forEach((r) => expect(r.isOk()).toBeTruthy());
 
       for (const fid of [fid1, fid2]) {
         const casts = await engine.getCastsByFid(fid);
