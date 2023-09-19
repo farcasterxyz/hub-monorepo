@@ -54,7 +54,6 @@ import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJ
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
-import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import { prettyPrintTable } from "./profile/profile.js";
 import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, fallback, http } from "viem";

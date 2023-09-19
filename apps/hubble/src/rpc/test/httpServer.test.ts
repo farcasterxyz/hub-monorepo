@@ -127,11 +127,11 @@ describe("httpServer", () => {
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
-      expect(response.data.events.length).toEqual(3); // idRegistry, signerAdd, castAdd
-      expect(response.data.events[2].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
+      expect(response.data.events.length).toEqual(4); // idRegistry, custody, signerAdd, castAdd
+      expect(response.data.events[3].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
-      const signerAddEventId = response.data.events[1].id;
-      const castAddEventId = response.data.events[2].id;
+      const signerAddEventId = response.data.events[2].id;
+      const castAddEventId = response.data.events[3].id;
 
       // Get the castAdd event directly by ID
       const url0 = getFullUrl(`/v1/event/${castAddEventId}`);
@@ -191,7 +191,9 @@ describe("httpServer", () => {
       expect(response.status).toBe(200);
       expect(response.data).toEqual(protoToJSON(castAdd, Message));
       expect(response.data.hash).toBe(hashHex);
-      expect(response.data.signer).toBe(bytesToHexString(signerAdd.data.signerAddBody.signer)._unsafeUnwrap());
+      expect(response.data.signer).toBe(
+        bytesToHexString(signerEvent.signerEventBody?.key ?? new Uint8Array())._unsafeUnwrap(),
+      );
 
       // Merge in a new cast
       const newCast = await newCastAdd();
