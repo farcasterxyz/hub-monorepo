@@ -235,6 +235,35 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return ok(events);
   }
 
+  async getEventsPage(
+    fromId: number,
+    pageSize: number,
+  ): HubAsyncResult<{ events: HubEvent[]; nextPageEventId: number }> {
+    const events: HubEvent[] = [];
+    const iteratorOpts = this.getEventsIteratorOpts({ fromId });
+    if (iteratorOpts.isErr()) {
+      return err(iteratorOpts.error);
+    }
+
+    let lastEventId = fromId;
+    await this._db.forEachIterator((key, value) => {
+      const event = HubEvent.decode(Uint8Array.from(value as Buffer));
+      events.push(event);
+
+      if (key) {
+        lastEventId = Number(key.readBigUint64BE(1));
+      }
+
+      if (events.length >= pageSize) {
+        return true;
+      }
+
+      return false;
+    }, iteratorOpts.value);
+
+    return ok({ events, nextPageEventId: lastEventId + 1 });
+  }
+
   public async isPrunable(
     message: PrunableMessage,
     set: UserMessagePostfix,

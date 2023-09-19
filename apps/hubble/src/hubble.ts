@@ -54,7 +54,6 @@ import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJ
 import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
-import { GOSSIP_PROTOCOL_VERSION } from "./network/p2p/protocol.js";
 import { prettyPrintTable } from "./profile/profile.js";
 import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, fallback, http } from "viem";
@@ -70,6 +69,7 @@ import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
 import axios from "axios";
+import { HttpAPIServer } from "./rpc/httpServer.js";
 import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 
@@ -140,6 +140,9 @@ export interface HubOptions {
 
   /** Port for the RPC Client */
   rpcPort?: number;
+
+  /** Port for the HTTP API Server */
+  httpApiPort?: number;
 
   /** Username and Password to use for RPC submit methods */
   rpcAuth?: string;
@@ -258,6 +261,8 @@ export class Hub implements HubInterface {
   private gossipNode: GossipNode;
   private rpcServer: Server;
   private adminServer: AdminServer;
+  private httpApiServer: HttpAPIServer;
+
   private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
@@ -386,6 +391,7 @@ export class Hub implements HubInterface {
       options.rpcRateLimit,
       options.rpcSubscribePerIpLimit,
     );
+    this.httpApiServer = new HttpAPIServer(this.rpcServer.getImpl(), this.engine);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers
@@ -568,7 +574,7 @@ export class Hub implements HubInterface {
     await this.engine.start();
 
     // Start the RPC server
-    await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ? this.options.rpcPort : 0);
+    await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
     if (this.options.adminServerEnabled) {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
@@ -793,6 +799,7 @@ export class Hub implements HubInterface {
     clearInterval(this.contactTimer);
 
     // First, stop the RPC/Gossip server so we don't get any more messages
+
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine

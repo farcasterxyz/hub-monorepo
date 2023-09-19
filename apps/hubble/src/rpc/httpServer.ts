@@ -1,5 +1,6 @@
 import {
   HubError,
+  HubEvent,
   HubResult,
   HubServiceServer,
   Message,
@@ -9,6 +10,7 @@ import {
   StorageLimitsResponse,
   UserNameProof,
   UsernameProofsResponse,
+  bytesToHexString,
   hexStringToBytes,
   onChainEventTypeFromJSON,
   reactionTypeFromJSON,
@@ -16,12 +18,13 @@ import {
   userDataTypeFromJSON,
   utf8StringToBytes,
 } from "@farcaster/hub-nodejs";
+import { ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
 import { Result, err, ok } from "neverthrow";
 import { logger } from "../utils/logger.js";
-import { PageOptions } from "storage/stores/types.js";
-import { ServerUnaryCall } from "@grpc/grpc-js";
-import { DeepPartial } from "storage/stores/store.js";
+import { PageOptions } from "../storage/stores/types.js";
+import { DeepPartial } from "../storage/stores/store.js";
+import Engine from "../storage/engine/index.js";
 
 const log = logger.child({ component: "HttpAPIServer" });
 
@@ -64,12 +67,71 @@ function handleResponse<M>(reply: fastify.FastifyReply, obj: StaticEncodable<M>)
       reply.code(400).send(JSON.stringify(err));
     } else {
       if (response) {
-        reply.send(obj.toJSON(response));
+        // Convert the protobuf object to JSON
+        const json = protoToJSON(response, obj);
+        reply.send(json);
       } else {
         reply.send(err);
       }
     }
   };
+}
+
+function convertB64ToHex(str: string): string {
+  try {
+    // Try to convert the string from base64 to hex
+    const bytesBuf = Buffer.from(str, "base64");
+
+    // Check if the decoded base64 string can be converted back to the original base64 string
+    // If it can, return the hex string, otherwise return the original string
+    return bytesBuf.toString("base64") === str ? bytesToHexString(bytesBuf).unwrapOr("") : str;
+  } catch {
+    // If an error occurs, return the original string
+    return str;
+  }
+}
+
+/**
+ * The protobuf format specifies encoding bytes as base64 strings, but we want to return hex strings
+ * to be consistent with the rest of the API, so we need to convert the base64 strings to hex strings
+ * before returning them.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+function transformHash(obj: any): any {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+
+  // These are the target keys that are base64 encoded, which should be converted to hex
+  const targetKeys = [
+    "hash",
+    "address",
+    "signer",
+    "blockHash",
+    "transactionHash",
+    "key",
+    "to",
+    "from",
+    "recoveryAddress",
+  ];
+
+  for (const key in obj) {
+    // biome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
+    if (obj.hasOwnProperty(key)) {
+      if (targetKeys.includes(key) && typeof obj[key] === "string") {
+        obj[key] = convertB64ToHex(obj[key]);
+      } else if (typeof obj[key] === "object") {
+        transformHash(obj[key]);
+      }
+    }
+  }
+
+  return obj;
+}
+
+// Generic function to convert protobuf objects to JSON
+export function protoToJSON<T>(message: T, obj: StaticEncodable<T>): unknown {
+  return transformHash(obj.toJSON(message));
 }
 
 // Get a protobuf enum value from a string or number
@@ -105,12 +167,20 @@ function getPageOptions(query: QueryPageParams): PageOptions {
 
 export class HttpAPIServer {
   grpcImpl: HubServiceServer;
+  engine: Engine;
+
   app = fastify();
 
-  constructor(grpcImpl: HubServiceServer) {
+  constructor(grpcImpl: HubServiceServer, engine: Engine) {
     this.grpcImpl = grpcImpl;
+    this.engine = engine;
 
     this.initHandlers();
+
+    // Handle binary data
+    this.app.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, function (req, body, done) {
+      done(null, body);
+    });
 
     this.app.setErrorHandler((error, request, reply) => {
       log.error({ err: error, errMsg: error.message, request }, "Error in http request");
@@ -129,6 +199,7 @@ export class HttpAPIServer {
       this.grpcImpl.getCast(call, handleResponse(reply, Message));
     });
 
+    // /casts/:fid?type=...
     this.app.get<{ Params: { fid: string }; Querystring: QueryPageParams }>("/v1/casts/:fid", (request, reply) => {
       const { fid } = request.params;
       const pageOptions = getPageOptions(request.query);
@@ -434,6 +505,66 @@ export class HttpAPIServer {
       );
       this.grpcImpl.getIdRegistryOnChainEventByAddress(call, handleResponse(reply, OnChainEvent));
     });
+
+    //==================Submit Message==================
+    // POST /v1/submitMessage
+    this.app.post<{ Body: Buffer }>("/v1/submitMessage", (request, reply) => {
+      // Get the Body content-type
+      const contentType = request.headers["content-type"] as string;
+
+      let message;
+      if (contentType === "application/octet-stream") {
+        // The Posted Body is a serialized Message protobuf
+        const parsedMessage = Result.fromThrowable(
+          () => Message.decode(request.body),
+          (e) => e as Error,
+        )();
+
+        if (parsedMessage.isErr()) {
+          reply.code(400).send({
+            error:
+              "Could not parse Message. This API accepts only Message protobufs encoded into bytes (application/octet-stream)",
+            errorDetail: parsedMessage.error.message,
+          });
+          return;
+        } else {
+          message = parsedMessage.value;
+        }
+      } else {
+        reply.code(400).send({
+          error: "Unsupported Media Type",
+          errorDetail: `Content-Type ${contentType} is not supported`,
+        });
+        return;
+      }
+
+      const call = getCallObject("submitMessage", message, request);
+      this.grpcImpl.submitMessage(call, handleResponse(reply, Message));
+    });
+
+    //==================Events==================
+    // /event/:id
+    this.app.get<{ Params: { id: string } }>("/v1/event/:id", (request, reply) => {
+      const { id } = request.params;
+
+      const call = getCallObject("getEvent", { id: parseInt(id) }, request);
+      this.grpcImpl.getEvent(call, handleResponse(reply, HubEvent));
+    });
+
+    // /events?fromId=...
+    this.app.get<{ Querystring: { fromEventId: string } }>("/v1/events", (request, reply) => {
+      const { fromEventId } = request.query;
+
+      this.engine.getEvents(parseInt(fromEventId)).then((resp) => {
+        if (resp.isErr()) {
+          reply.code(400).send({ error: resp.error.message });
+        } else {
+          const nextPageEventId = resp.value.nextPageEventId;
+          const events = resp.value.events.map((event) => protoToJSON(event, HubEvent));
+          reply.send({ nextPageEventId, events });
+        }
+      });
+    });
   }
 
   async start(ip = "0.0.0.0", port = 0): Promise<HubResult<string>> {
@@ -444,6 +575,7 @@ export class HttpAPIServer {
           resolve(err(new HubError("unavailable.network_failure", `Failed to start http server: ${e.message}`)));
         }
 
+        log.info({ address }, "Started http API server");
         resolve(ok(address));
       });
     });
@@ -451,5 +583,6 @@ export class HttpAPIServer {
 
   async stop() {
     await this.app.close();
+    log.info("Stopped http API server");
   }
 }

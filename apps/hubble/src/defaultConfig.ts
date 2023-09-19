@@ -7,6 +7,7 @@
 
 const DEFAULT_GOSSIP_PORT = 2282;
 const DEFAULT_RPC_PORT = 2283;
+const DEFAULT_HTTP_API_PORT = 2281;
 const DEFAULT_NETWORK = 3; // Farcaster Devnet
 
 export const Config = {
@@ -35,6 +36,8 @@ export const Config = {
   gossipPort: DEFAULT_GOSSIP_PORT,
   /** The RPC port to use. */
   rpcPort: DEFAULT_RPC_PORT,
+  /** The HTTP API port to use. */
+  httpApiPort: DEFAULT_HTTP_API_PORT,
   /** RPC Auth, disabled by default */
   // rpcAuth: 'admin:password',
   /** Per-IP rate limiting for the RPC server*/
