@@ -803,12 +803,7 @@ export class Hub implements HubInterface {
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine
-    await Promise.all([
-      this.httpApiServer.stop(),
-      this.adminServer.stop(),
-      this.gossipNode.stop(),
-      this.syncEngine.stop(),
-    ]);
+    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(), this.syncEngine.stop()]);
 
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();
