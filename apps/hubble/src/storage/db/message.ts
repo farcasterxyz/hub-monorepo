@@ -87,10 +87,6 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.VerificationMessage;
   }
 
-  if (type === MessageType.SIGNER_ADD || type === MessageType.SIGNER_REMOVE) {
-    return UserPostfix.SignerMessage;
-  }
-
   if (type === MessageType.USER_DATA_ADD) {
     return UserPostfix.UserDataMessage;
   }

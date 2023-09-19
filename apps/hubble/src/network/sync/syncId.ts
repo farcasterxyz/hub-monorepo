@@ -35,7 +35,7 @@ class SyncId {
     const buf = makeMessagePrimaryKey(this._fid, typeToSetPostfix(this._type), this._hash);
 
     // Construct and returns the Sync Id by prepending the timestamp to the rocksdb message key
-    return Buffer.concat([Buffer.from(timestampString), buf]);
+    return new Uint8Array(Buffer.concat([Buffer.from(timestampString), buf]));
   }
 
   /** Returns the rocks db primary key used to look up the message */

@@ -74,28 +74,6 @@ describe("VerificationRemoveMessageFactory", () => {
   });
 });
 
-describe("SignerAddMessageFactory", () => {
-  test("generates a valid SignerAdd", async () => {
-    const message = await Factories.SignerAddMessage.create();
-    expect(protobufs.isSignerAddMessage(message)).toBeTruthy();
-    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
-  });
-
-  test("generates new data each time", async () => {
-    const message1 = await Factories.SignerAddMessage.create();
-    const message2 = await Factories.SignerAddMessage.create();
-    expect(message1.hash).not.toEqual(message2.hash);
-  });
-});
-
-describe("SignerRemoveMessageFactory", () => {
-  test("generates a valid SignerRemove", async () => {
-    const message = await Factories.SignerRemoveMessage.create();
-    expect(protobufs.isSignerRemoveMessage(message)).toBeTruthy();
-    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
-  });
-});
-
 describe("UserDataAddMessageFactory", () => {
   test("generates a valid UserDataAdd", async () => {
     const message = await Factories.UserDataAddMessage.create();

@@ -21,6 +21,8 @@ let storageRegistryAddress: `0x${string}`;
 let keyRegistryAddress: `0x${string}`;
 let idRegistryAddress: `0x${string}`;
 
+const TEST_TIMEOUT_LONG = 30 * 1000; // 30s timeout
+
 beforeAll(() => {
   // Poll aggressively for fast testing
   storageRegistryAddress = bytesToHexString(Factories.EthAddress.build())._unsafeUnwrap();
@@ -104,79 +106,89 @@ describe("process events", () => {
   const waitForBlock = async (blockNumber: number) => {
     while (l2EventsProvider.getLatestBlockNumber() <= blockNumber) {
       // Wait for all async promises to resolve
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   };
 
-  test("handles new blocks", async () => {
-    await testClient.mine({ blocks: 1 });
-    const latestBlockNumber = await publicClient.getBlockNumber();
-    await waitForBlock(Number(latestBlockNumber));
-    expect(l2EventsProvider.getLatestBlockNumber()).toBeGreaterThanOrEqual(latestBlockNumber);
-  }, 10000);
+  test(
+    "handles new blocks",
+    async () => {
+      await testClient.mine({ blocks: 1 });
+      const latestBlockNumber = await publicClient.getBlockNumber();
+      await waitForBlock(Number(latestBlockNumber));
+      expect(l2EventsProvider.getLatestBlockNumber()).toBeGreaterThanOrEqual(latestBlockNumber);
+    },
+    TEST_TIMEOUT_LONG,
+  );
 
-  test("processes StorageRegistry events", async () => {
-    const rentSim = await publicClient.simulateContract({
-      address: storageRegistryAddress,
-      abi: StorageRegistry.abi,
-      functionName: "batchCredit",
-      account: accounts[0].address,
-      args: [[BigInt(1)], BigInt(1)],
-    });
+  test(
+    "processes StorageRegistry events",
+    async () => {
+      const rentSim = await publicClient.simulateContract({
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        functionName: "batchCredit",
+        account: accounts[0].address,
+        args: [[BigInt(1)], BigInt(1)],
+      });
 
-    const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: rentHash });
+      const rentHash = await walletClientWithAccount.writeContract(rentSim.request);
+      await publicClient.waitForTransactionReceipt({ hash: rentHash });
 
-    const setPriceSim = await publicClient.simulateContract({
-      address: storageRegistryAddress,
-      abi: StorageRegistry.abi,
-      functionName: "setPrice",
-      account: accounts[0].address,
-      args: [BigInt(1)],
-    });
-    const setPriceHash = await walletClientWithAccount.writeContract(setPriceSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: setPriceHash });
-    await testClient.mine({ blocks: 1 });
+      const setPriceSim = await publicClient.simulateContract({
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        functionName: "setPrice",
+        account: accounts[0].address,
+        args: [BigInt(1)],
+      });
+      const setPriceHash = await walletClientWithAccount.writeContract(setPriceSim.request);
+      await publicClient.waitForTransactionReceipt({ hash: setPriceHash });
+      await testClient.mine({ blocks: 1 });
 
-    const setDeprecationTimestampSim = await publicClient.simulateContract({
-      address: storageRegistryAddress,
-      abi: StorageRegistry.abi,
-      functionName: "setDeprecationTimestamp",
-      account: accounts[0].address,
-      args: [BigInt(100000000000000)],
-    });
-    const setDeprecationTimestampHash = await walletClientWithAccount.writeContract(setDeprecationTimestampSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: setDeprecationTimestampHash });
-    await testClient.mine({ blocks: 1 });
+      const setDeprecationTimestampSim = await publicClient.simulateContract({
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        functionName: "setDeprecationTimestamp",
+        account: accounts[0].address,
+        args: [BigInt(100000000000000)],
+      });
+      const setDeprecationTimestampHash = await walletClientWithAccount.writeContract(
+        setDeprecationTimestampSim.request,
+      );
+      await publicClient.waitForTransactionReceipt({ hash: setDeprecationTimestampHash });
+      await testClient.mine({ blocks: 1 });
 
-    const setGracePeriodSim = await publicClient.simulateContract({
-      address: storageRegistryAddress,
-      abi: StorageRegistry.abi,
-      functionName: "setGracePeriod",
-      account: accounts[0].address,
-      args: [BigInt(1)],
-    });
-    const setGracePeriodHash = await walletClientWithAccount.writeContract(setGracePeriodSim.request);
-    await publicClient.waitForTransactionReceipt({ hash: setGracePeriodHash });
-    await testClient.mine({ blocks: 1 });
+      const setGracePeriodSim = await publicClient.simulateContract({
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        functionName: "setGracePeriod",
+        account: accounts[0].address,
+        args: [BigInt(1)],
+      });
+      const setGracePeriodHash = await walletClientWithAccount.writeContract(setGracePeriodSim.request);
+      await publicClient.waitForTransactionReceipt({ hash: setGracePeriodHash });
+      await testClient.mine({ blocks: 1 });
 
-    const setMaxUnitsSim = await publicClient.simulateContract({
-      address: storageRegistryAddress,
-      abi: StorageRegistry.abi,
-      functionName: "setMaxUnits",
-      account: accounts[0].address,
-      args: [BigInt(1)],
-    });
-    const setMaxUnitsHash = await walletClientWithAccount.writeContract(setMaxUnitsSim.request);
-    const maxUnitsTrx = await publicClient.waitForTransactionReceipt({ hash: setMaxUnitsHash });
-    await sleep(1000); // allow time for the rent event to be polled for
+      const setMaxUnitsSim = await publicClient.simulateContract({
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        functionName: "setMaxUnits",
+        account: accounts[0].address,
+        args: [BigInt(1)],
+      });
+      const setMaxUnitsHash = await walletClientWithAccount.writeContract(setMaxUnitsSim.request);
+      const maxUnitsTrx = await publicClient.waitForTransactionReceipt({ hash: setMaxUnitsHash });
+      await sleep(1000); // allow time for the rent event to be polled for
 
-    await testClient.mine({ blocks: 7 });
-    await waitForBlock(Number(maxUnitsTrx.blockNumber) + L2EventsProvider.numConfirmations);
+      await testClient.mine({ blocks: 7 });
+      await waitForBlock(Number(maxUnitsTrx.blockNumber) + L2EventsProvider.numConfirmations);
 
-    const events = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
-    expect(events.length).toEqual(1);
-    expect(events[0]?.fid).toEqual(1);
-    expect(events[0]?.storageRentEventBody?.units).toEqual(1);
-  }, 30000);
+      const events = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+      expect(events.length).toEqual(1);
+      expect(events[0]?.fid).toEqual(1);
+      expect(events[0]?.storageRentEventBody?.units).toEqual(1);
+    },
+    TEST_TIMEOUT_LONG,
+  );
 });

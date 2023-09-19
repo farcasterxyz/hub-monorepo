@@ -1,5 +1,6 @@
 import {
   CastId,
+  getDefaultStoreLimit,
   HubAsyncResult,
   HubError,
   isReactionAddMessage,
@@ -7,8 +8,8 @@ import {
   MessageType,
   ReactionAddMessage,
   ReactionRemoveMessage,
-  REACTIONS_SIZE_LIMIT_DEFAULT,
   ReactionType,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { err, ok, ResultAsync } from "neverthrow";
 import {
@@ -147,7 +148,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   override _removeMessageType = MessageType.REACTION_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return REACTIONS_SIZE_LIMIT_DEFAULT;
+    return getDefaultStoreLimit(StoreType.REACTIONS);
   }
 
   protected override get PRUNE_TIME_LIMIT_DEFAULT() {

@@ -5,7 +5,6 @@ import {
   CastAddMessage,
   Factories,
   FarcasterNetwork,
-  IdRegistryEvent,
   LinkAddMessage,
   Message,
   MessageType,
@@ -14,7 +13,6 @@ import {
   ReactionAddMessage,
   ReactionType,
   reactionTypeToJSON,
-  SignerAddMessage,
   toFarcasterTime,
   UserDataAddMessage,
   UserDataType,
@@ -33,6 +31,7 @@ import { faker } from "@faker-js/faker";
 import { DeepPartial } from "fishery";
 import { mergeDeepPartial } from "../../test/utils.js";
 import { publicClient } from "../../test/utils.js";
+import { IdRegisterOnChainEvent } from "@farcaster/core";
 
 const db = jestRocksDB("httpserver.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -61,8 +60,9 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: IdRegisterOnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 
 let timestamp = toFarcasterTime(Date.now())._unsafeUnwrap();
 
@@ -70,17 +70,15 @@ describe("httpServer", () => {
   beforeAll(async () => {
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
     const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-    custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-    signerAdd = await Factories.SignerAddMessage.create(
-      { data: { fid, network, signerAddBody: { signer: signerKey } } },
-      { transient: { signer: custodySigner } },
-    );
+    custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+    signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+    storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
   });
 
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   describe("submit APIs", () => {
@@ -467,13 +465,11 @@ describe("httpServer", () => {
   });
 
   describe("Username proofs", () => {
-    let ensProof: UsernameProofMessage;
     let proof: UsernameProofMessage;
-    const fname: string = "test.eth";
-    let currentFarcasterTime: number;
+    const fname = "test.eth";
 
     beforeAll(async () => {
-      const custodyAddress = bytesToHexString(custodyEvent.to)._unsafeUnwrap();
+      const custodyAddress = bytesToHexString(custodyEvent.idRegisterEventBody.to)._unsafeUnwrap();
       jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(custodyAddress);
       });
@@ -485,7 +481,7 @@ describe("httpServer", () => {
             usernameProofBody: Factories.UserNameProof.build({
               name: utf8StringToBytes(fname)._unsafeUnwrap(),
               fid,
-              owner: custodyEvent.to,
+              owner: custodyEvent.idRegisterEventBody.to,
               timestamp: timestampSec,
               type: UserNameType.USERNAME_TYPE_ENS_L1,
             }),

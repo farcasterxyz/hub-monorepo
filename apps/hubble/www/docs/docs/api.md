@@ -4,38 +4,79 @@ Documentation for gRPC endpoints exposed by Hubble.
 
 We recommend using a library like [hub-nodejs](https://github.com/farcasterxyz/hub-monorepo/tree/main/packages/hub-nodejs) to interact with Hubble's gRPC APIs.
 
-## 1. Signer Service
+## 1. OnChainEvents Service
 
-Used to retrieve valid and revoked Signers
+Used to retrieve on chain events (id registry, signers, storage rent)
 
-| Method Name               | Request Type  | Response Type    | Description                                    |
-| ------------------------- | ------------- | ---------------- | ---------------------------------------------- |
-| GetSigner                 | SignerRequest | Messages         | Returns a specific SignerAddMessage for an Fid |
-| GetSignersByFid           | FidRequest    | MessagesResponse | Returns all SignerAddMessages for an Fid       |
-| GetAllSignerMessagesByFid | FidRequest    | MessagesResponse | Returns all SignerMessages for an Fid          |
+| Method Name                        | Request Type                    | Response Type         | Description                                                                                                 |
+|------------------------------------|---------------------------------|-----------------------|-------------------------------------------------------------------------------------------------------------|
+| GetOnChainSigner                   | SignerRequest                   | OnChainEvent          | Returns the onchain event for an active signer for an Fid                                                   |
+| GetOnChainSignersByFid             | FidRequest                      | OnChainEventResponse  | Returns all active signers add events for an Fid                                                            |
+| GetIdRegistryOnChainEvent          | FidRequest                      | OnChainEvent          | Returns the most recent register/transfer on chain event for an fid                                         |
+| GetIdRegistryOnChainEventByAddress | IdRegistryEventByAddressRequest | OnChainEvent          | Returns the registration/transfer event by address if it exists (allows looking up fid by address)          |
+| GetCurrentStorageLimitsByFid       | FidRequest                      | StorageLimitsResponse | Returns current storage limits for all stores for an Fid                                                    |
+| GetOnChainEvents                   | OnChainEventRequest             | OnChainEventResponse  | Returns all on chain events filtered by type for an Fid (includes inactive signers and expired rent events) |
+| GetFids                            | FidsRequest                     | FidsResponse          | Returns the most recent Fids that were registered                                                           |
+
 
 #### Signer Request
 
 | Field  | Type        | Label | Description                                       |
-| ------ | ----------- | ----- | ------------------------------------------------- |
+|--------|-------------|-------|---------------------------------------------------|
 | fid    | [uint64](#) |       | Farcaster ID of the user who generated the Signer |
 | signer | [bytes](#)  |       | Public Key of the Signer                          |
 
 #### Fid Request
 
-| Field | Type        | Label | Description              |
-| ----- | ----------- | ----- | ------------------------ |
-| fid   | [uint64](#) |       | Farcaster ID of the user |
-| page_size     | uint32            |       | (optional) Type of the Link being requested         |
-| page_token    | bytes             |       | (optional)Type of the Link being requested          |
-| reverse       | boolean           |       | (optional) Ordering of the response                 |
+| Field      | Type        | Label | Description                                 |
+|------------|-------------|-------|---------------------------------------------|
+| fid        | [uint64](#) |       | Farcaster ID of the user                    |
+| page_size  | uint32      |       | (optional) Type of the Link being requested |
+| page_token | bytes       |       | (optional)Type of the Link being requested  |
+| reverse    | boolean     |       | (optional) Ordering of the response         |
 
-#### Messages Response
+#### FidsRequest
 
-| Field           | Type            | Label    | Description       |
-| --------------- | --------------- | -------- | ----------------- |
-| messages        | [Message](#)    | repeated | Farcaster Message |
-| next_page_token | [bytes](#bytes) | optional |                   |
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| page_size | [uint32](#uint32) | optional |  |
+| page_token | [bytes](#bytes) | optional |  |
+| reverse | [bool](#bool) | optional |  |
+
+#### Fids Response
+
+| Field           | Type            | Label    | Description     |
+| --------------- | --------------- | -------- | --------------- |
+| fids            | [uint64](#)     | repeated | Fid of the user |
+| next_page_token | [bytes](#bytes) | optional |                 |
+
+#### IdRegistryEventByAddressRequest
+
+| Field   | Type            | Label | Description |
+|---------|-----------------|-------|-------------|
+| address | [bytes](#bytes) |       |             |
+
+
+#### StorageLimitsResponse
+
+| Field  | Type              | Label    | Description                   |
+|--------|-------------------|----------|-------------------------------|
+| limits | [StorageLimit](#) | repeated | Storage limits per store type |
+
+#### StorageLimit
+
+| Field      | Type           | Label | Description                                            |
+|------------|----------------|-------|--------------------------------------------------------|
+| store_type | [StoreType](#) |       | The specific type being managed by the store           |
+| limit      | [uint64](#)    |       | The limit of the store type, scaled by the user's rent |
+
+
+#### OnChainEventResponse
+
+| Field  | Type                          | Label    | Description |
+|--------|-------------------------------|----------|-------------|
+| events | [OnChainEvent](#onchainevent) | repeated |             |
+| next_page_token | [bytes](#bytes) | optional |                 |
 
 ## 2. UserData Service
 
@@ -46,7 +87,6 @@ Users to retrieve the current metadata associated with a user
 | GetUserData                  | UserDataRequest | Message               | Returns a specific UserData for an Fid  |
 | GetUserDataByFid             | FidRequest      | MessagesResponse      | Returns all UserData for an Fid         |
 | GetAllUserDataMessagesByFid  | FidRequest      | MessagesResponse      | Returns all UserData for an Fid         |
-| GetCurrentStorageLimitsByFid | FidRequest      | StorageLimitsResponse | Returns StorageLimits for an Fid        |
 
 #### UserData Request
 
@@ -55,18 +95,12 @@ Users to retrieve the current metadata associated with a user
 | fid            | [uint64](#)       |       | Farcaster ID of the user who generated the UserData |
 | user_data_type | [UserDataType](#) |       | Type of UserData being requested                    |
 
-#### StorageLimitsResponse
+#### Messages Response
 
-| Field          | Type                         | Label    | Description                   |
-| -------------- | ---------------------------- | -------- | ----------------------------- |
-| limits         | [StorageLimit](#)            | repeated | Storage limits per store type |
-
-#### StorageLimit
-
-| Field      | Type           | Label | Description                                            |
-| ---------- |----------------| ----- | ------------------------------------------------------ |
-| store_type | [StoreType](#) |       | The specific type being managed by the store           |
-| limit      | [uint64](#)    |       | The limit of the store type, scaled by the user's rent |
+| Field           | Type            | Label    | Description       |
+| --------------- | --------------- | -------- | ----------------- |
+| messages        | [Message](#)    | repeated | Farcaster Message |
+| next_page_token | [bytes](#bytes) | optional |                   |
 
 ## 3. Cast Service
 
@@ -236,53 +270,6 @@ Used to subscribe to real-time event updates from the Farcaster Hub
 | ------------- | ------------ | ------------- | ---------------------------- |
 | SubmitMessage | Message      | Message       | Submits a Message to the Hub |
 
-## 9. Contract Service
-
-Used to query the Hubs for the state of the Farcaster Id Registry and Farcaster Name Registry contracts on Ethereum.
-
-| Method Name          | Request Type             | Response Type     | Description                                            |
-| -------------------- | ------------------------ | ----------------- | ------------------------------------------------------ |
-| GetFids              | FidsRequest                    | FidsResponse      | Returns the most recent Fids that were registered      |
-| GetIdRegistryEvent   | IdRegistryEventRequest | IdRegistryEvent   | Returns the most recent IdRegistryEvent for an Fid     |
-| GetIdRegistryEventByAddress | IdRegistryEventByAddressRequest| IdRegistryEvent |  |
-| GetNameRegistryEvent | NameRegistryEventRequest | NameRegistryEvent | Returns the most recent NameRegistryEvent for an Fname |
-
-### FidsRequest
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| page_size | [uint32](#uint32) | optional |  |
-| page_token | [bytes](#bytes) | optional |  |
-| reverse | [bool](#bool) | optional |  |
-
-#### Fids Response
-
-| Field           | Type            | Label    | Description     |
-| --------------- | --------------- | -------- | --------------- |
-| fids            | [uint64](#)     | repeated | Fid of the user |
-| next_page_token | [bytes](#bytes) | optional |                 |
-
-### IdRegistryEventRequest
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| fid | [uint64](#uint64) |  |  |
-
-
-### IdRegistryEventByAddressRequest
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [bytes](#bytes) |  |  |
-
-
-#### NameRegistryEvent Request
-
-| Field | Type       | Label | Description                                                   |
-| ----- | ---------- | ----- | ------------------------------------------------------------- |
-| name  | [bytes](#) |       | Fname of the user whose NameRegistry event is being requested |
-
-
 ## 10. Username Proofs Service
 
 | Method Name | Request Type | Response Type | Description |
@@ -424,81 +411,11 @@ Response Types for the Sync RPC Methods
 | ----------- | ------------ | ------------- | ------------|
 | GetRentRegistryEvents | [.RentRegistryEventsRequest](#RentRegistryEventsRequest) | [.RentRegistryEventsResponse](#RentRegistryEventsResponse) |  |
 
-
-### RentRegistryEvent
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| block_number | [uint32](#uint32) |  |  |
-| block_hash | [bytes](#bytes) |  |  |
-| transaction_hash | [bytes](#bytes) |  |  |
-| log_index | [uint32](#uint32) |  |  |
-| payer | [bytes](#bytes) |  |  |
-| fid | [uint64](#uint64) |  |  |
-| type | [StorageRegistryEventType](#StorageRegistryEventType) |  |  |
-| units | [uint32](#uint32) |  |  |
-| expiry | [uint32](#uint32) |  |  |
-
-### StorageRegistryEventType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| STORAGE_REGISTRY_EVENT_TYPE_NONE | 0 |  |
-| STORAGE_REGISTRY_EVENT_TYPE_RENT | 1 |  |
-| STORAGE_REGISTRY_EVENT_TYPE_SET_PRICE | 2 |  |
-| STORAGE_REGISTRY_EVENT_TYPE_SET_MAX_UNITS | 3 |  |
-| STORAGE_REGISTRY_EVENT_TYPE_SET_DEPRECATION_TIMESTAMP | 4 |  |
-| STORAGE_REGISTRY_EVENT_TYPE_SET_GRACE_PERIOD | 5 |  |
-
-### RentRegistryEventsRequest
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| fid | [uint64](#uint64) |  |  |
-
-
-
-### RentRegistryEventsResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| events | [RentRegistryEvent](#RentRegistryEvent) | repeated |  |
-
-
 ## 13. Admin Service
 
-| Method Name | Request Type | Response Type | Description |
-| ----------- | ------------ | ------------- | ------------|
-| RebuildSyncTrie | [.Empty](#Empty) | [.Empty](#Empty) |  |
-| DeleteAllMessagesFromDb | [.Empty](#Empty) | [.Empty](#Empty) |  |
-| SubmitIdRegistryEvent | [.IdRegistryEvent](#IdRegistryEvent) | [.IdRegistryEvent](#IdRegistryEvent) |  |
-| SubmitNameRegistryEvent | [.NameRegistryEvent](#NameRegistryEvent) | [.NameRegistryEvent](#NameRegistryEvent) |  |
-| SubmitRentRegistryEvent | [.RentRegistryEvent](#RentRegistryEvent) | [.RentRegistryEvent](#RentRegistryEvent) |  |
-| SubmitStorageAdminRegistryEvent | [.StorageAdminRegistryEvent](#StorageAdminRegistryEvent) | [.StorageAdminRegistryEvent](#StorageAdminRegistryEvent) |  |
-
-### StorageAdminRegistryEventRequest
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| transaction_hash | [bytes](#bytes) |  |  |
-
-
-### StorageAdminRegistryEvent
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| block_number | [uint32](#uint32) |  |  |
-| block_hash | [bytes](#bytes) |  |  |
-| transaction_hash | [bytes](#bytes) |  |  |
-| log_index | [uint32](#uint32) |  |  |
-| timestamp | [uint64](#uint64) |  |  |
-| from | [bytes](#bytes) |  |  |
-| type | [StorageRegistryEventType](#StorageRegistryEventType) |  |  |
-| value | [bytes](#bytes) |  |  |
-
+| Method Name                     | Request Type                      | Response Type | Description |
+|---------------------------------|-----------------------------------| ------------- | ------------|
+| RebuildSyncTrie                 | [.Empty](#Empty)                  | [.Empty](#Empty) |  |
+| DeleteAllMessagesFromDb         | [.Empty](#Empty)                  | [.Empty](#Empty) |  |
+| SubmitOnChainEvent              | [.OnChainEvent](#IdRegistryEvent) | [.IdRegistryEvent](#IdRegistryEvent) |  |
 

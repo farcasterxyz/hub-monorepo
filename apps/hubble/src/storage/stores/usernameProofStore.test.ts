@@ -2,16 +2,18 @@ import { jestRocksDB } from "../db/jestUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   Factories,
+  getDefaultStoreLimit,
   getFarcasterTime,
   HubError,
   MergeUsernameProofHubEvent,
   MessageType,
-  USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
+  StoreType,
   UserNameProof,
   UsernameProofMessage,
   UserNameType,
 } from "@farcaster/hub-nodejs";
 import UsernameProofStore from "./usernameProofStore.js";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.usernameProofSet.test");
 const eventHandler = new StoreEventHandler(db);
@@ -48,6 +50,8 @@ describe("usernameProofStore", () => {
     fname = Factories.Fname.build();
     currentFarcasterTime = getFarcasterTime()._unsafeUnwrap();
     ensProof = await buildProof(fid, fname, currentFarcasterTime, UserNameType.USERNAME_TYPE_ENS_L1);
+    const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+    await db.commit(putOnChainEventTransaction(db.transaction(), rent));
   });
 
   beforeEach(async () => {
@@ -183,7 +187,7 @@ describe("usernameProofStore", () => {
       const sizePrunedStore = new UsernameProofStore(db, eventHandler, { pruneSizeLimit: 2 });
 
       test("defaults size limit", async () => {
-        expect(set.pruneSizeLimit).toEqual(USERNAME_PROOFS_SIZE_LIMIT_DEFAULT);
+        expect(set.pruneSizeLimit).toEqual(getDefaultStoreLimit(StoreType.USERNAME_PROOFS));
         expect(set.pruneTimeLimit).toBeUndefined();
       });
 

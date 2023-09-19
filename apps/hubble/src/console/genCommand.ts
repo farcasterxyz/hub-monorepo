@@ -4,7 +4,6 @@ import {
   getAuthMetadata,
   HubRpcClient,
   FarcasterNetwork,
-  Message,
   Metadata,
 } from "@farcaster/hub-nodejs";
 import { ConsoleCommandInterface } from "./console.js";
@@ -84,8 +83,9 @@ class GenMessages {
     const signer = Factories.Ed25519Signer.build();
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
 
-    const custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-    const idResult = await this.adminRpcClient.submitIdRegistryEvent(custodyEvent, this.metadata);
+    const idRegisterBody = Factories.IdRegistryEventBody.build({ to: custodySignerKey });
+    const custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid, idRegisterEventBody: idRegisterBody });
+    const idResult = await this.adminRpcClient.submitOnChainEvent(custodyEvent, this.metadata);
 
     if (idResult.isOk()) {
       this.numSuccessMessages++;
@@ -105,12 +105,9 @@ class GenMessages {
       console.log(`Failed to submit rent event for fid ${fid}: ${rentResult.error}`);
     }
 
-    const signerAdd = await Factories.SignerAddMessage.create(
-      { data: { fid, network: this.network, signerAddBody: { signer: signerKey } } },
-      { transient: { signer: custodySigner } },
-    );
+    const signerAdd = await Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
 
-    const signerResult = await this.rpcClient.submitMessage(signerAdd, this.metadata);
+    const signerResult = await this.adminRpcClient.submitOnChainEvent(signerAdd, this.metadata);
     if (signerResult.isOk()) {
       this.numSuccessMessages++;
     } else {

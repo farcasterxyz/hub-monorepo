@@ -13,7 +13,7 @@ module.exports = function clidocs() {
     const regex = /--\w+(-\w+)*/g;
     let match;
 
-    // rome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+    // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
     while ((match = regex.exec(helpOutput)) !== null) {
       optionNames.push(match[0]);
     }

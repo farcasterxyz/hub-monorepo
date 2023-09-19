@@ -1,5 +1,28 @@
 # @farcaster/hubble
 
+## 1.5.4
+
+### Patch Changes
+
+- 0805122c: fix: Grafana issue where incoming sync count was not correct
+- 4893e02d: fix: Update links store size to be 2500 in the future
+- 5dc7d113: chore: Remove GossipMetricsRecorder (Use grafana dashboard instead)
+- 8d21803e: feat: Add "up" and "down" commands to hubble.sh
+  - @farcaster/hub-nodejs@0.10.8
+
+## 1.5.3
+
+### Patch Changes
+
+- 08b652e: fix: Add txIndex to onchain events, fix wrong index being used in the primary key
+- b36eef2: fix: Extract snapshot on the fly while downloading snapshot
+- 93e43a8: fix: Use hashes to compare upgrade 'hubble.sh' versions
+- 7daaae4: fix: Simplify IP addr fetching, prefering ipv4
+- ac1f6ac: fix: Fetch envoy config during hubble.sh
+- baf983f: fix: Consume the FID rate limit only after a successful merge
+- Updated dependencies [08b652e]
+  - @farcaster/hub-nodejs@0.10.7
+
 ## 1.5.2
 
 ### Patch Changes

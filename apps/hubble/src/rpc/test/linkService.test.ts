@@ -1,8 +1,6 @@
 import {
   Message,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   LinkAddMessage,
   LinkRequest,
   LinksByFidRequest,
@@ -11,6 +9,7 @@ import {
   HubError,
   getInsecureHubRpcClient,
   HubRpcClient,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import Server from "../../rpc/server.js";
@@ -43,8 +42,9 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 
 let targetFid: number;
 let linkAddFollow: LinkAddMessage;
@@ -54,12 +54,9 @@ beforeAll(async () => {
   setReferenceDateForTest(100000000000000000000000);
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   targetFid = Factories.Fid.build();
 
@@ -82,8 +79,9 @@ beforeAll(async () => {
 
 describe("getLink", () => {
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds with follow", async () => {
@@ -134,8 +132,9 @@ describe("getLink", () => {
 
   describe("getLinksByFid", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     describe("with messages", () => {
@@ -175,8 +174,9 @@ describe("getLink", () => {
 
   describe("getLinksByTarget", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     describe("with messages", () => {

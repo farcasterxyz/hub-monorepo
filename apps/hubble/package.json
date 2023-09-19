@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hubble",
-  "version": "1.5.2",
+  "version": "1.5.4",
   "description": "Farcaster Hub",
   "author": "",
   "license": "",
@@ -19,7 +19,8 @@
     "copy:rust": "mkdir -p build/addon && cp src/addon/index.node build/addon/index.node",
     "build:rust": "cargo-cp-artifact -ac addon src/addon/index.node -- cargo build --manifest-path ./src/addon/Cargo.toml --message-format=json-render-diagnostics --release",
     "build:ts": "tsc --project ./tsconfig.json",
-    "build": "yarn clean && yarn build:rust && yarn build:ts && yarn copy:rust",
+    "build:all": "yarn build:rust && yarn build:ts && yarn copy:rust",
+    "build": "yarn clean && yarn build:all",
     "clean": "rimraf ./build && cargo clean --manifest-path ./src/addon/Cargo.toml",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "yarn lint:customjs && biome format src/ --write && biome check src/ --apply",
@@ -32,8 +33,8 @@
     "console": "node build/cli.js console",
     "profile": "node --max-old-space-size=4096 build/cli.js profile",
     "status": "node build/cli.js status",
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest",
-    "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage"
+    "test": "yarn build:all && NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest",
+    "test:ci": "yarn build:all && ENVIRONMENT=test NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest --ci --forceExit --coverage"
   },
   "devDependencies": {
     "@libp2p/interface-mocks": "^9.0.0",
@@ -64,7 +65,7 @@
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
     "@faker-js/faker": "~7.6.0",
-    "@farcaster/hub-nodejs": "^0.10.6",
+    "@farcaster/hub-nodejs": "^0.10.8",
     "@farcaster/rocksdb": "^5.5.0",
     "@grpc/grpc-js": "~1.8.21",
     "@libp2p/interface-connection": "^3.0.2",

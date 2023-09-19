@@ -6,6 +6,8 @@ Documentation for the Hubble CLI.
 2. `identity` - generate or validate hub identities
 3. `status` - status reports on sync, storage and other systems.
 4. `dbreset` - clear the database. 
+4. `events-reset` - clear l2 events data from the db. 
+4. `profile` - profile the storage usage of the db. 
 5. `console` - start an interactive repl console for debugging.
 
 Commands must invoked with yarn by running: 
@@ -40,8 +42,6 @@ Ethereum Options:
   -l, --l2-rpc-url <url>                RPC URL of a Goerli Optimism Node (or comma separated list of URLs)
   --rank-rpcs                           Rank the RPCs by latency/stability and use the fastest one (default: disabled)
   --fname-server-url <url>              The URL for the FName registry server (default: https://fnames.farcaster.xyz)
-  --fir-address <address>               The address of the Farcaster ID Registry contract
-  --first-block <number>                The block number to begin syncing events from Farcaster contracts
 
 L2 Options:
   --l2-id-registry-address              The address of the L2 Farcaster ID Registry contract
@@ -83,11 +83,9 @@ Snapshots Options:
 Metrics:
   --statsd-metrics-server <host>        The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)
 
-Debugging Options:
-  --gossip-metrics-enabled              Generate tracing and metrics for the gossip network. (default: disabled)
+Debugging Options:  
   --profile-sync                        Profile a full hub sync and exit. (default: disabled)
-  --rebuild-sync-trie                   Rebuild the sync trie before starting (default: disabled)
-  --resync-eth-events                   Resync events from the Farcaster contracts before starting (default: disabled)
+  --rebuild-sync-trie                   Rebuild the sync trie before starting (default: disabled)  
   --resync-name-events                  Resync events from the Fname server before starting (default: disabled)
   --chunk-size <number>                 The number of blocks to batch when syncing historical events from Farcaster contracts. (default: 10000)
   --commit-lock-timeout <number>        Rocks DB commit lock timeout in milliseconds (default: 500)
@@ -95,7 +93,6 @@ Debugging Options:
   --rpc-auth <username:password,...>    Require username-password auth for RPC submit. (default: disabled)
   --disable-console-status              Immediately log to STDOUT, and disable console status and progressbars. (default: disabled)
   
-  --fnr-address <address>               The address of the Farcaster Name Registry contract
   -h, --help                            display help for command
   ```
 
@@ -142,6 +139,33 @@ Completely remove the database
 
 Options:
   --db-name <name>         The name of the RocksDB instance
+  -c, --config <filepath>  Path to a config file with options
+  -h, --help               display help for command
+```
+
+### events-reset
+
+```
+Usage: yarn events-reset [options]
+
+Clears all data about L2 events from the database.
+
+Options:
+  --db-name <name>         The name of the RocksDB instance
+  -c, --config <filepath>  Path to a config file with options
+  -h, --help               display help for command
+```
+
+### profile
+
+```
+Usage: yarn profile [options]
+
+Profile the db storage for the hubs. Breaks down space used by key.
+
+Options:
+  --db-name <name>         The name of the RocksDB instance
+  -o <name>                The path to write the output file to
   -c, --config <filepath>  Path to a config file with options
   -h, --help               display help for command
 ```

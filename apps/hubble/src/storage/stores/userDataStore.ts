@@ -8,13 +8,12 @@ import {
   UserNameProof,
   UserDataAddMessage,
   UserDataType,
-  USER_DATA_SIZE_LIMIT_DEFAULT,
+  getDefaultStoreLimit,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { ok, ResultAsync } from "neverthrow";
 import { makeUserKey } from "../db/message.js";
 import {
-  getNameRegistryEvent,
-  putNameRegistryEventTransaction,
   getUserNameProof,
   putUserNameProofTransaction,
   deleteUserNameProofTransaction,
@@ -22,7 +21,7 @@ import {
 } from "../db/nameRegistryEvent.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
-import { eventCompare, usernameProofCompare } from "../stores/utils.js";
+import { usernameProofCompare } from "../stores/utils.js";
 import { Store } from "./store.js";
 import { Transaction } from "../db/rocksdb.js";
 
@@ -85,7 +84,7 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   override _removeMessageType = undefined;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return USER_DATA_SIZE_LIMIT_DEFAULT;
+    return getDefaultStoreLimit(StoreType.USER_DATA);
   }
 
   /**
@@ -104,41 +103,12 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
     return await this.getAddsByFid({ data: { fid } }, pageOptions);
   }
 
-  /** Returns the most recent event from the NameEventRegistry contract for an fname */
-  async getNameRegistryEvent(fname: Uint8Array): Promise<NameRegistryEvent> {
-    return getNameRegistryEvent(this._db, fname);
-  }
-
   async getUserNameProof(name: Uint8Array): Promise<UserNameProof> {
     return getUserNameProof(this._db, name);
   }
 
   async getUserNameProofByFid(fid: number): Promise<UserNameProof> {
     return getFNameProofByFid(this._db, fid);
-  }
-
-  /**
-   * Merges a NameRegistryEvent storing the causally latest event at the key:
-   * <name registry root prefix byte, fname>
-   */
-  async mergeNameRegistryEvent(event: NameRegistryEvent): Promise<number> {
-    const existingEvent = await ResultAsync.fromPromise(this.getNameRegistryEvent(event.fname), () => undefined);
-    if (existingEvent.isOk() && eventCompare(existingEvent.value, event) >= 0) {
-      throw new HubError("bad_request.conflict", "event conflicts with a more recent NameRegistryEvent");
-    }
-
-    const txn = putNameRegistryEventTransaction(this._db.transaction(), event);
-
-    const result = await this._eventHandler.commitTransaction(txn, {
-      type: HubEventType.MERGE_NAME_REGISTRY_EVENT,
-      mergeNameRegistryEventBody: { nameRegistryEvent: event },
-    });
-
-    if (result.isErr()) {
-      throw result.error;
-    }
-
-    return result.value;
   }
 
   async mergeUserNameProof(usernameProof: UserNameProof): Promise<number> {

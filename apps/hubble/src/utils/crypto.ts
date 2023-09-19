@@ -16,10 +16,10 @@ export const sleepWhile = (condition: () => boolean | Promise<boolean>, timeoutM
         clearInterval(interval);
         resolve(false);
       }
-    }, 10);
+    }, 100);
     setTimeout(() => {
       clearInterval(interval);
-      reject(true);
+      reject(new Error("Timeout in sleepWhile"));
     }, timeoutMs);
   });
 };

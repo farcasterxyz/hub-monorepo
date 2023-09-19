@@ -31,13 +31,14 @@ import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
 import { statsd } from "../../utils/statsd.js";
 import { logger } from "../../utils/logger.js";
-import { RootPrefix } from "../../storage/db/types.js";
+import { OnChainEventPostfix, RootPrefix } from "../../storage/db/types.js";
 import { bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 import os from "os";
 import { addProgressBar, finishAllProgressBars } from "../../utils/progressBars.js";
 import { SingleBar } from "cli-progress";
+import { SemVer } from "semver";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -291,6 +292,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       log.error({ err: e }, "Interrupting sync timed out");
     }
 
+    await this._trie.stop();
+
     this._started = false;
     this._currentSyncStatus.interruptSync = false;
   }
@@ -327,8 +330,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this.emit("syncStart");
 
     // Log the version number for the dashboard
-    statsd().gauge(`farcaster.version.${FARCASTER_VERSION}`, 1);
-    statsd().gauge(`farcaster.hubversion.${APP_VERSION}`, 1);
+    const fcversion = new SemVer(FARCASTER_VERSION);
+    statsd().gauge("farcaster.fcversion.major", fcversion.major);
+    statsd().gauge("farcaster.fcversion.minor", fcversion.minor);
+    statsd().gauge("farcaster.fcversion.patch", fcversion.patch);
+
+    const appversion = new SemVer(APP_VERSION);
+    statsd().gauge("farcaster.appversion.major", appversion.major);
+    statsd().gauge("farcaster.appversion.minor", appversion.minor);
+    statsd().gauge("farcaster.appversion.patch", appversion.patch);
 
     if (this.currentHubPeerContacts.size === 0) {
       log.warn("Diffsync: No peer contacts, skipping sync");
@@ -1019,7 +1029,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let numFnames = 0;
 
     await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.IdRegistryEvent]),
+      Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid]),
       () => {
         numFids += 1;
       },

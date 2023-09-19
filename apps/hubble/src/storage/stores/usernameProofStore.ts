@@ -1,10 +1,11 @@
 import {
+  getDefaultStoreLimit,
   HubAsyncResult,
   HubError,
   HubEventType,
   isUsernameProofMessage,
   MessageType,
-  USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
+  StoreType,
   UserNameProof,
   UsernameProofMessage,
   UserNameType,
@@ -56,7 +57,7 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
   override _removeMessageType = undefined;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return USERNAME_PROOFS_SIZE_LIMIT_DEFAULT;
+    return getDefaultStoreLimit(StoreType.USERNAME_PROOFS);
   }
 
   /**

@@ -2,7 +2,6 @@ import { parentPort, threadId, workerData } from "worker_threads";
 import { ConnectToMultiAddrArgs, MultiAddrResponse, ProfileWorkerAction } from "./gossipProfile.js";
 import { Factories, Message } from "@farcaster/hub-nodejs";
 import { GossipNode } from "../network/p2p/gossipNode.js";
-import RocksDB from "../storage/db/rocksdb.js";
 import { multiaddr } from "@multiformats/multiaddr";
 
 const nodes: GossipTestNode[] = [];
@@ -27,7 +26,7 @@ parentPort?.on("message", (data) => {
     } else if (action === ProfileWorkerAction.Stop) {
       // Collect the data from the nodes
       const datas = nodes.map((node) => node.getData());
-      const peerIds = nodes.map((node) => node.gossipNode.peerId?.toString());
+      const peerIds = await Promise.all(nodes.map(async (node) => (await node.gossipNode.peerId())?.toString()));
 
       await Promise.all(nodes.map((node) => node.stop()));
 
@@ -42,7 +41,7 @@ parentPort?.on("message", (data) => {
       parentPort?.postMessage({ id, action });
     } else if (action === ProfileWorkerAction.ReportPeers) {
       for (const node of nodes) {
-        node.gossipNode.gossip?.subscribe(node.gossipNode.primaryTopic());
+        await node.gossipNode.subscribe(node.gossipNode.primaryTopic());
       }
 
       parentPort?.postMessage({ id, action });
@@ -79,11 +78,13 @@ async function start() {
   await Promise.all(nodes.map((node) => node.waitForConnection()));
 }
 
-function getMultiAddrs(): MultiAddrResponse {
-  const peerIds = nodes.map((node) => node.gossipNode.peerId?.toString() ?? "unknown");
-  const multiAddrs = nodes
-    .map((node) => node.gossipNode.multiaddrs)
-    .map((addrs) => addrs?.map((addr) => addr.toString())[0] ?? "");
+async function getMultiAddrs(): Promise<MultiAddrResponse> {
+  const peerIds = await Promise.all(
+    nodes.map(async (node) => (await node.gossipNode.peerId())?.toString() ?? "unknown"),
+  );
+  const multiAddrs = (
+    await Promise.all(nodes.map(async (node) => (await node.gossipNode.multiaddrs()).map((addr) => addr.toString())))
+  ).flat();
 
   return { peerIds, multiAddrs };
 }
@@ -136,7 +137,7 @@ class GossipTestNode {
   recievedMessages = new Map<number, number>(); // Id -> timestamp
 
   constructor() {
-    this.gossipNode = new GossipNode({} as RocksDB);
+    this.gossipNode = new GossipNode();
   }
 
   async start() {
@@ -152,7 +153,7 @@ class GossipTestNode {
       },
     });
 
-    this.registerListeners();
+    await this.registerListeners();
   }
 
   async stop() {
@@ -202,7 +203,7 @@ class GossipTestNode {
     this.sentMessages++;
   }
 
-  getData(): number[] {
+  async getData(): Promise<number[]> {
     const delays = Array.from(this.recievedMessages.values());
 
     // Sort the delays so we can get the median and p95
@@ -212,12 +213,12 @@ class GossipTestNode {
     const median = delays[Math.floor(delays.length / 2)] ?? NaN;
     const p95 = delays[Math.floor(delays.length * 0.95)] ?? NaN;
 
-    return [count, median, p95, this.gossipNode.allPeerIds().length];
+    return [count, median, p95, (await this.gossipNode.allPeerIds()).length];
   }
 
-  registerListeners() {
+  async registerListeners() {
     // Register the handlers
-    this.gossipNode.gossip?.subscribe(this.gossipNode.primaryTopic());
+    await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
     this.gossipNode.on("message", async (_topic, message) => {
       const castData = message._unsafeUnwrap().message?.data?.castAddBody;
       const split = castData?.text.split(":");

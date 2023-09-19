@@ -2,23 +2,23 @@ import cron from "node-cron";
 import {
   makeCastAdd,
   makeReactionAdd,
-  makeSignerAdd,
   NobleEd25519Signer,
   toFarcasterTime,
   getAuthMetadata,
   getInsecureHubRpcClient,
-  HubRpcClient,
   FarcasterNetwork,
   ReactionType,
   CastAddBody,
-  ViemLocalEip712Signer,
+  getAdminRpcClient,
+  AdminRpcClient,
+  Factories,
 } from "@farcaster/hub-nodejs";
 import { logger } from "../utils/logger.js";
 import { ed25519 as ed } from "@noble/curves/ed25519";
 import { faker } from "@faker-js/faker";
 import Server from "../rpc/server.js";
 import { Result } from "neverthrow";
-import { mnemonicToAccount } from "viem/accounts";
+import { ADMIN_SERVER_PORT } from "../rpc/adminServer.js";
 
 const log = logger.child({
   component: "PeriodicTestDataJob",
@@ -62,15 +62,12 @@ export class PeriodicTestDataJobScheduler {
     return this._cronTask ? "started" : "stopped";
   }
 
-  async insertSignerAdds(client: HubRpcClient) {
+  async insertSignerAdds(adminClient: AdminRpcClient) {
     // Initialize the signer add messages for the test users
     for (const testUser of this._testDataUsers) {
       if (!testUser.mnemonic || !testUser.fid) {
         continue;
       }
-
-      const account = mnemonicToAccount(testUser.mnemonic);
-      const eip712Signer = new ViemLocalEip712Signer(account);
 
       // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
       const signerPrivateKey = ed.utils.randomPrivateKey();
@@ -82,12 +79,10 @@ export class PeriodicTestDataJobScheduler {
         network: FarcasterNetwork.TESTNET,
       };
 
-      const signerAddResult = await makeSignerAdd(
-        { signer: (await ed25519Signer.getSignerKey())._unsafeUnwrap() },
-        dataOptions,
-        eip712Signer,
+      const signerAdd = await Factories.SignerOnChainEvent.build(
+        { fid: testUser.fid },
+        { transient: { signer: (await ed25519Signer.getSignerKey())._unsafeUnwrap() } },
       );
-      const signerAdd = signerAddResult._unsafeUnwrap();
 
       const rpcUsers = this._server.auth;
 
@@ -99,7 +94,7 @@ export class PeriodicTestDataJobScheduler {
         password = rpcUsers.get(user)?.[0] as string;
       }
 
-      const result = await client.submitMessage(signerAdd, getAuthMetadata(user, password));
+      const result = await adminClient.submitOnChainEvent(signerAdd, getAuthMetadata(user, password));
       if (result.isErr()) {
         log.error(
           { error: result.error, errMsg: result.error.message, dataOptions },
@@ -115,9 +110,10 @@ export class PeriodicTestDataJobScheduler {
     log.info("starting periodic test data job");
 
     const client = getInsecureHubRpcClient(`127.0.0.1:${this._server.listenPort}`);
+    const adminClient = await getAdminRpcClient(`127.0.0.1:${ADMIN_SERVER_PORT}`);
 
     if (this._userEd25519KeyPairs.size === 0) {
-      await this.insertSignerAdds(client);
+      await this.insertSignerAdds(adminClient);
     }
 
     const farcasterTimestamp = toFarcasterTime(Date.now())._unsafeUnwrap();

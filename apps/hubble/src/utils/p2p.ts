@@ -1,9 +1,9 @@
 import { GossipAddressInfo, HubAsyncResult, HubError, HubResult } from "@farcaster/hub-nodejs";
 import { Multiaddr, NodeAddress, multiaddr } from "@multiformats/multiaddr";
-import { get } from "http";
 import { AddressInfo, isIP } from "net";
 import { Result, err, ok } from "neverthrow";
 import { logger } from "./logger.js";
+import axios from "axios";
 
 /** Parses an address to verify it is actually a valid MultiAddr */
 export const parseAddress = (multiaddrStr: string): HubResult<Multiaddr> => {
@@ -144,33 +144,17 @@ export const addressInfoToString = (addressInfo: AddressInfo): string => {
   }
 };
 
-let lastIpFetch = { timestamp: new Date().getTime(), ip: "" };
-
 /** Returns a publicly visible IPv4 or IPv6 address of the running process */
 export const getPublicIp = async (): HubAsyncResult<string> => {
-  // TODO: refactor to make this more readable, the nested promise/return/try-catch is hard to
-  // reason about
-  return new Promise((resolve, reject) => {
-    const now = new Date().getTime();
-    const since = now - lastIpFetch.timestamp;
-    if (since <= 10 * 60 * 1000 && lastIpFetch.ip !== "") {
-      logger.debug({ component: "utils/p2p", ip: lastIpFetch.ip }, "Cached public IP");
-      resolve(ok(lastIpFetch.ip));
-      return;
-    }
-    try {
-      get({ host: "api64.ipify.org", port: 80, path: "/" }, (resp) => {
-        resp.on("data", (ip: Buffer) => {
-          logger.info({ component: "utils/p2p", ip: ip.toString() }, "Fetched public IP");
-          lastIpFetch = { timestamp: now, ip: ip.toString() };
-          resolve(ok(ip.toString()));
-        });
-      });
-      // biome-ignore lint/suspicious/noExplicitAny: error catching
-    } catch (err: any) {
-      reject(new HubError("unavailable.network_failure", err));
-    }
-  });
+  try {
+    const response = await axios.get("http://api.ipify.org?format=text");
+    const ip = response.data;
+    logger.info({ component: "utils/p2p", ip }, "Fetched public IP");
+    return ok(ip);
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  } catch (error: any) {
+    return err(new HubError("unavailable.network_failure", error.message));
+  }
 };
 
 /* -------------------------------------------------------------------------- */

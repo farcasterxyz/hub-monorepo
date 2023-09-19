@@ -16,6 +16,7 @@ import UserDataStore from "./userDataStore.js";
 import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { err } from "neverthrow";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.userDataSet.test");
 const eventHandler = new StoreEventHandler(db);
@@ -32,6 +33,8 @@ beforeAll(async () => {
   addBio = await Factories.UserDataAddMessage.create({
     data: { fid, userDataBody: { type: UserDataType.BIO }, timestamp: addPfp.data.timestamp + 1 },
   });
+  const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
 beforeEach(async () => {

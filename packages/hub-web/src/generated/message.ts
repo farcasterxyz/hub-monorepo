@@ -91,11 +91,11 @@ export enum MessageType {
   VERIFICATION_ADD_ETH_ADDRESS = 7,
   /** VERIFICATION_REMOVE - Remove a Verification */
   VERIFICATION_REMOVE = 8,
-  /** SIGNER_ADD - Add a new Ed25519 key pair that signs messages for a user */
-  SIGNER_ADD = 9,
-  /** SIGNER_REMOVE - Remove an Ed25519 key pair that signs messages for a user */
-  SIGNER_REMOVE = 10,
-  /** USER_DATA_ADD - Add metadata about a user */
+  /**
+   * USER_DATA_ADD - Deprecated
+   *  MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
+   *  MESSAGE_TYPE_SIGNER_REMOVE = 10; // Remove an Ed25519 key pair that signs messages for a user
+   */
   USER_DATA_ADD = 11,
   /** USERNAME_PROOF - Add or replace a username proof */
   USERNAME_PROOF = 12,
@@ -130,12 +130,6 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 8:
     case "MESSAGE_TYPE_VERIFICATION_REMOVE":
       return MessageType.VERIFICATION_REMOVE;
-    case 9:
-    case "MESSAGE_TYPE_SIGNER_ADD":
-      return MessageType.SIGNER_ADD;
-    case 10:
-    case "MESSAGE_TYPE_SIGNER_REMOVE":
-      return MessageType.SIGNER_REMOVE;
     case 11:
     case "MESSAGE_TYPE_USER_DATA_ADD":
       return MessageType.USER_DATA_ADD;
@@ -167,10 +161,6 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS";
     case MessageType.VERIFICATION_REMOVE:
       return "MESSAGE_TYPE_VERIFICATION_REMOVE";
-    case MessageType.SIGNER_ADD:
-      return "MESSAGE_TYPE_SIGNER_ADD";
-    case MessageType.SIGNER_REMOVE:
-      return "MESSAGE_TYPE_SIGNER_REMOVE";
     case MessageType.USER_DATA_ADD:
       return "MESSAGE_TYPE_USER_DATA_ADD";
     case MessageType.USERNAME_PROOF:
@@ -360,26 +350,16 @@ export interface MessageData {
   castRemoveBody?: CastRemoveBody | undefined;
   reactionBody?: ReactionBody | undefined;
   verificationAddEthAddressBody?: VerificationAddEthAddressBody | undefined;
-  verificationRemoveBody?: VerificationRemoveBody | undefined;
-  signerAddBody?: SignerAddBody | undefined;
-  userDataBody?: UserDataBody | undefined;
-  signerRemoveBody?: SignerRemoveBody | undefined;
+  verificationRemoveBody?:
+    | VerificationRemoveBody
+    | undefined;
+  /** SignerAddBody signer_add_body = 11; // Deprecated */
+  userDataBody?:
+    | UserDataBody
+    | undefined;
+  /** SignerRemoveBody signer_remove_body = 13; // Deprecated */
   linkBody?: LinkBody | undefined;
   usernameProofBody?: UserNameProof | undefined;
-}
-
-/** Adds an Ed25519 key pair that signs messages for a user */
-export interface SignerAddBody {
-  /** Public key of the Ed25519 key pair */
-  signer: Uint8Array;
-  /** Name of the key pair */
-  name?: string | undefined;
-}
-
-/** Removes an Ed25519 key pair that signs messages for a user */
-export interface SignerRemoveBody {
-  /** Public key of the Ed25519 key pair */
-  signer: Uint8Array;
 }
 
 /** Adds metadata about a user */
@@ -617,9 +597,7 @@ function createBaseMessageData(): MessageData {
     reactionBody: undefined,
     verificationAddEthAddressBody: undefined,
     verificationRemoveBody: undefined,
-    signerAddBody: undefined,
     userDataBody: undefined,
-    signerRemoveBody: undefined,
     linkBody: undefined,
     usernameProofBody: undefined,
   };
@@ -654,14 +632,8 @@ export const MessageData = {
     if (message.verificationRemoveBody !== undefined) {
       VerificationRemoveBody.encode(message.verificationRemoveBody, writer.uint32(82).fork()).ldelim();
     }
-    if (message.signerAddBody !== undefined) {
-      SignerAddBody.encode(message.signerAddBody, writer.uint32(90).fork()).ldelim();
-    }
     if (message.userDataBody !== undefined) {
       UserDataBody.encode(message.userDataBody, writer.uint32(98).fork()).ldelim();
-    }
-    if (message.signerRemoveBody !== undefined) {
-      SignerRemoveBody.encode(message.signerRemoveBody, writer.uint32(106).fork()).ldelim();
     }
     if (message.linkBody !== undefined) {
       LinkBody.encode(message.linkBody, writer.uint32(114).fork()).ldelim();
@@ -742,26 +714,12 @@ export const MessageData = {
 
           message.verificationRemoveBody = VerificationRemoveBody.decode(reader, reader.uint32());
           continue;
-        case 11:
-          if (tag != 90) {
-            break;
-          }
-
-          message.signerAddBody = SignerAddBody.decode(reader, reader.uint32());
-          continue;
         case 12:
           if (tag != 98) {
             break;
           }
 
           message.userDataBody = UserDataBody.decode(reader, reader.uint32());
-          continue;
-        case 13:
-          if (tag != 106) {
-            break;
-          }
-
-          message.signerRemoveBody = SignerRemoveBody.decode(reader, reader.uint32());
           continue;
         case 14:
           if (tag != 114) {
@@ -801,9 +759,7 @@ export const MessageData = {
       verificationRemoveBody: isSet(object.verificationRemoveBody)
         ? VerificationRemoveBody.fromJSON(object.verificationRemoveBody)
         : undefined,
-      signerAddBody: isSet(object.signerAddBody) ? SignerAddBody.fromJSON(object.signerAddBody) : undefined,
       userDataBody: isSet(object.userDataBody) ? UserDataBody.fromJSON(object.userDataBody) : undefined,
-      signerRemoveBody: isSet(object.signerRemoveBody) ? SignerRemoveBody.fromJSON(object.signerRemoveBody) : undefined,
       linkBody: isSet(object.linkBody) ? LinkBody.fromJSON(object.linkBody) : undefined,
       usernameProofBody: isSet(object.usernameProofBody) ? UserNameProof.fromJSON(object.usernameProofBody) : undefined,
     };
@@ -828,12 +784,8 @@ export const MessageData = {
     message.verificationRemoveBody !== undefined && (obj.verificationRemoveBody = message.verificationRemoveBody
       ? VerificationRemoveBody.toJSON(message.verificationRemoveBody)
       : undefined);
-    message.signerAddBody !== undefined &&
-      (obj.signerAddBody = message.signerAddBody ? SignerAddBody.toJSON(message.signerAddBody) : undefined);
     message.userDataBody !== undefined &&
       (obj.userDataBody = message.userDataBody ? UserDataBody.toJSON(message.userDataBody) : undefined);
-    message.signerRemoveBody !== undefined &&
-      (obj.signerRemoveBody = message.signerRemoveBody ? SignerRemoveBody.toJSON(message.signerRemoveBody) : undefined);
     message.linkBody !== undefined && (obj.linkBody = message.linkBody ? LinkBody.toJSON(message.linkBody) : undefined);
     message.usernameProofBody !== undefined &&
       (obj.usernameProofBody = message.usernameProofBody ? UserNameProof.toJSON(message.usernameProofBody) : undefined);
@@ -867,14 +819,8 @@ export const MessageData = {
       (object.verificationRemoveBody !== undefined && object.verificationRemoveBody !== null)
         ? VerificationRemoveBody.fromPartial(object.verificationRemoveBody)
         : undefined;
-    message.signerAddBody = (object.signerAddBody !== undefined && object.signerAddBody !== null)
-      ? SignerAddBody.fromPartial(object.signerAddBody)
-      : undefined;
     message.userDataBody = (object.userDataBody !== undefined && object.userDataBody !== null)
       ? UserDataBody.fromPartial(object.userDataBody)
-      : undefined;
-    message.signerRemoveBody = (object.signerRemoveBody !== undefined && object.signerRemoveBody !== null)
-      ? SignerRemoveBody.fromPartial(object.signerRemoveBody)
       : undefined;
     message.linkBody = (object.linkBody !== undefined && object.linkBody !== null)
       ? LinkBody.fromPartial(object.linkBody)
@@ -882,135 +828,6 @@ export const MessageData = {
     message.usernameProofBody = (object.usernameProofBody !== undefined && object.usernameProofBody !== null)
       ? UserNameProof.fromPartial(object.usernameProofBody)
       : undefined;
-    return message;
-  },
-};
-
-function createBaseSignerAddBody(): SignerAddBody {
-  return { signer: new Uint8Array(), name: undefined };
-}
-
-export const SignerAddBody = {
-  encode(message: SignerAddBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.signer.length !== 0) {
-      writer.uint32(10).bytes(message.signer);
-    }
-    if (message.name !== undefined) {
-      writer.uint32(18).string(message.name);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): SignerAddBody {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseSignerAddBody();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.signer = reader.bytes();
-          continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.name = reader.string();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): SignerAddBody {
-    return {
-      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
-      name: isSet(object.name) ? String(object.name) : undefined,
-    };
-  },
-
-  toJSON(message: SignerAddBody): unknown {
-    const obj: any = {};
-    message.signer !== undefined &&
-      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
-    message.name !== undefined && (obj.name = message.name);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<SignerAddBody>, I>>(base?: I): SignerAddBody {
-    return SignerAddBody.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<SignerAddBody>, I>>(object: I): SignerAddBody {
-    const message = createBaseSignerAddBody();
-    message.signer = object.signer ?? new Uint8Array();
-    message.name = object.name ?? undefined;
-    return message;
-  },
-};
-
-function createBaseSignerRemoveBody(): SignerRemoveBody {
-  return { signer: new Uint8Array() };
-}
-
-export const SignerRemoveBody = {
-  encode(message: SignerRemoveBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.signer.length !== 0) {
-      writer.uint32(10).bytes(message.signer);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): SignerRemoveBody {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseSignerRemoveBody();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.signer = reader.bytes();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): SignerRemoveBody {
-    return { signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array() };
-  },
-
-  toJSON(message: SignerRemoveBody): unknown {
-    const obj: any = {};
-    message.signer !== undefined &&
-      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<SignerRemoveBody>, I>>(base?: I): SignerRemoveBody {
-    return SignerRemoveBody.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<SignerRemoveBody>, I>>(object: I): SignerRemoveBody {
-    const message = createBaseSignerRemoveBody();
-    message.signer = object.signer ?? new Uint8Array();
     return message;
   },
 };
