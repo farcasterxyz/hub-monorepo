@@ -214,8 +214,15 @@ ensure_grafana() {
 ## Configure Grafana
 setup_grafana() {
     local grafana_url="http://127.0.0.1:3000"
-    local credentials="admin:admin"
+    local credentials
     local response dashboard_uid prefs
+
+    if key_exists "GRAFANA_CREDS"; then
+        credentials=$(grep "^GRAFANA_CREDS=" .env | awk -F '=' '{printf $2}')
+        echo "Using grafana creds from .env file"
+    else
+        credentials="admin:admin"
+    fi
 
     add_datasource() {
         response=$(curl -s -o /dev/null -w "%{http_code}" -X "POST" "$grafana_url/api/datasources" \
