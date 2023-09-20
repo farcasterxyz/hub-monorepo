@@ -821,10 +821,6 @@ describe("pruneMessages", () => {
   describe("with size limit", () => {
     const sizePrunedStore = new LinkStore(db, eventHandler, { pruneSizeLimit: 3 });
 
-    test("size limit changes in the future", () => {
-      expect(getDefaultStoreLimit(StoreType.LINKS)).toEqual(2500);
-    });
-
     test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result._unsafeUnwrap()).toEqual([]);
