@@ -230,7 +230,7 @@ export class HttpAPIServer {
       },
     );
 
-    // /castsByMention/:fid
+    // /castsByMention?fid=...
     this.app.get<{ Querystring: QueryPageParams & { fid: string } }>("/v1/castsByMention", (request, reply) => {
       const { fid } = request.query;
       const pageOptions = getPageOptions(request.query);

@@ -32,6 +32,10 @@ Responses from the API are encoded as `application/json`, and can be parsed as n
 
 1. Hashes, ETH addresses, signers etc... are all encoded as hex strings starting with `0x`
 2. Signatures and other binary fields are encoded in base64
+3. Constants are encoded as their string types. For example, the `hashScheme` is encoded as `HASH_SCHEME_BLAKE3` which is equivalent to the `HASH_SCHEME_BLAKE3 = 1` from the protobuf schema.
+
+### Timestamps
+Messages contain a timestamp, which is the _Farcaster Epoch Timestamp_ (and not the Unix Epoch). 
 
 ### Paging
 Most endpoints support paging to get a large number of responses. 
@@ -192,7 +196,10 @@ Fetch all casts by parent cast's FID and Hash
 | --------- | ----------- | ------- |
 | fid       | The FID of the parent cast | `fid=6833` |
 | hash      | The parent cast's hash | `hash=0xa48dd46161d8e57725f5e26e34ec19c13ff7f3b9` |
+| url       | The URL of the parent cast | `url=chain://eip155:1/erc721:0x39d89b649ffa044383333d297e325d42d31329b2` |
 
+**Warning**
+You can use either `?fid=...&hash=...` OR `?url=...` to query this endpoint
 
 **Example**
 ```bash
@@ -242,7 +249,8 @@ Fetch all casts that mention an FID
 | --------- | ----------- | ------- |
 | fid       | The FID that is mentioned in a cast | `fid=6833` |
 
-
+**Note**
+Use the `mentionsPositions` to extract the offset in the cast text where the FID was mentioned
 
 **Example**
 ```bash
