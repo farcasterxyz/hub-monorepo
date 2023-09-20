@@ -1,5 +1,13 @@
 # @farcaster/core
 
+## 0.12.9
+
+### Patch Changes
+
+- 7e2a66e5: feat: Add a function to parse the timestamp from the eventId
+- 20062ceb: chore: cleanup default links store size code
+- d77970b1: chore: Delete deprecated rpc calls and events
+
 ## 0.12.8
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.6.5
+
+### Patch Changes
+
+- d77970b1: chore: Delete deprecated rpc calls and events
+- Updated dependencies [7e2a66e5]
+- Updated dependencies [20062ceb]
+- Updated dependencies [d77970b1]
+  - @farcaster/core@0.12.9
+
 ## 0.6.4
 
 ### Patch Changes

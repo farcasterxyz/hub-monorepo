@@ -1,5 +1,21 @@
 # @farcaster/hubble
 
+## 1.5.5
+
+### Patch Changes
+
+- a232963c: fix: Cleanup old snapshots from S3
+- 7cbd77ee: test: Add e2e test for hubble startup
+- 7b438e62: test: Add 2 hubble sync+gossip test
+- e8b2dafa: fix: Fix flaky pruneMessagesJob test
+- 0bc82ce4: test: Fix broken test due to Link storage limits change
+- 82c996af: fix: Grafana: Sync times are blank for longer timeranges
+- 7e2a66e5: feat: Add a function to parse the timestamp from the eventId
+- 520843ba: feat: Move libp2p to worker thread
+- d77970b1: chore: Delete deprecated rpc calls and events
+- Updated dependencies [d77970b1]
+  - @farcaster/hub-nodejs@0.10.9
+
 ## 1.5.4
 
 ### Patch Changes
