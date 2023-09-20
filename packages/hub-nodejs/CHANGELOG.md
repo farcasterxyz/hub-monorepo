@@ -1,5 +1,15 @@
 # @farcaster/hub-nodejs
 
+## 0.10.9
+
+### Patch Changes
+
+- d77970b1: chore: Delete deprecated rpc calls and events
+- Updated dependencies [7e2a66e5]
+- Updated dependencies [20062ceb]
+- Updated dependencies [d77970b1]
+  - @farcaster/core@0.12.9
+
 ## 0.10.8
 
 ### Patch Changes
