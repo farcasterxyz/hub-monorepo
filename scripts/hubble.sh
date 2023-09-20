@@ -5,7 +5,7 @@
 # itself in the process.
 
 # Define the version of this script
-CURRENT_VERSION="3"
+CURRENT_VERSION="4"
 
 REPO="farcasterxyz/hub-monorepo"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
@@ -85,19 +85,9 @@ self_upgrade() {
     local current_hash
     local new_hash
 
-    # Determine the appropriate hash command to use
-    if command -v sha256sum > /dev/null; then
-        hash_cmd="sha256sum"
-    elif command -v shasum > /dev/null; then
-        hash_cmd="shasum -a 256"
-    else
-        echo "Error: No suitable hash command found."
-        exit 1
-    fi
-
     # Get the hash of the current script and the new file
-    current_hash=$($hash_cmd "$0" | awk '{ print $1 }')
-    new_hash=$($hash_cmd "$tmp_file" | awk '{ print $1 }')
+    current_hash=$($HASH_CMD "$0" | awk '{ print $1 }')
+    new_hash=$($HASH_CMD "$tmp_file" | awk '{ print $1 }')
 
     # Compare the hashes
     if [[ "$new_hash" != "$current_hash" ]]; then
@@ -158,8 +148,9 @@ store_operator_fid_env() {
     local response
 
     read -p "> Your FID or farcaster username: " input
-
-    if [[ $input =~ ^-?[0-9]+$ ]]; then
+    if [[ -z $input ]]; then
+        response=""
+    elif [[ $input =~ ^-?[0-9]+$ ]]; then
         response=$(curl -s "https://fnames.farcaster.xyz/transfers?fid=$input" | jq '.transfers[-1].to')
     else
         response=$(curl -s "https://fnames.farcaster.xyz/transfers?name=$input" | jq '.transfers[-1].to')
@@ -207,6 +198,19 @@ write_env_file() {
     echo "✅ .env file updated."
 }
 
+ensure_grafana() {
+      if $COMPOSE_CMD ps statsd 2>&1 >/dev/null; then
+          if $COMPOSE_CMD ps statsd | grep -q "Up"; then
+              $COMPOSE_CMD restart statsd grafana
+          else
+              $COMPOSE_CMD up -d statsd grafana
+          fi
+      else
+          echo "❌ Docker is not running or there's another issue with Docker. Please start Docker manually."
+          exit 1
+      fi
+}
+
 ## Configure Grafana
 setup_grafana() {
     local grafana_url="http://127.0.0.1:3000"
@@ -243,16 +247,7 @@ setup_grafana() {
     }
 
     # Step 1: Restart statsd and grafana if they are running, otherwise start them
-    if $COMPOSE_CMD ps statsd 2>&1 >/dev/null; then
-        if $COMPOSE_CMD ps statsd | grep -q "Up"; then
-            $COMPOSE_CMD restart statsd grafana
-        else
-            $COMPOSE_CMD up -d statsd grafana
-        fi
-    else
-        echo "❌ Docker is not running or there's another issue with Docker. Please start Docker manually."
-        exit 1
-    fi
+    ensure_grafana
 
     # Step 2: Wait for Grafana to be ready
     echo "Waiting for Grafana to be ready..."
@@ -332,7 +327,7 @@ install_docker() {
     return 0 
 }
 
-start_hubble() {
+setup_identity() {
     # First, make sure to pull all the latest images in docker compose
     $COMPOSE_CMD pull
 
@@ -341,13 +336,57 @@ start_hubble() {
     # by everyone
     mkdir -p .hub .rocks
     chmod 777 .hub .rocks
-    
+
    if [[ ! -f "./.hub/default_id.protobuf" ]]; then
         $COMPOSE_CMD run hubble yarn identity create
         echo "✅ Created Peer Identity"
     else
         echo "✅ Peer Identity exists"
     fi
+}
+
+setup_crontab() {
+    # Check if crontab is installed
+    if ! command -v crontab &> /dev/null; then
+        echo "❌ crontab is not installed. Please install crontab first."
+        exit 1
+    fi
+
+    # Check if the crontab file is already installed
+    if $CRONTAB_CMD -l 2>/dev/null | grep -q "hubble.sh"; then
+        echo "✅ crontab entry is already installed."
+        return 0
+    fi
+
+    local content_to_hash
+    local hub_operator_fid
+    hub_operator_fid=$(grep "^HUB_OPERATOR_FID=" .env | cut -d= -f2)
+    # If the HUB_OPERATOR_FID is set and it is not 0, then use it to determine the day of week
+    if [[ -n "$hub_operator_fid" ]] && [[ "$hub_operator_fid" != "0" ]]; then
+        content_to_hash=$(echo -n "$hub_operator_fid")
+        echo "auto-upgrade: Using HUB FID to determine upgrade day $content_to_hash"
+    elif [ -f "./.hub/default_id.protobuf" ]; then
+        content_to_hash=$(cat ./.hub/default_id.protobuf)
+        echo "auto-upgrade: Using Peer Identity to determine upgrade day"
+    else
+        echo "auto-upgrade: Unable to determine upgrade day"
+        exit 1
+    fi
+
+    # Pick a random weekday based on the sha of the operator FID or peer identity
+    local sha=$(echo -n "${content_to_hash}" | $HASH_CMD | awk '{ print $1 }')
+    local day_of_week=$(( ( 0x${sha:0:8} % 5 ) + 1 ))
+    # Pick a random hour between midnight and 6am
+    local hour=$((RANDOM % 7))
+    local crontab_entry="* $hour * * $day_of_week $(pwd)/hubble.sh autoupgrade >> $(pwd)/hubble-autoupgrade.log 2>&1"
+    if ($CRONTAB_CMD -l 2>/dev/null; echo "${crontab_entry}") | $CRONTAB_CMD -; then
+        echo "✅ added auto-upgrade to crontab (* $hour * * $day_of_week)"
+    else
+        echo "❌ failed to add auto-upgrade to crontab"
+    fi
+}
+
+start_hubble() {
 
     # Stop the "hubble" service if it is already running
     $COMPOSE_CMD stop hubble
@@ -370,6 +409,26 @@ set_compose_command() {
     fi
 }
 
+set_platform_commands() {
+    # Determine the appropriate hash command to use
+    if command -v sha256sum > /dev/null; then
+        HASH_CMD="sha256sum"
+    elif command -v shasum > /dev/null; then
+        HASH_CMD="shasum -a 256"
+    else
+        echo "Error: No suitable hash command found."
+        exit 1
+    fi
+
+    if [[ "$(uname)" == "Linux" ]]; then
+        # Extract the username from the current directory, since we're running as root
+        local user=$(pwd | cut -d/ -f3)
+        CRONTAB_CMD="crontab -u ${user}"
+    else
+        CRONTAB_CMD="crontab"
+    fi
+}
+
 reexec_as_root_if_needed() {
     # Check if on Linux
     if [[ "$(uname)" == "Linux" ]]; then
@@ -381,14 +440,14 @@ reexec_as_root_if_needed() {
         else
             # If the current directory is not named "hubble", change to "~/hubble"
             if [[ "$(basename "$PWD")" != "hubble" ]]; then
-                cd ~/hubble
+                cd "$(dirname "$0")" || { echo "Failed to switch to ~/hubble directory."; exit 1; }
             fi
-            echo "✅ Running on Linux."
+            echo "✅ Running on Linux ($(pwd))."
         fi
     # Check if on macOS
     elif [[ "$(uname)" == "Darwin" ]]; then
         cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
-        echo "✅ Running on macOS."
+        echo "✅ Running on macOS $(pwd)."
     fi
 }
 
@@ -435,6 +494,8 @@ if [ "$1" == "upgrade" ]; then
     # Install dependencies
     install_jq
 
+    set_platform_commands
+
     # Upgrade this script itself
     self_upgrade "$@"
 
@@ -452,6 +513,10 @@ if [ "$1" == "upgrade" ]; then
 
     # Setup the Grafana dashboard
     setup_grafana
+
+    setup_identity
+
+    setup_crontab
 
     # Start the hubble service
     start_hubble
@@ -471,10 +536,29 @@ fi
 
 # Show logs of the hubble service
 if [ "$1" == "logs" ]; then
-    # Ensure the script runs in the ~/hubble directory
-    cd ~/hubble || { echo "Failed to switch to ~/hubble directory."; exit 1; }
-
+    set_compose_command
     $COMPOSE_CMD logs --tail 100 -f hubble
+    exit 0
+fi
+
+if [ "$1" == "autoupgrade" ]; then
+    # Autoupgrade cronjob needs the correct $PATH entries
+    if [[ ! -f "~/.bashrc" ]]; then
+      source ~/.bashrc
+    fi
+
+    echo "$(date) Attempting hubble autoupgrade..."
+
+    set_platform_commands
+    set_compose_command
+
+    # Upgrade this script itself, fetch the latest docker-compose.yml, and restart the containers
+    self_upgrade "$@"
+    fetch_latest_docker_compose_and_dashboard
+    ensure_grafana
+    start_hubble
+    echo "$(date) Completed hubble autoupgrade"
+
     exit 0
 fi
 
