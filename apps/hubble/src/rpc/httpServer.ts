@@ -64,7 +64,7 @@ function getCallObject<M extends keyof HubServiceServer>(
 function handleResponse<M>(reply: fastify.FastifyReply, obj: StaticEncodable<M>): sendUnaryData<M> {
   return (err, response) => {
     if (err) {
-      reply.code(400).send(JSON.stringify(err));
+      reply.code(400).type("application/json").send(JSON.stringify(err));
     } else {
       if (response) {
         // Convert the protobuf object to JSON
@@ -190,65 +190,54 @@ export class HttpAPIServer {
 
   initHandlers() {
     //================Casts================
-    // /cast/:fid/:hash
-    this.app.get<{ Params: { fid: string; hash: string } }>("/v1/cast/:fid/:hash", (request, reply) => {
-      const { fid, hash } = request.params;
+    // /castById?fid=...&hash=...
+    this.app.get<{ Querystring: { fid: string; hash: string } }>("/v1/castById", (request, reply) => {
+      const { fid, hash } = request.query;
 
       const call = getCallObject("getCast", { fid: parseInt(fid), hash: hexStringToBytes(hash).unwrapOr([]) }, request);
 
       this.grpcImpl.getCast(call, handleResponse(reply, Message));
     });
 
-    // /casts/:fid?type=...
-    this.app.get<{ Params: { fid: string }; Querystring: QueryPageParams }>("/v1/casts/:fid", (request, reply) => {
-      const { fid } = request.params;
+    // /castsByFid?fid=...
+    this.app.get<{ Querystring: QueryPageParams & { fid: string } }>("/v1/castsByFid", (request, reply) => {
+      const { fid } = request.query;
       const pageOptions = getPageOptions(request.query);
 
       const call = getCallObject("getAllCastMessagesByFid", { fid: parseInt(fid), ...pageOptions }, request);
       this.grpcImpl.getAllCastMessagesByFid(call, handleResponse(reply, MessagesResponse));
     });
 
-    // /casts/parent/:fid/:hash
-    this.app.get<{ Params: { fid: string; hash: string }; Querystring: QueryPageParams }>(
-      "/v1/casts/parent/:fid/:hash",
+    // /castsByParent?fid=...&hash=...
+    this.app.get<{ Querystring: QueryPageParams & { fid: string; hash: string; url: string } }>(
+      "/v1/castsByParent",
       (request, reply) => {
-        const { fid, hash } = request.params;
+        const { fid, hash, url } = request.query;
+        const decodedUrl = decodeURIComponent(url);
         const pageOptions = getPageOptions(request.query);
+
+        let parentCastId = undefined;
+        if (fid && hash) {
+          parentCastId = { fid: parseInt(fid), hash: hexStringToBytes(hash).unwrapOr([]) };
+        }
 
         const call = getCallObject(
           "getCastsByParent",
-          {
-            parentCastId: { fid: parseInt(fid), hash: hexStringToBytes(hash).unwrapOr([]) },
-            ...pageOptions,
-          },
+          { parentUrl: decodedUrl, parentCastId, ...pageOptions },
           request,
         );
-
         this.grpcImpl.getCastsByParent(call, handleResponse(reply, MessagesResponse));
       },
     );
 
-    // /casts/parent?url=...
-    this.app.get<{ Querystring: QueryPageParams & { url: string } }>("/v1/casts/parent", (request, reply) => {
-      const { url } = request.query;
+    // /castsByMention/:fid
+    this.app.get<{ Querystring: QueryPageParams & { fid: string } }>("/v1/castsByMention", (request, reply) => {
+      const { fid } = request.query;
       const pageOptions = getPageOptions(request.query);
 
-      const decodedUrl = decodeURIComponent(url);
-      const call = getCallObject("getCastsByParent", { parentUrl: decodedUrl, ...pageOptions }, request);
-      this.grpcImpl.getCastsByParent(call, handleResponse(reply, MessagesResponse));
+      const call = getCallObject("getCastsByMention", { fid: parseInt(fid), ...pageOptions }, request);
+      this.grpcImpl.getCastsByMention(call, handleResponse(reply, MessagesResponse));
     });
-
-    // /casts/mention/:fid
-    this.app.get<{ Params: { fid: string }; Querystring: QueryPageParams }>(
-      "/v1/casts/mention/:fid",
-      (request, reply) => {
-        const { fid } = request.params;
-        const pageOptions = getPageOptions(request.query);
-
-        const call = getCallObject("getCastsByMention", { fid: parseInt(fid), ...pageOptions }, request);
-        this.grpcImpl.getCastsByMention(call, handleResponse(reply, MessagesResponse));
-      },
-    );
 
     //=================Reactions=================
     // /reactions/:fid/:target_fid/:target_hash?type=...

@@ -575,6 +575,7 @@ export class Hub implements HubInterface {
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
+    await this.httpApiServer.start(this.options.rpcServerHost, this.options.httpApiPort ?? 0);
     if (this.options.adminServerEnabled) {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
@@ -799,7 +800,7 @@ export class Hub implements HubInterface {
     clearInterval(this.contactTimer);
 
     // First, stop the RPC/Gossip server so we don't get any more messages
-
+    await this.httpApiServer.stop();
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine

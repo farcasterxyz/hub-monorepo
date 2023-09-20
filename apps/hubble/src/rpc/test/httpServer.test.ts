@@ -185,7 +185,7 @@ describe("httpServer", () => {
 
       // Get a http client for port 2181
       const hashHex = bytesToHexString(castAdd.hash)._unsafeUnwrap();
-      const url = getFullUrl(`/v1/cast/${fid}/${hashHex}`);
+      const url = getFullUrl(`/v1/castById?fid=${fid}&hash=${hashHex}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -200,21 +200,21 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(newCast)).isOk()).toBeTruthy();
 
       // Get the new cast as a part of getAllCasts
-      const url2 = getFullUrl(`/v1/casts/${fid}`);
+      const url2 = getFullUrl(`/v1/castsByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
       expect(response2.data.messages).toEqual([protoToJSON(castAdd, Message), protoToJSON(newCast, Message)]);
 
       // Make sure paging works
-      const url4 = getFullUrl(`/v1/casts/${fid}?pageSize=1`);
+      const url4 = getFullUrl(`/v1/castsByFid?fid=${fid}&pageSize=1`);
       const response4 = await axiosGet(url4);
 
       expect(response4.status).toBe(200);
       expect(response4.data.messages).toEqual([protoToJSON(castAdd, Message)]);
 
       // get the next page
-      const url5 = getFullUrl(`/v1/casts/${fid}?pageToken=${response4.data.nextPageToken}`);
+      const url5 = getFullUrl(`/v1/castsByFid?fid=${fid}&pageToken=${response4.data.nextPageToken}`);
       const response5 = await axiosGet(url5);
 
       expect(response5.status).toBe(200);
@@ -222,7 +222,7 @@ describe("httpServer", () => {
       expect(response5.data.nextPageToken).toBe("");
 
       // Make sure reverse works
-      const url3 = getFullUrl(`/v1/casts/${fid}?reverse=true`);
+      const url3 = getFullUrl(`/v1/castsByFid?fid=${fid}&reverse=true`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -235,7 +235,7 @@ describe("httpServer", () => {
       // Get a http client for port 2181
       const parentFid = castAdd.data.castAddBody.parentCastId?.fid;
       const hashHex = bytesToHexString(castAdd.data.castAddBody.parentCastId?.hash ?? new Uint8Array())._unsafeUnwrap();
-      const url = getFullUrl(`/v1/casts/parent/${parentFid}/${hashHex}`);
+      const url = getFullUrl(`/v1/castsByParent?fid=${parentFid}&hash=${hashHex}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -248,7 +248,7 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(castAdd2)).isOk()).toBeTruthy();
 
       const encoded = encodeURIComponent(castAdd2.data.castAddBody.parentUrl ?? "");
-      const url2 = getFullUrl(`/v1/casts/parent?url=${encoded}`);
+      const url2 = getFullUrl(`/v1/castsByParent?url=${encoded}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
@@ -260,7 +260,7 @@ describe("httpServer", () => {
 
       // Get a http client for port 2181
       for (let i = 0; i < castAdd.data.castAddBody.mentions.length; i++) {
-        const url = getFullUrl(`/v1/casts/mention/${castAdd.data.castAddBody.mentions[i]}`);
+        const url = getFullUrl(`/v1/castsByMention?fid=${castAdd.data.castAddBody.mentions[i]}`);
         const response = await axiosGet(url);
 
         expect(response.status).toBe(200);
