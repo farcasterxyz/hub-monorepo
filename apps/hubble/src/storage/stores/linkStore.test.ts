@@ -822,14 +822,7 @@ describe("pruneMessages", () => {
     const sizePrunedStore = new LinkStore(db, eventHandler, { pruneSizeLimit: 3 });
 
     test("size limit changes in the future", () => {
-      expect(getDefaultStoreLimit(StoreType.LINKS)).toEqual(1250);
-      const nowOrig = Date.now;
-      try {
-        Date.now = () => new Date("2023-10-01").getTime();
-        expect(getDefaultStoreLimit(StoreType.LINKS)).toEqual(2500);
-      } finally {
-        Date.now = nowOrig;
-      }
+      expect(getDefaultStoreLimit(StoreType.LINKS)).toEqual(2500);
     });
 
     test("no-ops when no messages have been merged", async () => {

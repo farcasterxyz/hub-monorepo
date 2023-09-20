@@ -136,7 +136,7 @@ describe("server rpc tests", () => {
       const newLimits = StorageLimitsResponse.fromJSON(result2._unsafeUnwrap()).limits;
       expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5000 * 3, storeType: StoreType.CASTS }));
       expect(newLimits).toContainEqual(StorageLimit.create({ limit: 2500 * 3, storeType: StoreType.REACTIONS }));
-      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 1250 * 3, storeType: StoreType.LINKS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 2500 * 3, storeType: StoreType.LINKS }));
       expect(newLimits).toContainEqual(StorageLimit.create({ limit: 50 * 3, storeType: StoreType.USER_DATA }));
       expect(newLimits).toContainEqual(StorageLimit.create({ limit: 25 * 3, storeType: StoreType.VERIFICATIONS }));
       expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5 * 3, storeType: StoreType.USERNAME_PROOFS }));
