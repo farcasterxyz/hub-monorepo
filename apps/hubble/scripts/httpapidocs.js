@@ -15,6 +15,8 @@ const __dirname = dirname(__filename);
  *   2. Make sure that all endpoints have a corresponding section in the HTTP API docs
  *   3. Make sure that all parameters for every endpoint are documented in the HTTP API docs
  *      under the corresponding section
+ *   4. Make sure that all parameters that are documented are specified in the @docs-tag comment
+ *      for that endpoint in the httpServer.ts file
  */
 export function httpapidocs() {
   function extractUniqueEndpoints(fileContent) {
@@ -97,7 +99,10 @@ export function httpapidocs() {
       }
 
       if (foundEndpoint && node.type === "table") {
-        parameters = node.children.slice(1).map((row) => row.children[0].children[0].value);
+        parameters = node.children
+          .slice(1)
+          .map((row) => row.children[0].children[0]?.value)
+          .filter((p) => p !== undefined);
         line = node.position.start.line;
         foundEndpoint = false; // Reset to stop looking after finding the table
       }
@@ -121,6 +126,18 @@ export function httpapidocs() {
             ].lineNumbers.join(
               ", ",
             )}) is missing documentation in the parameters table (on httpapi.md: line ${line}) for endpoint "${endpoint}"`,
+          );
+        }
+      }
+
+      // Check the other way. No excess params
+      for (const param of parameters) {
+        if (!docTags[endpoint].params.includes(param)) {
+          anyError = true;
+          console.error(
+            `Parameter "${param}" is documented in the parameters table (on httpapi.md: line ${line}) for endpoint "${endpoint}" but is not specified in the @doc-tag (on httpServer.ts: line ${docTags[
+              endpoint
+            ].lineNumbers.join(", ")})`,
           );
         }
       }

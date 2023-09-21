@@ -385,7 +385,7 @@ export class HttpAPIServer {
     );
 
     //==============User Data================
-    // @doc-tag: /userDataByFid?fid=...?user_data_type=...
+    // @doc-tag: /userDataByFid?fid=...&user_data_type=...
     this.app.get<{ Querystring: { fid: string; user_data_type: string } & QueryPageParams }>(
       "/v1/userDataByFid",
       (request, reply) => {

@@ -986,7 +986,10 @@ The encoding of the POST data has to be set to `application/octet-stream`. The e
 Submit a signed protobuf-serialized message to the Hub
 
 **Query Parameters**
-This endpoint accepts no parameters
+| Parameter | Description | Example |
+| --------- | ----------- | ------- |
+|  | This endpoint accepts no parameters |  |
+
 
 **Example**
 ```bash
@@ -1055,7 +1058,7 @@ curl http://127.0.0.1:2281/v1/eventById?id=350909155450880
       "timestamp": 1695049760,
       "name": "nftonyp",
       "owner": "0x23b3c29900762a70def5dc8890e09dc9019eb553",
-      "signature": "xp41PgeOzBhwv0YazJ3oEPKux1BzioCcaIIScbMpeYwPYmWMzxOEKz1s8BwC1uMv0fUf9Jw5vT/eLnGphJpNshw=",
+      "signature": "xp41PgeO...hJpNshw=",
       "fid": 20114,
       "type": "USERNAME_TYPE_FNAME"
     }
@@ -1094,7 +1097,7 @@ curl http://127.0.0.1:2281/v1/events?from_event_id=350909155450880
           "timestamp": 1695049760,
           "name": "nftonyp",
           "owner": "0x23b3c29900762a70def5dc8890e09dc9019eb553",
-          "signature": "xp41PgeOzBhwv0YazJ3oEPKux1BzioCcaIIScbMpeYwPYmWMzxOEKz1s8BwC1uMv0fUf9Jw5vT/eLnGphJpNshw=",
+          "signature": "xp41PgeOz...9Jw5vT/eLnGphJpNshw=",
           "fid": 20114,
           "type": "USERNAME_TYPE_FNAME"
         }
