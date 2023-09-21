@@ -1,5 +1,5 @@
 # HTTP API
-Hubble serves a HTTP API on port 2281 by default. 
+Hubble serves a HTTP API on port 2281 by default. This API is current in beta, and can change anytime.
 
 ## Using the API
 The API can be called from any programing language or browser by making a normal HTTP request. 

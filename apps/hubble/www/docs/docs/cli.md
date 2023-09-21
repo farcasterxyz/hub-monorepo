@@ -33,8 +33,6 @@ Hubble Options:
   --hub-operator-fid <fid>              The FID of the hub operator. Optional.
   -c, --config <filepath>               Path to the config file.
   --db-name <name>                      The name of the RocksDB instance. (default: rocks.hub._default)
-  --admin-server-enabled                Enable the admin server. (default: disabled)
-  --admin-server-host <host>            The host the admin server should listen on. (default: '127.0.0.1')
   --process-file-prefix <prefix>        Prefix for file to which hub process number is written. (default: "")
 
 Ethereum Options:
@@ -70,6 +68,9 @@ Networking Options:
   --ip <ip-address>                     IP address to listen on (default: "127.0.0.1")
   --announce-ip <ip-address>            Public IP address announced to peers (default: fetched with external service)
   --announce-server-name <name>         Server name announced to peers, useful if SSL/TLS enabled. (default: "none")
+  --admin-server-enabled                Enable the admin server. (default: disabled)
+  --admin-server-host <host>            The host the admin server should listen on. (default: '127.0.0.1')
+  --http-server-disabled                Set this flag to disable the HTTP server (default: enabled)
   --direct-peers <peer-multiaddrs...>   A list of peers for libp2p to directly peer with (default: [])
   --denied-peers <peerIds...>           Do not peer with specific peer ids. (default: no peers denied)
   --rpc-rate-limit <number>             RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)

@@ -1,19 +1,22 @@
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 import { remark } from "remark";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 
-/**
- * This linter checks that each of the HTTP API server endpoints is documented properly
- */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-export default function httpapidocs() {
+/**
+ * This linter checks that each of the HTTP API server endpoints is documented properly.
+ * This will check:
+ *   1. That all endpoints have a "@doc-tag:" comment in the httpServer.ts file
+ *   2. Make sure that all endpoints have a corresponding section in the HTTP API docs
+ *   3. Make sure that all parameters for every endpoint are documented in the HTTP API docs
+ *      under the corresponding section
+ */
+export function httpapidocs() {
   function extractUniqueEndpoints(fileContent) {
     const endpointSet = new Set();
     const regex = /\"\/v\d+\/([a-zA-Z0-9_]+)([a-zA-Z0-9_\/:]*)\"/g;
