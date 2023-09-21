@@ -103,7 +103,7 @@ function transformHash(obj: any): any {
   }
 
   // These are the target keys that are base64 encoded, which should be converted to hex
-  const targetKeys = [
+  const toHexKeys = [
     "hash",
     "address",
     "signer",
@@ -116,11 +116,16 @@ function transformHash(obj: any): any {
     "recoveryAddress",
   ];
 
+  // Convert these target keys to strings
+  const toStringKeys = ["name"];
+
   for (const key in obj) {
     // biome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
     if (obj.hasOwnProperty(key)) {
-      if (targetKeys.includes(key) && typeof obj[key] === "string") {
+      if (toHexKeys.includes(key) && typeof obj[key] === "string") {
         obj[key] = convertB64ToHex(obj[key]);
+      } else if (toStringKeys.includes(key) && typeof obj[key] === "string") {
+        obj[key] = Buffer.from(obj[key], "base64").toString("utf-8");
       } else if (typeof obj[key] === "object") {
         transformHash(obj[key]);
       }
@@ -380,9 +385,9 @@ export class HttpAPIServer {
     );
 
     //==============User Data================
-    // @doc-tag: /userdataByFid?fid=...?user_data_type=...
+    // @doc-tag: /userDataByFid?fid=...?user_data_type=...
     this.app.get<{ Querystring: { fid: string; user_data_type: string } & QueryPageParams }>(
-      "/v1/userdataByFid",
+      "/v1/userDataByFid",
       (request, reply) => {
         const { fid } = request.query;
         const pageOptions = getPageOptions(request.query);
@@ -399,8 +404,8 @@ export class HttpAPIServer {
     );
 
     //=================Storage API================
-    // @doc-tag: /storagelimitsByFid?fid=...
-    this.app.get<{ Querystring: { fid: string } }>("/v1/storagelimitsByFid", (request, reply) => {
+    // @doc-tag: /storageLimitsByFid?fid=...
+    this.app.get<{ Querystring: { fid: string } }>("/v1/storageLimitsByFid", (request, reply) => {
       const { fid } = request.query;
 
       const call = getCallObject("getCurrentStorageLimitsByFid", { fid: parseInt(fid) }, request);
@@ -408,8 +413,8 @@ export class HttpAPIServer {
     });
 
     //===============Username Proofs=================
-    // @doc-tag: /usernameproofByName?name=...
-    this.app.get<{ Querystring: { name: string } }>("/v1/usernameproofByName", (request, reply) => {
+    // @doc-tag: /userNameProofByName?name=...
+    this.app.get<{ Querystring: { name: string } }>("/v1/userNameProofByName", (request, reply) => {
       const { name } = request.query;
 
       const fnameBytes = utf8StringToBytes(name).unwrapOr(new Uint8Array());
@@ -445,12 +450,11 @@ export class HttpAPIServer {
     });
 
     //================On Chain Events================
-    // /onchain/signer/:fid?signer=...
-    this.app.get<{ Params: { fid: string }; Querystring: { signer: string } }>(
-      "/v1/onchain/signers/:fid",
+    // @doc-tag: /onChainSignersByFid?fid=...&signer=...
+    this.app.get<{ Querystring: { signer: string; fid: string } & QueryPageParams }>(
+      "/v1/onChainSignersByFid",
       (request, reply) => {
-        const { fid } = request.params;
-        const { signer } = request.query;
+        const { fid, signer } = request.query;
 
         if (signer) {
           const call = getCallObject(
@@ -460,28 +464,29 @@ export class HttpAPIServer {
           );
           this.grpcImpl.getOnChainSigner(call, handleResponse(reply, OnChainEvent));
         } else {
-          const call = getCallObject("getOnChainSignersByFid", { fid: parseInt(fid) }, request);
+          const pageOptions = getPageOptions(request.query);
+          const call = getCallObject("getOnChainSignersByFid", { fid: parseInt(fid), ...pageOptions }, request);
           this.grpcImpl.getOnChainSignersByFid(call, handleResponse(reply, OnChainEventResponse));
         }
       },
     );
 
-    // /onchain/events/:fid?type=...
-    this.app.get<{ Params: { fid: string }; Querystring: { type: string } & QueryPageParams }>(
-      "/v1/onchain/events/:fid",
+    // @doc-tag /onChainEventsByFid?fid=...&event_type=...
+    this.app.get<{ Querystring: { fid: string; event_type: string } & QueryPageParams }>(
+      "/v1/onChainEventsByFid",
       (request, reply) => {
-        const { fid } = request.params;
+        const { fid } = request.query;
         const pageOptions = getPageOptions(request.query);
-        const eventType = getProtobufType(request.query.type, onChainEventTypeFromJSON) ?? 0;
+        const eventType = getProtobufType(request.query.event_type, onChainEventTypeFromJSON) ?? 0;
 
         const call = getCallObject("getOnChainEvents", { fid: parseInt(fid), eventType, ...pageOptions }, request);
         this.grpcImpl.getOnChainEvents(call, handleResponse(reply, OnChainEventResponse));
       },
     );
 
-    // /onchain/idregistryevent/address
-    this.app.get<{ Params: { address: string } }>("/v1/onchain/idregistryevent/:address", (request, reply) => {
-      const { address } = request.params;
+    // @doc-tag /onChainIdRegistryEventByAddress?address=...
+    this.app.get<{ Querystring: { address: string } }>("/v1/onChainIdRegistryEventByAddress", (request, reply) => {
+      const { address } = request.query;
 
       const call = getCallObject(
         "getIdRegistryOnChainEventByAddress",
@@ -492,7 +497,7 @@ export class HttpAPIServer {
     });
 
     //==================Submit Message==================
-    // POST /v1/submitMessage
+    // @doc-tag: /submitMessage
     this.app.post<{ Body: Buffer }>("/v1/submitMessage", (request, reply) => {
       // Get the Body content-type
       const contentType = request.headers["content-type"] as string;
@@ -528,19 +533,19 @@ export class HttpAPIServer {
     });
 
     //==================Events==================
-    // /event/:id
-    this.app.get<{ Params: { id: string } }>("/v1/event/:id", (request, reply) => {
-      const { id } = request.params;
+    // @doc-tag: /eventById?event_id=...
+    this.app.get<{ Querystring: { event_id: string } }>("/v1/eventById", (request, reply) => {
+      const { event_id: id } = request.query;
 
       const call = getCallObject("getEvent", { id: parseInt(id) }, request);
       this.grpcImpl.getEvent(call, handleResponse(reply, HubEvent));
     });
 
-    // /events?fromId=...
-    this.app.get<{ Querystring: { fromEventId: string } }>("/v1/events", (request, reply) => {
-      const { fromEventId } = request.query;
+    // @doc-tag /events?from_event_id=...
+    this.app.get<{ Querystring: { from_event_id: string } }>("/v1/events", (request, reply) => {
+      const { from_event_id } = request.query;
 
-      this.engine.getEvents(parseInt(fromEventId)).then((resp) => {
+      this.engine.getEvents(parseInt(from_event_id)).then((resp) => {
         if (resp.isErr()) {
           reply.code(400).send({ error: resp.error.message });
         } else {

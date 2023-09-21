@@ -128,7 +128,7 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(castAdd)).isOk()).toBeTruthy();
 
       // Get a http client for port 2181
-      const url = getFullUrl("/v1/events?fromEventId=0");
+      const url = getFullUrl("/v1/events?from_event_id=0");
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -139,14 +139,14 @@ describe("httpServer", () => {
       const castAddEventId = response.data.events[3].id;
 
       // Get the castAdd event directly by ID
-      const url0 = getFullUrl(`/v1/event/${castAddEventId}`);
+      const url0 = getFullUrl(`/v1/eventById?event_id=${castAddEventId}`);
       const response0 = await axiosGet(url0);
 
       expect(response0.status).toBe(200);
       expect(response0.data.mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Get the events starting after the signerAdd but before the castAdd
-      const url1 = getFullUrl(`/v1/events?fromEventId=${signerAddEventId + 1}`);
+      const url1 = getFullUrl(`/v1/events?from_event_id=${signerAddEventId + 1}`);
       const response1 = await axiosGet(url1);
 
       expect(response1.status).toBe(200);
@@ -154,7 +154,7 @@ describe("httpServer", () => {
       expect(response1.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Now, get the events starting at the last eventID
-      const url2 = getFullUrl(`/v1/events?fromEventId=${castAddEventId}`);
+      const url2 = getFullUrl(`/v1/events?from_event_id=${castAddEventId}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
@@ -162,7 +162,7 @@ describe("httpServer", () => {
       expect(response2.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Getthe events starting at the nextEventId  should return nothing
-      const url3 = getFullUrl(`/v1/events?fromEventId=${response2.data.nextPageEventId}`);
+      const url3 = getFullUrl(`/v1/events?from_event_id=${response2.data.nextPageEventId}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -443,21 +443,21 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(addBio)).isOk()).toBeTruthy();
 
       // Get it all
-      const url = getFullUrl(`/v1/userdataByFid?fid=${fid}`);
+      const url = getFullUrl(`/v1/userDataByFid?fid=${fid}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
       expect(response.data.messages).toEqual([protoToJSON(addPfp, Message), protoToJSON(addBio, Message)]);
 
       // Get it by type (pfp)
-      const url2 = getFullUrl(`/v1/userdataByFid?fid=${fid}&user_data_type=${UserDataType.PFP}`);
+      const url2 = getFullUrl(`/v1/userDataByFid?fid=${fid}&user_data_type=${UserDataType.PFP}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
       expect(response2.data).toEqual(protoToJSON(addPfp, Message));
 
       // Get it by type (bio)
-      const url3 = getFullUrl(`/v1/userdataByFid?fid=${fid}&user_data_type=${UserDataType.BIO}`);
+      const url3 = getFullUrl(`/v1/userDataByFid?fid=${fid}&user_data_type=${UserDataType.BIO}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -467,7 +467,7 @@ describe("httpServer", () => {
 
   describe("Storage APIs", () => {
     test("getStorageLimits", async () => {
-      const url = getFullUrl(`/v1/storagelimitsByFid?fid=${fid}`);
+      const url = getFullUrl(`/v1/storageLimitsByFid?fid=${fid}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -507,7 +507,7 @@ describe("httpServer", () => {
     test("getUsernameProof", async () => {
       expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
 
-      const url = getFullUrl(`/v1/usernameproofByName?name=${fname}`);
+      const url = getFullUrl(`/v1/userNameProofByName?name=${fname}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -570,28 +570,28 @@ describe("httpServer", () => {
 
       expect(await engine.mergeOnChainEvent(onChainEvent)).toBeTruthy();
 
-      const url = getFullUrl(`/v1/onchain/signers/${fid}?signer=${signer}`);
+      const url = getFullUrl(`/v1/onChainSignersByFid?fid=${fid}&signer=${signer}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
       expect(response.data).toEqual(protoToJSON(onChainEvent, OnChainEvent));
 
       // Get via fid
-      const url2 = getFullUrl(`/v1/onchain/signers/${fid}`);
+      const url2 = getFullUrl(`/v1/onChainSignersByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
       expect(response2.data.events).toEqual([protoToJSON(onChainEvent, OnChainEvent)]);
 
       // Get by type
-      const url3 = getFullUrl(`/v1/onchain/events/${fid}?type=${eventType}`);
+      const url3 = getFullUrl(`/v1/onChainEventsByFid?fid=${fid}&event_type=${eventType}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
       expect(response3.data.events).toEqual([protoToJSON(onChainEvent, OnChainEvent)]);
 
       // Get by type name
-      const url4 = getFullUrl(`/v1/onchain/events/${fid}?type=${onChainEventTypeToJSON(eventType)}`);
+      const url4 = getFullUrl(`/v1/onChainEventsByFid?fid=${fid}&event_type=${onChainEventTypeToJSON(eventType)}`);
       const response4 = await axiosGet(url4);
 
       expect(response4.status).toBe(200);
@@ -601,7 +601,7 @@ describe("httpServer", () => {
       const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
       expect(await engine.mergeOnChainEvent(idRegistryEvent)).toBeTruthy();
 
-      const url5 = getFullUrl(`/v1/onchain/idregistryevent/${idRegistryEvent.idRegisterEventBody.to}`);
+      const url5 = getFullUrl(`/v1/onChainIdRegistryEventByAddress?address=${idRegistryEvent.idRegisterEventBody.to}`);
       const response5 = await axiosGet(url5);
 
       expect(response5.status).toBe(200);

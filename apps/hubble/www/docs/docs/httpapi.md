@@ -633,7 +633,7 @@ The UserData API will accept the following values for the `user_data_type` field
 |  USER_DATA_TYPE_USERNAME | 6 |  Preferred Name for the user |
 
 
-### userdataByFid
+### userDataByFid
 Get UserData for a FID.
 
 **Query Parameters**
@@ -645,7 +645,7 @@ Get UserData for a FID.
 
 **Example**
 ```bash
-curl http://127.0.0.1:2281/v1/userdataByFid?fid=6833&user_data_type=1
+curl http://127.0.0.1:2281/v1/userDataByFid?fid=6833&user_data_type=1
 ```
 
 
@@ -673,7 +673,7 @@ curl http://127.0.0.1:2281/v1/userdataByFid?fid=6833&user_data_type=1
 ## Storage Limits API
 
 
-### storagelimitsByFid
+### storageLimitsByFid
 Get an FID's storage limits.
 
 **Query Parameters**
@@ -684,7 +684,7 @@ Get an FID's storage limits.
 
 **Example**
 ```bash
-curl http://127.0.0.1:2281/v1/storagelimitsByFid?fid=6833
+curl http://127.0.0.1:2281/v1/storageLimitsByFid?fid=6833
 ```
 
 
@@ -725,7 +725,7 @@ curl http://127.0.0.1:2281/v1/storagelimitsByFid?fid=6833
 ## Username Proofs API
 
 
-### usernameproofByName
+### userNameProofByName
 Get an proof for a username by the Farcaster username
 
 **Query Parameters**
@@ -736,7 +736,7 @@ Get an proof for a username by the Farcaster username
 
 **Example**
 ```bash
-curl http://127.0.0.1:2281/v1/usernameproofByName?name=adityapk
+curl http://127.0.0.1:2281/v1/userNameProofByName?name=adityapk
 ```
 
 
@@ -744,7 +744,7 @@ curl http://127.0.0.1:2281/v1/usernameproofByName?name=adityapk
 ```json
 {
   "timestamp": 1670603245,
-  "name": "YWRpdHlhcGs=",
+  "name": "adityapk",
   "owner": "Oi7uUaECifDm+larm+rzl3qQhcM=",
   "signature": "fo5OhBP/ud...3IoJdhs=",
   "fid": 6833,
@@ -759,7 +759,7 @@ Get a list of proofs provided by an FID
 **Query Parameters**
 | Parameter | Description | Example |
 | --------- | ----------- | ------- |
-| fid | The FID being requested | fid=2 |
+| fid | The FID being requested | `fid=2` |
 
 
 **Example**
@@ -774,7 +774,7 @@ curl http://127.0.0.1:2281/v1/usernameproofsByFid?fid=2
   "proofs": [
     {
       "timestamp": 1623910393,
-      "name": "dg==",
+      "name": "v",
       "owner": "0x4114e33eb831858649ea3702e1c9a2db3f626446",
       "signature": "bANBae+Ub...kr3Bik4xs=",
       "fid": 2,
@@ -782,7 +782,7 @@ curl http://127.0.0.1:2281/v1/usernameproofsByFid?fid=2
     },
     {
       "timestamp": 1690329118,
-      "name": "dmFydW5zcmluLmV0aA==",
+      "name": "varunsrin.eth",
       "owner": "0x182327170fc284caaa5b1bc3e3878233f529d741",
       "signature": "zCEszPt...zqxTiFqVBs=",
       "fid": 2,
@@ -802,7 +802,8 @@ Get a list of verifications provided by an FID
 **Query Parameters**
 | Parameter | Description | Example |
 | --------- | ----------- | ------- |
-| fid | The FID being requested | fid=2 |
+| fid | The FID being requested | `fid=2` |
+| address | The optional ETH address to filter by | `address=0x91031dcfdea024b4d51e775486111d2b2a715871` |
 
 
 **Example**
@@ -835,5 +836,271 @@ curl http://127.0.0.1:2281/v1/verificationsByFid?fid=2
     },
   ],
   "nextPageToken": ""
+}
+```
+
+
+## On Chain API
+
+
+### onChainSignersByFid
+Get a list of signers provided by an FID 
+
+**Query Parameters**
+| Parameter | Description | Example |
+| --------- | ----------- | ------- |
+| fid | The FID being requested | `fid=2` |
+| signer | The optional key of signer  | `signer=0x0852c07b5695ff94138b025e3f9b4788e06133f04e254f0ea0eb85a06e999cdd` |
+
+
+**Example**
+```bash
+curl http://127.0.0.1:2281/v1/onChainSignersByFid?fid=6833
+```
+
+
+**Response**
+```json
+{
+  "events": [
+    {
+      "type": "EVENT_TYPE_SIGNER",
+      "chainId": 10,
+      "blockNumber": 108875854,
+      "blockHash": "0xceb1cdc21ee319b06f0455f1cedc0cd4669b471d283a5b2550b65aba0e0c1af0",
+      "blockTimestamp": 1693350485,
+      "transactionHash": "0x76e20cf2f7c3db4b78f00f6bb9a7b78b0acfb1eca4348c1f4b5819da66eb2bee",
+      "logIndex": 2,
+      "fid": 6833,
+      "signerEventBody": {
+        "key": "0x0852c07b5695ff94138b025e3f9b4788e06133f04e254f0ea0eb85a06e999cdd",
+        "keyType": 1,
+        "eventType": "SIGNER_EVENT_TYPE_ADD",
+        "metadata": "AAAAAAAAAAAA...AAAAAAAA",
+        "metadataType": 1
+      },
+      "txIndex": 0
+    }
+  ]
+}
+```
+
+
+
+### onChainEventsByFid
+Get a list of signers provided by an FID 
+
+**Query Parameters**
+| Parameter | Description | Example |
+| --------- | ----------- | ------- |
+| fid | The FID being requested | `fid=2` |
+| event_type | The numeric of string value of the event type being requested. This parameter is required  | `event_type=1` OR `event_type=EVENT_TYPE_STORAGE_RENT` |
+
+
+The onChainEventsByFid API will accept the following values for the `event_type` field. 
+
+| String | Numerical value | 
+| ------ | --------------- | 
+| EVENT_TYPE_SIGNER | 1 |
+| EVENT_TYPE_SIGNER_MIGRATED | 2 |
+| EVENT_TYPE_ID_REGISTER | 3 |
+| EVENT_TYPE_STORAGE_RENT | 4 |
+
+**Example**
+```bash
+curl http://127.0.0.1:2281/v1/onChainEventsByFid?fid=3&event_type=1
+```
+
+
+**Response**
+```json
+{
+  "events": [
+    {
+      "type": "EVENT_TYPE_SIGNER",
+      "chainId": 10,
+      "blockNumber": 108875456,
+      "blockHash": "0x75fbbb8b2a4ede67ac350e1b0503c6a152c0091bd8e3ef4a6927d58e088eae28",
+      "blockTimestamp": 1693349689,
+      "transactionHash": "0x36ef79e6c460e6ae251908be13116ff0065960adb1ae032b4cc65a8352f28952",
+      "logIndex": 2,
+      "fid": 3,
+      "signerEventBody": {
+        "key": "0xc887f5bf385a4718eaee166481f1832198938cf33e98a82dc81a0b4b81ffe33d",
+        "keyType": 1,
+        "eventType": "SIGNER_EVENT_TYPE_ADD",
+        "metadata": "AAAAAAAAA...AAAAA",
+        "metadataType": 1
+      },
+      "txIndex": 0
+    },
+  ]
+}
+```
+
+
+### onChainIdRegistryEventByAddress
+Get a list of on chain events for a given Address
+
+**Query Parameters**
+| Parameter | Description | Example |
+| --------- | ----------- | ------- |
+| address | The ETH address being requested  | `address=0x74232bf61e994655592747e20bdf6fa9b9476f79` |
+
+
+**Example**
+```bash
+curl http://127.0.0.1:2281/v1/onChainIdRegistryEventByAddress?address=0x74232bf61e994655592747e20bdf6fa9b9476f79
+```
+
+
+**Response**
+```json
+{
+  "type": "EVENT_TYPE_ID_REGISTER",
+  "chainId": 10,
+  "blockNumber": 108874508,
+  "blockHash": "0x20d83804a26247ad8c26d672f2212b28268d145b8c1cefaa4126f7768f46682e",
+  "blockTimestamp": 1693347793,
+  "transactionHash": "0xf3481fc32227fbd982b5f30a87be32a2de1fc5736293cae7c3f169da48c3e764",
+  "logIndex": 7,
+  "fid": 3,
+  "idRegisterEventBody": {
+    "to": "0x74232bf61e994655592747e20bdf6fa9b9476f79",
+    "eventType": "ID_REGISTER_EVENT_TYPE_REGISTER",
+    "from": "0x",
+    "recoveryAddress": "0x00000000fcd5a8e45785c8a4b9a718c9348e4f18"
+  },
+  "txIndex": 0
+}
+```
+
+
+
+## SubmitMessage API
+The SubmitMessage API lets you submit signed Farcaster protocol messages to the Hub. Note that the message has to be sent as the encoded bytestream of the protobuf (`Message.enocde(msg).finish()` in typescript), as POST data to the endpoint. 
+
+The encoding of the POST data has to be set to `application/octet-stream`. The endpoint returns the Message object as JSON if it was successfully submitted
+
+### submitMessage
+Submit a signed protobuf-serialized message to the Hub
+
+**Query Parameters**
+This endpoint accepts no parameters
+
+**Example**
+```bash
+curl -X POST "http://127.0.0.1:2281/v1/submitMessage" \
+     -H "Content-Type: application/octet-stream" \
+     --data-binary "@message.encoded.protobuf"
+
+```
+
+
+**Response**
+```json
+{
+  "data": {
+    "type": "MESSAGE_TYPE_CAST_ADD",
+    "fid": 2,
+    "timestamp": 48994466,
+    "network": "FARCASTER_NETWORK_MAINNET",
+    "castAddBody": {
+      "embedsDeprecated": [],
+      "mentions": [],
+      "parentCastId": {
+        "fid": 226,
+        "hash": "0xa48dd46161d8e57725f5e26e34ec19c13ff7f3b9"
+      },
+      "text": "Cast Text",
+      "mentionsPositions": [],
+      "embeds": []
+    }
+  },
+  "hash": "0xd2b1ddc6c88e865a33cb1a565e0058d757042974",
+  "hashScheme": "HASH_SCHEME_BLAKE3",
+  "signature": "3msLXzxB4eEYe...dHrY1vkxcPAA==",
+  "signatureScheme": "SIGNATURE_SCHEME_ED25519",
+  "signer": "0x78ff9a...58c"
+}
+```
+
+## Events API
+The events API returns events as they are merged into the Hub, which can be used to listen to Hub activity.
+
+### eventById
+Get an event by its Id
+
+
+**Query Parameters**
+| Parameter | Description | Example |
+| --------- | ----------- | ------- |
+| event_id | The Hub Id of the event | `event_id=350909155450880` |
+
+
+**Example**
+```bash
+curl http://127.0.0.1:2281/v1/eventById?id=350909155450880
+
+```
+
+
+**Response**
+```json
+{
+  "type": "HUB_EVENT_TYPE_MERGE_USERNAME_PROOF",
+  "id": 350909155450880,
+  "mergeUsernameProofBody": {
+    "usernameProof": {
+      "timestamp": 1695049760,
+      "name": "nftonyp",
+      "owner": "0x23b3c29900762a70def5dc8890e09dc9019eb553",
+      "signature": "xp41PgeOzBhwv0YazJ3oEPKux1BzioCcaIIScbMpeYwPYmWMzxOEKz1s8BwC1uMv0fUf9Jw5vT/eLnGphJpNshw=",
+      "fid": 20114,
+      "type": "USERNAME_TYPE_FNAME"
+    }
+  }
+}
+```
+
+### events
+Get a page of Hub events
+
+**Query Parameters**
+| Parameter | Description | Example |
+| --------- | ----------- | ------- |
+| from_event_id | An optional Hub Id to start getting events from. This is also returned from the API as `nextPageEventId`, which can be used to page through all the Hub events. Set it to `0` to start from the first event | `from_event_id=350909155450880` |
+
+**Note**
+Hubs prune events older than 3 days, so not all historical events can be fetched via this API
+
+**Example**
+```bash
+curl http://127.0.0.1:2281/v1/events?from_event_id=350909155450880
+
+```
+
+
+**Response**
+```json
+{
+  "nextPageEventId": 350909170294785,
+  "events": [
+    {
+      "type": "HUB_EVENT_TYPE_MERGE_USERNAME_PROOF",
+      "id": 350909155450880,
+      "mergeUsernameProofBody": {
+        "usernameProof": {
+          "timestamp": 1695049760,
+          "name": "nftonyp",
+          "owner": "0x23b3c29900762a70def5dc8890e09dc9019eb553",
+          "signature": "xp41PgeOzBhwv0YazJ3oEPKux1BzioCcaIIScbMpeYwPYmWMzxOEKz1s8BwC1uMv0fUf9Jw5vT/eLnGphJpNshw=",
+          "fid": 20114,
+          "type": "USERNAME_TYPE_FNAME"
+        }
+      }
+    },
+    ...
+  ]
 }
 ```

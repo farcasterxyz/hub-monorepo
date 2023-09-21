@@ -163,8 +163,8 @@ export default function httpapidocs() {
   }
 
   if (anyError) {
-    // process.exit(1);
-    console.log("HTTP API docs are not up to date");
+    console.log("❌ HTTP API docs are not up to date");
+    process.exit(1);
   } else {
     console.log("✨ HTTP API docs are up to date");
   }
