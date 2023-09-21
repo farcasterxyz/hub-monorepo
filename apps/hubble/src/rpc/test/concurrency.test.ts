@@ -19,13 +19,15 @@ const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
+let syncEngine: SyncEngine;
 let server: Server;
 let client1: HubRpcClient;
 let client2: HubRpcClient;
 let client3: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(hub, db));
+  syncEngine = new SyncEngine(hub, db);
+  server = new Server(hub, engine, syncEngine);
   const port = await server.start();
   client1 = getInsecureHubRpcClient(`127.0.0.1:${port}`);
   client2 = getInsecureHubRpcClient(`127.0.0.1:${port}`);
@@ -36,8 +38,10 @@ afterAll(async () => {
   client1.close();
   client2.close();
   client3.close();
+
   await server.stop();
   await engine.stop();
+  await syncEngine.stop();
 });
 
 const fid = Factories.Fid.build();

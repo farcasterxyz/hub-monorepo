@@ -112,9 +112,16 @@ class MerkleTrie {
     this._worker.addListener("message", async (event) => {
       // console.log("Received message from worker thread", event);
       if (event.dbGetCallId) {
-        const value = await ResultAsync.fromPromise(this._db.get(Buffer.from(event.key)), (e) => e as Error);
-        if (value.isErr()) {
-          log.warn({ key: event.key, error: value.error }, "Error getting value from DB");
+        // This can happen sometimes in tests when the DB is closed before the worker thread
+        let value = undefined;
+        if (this._db.status === "closed") {
+          log.warn("DB is closed. Ignoring DB read request from merkle trie worker thread");
+        } else {
+          value = await ResultAsync.fromPromise(this._db.get(Buffer.from(event.key)), (e) => e as Error);
+        }
+
+        if (!value || value.isErr()) {
+          log.warn({ key: event.key, error: value?.error }, "Error getting value from DB");
           this._worker.postMessage({
             dbGetCallId: event.dbGetCallId,
             value: undefined,
@@ -126,19 +133,24 @@ class MerkleTrie {
           });
         }
       } else if (event.dbKeyValuesCallId) {
-        const keyValues = event.dbKeyValues as MerkleTrieKV[];
-        const txn = this._db.transaction();
+        // This can happen sometimes in tests when the DB is closed before the worker thread
+        if (this._db.status === "closed") {
+          log.warn("DB is closed. Ignoring DB write request from merkle trie worker thread");
+        } else {
+          const keyValues = event.dbKeyValues as MerkleTrieKV[];
+          const txn = this._db.transaction();
 
-        // Collect all the pending DB updates into a single transaction batch
-        for (const { key, value } of keyValues) {
-          if (value && value.length > 0) {
-            txn.put(Buffer.from(key), Buffer.from(value));
-          } else {
-            txn.del(Buffer.from(key));
+          // Collect all the pending DB updates into a single transaction batch
+          for (const { key, value } of keyValues) {
+            if (value && value.length > 0) {
+              txn.put(Buffer.from(key), Buffer.from(value));
+            } else {
+              txn.del(Buffer.from(key));
+            }
           }
-        }
 
-        await this._db.commit(txn);
+          await this._db.commit(txn);
+        }
         this._worker.postMessage({
           dbKeyValuesCallId: event.dbKeyValuesCallId,
         });

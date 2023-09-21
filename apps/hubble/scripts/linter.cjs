@@ -11,10 +11,10 @@
 
 async function executeAll() {
   const grafana = require("./grafanadash.cjs");
-  await grafana();
-
   const clidocs = require("./clidocs.cjs");
-  await clidocs();
+  const httpapidocs = await import("./httpapidocs.js");
+
+  await Promise.all([grafana(), clidocs(), httpapidocs.default()]);
 }
 
 executeAll();

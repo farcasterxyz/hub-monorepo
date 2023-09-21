@@ -110,6 +110,7 @@ function transformHash(obj: any): any {
     "blockHash",
     "transactionHash",
     "key",
+    "owner",
     "to",
     "from",
     "recoveryAddress",
@@ -190,7 +191,7 @@ export class HttpAPIServer {
 
   initHandlers() {
     //================Casts================
-    // /castById?fid=...&hash=...
+    // @doc-tag: /castById?fid=...&hash=...
     this.app.get<{ Querystring: { fid: string; hash: string } }>("/v1/castById", (request, reply) => {
       const { fid, hash } = request.query;
 
@@ -199,7 +200,7 @@ export class HttpAPIServer {
       this.grpcImpl.getCast(call, handleResponse(reply, Message));
     });
 
-    // /castsByFid?fid=...
+    // @doc-tag: /castsByFid?fid=...
     this.app.get<{ Querystring: QueryPageParams & { fid: string } }>("/v1/castsByFid", (request, reply) => {
       const { fid } = request.query;
       const pageOptions = getPageOptions(request.query);
@@ -208,7 +209,8 @@ export class HttpAPIServer {
       this.grpcImpl.getAllCastMessagesByFid(call, handleResponse(reply, MessagesResponse));
     });
 
-    // /castsByParent?fid=...&hash=...
+    // @doc-tag: /castsByParent?fid=...&hash=...
+    // @doc-tag: /castsByParent?url=...
     this.app.get<{ Querystring: QueryPageParams & { fid: string; hash: string; url: string } }>(
       "/v1/castsByParent",
       (request, reply) => {
@@ -230,7 +232,7 @@ export class HttpAPIServer {
       },
     );
 
-    // /castsByMention?fid=...
+    // @doc-tag: /castsByMention?fid=...
     this.app.get<{ Querystring: QueryPageParams & { fid: string } }>("/v1/castsByMention", (request, reply) => {
       const { fid } = request.query;
       const pageOptions = getPageOptions(request.query);
@@ -240,19 +242,18 @@ export class HttpAPIServer {
     });
 
     //=================Reactions=================
-    // /reactions/:fid/:target_fid/:target_hash?type=...
+    // @doc-tag: /reactionById?fid=...&target_fid=...&target_hash=...&reaction_type=...
     this.app.get<{
-      Params: { fid: string; target_fid: string; target_hash: string };
-      Querystring: { reactionType: string };
-    }>("/v1/reaction/:fid/:target_fid/:target_hash", (request, reply) => {
-      const { fid, target_fid, target_hash } = request.params;
+      Querystring: { reaction_type: string; fid: string; target_fid: string; target_hash: string };
+    }>("/v1/reactionById", (request, reply) => {
+      const { fid, target_fid, target_hash } = request.query;
 
       const call = getCallObject(
         "getReaction",
         {
           fid: parseInt(fid),
           targetCastId: { fid: parseInt(target_fid), hash: hexStringToBytes(target_hash).unwrapOr([]) },
-          reactionType: getProtobufType(request.query.reactionType, reactionTypeFromJSON) ?? 0,
+          reactionType: getProtobufType(request.query.reaction_type, reactionTypeFromJSON) ?? 0,
         },
         request,
       );
@@ -260,18 +261,18 @@ export class HttpAPIServer {
       this.grpcImpl.getReaction(call, handleResponse(reply, Message));
     });
 
-    // /reactions/:fid?type=...
-    this.app.get<{ Params: { fid: string }; Querystring: { reactionType: string } & QueryPageParams }>(
-      "/v1/reactions/:fid",
+    // @doc-tag: /reactionsByFid?fid=...&reaction_type=...
+    this.app.get<{ Querystring: { reaction_type: string; fid: string } & QueryPageParams }>(
+      "/v1/reactionsByFid",
       (request, reply) => {
-        const { fid } = request.params;
+        const { fid } = request.query;
         const pageOptions = getPageOptions(request.query);
 
         const call = getCallObject(
           "getReactionsByFid",
           {
             fid: parseInt(fid),
-            reactionType: getProtobufType(request.query.reactionType, reactionTypeFromJSON),
+            reactionType: getProtobufType(request.query.reaction_type, reactionTypeFromJSON),
             ...pageOptions,
           },
           request,
@@ -281,19 +282,18 @@ export class HttpAPIServer {
       },
     );
 
-    // /reactions/target/:target_fid/:target_hash?type=...
+    // @doc-tag: /reactionsByCast?target_fid=...&target_hash=...&reaction_type=...
     this.app.get<{
-      Params: { target_fid: string; target_hash: string };
-      Querystring: { reactionType: string } & QueryPageParams;
-    }>("/v1/reactions/target/:target_fid/:target_hash", (request, reply) => {
-      const { target_fid, target_hash } = request.params;
+      Querystring: { target_fid: string; target_hash: string; reaction_type: string } & QueryPageParams;
+    }>("/v1/reactionsByCast", (request, reply) => {
+      const { target_fid, target_hash } = request.query;
       const pageOptions = getPageOptions(request.query);
 
       const call = getCallObject(
         "getReactionsByCast",
         {
           targetCastId: { fid: parseInt(target_fid), hash: hexStringToBytes(target_hash).unwrapOr([]) },
-          reactionType: getProtobufType(request.query.reactionType, reactionTypeFromJSON),
+          reactionType: getProtobufType(request.query.reaction_type, reactionTypeFromJSON),
           ...pageOptions,
         },
         request,
@@ -302,9 +302,9 @@ export class HttpAPIServer {
       this.grpcImpl.getReactionsByCast(call, handleResponse(reply, MessagesResponse));
     });
 
-    // /reactions/target?url=...&type=...
-    this.app.get<{ Querystring: { url: string; reactionType: string } & QueryPageParams }>(
-      "/v1/reactions/target",
+    // @doc-tag: /reactionsByTarget?url=...&reaction_type=...
+    this.app.get<{ Querystring: { url: string; reaction_type: string } & QueryPageParams }>(
+      "/v1/reactionsByTarget",
       (request, reply) => {
         const { url } = request.query;
         const pageOptions = getPageOptions(request.query);
@@ -314,7 +314,7 @@ export class HttpAPIServer {
           "getReactionsByTarget",
           {
             targetUrl: decodedUrl,
-            reactionType: getProtobufType(request.query.reactionType, reactionTypeFromJSON),
+            reactionType: getProtobufType(request.query.reaction_type, reactionTypeFromJSON),
             ...pageOptions,
           },
           request,
@@ -325,18 +325,18 @@ export class HttpAPIServer {
     );
 
     //=================Links=================
-    // /links/:fid/:target_fid?type=...
-    this.app.get<{ Params: { fid: string; target_fid: string }; Querystring: { type: string } }>(
-      "/v1/link/:fid/:target_fid",
+    // @doc-tag: /linkById?fid=...&target_fid=...&link_type=...
+    this.app.get<{ Querystring: { link_type: string; fid: string; target_fid: string } }>(
+      "/v1/linkById",
       (request, reply) => {
-        const { fid, target_fid } = request.params;
+        const { fid, target_fid } = request.query;
 
         const call = getCallObject(
           "getLink",
           {
             fid: parseInt(fid),
             targetFid: parseInt(target_fid),
-            linkType: request.query.type,
+            linkType: request.query.link_type,
           },
           request,
         );
@@ -345,16 +345,16 @@ export class HttpAPIServer {
       },
     );
 
-    // /links/:fid?type=...
-    this.app.get<{ Params: { fid: string }; Querystring: { linkType: string } & QueryPageParams }>(
-      "/v1/links/:fid",
+    // @doc-tag: /linksByFid?fid=...&link_type=...
+    this.app.get<{ Querystring: { link_type: string; fid: string } & QueryPageParams }>(
+      "/v1/linksByFid",
       (request, reply) => {
-        const { fid } = request.params;
+        const { fid } = request.query;
         const pageOptions = getPageOptions(request.query);
 
         const call = getCallObject(
           "getLinksByFid",
-          { fid: parseInt(fid), linkType: request.query.linkType, ...pageOptions },
+          { fid: parseInt(fid), linkType: request.query.link_type, ...pageOptions },
           request,
         );
 
@@ -362,16 +362,16 @@ export class HttpAPIServer {
       },
     );
 
-    // /links/target/:target_fid?type=...
-    this.app.get<{ Params: { target_fid: string }; Querystring: { linkType: string } & QueryPageParams }>(
-      "/v1/links/target/:target_fid",
+    // @doc-tag: /linksByTargetFid?target_fid=...&link_type=...
+    this.app.get<{ Params: {}; Querystring: { link_type: string; target_fid: string } & QueryPageParams }>(
+      "/v1/linksByTargetFid",
       (request, reply) => {
-        const { target_fid } = request.params;
+        const { target_fid } = request.query;
         const pageOptions = getPageOptions(request.query);
 
         const call = getCallObject(
           "getLinksByTarget",
-          { targetFid: parseInt(target_fid), linkType: request.query.linkType, ...pageOptions },
+          { targetFid: parseInt(target_fid), linkType: request.query.link_type, ...pageOptions },
           request,
         );
 
@@ -380,13 +380,13 @@ export class HttpAPIServer {
     );
 
     //==============User Data================
-    // /userdata/:fid?type=...
-    this.app.get<{ Params: { fid: string }; Querystring: { type: string } & QueryPageParams }>(
-      "/v1/userdata/:fid",
+    // @doc-tag: /userdataByFid?fid=...?user_data_type=...
+    this.app.get<{ Querystring: { fid: string; user_data_type: string } & QueryPageParams }>(
+      "/v1/userdataByFid",
       (request, reply) => {
-        const { fid } = request.params;
+        const { fid } = request.query;
         const pageOptions = getPageOptions(request.query);
-        const userDataType = getProtobufType(request.query.type, userDataTypeFromJSON);
+        const userDataType = getProtobufType(request.query.user_data_type, userDataTypeFromJSON);
 
         if (userDataType) {
           const call = getCallObject("getUserData", { fid: parseInt(fid), userDataType, ...pageOptions }, request);
@@ -399,18 +399,18 @@ export class HttpAPIServer {
     );
 
     //=================Storage API================
-    // /storagelimits/:fid
-    this.app.get<{ Params: { fid: string } }>("/v1/storagelimits/:fid", (request, reply) => {
-      const { fid } = request.params;
+    // @doc-tag: /storagelimitsByFid?fid=...
+    this.app.get<{ Querystring: { fid: string } }>("/v1/storagelimitsByFid", (request, reply) => {
+      const { fid } = request.query;
 
       const call = getCallObject("getCurrentStorageLimitsByFid", { fid: parseInt(fid) }, request);
       this.grpcImpl.getCurrentStorageLimitsByFid(call, handleResponse(reply, StorageLimitsResponse));
     });
 
     //===============Username Proofs=================
-    // /usernameproof/:name
-    this.app.get<{ Params: { name: string } }>("/v1/usernameproof/:name", (request, reply) => {
-      const { name } = request.params;
+    // @doc-tag: /usernameproofByName?name=...
+    this.app.get<{ Querystring: { name: string } }>("/v1/usernameproofByName", (request, reply) => {
+      const { name } = request.query;
 
       const fnameBytes = utf8StringToBytes(name).unwrapOr(new Uint8Array());
 
@@ -418,35 +418,31 @@ export class HttpAPIServer {
       this.grpcImpl.getUsernameProof(call, handleResponse(reply, UserNameProof));
     });
 
-    // /usernameproofs/:fid
-    this.app.get<{ Params: { fid: string } }>("/v1/usernameproofs/:fid", (request, reply) => {
-      const { fid } = request.params;
+    // @doc-tag: /usernameproofsByFid?fid=...
+    this.app.get<{ Querystring: { fid: string } }>("/v1/usernameproofsByFid", (request, reply) => {
+      const { fid } = request.query;
 
       const call = getCallObject("getUserNameProofsByFid", { fid: parseInt(fid) }, request);
       this.grpcImpl.getUserNameProofsByFid(call, handleResponse(reply, UsernameProofsResponse));
     });
 
     //=============Verifications================
-    // /verifications/:fid?address=...
-    this.app.get<{ Params: { fid: string }; Querystring: { address: string } }>(
-      "/v1/verifications/:fid",
-      (request, reply) => {
-        const { fid } = request.params;
-        const { address } = request.query;
+    // @doc-tag: /verificationsByFid?fid=...&address=...
+    this.app.get<{ Querystring: { fid: string; address: string } }>("/v1/verificationsByFid", (request, reply) => {
+      const { fid, address } = request.query;
 
-        if (address) {
-          const call = getCallObject(
-            "getVerification",
-            { fid: parseInt(fid), address: hexStringToBytes(address).unwrapOr(new Uint8Array()) },
-            request,
-          );
-          this.grpcImpl.getVerification(call, handleResponse(reply, Message));
-        } else {
-          const call = getCallObject("getVerificationsByFid", { fid: parseInt(fid) }, request);
-          this.grpcImpl.getVerificationsByFid(call, handleResponse(reply, MessagesResponse));
-        }
-      },
-    );
+      if (address) {
+        const call = getCallObject(
+          "getVerification",
+          { fid: parseInt(fid), address: hexStringToBytes(address).unwrapOr(new Uint8Array()) },
+          request,
+        );
+        this.grpcImpl.getVerification(call, handleResponse(reply, Message));
+      } else {
+        const call = getCallObject("getVerificationsByFid", { fid: parseInt(fid) }, request);
+        this.grpcImpl.getVerificationsByFid(call, handleResponse(reply, MessagesResponse));
+      }
+    });
 
     //================On Chain Events================
     // /onchain/signer/:fid?signer=...
