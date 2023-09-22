@@ -26,6 +26,7 @@ export default defineConfig({
         items: [
           { text: "CLI", link: "/docs/cli" },
           { text: "APIs", link: "/docs/api" },
+          { text: "HTTP APIs", link: "/docs/httpapi" },
           { text: "Messages", link: "/docs/messages" },
           { text: "OnChainEvents", link: "/docs/onchain_events" },
           { text: "Events", link: "/docs/events" },

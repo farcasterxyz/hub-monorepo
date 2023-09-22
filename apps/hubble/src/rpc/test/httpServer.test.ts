@@ -38,6 +38,8 @@ const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network, undefined, publicClient);
 const hub = new MockHub(db, engine);
 
+let syncEngine: SyncEngine;
+let server: Server;
 let httpServer: HttpAPIServer;
 let httpServerAddress: string;
 
@@ -46,14 +48,17 @@ function getFullUrl(path: string) {
 }
 
 beforeAll(async () => {
-  const server = new Server(hub, engine, new SyncEngine(hub, db));
+  syncEngine = new SyncEngine(hub, db);
+  server = new Server(hub, engine, syncEngine);
   httpServer = new HttpAPIServer(server.getImpl(), engine);
   httpServerAddress = (await httpServer.start())._unsafeUnwrap();
 });
 
 afterAll(async () => {
+  await syncEngine.stop();
   await httpServer.stop();
   await engine.stop();
+  await server.stop();
 });
 
 const fid = Factories.Fid.build();
@@ -110,6 +115,56 @@ describe("httpServer", () => {
       }
       expect(errored).toBeTruthy();
     });
+
+    test("submit with auth", async () => {
+      const rpcAuth = "username:password";
+      const authGrpcServer = new Server(hub, engine, syncEngine, undefined, rpcAuth);
+      const authServer = new HttpAPIServer(authGrpcServer.getImpl(), engine);
+      const addr = (await authServer.start())._unsafeUnwrap();
+
+      const postConfig = {
+        headers: { "Content-Type": "application/octet-stream" },
+        auth: { username: "username", password: "password" },
+      };
+
+      const url = `${addr}/v1/submitMessage`;
+      // Encode the message into a Buffer (of bytes)
+      const messageBytes = Buffer.from(Message.encode(castAdd).finish());
+
+      // Doesn't work if you don't pass auth
+      let errored = false;
+      try {
+        await axios.post(url, messageBytes, { headers: { "Content-Type": "application/octet-stream" } });
+      } catch (e) {
+        errored = true;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        const response = (e as any).response;
+
+        expect(response.status).toBe(400);
+        expect(response.data.errCode).toEqual("unauthenticated");
+        expect(response.data.details).toContain("Authorization header is empty");
+      }
+
+      // Doesn't work with a bad password
+      errored = false;
+      try {
+        await axios.post(url, messageBytes, { ...postConfig, auth: { username: "username", password: "badpassword" } });
+      } catch (e) {
+        errored = true;
+
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        const response = (e as any).response;
+
+        expect(response.status).toBe(400);
+        expect(response.data.errCode).toEqual("unauthenticated");
+      }
+
+      // Right password works
+      const response = await axios.post(url, messageBytes, postConfig);
+      expect(response.status).toBe(200);
+
+      await authServer.stop();
+    });
   });
 
   describe("HubEvents APIs", () => {
@@ -123,7 +178,7 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(castAdd)).isOk()).toBeTruthy();
 
       // Get a http client for port 2181
-      const url = getFullUrl("/v1/events?fromEventId=0");
+      const url = getFullUrl("/v1/events?from_event_id=0");
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -134,14 +189,14 @@ describe("httpServer", () => {
       const castAddEventId = response.data.events[3].id;
 
       // Get the castAdd event directly by ID
-      const url0 = getFullUrl(`/v1/event/${castAddEventId}`);
+      const url0 = getFullUrl(`/v1/eventById?event_id=${castAddEventId}`);
       const response0 = await axiosGet(url0);
 
       expect(response0.status).toBe(200);
       expect(response0.data.mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Get the events starting after the signerAdd but before the castAdd
-      const url1 = getFullUrl(`/v1/events?fromEventId=${signerAddEventId + 1}`);
+      const url1 = getFullUrl(`/v1/events?from_event_id=${signerAddEventId + 1}`);
       const response1 = await axiosGet(url1);
 
       expect(response1.status).toBe(200);
@@ -149,7 +204,7 @@ describe("httpServer", () => {
       expect(response1.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Now, get the events starting at the last eventID
-      const url2 = getFullUrl(`/v1/events?fromEventId=${castAddEventId}`);
+      const url2 = getFullUrl(`/v1/events?from_event_id=${castAddEventId}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
@@ -157,7 +212,7 @@ describe("httpServer", () => {
       expect(response2.data.events[0].mergeMessageBody.message).toEqual(protoToJSON(castAdd, Message));
 
       // Getthe events starting at the nextEventId  should return nothing
-      const url3 = getFullUrl(`/v1/events?fromEventId=${response2.data.nextPageEventId}`);
+      const url3 = getFullUrl(`/v1/events?from_event_id=${response2.data.nextPageEventId}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -185,7 +240,7 @@ describe("httpServer", () => {
 
       // Get a http client for port 2181
       const hashHex = bytesToHexString(castAdd.hash)._unsafeUnwrap();
-      const url = getFullUrl(`/v1/cast/${fid}/${hashHex}`);
+      const url = getFullUrl(`/v1/castById?fid=${fid}&hash=${hashHex}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -200,21 +255,21 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(newCast)).isOk()).toBeTruthy();
 
       // Get the new cast as a part of getAllCasts
-      const url2 = getFullUrl(`/v1/casts/${fid}`);
+      const url2 = getFullUrl(`/v1/castsByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
       expect(response2.data.messages).toEqual([protoToJSON(castAdd, Message), protoToJSON(newCast, Message)]);
 
       // Make sure paging works
-      const url4 = getFullUrl(`/v1/casts/${fid}?pageSize=1`);
+      const url4 = getFullUrl(`/v1/castsByFid?fid=${fid}&pageSize=1`);
       const response4 = await axiosGet(url4);
 
       expect(response4.status).toBe(200);
       expect(response4.data.messages).toEqual([protoToJSON(castAdd, Message)]);
 
       // get the next page
-      const url5 = getFullUrl(`/v1/casts/${fid}?pageToken=${response4.data.nextPageToken}`);
+      const url5 = getFullUrl(`/v1/castsByFid?fid=${fid}&pageToken=${response4.data.nextPageToken}`);
       const response5 = await axiosGet(url5);
 
       expect(response5.status).toBe(200);
@@ -222,7 +277,7 @@ describe("httpServer", () => {
       expect(response5.data.nextPageToken).toBe("");
 
       // Make sure reverse works
-      const url3 = getFullUrl(`/v1/casts/${fid}?reverse=true`);
+      const url3 = getFullUrl(`/v1/castsByFid?fid=${fid}&reverse=true`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -235,7 +290,7 @@ describe("httpServer", () => {
       // Get a http client for port 2181
       const parentFid = castAdd.data.castAddBody.parentCastId?.fid;
       const hashHex = bytesToHexString(castAdd.data.castAddBody.parentCastId?.hash ?? new Uint8Array())._unsafeUnwrap();
-      const url = getFullUrl(`/v1/casts/parent/${parentFid}/${hashHex}`);
+      const url = getFullUrl(`/v1/castsByParent?fid=${parentFid}&hash=${hashHex}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -248,7 +303,7 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(castAdd2)).isOk()).toBeTruthy();
 
       const encoded = encodeURIComponent(castAdd2.data.castAddBody.parentUrl ?? "");
-      const url2 = getFullUrl(`/v1/casts/parent?url=${encoded}`);
+      const url2 = getFullUrl(`/v1/castsByParent?url=${encoded}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
@@ -260,7 +315,7 @@ describe("httpServer", () => {
 
       // Get a http client for port 2181
       for (let i = 0; i < castAdd.data.castAddBody.mentions.length; i++) {
-        const url = getFullUrl(`/v1/casts/mention/${castAdd.data.castAddBody.mentions[i]}`);
+        const url = getFullUrl(`/v1/castsByMention?fid=${castAdd.data.castAddBody.mentions[i]}`);
         const response = await axiosGet(url);
 
         expect(response.status).toBe(200);
@@ -295,7 +350,9 @@ describe("httpServer", () => {
       // Get a http client for port 2181
       const castHashHex = bytesToHexString(castAdd.hash)._unsafeUnwrap();
       const url = getFullUrl(
-        `/v1/reaction/${fid}/${castAdd.data.fid}/${castHashHex}?reactionType=${reaction.data?.reactionBody?.type || 0}`,
+        `/v1/reactionById?fid=${fid}&target_fid=${castAdd.data.fid}&target_hash=${castHashHex}&reaction_type=${
+          reaction.data?.reactionBody?.type || 0
+        }`,
       );
       const response = await axiosGet(url);
 
@@ -304,9 +361,9 @@ describe("httpServer", () => {
 
       // Make sure it also works with the string reaction type
       const url2 = getFullUrl(
-        `/v1/reaction/${fid}/${castAdd.data.fid}/${castHashHex}?reactionType=${reactionTypeToJSON(
-          reaction.data?.reactionBody?.type || 0,
-        )}`,
+        `/v1/reactionById?fid=${fid}&target_fid=${
+          castAdd.data.fid
+        }&target_hash=${castHashHex}&reaction_type=${reactionTypeToJSON(reaction.data?.reactionBody?.type || 0)}`,
       );
       const response2 = await axiosGet(url2);
 
@@ -314,7 +371,7 @@ describe("httpServer", () => {
       expect(response2.data).toEqual(protoToJSON(reaction, Message));
 
       // Get the reaction by creator's fid
-      const url3 = getFullUrl(`/v1/reactions/${fid}?reactionType=${reaction.data?.reactionBody?.type || 0}`);
+      const url3 = getFullUrl(`/v1/reactionsByFid?fid=${fid}&reaction_type=${reaction.data?.reactionBody?.type || 0}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -322,7 +379,7 @@ describe("httpServer", () => {
 
       // Get it by target cast
       const url4 = getFullUrl(
-        `/v1/reactions/target/${castAdd.data.fid}/${castHashHex}?reactionType=${
+        `/v1/reactionsByCast?target_fid=${castAdd.data.fid}&target_hash=${castHashHex}&reaction_type=${
           reaction.data?.reactionBody?.type || 0
         }`,
       );
@@ -348,28 +405,28 @@ describe("httpServer", () => {
 
       // Get a http client for port 2181
       const encoded = encodeURIComponent(targetUrl);
-      const url = getFullUrl(`/v1/reactions/target?url=${encoded}`);
+      const url = getFullUrl(`/v1/reactionsByTarget?url=${encoded}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
       expect(response.data.messages).toEqual([protoToJSON(reaction1, Message), protoToJSON(reaction2, Message)]);
 
       // Make sure paging works
-      const url4 = getFullUrl(`/v1/reactions/target?url=${encoded}&pageSize=1`);
+      const url4 = getFullUrl(`/v1/reactionsByTarget?url=${encoded}&pageSize=1`);
       const response4 = await axiosGet(url4);
 
       expect(response4.status).toBe(200);
       expect(response4.data.messages).toEqual([protoToJSON(reaction1, Message)]);
 
       // get the next page
-      const url5 = getFullUrl(`/v1/reactions/target?url=${encoded}&pageToken=${response4.data.nextPageToken}`);
+      const url5 = getFullUrl(`/v1/reactionsByTarget?url=${encoded}&pageToken=${response4.data.nextPageToken}`);
       const response5 = await axiosGet(url5);
 
       expect(response5.status).toBe(200);
       expect(response5.data.messages).toEqual([protoToJSON(reaction2, Message)]);
 
       // Make sure reverse works
-      const url3 = getFullUrl(`/v1/reactions/target?url=${encoded}&reverse=true`);
+      const url3 = getFullUrl(`/v1/reactionsByTarget?url=${encoded}&reverse=true`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -392,21 +449,23 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(linkAdd)).isOk()).toBeTruthy();
 
       // Get a http client for port 2181
-      const url = getFullUrl(`/v1/link/${fid}/${targetFid}?type=${linkAdd.data?.linkBody?.type}`);
+      const url = getFullUrl(
+        `/v1/linkById?fid=${fid}&target_fid=${targetFid}&link_type=${linkAdd.data?.linkBody?.type}`,
+      );
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
       expect(response.data).toEqual(protoToJSON(linkAdd, Message));
 
       // Get it from the fid
-      const url1 = getFullUrl(`/v1/links/${fid}`);
+      const url1 = getFullUrl(`/v1/linksByFid?fid=${fid}`);
       const response1 = await axiosGet(url1);
 
       expect(response1.status).toBe(200);
       expect(response1.data.messages).toEqual([protoToJSON(linkAdd, Message)]);
 
       // Get it by target fid
-      const url2 = getFullUrl(`/v1/links/target/${targetFid}`);
+      const url2 = getFullUrl(`/v1/linksByTargetFid?target_fid=${targetFid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
@@ -434,21 +493,21 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(addBio)).isOk()).toBeTruthy();
 
       // Get it all
-      const url = getFullUrl(`/v1/userdata/${fid}`);
+      const url = getFullUrl(`/v1/userDataByFid?fid=${fid}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
       expect(response.data.messages).toEqual([protoToJSON(addPfp, Message), protoToJSON(addBio, Message)]);
 
       // Get it by type (pfp)
-      const url2 = getFullUrl(`/v1/userdata/${fid}?type=${UserDataType.PFP}`);
+      const url2 = getFullUrl(`/v1/userDataByFid?fid=${fid}&user_data_type=${UserDataType.PFP}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
       expect(response2.data).toEqual(protoToJSON(addPfp, Message));
 
       // Get it by type (bio)
-      const url3 = getFullUrl(`/v1/userdata/${fid}?type=${UserDataType.BIO}`);
+      const url3 = getFullUrl(`/v1/userDataByFid?fid=${fid}&user_data_type=${UserDataType.BIO}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
@@ -458,7 +517,7 @@ describe("httpServer", () => {
 
   describe("Storage APIs", () => {
     test("getStorageLimits", async () => {
-      const url = getFullUrl(`/v1/storagelimits/${fid}`);
+      const url = getFullUrl(`/v1/storageLimitsByFid?fid=${fid}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -498,20 +557,21 @@ describe("httpServer", () => {
     test("getUsernameProof", async () => {
       expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
 
-      const url = getFullUrl(`/v1/usernameproof/${fname}`);
+      const url = getFullUrl(`/v1/userNameProofByName?name=${fname}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      expect(response.data).toEqual((Message.toJSON(proof) as any).data.usernameProofBody);
+
+      expect(response.data).toEqual((protoToJSON(proof, Message) as UsernameProofMessage).data.usernameProofBody);
 
       // Get via fid
-      const url2 = getFullUrl(`/v1/usernameproofs/${fid}`);
+      const url2 = getFullUrl(`/v1/usernameproofsByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      expect(response2.data.proofs).toEqual([(Message.toJSON(proof) as any).data.usernameProofBody]);
+      expect(response2.data.proofs).toEqual([
+        (protoToJSON(proof, Message) as UsernameProofMessage).data.usernameProofBody,
+      ]);
     });
   });
 
@@ -529,7 +589,7 @@ describe("httpServer", () => {
       expect((await engine.mergeMessage(verificationAdd)).isOk()).toBeTruthy();
 
       const address = verificationAdd.data.verificationAddEthAddressBody.address;
-      const url = getFullUrl(`/v1/verifications/${fid}?address=${bytesToHexString(address)._unsafeUnwrap()}`);
+      const url = getFullUrl(`/v1/verificationsByFid?fid=${fid}&address=${bytesToHexString(address)._unsafeUnwrap()}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
@@ -542,7 +602,7 @@ describe("httpServer", () => {
       );
 
       // Get via fid
-      const url2 = getFullUrl(`/v1/verifications/${fid}`);
+      const url2 = getFullUrl(`/v1/verificationsByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
@@ -560,28 +620,28 @@ describe("httpServer", () => {
 
       expect(await engine.mergeOnChainEvent(onChainEvent)).toBeTruthy();
 
-      const url = getFullUrl(`/v1/onchain/signers/${fid}?signer=${signer}`);
+      const url = getFullUrl(`/v1/onChainSignersByFid?fid=${fid}&signer=${signer}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
       expect(response.data).toEqual(protoToJSON(onChainEvent, OnChainEvent));
 
       // Get via fid
-      const url2 = getFullUrl(`/v1/onchain/signers/${fid}`);
+      const url2 = getFullUrl(`/v1/onChainSignersByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
       expect(response2.data.events).toEqual([protoToJSON(onChainEvent, OnChainEvent)]);
 
       // Get by type
-      const url3 = getFullUrl(`/v1/onchain/events/${fid}?type=${eventType}`);
+      const url3 = getFullUrl(`/v1/onChainEventsByFid?fid=${fid}&event_type=${eventType}`);
       const response3 = await axiosGet(url3);
 
       expect(response3.status).toBe(200);
       expect(response3.data.events).toEqual([protoToJSON(onChainEvent, OnChainEvent)]);
 
       // Get by type name
-      const url4 = getFullUrl(`/v1/onchain/events/${fid}?type=${onChainEventTypeToJSON(eventType)}`);
+      const url4 = getFullUrl(`/v1/onChainEventsByFid?fid=${fid}&event_type=${onChainEventTypeToJSON(eventType)}`);
       const response4 = await axiosGet(url4);
 
       expect(response4.status).toBe(200);
@@ -591,7 +651,7 @@ describe("httpServer", () => {
       const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
       expect(await engine.mergeOnChainEvent(idRegistryEvent)).toBeTruthy();
 
-      const url5 = getFullUrl(`/v1/onchain/idregistryevent/${idRegistryEvent.idRegisterEventBody.to}`);
+      const url5 = getFullUrl(`/v1/onChainIdRegistryEventByAddress?address=${idRegistryEvent.idRegisterEventBody.to}`);
       const response5 = await axiosGet(url5);
 
       expect(response5.status).toBe(200);

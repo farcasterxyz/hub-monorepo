@@ -43,7 +43,8 @@ afterAll(async () => {
 
 describe("auth tests", () => {
   test("fails with invalid password", async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, "admin:password");
+    const syncEngine = new SyncEngine(hub, db);
+    const authServer = new Server(hub, engine, syncEngine, undefined, "admin:password");
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
@@ -83,12 +84,15 @@ describe("auth tests", () => {
     const result5 = await authClient.getInfo(HubInfoRequest.create());
     expect(result5.isOk()).toBeTruthy();
 
+    await syncEngine.stop();
     await authServer.stop();
+
     authClient.close();
   });
 
   test("all submit methods require auth", async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, "admin:password");
+    const syncEngine = new SyncEngine(hub, db);
+    const authServer = new Server(hub, engine, syncEngine, undefined, "admin:password");
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
@@ -109,6 +113,7 @@ describe("auth tests", () => {
     const result2 = await authClient.submitMessage(castAdd, metadata);
     expect(result2.isOk()).toBeTruthy();
 
+    await syncEngine.stop();
     await authServer.stop();
     authClient.close();
   });

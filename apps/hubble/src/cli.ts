@@ -76,8 +76,6 @@ app
   .option("--hub-operator-fid <fid>", "The FID of the hub operator")
   .option("-c, --config <filepath>", "Path to the config file.")
   .option("--db-name <name>", "The name of the RocksDB instance. (default: rocks.hub._default)")
-  .option("--admin-server-enabled", "Enable the admin server. (default: disabled)")
-  .option("--admin-server-host <host>", "The host the admin server should listen on. (default: '127.0.0.1')")
   .option("--process-file-prefix <prefix>", 'Prefix for file to which hub process number is written. (default: "")')
 
   // Ethereum Options
@@ -127,6 +125,9 @@ app
     "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
   )
   .option("--rpc-subscribe-per-ip-limit <number>", "Maximum RPC subscriptions per IP address. (default: 4)")
+  .option("--admin-server-enabled", "Enable the admin server. (default: disabled)")
+  .option("--admin-server-host <host>", "The host the admin server should listen on. (default: '127.0.0.1')")
+  .option("--http-server-disabled", "Disable the HTTP server. (default: enabled)")
 
   // Snapshots
   .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
@@ -512,6 +513,7 @@ app
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
       commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
+      httpServerDisabled: cliOptions.httpServerDisabled ?? hubConfig.httpServerDisabled ?? false,
       adminServerHost: cliOptions.adminServerHost ?? hubConfig.adminServerHost,
       testUsers: testUsers,
       directPeers,

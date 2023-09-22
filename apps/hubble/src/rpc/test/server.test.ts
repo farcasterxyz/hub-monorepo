@@ -26,17 +26,20 @@ const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
+let syncEngine: SyncEngine;
 let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(hub, db));
+  syncEngine = new SyncEngine(hub, db);
+  server = new Server(hub, engine, syncEngine);
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
   client.close();
+  await syncEngine.stop();
   await server.stop();
   await engine.stop();
 });
