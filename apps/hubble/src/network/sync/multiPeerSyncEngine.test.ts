@@ -383,67 +383,29 @@ describe("Multi peer sync engine", () => {
     }
   });
 
-  describe("after migration", () => {
-    let engine2: Engine;
-    let syncEngine2: SyncEngine;
-    let custodyEvent: OnChainEvent;
-    let signerEvent: OnChainEvent;
+  test("retries the event blocks if it's missing", async () => {
+    await engine1.mergeOnChainEvent(custodyEvent);
+    await engine1.mergeOnChainEvent(signerEvent);
+    await engine1.mergeOnChainEvent(storageEvent);
 
-    beforeEach(async () => {
-      engine2 = new Engine(testDb2, network);
-      const hub2 = new MockHub(testDb2, engine2);
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
-      syncEngine2 = new SyncEngine(hub2, testDb2, l2EventsProvider);
-      await syncEngine2.enableEventsSync();
+    // Because do it without awaiting, we need to wait for the promise to resolve
+    await sleep(100);
+    expect(retryEventsMock).toHaveBeenCalledWith(custodyEvent.blockNumber);
+    expect(retryEventsMock).toHaveBeenCalledWith(signerEvent.blockNumber);
+    expect(retryEventsMock).toHaveBeenCalledWith(storageEvent.blockNumber);
+  });
 
-      // Set up engine1
-      custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid });
-      signerEvent = Factories.SignerOnChainEvent.build({
-        fid,
-        signerEventBody: Factories.SignerEventBody.build({ key: (await signer.getSignerKey())._unsafeUnwrap() }),
-      });
-      const migratedEvent = Factories.SignerMigratedOnChainEvent.build();
-      await engine1.mergeOnChainEvent(custodyEvent);
-      await engine1.mergeOnChainEvent(signerEvent);
-      await engine1.mergeOnChainEvent(storageEvent);
-      await engine1.mergeOnChainEvent(migratedEvent);
+  test("does not retry any block if all events are present", async () => {
+    await engine2.mergeOnChainEvent(custodyEvent);
+    await engine2.mergeOnChainEvent(signerEvent);
+    await engine2.mergeOnChainEvent(storageEvent);
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
-      await engine2.mergeOnChainEvent(migratedEvent);
-      await addMessagesWithTimeDelta(engine1, [167]);
-    });
-
-    afterEach(async () => {
-      await syncEngine2.stop();
-      await engine2.stop();
-    });
-
-    test("retries the id registry event block if it's missing", async () => {
-      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-
-      // Because do it without awaiting, we need to wait for the promise to resolve
-      await sleep(100);
-      expect(retryEventsMock).toHaveBeenCalledWith(custodyEvent.blockNumber);
-    });
-
-    test("retries the signer event block if it's missing", async () => {
-      await engine2.mergeOnChainEvent(custodyEvent);
-      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-
-      // Because do it without awaiting, we need to wait for the promise to resolve
-      await sleep(100);
-      expect(retryEventsMock).toHaveBeenCalledWith(signerEvent.blockNumber);
-    });
-
-    test("does not retry any block if all events are present", async () => {
-      await engine2.mergeOnChainEvent(custodyEvent);
-      await engine2.mergeOnChainEvent(signerEvent);
-      await engine2.mergeOnChainEvent(storageEvent);
-      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
-
-      // Because do it without awaiting, we need to wait for the promise to resolve
-      await sleep(100);
-      expect(retryEventsMock).not.toHaveBeenCalled();
-    });
+    // Because do it without awaiting, we need to wait for the promise to resolve
+    await sleep(100);
+    expect(retryEventsMock).not.toHaveBeenCalled();
   });
 
   test("recovers if there are missing messages in the engine", async () => {
