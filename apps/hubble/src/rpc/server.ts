@@ -37,6 +37,7 @@ import {
   OnChainEventResponse,
   SignerOnChainEvent,
   OnChainEvent,
+  HubResult,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -67,7 +68,7 @@ export type RpcUsers = Map<string, string[]>;
 const log = logger.child({ component: "rpcServer" });
 
 // Check if the user is authenticated via the metadata
-export const authenticateUser = async (metadata: Metadata, rpcUsers: RpcUsers): HubAsyncResult<boolean> => {
+export const authenticateUser = (metadata: Metadata, rpcUsers: RpcUsers): HubResult<boolean> => {
   // If there is no auth user/pass, we don't need to authenticate
   if (rpcUsers.size === 0) {
     return ok(true);
@@ -555,9 +556,9 @@ export default class Server {
         }
 
         // Authentication
-        const authResult = await authenticateUser(call.metadata, this.rpcUsers);
+        const authResult = authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, "submitMessage failed");
+          logger.warn({ errMsg: authResult.error.message }, "gRPC submitMessage failed");
           callback(
             toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
           );
@@ -1109,7 +1110,7 @@ export default class Server {
         // regardless of rate limits.
         let authorized = false;
         if (this.rpcUsers.size > 0) {
-          authorized = (await authenticateUser(stream.metadata, this.rpcUsers)).unwrapOr(false);
+          authorized = authenticateUser(stream.metadata, this.rpcUsers).unwrapOr(false);
         }
         const allowed = this.subscribeIpLimiter.addConnection(peer);
 

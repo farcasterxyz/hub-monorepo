@@ -115,6 +115,56 @@ describe("httpServer", () => {
       }
       expect(errored).toBeTruthy();
     });
+
+    test("submit with auth", async () => {
+      const rpcAuth = "username:password";
+      const authGrpcServer = new Server(hub, engine, syncEngine, undefined, rpcAuth);
+      const authServer = new HttpAPIServer(authGrpcServer.getImpl(), engine);
+      const addr = (await authServer.start())._unsafeUnwrap();
+
+      const postConfig = {
+        headers: { "Content-Type": "application/octet-stream" },
+        auth: { username: "username", password: "password" },
+      };
+
+      const url = `${addr}/v1/submitMessage`;
+      // Encode the message into a Buffer (of bytes)
+      const messageBytes = Buffer.from(Message.encode(castAdd).finish());
+
+      // Doesn't work if you don't pass auth
+      let errored = false;
+      try {
+        await axios.post(url, messageBytes, { headers: { "Content-Type": "application/octet-stream" } });
+      } catch (e) {
+        errored = true;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        const response = (e as any).response;
+
+        expect(response.status).toBe(400);
+        expect(response.data.errCode).toEqual("unauthenticated");
+        expect(response.data.details).toContain("Authorization header is empty");
+      }
+
+      // Doesn't work with a bad password
+      errored = false;
+      try {
+        await axios.post(url, messageBytes, { ...postConfig, auth: { username: "username", password: "badpassword" } });
+      } catch (e) {
+        errored = true;
+
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        const response = (e as any).response;
+
+        expect(response.status).toBe(400);
+        expect(response.data.errCode).toEqual("unauthenticated");
+      }
+
+      // Right password works
+      const response = await axios.post(url, messageBytes, postConfig);
+      expect(response.status).toBe(200);
+
+      await authServer.stop();
+    });
   });
 
   describe("HubEvents APIs", () => {

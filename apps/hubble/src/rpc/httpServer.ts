@@ -18,7 +18,7 @@ import {
   userDataTypeFromJSON,
   utf8StringToBytes,
 } from "@farcaster/hub-nodejs";
-import { ServerUnaryCall } from "@grpc/grpc-js";
+import { Metadata, ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
 import { Result, err, ok } from "neverthrow";
 import { logger } from "../utils/logger.js";
@@ -53,9 +53,11 @@ function getCallObject<M extends keyof HubServiceServer>(
   _method: M,
   params: DeepPartial<FirstTemplateParamType<M>>,
   request: fastify.FastifyRequest,
+  metadata?: Metadata,
 ): CallTypeForMethod<M> {
   return {
     request: params,
+    metadata: metadata ?? new Metadata(),
     getPeer: () => request.ip,
   } as CallTypeForMethod<M>;
 }
@@ -181,8 +183,6 @@ export class HttpAPIServer {
     this.grpcImpl = grpcImpl;
     this.engine = engine;
 
-    this.initHandlers();
-
     // Handle binary data
     this.app.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, function (req, body, done) {
       done(null, body);
@@ -192,6 +192,17 @@ export class HttpAPIServer {
       log.error({ err: error, errMsg: error.message, request }, "Error in http request");
       reply.code(500).send({ error: error.message });
     });
+
+    this.initHandlers();
+  }
+
+  getMetadataFromAuthString(authString: string | undefined): Metadata {
+    const metadata = new Metadata();
+    if (authString) {
+      metadata.add("authorization", authString);
+    }
+
+    return metadata;
   }
 
   initHandlers() {
@@ -528,7 +539,9 @@ export class HttpAPIServer {
         return;
       }
 
-      const call = getCallObject("submitMessage", message, request);
+      // Grab and forward any authorization headers
+      const metadata = this.getMetadataFromAuthString(request?.headers?.authorization);
+      const call = getCallObject("submitMessage", message, request, metadata);
       this.grpcImpl.submitMessage(call, handleResponse(reply, Message));
     });
 
