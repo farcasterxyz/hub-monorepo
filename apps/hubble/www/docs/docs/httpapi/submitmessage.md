@@ -52,7 +52,7 @@ curl -X POST "http://127.0.0.1:2281/v1/submitMessage" \
 ```
 
 ### Auth
-If the rpc auth has been enabled on the server `--rpc-auth username:password` then you will also need to pass in the username and password while calling `submitMessage` using HTTP Basic Auth. 
+If the rpc auth has been enabled on the server (using `--rpc-auth username:password`) then you will also need to pass in the username and password while calling `submitMessage` using HTTP Basic Auth. 
 
 
 **Example**
