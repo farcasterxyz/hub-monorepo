@@ -57,7 +57,7 @@ function getCallObject<M extends keyof HubServiceServer>(
 ): CallTypeForMethod<M> {
   return {
     request: params,
-    metadata: metadata ?? new Metadata(),
+    metadata,
     getPeer: () => request.ip,
   } as CallTypeForMethod<M>;
 }
