@@ -12,6 +12,7 @@ import {
   UserNameType,
   toFarcasterTime,
   OnChainEvent,
+  UserNameProof,
 } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import { anything, instance, mock, when } from "ts-mockito";
@@ -19,13 +20,14 @@ import SyncEngine from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
-import { sleepWhile } from "../../utils/crypto.js";
+import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { NetworkFactories } from "../../network/utils/factories.js";
 import { HubInterface } from "../../hubble.js";
 import { MockHub } from "../../test/mocks.js";
 import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
+import { sync } from "rimraf";
 
 const TEST_TIMEOUT_SHORT = 60 * 1000;
 const SLEEPWHILE_TIMEOUT = 10 * 1000;
@@ -512,6 +514,67 @@ describe("SyncEngine", () => {
         "different",
       ]);
       expect(divergencePrefix).toEqual(prefixToTest);
+    });
+  });
+
+  describe("events in sync trie", () => {
+    let userNameProof: UserNameProof;
+    beforeEach(async () => {
+      userNameProof = Factories.UserNameProof.build({
+        type: UserNameType.USERNAME_TYPE_FNAME,
+        fid: custodyEvent.fid,
+      });
+    });
+    describe("events sync disabled", () => {
+      test("does not update trie for on chain events and fnames by default", async () => {
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        await engine.mergeOnChainEvent(custodyEvent);
+        await engine.mergeUserNameProof(userNameProof);
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+      });
+      test("enables events sync when onchainEvent is encountered for the first time", async () => {
+        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeFalsy();
+        await syncEngine.validateAndMergeFnames([SyncId.fromOnChainEvent(custodyEvent)]);
+        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeTruthy();
+      });
+      test("enables events sync when fname is encountered for the first time", async () => {
+        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeFalsy();
+        await syncEngine.validateAndMergeFnames([SyncId.fromFName(userNameProof)]);
+        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeTruthy();
+      });
+    });
+    describe("events sync enabled", () => {
+      beforeEach(async () => {
+        await syncEngine.enableEventsSync();
+      });
+      test("updates the trie for on chain events", async () => {
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
+        await engine.mergeOnChainEvent(custodyEvent);
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
+      });
+      test("updates the trie for fname events", async () => {
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        await engine.mergeUserNameProof(userNameProof);
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
+      });
+      test("removes deleted fname proofs", async () => {
+        const supercedingUserNameProof = Factories.UserNameProof.build({
+          name: userNameProof.name,
+          timestamp: userNameProof.timestamp + 10,
+        });
+
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeFalsy();
+
+        await engine.mergeUserNameProof(userNameProof);
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
+        await engine.mergeUserNameProof(supercedingUserNameProof);
+        await sleep(10); // Have to wait for the worker to finish processing messages
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeTruthy();
+      });
     });
   });
 

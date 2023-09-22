@@ -6,10 +6,11 @@ export interface HubState {
   lastEthBlock: number;
   lastFnameProof: number;
   lastL2Block: number;
+  syncEvents: boolean;
 }
 
 function createBaseHubState(): HubState {
-  return { lastEthBlock: 0, lastFnameProof: 0, lastL2Block: 0 };
+  return { lastEthBlock: 0, lastFnameProof: 0, lastL2Block: 0, syncEvents: false };
 }
 
 export const HubState = {
@@ -22,6 +23,9 @@ export const HubState = {
     }
     if (message.lastL2Block !== 0) {
       writer.uint32(24).uint64(message.lastL2Block);
+    }
+    if (message.syncEvents === true) {
+      writer.uint32(32).bool(message.syncEvents);
     }
     return writer;
   },
@@ -54,6 +58,13 @@ export const HubState = {
 
           message.lastL2Block = longToNumber(reader.uint64() as Long);
           continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.syncEvents = reader.bool();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -68,6 +79,7 @@ export const HubState = {
       lastEthBlock: isSet(object.lastEthBlock) ? Number(object.lastEthBlock) : 0,
       lastFnameProof: isSet(object.lastFnameProof) ? Number(object.lastFnameProof) : 0,
       lastL2Block: isSet(object.lastL2Block) ? Number(object.lastL2Block) : 0,
+      syncEvents: isSet(object.syncEvents) ? Boolean(object.syncEvents) : false,
     };
   },
 
@@ -76,6 +88,7 @@ export const HubState = {
     message.lastEthBlock !== undefined && (obj.lastEthBlock = Math.round(message.lastEthBlock));
     message.lastFnameProof !== undefined && (obj.lastFnameProof = Math.round(message.lastFnameProof));
     message.lastL2Block !== undefined && (obj.lastL2Block = Math.round(message.lastL2Block));
+    message.syncEvents !== undefined && (obj.syncEvents = message.syncEvents);
     return obj;
   },
 
@@ -88,6 +101,7 @@ export const HubState = {
     message.lastEthBlock = object.lastEthBlock ?? 0;
     message.lastFnameProof = object.lastFnameProof ?? 0;
     message.lastL2Block = object.lastL2Block ?? 0;
+    message.syncEvents = object.syncEvents ?? false;
     return message;
   },
 };

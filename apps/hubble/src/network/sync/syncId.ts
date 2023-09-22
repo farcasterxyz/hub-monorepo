@@ -58,11 +58,6 @@ class SyncId {
   private constructor(bytes: Uint8Array) {
     this._bytes = bytes;
   }
-  private static fromTimestamp(farcasterTimestamp: number, _buffer: Buffer) {
-    return new SyncId(
-      new Uint8Array(Buffer.concat([Buffer.from(timestampToPaddedTimestampPrefix(farcasterTimestamp)), _buffer])),
-    );
-  }
 
   static fromMessage(message: Message): SyncId {
     const fid = message.data?.fid || 0;
@@ -122,6 +117,19 @@ class SyncId {
     return SyncId.unpack(this._bytes);
   }
 
+  public type(): SyncIdType {
+    switch (this._bytes[TIMESTAMP_LENGTH]) {
+      case RootPrefix.User:
+        return SyncIdType.Message;
+      case RootPrefix.FNameUserNameProof:
+        return SyncIdType.FName;
+      case RootPrefix.OnChainEvent:
+        return SyncIdType.OnChainEvent;
+      default:
+        return SyncIdType.Unknown;
+    }
+  }
+
   static unpack(syncId: Uint8Array): UnpackedSyncId {
     const rootPrefixOffset = TIMESTAMP_LENGTH;
     const rootPrefix = syncId[rootPrefixOffset];
@@ -151,6 +159,12 @@ class SyncId {
       type: SyncIdType.Unknown,
       fid: 0,
     };
+  }
+
+  private static fromTimestamp(farcasterTimestamp: number, _buffer: Buffer) {
+    return SyncId.fromBytes(
+      Buffer.concat([Buffer.from(timestampToPaddedTimestampPrefix(farcasterTimestamp)), _buffer]),
+    );
   }
 
   /** Returns the rocks db primary key used to look up the message */
