@@ -220,7 +220,7 @@ class MerkleTrie {
             (e) => e as HubError,
           )();
           if (message.isOk() && message.value.hash.length === HASH_LENGTH) {
-            await this.insert(new SyncId(message.value));
+            await this.insert(SyncId.fromMessage(message.value));
             count += 1;
             if (count % 10_000 === 0) {
               log.info({ count }, "Rebuilding Merkle Trie");

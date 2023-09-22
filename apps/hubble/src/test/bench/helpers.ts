@@ -40,7 +40,7 @@ export const generateSyncIds = (n: number, numFids = 1, maxTimeShift = 1): SyncI
  */
 export const fastSyncId = (fid: number, hash: Uint8Array, timestamp: number, type: number) => {
   // Ducktyping message model to avoid creating the whole message.
-  return new SyncId({
+  return SyncId.fromMessage({
     data: {
       fid,
       timestamp,

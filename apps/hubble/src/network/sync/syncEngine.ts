@@ -24,7 +24,7 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
-import { formatPrefix, prefixToTimestamp, SyncId, timestampToPaddedTimestampPrefix } from "./syncId.js";
+import { formatPrefix, prefixToTimestamp, SyncId, SyncIdType, timestampToPaddedTimestampPrefix } from "./syncId.js";
 import { TrieSnapshot } from "./trieNode.js";
 import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -268,9 +268,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   /** Revoke the individual syncIDs in the Sync Trie */
-  public async revokeSyncIds(syncIds: Uint8Array[]) {
+  public async revokeSyncIds(syncIds: SyncId[]) {
     for (const syncId of syncIds) {
-      await this._trie.deleteByBytes(syncId);
+      await this._trie.deleteByBytes(syncId.syncId());
     }
   }
 
@@ -638,8 +638,14 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return fullSyncResult;
   }
 
-  async getAllMessagesBySyncIds(syncIds: Uint8Array[]): HubAsyncResult<Message[]> {
-    const msgPKs = syncIds.map((syncId) => SyncId.pkFromSyncId(syncId));
+  async getAllMessagesBySyncIds(syncIds: SyncId[]): HubAsyncResult<Message[]> {
+    const msgPKs: Buffer[] = [];
+    for (const syncId of syncIds) {
+      const unpacked = syncId.unpack();
+      if (unpacked.type === SyncIdType.Message) {
+        msgPKs.push(Buffer.from(unpacked.primaryKey));
+      }
+    }
     return ResultAsync.fromPromise(getManyMessages(this._db, msgPKs), (e) => e as HubError);
   }
 
@@ -681,7 +687,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // Make sure that the messages are actually for the SyncIDs
         const syncIdHashes = new Set(
           syncIds
-            .map((syncId) => bytesToHexString(SyncId.hashFromSyncId(syncId)).unwrapOr(""))
+            .map((syncId) => SyncId.unpack(syncId))
+            .map((syncId) => (syncId.type === SyncIdType.Message ? bytesToHexString(syncId.hash).unwrapOr("") : ""))
             .filter((str) => str !== ""),
         );
 
@@ -773,7 +780,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         } else if (result.error.errCode === "bad_request.duplicate") {
           // This message has been merged into the DB, but for some reason is not in the Trie.
           // Just update the trie.
-          await this.trie.insert(new SyncId(msg));
+          await this.trie.insert(SyncId.fromMessage(msg));
           mergeResults.push(result);
           errCount += 1;
         } else {
@@ -901,10 +908,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
             if (ourNode?.prefix) {
               const suspectSyncIDs = await this.trie.getAllValues(ourNode?.prefix);
-              const messagesResult = await this.getAllMessagesBySyncIds(suspectSyncIDs);
+              const messageSyncIds = suspectSyncIDs
+                .map((s) => SyncId.fromBytes(s))
+                .filter((syncId) => syncId.unpack().type === SyncIdType.Message);
+              const messagesResult = await this.getAllMessagesBySyncIds(messageSyncIds);
 
               if (messagesResult.isOk()) {
-                const corruptedSyncIds = this.findCorruptedSyncIDs(messagesResult.value, suspectSyncIDs);
+                const corruptedSyncIds = this.findCorruptedSyncIDs(messagesResult.value, messageSyncIds);
 
                 if (corruptedSyncIds.length > 0) {
                   log.warn(
@@ -971,21 +981,21 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
   }
 
-  public findCorruptedSyncIDs(messages: Message[], syncIds: Uint8Array[]): Uint8Array[] {
+  public findCorruptedSyncIDs(messages: Message[], syncIds: SyncId[]): SyncId[] {
     return messages
       .map((message, i) => (message.data === undefined || message.hash.length === 0 ? syncIds[i] : undefined))
-      .filter((i) => i !== undefined) as Uint8Array[];
+      .filter((i) => i !== undefined) as SyncId[];
   }
 
   /** ---------------------------------------------------------------------------------- */
   /**                                      Trie Methods                                  */
   /** ---------------------------------------------------------------------------------- */
   public async addMessage(message: Message): Promise<void> {
-    await this._trie.insert(new SyncId(message));
+    await this._trie.insert(SyncId.fromMessage(message));
   }
 
   public async removeMessage(message: Message): Promise<void> {
-    await this._trie.deleteBySyncId(new SyncId(message));
+    await this._trie.deleteBySyncId(SyncId.fromMessage(message));
   }
 
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {

@@ -1,45 +1,160 @@
-import { makeMessagePrimaryKey, typeToSetPostfix } from "../../storage/db/message.js";
-import { FID_BYTES, HASH_LENGTH } from "../../storage/db/types.js";
-import { Message } from "@farcaster/hub-nodejs";
+import { makeFidKey, makeMessagePrimaryKey, typeToSetPostfix } from "../../storage/db/message.js";
+import { FID_BYTES, HASH_LENGTH, RootPrefix } from "../../storage/db/types.js";
+import { Message, OnChainEvent, toFarcasterTime, UserNameProof } from "@farcaster/hub-nodejs";
+import { makeOnChainEventPrimaryKey } from "../../storage/db/onChainEvent.js";
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp
 
+// Typescript enum for syncid types
+export enum SyncIdType {
+  Unknown = 0,
+  Message = 1,
+  FName = 2,
+  OnChainEvent = 3,
+}
+
+type BaseUnpackedSyncId = {
+  fid: number;
+  type: SyncIdType;
+};
+
+export type UnknownSyncId = BaseUnpackedSyncId & {
+  type: SyncIdType.Unknown;
+  fid: 0;
+};
+
+export type MessageSyncId = BaseUnpackedSyncId & {
+  type: SyncIdType.Message;
+  primaryKey: Uint8Array;
+  hash: Uint8Array;
+};
+
+export type FNameSyncId = BaseUnpackedSyncId & {
+  type: SyncIdType.FName;
+  name: Uint8Array;
+};
+
+export type OnChainEventSyncId = BaseUnpackedSyncId & {
+  type: SyncIdType.OnChainEvent;
+  blockNumber: number;
+};
+
+export type UnpackedSyncId = UnknownSyncId | MessageSyncId | FNameSyncId | OnChainEventSyncId;
+
 /**
- * SyncIds are used to represent a Farcaster Message in the MerkleTrie and are ordered by timestamp
- * followed by lexicographical value of some of the message's properties.
+ * SyncIds are used to represent a Farcaster Message, an FName proof or an OnChainEvent in the MerkleTrie
+ * and are ordered by timestamp followed by a unique lexicographical identifier based on the type.
  *
- * They are constructed by prefixing the message's rocks db key (fid, rocks db prefix, tsHash) with
- * its timestamp. Duplicating the timestamp in the prefix is space inefficient, but allows sorting
- * ids by time while also allowing fast lookups using the rocksdb key.
+ * They are of the format: <timestampstring><root prefix><message_ident|fname_ident|onchainevent_ident> where:
+ *   timestampstring: is a 10 digit, 0 leftpadded string representing the timestamp in seconds (farcaster epoch)
+ *   root prefix: is a single byte representing the root prefix
+ *   message_ident: fid + message postfix + tshash
+ *   fname_ident: fid + name
+ *   onchainevent_ident: event_type + fid + blocknumber + logindex
  */
 class SyncId {
-  private readonly _fid: number;
-  private readonly _hash: Uint8Array;
-  private readonly _timestamp: number;
-  private readonly _type: number;
+  private readonly _bytes: Uint8Array;
 
-  constructor(message: Message) {
-    this._fid = message.data?.fid || 0;
-    this._hash = message.hash;
-    this._timestamp = message.data?.timestamp || 0;
-    this._type = message.data?.type || 0;
+  private constructor(bytes: Uint8Array) {
+    this._bytes = bytes;
+  }
+  private static fromTimestamp(farcasterTimestamp: number, _buffer: Buffer) {
+    return new SyncId(
+      new Uint8Array(Buffer.concat([Buffer.from(timestampToPaddedTimestampPrefix(farcasterTimestamp)), _buffer])),
+    );
+  }
+
+  static fromMessage(message: Message): SyncId {
+    const fid = message.data?.fid || 0;
+    const hash = message.hash;
+    const timestamp = message.data?.timestamp || 0;
+    const type = message.data?.type || 0;
+
+    // Note: We use the hash directly instead of the tsHash because the "ts" part of the tsHash is
+    // just the timestamp, which is already a part of the key (first 10 bytes)
+    // When we unpack the syncid, we'll remember to add the timestamp back.
+    const pkBuf = makeMessagePrimaryKey(fid, typeToSetPostfix(type), hash);
+
+    // Construct and returns the Sync Id by prepending the timestamp to the rocksdb message key
+    // Note the first byte of the pk is the RootPrefix
+    return SyncId.fromTimestamp(timestamp, pkBuf);
+  }
+
+  static fromFName(usernameProof: UserNameProof): SyncId {
+    const timestampRes = toFarcasterTime(usernameProof.timestamp * 1000);
+    if (timestampRes.isErr()) {
+      throw timestampRes.error;
+    }
+    return SyncId.fromTimestamp(
+      timestampRes.value,
+      Buffer.concat([
+        Buffer.from([RootPrefix.FNameUserNameProof]),
+        makeFidKey(usernameProof.fid),
+        Buffer.from(usernameProof.name),
+      ]),
+    );
+  }
+
+  static fromOnChainEvent(onChainEvent: OnChainEvent): SyncId {
+    const timestampRes = toFarcasterTime(onChainEvent.blockTimestamp * 1000);
+    if (timestampRes.isErr()) {
+      throw timestampRes.error;
+    }
+    const eventPk = makeOnChainEventPrimaryKey(
+      onChainEvent.type,
+      onChainEvent.fid,
+      onChainEvent.blockNumber,
+      onChainEvent.logIndex,
+    );
+    return SyncId.fromTimestamp(timestampRes.value, eventPk);
+  }
+
+  static fromBytes(bytes: Uint8Array): SyncId {
+    return new SyncId(new Uint8Array(bytes));
   }
 
   /** Returns a byte array that represents a SyncId */
   public syncId(): Uint8Array {
-    const timestampString = timestampToPaddedTimestampPrefix(this._timestamp);
+    return this._bytes;
+  }
 
-    // Note: We use the hash directly instead of the tsHash because the "ts" part of the tsHash is
-    // just the timestamp, which is already a part of the key (first 10 bytes)
-    // When we do the reverse lookup (`pkFromSyncId), we'll remember to add the timestamp back.
-    const buf = makeMessagePrimaryKey(this._fid, typeToSetPostfix(this._type), this._hash);
+  public unpack(): UnpackedSyncId {
+    return SyncId.unpack(this._bytes);
+  }
 
-    // Construct and returns the Sync Id by prepending the timestamp to the rocksdb message key
-    return new Uint8Array(Buffer.concat([Buffer.from(timestampString), buf]));
+  static unpack(syncId: Uint8Array): UnpackedSyncId {
+    const rootPrefixOffset = TIMESTAMP_LENGTH;
+    const rootPrefix = syncId[rootPrefixOffset];
+    const idBuf = Buffer.from(syncId);
+    if (rootPrefix === RootPrefix.User) {
+      // Message SyncId
+      return {
+        type: SyncIdType.Message,
+        fid: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1), // 1 byte for the root prefix
+        primaryKey: this.pkFromSyncId(syncId),
+        hash: syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES + 1), // 1 byte after fid for the set postfix
+      };
+    } else if (rootPrefix === RootPrefix.FNameUserNameProof) {
+      return {
+        type: SyncIdType.FName,
+        fid: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1), // 1 byte for the root prefix
+        name: syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES),
+      };
+    } else if (rootPrefix === RootPrefix.OnChainEvent) {
+      return {
+        type: SyncIdType.OnChainEvent,
+        fid: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1 + 1 + 1), // 1 byte for the root prefix, 1 byte for the postfix, 1 byte for the event type
+        blockNumber: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1 + 1 + 1 + FID_BYTES),
+      };
+    }
+    return {
+      type: SyncIdType.Unknown,
+      fid: 0,
+    };
   }
 
   /** Returns the rocks db primary key used to look up the message */
-  static pkFromSyncId(syncId: Uint8Array): Buffer {
+  private static pkFromSyncId(syncId: Uint8Array): Buffer {
     const ts = syncId.slice(0, TIMESTAMP_LENGTH);
     const tsBE = Buffer.alloc(4);
     tsBE.writeUInt32BE(parseInt(Buffer.from(ts).toString(), 10), 0);
@@ -56,11 +171,6 @@ class SyncId {
     pk.set(syncIDpart.slice(ts_offset), ts_offset + 4); // 20 byte hash
 
     return Buffer.from(pk);
-  }
-
-  /** Return the message hash for the SyncID */
-  static hashFromSyncId(syncId: Uint8Array): Uint8Array {
-    return syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES + 1);
   }
 }
 

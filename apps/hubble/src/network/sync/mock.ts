@@ -5,6 +5,7 @@ import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNod
 import Engine from "../../storage/engine/index.js";
 import { NodeMetadata } from "./merkleTrie.js";
 import SyncEngine from "./syncEngine.js";
+import { SyncId } from "./syncId.js";
 
 export class MockRpcClient {
   engine: Engine;
@@ -71,7 +72,9 @@ export class MockRpcClient {
 
   async getAllMessagesBySyncIds(request: SyncIds): Promise<HubResult<MessagesResponse>> {
     this.getAllMessagesBySyncIdsCalls.push(request);
-    const messagesResult = await this.syncEngine.getAllMessagesBySyncIds(request.syncIds);
+    const messagesResult = await this.syncEngine.getAllMessagesBySyncIds(
+      request.syncIds.map((s) => SyncId.fromBytes(s)),
+    );
     return messagesResult.map((messages) => {
       this.getAllMessagesBySyncIdsReturns += messages.length;
       return MessagesResponse.create({ messages: messages ?? [] });
