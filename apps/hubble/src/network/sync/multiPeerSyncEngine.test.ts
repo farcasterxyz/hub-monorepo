@@ -247,8 +247,8 @@ describe("Multi peer sync engine", () => {
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
     // Make sure the castAdd is in the trie
-    expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    expect(await syncEngine1.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
 
     const castRemove = await Factories.CastRemoveMessage.create(
       {
@@ -268,10 +268,10 @@ describe("Multi peer sync engine", () => {
 
     expect(result.isOk()).toBeTruthy();
 
-    const castRemoveId = new SyncId(castRemove);
+    const castRemoveId = SyncId.fromMessage(castRemove);
     expect(await syncEngine1.trie.exists(castRemoveId)).toBeTruthy();
     // The trie should not contain the castAdd anymore
-    expect(await syncEngine1.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine1.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
 
     // Syncing engine2 --> engine1 should do nothing, even though engine2 has the castAdd and it has been removed
     // from engine1.
@@ -297,7 +297,7 @@ describe("Multi peer sync engine", () => {
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine2.trie.exists(castRemoveId)).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
 
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
 
@@ -364,7 +364,7 @@ describe("Multi peer sync engine", () => {
       await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
       expect(fetchMessagesSpy).toHaveBeenCalledTimes(1);
-      expect(fetchMessagesSpy).toHaveBeenCalledWith([Buffer.from(new SyncId(msgs[0] as Message).syncId())]);
+      expect(fetchMessagesSpy).toHaveBeenCalledWith([SyncId.fromMessage(msgs[0] as Message)]);
 
       // Also assert the root hashes are the same
       expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
@@ -447,15 +447,18 @@ describe("Multi peer sync engine", () => {
     await syncEngine2.start();
 
     // Add a message to engine1 synctrie, but not to the engine itself.
-    syncEngine1.trie.insert(new SyncId(castAdd));
+    syncEngine1.trie.insert(SyncId.fromMessage(castAdd));
 
     // Attempt to sync engine2 <-- engine1.
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
     // Since the message is actually missing, it should be a no-op, and the missing message should disappear
     // from the sync trie
-    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd))) === true, SLEEPWHILE_TIMEOUT);
-    expect(await syncEngine2.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    await sleepWhile(
+      async () => (await syncEngine2.trie.exists(SyncId.fromMessage(castAdd))) === true,
+      SLEEPWHILE_TIMEOUT,
+    );
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
 
     // The root hashes should be the same, since nothing actually happened
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
@@ -489,7 +492,7 @@ describe("Multi peer sync engine", () => {
     expect(await engine1.mergeMessage(castAdd1)).toBeTruthy();
 
     // CastAdd2 is added only to the sync trie, but is missing from the engine
-    await syncEngine2.trie.insert(new SyncId(castAdd2));
+    await syncEngine2.trie.insert(SyncId.fromMessage(castAdd2));
 
     // Wait for the sync trie to be updated
     await sleepWhile(async () => (await syncEngine2.trie.items()) !== 2, SLEEPWHILE_TIMEOUT);
@@ -499,12 +502,12 @@ describe("Multi peer sync engine", () => {
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
 
     // The sync engine should realize that castAdd2 is not in it's engine, so it should be removed from the sync trie
-    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd2))) === true, 1000);
+    await sleepWhile(async () => (await syncEngine2.trie.exists(SyncId.fromMessage(castAdd2))) === true, 1000);
 
-    expect(await syncEngine2.trie.exists(new SyncId(castAdd2))).toBeFalsy();
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(castAdd2))).toBeFalsy();
 
     // but the castAdd1 should still be there
-    expect(await syncEngine2.trie.exists(new SyncId(castAdd1))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(castAdd1))).toBeTruthy();
 
     await syncEngine2.stop();
     await engine2.stop();
@@ -529,7 +532,7 @@ describe("Multi peer sync engine", () => {
     await engine2.mergeMessage(castAdd);
 
     // ...but we'll corrupt the sync trie by pretending that the signerAdd message is missing
-    syncEngine2.trie.deleteBySyncId(new SyncId(castAdd));
+    syncEngine2.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
 
     // syncengine2 should be empty
     expect(await syncEngine2.trie.items()).toEqual(0);
@@ -542,7 +545,10 @@ describe("Multi peer sync engine", () => {
 
     // Since the message isn't actually missing, it should be a no-op, and the missing message should
     // get added back to the sync trie
-    await sleepWhile(async () => (await syncEngine2.trie.exists(new SyncId(castAdd))) === false, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(
+      async () => (await syncEngine2.trie.exists(SyncId.fromMessage(castAdd))) === false,
+      SLEEPWHILE_TIMEOUT,
+    );
 
     // The root hashes should now be the same
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());

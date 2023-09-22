@@ -60,7 +60,7 @@ const SyncIdFactory = Factory.define<undefined, { date: Date; hash: string; fid:
         data: { fid: fid || Factories.Fid.build(), timestamp: (date || faker.date.recent()).getTime() / 1000 },
       });
 
-      return new SyncId(castAddMessage);
+      return SyncId.fromMessage(castAddMessage);
     });
 
     return undefined;

@@ -56,6 +56,7 @@ import {
 import { sleep } from "../utils/crypto.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
 import { statsd } from "../utils/statsd.js";
+import { SyncId } from "../network/sync/syncId.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -441,12 +442,13 @@ export default class Server {
 
         const request = call.request;
 
-        const messagesResult = await this.syncEngine?.getAllMessagesBySyncIds(request.syncIds);
+        const syncIds = request.syncIds.map((syncId) => SyncId.fromBytes(syncId));
+        const messagesResult = await this.syncEngine?.getAllMessagesBySyncIds(syncIds);
         messagesResult?.match(
           (messages) => {
             // Check the messages for corruption. If a message is blank, that means it was present
             // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
-            const corruptedSyncIds = this.syncEngine?.findCorruptedSyncIDs(messages, request.syncIds);
+            const corruptedSyncIds = this.syncEngine?.findCorruptedSyncIDs(messages, syncIds);
 
             if ((corruptedSyncIds?.length ?? 0) > 0) {
               log.warn(

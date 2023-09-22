@@ -110,7 +110,7 @@ describe("SyncEngine", () => {
 
     // Two messages (signerEvent + castAdd) was added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
-    expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeTruthy();
+    expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
   });
 
   test("trie is not updated on merge failure", async () => {
@@ -125,7 +125,7 @@ describe("SyncEngine", () => {
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine.trie.items()).toEqual(0);
-    expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
   });
 
   test("trie is updated when a message is removed", async () => {
@@ -150,10 +150,10 @@ describe("SyncEngine", () => {
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-    const id = new SyncId(castRemove);
+    const id = SyncId.fromMessage(castRemove);
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
-    const allMessages = await syncEngine.getAllMessagesBySyncIds([id.syncId()]);
+    const allMessages = await syncEngine.getAllMessagesBySyncIds([id]);
     expect(allMessages.isOk()).toBeTruthy();
     expect(allMessages._unsafeUnwrap()[0]?.data?.type).toEqual(MessageType.CAST_REMOVE);
 
@@ -161,7 +161,7 @@ describe("SyncEngine", () => {
     expect(await syncEngine.trie.exists(id)).toBeTruthy();
 
     // The trie should not contain the castAdd anymore
-    expect(await syncEngine.trie.exists(new SyncId(castAdd))).toBeFalsy();
+    expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
   });
 
   test("trie is updated for username proof messages", async () => {
@@ -200,12 +200,12 @@ describe("SyncEngine", () => {
 
     // SignerAdd and Username proof is added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
-    expect(await syncEngine.trie.exists(new SyncId(proof))).toBeTruthy();
+    expect(await syncEngine.trie.exists(SyncId.fromMessage(proof))).toBeTruthy();
   });
 
   test("getAllMessages returns empty with invalid syncId", async () => {
     expect(await syncEngine.trie.items()).toEqual(0);
-    const result = await syncEngine.getAllMessagesBySyncIds([new SyncId(castAdd).syncId()]);
+    const result = await syncEngine.getAllMessagesBySyncIds([SyncId.fromMessage(castAdd)]);
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()[0]?.data).toBeUndefined();
     expect(result._unsafeUnwrap()[0]?.hash.length).toEqual(0);
@@ -410,9 +410,9 @@ describe("SyncEngine", () => {
     // Make sure all messages exist
     expect(await syncEngine2.trie.items()).toEqual(3);
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
-    expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
-    expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[0] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[1] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[2] as Message))).toBeTruthy();
 
     await syncEngine2.stop();
   });
@@ -434,9 +434,9 @@ describe("SyncEngine", () => {
       // Make sure all messages exist
       expect(await syncEngine2.trie.items()).toEqual(3);
       expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
-      expect(await syncEngine2.trie.exists(new SyncId(messages[0] as Message))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(new SyncId(messages[1] as Message))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(new SyncId(messages[2] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[0] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[1] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[2] as Message))).toBeTruthy();
 
       await syncEngine2.stop();
     },

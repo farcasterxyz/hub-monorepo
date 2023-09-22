@@ -21,7 +21,7 @@ import {
 } from "./protobufs";
 import { bytesToHexString, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip712Signer } from "./signers";
-import { getFarcasterTime, toFarcasterTime } from "./time";
+import { FARCASTER_EPOCH, getFarcasterTime, toFarcasterTime } from "./time";
 import { VerificationEthAddressClaim } from "./verifications";
 import { LocalAccount } from "viem";
 
@@ -577,7 +577,7 @@ const OnChainEventFactory = Factory.define<protobufs.OnChainEvent>(() => {
     fid: FidFactory.build(),
     blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
     blockHash: BlockHashFactory.build(),
-    blockTimestamp: faker.datatype.datetime().getTime(),
+    blockTimestamp: Math.floor(faker.datatype.datetime({ min: FARCASTER_EPOCH }).getTime() / 1000),
     transactionHash: TransactionHashFactory.build(),
     logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
   });
