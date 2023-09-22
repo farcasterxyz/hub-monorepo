@@ -50,3 +50,38 @@ curl -X POST "http://127.0.0.1:2281/v1/submitMessage" \
   "signer": "0x78ff9a...58c"
 }
 ```
+
+### Auth
+If the rpc auth has been enabled on the server `--rpc-auth username:password` then you will also need to pass in the username and password while calling `submitMessage` using HTTP Basic Auth. 
+
+
+**Example**
+```bash
+curl -X POST "http://127.0.0.1:2281/v1/submitMessage" \
+     -u "username:password" \
+     -H "Content-Type: application/octet-stream" \
+     --data-binary "@message.encoded.protobuf"
+
+```
+
+**JS Example**
+```Javascript
+import axios from "axios";
+
+const url = `http://127.0.0.1:2281/v1/submitMessage`;
+
+const postConfig = {
+    headers: { "Content-Type": "application/octet-stream" },
+    auth: { username: "username", password: "password" },
+};
+
+// Encode the message into a Buffer (of bytes)
+const messageBytes = Buffer.from(Message.encode(castAdd).finish());
+
+try {
+    const response = await axios.post(url, messageBytes, postConfig);
+} catch (e) {
+    // handle errors...
+}
+
+```

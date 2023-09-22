@@ -34,17 +34,17 @@ try {
 }
 ```
 
-### Response encoding
+## Response encoding
 Responses from the API are encoded as `application/json`, and can be parsed as normal JSON objects. 
 
 1. Hashes, ETH addresses, signers etc... are all encoded as hex strings starting with `0x`
 2. Signatures and other binary fields are encoded in base64
 3. Constants are encoded as their string types. For example, the `hashScheme` is encoded as `HASH_SCHEME_BLAKE3` which is equivalent to the `HASH_SCHEME_BLAKE3 = 1` from the protobuf schema.
 
-### Timestamps
+## Timestamps
 Messages contain a timestamp, which is the _Farcaster Epoch Timestamp_ (and not the Unix Epoch). 
 
-### Paging
+## Paging
 Most endpoints support paging to get a large number of responses. 
 
 **Pagination Query Parameters**
@@ -86,7 +86,7 @@ do {
 } while (nextPageToken !== "")
 ```
 
-### Handling Errors
+## Handling Errors
 If there's an API error, the HTTP status code is set to `400` or `500` as appropriate. The response is a JSON object with `detail`, `errCode` and `metadata` fields set to identify and debug the errors.
 
 **Example**
