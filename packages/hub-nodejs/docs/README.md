@@ -2,12 +2,13 @@
 
 @farcaster/hub-nodejs has five major components:
 
-- A grpc [Client](./Client.md), which can send and receive messages from a Farcaster Hub.
-  - Messages from the Hub can also be read and written using the [HTTP API](https://www.thehubble.xyz/docs/httpapi.html)
+- A grpc [Client](./Client.md), which can send and receive messages from a Farcaster Hub.  
 - [Messages](./Messages.md), which are the atomic units of change on the Farcaster network.
 - [Builders](./Builders.md), which can be used to construct new messages.
 - [Signers](./signers/), which are required by Builders to sign messages.
 - [Utils](./Utils.md), which are helpers to deal with Farcaster idiosyncrasies.
+
+Note: The HTTP API is an alternate way to read/write to the Hub. Please see the [HTTP API docs](https://www.thehubble.xyz/docs/httpapi.html)
 
 ## Idiosyncrasies
 
