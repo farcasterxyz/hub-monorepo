@@ -8,7 +8,7 @@
 - [Signers](./signers/), which are required by Builders to sign messages.
 - [Utils](./Utils.md), which are helpers to deal with Farcaster idiosyncrasies.
 
-Note: The HTTP API is an alternate way to read/write to the Hub. Please see the [HTTP API docs](https://www.thehubble.xyz/docs/httpapi.html)
+Note: The HTTP API is an alternate way to read/write to the Hub. Please see the [HTTP API docs](https://www.thehubble.xyz/docs/httpapi/httpapi.html)
 
 ## Idiosyncrasies
 
