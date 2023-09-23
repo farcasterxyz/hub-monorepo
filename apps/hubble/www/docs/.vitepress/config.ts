@@ -28,6 +28,7 @@ export default defineConfig({
           { text: "APIs", link: "/docs/api" },
           {
             text: "HTTP APIs",
+            collapsed: true,
             items: [
               { text: "Using HTTP APIs", link: "/docs/httpapi/httpapi" },
               { text: "Casts API", link: "/docs/httpapi/casts" },
