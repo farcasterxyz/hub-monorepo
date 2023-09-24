@@ -242,17 +242,6 @@ setup_grafana() {
         fi
     }
 
-    delete_dashboard() {
-        local dashboard_uid
-
-        dashboard_uid=$(curl -s "$grafana_url/api/search?query=Hub Dashboard" -u "$credentials" | \
-            jq -r '.[] | select(.title == "Hub Dashboard") | .uid')
-
-        if [[ "$dashboard_uid" ]]; then
-            curl -s -X "DELETE" "$grafana_url/api/dashboards/uid/$dashboard_uid" -u "$credentials"
-        fi
-    }
-
     # Step 1: Restart statsd and grafana if they are running, otherwise start them
     ensure_grafana
 
@@ -283,10 +272,7 @@ setup_grafana() {
         fi
     fi
 
-    # Step 4: Delete the dashboard if it exists
-    delete_dashboard
-
-    # Step 5: Import the dashboard. The API takes a slighly different format than the JSON import
+    # Step 4: Import the dashboard. The API takes a slighly different format than the JSON import
     # in the UI, so we need to convert the JSON file first.
     jq '{dashboard: (del(.id) | . + {id: null}), folderId: 0, overwrite: true}' "grafana-dashboard.json" > "grafana-dashboard.api.json"
     
