@@ -1,9 +1,12 @@
-import { bytesIncrement, HubError, isHubError } from "@farcaster/hub-nodejs";
+import { bytesIncrement, HubError, HubResult, isHubError } from "@farcaster/hub-nodejs";
 import { AbstractBatch, AbstractChainedBatch, AbstractIterator } from "abstract-leveldown";
 import { mkdir } from "fs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import { logger } from "../../utils/logger.js";
-import { statsd } from "../../utils/statsd.js";
+import * as tar from "tar";
+import * as fs from "fs";
+import { err, ok, Result } from "neverthrow";
+import path from "path";
 
 export const DB_DIRECTORY = ".rocks";
 export const MAX_DB_ITERATOR_OPEN_MILLISECONDS = 60 * 1000; // 1 min
@@ -38,7 +41,7 @@ export class Iterator {
   async *[Symbol.asyncIterator]() {
     try {
       let kv: [Buffer | undefined, Buffer | undefined] | undefined;
-      // rome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code, to fix
+      // biome-ignore lint/suspicious/noAssignInExpressions: legacy code, avoid using ignore for new code, to fix
       while ((kv = await this.next())) {
         yield kv;
       }
@@ -337,7 +340,7 @@ class RocksDB {
     }, timeoutMs);
 
     let returnValue: T | undefined | void;
-    // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     let caughtError: any;
 
     // The try/catch is outside the for loop so that we can catch errors thrown by the iterator
@@ -422,3 +425,27 @@ class RocksDB {
 }
 
 export default RocksDB;
+
+export async function createTarBackup(inputDir: string): Promise<Result<string, Error>> {
+  // Output path is {dirname}-{date as yyyy-mm-dd}-{timestamp}.tar.gz
+  const outputFilePath = `${inputDir}-${new Date().toISOString().split("T")[0]}-${Math.floor(
+    Date.now() / 1000,
+  )}.tar.gz`;
+
+  const start = Date.now();
+  log.info({ inputDir, outputFilePath }, "Creating tarball");
+
+  return new Promise((resolve) => {
+    tar
+      .c({ gzip: true, file: outputFilePath, cwd: path.dirname(inputDir) }, [path.basename(inputDir)])
+      .then(() => {
+        const stats = fs.statSync(outputFilePath);
+        log.info({ size: stats.size, outputFilePath, timeTakenMs: Date.now() - start }, "Tarball created");
+        resolve(ok(outputFilePath));
+      })
+      .catch((e: Error) => {
+        log.error({ error: e, inputDir, outputFilePath }, "Error creating tarball");
+        resolve(err(e));
+      });
+  });
+}

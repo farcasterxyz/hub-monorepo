@@ -1,5 +1,41 @@
 # @farcaster/hub-nodejs
 
+## 0.10.9
+
+### Patch Changes
+
+- d77970b1: chore: Delete deprecated rpc calls and events
+- Updated dependencies [7e2a66e5]
+- Updated dependencies [20062ceb]
+- Updated dependencies [d77970b1]
+  - @farcaster/core@0.12.9
+
+## 0.10.8
+
+### Patch Changes
+
+- Updated dependencies [4893e02d]
+  - @farcaster/core@0.12.8
+
+## 0.10.7
+
+### Patch Changes
+
+- 08b652e: fix: Add txIndex to onchain events, fix wrong index being used in the primary key
+- Updated dependencies [08b652e]
+  - @farcaster/core@0.12.7
+
+## 0.10.6
+
+### Patch Changes
+
+- 2ab99d95: feat: Add REST API
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 76a031e2: feat: Add storage limit constants to core
+- Updated dependencies [bc416dbe]
+- Updated dependencies [76a031e2]
+  - @farcaster/core@0.12.6
+
 ## 0.10.5
 
 ### Patch Changes

@@ -2,8 +2,6 @@ import { faker } from "@faker-js/faker";
 import {
   Message,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   CastId,
   ReactionAddMessage,
   ReactionType,
@@ -14,6 +12,7 @@ import {
   HubError,
   getInsecureHubRpcClient,
   HubRpcClient,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import Server from "../server.js";
@@ -26,17 +25,20 @@ const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
+let syncEngine: SyncEngine;
 let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(hub, db));
+  syncEngine = new SyncEngine(hub, db);
+  server = new Server(hub, engine, syncEngine);
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
   client.close();
+  await syncEngine.stop();
   await server.stop();
   await engine.stop();
 });
@@ -45,8 +47,9 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 
 let castId: CastId;
 let reactionAddLike: ReactionAddMessage;
@@ -56,12 +59,9 @@ let reactionAddTargetUrl: ReactionAddMessage;
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   castId = Factories.CastId.build();
 
@@ -89,8 +89,9 @@ beforeAll(async () => {
 
 describe("getReaction", () => {
   beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
   });
 
   test("succeeds with like", async () => {
@@ -163,8 +164,9 @@ describe("getReaction", () => {
 
   describe("getReactionsByFid", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     describe("with messages", () => {
@@ -208,8 +210,9 @@ describe("getReaction", () => {
 
   describe("getReactionsByCast", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     describe("with messages", () => {
@@ -264,8 +267,9 @@ describe("getReaction", () => {
 
   describe("getReactionsByTarget", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     describe("with messages", () => {

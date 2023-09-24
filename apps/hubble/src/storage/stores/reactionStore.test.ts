@@ -22,7 +22,7 @@ import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import ReactionStore from "../stores/reactionStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
-import { FARCASTER_EPOCH } from "@farcaster/core";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.reactionStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -61,6 +61,8 @@ beforeAll(async () => {
   reactionRemoveRecast = await Factories.ReactionRemoveMessage.create({
     data: { fid, reactionBody: recastBody, timestamp: reactionAddRecast.data.timestamp + 1 },
   });
+  const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
 beforeEach(async () => {

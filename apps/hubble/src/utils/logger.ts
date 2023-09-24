@@ -1,10 +1,8 @@
 import {
   bytesToHexString,
   fromFarcasterTime,
-  IdRegistryEvent,
   Message,
   MessageType,
-  NameRegistryEvent,
   OnChainEvent,
   onChainEventTypeToJSON,
   UserNameProof,
@@ -46,7 +44,7 @@ const MAX_BUFFERLOG_SIZE = 1_000_000;
 
 // Disable logging in tests and CI to reduce noise
 if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
-  // defaultOptions.level = 'debug';
+  // defaultOptions.level = "debug";
   defaultOptions.level = "silent";
 } else if (process.env["LOG_LEVEL"]) {
   defaultOptions.level = process.env["LOG_LEVEL"];
@@ -55,7 +53,7 @@ if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
 type ProxiedLogger = { $: BufferedLogger } & Logger;
 
 class BufferedLogger {
-  // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   private buffer: { method: string; args: any[] }[] = [];
   private buffering = false;
   private logger: Logger;
@@ -66,11 +64,11 @@ class BufferedLogger {
 
   createProxy(loggerInstance: Logger = this.logger): ProxiedLogger {
     return new Proxy(loggerInstance, {
-      // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       get: (target: any, prop: string) => {
         // We don't intercept "fatal" because it's a special case that we don't want to buffer
         if (["info", "error", "debug", "warn", "trace"].includes(prop)) {
-          // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
           return (...args: any[]) => {
             if (!this.buffering || loggerInstance.level === "silent") {
               target[prop](...args);
@@ -117,7 +115,7 @@ class BufferedLogger {
     // And then in an async function, flush the buffer so that we don't block the main thread
     (async () => {
       for (const log of this.buffer) {
-        // rome-ignore lint/suspicious/noExplicitAny: <explanation>
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
         (this.logger as any)[log.method](...log.args);
       }
       this.buffer = [];
@@ -139,22 +137,6 @@ export const messageToLog = (message: Message) => {
     hash: bytesToHexString(message.hash)._unsafeUnwrap(),
     fid: message.data?.fid,
     type: message.data?.type,
-  };
-};
-
-export const idRegistryEventToLog = (event: IdRegistryEvent) => {
-  return {
-    blockNumber: event.blockNumber,
-    fid: event.fid,
-    to: bytesToHexString(event.to)._unsafeUnwrap(),
-  };
-};
-
-export const nameRegistryEventToLog = (event: NameRegistryEvent) => {
-  return {
-    blockNumber: event.blockNumber,
-    fname: Buffer.from(event.fname).toString("utf-8").replace(/\0/g, ""),
-    to: bytesToHexString(event.to)._unsafeUnwrap(),
   };
 };
 

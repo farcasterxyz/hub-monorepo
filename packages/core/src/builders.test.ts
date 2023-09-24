@@ -199,48 +199,6 @@ describe("makeVerificationRemove", () => {
   });
 });
 
-describe("makeSignerAddData", () => {
-  test("succeeds", async () => {
-    const data = await builders.makeSignerAddData({ signer: signerKey }, { fid, network });
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap());
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe("makeSignerRemoveData", () => {
-  test("succeeds", async () => {
-    const data = await builders.makeSignerRemoveData({ signer: signerKey }, { fid, network });
-    const isValid = await validations.validateMessageData(data._unsafeUnwrap());
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe("makeSignerAdd", () => {
-  test("succeeds", async () => {
-    const message = await builders.makeSignerAdd(
-      { signer: signerKey, name: "test signer" },
-      { fid, network },
-      eip712Signer,
-    );
-    const isValid = await validations.validateMessage(message._unsafeUnwrap());
-    expect(isValid.isOk()).toBeTruthy();
-  });
-
-  test("succeeds without name", async () => {
-    const message = await builders.makeSignerAdd({ signer: signerKey }, { fid, network }, eip712Signer);
-    const isValid = await validations.validateMessage(message._unsafeUnwrap());
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
-describe("makeSignerRemove", () => {
-  test("succeeds", async () => {
-    const message = await builders.makeSignerRemove({ signer: signerKey }, { fid, network }, eip712Signer);
-    const isValid = await validations.validateMessage(message._unsafeUnwrap());
-    expect(isValid.isOk()).toBeTruthy();
-  });
-});
-
 describe("makeUserDataAddData", () => {
   test("succeeds", async () => {
     const data = await builders.makeUserDataAddData(
@@ -280,36 +238,36 @@ describe("makeMessageHash", () => {
 
 describe("makeMessageWithSignature", () => {
   test("succeeds", async () => {
-    const body = protobufs.SignerAddBody.create({ signer: signerKey });
-    const signerAdd = await builders.makeSignerAdd(body, { fid, network }, eip712Signer);
+    const body = protobufs.CastAddBody.create();
+    const castAdd = await builders.makeCastAdd(body, { fid, network }, ed25519Signer);
 
-    const data = await builders.makeSignerAddData(body, { fid, network });
+    const data = await builders.makeCastAddData(body, { fid, network });
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
-    const signature = (await eip712Signer.signMessageHash(hash._unsafeUnwrap()))._unsafeUnwrap();
+    const signature = (await ed25519Signer.signMessageHash(hash._unsafeUnwrap()))._unsafeUnwrap();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
-      signer: ethSignerKey,
-      signatureScheme: eip712Signer.scheme,
+      signer: (await ed25519Signer.getSignerKey())._unsafeUnwrap(),
+      signatureScheme: ed25519Signer.scheme,
       signature: signature,
     });
 
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
 
-    expect(message).toEqual(signerAdd);
+    expect(message).toEqual(castAdd);
   });
 
   test("fails with invalid signature", async () => {
     const signature = hexStringToBytes(
       "0xf8dc77d52468483806addab7d397836e802551bfb692604e2d7df4bc4820556c63524399a63d319ae4b027090ce296ade08286878dc1f414b62412f89e8bc4e01b",
     )._unsafeUnwrap();
-    const data = await builders.makeSignerAddData({ signer: signerKey }, { fid, network });
+    const data = await builders.makeCastAddData(protobufs.CastAddBody.create(), { fid, network });
     expect(data.isOk()).toBeTruthy();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
-      signer: ethSignerKey,
-      signatureScheme: eip712Signer.scheme,
+      signer: (await ed25519Signer.getSignerKey())._unsafeUnwrap(),
+      signatureScheme: ed25519Signer.scheme,
       signature,
     });
-    expect(message).toEqual(err(new HubError("bad_request.validation_failure", "signature does not match signer")));
+    expect(message).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
   });
 });
 

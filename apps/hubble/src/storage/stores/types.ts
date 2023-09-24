@@ -7,6 +7,7 @@ export type StorePruneOptions = {
 };
 
 export const PAGE_SIZE_MAX = 10_000;
+export const DEFAULT_PAGE_SIZE = 100;
 
 export type PageOptions = {
   pageToken?: Uint8Array | undefined;

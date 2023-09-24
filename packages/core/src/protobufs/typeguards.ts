@@ -108,30 +108,6 @@ export const isVerificationRemoveMessage = (message: protobufs.Message): message
   );
 };
 
-export const isSignerAddData = (data: protobufs.MessageData): data is types.SignerAddData => {
-  return data.type === protobufs.MessageType.SIGNER_ADD && typeof data.signerAddBody !== "undefined";
-};
-
-export const isSignerAddMessage = (message: protobufs.Message): message is types.SignerAddMessage => {
-  return (
-    message.signatureScheme === protobufs.SignatureScheme.EIP712 &&
-    typeof message.data !== "undefined" &&
-    isSignerAddData(message.data)
-  );
-};
-
-export const isSignerRemoveData = (data: protobufs.MessageData): data is types.SignerRemoveData => {
-  return data.type === protobufs.MessageType.SIGNER_REMOVE && typeof data.signerRemoveBody !== "undefined";
-};
-
-export const isSignerRemoveMessage = (message: protobufs.Message): message is types.SignerRemoveMessage => {
-  return (
-    message.signatureScheme === protobufs.SignatureScheme.EIP712 &&
-    typeof message.data !== "undefined" &&
-    isSignerRemoveData(message.data)
-  );
-};
-
 export const isUserDataAddData = (data: protobufs.MessageData): data is types.UserDataAddData => {
   return data.type === protobufs.MessageType.USER_DATA_ADD && typeof data.userDataBody !== "undefined";
 };
@@ -213,26 +189,6 @@ export const isPruneMessageHubEvent = (event: hubEventProtobufs.HubEvent): event
     event.type === hubEventProtobufs.HubEventType.PRUNE_MESSAGE &&
     typeof event.pruneMessageBody !== "undefined" &&
     typeof event.pruneMessageBody.message !== "undefined"
-  );
-};
-
-export const isMergeIdRegistryEventHubEvent = (
-  event: hubEventProtobufs.HubEvent,
-): event is types.MergeIdRegistryEventHubEvent => {
-  return (
-    event.type === hubEventProtobufs.HubEventType.MERGE_ID_REGISTRY_EVENT &&
-    typeof event.mergeIdRegistryEventBody !== "undefined" &&
-    typeof event.mergeIdRegistryEventBody.idRegistryEvent !== "undefined"
-  );
-};
-
-export const isMergeNameRegistryEventHubEvent = (
-  event: hubEventProtobufs.HubEvent,
-): event is types.MergeNameRegistryEventHubEvent => {
-  return (
-    event.type === hubEventProtobufs.HubEventType.MERGE_NAME_REGISTRY_EVENT &&
-    typeof event.mergeNameRegistryEventBody !== "undefined" &&
-    typeof event.mergeNameRegistryEventBody.nameRegistryEvent !== "undefined"
   );
 };
 

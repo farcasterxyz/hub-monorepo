@@ -1,5 +1,32 @@
 # @farcaster/hub-web
 
+## 0.6.5
+
+### Patch Changes
+
+- d77970b1: chore: Delete deprecated rpc calls and events
+- Updated dependencies [7e2a66e5]
+- Updated dependencies [20062ceb]
+- Updated dependencies [d77970b1]
+  - @farcaster/core@0.12.9
+
+## 0.6.4
+
+### Patch Changes
+
+- 08b652e: fix: Add txIndex to onchain events, fix wrong index being used in the primary key
+- Updated dependencies [08b652e]
+  - @farcaster/core@0.12.7
+
+## 0.6.3
+
+### Patch Changes
+
+- 76a031e2: feat: Add storage limit constants to core
+- Updated dependencies [bc416dbe]
+- Updated dependencies [76a031e2]
+  - @farcaster/core@0.12.6
+
 ## 0.6.2
 
 ### Patch Changes

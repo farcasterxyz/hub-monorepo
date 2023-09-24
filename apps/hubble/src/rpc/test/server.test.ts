@@ -6,21 +6,14 @@ import {
   getInsecureHubRpcClient,
   HubResult,
   HubRpcClient,
-  IdRegistryEvent,
   OnChainEvent,
   OnChainEventRequest,
   OnChainEventResponse,
   OnChainEventType,
-  SignerAddMessage,
   StorageLimit,
   StorageLimitsResponse,
   StoreType,
-  CASTS_SIZE_LIMIT_DEFAULT,
-  REACTIONS_SIZE_LIMIT_DEFAULT,
-  LINKS_SIZE_LIMIT_DEFAULT,
-  USER_DATA_SIZE_LIMIT_DEFAULT,
-  VERIFICATIONS_SIZE_LIMIT_DEFAULT,
-  USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
+  getDefaultStoreLimit,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -33,17 +26,20 @@ const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
+let syncEngine: SyncEngine;
 let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(hub, db));
+  syncEngine = new SyncEngine(hub, db);
+  server = new Server(hub, engine, syncEngine);
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
   client.close();
+  await syncEngine.stop();
   await server.stop();
   await engine.stop();
 });
@@ -52,26 +48,22 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await engine.mergeOnChainEvent(custodyEvent);
+  await engine.mergeOnChainEvent(signerEvent);
+  await engine.mergeOnChainEvent(storageEvent);
 });
 
 describe("server rpc tests", () => {
-  beforeEach(async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
-  });
-
   describe("getOnChainEvents", () => {
     const assertEventsMatchResult = (result: HubResult<OnChainEventResponse>, events: OnChainEvent[]) => {
       expect(result._unsafeUnwrap().events.map((e) => OnChainEvent.toJSON(e))).toEqual(
@@ -80,19 +72,15 @@ describe("server rpc tests", () => {
     };
 
     test("succeeds", async () => {
-      const idRegistryEvent = Factories.IdRegistryOnChainEvent.build({ fid });
       const idRegistryEvent2 = Factories.IdRegistryOnChainEvent.build({ fid: fid + 1 });
-      const signerEvent = Factories.SignerOnChainEvent.build({ fid });
       const signerEvent2 = Factories.SignerOnChainEvent.build({ blockNumber: signerEvent.blockNumber + 1, fid });
-      await expect(engine.mergeOnChainEvent(idRegistryEvent)).resolves.toBeInstanceOf(Ok);
       await expect(engine.mergeOnChainEvent(idRegistryEvent2)).resolves.toBeInstanceOf(Ok);
-      await expect(engine.mergeOnChainEvent(signerEvent)).resolves.toBeInstanceOf(Ok);
       await expect(engine.mergeOnChainEvent(signerEvent2)).resolves.toBeInstanceOf(Ok);
 
       const idResult = await client.getOnChainEvents(
         OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER, fid }),
       );
-      assertEventsMatchResult(idResult, [idRegistryEvent]);
+      assertEventsMatchResult(idResult, [custodyEvent]);
 
       const signerResult = await client.getOnChainEvents(
         OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_SIGNER, fid }),
@@ -100,7 +88,7 @@ describe("server rpc tests", () => {
       assertEventsMatchResult(signerResult, [signerEvent, signerEvent2]);
 
       const emptyResult = await client.getOnChainEvents(
-        OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_STORAGE_RENT, fid }),
+        OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_STORAGE_RENT, fid: fid + 1 }),
       );
       expect(emptyResult._unsafeUnwrap().events.length).toEqual(0);
     });
@@ -108,43 +96,37 @@ describe("server rpc tests", () => {
 
   describe("getCurrentStorageLimitsByFid", () => {
     test("succeeds for user with no storage", async () => {
-      const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
-      // Default storage limits
-      expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([
-        CASTS_SIZE_LIMIT_DEFAULT,
-        LINKS_SIZE_LIMIT_DEFAULT,
-        REACTIONS_SIZE_LIMIT_DEFAULT,
-        USER_DATA_SIZE_LIMIT_DEFAULT,
-        USERNAME_PROOFS_SIZE_LIMIT_DEFAULT,
-        VERIFICATIONS_SIZE_LIMIT_DEFAULT,
-      ]);
+      const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid: fid - 1 }));
+      // zero storage
+      expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([0, 0, 0, 0, 0, 0]);
     });
 
     test("succeeds for user with storage", async () => {
-      const rentEvent = Factories.StorageRentOnChainEvent.build({
-        fid,
-        storageRentEventBody: Factories.StorageRentEventBody.build({ units: 1 }),
-      });
-      await engine.mergeOnChainEvent(rentEvent);
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       const storageLimits = StorageLimitsResponse.fromJSON(result._unsafeUnwrap()).limits;
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: CASTS_SIZE_LIMIT_DEFAULT, storeType: StoreType.CASTS }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.CASTS), storeType: StoreType.CASTS }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: REACTIONS_SIZE_LIMIT_DEFAULT, storeType: StoreType.REACTIONS }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.REACTIONS), storeType: StoreType.REACTIONS }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: LINKS_SIZE_LIMIT_DEFAULT, storeType: StoreType.LINKS }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.LINKS), storeType: StoreType.LINKS }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: USER_DATA_SIZE_LIMIT_DEFAULT, storeType: StoreType.USER_DATA }),
+        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.USER_DATA), storeType: StoreType.USER_DATA }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: VERIFICATIONS_SIZE_LIMIT_DEFAULT, storeType: StoreType.VERIFICATIONS }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.VERIFICATIONS),
+          storeType: StoreType.VERIFICATIONS,
+        }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: USERNAME_PROOFS_SIZE_LIMIT_DEFAULT, storeType: StoreType.USERNAME_PROOFS }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS),
+          storeType: StoreType.USERNAME_PROOFS,
+        }),
       );
 
       // add 2 more units
@@ -155,24 +137,12 @@ describe("server rpc tests", () => {
       await engine.mergeOnChainEvent(rentEvent2);
       const result2 = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       const newLimits = StorageLimitsResponse.fromJSON(result2._unsafeUnwrap()).limits;
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: CASTS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.CASTS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: REACTIONS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.REACTIONS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: LINKS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.LINKS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: USER_DATA_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.USER_DATA }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: VERIFICATIONS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.VERIFICATIONS }),
-      );
-      expect(newLimits).toContainEqual(
-        StorageLimit.create({ limit: USERNAME_PROOFS_SIZE_LIMIT_DEFAULT * 3, storeType: StoreType.USERNAME_PROOFS }),
-      );
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5000 * 3, storeType: StoreType.CASTS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 2500 * 3, storeType: StoreType.REACTIONS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 2500 * 3, storeType: StoreType.LINKS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 50 * 3, storeType: StoreType.USER_DATA }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 25 * 3, storeType: StoreType.VERIFICATIONS }));
+      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5 * 3, storeType: StoreType.USERNAME_PROOFS }));
     });
   });
 });

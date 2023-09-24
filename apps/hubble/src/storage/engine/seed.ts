@@ -1,5 +1,6 @@
 import { Eip712Signer, Factories } from "@farcaster/hub-nodejs";
 import Engine from "../engine/index.js";
+import { Ok } from "neverthrow";
 
 /** Util to seed engine with all the data needed to make a signer valid for an fid */
 export const seedSigner = async (
@@ -9,30 +10,21 @@ export const seedSigner = async (
   ethSigner?: Eip712Signer,
 ): Promise<Eip712Signer> => {
   if (!ethSigner) {
-    // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+    // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
     ethSigner = Factories.Eip712Signer.build();
     const ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
 
     /** Generate and merge ID Registry event linking the fid to the eth wallet */
-    const idRegistryEvent = Factories.IdRegistryEvent.build({
-      fid,
-      to: ethSignerKey,
-    });
-
-    const r = await engine.mergeIdRegistryEvent(idRegistryEvent);
-    expect(r.isOk()).toBeTruthy();
+    const custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: ethSignerKey } });
+    await expect(engine.mergeOnChainEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
   }
 
-  /** Generate and merge SignerAdd linking the signer to the fid and signed by the eth wallet */
-  const signerAdd = await Factories.SignerAddMessage.create(
-    {
-      data: { fid, signerAddBody: { signer } },
-    },
-    { transient: { signer: ethSigner } },
-  );
+  /** Generate and merge Signer and storage events linking the signer to the fid and allocating storage for messages */
 
-  const r = await engine.mergeMessage(signerAdd);
-  expect(r.isOk()).toBeTruthy();
+  const signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signer } });
+  const storageEvent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await expect(engine.mergeOnChainEvent(signerEvent)).resolves.toBeInstanceOf(Ok);
+  await expect(engine.mergeOnChainEvent(storageEvent)).resolves.toBeInstanceOf(Ok);
 
   return ethSigner;
 };

@@ -1,17 +1,19 @@
 import {
-  Factories,
-  HubError,
   bytesDecrement,
   bytesIncrement,
+  Factories,
+  getDefaultStoreLimit,
   getFarcasterTime,
+  HubError,
   LinkAddMessage,
+  LinkBody,
+  LinkRemoveMessage,
   MergeMessageHubEvent,
   Message,
   MessageType,
   PruneMessageHubEvent,
-  LinkBody,
-  LinkRemoveMessage,
   RevokeMessageHubEvent,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -19,6 +21,7 @@ import { getMessage, makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import LinkStore from "./linkStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
+import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.linkStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -57,6 +60,8 @@ beforeAll(async () => {
   linkRemoveEndorse = await Factories.LinkRemoveMessage.create({
     data: { fid, linkBody: endorseBody, timestamp: linkAddEndorse.data.timestamp + 1 },
   });
+  const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
 beforeEach(async () => {

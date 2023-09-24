@@ -756,7 +756,7 @@ export class HubReplicator {
           hash: message.hash,
           timestamp: farcasterTimeToDate(message.data.timestamp),
           // type assertion due to a problem with the type definitions. This field is infact required and present in all valid messages
-          // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+          // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
           targetFid: message.data.linkBody.targetFid!,
           type: message.data.linkBody.type,
           fid: message.data.fid,
@@ -791,7 +791,7 @@ export class HubReplicator {
         .updateTable("links")
         .where("fid", "=", message.data.fid)
         // type assertion due to a problem with the type definitions. This field is infact required and present in all valid messages
-        // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+        // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
         .where("targetFid", "=", message.data.linkBody.targetFid!)
         .where("type", "=", message.data.linkBody.type)
         .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) })

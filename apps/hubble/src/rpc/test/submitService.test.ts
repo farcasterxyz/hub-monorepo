@@ -4,10 +4,9 @@ import {
   getInsecureHubRpcClient,
   HubRpcClient,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   Message,
   CastId,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { err } from "neverthrow";
 import SyncEngine from "../../network/sync/syncEngine.js";
@@ -22,17 +21,20 @@ const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine);
 
+let syncEngine: SyncEngine;
 let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(hub, db));
+  syncEngine = new SyncEngine(hub, db);
+  server = new Server(hub, engine, syncEngine);
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
   client.close();
+  await syncEngine.stop();
   await server.stop();
   await engine.stop();
 });
@@ -41,20 +43,18 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 let castAdd: Message;
 let castRemove: Message;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
@@ -67,8 +67,9 @@ beforeAll(async () => {
 describe("submitMessage", () => {
   describe("with signer", () => {
     beforeEach(async () => {
-      await hub.submitIdRegistryEvent(custodyEvent);
-      await hub.submitMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     test("succeeds", async () => {

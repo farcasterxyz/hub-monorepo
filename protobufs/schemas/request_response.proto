@@ -27,6 +27,8 @@ message HubInfoResponse {
   string nickname = 3;
   string root_hash = 4;
   DbStats db_stats = 5;
+  string peerId = 6;
+  uint64 hub_operator_fid = 7;
 }
 
 message DbStats {
@@ -226,10 +228,6 @@ message LinksByTargetRequest {
   optional uint32 page_size = 3;
   optional bytes page_token = 4;
   optional bool reverse = 5;
-}
-
-message IdRegistryEventRequest {
-  uint64 fid = 1;
 }
 
 message IdRegistryEventByAddressRequest {

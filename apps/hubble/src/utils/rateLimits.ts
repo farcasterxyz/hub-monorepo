@@ -1,5 +1,5 @@
 import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
-import { err, ok } from "neverthrow";
+import { ResultAsync, err, ok } from "neverthrow";
 import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 
 // Number of submit messages (total) that can be merged per 60 seconds
@@ -34,11 +34,26 @@ export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): H
 };
 
 /** Rate limit by key for the limiter */
-export const rateLimitByKey = async (fid: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
+export const rateLimitByKey = async (key: string, limiter: RateLimiterAbstract): HubAsyncResult<boolean> => {
   try {
-    await limiter.consume(fid);
+    await limiter.consume(key);
     return ok(true);
   } catch (e) {
-    return err(new HubError("unavailable", "Too many requests"));
+    return err(new HubError("unavailable", `Too many requests for ${key}`));
   }
+};
+
+/** Is the rate limit hit for the key? */
+export const isRateLimitedByKey = async (key: string, limiter: RateLimiterAbstract): Promise<boolean> => {
+  const res = await limiter.get(key);
+  if (res && res.consumedPoints >= limiter.points) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+/** Consume 1 point of rate limit for the key key */
+export const consumeRateLimitByKey = async (key: string, limiter: RateLimiterAbstract): Promise<void> => {
+  await ResultAsync.fromPromise(limiter.consume(key), (e) => e);
 };

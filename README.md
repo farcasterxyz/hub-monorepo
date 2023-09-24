@@ -7,6 +7,7 @@ This monorepo contains Hubble, an official Farcaster Hub implementation, and oth
 
 1. To run Hubble, see the [Hubble docs](https://www.thehubble.xyz/).
 1. To use Hubble, see the [hub-nodejs docs](./packages/hub-nodejs/docs/README.md).
+1. To use the HTTP API to read Hubble data, see the [HTTP API docs](https://www.thehubble.xyz/docs/httpapi/httpapi.html)
 
 ## Packages
 

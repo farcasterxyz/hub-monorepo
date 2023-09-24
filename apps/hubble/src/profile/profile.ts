@@ -2,8 +2,9 @@ import { RootPrefix, UserMessagePostfixMax, UserPostfix } from "../storage/db/ty
 import { logger } from "../utils/logger.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import { createWriteStream, unlinkSync } from "fs";
+import { Result } from "neverthrow";
 
-// rome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'
+// biome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'
 function getMaxValue(enumType: any): number {
   let maxValue = 0;
 
@@ -246,6 +247,7 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
     new KeysProfile("Indexes"),
     new KeysProfile("Sync Trie Data"),
     new KeysProfile("Hub Events"),
+    new KeysProfile("OnChain Events"),
     new KeysProfile("Others"),
   ];
 
@@ -256,18 +258,16 @@ function prefixProfileToDataType(keysProfile: KeysProfile[], userPostfixKeys: Ke
 
     if (i === RootPrefix.User) {
       index = 0;
-    } else if (
-      (i >= RootPrefix.CastsByParent && i <= RootPrefix.ReactionsByTarget) ||
-      i === RootPrefix.IdRegistryEventByCustodyAddress ||
-      i === RootPrefix.NameRegistryEventsByExpiry
-    ) {
+    } else if (i >= RootPrefix.CastsByParent && i <= RootPrefix.ReactionsByTarget) {
       index = 1;
     } else if (i === RootPrefix.SyncMerkleTrieNode) {
       index = 2;
     } else if (i === RootPrefix.HubEvents) {
       index = 3;
-    } else {
+    } else if (i === RootPrefix.OnChainEvent) {
       index = 4;
+    } else {
+      index = 5;
     }
 
     const profile = dataTypePrefixes[index] as KeysProfile;
@@ -310,7 +310,7 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
   );
 
   // Caclulate the individual message sizes
-  const valueStats = Array.from({ length: 7 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
+  const valueStats = Array.from({ length: 8 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
   const allFids = new Map<number, ValueStats[]>();
 
   // Iterate over all the keys in the DB
@@ -337,7 +337,7 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
               (userPostfixKeys[postfix] as KeysProfile).keyBytes += key?.length || 0;
               (userPostfixKeys[postfix] as KeysProfile).valueBytes += value?.length || 0;
 
-              if (postfix <= UserPostfix.UserDataMessage) {
+              if (postfix < UserMessagePostfixMax) {
                 const fid = key.slice(1, 5).readUint32BE();
 
                 let fidProfile;
@@ -346,7 +346,7 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
                     fidProfile = allFids.get(fid) as ValueStats[];
                   } else {
                     fidProfile = Array.from(
-                      { length: 7 },
+                      { length: 8 },
                       (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()),
                     );
                     allFids.set(fid, fidProfile);
@@ -400,7 +400,10 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
 
   if (fidProfileFileName) {
     // Remove file if it exists
-    unlinkSync(fidProfileFileName);
+    Result.fromThrowable(
+      () => unlinkSync(fidProfileFileName),
+      (e) => e,
+    )();
 
     // Open a CSV file for writing
     const csvStream = createWriteStream(fidProfileFileName);

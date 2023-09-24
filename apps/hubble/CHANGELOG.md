@@ -1,5 +1,70 @@
 # @farcaster/hubble
 
+## 1.5.5
+
+### Patch Changes
+
+- a232963c: fix: Cleanup old snapshots from S3
+- 7cbd77ee: test: Add e2e test for hubble startup
+- 7b438e62: test: Add 2 hubble sync+gossip test
+- e8b2dafa: fix: Fix flaky pruneMessagesJob test
+- 0bc82ce4: test: Fix broken test due to Link storage limits change
+- 82c996af: fix: Grafana: Sync times are blank for longer timeranges
+- 7e2a66e5: feat: Add a function to parse the timestamp from the eventId
+- 520843ba: feat: Move libp2p to worker thread
+- d77970b1: chore: Delete deprecated rpc calls and events
+- Updated dependencies [d77970b1]
+  - @farcaster/hub-nodejs@0.10.9
+
+## 1.5.4
+
+### Patch Changes
+
+- 0805122c: fix: Grafana issue where incoming sync count was not correct
+- 4893e02d: fix: Update links store size to be 2500 in the future
+- 5dc7d113: chore: Remove GossipMetricsRecorder (Use grafana dashboard instead)
+- 8d21803e: feat: Add "up" and "down" commands to hubble.sh
+  - @farcaster/hub-nodejs@0.10.8
+
+## 1.5.3
+
+### Patch Changes
+
+- 08b652e: fix: Add txIndex to onchain events, fix wrong index being used in the primary key
+- b36eef2: fix: Extract snapshot on the fly while downloading snapshot
+- 93e43a8: fix: Use hashes to compare upgrade 'hubble.sh' versions
+- 7daaae4: fix: Simplify IP addr fetching, prefering ipv4
+- ac1f6ac: fix: Fetch envoy config during hubble.sh
+- baf983f: fix: Consume the FID rate limit only after a successful merge
+- Updated dependencies [08b652e]
+  - @farcaster/hub-nodejs@0.10.7
+
+## 1.5.2
+
+### Patch Changes
+
+- 2f2dd83d: feat: Snapshot sync
+- 40e017fe: fix: Fix progress bar for docker (non-TTY)
+- 6c12fee5: fix: Add custom linter for Grafana JSON
+- cff71488: chore: Remove Goerli RPC url and signer message logic
+- 52260bc8: chore: Deprecate "status" command
+- 0f83be8f: fix: Reformat grafana dashboard with descriptions
+- 316bcd3a: chore: Remove signer pre-sync for initial sync
+- 3c32cf21: fix: Supress progress logs during tests
+- 2ab99d95: feat: Add REST API
+- 7fd1f945: fix: Add progress bar for storage cache
+- aac4220f: chore: Add cli options documentation linter
+- 5cb9db86: feat: Sync latest messages first
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 5e5cfb15: fix: Ensure index keys are > UserMessagePostfixMax
+- ef65fd40: fix: Count peer validation errors during sync
+- bab7bba9: chore: Update the Grafana dashboard
+- 76a031e2: feat: Add storage limit constants to core
+- Updated dependencies [2ab99d95]
+- Updated dependencies [bc416dbe]
+- Updated dependencies [76a031e2]
+  - @farcaster/hub-nodejs@0.10.6
+
 ## 1.5.1
 
 ### Patch Changes

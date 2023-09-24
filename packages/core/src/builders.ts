@@ -21,8 +21,6 @@ type MessageBodyOptions = Pick<
   | "reactionBody"
   | "verificationAddEthAddressBody"
   | "verificationRemoveBody"
-  | "signerAddBody"
-  | "signerRemoveBody"
   | "userDataBody"
   | "linkBody"
   | "usernameProofBody"
@@ -269,48 +267,6 @@ export const makeVerificationRemoveData = (
   dataOptions: MessageDataOptions,
 ): HubAsyncResult<protobufs.VerificationRemoveData> => {
   return makeMessageData({ verificationRemoveBody: body }, protobufs.MessageType.VERIFICATION_REMOVE, dataOptions);
-};
-
-/* -------------------------------------------------------------------------- */
-/*                               SIGNER METHODS                               */
-/* -------------------------------------------------------------------------- */
-
-export const makeSignerAdd = async (
-  body: protobufs.SignerAddBody,
-  dataOptions: MessageDataOptions,
-  signer: Signer,
-): HubAsyncResult<protobufs.SignerAddMessage> => {
-  const data = await makeSignerAddData(body, dataOptions);
-  if (data.isErr()) {
-    return err(data.error);
-  }
-  return makeMessage(data.value, signer);
-};
-
-export const makeSignerRemove = async (
-  body: protobufs.SignerRemoveBody,
-  dataOptions: MessageDataOptions,
-  signer: Signer,
-): HubAsyncResult<protobufs.SignerRemoveMessage> => {
-  const data = await makeSignerRemoveData(body, dataOptions);
-  if (data.isErr()) {
-    return err(data.error);
-  }
-  return makeMessage(data.value, signer);
-};
-
-export const makeSignerAddData = (
-  body: protobufs.SignerAddBody,
-  dataOptions: MessageDataOptions,
-): HubAsyncResult<protobufs.SignerAddData> => {
-  return makeMessageData({ signerAddBody: body }, protobufs.MessageType.SIGNER_ADD, dataOptions);
-};
-
-export const makeSignerRemoveData = (
-  body: protobufs.SignerRemoveBody,
-  dataOptions: MessageDataOptions,
-): HubAsyncResult<protobufs.SignerRemoveData> => {
-  return makeMessageData({ signerRemoveBody: body }, protobufs.MessageType.SIGNER_REMOVE, dataOptions);
 };
 
 /* -------------------------------------------------------------------------- */

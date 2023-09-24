@@ -6,8 +6,7 @@ import {
   getInsecureHubRpcClient,
   HubInfoRequest,
   HubRpcClient,
-  IdRegistryEvent,
-  SignerAddMessage,
+  OnChainEvent,
   SyncStatusRequest,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
@@ -24,17 +23,20 @@ const mockGossipNode = {
 const engine = new Engine(db, network);
 const hub = new MockHub(db, engine, mockGossipNode);
 
+let syncEngine: SyncEngine;
 let server: Server;
 let client: HubRpcClient;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, new SyncEngine(hub, db), mockGossipNode);
+  syncEngine = new SyncEngine(hub, db);
+  server = new Server(hub, engine, syncEngine, mockGossipNode);
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
 afterAll(async () => {
   client.close();
+  await syncEngine.stop();
   await server.stop();
   await engine.stop();
 });
@@ -43,28 +45,30 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 let castAdd: CastAddMessage;
+let castAdd2: CastAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+  castAdd2 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
 describe("getInfo", () => {
   test("succeeds", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
+    await engine.mergeMessage(castAdd2);
 
     const result = await client.getInfo(HubInfoRequest.create({ dbStats: true }));
     expect(result.isOk()).toBeTruthy();
@@ -76,8 +80,9 @@ describe("getInfo", () => {
 
 describe("getSyncStatus", () => {
   test("succeeds", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
 
     const result = await client.getSyncStatus(SyncStatusRequest.create());

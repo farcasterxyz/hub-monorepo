@@ -5,16 +5,17 @@ import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNod
 import Engine from "../../storage/engine/index.js";
 import { NodeMetadata } from "./merkleTrie.js";
 import SyncEngine from "./syncEngine.js";
+import { SyncId } from "./syncId.js";
 
 export class MockRpcClient {
   engine: Engine;
   syncEngine: SyncEngine;
 
-  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getSyncMetadataByPrefixCalls: Array<any> = [];
-  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getAllSyncIdsByPrefixCalls: Array<any> = [];
-  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   getAllMessagesBySyncIdsCalls: Array<any> = [];
   getAllMessagesBySyncIdsReturns = 0;
 
@@ -71,7 +72,9 @@ export class MockRpcClient {
 
   async getAllMessagesBySyncIds(request: SyncIds): Promise<HubResult<MessagesResponse>> {
     this.getAllMessagesBySyncIdsCalls.push(request);
-    const messagesResult = await this.syncEngine.getAllMessagesBySyncIds(request.syncIds);
+    const messagesResult = await this.syncEngine.getAllMessagesBySyncIds(
+      request.syncIds.map((s) => SyncId.fromBytes(s)),
+    );
     return messagesResult.map((messages) => {
       this.getAllMessagesBySyncIdsReturns += messages.length;
       return MessagesResponse.create({ messages: messages ?? [] });

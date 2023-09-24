@@ -31,6 +31,9 @@ export class MockHub implements HubInterface {
     this.gossipNode = gossipNode;
   }
 
+  identity = "mock";
+  hubOperatorFid = 0;
+
   async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
     const result = await this.engine.mergeMessage(message);
 
@@ -39,14 +42,6 @@ export class MockHub implements HubInterface {
     }
 
     return result;
-  }
-
-  async submitIdRegistryEvent(event: IdRegistryEvent): HubAsyncResult<number> {
-    return this.engine.mergeIdRegistryEvent(event);
-  }
-
-  async submitNameRegistryEvent(event: NameRegistryEvent): HubAsyncResult<number> {
-    return this.engine.mergeNameRegistryEvent(event);
   }
 
   async submitUserNameProof(proof: UserNameProof): HubAsyncResult<number> {

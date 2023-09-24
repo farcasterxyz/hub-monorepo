@@ -4,9 +4,9 @@ import {
   getInsecureHubRpcClient,
   Metadata,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   HubInfoRequest,
+  OnChainEvent,
+  Message,
 } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import Server from "../server.js";
@@ -23,18 +23,18 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
+let castAdd: Message;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+  castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
 afterAll(async () => {
@@ -43,14 +43,17 @@ afterAll(async () => {
 
 describe("auth tests", () => {
   test("fails with invalid password", async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, "admin:password");
+    const syncEngine = new SyncEngine(hub, db);
+    const authServer = new Server(hub, engine, syncEngine, undefined, "admin:password");
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
-    await hub.submitIdRegistryEvent(custodyEvent);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
     // No password
-    const result = await authClient.submitMessage(signerAdd);
+    const result = await authClient.submitMessage(castAdd);
     expect(result._unsafeUnwrapErr()).toEqual(
       new HubError("unauthorized", "gRPC authentication failed: Authorization header is empty"),
     );
@@ -58,7 +61,7 @@ describe("auth tests", () => {
     // Wrong password
     const metadata = new Metadata();
     metadata.set("authorization", `Basic ${Buffer.from("admin:wrongpassword").toString("base64")}`);
-    const result2 = await authClient.submitMessage(signerAdd, metadata);
+    const result2 = await authClient.submitMessage(castAdd, metadata);
     expect(result2._unsafeUnwrapErr()).toEqual(
       new HubError("unauthorized", "gRPC authentication failed: Invalid password for user: admin"),
     );
@@ -66,7 +69,7 @@ describe("auth tests", () => {
     // Wrong username
     const metadata2 = new Metadata();
     metadata2.set("authorization", `Basic ${Buffer.from("wronguser:password").toString("base64")}`);
-    const result3 = await authClient.submitMessage(signerAdd, metadata2);
+    const result3 = await authClient.submitMessage(castAdd, metadata2);
     expect(result3._unsafeUnwrapErr()).toEqual(
       new HubError("unauthorized", "gRPC authentication failed: Invalid username: wronguser"),
     );
@@ -74,26 +77,31 @@ describe("auth tests", () => {
     // Right password
     const metadata3 = new Metadata();
     metadata3.set("authorization", `Basic ${Buffer.from("admin:password").toString("base64")}`);
-    const result4 = await authClient.submitMessage(signerAdd, metadata3);
+    const result4 = await authClient.submitMessage(castAdd, metadata3);
     expect(result4.isOk()).toBeTruthy();
 
     // Non submit methods work without auth
     const result5 = await authClient.getInfo(HubInfoRequest.create());
     expect(result5.isOk()).toBeTruthy();
 
+    await syncEngine.stop();
     await authServer.stop();
+
     authClient.close();
   });
 
   test("all submit methods require auth", async () => {
-    const authServer = new Server(hub, engine, new SyncEngine(hub, db), undefined, "admin:password");
+    const syncEngine = new SyncEngine(hub, db);
+    const authServer = new Server(hub, engine, syncEngine, undefined, "admin:password");
     const port = await authServer.start();
     const authClient = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 
-    await hub.submitIdRegistryEvent(custodyEvent);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
 
     // Without auth fails
-    const result1 = await authClient.submitMessage(signerAdd);
+    const result1 = await authClient.submitMessage(castAdd);
     expect(result1._unsafeUnwrapErr()).toEqual(
       new HubError("unauthorized", "gRPC authentication failed: Authorization header is empty"),
     );
@@ -102,9 +110,10 @@ describe("auth tests", () => {
     const metadata = new Metadata();
     metadata.set("authorization", `Basic ${Buffer.from("admin:password").toString("base64")}`);
 
-    const result2 = await authClient.submitMessage(signerAdd, metadata);
+    const result2 = await authClient.submitMessage(castAdd, metadata);
     expect(result2.isOk()).toBeTruthy();
 
+    await syncEngine.stop();
     await authServer.stop();
     authClient.close();
   });

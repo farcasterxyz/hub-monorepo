@@ -2,8 +2,6 @@ import { faker } from "@faker-js/faker";
 import {
   Message,
   FarcasterNetwork,
-  IdRegistryEvent,
-  SignerAddMessage,
   CastAddMessage,
   CastId,
   FidRequest,
@@ -12,6 +10,7 @@ import {
   HubError,
   getInsecureHubRpcClient,
   HubRpcClient,
+  OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import Server from "../server.js";
@@ -44,27 +43,26 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 let castAdd: CastAddMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
 describe("getCast", () => {
   test("succeeds", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
 
     const result = await client.getCast(CastId.create({ fid, hash: castAdd.hash }));
@@ -73,8 +71,9 @@ describe("getCast", () => {
   });
 
   test("fails if cast is missing", async () => {
-    await engine.mergeIdRegistryEvent(custodyEvent);
-    await engine.mergeMessage(signerAdd);
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
     const result = await client.getCast(CastId.create({ fid, hash: castAdd.hash }));
     expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
@@ -96,8 +95,9 @@ describe("getCast", () => {
 
   describe("getCastsByFid", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     test("succeeds", async () => {
@@ -138,8 +138,9 @@ describe("getCast", () => {
 
   describe("getCastsByParent", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     test("succeeds with parent CastId", async () => {
@@ -175,8 +176,9 @@ describe("getCast", () => {
 
   describe("getCastsByMention", () => {
     beforeEach(async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
     });
 
     test("succeeds", async () => {

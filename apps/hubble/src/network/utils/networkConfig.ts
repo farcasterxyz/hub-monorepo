@@ -51,7 +51,7 @@ export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
             return;
           }
 
-          // rome-ignore lint/suspicious/noExplicitAny: context has to be "any"
+          // biome-ignore lint/suspicious/noExplicitAny: context has to be "any"
           const context: any = {};
 
           const result = Result.fromThrowable(

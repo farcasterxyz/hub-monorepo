@@ -1,5 +1,32 @@
 # @farcaster/core
 
+## 0.12.9
+
+### Patch Changes
+
+- 7e2a66e5: feat: Add a function to parse the timestamp from the eventId
+- 20062ceb: chore: cleanup default links store size code
+- d77970b1: chore: Delete deprecated rpc calls and events
+
+## 0.12.8
+
+### Patch Changes
+
+- 4893e02d: fix: Update links store size to be 2500 in the future
+
+## 0.12.7
+
+### Patch Changes
+
+- 08b652e: fix: Add txIndex to onchain events, fix wrong index being used in the primary key
+
+## 0.12.6
+
+### Patch Changes
+
+- bc416dbe: feat: Allow Hub operators to set an FID
+- 76a031e2: feat: Add storage limit constants to core
+
 ## 0.12.5
 
 ### Patch Changes

@@ -6,14 +6,11 @@ import {
   HubResult,
   isHubError,
   HubEvent,
-  isMergeIdRegistryEventHubEvent,
   isMergeMessageHubEvent,
   isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
-  MergeIdRegistryEventHubEvent,
   MergeMessageHubEvent,
-  MergeNameRegistryEventHubEvent,
   MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
@@ -37,8 +34,6 @@ import {
   LinkRemoveMessage,
   ReactionAddMessage,
   ReactionRemoveMessage,
-  SignerAddMessage,
-  SignerRemoveMessage,
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
@@ -48,15 +43,12 @@ import { logger } from "../../utils/logger.js";
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 1_000;
 const DEFAULT_LOCK_TIMEOUT = 500; // in ms
-const PRUNING_START_GRACE_PERIOD = 60 * 60 * 24 * 1000; // 1 day in ms
 
 type PrunableMessage =
   | CastAddMessage
   | CastRemoveMessage
   | ReactionAddMessage
   | ReactionRemoveMessage
-  | SignerAddMessage
-  | SignerRemoveMessage
   | UserDataAddMessage
   | VerificationAddEthAddressMessage
   | VerificationRemoveMessage
@@ -83,18 +75,6 @@ export type StoreEvents = {
    * custody address.
    */
   revokeMessage: (event: RevokeMessageHubEvent) => void;
-
-  /**
-   * mergeIdRegistryEvent is emitted when an event from the ID Registry contract is
-   * merged into the SignerStore.
-   */
-  mergeIdRegistryEvent: (event: MergeIdRegistryEventHubEvent) => void;
-
-  /**
-   * mergeNameRegistryEvent is emitted when an event from the Name Registry contract
-   * is merged into the UserDataStore.
-   */
-  mergeNameRegistryEvent: (event: MergeNameRegistryEventHubEvent) => void;
 
   /**
    * mergeUsernameProofEvent is emitted when a username proof from the fname server
@@ -176,8 +156,8 @@ const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => 
 };
 
 export type StoreEventHandlerOptions = {
-  lockMaxPending?: number;
-  lockTimeout?: number;
+  lockMaxPending?: number | undefined;
+  lockTimeout?: number | undefined;
 };
 
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
@@ -185,7 +165,6 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _generator: HubEventIdGenerator;
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
-  private _signerMigratedAt = 0;
 
   constructor(db: RocksDB, options: StoreEventHandlerOptions = {}) {
     super();
@@ -208,10 +187,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     return units.map((u) => {
-      if (this.shouldEnforcePruning) {
-        return u;
-      }
-      return u > 0 ? u : 1;
+      return u;
     });
   }
 
@@ -257,6 +233,35 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }, iteratorOpts.value);
 
     return ok(events);
+  }
+
+  async getEventsPage(
+    fromId: number,
+    pageSize: number,
+  ): HubAsyncResult<{ events: HubEvent[]; nextPageEventId: number }> {
+    const events: HubEvent[] = [];
+    const iteratorOpts = this.getEventsIteratorOpts({ fromId });
+    if (iteratorOpts.isErr()) {
+      return err(iteratorOpts.error);
+    }
+
+    let lastEventId = fromId;
+    await this._db.forEachIterator((key, value) => {
+      const event = HubEvent.decode(Uint8Array.from(value as Buffer));
+      events.push(event);
+
+      if (key) {
+        lastEventId = Number(key.readBigUint64BE(1));
+      }
+
+      if (events.length >= pageSize) {
+        return true;
+      }
+
+      return false;
+    }, iteratorOpts.value);
+
+    return ok({ events, nextPageEventId: lastEventId + 1 });
   }
 
   public async isPrunable(
@@ -321,7 +326,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         }
         const event = HubEvent.create({ ...eventArgs, id: eventId.value });
         // TODO: validate event
-        // rome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+        // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
         txn = putEventTransaction(txn, event);
 
         await this._db.commit(txn);
@@ -345,13 +350,17 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    const result = await this._db.forEachIterator(async (key, _value) => {
-      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
-      if (result.isErr()) {
-        return err(result.error);
-      }
-      return false;
-    }, iteratorOpts.value);
+    const result = await this._db.forEachIterator(
+      async (key, _value) => {
+        const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
+        if (result.isErr()) {
+          return err(result.error);
+        }
+        return false;
+      },
+      iteratorOpts.value,
+      10 * 60 * 1000, // 10 minutes
+    );
 
     if (result) {
       return err(result.error);
@@ -367,8 +376,6 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       this.emit("pruneMessage", event);
     } else if (isRevokeMessageHubEvent(event)) {
       this.emit("revokeMessage", event);
-    } else if (isMergeIdRegistryEventHubEvent(event)) {
-      this.emit("mergeIdRegistryEvent", event);
     } else if (isMergeUsernameProofHubEvent(event)) {
       this.emit("mergeUsernameProofEvent", event);
     } else if (isMergeOnChainHubEvent(event)) {
@@ -378,18 +385,6 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     return ok(undefined);
-  }
-
-  signerMigrated(migratedAt: number) {
-    this._signerMigratedAt = migratedAt;
-  }
-
-  get shouldEnforcePruning(): boolean {
-    if (!this._signerMigratedAt) {
-      return false;
-    }
-    const pruneStartInMs = this._signerMigratedAt * 1000 + PRUNING_START_GRACE_PERIOD;
-    return Date.now() > pruneStartInMs;
   }
 }
 

@@ -7,6 +7,7 @@
 
 const DEFAULT_GOSSIP_PORT = 2282;
 const DEFAULT_RPC_PORT = 2283;
+const DEFAULT_HTTP_API_PORT = 2281;
 const DEFAULT_NETWORK = 3; // Farcaster Devnet
 
 export const Config = {
@@ -18,8 +19,6 @@ export const Config = {
   // fnameServerUrl: '';
   /** Network URL of the StorageRegistry Contract */
   // l2RpcUrl: '',
-  /** Address of the IdRegistry Contract  */
-  // firAddress: '',
   /** A list of MultiAddrs to use for bootstrapping */
   // bootstrap: [],
   /** An "allow list" of Peer Ids. Blocks all other connections */
@@ -37,6 +36,8 @@ export const Config = {
   gossipPort: DEFAULT_GOSSIP_PORT,
   /** The RPC port to use. */
   rpcPort: DEFAULT_RPC_PORT,
+  /** The HTTP API port to use. */
+  httpApiPort: DEFAULT_HTTP_API_PORT,
   /** RPC Auth, disabled by default */
   // rpcAuth: 'admin:password',
   /** Per-IP rate limiting for the RPC server*/
@@ -51,6 +52,8 @@ export const Config = {
   commitLockMaxPending: 1_000,
   /** Farcaster network */
   network: DEFAULT_NETWORK,
+  /** Don't allow snapshot sync */
+  // disableSnapshotSync: true,
   /** Start the admin server? */
   adminServerEnabled: false,
   /** The admin server bind host */
@@ -61,4 +64,8 @@ export const Config = {
   directPeers: [],
   /** Disable progress bars and immediately print logs instead */
   // disableConsoleStatus: false,
+  /** Enable backing up snapshots to S3 */
+  // enableSnapshotToS3: false,
+  /** S3 bucket name */
+  // s3BucketName: '',
 };

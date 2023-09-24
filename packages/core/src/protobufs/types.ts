@@ -1,5 +1,3 @@
-import { IdRegistryEvent } from "./generated/id_registry_event";
-import { NameRegistryEvent } from "./generated/name_registry_event";
 import * as hubEventProtobufs from "./generated/hub_event";
 import * as protobufs from "./generated/message";
 import * as onchainEventProtobufs from "./generated/onchain_event";
@@ -88,26 +86,6 @@ export type VerificationRemoveMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
-export type SignerAddData = protobufs.MessageData & {
-  type: protobufs.MessageType.SIGNER_ADD;
-  signerAddBody: protobufs.SignerAddBody;
-};
-
-export type SignerAddMessage = protobufs.Message & {
-  data: SignerAddData;
-  signatureScheme: protobufs.SignatureScheme.EIP712;
-};
-
-export type SignerRemoveData = protobufs.MessageData & {
-  type: protobufs.MessageType.SIGNER_REMOVE;
-  signerRemoveBody: protobufs.SignerRemoveBody;
-};
-
-export type SignerRemoveMessage = protobufs.Message & {
-  data: SignerRemoveData;
-  signatureScheme: protobufs.SignatureScheme.EIP712;
-};
-
 export type UserDataAddData = protobufs.MessageData & {
   type: protobufs.MessageType.USER_DATA_ADD;
   userDataBody: protobufs.UserDataBody;
@@ -168,20 +146,6 @@ export type PruneMessageHubEvent = hubEventProtobufs.HubEvent & {
   type: hubEventProtobufs.HubEventType.PRUNE_MESSAGE;
   pruneMessageBody: hubEventProtobufs.PruneMessageBody & {
     message: protobufs.Message;
-  };
-};
-
-export type MergeIdRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
-  type: hubEventProtobufs.HubEventType.MERGE_ID_REGISTRY_EVENT;
-  mergeIdRegistryEventBody: hubEventProtobufs.MergeIdRegistryEventBody & {
-    idRegistryEvent: IdRegistryEvent;
-  };
-};
-
-export type MergeNameRegistryEventHubEvent = hubEventProtobufs.HubEvent & {
-  type: hubEventProtobufs.HubEventType.MERGE_NAME_REGISTRY_EVENT;
-  mergeNameRegistryEventBody: hubEventProtobufs.MergeNameRegistryEventBody & {
-    nameRegistryEvent: NameRegistryEvent;
   };
 };
 

@@ -1,9 +1,6 @@
 import {
   Message,
   FarcasterNetwork,
-  IdRegistryEvent,
-  NameRegistryEvent,
-  SignerAddMessage,
   CastAddMessage,
   ReactionAddMessage,
   HubEventType,
@@ -12,20 +9,17 @@ import {
   isMergeMessageHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
-  isMergeIdRegistryEventHubEvent,
-  isMergeNameRegistryEventHubEvent,
   Factories,
   getInsecureHubRpcClient,
   HubRpcClient,
   ClientReadableStream,
   UserNameProof,
   isMergeUsernameProofHubEvent,
-  Metadata,
   getAuthMetadata,
   OnChainEvent,
   isMergeOnChainHubEvent,
 } from "@farcaster/hub-nodejs";
-import Server, { SUBSCRIBE_PERIP_LIMIT } from "../server.js";
+import Server from "../server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -40,9 +34,18 @@ let client: HubRpcClient;
 
 const rpcUser = "rpcUser";
 const rpcPass = "rpcPass";
+const testRpcSubscribePerIpLimit = 5;
 
 beforeAll(async () => {
-  server = new Server(hub, engine, undefined, undefined, `${rpcUser}:${rpcPass}`);
+  server = new Server(
+    hub,
+    engine,
+    undefined,
+    undefined,
+    `${rpcUser}:${rpcPass}`,
+    undefined,
+    testRpcSubscribePerIpLimit,
+  );
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
@@ -56,13 +59,13 @@ const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
-let custodyEvent: IdRegistryEvent;
 let usernameProof: UserNameProof;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 let castAdd: CastAddMessage;
 let reactionAdd: ReactionAddMessage;
-let onChainEvent: OnChainEvent;
-// rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 let events: [HubEventType, any][];
 let stream: ClientReadableStream<HubEvent>;
 
@@ -79,19 +82,16 @@ afterEach(async () => {
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ to: custodySignerKey, fid });
   usernameProof = Factories.UserNameProof.build({ owner: custodySignerKey, name: fname });
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });
-  onChainEvent = Factories.OnChainEvent.build({ fid });
 });
 
 const setupSubscription = async (
-  // rome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   events: [HubEventType, any][],
   options: { eventTypes?: HubEventType[]; fromId?: number } = {},
 ): Promise<ClientReadableStream<HubEvent>> => {
@@ -106,25 +106,19 @@ const setupSubscription = async (
 
   stream.on("data", (event: HubEvent) => {
     if (isMergeMessageHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.mergeMessageBody.message!)]);
     } else if (isPruneMessageHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.pruneMessageBody.message!)]);
     } else if (isRevokeMessageHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, Message.toJSON(event.revokeMessageBody.message!)]);
-    } else if (isMergeIdRegistryEventHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-      events.push([event.type, IdRegistryEvent.toJSON(event.mergeIdRegistryEventBody.idRegistryEvent!)]);
-    } else if (isMergeNameRegistryEventHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-      events.push([event.type, NameRegistryEvent.toJSON(event.mergeNameRegistryEventBody.nameRegistryEvent!)]);
     } else if (isMergeUsernameProofHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, UserNameProof.toJSON(event.mergeUsernameProofBody.usernameProof!)]);
     } else if (isMergeOnChainHubEvent(event)) {
-      // rome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
       events.push([event.type, OnChainEvent.toJSON(event.mergeOnChainEventBody.onChainEvent!)]);
     }
   });
@@ -155,18 +149,18 @@ describe("subscribe", () => {
   describe("without type filters", () => {
     test("emits events", async () => {
       stream = await setupSubscription(events);
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
       await engine.mergeMessage(castAdd);
       await engine.mergeUserNameProof(usernameProof);
-      await engine.mergeOnChainEvent(onChainEvent);
       await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
-        [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(custodyEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(signerEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(storageEvent)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
         [HubEventType.MERGE_USERNAME_PROOF, UserNameProof.toJSON(usernameProof)],
-        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(onChainEvent)],
       ]);
     });
   });
@@ -177,56 +171,52 @@ describe("subscribe", () => {
         eventTypes: [HubEventType.MERGE_MESSAGE],
       });
 
-      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
       await engine.mergeUserNameProof(usernameProof);
-      await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
       await sleep(100); // Wait for server to send events over stream
-      expect(events).toEqual([
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
-      ]);
+      expect(events).toEqual([[HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)]]);
     });
   });
 
   describe("with multiple type filters", () => {
     test("emits events", async () => {
       stream = await setupSubscription(events, {
-        eventTypes: [
-          HubEventType.MERGE_MESSAGE,
-          HubEventType.MERGE_USERNAME_PROOF,
-          HubEventType.MERGE_ID_REGISTRY_EVENT,
-          HubEventType.MERGE_ON_CHAIN_EVENT,
-        ],
+        eventTypes: [HubEventType.MERGE_MESSAGE, HubEventType.MERGE_USERNAME_PROOF, HubEventType.MERGE_ON_CHAIN_EVENT],
       });
 
-      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
       await engine.mergeUserNameProof(usernameProof);
-      await engine.mergeMessage(signerAdd);
       await engine.mergeMessage(castAdd);
-      await engine.mergeOnChainEvent(onChainEvent);
       await sleep(100); // Wait for server to send events over stream
       expect(events).toEqual([
-        [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(custodyEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(signerEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(storageEvent)],
         [HubEventType.MERGE_USERNAME_PROOF, UserNameProof.toJSON(usernameProof)],
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
-        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(onChainEvent)],
       ]);
     });
   });
 
   describe("with fromId", () => {
     test("emits events from id onwards", async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      const idResult = await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      const signerResult = await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
+
       await engine.mergeMessage(castAdd);
-      stream = await setupSubscription(events, { fromId: idResult._unsafeUnwrap() });
+      stream = await setupSubscription(events, { fromId: signerResult._unsafeUnwrap() });
       await engine.mergeUserNameProof(usernameProof);
       await engine.mergeMessage(reactionAdd);
       await sleep(100);
       expect(events).toEqual([
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(signerEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(storageEvent)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
         [HubEventType.MERGE_USERNAME_PROOF, UserNameProof.toJSON(usernameProof)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(reactionAdd)],
@@ -234,25 +224,29 @@ describe("subscribe", () => {
     });
 
     test("emits events with early id", async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
 
       stream = await setupSubscription(events, { fromId: 1 });
       expect(events).toEqual([
-        [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(custodyEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(signerEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(storageEvent)],
       ]);
     });
 
     test("emits events with fromId of 0", async () => {
-      await engine.mergeIdRegistryEvent(custodyEvent);
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
 
       stream = await setupSubscription(events, { fromId: 0 });
 
       expect(events).toEqual([
-        [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(custodyEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(signerEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(storageEvent)],
       ]);
     });
 
@@ -260,7 +254,7 @@ describe("subscribe", () => {
       const streams = [];
 
       // All these should succeed
-      for (let i = 0; i < SUBSCRIBE_PERIP_LIMIT; i++) {
+      for (let i = 0; i < testRpcSubscribePerIpLimit; i++) {
         const stream = await client.subscribe({ eventTypes: [] });
         expect(stream.isOk()).toBe(true);
         streams.push(stream._unsafeUnwrap());
@@ -295,18 +289,21 @@ describe("subscribe", () => {
   describe("with fromId and type filters", () => {
     test("emits events", async () => {
       const nameResult = await engine.mergeUserNameProof(usernameProof);
-      await engine.mergeIdRegistryEvent(custodyEvent);
+      await engine.mergeOnChainEvent(custodyEvent);
+
       stream = await setupSubscription(events, {
         fromId: nameResult._unsafeUnwrap(),
-        eventTypes: [HubEventType.MERGE_MESSAGE, HubEventType.MERGE_ID_REGISTRY_EVENT],
+        eventTypes: [HubEventType.MERGE_MESSAGE, HubEventType.MERGE_ON_CHAIN_EVENT],
       });
-      await engine.mergeMessage(signerAdd);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
       await engine.mergeMessage(castAdd);
       await engine.mergeMessage(reactionAdd);
       await sleep(100);
       expect(events).toEqual([
-        [HubEventType.MERGE_ID_REGISTRY_EVENT, IdRegistryEvent.toJSON(custodyEvent)],
-        [HubEventType.MERGE_MESSAGE, Message.toJSON(signerAdd)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(custodyEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(signerEvent)],
+        [HubEventType.MERGE_ON_CHAIN_EVENT, OnChainEvent.toJSON(storageEvent)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(reactionAdd)],
       ]);

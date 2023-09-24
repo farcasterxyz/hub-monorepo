@@ -2,7 +2,7 @@ import { CastAddMessage, CastRemoveMessage, NobleEd25519Signer, makeCastAdd } fr
 import * as ed from "@noble/ed25519";
 import { DeepPartial, Store } from "./store.js";
 import { MessageType, HubAsyncResult } from "@farcaster/hub-nodejs";
-import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { Message } from "@farcaster/hub-nodejs";
 import { isCastAddMessage } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
@@ -19,7 +19,13 @@ const eventHandler = new StoreEventHandler(db);
 
 class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
   override makeAddKey(data: DeepPartial<CastAddMessage>) {
-    return data.hash as Uint8Array as Buffer;
+    const hash = data.hash as Uint8Array as Buffer;
+    return Buffer.concat([
+      Buffer.from([RootPrefix.User]), // root prefix
+      Buffer.from([0, 0, 1, 10]), // fid
+      Buffer.from([UserPostfix.CastAdds]), // CastAdds postfix
+      hash,
+    ]);
   }
   override makeRemoveKey(_data: DeepPartial<CastRemoveMessage>): Buffer {
     throw new Error("Method not implemented");
@@ -168,10 +174,9 @@ describe("store", () => {
       await store.merge(castAddFid4._unsafeUnwrap());
     }
 
-    // For now, this should match the storage size, we follow existing behavior
-    // for users without storage rent. Adjust this later.
+    // This user has no storage, so all messages should be pruned
     const pruneCount2 = await store.pruneMessages(2);
-    expect(pruneCount2._unsafeUnwrap()).toHaveLength(100);
+    expect(pruneCount2._unsafeUnwrap()).toHaveLength(200);
 
     // This user has two slots, should be double.
     const pruneCount3 = await store.pruneMessages(3);

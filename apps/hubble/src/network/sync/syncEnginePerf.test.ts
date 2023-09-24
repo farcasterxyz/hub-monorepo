@@ -1,11 +1,4 @@
-import {
-  FarcasterNetwork,
-  Factories,
-  HubRpcClient,
-  IdRegistryEvent,
-  SignerAddMessage,
-  CastAddMessage,
-} from "@farcaster/hub-nodejs";
+import { FarcasterNetwork, Factories, HubRpcClient, CastAddMessage, OnChainEvent } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import { MockHub } from "../../test/mocks.js";
@@ -21,18 +14,16 @@ const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-let custodyEvent: IdRegistryEvent;
-let signerAdd: SignerAddMessage;
+let custodyEvent: OnChainEvent;
+let signerEvent: OnChainEvent;
+let storageEvent: OnChainEvent;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryEvent.build({ fid, to: custodySignerKey });
-
-  signerAdd = await Factories.SignerAddMessage.create(
-    { data: { fid, network, signerAddBody: { signer: signerKey } } },
-    { transient: { signer: custodySigner } },
-  );
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 });
 
 describe("SyncEnginePerfTest", () => {
@@ -59,10 +50,12 @@ describe("SyncEnginePerfTest", () => {
       const syncEngine2 = new SyncEngine(hub2, testDb2);
 
       try {
-        await hub1.submitIdRegistryEvent(custodyEvent);
-        await hub1.submitMessage(signerAdd);
-        await hub2.submitIdRegistryEvent(custodyEvent);
-        await hub2.submitMessage(signerAdd);
+        await hub1.submitOnChainEvent(custodyEvent);
+        await hub1.submitOnChainEvent(signerEvent);
+        await hub1.submitOnChainEvent(storageEvent);
+        await hub2.submitOnChainEvent(custodyEvent);
+        await hub2.submitOnChainEvent(signerEvent);
+        await hub2.submitOnChainEvent(storageEvent);
 
         Date.now = () => 1683074200000;
         // Merge the same messages into both engines.
@@ -81,7 +74,7 @@ describe("SyncEnginePerfTest", () => {
         Date.now = () => 1683074200000 + 200 * 1000;
 
         const snapshot2 = (await syncEngine2.getSnapshot())._unsafeUnwrap();
-        expect((snapshot2.prefix as Buffer).toString("utf8")).toEqual("0073615");
+        expect(Buffer.from(snapshot2.prefix).toString("utf8")).toEqual("0073615");
         // Force a non-existent prefix (the original bug #536 is fixed)
         snapshot2.prefix = Buffer.from("00306622", "hex");
 
