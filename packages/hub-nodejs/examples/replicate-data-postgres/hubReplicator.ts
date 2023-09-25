@@ -600,6 +600,7 @@ export class HubReplicator {
       await this.db
         .updateTable("reactions")
         .where("fid", "=", message.data.fid)
+        .where("reaction_type", "=", message.data.reactionBody.type)
         .where((eb) => {
           // Search based on the type of reaction
           if (message.data.reactionBody.targetUrl) {
