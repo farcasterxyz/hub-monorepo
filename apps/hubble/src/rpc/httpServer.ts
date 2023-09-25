@@ -1,6 +1,7 @@
 import {
   HubError,
   HubEvent,
+  HubInfoResponse,
   HubResult,
   HubServiceServer,
   Message,
@@ -206,6 +207,16 @@ export class HttpAPIServer {
   }
 
   initHandlers() {
+    //================getInfo================
+    // @doc-tag: /info?dbstats=...
+    this.app.get<{ Querystring: { dbstats: string } }>("/v1/info", (request, reply) => {
+      const { dbstats } = request.query;
+      const dbStats = dbstats === "true" ? true : parseInt(dbstats) ? true : false;
+
+      const call = getCallObject("getInfo", { dbStats }, request);
+      this.grpcImpl.getInfo(call, handleResponse(reply, HubInfoResponse));
+    });
+
     //================Casts================
     // @doc-tag: /castById?fid=...&hash=...
     this.app.get<{ Querystring: { fid: string; hash: string } }>("/v1/castById", (request, reply) => {
