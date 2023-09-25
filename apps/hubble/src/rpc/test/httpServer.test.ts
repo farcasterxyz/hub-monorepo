@@ -32,6 +32,7 @@ import { DeepPartial } from "fishery";
 import { mergeDeepPartial } from "../../test/utils.js";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
+import { APP_VERSION } from "../../hubble.js";
 
 const db = jestRocksDB("httpserver.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -84,6 +85,16 @@ describe("httpServer", () => {
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
+  });
+
+  describe("getInfo", () => {
+    test("getInfo", async () => {
+      const url = getFullUrl("/v1/info");
+      const response = await axios.get(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data.version).toEqual(APP_VERSION);
+    });
   });
 
   describe("submit APIs", () => {

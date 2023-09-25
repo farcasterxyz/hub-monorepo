@@ -41,6 +41,7 @@ export default defineConfig({
               { text: "On Chain API", link: "/docs/httpapi/onchain" },
               { text: "SubmitMessage API", link: "/docs/httpapi/submitmessage" },
               { text: "Events API", link: "/docs/httpapi/events" },
+              { text: "Info API", link: "/docs/httpapi/info" },
             ],
           },
           { text: "Messages", link: "/docs/messages" },

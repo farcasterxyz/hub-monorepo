@@ -273,11 +273,24 @@ describe("GossipNode", () => {
       gossipMessage = GossipMessage.create({
         message: castAdd,
         topics: ["foobar"],
+        // invalid peerIds are not allowed
+        peerId: undefined as unknown as Uint8Array,
+      });
+      expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+
+      gossipMessage = GossipMessage.create({
+        message: castAdd,
+        topics: ["foobar"],
         peerId: peerId.toBytes(),
         // invalid versions are not allowed
         version: 12345 as GossipVersion,
       });
       expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+
+      // Invalid encoding
+      expect(LibP2PNode.decodeMessage(new Uint8Array([1, 2, 3, 4, 5])).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(new Uint8Array([])).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(undefined as unknown as Uint8Array).isErr()).toBeTruthy();
     });
   });
 });
