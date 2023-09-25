@@ -113,7 +113,9 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
 
   async mergeUserNameProof(usernameProof: UserNameProof): Promise<number> {
     const existingProof = await ResultAsync.fromPromise(this.getUserNameProof(usernameProof.name), () => undefined);
-    if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) >= 0) {
+    if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) === 0) {
+      throw new HubError("bad_request.duplicate", "proof already exists");
+    } else if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) > 0) {
       throw new HubError("bad_request.conflict", "event conflicts with a more recent UserNameProof");
     }
 

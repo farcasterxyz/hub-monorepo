@@ -27,7 +27,6 @@ import { MockHub } from "../../test/mocks.js";
 import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
-import { sync } from "rimraf";
 
 const TEST_TIMEOUT_SHORT = 60 * 1000;
 const SLEEPWHILE_TIMEOUT = 10 * 1000;
@@ -574,6 +573,28 @@ describe("SyncEngine", () => {
         await sleep(10); // Have to wait for the worker to finish processing messages
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeTruthy();
+      });
+
+      test("adds sync ids to the trie when not present and egnine rejects as duplicate", async () => {
+        await engine.mergeOnChainEvent(custodyEvent);
+        await engine.mergeUserNameProof(userNameProof);
+
+        await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(custodyEvent));
+        await syncEngine.trie.deleteBySyncId(SyncId.fromFName(userNameProof));
+
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
+
+        const eventResult = await engine.mergeOnChainEvent(custodyEvent);
+        const fnameResult = await engine.mergeUserNameProof(userNameProof);
+
+        expect(eventResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+        expect(fnameResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+
+        await sleep(10);
+
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
       });
     });
   });

@@ -273,6 +273,22 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         }
       }
     });
+    this._hub.engine.on("duplicateUserNameProofEvent", async (event: UserNameProof) => {
+      if (this._syncEvents && event.type === UserNameType.USERNAME_TYPE_FNAME) {
+        const syncId = SyncId.fromFName(event);
+        if (!(await this.trie.exists(syncId))) {
+          await this._trie.insert(syncId);
+        }
+      }
+    });
+    this._hub.engine.on("duplicateOnChainEvent", async (event: OnChainEvent) => {
+      if (this._syncEvents) {
+        const syncId = SyncId.fromOnChainEvent(event);
+        if (!(await this.trie.exists(syncId))) {
+          await this._trie.insert(syncId);
+        }
+      }
+    });
   }
 
   public get syncTrieQSize(): number {
