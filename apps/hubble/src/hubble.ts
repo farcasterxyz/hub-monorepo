@@ -347,7 +347,13 @@ export class Hub implements HubInterface {
     this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient);
 
     const profileSync = options.profileSync ?? false;
-    this.syncEngine = new SyncEngine(this, this.rocksDB, this.l2RegistryProvider, profileSync);
+    this.syncEngine = new SyncEngine(
+      this,
+      this.rocksDB,
+      this.l2RegistryProvider,
+      this.fNameRegistryEventsProvider,
+      profileSync,
+    );
 
     // If profileSync is true, exit after sync is complete
     if (profileSync) {
@@ -848,7 +854,7 @@ export class Hub implements HubInterface {
     const result = await ResultAsync.fromPromise(getHubState(this.rocksDB), (e) => e as HubError);
     if (result.isErr() && result.error.errCode === "not_found") {
       log.info("hub state not found, resetting state");
-      const hubState = HubState.create({ lastEthBlock: 0, lastFnameProof: 0 });
+      const hubState = HubState.create({ lastEthBlock: 0, lastFnameProof: 0, syncEvents: false });
       await putHubState(this.rocksDB, hubState);
       return ok(hubState);
     }

@@ -25,8 +25,9 @@ describe("SyncId", () => {
         { data: { fid, network } },
         { transient: { signer } },
       );
-      const syncId = SyncId.fromMessage(castAddMessage).syncId();
-      const unpackedSyncId = SyncId.unpack(syncId) as MessageSyncId;
+      const syncId = SyncId.fromMessage(castAddMessage);
+      expect(syncId.type()).toEqual(SyncIdType.Message);
+      const unpackedSyncId = syncId.unpack() as MessageSyncId;
       expect(unpackedSyncId.type).toEqual(SyncIdType.Message);
       expect(unpackedSyncId.fid).toEqual(fid);
       expect(unpackedSyncId.hash).toEqual(castAddMessage.hash);
@@ -37,8 +38,9 @@ describe("SyncId", () => {
   describe("FName syncIds", () => {
     test("creates and unpacks correctly from message", async () => {
       const fnameProof = Factories.UserNameProof.build();
-      const syncId = SyncId.fromFName(fnameProof).syncId();
-      const unpackedSyncId = SyncId.unpack(syncId) as FNameSyncId;
+      const syncId = SyncId.fromFName(fnameProof);
+      expect(syncId.type()).toEqual(SyncIdType.FName);
+      const unpackedSyncId = syncId.unpack() as FNameSyncId;
       expect(unpackedSyncId.type).toEqual(SyncIdType.FName);
       expect(unpackedSyncId.fid).toEqual(fnameProof.fid);
       expect(unpackedSyncId.name).toEqual(fnameProof.name);
@@ -48,8 +50,9 @@ describe("SyncId", () => {
   describe("OnChainEvent syncIds", () => {
     test("creates and unpacks correctly from message", async () => {
       const onChainEvent = Factories.IdRegistryOnChainEvent.build();
-      const syncId = SyncId.fromOnChainEvent(onChainEvent).syncId();
-      const unpackedSyncId = SyncId.unpack(syncId) as OnChainEventSyncId;
+      const syncId = SyncId.fromOnChainEvent(onChainEvent);
+      expect(syncId.type()).toEqual(SyncIdType.OnChainEvent);
+      const unpackedSyncId = syncId.unpack() as OnChainEventSyncId;
       expect(unpackedSyncId.type).toEqual(SyncIdType.OnChainEvent);
       expect(unpackedSyncId.fid).toEqual(onChainEvent.fid);
       expect(unpackedSyncId.blockNumber).toEqual(onChainEvent.blockNumber);
@@ -62,7 +65,9 @@ describe("SyncId", () => {
       bytes.set([RootPrefix.HubEvents], TIMESTAMP_LENGTH);
       const fid = Factories.Fid.build();
       bytes.set(makeFidKey(fid), TIMESTAMP_LENGTH + 1);
-      const unpackedSyncId = SyncId.unpack(bytes);
+      const syncId = SyncId.fromBytes(bytes);
+      expect(syncId.type()).toEqual(SyncIdType.Unknown);
+      const unpackedSyncId = syncId.unpack();
       expect(unpackedSyncId.type).toEqual(SyncIdType.Unknown);
       expect(unpackedSyncId.fid).toEqual(0);
     });

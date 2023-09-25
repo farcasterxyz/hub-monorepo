@@ -8,9 +8,11 @@ import {
   HubResult,
   HubRpcClient,
   MergeMessageHubEvent,
+  MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
   Message,
   Metadata,
+  OnChainEvent,
   OnChainEventRequest,
   OnChainEventType,
   PruneMessageHubEvent,
@@ -18,6 +20,8 @@ import {
   SyncIds,
   TrieNodeMetadataResponse,
   TrieNodePrefix,
+  UserNameProof,
+  UserNameType,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
@@ -39,6 +43,7 @@ import os from "os";
 import { addProgressBar, finishAllProgressBars } from "../../utils/progressBars.js";
 import { SingleBar } from "cli-progress";
 import { SemVer } from "semver";
+import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -142,6 +147,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private readonly _hub: HubInterface;
 
   private readonly _l2EventsProvider: L2EventsProvider | undefined;
+  private readonly _fnameEventsProvider: FNameRegistryEventsProvider | undefined;
 
   private _currentSyncStatus: CurrentSyncStatus;
   private _syncProfiler?: SyncEngineProfiler;
@@ -165,12 +171,23 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Has the syncengine started yet?
   private _started = false;
 
-  constructor(hub: HubInterface, rocksDb: RocksDB, l2EventsProvider?: L2EventsProvider, profileSync = false) {
+  // Should the hub add onchain events and fnames to the sync trie. Defaults to false until a an event is encountered
+  // from another hub, and then automatically set to true.
+  private _syncEvents = false;
+
+  constructor(
+    hub: HubInterface,
+    rocksDb: RocksDB,
+    l2EventsProvider?: L2EventsProvider,
+    fnameEventsProvider?: FNameRegistryEventsProvider,
+    profileSync = false,
+  ) {
     super();
 
     this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
     this._l2EventsProvider = l2EventsProvider;
+    this._fnameEventsProvider = fnameEventsProvider;
 
     this._currentSyncStatus = new CurrentSyncStatus();
 
@@ -192,6 +209,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         await this.removeMessage(deletedMessage);
       }
       this._syncTrieQ -= totalMessages;
+    });
+
+    this._hub.engine.eventHandler.on("mergeOnChainEvent", async (event: MergeOnChainEventHubEvent) => {
+      if (this._syncEvents) {
+        const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
+        this._syncTrieQ += 1;
+        statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
+        await this.addOnChainEvent(onChainEvent);
+        this._syncTrieQ -= 1;
+      }
     });
 
     // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
@@ -225,6 +252,26 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         await this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
         this._syncTrieQ -= 1;
       }
+      if (this._syncEvents) {
+        if (
+          event.mergeUsernameProofBody.usernameProof &&
+          event.mergeUsernameProofBody.usernameProof.type === UserNameType.USERNAME_TYPE_FNAME
+        ) {
+          this._syncTrieQ += 1;
+          statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
+          await this.addFname(event.mergeUsernameProofBody.usernameProof);
+          this._syncTrieQ -= 1;
+        }
+        if (
+          event.mergeUsernameProofBody.deletedUsernameProof &&
+          event.mergeUsernameProofBody.deletedUsernameProof.type === UserNameType.USERNAME_TYPE_FNAME
+        ) {
+          this._syncTrieQ += 1;
+          statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
+          await this.removeFname(event.mergeUsernameProofBody.deletedUsernameProof);
+          this._syncTrieQ -= 1;
+        }
+      }
     });
   }
 
@@ -254,10 +301,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // Wait for the Merkle trie to be fully loaded
       await this._trie.initialize();
     }
+
+    const hubState = await this._hub.getHubState();
+    if (hubState.isErr()) {
+      log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
+    } else {
+      this._syncEvents = hubState.value.syncEvents;
+    }
+
     const rootHash = await this._trie.rootHash();
 
     this._started = true;
-    log.info({ rootHash }, "Sync engine initialized");
+    log.info({ rootHash }, `Sync engine initialized (eventsSync: ${this._syncEvents})`);
   }
 
   /** Rebuild the entire Sync Trie */
@@ -591,7 +646,24 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         );
 
         await this.compareNodeAtPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
-          const result = await this.fetchAndMergeMessages(missingIds, rpcClient);
+          const missingSyncIds = missingIds.map((id) => SyncId.fromBytes(id));
+          const missingMessageIds = missingSyncIds.filter((id) => id.type() === SyncIdType.Message);
+
+          // Merge on chain events first
+          const result = await this.validateAndMergeOnChainEvents(
+            missingSyncIds.filter((id) => id.type() === SyncIdType.OnChainEvent),
+          );
+
+          // Then Fnames
+          const fnameResult = await this.validateAndMergeFnames(
+            missingSyncIds.filter((id) => id.type() === SyncIdType.FName),
+          );
+          result.addResult(fnameResult);
+
+          // And finally messages
+          const messagesResult = await this.fetchAndMergeMessages(missingMessageIds, rpcClient);
+          result.addResult(messagesResult);
+
           fullSyncResult.addResult(result);
           progressBar?.increment(result.total);
 
@@ -668,7 +740,60 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return prefix;
   }
 
-  public async fetchAndMergeMessages(syncIds: Uint8Array[], rpcClient: HubRpcClient): Promise<MergeResult> {
+  public async validateAndMergeFnames(syncIds: SyncId[]): Promise<MergeResult> {
+    if (syncIds.length === 0) {
+      return new MergeResult();
+    }
+    await this.enableEventsSync();
+    const promises: Promise<void>[] = [];
+    for (const syncId of syncIds) {
+      const unpacked = syncId.unpack();
+      if (unpacked.type === SyncIdType.FName && this._fnameEventsProvider) {
+        log.info(`Retrying missing fname ${Buffer.from(unpacked.name).toString("utf-8")} during sync`, {
+          fid: unpacked.fid,
+        });
+        promises.push(this._fnameEventsProvider.retryTransferByName(unpacked.name));
+      }
+    }
+    await Promise.all(promises);
+    return new MergeResult(syncIds.length, promises.length, 0, syncIds.length - promises.length);
+  }
+
+  public async validateAndMergeOnChainEvents(syncIds: SyncId[]): Promise<MergeResult> {
+    if (syncIds.length === 0) {
+      return new MergeResult();
+    }
+    await this.enableEventsSync();
+    const promises: Promise<void>[] = [];
+    for (const syncId of syncIds) {
+      const unpacked = syncId.unpack();
+      if (unpacked.type === SyncIdType.OnChainEvent && this._l2EventsProvider) {
+        log.info(`Retrying missing block ${unpacked.blockNumber} during sync`, { fid: unpacked.fid });
+        promises.push(this._l2EventsProvider.retryEventsFromBlock(unpacked.blockNumber));
+      }
+    }
+    await Promise.all(promises);
+    return new MergeResult(syncIds.length, promises.length, 0, syncIds.length - promises.length);
+  }
+
+  // If we've seen a non-message sync id, then we need to start updating our trie with the same ids to remain
+  // consistent with other hubs. Flips the flag so we starting adding these ids to our trie from this point onwards
+  public async enableEventsSync() {
+    if (this._syncEvents) {
+      return;
+    }
+    this._syncEvents = true;
+    const hubState = await this._hub.getHubState();
+    if (hubState.isOk()) {
+      log.warn("Enabling events sync");
+      hubState.value.syncEvents = true;
+      await this._hub.putHubState(hubState.value);
+    } else {
+      log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
+    }
+  }
+
+  public async fetchAndMergeMessages(syncIds: SyncId[], rpcClient: HubRpcClient): Promise<MergeResult> {
     if (syncIds.length === 0) {
       return new MergeResult(); // empty merge result
     }
@@ -676,7 +801,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let result = new MergeResult();
     const start = Date.now();
     const messagesResult = await rpcClient.getAllMessagesBySyncIds(
-      SyncIds.create({ syncIds }),
+      SyncIds.create({ syncIds: syncIds.map((s) => s.syncId()) }),
       new Metadata(),
       rpcDeadline(),
     );
@@ -687,7 +812,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // Make sure that the messages are actually for the SyncIDs
         const syncIdHashes = new Set(
           syncIds
-            .map((syncId) => SyncId.unpack(syncId))
+            .map((syncId) => syncId.unpack())
             .map((syncId) => (syncId.type === SyncIdType.Message ? bytesToHexString(syncId.hash).unwrapOr("") : ""))
             .filter((str) => str !== ""),
         );
@@ -992,6 +1117,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   /** ---------------------------------------------------------------------------------- */
   public async addMessage(message: Message): Promise<void> {
     await this._trie.insert(SyncId.fromMessage(message));
+  }
+
+  public async addOnChainEvent(event: OnChainEvent): Promise<void> {
+    await this._trie.insert(SyncId.fromOnChainEvent(event));
+  }
+
+  public async addFname(usernameProof: UserNameProof): Promise<void> {
+    await this._trie.insert(SyncId.fromFName(usernameProof));
+  }
+
+  public async removeFname(usernameProof: UserNameProof): Promise<void> {
+    await this._trie.deleteBySyncId(SyncId.fromFName(usernameProof));
   }
 
   public async removeMessage(message: Message): Promise<void> {
