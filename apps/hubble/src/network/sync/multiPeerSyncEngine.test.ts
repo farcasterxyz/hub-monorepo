@@ -473,23 +473,25 @@ describe("Multi peer sync engine", () => {
     await engine1.mergeOnChainEvent(custodyEvent);
     await engine1.mergeOnChainEvent(signerEvent);
     await engine1.mergeOnChainEvent(storageEvent);
+    await engine1.mergeUserNameProof(fname);
 
     // We add it to the engine2 synctrie as normal...
     await syncEngine2.enableEventsSync();
     await engine2.mergeOnChainEvent(custodyEvent);
     await engine2.mergeOnChainEvent(signerEvent);
     await engine2.mergeOnChainEvent(storageEvent);
-
-    const initialEngine2Count = await syncEngine2.trie.items();
+    await engine2.mergeUserNameProof(fname);
 
     await engine1.mergeMessage(castAdd);
     await engine2.mergeMessage(castAdd);
 
-    // ...but we'll corrupt the sync trie by pretending that the castAdd message is missing
+    // ...but we'll corrupt the sync trie by pretending that the castAdd message, an onchain event and an fname are missing
     await syncEngine2.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
+    await syncEngine2.trie.deleteBySyncId(SyncId.fromOnChainEvent(storageEvent));
+    await syncEngine2.trie.deleteBySyncId(SyncId.fromFName(fname));
 
-    // syncengine2 should be empty
-    expect(await syncEngine2.trie.items()).toEqual(initialEngine2Count);
+    // syncengine2 should only have 2 onchain events
+    expect(await syncEngine2.trie.items()).toEqual(2);
 
     // Attempt to sync engine2 <-- engine1.
     // It will appear to engine2 that the message is missing, so it will request it from engine1.

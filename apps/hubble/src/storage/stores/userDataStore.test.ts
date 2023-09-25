@@ -69,6 +69,14 @@ describe("mergeUserNameProof", () => {
     await expect(set.getUserNameProofByFid(proof.fid)).resolves.toEqual(proof);
   });
 
+  test("does not merge duplicates", async () => {
+    const proof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(proof);
+    await expect(set.getUserNameProof(proof.name)).resolves.toEqual(proof);
+
+    await expect(set.mergeUserNameProof(proof)).rejects.toThrow("already exists");
+  });
+
   test("replaces existing proof with proof of greater timestamp", async () => {
     const existingProof = await Factories.UserNameProof.build();
     await set.mergeUserNameProof(existingProof);

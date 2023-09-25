@@ -27,7 +27,6 @@ import { MockHub } from "../../test/mocks.js";
 import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
-import { sync } from "rimraf";
 
 const TEST_TIMEOUT_SHORT = 60 * 1000;
 const SLEEPWHILE_TIMEOUT = 10 * 1000;
@@ -575,6 +574,28 @@ describe("SyncEngine", () => {
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeTruthy();
       });
+
+      test("adds sync ids to the trie when not present and egnine rejects as duplicate", async () => {
+        await engine.mergeOnChainEvent(custodyEvent);
+        await engine.mergeUserNameProof(userNameProof);
+
+        await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(custodyEvent));
+        await syncEngine.trie.deleteBySyncId(SyncId.fromFName(userNameProof));
+
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
+
+        const eventResult = await engine.mergeOnChainEvent(custodyEvent);
+        const fnameResult = await engine.mergeUserNameProof(userNameProof);
+
+        expect(eventResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+        expect(fnameResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+
+        await sleep(10);
+
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
+        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
+      });
     });
   });
 
@@ -589,6 +610,42 @@ describe("SyncEngine", () => {
       expect(syncEngine.shouldCompactDb).toBeFalsy();
       expect(await syncEngine.compactDbIfRequired(1_000_000)).toBeTruthy();
       expect(syncEngine.shouldCompactDb).toBeFalsy();
+    });
+  });
+
+  describe("rebuildSyncTrie", () => {
+    test("reconstructs the trie from the db", async () => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
+      const usernameProof = Factories.UserNameProof.build();
+      await engine.mergeUserNameProof(usernameProof);
+      await engine.mergeMessage(castAdd);
+
+      // Manually remove cast add to have an emtpy trie
+      await syncEngine.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
+      expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
+      expect(await syncEngine.trie.items()).toEqual(0);
+
+      await syncEngine.rebuildSyncTrie();
+
+      // No events or fnames by default
+      expect(await syncEngine.trie.items()).toEqual(1);
+      expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
+
+      // Remove cast add again
+      await syncEngine.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
+
+      // Includes events and proofs if enabled
+      await syncEngine.enableEventsSync();
+      await syncEngine.rebuildSyncTrie();
+
+      expect(await syncEngine.trie.items()).toEqual(5);
+      expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromFName(usernameProof))).toBeTruthy();
     });
   });
 });

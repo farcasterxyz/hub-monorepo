@@ -62,12 +62,18 @@ import OnChainEventStore from "../stores/onChainEventStore.js";
 import { isRateLimitedByKey, consumeRateLimitByKey, getRateLimiterForTotalMessages } from "../../utils/rateLimits.js";
 import { nativeValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
+import { TypedEmitter } from "tiny-typed-emitter";
 
 const log = logger.child({
   component: "Engine",
 });
 
-class Engine {
+export type EngineEvents = {
+  duplicateUserNameProofEvent: (usernameProof: UserNameProof) => void;
+  duplicateOnChainEvent: (onChainEvent: OnChainEvent) => void;
+};
+
+class Engine extends TypedEmitter<EngineEvents> {
   public eventHandler: StoreEventHandler;
 
   private _db: RocksDB;
@@ -93,6 +99,7 @@ class Engine {
   private _totalPruneSize: number;
 
   constructor(db: RocksDB, network: FarcasterNetwork, eventHandler?: StoreEventHandler, publicClient?: PublicClient) {
+    super();
     this._db = db;
     this._network = network;
     this._publicClient = publicClient;
@@ -266,12 +273,22 @@ class Engine {
       this._onchainEventsStore.mergeOnChainEvent(event),
       (e) => e as HubError,
     );
+    if (mergeResult.isErr() && mergeResult.error.errCode === "bad_request.duplicate") {
+      this.emit("duplicateOnChainEvent", event);
+    }
     return mergeResult;
   }
 
   async mergeUserNameProof(usernameProof: UserNameProof): HubAsyncResult<number> {
     // TODO: Validate signature here instead of the fname event provider
-    return ResultAsync.fromPromise(this._userDataStore.mergeUserNameProof(usernameProof), (e) => e as HubError);
+    const mergeResult = await ResultAsync.fromPromise(
+      this._userDataStore.mergeUserNameProof(usernameProof),
+      (e) => e as HubError,
+    );
+    if (mergeResult.isErr() && mergeResult.error.errCode === "bad_request.duplicate") {
+      this.emit("duplicateUserNameProofEvent", usernameProof);
+    }
+    return mergeResult;
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
