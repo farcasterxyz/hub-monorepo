@@ -591,4 +591,40 @@ describe("SyncEngine", () => {
       expect(syncEngine.shouldCompactDb).toBeFalsy();
     });
   });
+
+  describe("rebuildSyncTrie", () => {
+    test("reconstructs the trie from the db", async () => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
+      const usernameProof = Factories.UserNameProof.build();
+      await engine.mergeUserNameProof(usernameProof);
+      await engine.mergeMessage(castAdd);
+
+      // Manually remove cast add to have an emtpy trie
+      await syncEngine.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
+      expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
+      expect(await syncEngine.trie.items()).toEqual(0);
+
+      await syncEngine.rebuildSyncTrie();
+
+      // No events or fnames by default
+      expect(await syncEngine.trie.items()).toEqual(1);
+      expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
+
+      // Remove cast add again
+      await syncEngine.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
+
+      // Includes events and proofs if enabled
+      await syncEngine.enableEventsSync();
+      await syncEngine.rebuildSyncTrie();
+
+      expect(await syncEngine.trie.items()).toEqual(5);
+      expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromFName(usernameProof))).toBeTruthy();
+    });
+  });
 });

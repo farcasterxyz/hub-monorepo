@@ -318,7 +318,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   /** Rebuild the entire Sync Trie */
   public async rebuildSyncTrie() {
     log.info("Rebuilding sync trie...");
-    await this._trie.rebuild();
+    await this._trie.rebuild(this._syncEvents);
     log.info("Rebuilding sync trie complete");
   }
 
