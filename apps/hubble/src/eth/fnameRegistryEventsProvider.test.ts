@@ -64,7 +64,7 @@ class MockFnameRegistryClient implements FNameRegistryClientInterface {
       this.timesToThrow--;
       throw new Error("connection failed");
     }
-    expect(params.fromId).toBeGreaterThanOrEqual(this.minimumSince);
+    expect(params.from_id).toBeGreaterThanOrEqual(this.minimumSince);
     const transfers = this.transfersToReturn.shift();
     if (!transfers) {
       return Promise.resolve([]);

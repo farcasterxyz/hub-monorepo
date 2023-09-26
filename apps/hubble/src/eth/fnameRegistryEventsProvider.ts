@@ -30,7 +30,7 @@ export type FNameTransfer = {
 };
 
 export type FNameTransferRequest = {
-  fromId?: number;
+  from_id?: number;
   name?: string;
 };
 
@@ -120,7 +120,7 @@ export class FNameRegistryEventsProvider {
     }
 
     this.lastTransferId = fromId;
-    let transfers = await this.safeGetTransfers({ fromId });
+    let transfers = await this.safeGetTransfers({ from_id: fromId });
     let transfersCount = 0;
     while (transfers.length > 0 && !this.shouldStop) {
       transfersCount += transfers.length;
@@ -130,7 +130,7 @@ export class FNameRegistryEventsProvider {
         break;
       }
       this.lastTransferId = lastTransfer.id;
-      transfers = await this.safeGetTransfers({ fromId: this.lastTransferId });
+      transfers = await this.safeGetTransfers({ from_id: this.lastTransferId });
     }
     log.info(`Fetched ${transfersCount} fname events upto ${this.lastTransferId}`);
     const result = await this.hub.getHubState();
