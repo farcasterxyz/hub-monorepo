@@ -115,21 +115,6 @@ Commands:
   help [command]    display help for command
 ```
 
-### status
-
-```
-Usage: yarn status [options]
-
-Reports the db and sync status of the hub
-WARNING: This command has been deprecated, and will be removed in a future release. Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html
-
-Options:
-  -s, --server <url>     Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283) (default: "127.0.0.1:2283")
-  --insecure             Allow insecure connections to the RPC server (default: false)
-  --watch                Keep running and periodically report status (default: false)
-  -p, --peerId <peerId>  Peer id of the hub to compare with (defaults to bootstrap peers)
-  -h, --help             display help for command
-```
 
 ### dbreset
 
