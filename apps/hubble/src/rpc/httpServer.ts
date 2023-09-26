@@ -21,11 +21,13 @@ import {
 } from "@farcaster/hub-nodejs";
 import { Metadata, ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
+import fastifyCors from "@fastify/cors";
 import { Result, err, ok } from "neverthrow";
 import { logger } from "../utils/logger.js";
 import { PageOptions } from "../storage/stores/types.js";
 import { DeepPartial } from "../storage/stores/store.js";
 import Engine from "../storage/engine/index.js";
+import { statsd } from "../utils/statsd.js";
 
 const log = logger.child({ component: "HttpAPIServer" });
 
@@ -51,11 +53,13 @@ type StaticEncodable<T> = {
 
 // Get the call Object for a given method
 function getCallObject<M extends keyof HubServiceServer>(
-  _method: M,
+  method: M,
   params: DeepPartial<FirstTemplateParamType<M>>,
   request: fastify.FastifyRequest,
   metadata?: Metadata,
 ): CallTypeForMethod<M> {
+  statsd().increment(`httpapi.${method}`);
+
   return {
     request: params,
     metadata,
@@ -180,7 +184,7 @@ export class HttpAPIServer {
 
   app = fastify();
 
-  constructor(grpcImpl: HubServiceServer, engine: Engine) {
+  constructor(grpcImpl: HubServiceServer, engine: Engine, corsOrigin = "*") {
     this.grpcImpl = grpcImpl;
     this.engine = engine;
 
@@ -194,6 +198,7 @@ export class HttpAPIServer {
       reply.code(500).send({ error: error.message });
     });
 
+    this.app.register(fastifyCors, { origin: [corsOrigin] });
     this.initHandlers();
   }
 
@@ -574,6 +579,7 @@ export class HttpAPIServer {
           reply.code(400).send({ error: resp.error.message });
         } else {
           const nextPageEventId = resp.value.nextPageEventId;
+          statsd().increment("httpapi.events");
           const events = resp.value.events.map((event) => protoToJSON(event, HubEvent));
           reply.send({ nextPageEventId, events });
         }

@@ -87,6 +87,25 @@ describe("httpServer", () => {
     await engine.mergeOnChainEvent(storageEvent);
   });
 
+  describe("cors", () => {
+    test("cors", async () => {
+      const syncEngine = new SyncEngine(hub, db);
+      const server = new Server(hub, engine, syncEngine);
+      const httpServer = new HttpAPIServer(server.getImpl(), engine, "http://example.com");
+      const addr = (await httpServer.start())._unsafeUnwrap();
+
+      const url = `${addr}/v1/info`;
+      const response = await axios.get(url, { headers: { Origin: "http://example.com" } });
+
+      expect(response.status).toBe(200);
+      expect(response.headers["access-control-allow-origin"]).toBe("http://example.com");
+
+      await httpServer.stop();
+      await server.stop();
+      await syncEngine.stop();
+    });
+  });
+
   describe("getInfo", () => {
     test("getInfo", async () => {
       const url = getFullUrl("/v1/info");

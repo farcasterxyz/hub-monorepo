@@ -213,6 +213,9 @@ export interface HubOptions {
   /** Commit lock queue size */
   commitLockMaxPending?: number;
 
+  /** Http cors origin */
+  httpCorsOrigin?: string;
+
   /** Http server disabled? */
   httpServerDisabled?: boolean;
 
@@ -400,7 +403,7 @@ export class Hub implements HubInterface {
       options.rpcRateLimit,
       options.rpcSubscribePerIpLimit,
     );
-    this.httpApiServer = new HttpAPIServer(this.rpcServer.getImpl(), this.engine);
+    this.httpApiServer = new HttpAPIServer(this.rpcServer.getImpl(), this.engine, this.options.httpCorsOrigin);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers
