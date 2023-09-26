@@ -56,11 +56,11 @@
     "pino-pretty": "~10.0.0",
     "prettier-config-custom": "*",
     "progress": "~2.0.3",
-    "ts-mockito": "~2.6.1",
-    "tsx": "~3.12.5",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.0",
     "remark-parse": "^11.0.0",
+    "ts-mockito": "~2.6.1",
+    "tsx": "~3.12.5",
     "unified": "^11.0.3"
   },
   "dependencies": {
@@ -71,6 +71,7 @@
     "@faker-js/faker": "~7.6.0",
     "@farcaster/hub-nodejs": "^0.10.9",
     "@farcaster/rocksdb": "^5.5.0",
+    "@fastify/cors": "^8.4.0",
     "@grpc/grpc-js": "~1.8.21",
     "@libp2p/interface-connection": "^3.0.2",
     "@libp2p/interface-peer-id": "^2.0.1",

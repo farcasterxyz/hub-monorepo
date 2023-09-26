@@ -112,7 +112,8 @@ app
   .option("-b, --bootstrap <peer-multiaddrs...>", "Peers to bootstrap gossip and sync from. (default: none)")
   .option("-g, --gossip-port <port>", `Port to use for gossip (default: ${DEFAULT_GOSSIP_PORT})`)
   .option("-r, --rpc-port <port>", `Port to use for gRPC  (default: ${DEFAULT_RPC_PORT})`)
-  .option("--httpApiPort <port>", `Port to use for HTTP API (default: ${DEFAULT_HTTP_API_PORT})`)
+  .option("-h, --http-api-port <port>", `Port to use for HTTP API (default: ${DEFAULT_HTTP_API_PORT})`)
+  .option("--http-cors-origin <origin>", "CORS origin for HTTP API (default: *)")
   .option("--ip <ip-address>", 'IP address to listen on (default: "127.0.0.1")')
   .option("--announce-ip <ip-address>", "Public IP address announced to peers (default: fetched with external service)")
   .option(
@@ -502,6 +503,7 @@ app
       deniedPeers: cliOptions.deniedPeers ?? hubConfig.deniedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       httpApiPort: cliOptions.httpApiPort ?? hubConfig.httpApiPort ?? DEFAULT_HTTP_API_PORT,
+      httpCorsOrigin: cliOptions.httpCorsOrigin ?? hubConfig.httpCorsOrigin ?? "*",
       rpcAuth,
       rpcRateLimit,
       rpcSubscribePerIpLimit: cliOptions.rpcSubscribePerIpLimit ?? hubConfig.rpcSubscribePerIpLimit,
