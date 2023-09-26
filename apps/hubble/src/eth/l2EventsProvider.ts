@@ -17,10 +17,10 @@ import { IdRegistryV2, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
 import { optimismGoerli } from "viem/chains";
-import { createPublicClient, fallback, http, Log, OnLogsParameter, PublicClient } from "viem";
+import { createPublicClient, fallback, http, Log, WatchContractEventOnLogsParameter, PublicClient } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
-import { ExtractAbiEvent } from "abitype";
+import { Abi, ExtractAbiEvent } from "abitype";
 import { onChainEventSorter } from "../storage/db/onChainEvent.js";
 import { formatPercentage } from "../profile/profile.js";
 import { addProgressBar } from "../utils/progressBars.js";
@@ -199,7 +199,7 @@ export class L2EventsProvider {
 
   private async processStorageEvents(
     // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
-    logs: OnLogsParameter<any, true, string>,
+    logs: WatchContractEventOnLogsParameter<Abi, string, true>,
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
@@ -222,6 +222,7 @@ export class L2EventsProvider {
           const rentEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof StorageRegistry.abi, "Rent">,
             true,
             typeof StorageRegistry.abi
@@ -261,7 +262,7 @@ export class L2EventsProvider {
 
   private async processKeyRegistryEvents(
     // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
-    logs: OnLogsParameter<any, true, string>,
+    logs: WatchContractEventOnLogsParameter<Abi, string, true>,
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
@@ -283,6 +284,7 @@ export class L2EventsProvider {
           const addEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof KeyRegistry.abi, "Add">,
             true,
             typeof KeyRegistry.abi
@@ -308,6 +310,7 @@ export class L2EventsProvider {
           const removeEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof KeyRegistry.abi, "Remove">,
             true,
             typeof KeyRegistry.abi
@@ -330,6 +333,7 @@ export class L2EventsProvider {
           const resetEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof KeyRegistry.abi, "AdminReset">,
             true,
             typeof KeyRegistry.abi
@@ -352,6 +356,7 @@ export class L2EventsProvider {
           const migratedEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof KeyRegistry.abi, "Migrated">,
             true,
             typeof KeyRegistry.abi
@@ -365,7 +370,9 @@ export class L2EventsProvider {
             transactionIndex,
             logIndex,
             undefined,
-            SignerMigratedEventBody.create({ migratedAt: Number(migratedEvent.args.keysMigratedAt) }),
+            SignerMigratedEventBody.create({
+              migratedAt: Number(migratedEvent.args.keysMigratedAt),
+            }),
           );
         }
       } catch (e) {
@@ -377,7 +384,7 @@ export class L2EventsProvider {
 
   private async processIdRegistryEvents(
     // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
-    logs: OnLogsParameter<any, true, string>,
+    logs: WatchContractEventOnLogsParameter<Abi, string, true>,
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
@@ -399,6 +406,7 @@ export class L2EventsProvider {
           const registerEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof IdRegistryV2.abi, "Register">,
             true,
             typeof IdRegistryV2.abi
@@ -424,6 +432,7 @@ export class L2EventsProvider {
           const transferEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof IdRegistryV2.abi, "Transfer">,
             true,
             typeof IdRegistryV2.abi
@@ -449,6 +458,7 @@ export class L2EventsProvider {
           const transferEvent = event as Log<
             bigint,
             number,
+            boolean,
             ExtractAbiEvent<typeof IdRegistryV2.abi, "ChangeRecoveryAddress">,
             true,
             typeof IdRegistryV2.abi
@@ -658,7 +668,9 @@ export class L2EventsProvider {
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const idLogsPromise = this._publicClient.getFilterLogs({ filter: idFilter });
+      const idLogsPromise = this._publicClient.getFilterLogs({
+        filter: idFilter,
+      });
 
       const storageFilter = await this._publicClient.createContractEventFilter({
         address: this.storageRegistryAddress,
@@ -678,7 +690,9 @@ export class L2EventsProvider {
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const keyLogsPromise = this._publicClient.getFilterLogs({ filter: keyFilter });
+      const keyLogsPromise = this._publicClient.getFilterLogs({
+        filter: keyFilter,
+      });
 
       await this.processIdRegistryEvents(await idLogsPromise);
       await this.processStorageEvents(await storageLogsPromise);

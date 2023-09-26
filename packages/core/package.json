@@ -21,7 +21,7 @@
     "ffi-napi": "^4.0.3",
     "neverthrow": "^6.0.0",
     "ref-napi": "^3.0.3",
-    "viem": "^1.1.4"
+    "viem": "^1.12.2"
   },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
