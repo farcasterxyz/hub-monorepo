@@ -37,7 +37,7 @@
     "test:ci": "yarn build:all && ENVIRONMENT=test NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest --ci --forceExit --coverage"
   },
   "devDependencies": {
-    "@libp2p/interface-mocks": "^12.0.1",
+    "@libp2p/interface-compliance-tests": "^4.0.6",
     "@types/abstract-leveldown": "^7.2.1",
     "@types/async-lock": "^1.4.0",
     "@types/chance": "^1.1.3",
