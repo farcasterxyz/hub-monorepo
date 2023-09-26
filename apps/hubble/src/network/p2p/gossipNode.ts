@@ -1,4 +1,4 @@
-import { PublishResult } from "@libp2p/interface-pubsub";
+import { PublishResult } from "@libp2p/interface/pubsub";
 import { Worker } from "worker_threads";
 import {
   ContactInfoContent,
@@ -358,7 +358,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("peer:connect", (detail) => {
       // console.log("Peer Connected", JSON.stringify(detail, null, 2));
       log.info(
-        { peer: detail.remotePeer, addrs: detail.remoteAddr, type: detail.stat.direction },
+        { peer: detail.remotePeer, addrs: detail.remoteAddr, type: detail.direction },
         "P2P Connection established",
       );
       this.emit("peerConnect", detail);
@@ -400,10 +400,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}  }`);
     });
     this._nodeEvents?.addListener("peer:connect", (detail) => {
-      log.info({ identity: this.identity }, `Connection established to: ${detail.remotePeer.toString()}`);
+      log.info({ identity: this.identity }, `Connection established to: ${detail.toString()}`);
     });
     this._nodeEvents?.addListener("peer:disconnect", (detail) => {
-      log.info({ identity: this.identity }, `Disconnected from: ${detail.remotePeer.toString()} `);
+      log.info({ identity: this.identity }, `Disconnected from: ${detail.toString()} `);
     });
     this._nodeEvents?.addListener("message", (detail) => {
       log.info(

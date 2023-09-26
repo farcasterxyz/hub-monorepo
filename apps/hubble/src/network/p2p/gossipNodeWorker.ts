@@ -1,7 +1,7 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface/pubsub";
 import {
   LibP2PNodeMessage,
   LibP2PNodeMethodGenericMessage,
@@ -24,6 +24,7 @@ import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } f
 import { Libp2p, createLibp2p } from "libp2p";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
+import { identifyService } from "libp2p/identify";
 import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
@@ -73,7 +74,7 @@ export class LibP2PNode {
 
   /** Returns the GossipSub instance used by the Node */
   get gossip() {
-    const pubsub = this._node?.pubsub;
+    const pubsub = this._node?.services["pubsub"];
     return pubsub ? (pubsub as GossipSub) : undefined;
   }
 
@@ -146,7 +147,10 @@ export class LibP2PNode {
         transports: [tcp()],
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
-        pubsub: gossip,
+        services: {
+          identify: identifyService(),
+          pubsub: gossip,
+        },
         peerDiscovery: [pubsubPeerDiscovery({ topics: [peerDiscoveryTopic] })],
       }),
       (e) => {
@@ -178,7 +182,7 @@ export class LibP2PNode {
 
   /** Return if we have any inbound P2P connections */
   hasInboundConnections(): boolean {
-    return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
+    return this._node?.getConnections().some((conn) => conn.direction === "inbound") ?? false;
   }
 
   allPeerIds(): string[] {
@@ -251,12 +255,12 @@ export class LibP2PNode {
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: MultiAddr.Multiaddr) {
-    const addressBook = this._node?.peerStore.addressBook;
+    const addressBook = this._node?.peerStore;
     if (!addressBook) {
       log.error({}, "address book missing for gossipNode");
     } else {
       const addResult = await ResultAsync.fromPromise(
-        addressBook.add(peerId, [multiaddr]),
+        addressBook.save(peerId, { multiaddrs: [multiaddr] }),
         (error) => new HubError("unavailable", error as Error),
       );
       if (addResult.isErr()) {
@@ -277,7 +281,7 @@ export class LibP2PNode {
       }
     }
 
-    const addressBook = this._node?.peerStore.addressBook;
+    const addressBook = this._node?.peerStore;
     if (!addressBook) {
       log.error({}, "address book missing for gossipNode");
     } else {
@@ -288,7 +292,7 @@ export class LibP2PNode {
   async connectionStats(): Promise<{ inbound: number; outbound: number }> {
     const [inbound, outbound] = this._node?.getConnections()?.reduce(
       (acc, conn) => {
-        acc[conn.stat.direction === "inbound" ? 0 : 1]++;
+        acc[conn.direction === "inbound" ? 0 : 1]++;
         return acc;
       },
       [0, 0],
@@ -299,9 +303,10 @@ export class LibP2PNode {
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
     const existingConnections = this._node?.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
-      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
+      const peer = await this._node?.peerStore.get(peerId);
+      const knownAddrs = peer?.addresses;
       if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
+        await this._node?.peerStore.save(peerId, { multiaddrs: [conn.remoteAddr] });
       }
     }
 
