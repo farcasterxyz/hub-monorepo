@@ -661,37 +661,28 @@ export class L2EventsProvider {
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
       statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
-      const idFilter = await this._publicClient.createContractEventFilter({
+      const idLogsPromise = this._publicClient.getContractEvents({
         address: this.idRegistryAddress,
         abi: IdRegistryV2.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const idLogsPromise = this._publicClient.getFilterLogs({
-        filter: idFilter,
-      });
 
-      const storageFilter = await this._publicClient.createContractEventFilter({
+      const storageLogsPromise = this._publicClient.getContractEvents({
         address: this.storageRegistryAddress,
         abi: StorageRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
         strict: true,
       });
-      const storageLogsPromise = this._publicClient.getFilterLogs({
-        filter: storageFilter,
-      });
 
-      const keyFilter = await this._publicClient.createContractEventFilter({
+      const keyLogsPromise = this._publicClient.getContractEvents({
         address: this.keyRegistryAddress,
         abi: KeyRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
         strict: true,
-      });
-      const keyLogsPromise = this._publicClient.getFilterLogs({
-        filter: keyFilter,
       });
 
       await this.processIdRegistryEvents(await idLogsPromise);
