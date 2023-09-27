@@ -12,8 +12,8 @@ services:
     command: [
       "node", "--no-warnings",  "build/cli.js", "start",
       "--ip", "0.0.0.0",
-      "--gossip-port", "2282",
-      "--rpc-port", "2283",      
+      "--gossip-port", "${GOSSIP_PORT:-2282}",
+      "--rpc-port", "${RPC_PORT:-2283}",   
       "--eth-mainnet-rpc-url", "$ETH_MAINNET_RPC_URL",
       "--l2-rpc-url", "$OPTIMISM_L2_RPC_URL",
       "--network", "${FC_NETWORK_ID:-1}",
@@ -23,8 +23,8 @@ services:
       "--hub-operator-fid", "${HUB_OPERATOR_FID:-0}",
     ]
     ports:
-      - '2282:2282' # Gossip
-      - '2283:2283' # RPC
+      - '${GOSSIP_PORT:-2282}:${GOSSIP_PORT:-2282}' # Gossip. You can set GOSSIP_PORT in .env
+      - '${RPC_PORT:-2283}:${RPC_PORT:-2283}' # RPC. You can set RPC_PORT in .env
     volumes:
       - ./.hub:/home/node/app/apps/hubble/.hub
       - ./.rocks:/home/node/app/apps/hubble/.rocks
