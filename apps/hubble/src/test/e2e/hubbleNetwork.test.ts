@@ -107,7 +107,7 @@ describe("hubble gossip and sync tests", () => {
         expect(await hub1.submitMessage(castAdd, "rpc")).toBeTruthy();
 
         // This should trigger a gossip message to hub2, where it should be merged
-        await sleepWhile(async () => (await (hub2 as Hub).engine.getCast(fid, castAdd.hash)).isErr(), 5000);
+        await sleepWhile(async () => (await (hub2 as Hub).engine.getCast(fid, castAdd.hash)).isErr(), 2000);
 
         const result = await hub2.engine.getCast(fid, castAdd.hash);
         expect(result.isOk()).toBeTruthy();
