@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.10.10
+
+### Patch Changes
+
+- aeab5a4c: docs: Refactor HTTP API docs
+- Updated dependencies [31641c17]
+- Updated dependencies [fb1f5c61]
+- Updated dependencies [aeab5a4c]
+- Updated dependencies [4b99eddb]
+  - @farcaster/core@0.12.10
+
 ## 0.10.9
 
 ### Patch Changes
