@@ -17,7 +17,16 @@ import { IdRegistryV2, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
 import { optimismGoerli } from "viem/chains";
-import { createPublicClient, fallback, http, Log, WatchContractEventOnLogsParameter, PublicClient } from "viem";
+import {
+  createPublicClient,
+  fallback,
+  http,
+  Log,
+  WatchContractEventOnLogsParameter,
+  PublicClient,
+  Hex,
+  FallbackTransport,
+} from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
 import { Abi, ExtractAbiEvent } from "abitype";
@@ -46,13 +55,14 @@ const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
  */
 export class L2EventsProvider {
   private _hub: HubInterface;
-  private _publicClient: PublicClient;
+  private _publicClient: PublicClient<FallbackTransport>;
 
   private _firstBlock: number;
   private _chunkSize: number;
   private _chainId: number;
   private _rentExpiry: number;
   private _resyncEvents: boolean;
+  private _useFilters: boolean;
 
   private _onChainEventsByBlock: Map<number, Array<OnChainEvent>>;
   private _retryDedupMap: Map<number, boolean>;
@@ -87,7 +97,7 @@ export class L2EventsProvider {
 
   constructor(
     hub: HubInterface,
-    publicClient: PublicClient,
+    publicClient: PublicClient<FallbackTransport>,
     storageRegistryAddress: `0x${string}` | undefined,
     keyRegistryAddress: `0x${string}` | undefined,
     idRegistryAddress: `0x${string}` | undefined,
@@ -103,6 +113,7 @@ export class L2EventsProvider {
     this._chunkSize = chunkSize;
     this._chainId = chainId;
     this._resyncEvents = resyncEvents;
+    this._useFilters = false;
     this._rentExpiry = expiryOverride ?? RENT_EXPIRY_IN_SECONDS;
 
     this._lastBlockNumber = 0;
@@ -197,10 +208,7 @@ export class L2EventsProvider {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async processStorageEvents(
-    // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
-    logs: WatchContractEventOnLogsParameter<Abi, string, true>,
-  ) {
+  private async processStorageEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -260,10 +268,7 @@ export class L2EventsProvider {
     }
   }
 
-  private async processKeyRegistryEvents(
-    // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
-    logs: WatchContractEventOnLogsParameter<Abi, string, true>,
-  ) {
+  private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -382,10 +387,7 @@ export class L2EventsProvider {
     }
   }
 
-  private async processIdRegistryEvents(
-    // biome-ignore lint/suspicious/noExplicitAny: workaround viem bug
-    logs: WatchContractEventOnLogsParameter<Abi, string, true>,
-  ) {
+  private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -525,8 +527,12 @@ export class L2EventsProvider {
     if (lastSyncedBlock < toBlock) {
       log.info({ fromBlock: lastSyncedBlock, toBlock }, "syncing events from missed blocks");
 
+      // Check if filters are supported, reduce batch size if necessary
+      await this.detectFilterSupport();
+      const chunkSize = this._useFilters ? this._chunkSize : 250;
+
       // Sync old Rent events
-      await this.syncHistoricalEvents(lastSyncedBlock, toBlock, this._chunkSize);
+      await this.syncHistoricalEvents(lastSyncedBlock, toBlock, chunkSize);
     }
 
     this._isHistoricalSyncDone = true;
@@ -661,7 +667,7 @@ export class L2EventsProvider {
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
       statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
-      const idLogsPromise = this._publicClient.getContractEvents({
+      const idLogsPromise = this.getContractEvents({
         address: this.idRegistryAddress,
         abi: IdRegistryV2.abi,
         fromBlock: BigInt(nextFromBlock),
@@ -669,7 +675,7 @@ export class L2EventsProvider {
         strict: true,
       });
 
-      const storageLogsPromise = this._publicClient.getContractEvents({
+      const storageLogsPromise = this.getContractEvents({
         address: this.storageRegistryAddress,
         abi: StorageRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
@@ -677,7 +683,7 @@ export class L2EventsProvider {
         strict: true,
       });
 
-      const keyLogsPromise = this._publicClient.getContractEvents({
+      const keyLogsPromise = this.getContractEvents({
         address: this.keyRegistryAddress,
         abi: KeyRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
@@ -692,6 +698,55 @@ export class L2EventsProvider {
 
     progressBar?.update(totalBlocks);
     progressBar?.stop();
+  }
+
+  /** Wrapper around Viem client getFilterLogs/getContractEvents. Uses filters
+   *  when supported, otherwise falls back to getContractEvents.
+   */
+  private async getContractEvents(params: {
+    address: Hex;
+    abi: Abi;
+    fromBlock: bigint;
+    toBlock: bigint;
+    strict: boolean;
+  }) {
+    if (this._useFilters) {
+      const filter = await this._publicClient.createContractEventFilter(params);
+      return this._publicClient.getFilterLogs({
+        filter,
+      });
+    } else {
+      return this._publicClient.getContractEvents(params);
+    }
+  }
+
+  /** Detect whether the configured RPC provider supports filters */
+  private async detectFilterSupport() {
+    // Set up a client with fewer retries and shorter timeout
+    const urls: string[] = [];
+    this._publicClient.transport["transports"].forEach((transport) => {
+      if (transport?.value) {
+        urls.push(transport.value["url"]);
+      }
+    });
+    const transports = urls.map((url) => http(url, { retryCount: 1, timeout: 1000 }));
+    const testClient = createPublicClient({
+      chain: optimismGoerli,
+      transport: fallback(transports),
+    });
+
+    // Handling: intentionally catch to test for filter support
+    try {
+      await testClient.createEventFilter({
+        fromBlock: BigInt(1),
+        toBlock: BigInt(1),
+      });
+      this._useFilters = true;
+      log.info("RPC provider supports filters. Using eth_getFilterLogs");
+    } catch (err) {
+      this._useFilters = false;
+      log.info("RPC provider does not support filters. Falling back to eth_getLogs");
+    }
   }
 
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
