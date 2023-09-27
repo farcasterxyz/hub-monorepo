@@ -23,6 +23,7 @@ services:
       "--hub-operator-fid", "${HUB_OPERATOR_FID:-0}",
     ]
     ports:
+      - '${HTTPAPI_PORT:-2281}:${HTTPAPI_PORT:-2281}' # HTTP API. You can set HTTP_PORT in .env
       - '${GOSSIP_PORT:-2282}:${GOSSIP_PORT:-2282}' # Gossip. You can set GOSSIP_PORT in .env
       - '${RPC_PORT:-2283}:${RPC_PORT:-2283}' # RPC. You can set RPC_PORT in .env
     volumes:
