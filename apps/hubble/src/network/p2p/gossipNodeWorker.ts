@@ -21,7 +21,9 @@ import {
   Message,
 } from "@farcaster/hub-nodejs";
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
-import { Libp2p, createLibp2p } from "libp2p";
+import { createLibp2p } from "libp2p";
+import type { Libp2p } from "@libp2p/interface";
+import type { ConnectionManager } from "@libp2p/interface-internal/connection-manager";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
 import { identifyService } from "libp2p/identify";
@@ -32,6 +34,7 @@ import { noise } from "@chainsafe/libp2p-noise";
 import { pubsubPeerDiscovery } from "@libp2p/pubsub-peer-discovery";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
 import { PeerId } from "@libp2p/interface-peer-id";
+import { Address } from "@libp2p/interface-peer-store";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
 
@@ -57,6 +60,11 @@ export class LibP2PNode {
 
   constructor(network: FarcasterNetwork) {
     this._network = network;
+  }
+
+  get connectionManager() {
+    //@ts-ignore
+    return this._node?.components.connectionManager as ConnectionManager | undefined;
   }
 
   get identity() {
@@ -148,7 +156,7 @@ export class LibP2PNode {
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
         services: {
-          identify: identifyService(),
+          identifyService: identifyService(),
           pubsub: gossip,
         },
         peerDiscovery: [pubsubPeerDiscovery({ topics: [peerDiscoveryTopic] })],
@@ -244,6 +252,7 @@ export class LibP2PNode {
 
       if (conn) {
         log.info({ identity: this.identity, address }, `Connected to peer at address: ${address}`);
+        this.addPeerToAddressBook(conn.remotePeer, address);
         return ok(undefined);
       }
       // biome-ignore lint/suspicious/noExplicitAny: error catching
@@ -271,9 +280,9 @@ export class LibP2PNode {
 
   /** Removes the peer from the address book and hangs up on them */
   async removePeerFromAddressBook(peerId: PeerId) {
-    if (this._node) {
+    if (this._node && this.connectionManager) {
       const hangupResult = await ResultAsync.fromPromise(
-        this._node.hangUp(peerId),
+        this.connectionManager.closeConnections(peerId),
         (error) => new HubError("unavailable", error as Error),
       );
       if (hangupResult.isErr()) {
@@ -303,13 +312,14 @@ export class LibP2PNode {
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
     const existingConnections = this._node?.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
-      const peer = await this._node?.peerStore.get(peerId);
-      const knownAddrs = peer?.addresses;
+      let knownAddrs: Address[];
+      if (!(await this._node?.peerStore.has(peerId))) knownAddrs = [];
+      else knownAddrs = (await this._node?.peerStore.get(peerId))?.addresses ?? [];
       if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
         await this._node?.peerStore.save(peerId, { multiaddrs: [conn.remoteAddr] });
       }
     }
-
+    if ((await this._node?.peerStore.has(peerId)) === false) return [];
     const addresses = (await this._node?.peerStore.get(peerId))?.addresses.map((addr) => addr.multiaddr);
     return addresses ?? [];
   }
