@@ -1,5 +1,22 @@
 # @farcaster/hubble
 
+## 1.5.6
+
+### Patch Changes
+
+- aa6553b1: feat: Enable HTTP API server
+- fb1f5c61: feat: Support onchain events and fnames in sync trie
+- f743a430: feat: Allow settings CORS for http api
+- f0ad204e: feat: Repair sync trie when events and fnames are already present
+- 833d9651: fix: hubble.sh - Don't delete before overwriting
+- bc4a1366: fix: HTTP API add getInfo and other doc fixes
+- aeab5a4c: docs: Refactor HTTP API docs
+- 4809c9c8: fix: HTTP API port in docker-compose
+- f163fa3d: chore: Remove "yarn status" command
+- 4b99eddb: feat: Support fname and onchain event syncids
+- Updated dependencies [aeab5a4c]
+  - @farcaster/hub-nodejs@0.10.10
+
 ## 1.5.5
 
 ### Patch Changes

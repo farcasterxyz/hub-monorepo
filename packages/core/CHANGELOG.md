@@ -1,5 +1,14 @@
 # @farcaster/core
 
+## 0.12.10
+
+### Patch Changes
+
+- 31641c17: fix: Bound generated timestamps for tests
+- fb1f5c61: feat: Support onchain events and fnames in sync trie
+- aeab5a4c: docs: Refactor HTTP API docs
+- 4b99eddb: feat: Support fname and onchain event syncids
+
 ## 0.12.9
 
 ### Patch Changes
