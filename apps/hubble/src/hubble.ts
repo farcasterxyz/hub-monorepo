@@ -72,6 +72,7 @@ import axios from "axios";
 import { HttpAPIServer } from "./rpc/httpServer.js";
 import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
+import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -191,6 +192,9 @@ export interface HubOptions {
 
   /** Resync l2 events */
   l2ResyncEvents?: boolean;
+
+  /** Clears all l2 events */
+  l2ClearEvents?: boolean;
 
   /** Resync fname events */
   resyncNameEvents?: boolean;
@@ -532,6 +536,12 @@ export class Hub implements HubInterface {
           "Hub was NOT shutdown cleanly. Sync might re-fetch messages. Please re-run with --rebuild-sync-trie to rebuild the trie if needed.",
         );
       }
+    }
+
+    if (this.options.l2ClearEvents === true) {
+      log.info("clearing l2 events");
+      await OnChainEventStore.clearEvents(this.rocksDB);
+      log.info("l2 events cleared");
     }
 
     // Get the Network ID from the DB

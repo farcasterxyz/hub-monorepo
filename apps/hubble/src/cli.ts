@@ -82,6 +82,7 @@ app
   .option("--l2-key-registry-address <address>", "The address of the L2 Farcaster Key Registry contract")
   .option("--l2-storage-registry-address <address>", "The address of the L2 Farcaster Storage Registry contract")
   .option("--l2-resync-events", "Resync events from the L2 Farcaster contracts before starting (default: disabled)")
+  .option("--l2-clear-events", "Deletes all events from the L2 Farcaster contracts before starting (default: disabled)")
   .option(
     "--l2-first-block <number>",
     "The block number to begin syncing events from L2 Farcaster contracts",
@@ -490,6 +491,7 @@ app
       l2ChunkSize: cliOptions.l2ChunkSize ?? hubConfig.l2ChunkSize,
       l2ChainId: cliOptions.l2ChainId ?? hubConfig.l2ChainId,
       l2ResyncEvents: cliOptions.l2ResyncEvents ?? hubConfig.l2ResyncEvents ?? false,
+      l2ClearEvents: cliOptions.l2ClearEvents ?? hubConfig.l2ClearEvents ?? false,
       l2RentExpiryOverride: cliOptions.l2RentExpiryOverride ?? hubConfig.l2RentExpiryOverride,
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
