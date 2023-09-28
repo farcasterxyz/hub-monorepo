@@ -1,0 +1,20 @@
+{
+  "name": "feed",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@farcaster/core": "^0.12.10",
+    "axios": "^1.5.1",
+    "javascript-time-ago": "^2.5.9"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "tsx": "^3.12.5",
+    "typescript": "^5.0.0"
+  }
+}
