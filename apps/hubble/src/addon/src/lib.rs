@@ -9,17 +9,17 @@ fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let signer_arg = cx.argument::<JsBuffer>(2)?;
 
     // Convert to the types expected by ed25519_dalek 2.0
-    let sig_bytes = signature_arg.as_slice(&cx);
-    if sig_bytes.len() != 64 {
-        return Ok(cx.number(0));
-    }
-    let signature = Signature::from_bytes(sig_bytes.try_into().unwrap());
+    let sig_bytes: [u8; 64] = match signature_arg.as_slice(&cx).try_into() {
+        Ok(bytes) => bytes,
+        Err(_) => return Ok(cx.number(0)),
+    };
+    let signature = Signature::from_bytes(&sig_bytes);
 
-    let signer_bytes = signer_arg.as_slice(&cx);
-    if signer_bytes.len() != 32 {
-        return Ok(cx.number(0));
-    }
-    let public_key = match VerifyingKey::from_bytes(signer_bytes.try_into().unwrap()) {
+    let signer_bytes: [u8; 32] = match signer_arg.as_slice(&cx).try_into() {
+        Ok(bytes) => bytes,
+        Err(_) => return Ok(cx.number(0)),
+    };
+    let public_key = match VerifyingKey::from_bytes(&signer_bytes) {
         Ok(pk) => pk,
         Err(_) => return Ok(cx.number(0)),
     };
