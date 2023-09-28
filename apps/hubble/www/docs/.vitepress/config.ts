@@ -31,6 +31,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: "Using HTTP APIs", link: "/docs/httpapi/httpapi" },
+              { text: "Info API", link: "/docs/httpapi/info" },
               { text: "Casts API", link: "/docs/httpapi/casts" },
               { text: "Reactions API", link: "/docs/httpapi/reactions" },
               { text: "Links API", link: "/docs/httpapi/links" },
@@ -41,7 +42,6 @@ export default defineConfig({
               { text: "On Chain API", link: "/docs/httpapi/onchain" },
               { text: "SubmitMessage API", link: "/docs/httpapi/submitmessage" },
               { text: "Events API", link: "/docs/httpapi/events" },
-              { text: "Info API", link: "/docs/httpapi/info" },
             ],
           },
           { text: "Messages", link: "/docs/messages" },

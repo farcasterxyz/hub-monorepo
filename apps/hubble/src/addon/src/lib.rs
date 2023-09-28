@@ -1,4 +1,6 @@
-use ed25519_dalek::{PublicKey, Signature, Verifier};
+use std::convert::TryInto;
+
+use ed25519_dalek::{Signature, VerifyingKey};
 use neon::{prelude::*, types::buffer::TypedArray};
 
 fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
@@ -6,18 +8,24 @@ fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let hash_arg = cx.argument::<JsBuffer>(1)?;
     let signer_arg = cx.argument::<JsBuffer>(2)?;
 
-    // Convert to the types expected by ed25519_dalek
-    let signature = match Signature::from_bytes(&signature_arg.as_slice(&cx)) {
-        Ok(result) => result,
-        Err(_) => return Ok(cx.number(0)),
-    };
-    let public_key = match PublicKey::from_bytes(&signer_arg.as_slice(&cx)) {
-        Ok(result) => result,
+    // Convert to the types expected by ed25519_dalek 2.0
+    let sig_bytes = signature_arg.as_slice(&cx);
+    if sig_bytes.len() != 64 {
+        return Ok(cx.number(0));
+    }
+    let signature = Signature::from_bytes(sig_bytes.try_into().unwrap());
+
+    let signer_bytes = signer_arg.as_slice(&cx);
+    if signer_bytes.len() != 32 {
+        return Ok(cx.number(0));
+    }
+    let public_key = match VerifyingKey::from_bytes(signer_bytes.try_into().unwrap()) {
+        Ok(pk) => pk,
         Err(_) => return Ok(cx.number(0)),
     };
 
     // Verify the signature
-    match public_key.verify(&hash_arg.as_slice(&cx), &signature) {
+    match public_key.verify_strict(&hash_arg.as_slice(&cx), &signature) {
         Ok(_) => Ok(cx.number(1)),
         Err(_) => Ok(cx.number(0)),
     }
