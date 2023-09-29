@@ -46,6 +46,7 @@ L2 Options:
   --l2-key-registry-address <address>   The address of the L2 Farcaster Key Registry contract
   --l2-storage-registry-address <address>  The address of the L2 Farcaster Storage Registry contract
   --l2-resync-events                    Resync events from the L2 Farcaster contracts before starting (default: disabled)
+  --l2-clear-events                     Deletes all L2 events before starting (default: disabled)
   --l2-first-block <number>             The block number to begin syncing events from L2 Farcaster contracts
   --l2-chunk-size <number>              The number of events to fetch from L2 Farcaster contracts at a time
   --l2-chain-id <number>                The chain ID of the L2 Farcaster contracts are deployed to
