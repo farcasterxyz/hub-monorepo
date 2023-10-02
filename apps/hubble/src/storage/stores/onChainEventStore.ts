@@ -270,9 +270,13 @@ class OnChainEventStore {
       {},
       1 * 60 * 60 * 1000,
     );
-    const state = await getHubState(db);
-    state.lastL2Block = 0;
-    await putHubState(db, state);
+    const result = await ResultAsync.fromPromise(getHubState(db), (e) => e as HubError);
+    if (result.isOk()) {
+      result.value.lastL2Block = 0;
+      await putHubState(db, result.value);
+    } else {
+      logger.warn(result.error, "Could not reset hub state when clearing events");
+    }
     return count;
   }
 }

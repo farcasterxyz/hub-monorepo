@@ -1,8 +1,9 @@
 import { ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
+import { logger } from "../../../utils/logger.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
 import { fnameProofIndexMigration } from "./2.fnameproof.js";
-import { logger } from "../../../utils/logger.js";
+import { clearEventsMigration } from "./3.clearEvents.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
@@ -17,6 +18,9 @@ migrations.set(1, async (db: RocksDB) => {
 });
 migrations.set(2, async (db: RocksDB) => {
   return await fnameProofIndexMigration(db);
+});
+migrations.set(3, async (db: RocksDB) => {
+  return await clearEventsMigration(db);
 });
 
 // To Add a new migration
