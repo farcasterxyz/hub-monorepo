@@ -44,6 +44,7 @@ import { addProgressBar, finishAllProgressBars } from "../../utils/progressBars.
 import { SingleBar } from "cli-progress";
 import { SemVer } from "semver";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
+import { PeerScorer } from "./peerScore.js";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -56,7 +57,6 @@ const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
-const BAD_PEER_MESSAGE_THRESHOLD = 1000; // Number of messages we can't merge before we consider a peer "bad"
 
 const log = logger.child({
   component: "SyncEngine",
@@ -75,7 +75,7 @@ type PeerContact = {
   peerId: PeerId;
 };
 
-class MergeResult {
+export class MergeResult {
   total: number;
   successCount: number;
   deferredCount: number;
@@ -112,6 +112,7 @@ type SyncStatus = {
   divergencePrefix: string;
   divergenceSecondsAgo: number;
   lastBadSync: number;
+  score: number;
 };
 
 // Status of the current (ongoing) sync.
@@ -153,8 +154,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _syncProfiler?: SyncEngineProfiler;
 
   private currentHubPeerContacts: Map<string, PeerContact> = new Map();
-  // Map of peerId to last time we attempted to sync with them without merging any new messages succesfully
-  private _unproductivePeers: Map<string, Date> = new Map();
 
   // Number of messages waiting to get into the SyncTrie.
   private _syncTrieQ = 0;
@@ -167,6 +166,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   // The latest sync snapshot for each peer
   private _peerSyncSnapshot = new Map<string, TrieSnapshot>();
+
+  // Peer Scoring
+  private _peerScorer = new PeerScorer();
 
   // Has the syncengine started yet?
   private _started = false;
@@ -369,6 +371,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._currentSyncStatus.interruptSync = false;
   }
 
+  public getBadPeerIds(): string[] {
+    return this._peerScorer.getBadPeerIds();
+  }
+
   public getSyncProfile(): SyncEngineProfiler | undefined {
     return this._syncProfiler;
   }
@@ -515,6 +521,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           hubOperatorFid: peerInfo.map((info) => info.hubOperatorFid).unwrapOr(0),
           inSync: syncStatus.inSync,
           isSyncing: syncStatus.isSyncing,
+          shouldSync: syncStatus.shouldSync,
           theirMessages: syncStatus.theirSnapshot.numMessages,
           ourMessages: syncStatus.ourSnapshot?.numMessages,
           peerNetwork: peerContact.network,
@@ -556,7 +563,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async syncStatus(peerId: string, theirSnapshot: TrieSnapshot): HubAsyncResult<SyncStatus> {
-    const lastBadSync = this._unproductivePeers.get(peerId);
     const ourSnapshotResult = await this.getSnapshot(theirSnapshot.prefix);
 
     if (ourSnapshotResult.isErr()) {
@@ -564,20 +570,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
     const ourSnapshot = ourSnapshotResult.value;
 
-    if (this._currentSyncStatus.isSyncing) {
-      return ok({
-        isSyncing: true,
-        inSync: "unknown",
-        shouldSync: false,
-        theirSnapshot,
-        ourSnapshot,
-        divergencePrefix: "",
-        divergenceSecondsAgo: -1,
-        lastBadSync: -1,
-      });
-    }
+    const peerScore = this._peerScorer.getScore(peerId);
+    const lastBadSync = peerScore?.lastBadSyncTime;
+    const isSyncing = this._currentSyncStatus.isSyncing;
 
-    if (lastBadSync && Date.now() < lastBadSync.getTime() + BAD_PEER_BLOCK_TIMEOUT) {
+    if (lastBadSync && Date.now() < lastBadSync + BAD_PEER_BLOCK_TIMEOUT) {
       return ok({
         isSyncing: false,
         inSync: "blocked",
@@ -586,7 +583,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         ourSnapshot,
         divergencePrefix: "",
         divergenceSecondsAgo: -1,
-        lastBadSync: lastBadSync.getTime(),
+        lastBadSync: lastBadSync,
+        score: peerScore?.score ?? 0,
       });
     }
 
@@ -605,14 +603,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     return ok({
-      isSyncing: false,
+      isSyncing,
       inSync: excludedHashesMatch ? "true" : "false",
-      shouldSync: !excludedHashesMatch,
+      shouldSync: !isSyncing && !excludedHashesMatch,
       ourSnapshot,
       theirSnapshot,
       divergencePrefix,
       divergenceSecondsAgo,
-      lastBadSync: lastBadSync?.getTime() ?? -1,
+      lastBadSync: lastBadSync ?? -1,
+      score: peerScore?.score ?? 0,
     });
   }
 
@@ -696,19 +695,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
         log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
         statsd().timing("syncengine.sync_time_ms", Date.now() - start);
-
-        // If we did not merge any messages and didn't defer any. Then this peer only had old messages.
-        if (
-          fullSyncResult.total > BAD_PEER_MESSAGE_THRESHOLD &&
-          fullSyncResult.successCount === 0 &&
-          fullSyncResult.deferredCount === 0
-        ) {
-          log.warn(
-            { peerId },
-            "Perform sync: No messages were successfully fetched. Peer will be blocked for a while.",
-          );
-          this._unproductivePeers.set(peerId, new Date());
-        }
       }
     } catch (e) {
       log.warn(e, "Perform sync: Error");
@@ -717,6 +703,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this._currentSyncStatus.interruptSync = false;
 
       clearTimeout(syncTimeout);
+
+      this._peerScorer.updateLastSync(peerId, fullSyncResult);
 
       if (this._currentSyncStatus.initialSync) {
         finishAllProgressBars(true);
@@ -843,6 +831,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             { syncIds, messages: msgs.messages, peer: this._currentSyncStatus.peerId },
             "PeerError: Fetched Messages do not match SyncIDs requested",
           );
+          this._peerScorer.decrementScore(this._currentSyncStatus.peerId?.toString());
         } else {
           statsd().increment("syncengine.peer_counts.get_all_messages_by_syncids", msgs.messages.length);
           result = await this.mergeMessages(msgs.messages, rpcClient);
@@ -915,6 +904,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               { fid: msg.data?.fid, err: result.error.message, peerId: this._currentSyncStatus.peerId },
               "PeerError: Unexpected validation error",
             );
+            this._peerScorer.decrementScore(this._currentSyncStatus.peerId?.toString());
             this._currentSyncStatus.seriousValidationFailures += 1;
             errCount += 1;
           }
@@ -1026,6 +1016,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
       if (result.isErr()) {
         log.warn(result.error, `Error fetching ids for prefix ${theirNode.prefix}`);
+        this._peerScorer.decrementScore(this._currentSyncStatus.peerId?.toString());
       } else {
         // Verify that the returned syncIDs actually have the prefix we requested.
         if (!this.verifySyncIdForPrefix(theirNode.prefix, result.value.syncIds)) {
@@ -1033,6 +1024,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             { prefix: theirNode.prefix, syncIds: result.value.syncIds, peerId: this._currentSyncStatus.peerId },
             "PeerError: Received syncIds that don't match prefix, aborting trie branch",
           );
+          this._peerScorer.decrementScore(this._currentSyncStatus.peerId?.toString());
           return;
         }
         statsd().increment("syncengine.peer_counts.get_all_syncids_by_prefix", result.value.syncIds.length);

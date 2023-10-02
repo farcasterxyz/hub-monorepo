@@ -25,7 +25,6 @@ import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
-const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
