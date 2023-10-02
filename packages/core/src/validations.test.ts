@@ -646,7 +646,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
   const fid = Factories.Fid.build();
   const network = Factories.FarcasterNetwork.build();
 
-  test("succeeds", async () => {
+  test("succeeds for eoas", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result.isOk()).toBeTruthy();
@@ -658,6 +658,61 @@ describe("validateVerificationAddEthAddressSignature", () => {
     });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result).toEqual(err(new HubError("unknown", "Cannot convert 0x to a BigInt")));
+  });
+
+  test("fails with invalid verificationType", async () => {
+    const body = await Factories.VerificationAddEthAddressBody.create({
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      verificationType: 2,
+    });
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid verification type")));
+  });
+
+  test("fails with invalid chainId", async () => {
+    const body = await Factories.VerificationAddEthAddressBody.create({
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      chainId: 7,
+      verificationType: 1,
+    });
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid chain ID")));
+  });
+
+  test("fails if chainId not supported by client", async () => {
+    const body = await Factories.VerificationAddEthAddressBody.create({
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      chainId: 1,
+      verificationType: 1,
+    });
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid chain ID")));
+  });
+
+  test("succeeds for contract signatures", async () => {
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        address: Uint8Array.from(Buffer.from("C89858205c6AdDAD842E1F58eD6c42452671885A", "hex")),
+        chainId: 1,
+        verificationType: 1,
+      },
+      { transient: { fid, network, contractSignature: true } },
+    );
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    expect(result.isOk()).toBeTruthy();
+  });
+
+  test("fails with invalid contract address", async () => {
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        address: Uint8Array.from(Buffer.from("D89858205c6AdDAD842E1F58eD6c42452671885A", "hex")),
+        chainId: 1,
+        verificationType: 1,
+      },
+      { transient: { fid, network, contractSignature: true } },
+    );
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "ethSignature does not match address")));
   });
 
   test("fails with eth signature from different address", async () => {

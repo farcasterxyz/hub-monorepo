@@ -44,7 +44,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
 
     test("succeeds", async () => {
-      const valid = await eip712.verifyVerificationEthAddressClaimSignature(claim, signature, signerKey);
+      const valid = await eip712.verifyVerificationEthAddressClaimSignature(claim, signature, signerKey, 0, 0);
       expect(valid).toEqual(ok(true));
     });
 

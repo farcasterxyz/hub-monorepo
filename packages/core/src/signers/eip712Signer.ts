@@ -16,6 +16,9 @@ export abstract class Eip712Signer implements Signer {
    */
   public abstract getSignerKey(): HubAsyncResult<Uint8Array>;
   public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
-  public abstract signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array>;
+  public abstract signVerificationEthAddressClaim(
+    claim: VerificationEthAddressClaim,
+    chainId?: number,
+  ): HubAsyncResult<Uint8Array>;
   public abstract signUserNameProofClaim(claim: UserNameProofClaim): HubAsyncResult<Uint8Array>;
 }
