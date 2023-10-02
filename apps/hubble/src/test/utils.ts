@@ -1,6 +1,6 @@
 import { DeployContractParameters, createTestClient, createWalletClient, custom } from "viem";
 import { Chain, localhost } from "viem/chains";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, fallback } from "viem";
 import { Abi } from "abitype";
 import { accounts, localHttpUrl } from "./constants.js";
 import { IdRegistry, NameRegistry, StorageRegistry } from "../eth/abis.js";
@@ -73,7 +73,11 @@ export const httpClient = createPublicClient({
   transport: http(localHttpUrl),
 });
 
-export const publicClient = httpClient;
+export const publicClient = createPublicClient({
+  chain: anvilChain,
+  pollingInterval: 1_000,
+  transport: fallback([http(localHttpUrl)]),
+});
 
 export const testClient = createTestClient({
   chain: anvilChain,
