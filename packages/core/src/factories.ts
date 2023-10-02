@@ -533,43 +533,6 @@ const UsernameProofMessageFactory = Factory.define<protobufs.UsernameProofMessag
   },
 );
 
-/** Contract event Protobufs */
-
-const IdRegistryEventTypeFactory = Factory.define<protobufs.IdRegistryEventType>(() => {
-  return faker.helpers.arrayElement([protobufs.IdRegistryEventType.REGISTER, protobufs.IdRegistryEventType.TRANSFER]);
-});
-
-const IdRegistryEventFactory = Factory.define<protobufs.IdRegistryEvent>(() => {
-  return protobufs.IdRegistryEvent.create({
-    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
-    blockHash: BlockHashFactory.build(),
-    transactionHash: TransactionHashFactory.build(),
-    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
-    fid: FidFactory.build(),
-    to: EthAddressFactory.build(),
-    type: IdRegistryEventTypeFactory.build(),
-    from: EthAddressFactory.build(),
-  });
-});
-
-const NameRegistryEventTypeFactory = Factory.define<protobufs.NameRegistryEventType>(() => {
-  return faker.helpers.arrayElement([protobufs.NameRegistryEventType.RENEW, protobufs.NameRegistryEventType.TRANSFER]);
-});
-
-const NameRegistryEventFactory = Factory.define<protobufs.NameRegistryEvent>(() => {
-  return protobufs.NameRegistryEvent.create({
-    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
-    blockHash: BlockHashFactory.build(),
-    transactionHash: TransactionHashFactory.build(),
-    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
-    fname: FnameFactory.build(),
-    to: EthAddressFactory.build(),
-    type: NameRegistryEventTypeFactory.build(),
-    from: EthAddressFactory.build(),
-    expiry: getFarcasterTime()._unsafeUnwrap() + 60 * 60 * 24 * 365, // a year
-  });
-});
-
 const OnChainEventFactory = Factory.define<protobufs.OnChainEvent>(() => {
   return protobufs.OnChainEvent.create({
     type: OnChainEventType.EVENT_TYPE_SIGNER,
@@ -709,10 +672,6 @@ export const Factories = {
   UserDataBody: UserDataBodyFactory,
   UserDataAddData: UserDataAddDataFactory,
   UserDataAddMessage: UserDataAddMessageFactory,
-  IdRegistryEventType: IdRegistryEventTypeFactory,
-  IdRegistryEvent: IdRegistryEventFactory,
-  NameRegistryEventType: NameRegistryEventTypeFactory,
-  NameRegistryEvent: NameRegistryEventFactory,
   UserNameProof: UserNameProofFactory,
   UsernameProofData: UsernameProofDataFactory,
   UsernameProofMessage: UsernameProofMessageFactory,

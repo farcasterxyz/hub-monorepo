@@ -82,24 +82,6 @@ describe("UserDataAddMessageFactory", () => {
   });
 });
 
-describe("IdRegistryEventFactory", () => {
-  test("succeeds", () => {
-    const event = Factories.IdRegistryEvent.build();
-    const encoded = protobufs.IdRegistryEvent.encode(event).finish();
-    const decoded = protobufs.IdRegistryEvent.decode(encoded);
-    expect(protobufs.IdRegistryEvent.toJSON(decoded)).toEqual(protobufs.IdRegistryEvent.toJSON(event));
-  });
-});
-
-describe("NameRegistryEventFactory", () => {
-  test("succeeds", () => {
-    const event = Factories.NameRegistryEvent.build();
-    const encoded = protobufs.NameRegistryEvent.encode(event).finish();
-    const decoded = protobufs.NameRegistryEvent.decode(encoded);
-    expect(protobufs.NameRegistryEvent.toJSON(decoded)).toEqual(protobufs.NameRegistryEvent.toJSON(event));
-  });
-});
-
 describe("StorageRentOnChainEventFactory", () => {
   test("succeeds", () => {
     const event = Factories.StorageRentOnChainEvent.build();

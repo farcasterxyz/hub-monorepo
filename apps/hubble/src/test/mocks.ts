@@ -4,9 +4,7 @@ import {
   HubError,
   HubRpcClient,
   HubState,
-  IdRegistryEvent,
   Message,
-  NameRegistryEvent,
   OnChainEvent,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
