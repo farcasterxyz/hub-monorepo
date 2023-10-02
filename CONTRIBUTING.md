@@ -47,9 +47,6 @@ First, ensure that the following are installed globally on your machine:
 - [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 - [Rust](https://www.rust-lang.org/tools/install)
 
-To regenerae the protobufs, you will need `protoc` 
-- [Protoc 3.15.3](https://github.com/protocolbuffers/protobuf/releases/tag/v3.15.3)
-
 Then, from the root folder run:
 
 - `yarn install` to install dependencies
