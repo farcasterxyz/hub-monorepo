@@ -34,7 +34,6 @@ import { PageOptions } from "./types.js";
 import { logger } from "../../utils/logger.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
-export const MIGRATION_BLOCK = 108911959;
 
 /**
  * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
@@ -140,30 +139,6 @@ class OnChainEventStore {
    * Merges a rent ContractEvent into the StorageEventStore
    */
   async _mergeEvent(event: OnChainEvent): Promise<number> {
-    if (event.blockNumber <= MIGRATION_BLOCK) {
-      // Handle events that were merged with the incorrect index (using txIndex instead of logIndex if they exist)
-      const _badEvent = await ResultAsync.fromPromise(
-        getOnChainEvent(this._db, event.type, event.fid, event.blockNumber, event.txIndex),
-        () => undefined,
-      );
-      if (_badEvent.isOk()) {
-        const incorrectPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.txIndex);
-        const correctPrimaryKey = makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.logIndex);
-        const txn = this._db.transaction();
-        txn.del(incorrectPrimaryKey);
-        putOnChainEventTransaction(txn, event);
-
-        if (isSignerOnChainEvent(_badEvent.value)) {
-          txn.put(makeSignerOnChainEventBySignerKey(event.fid, _badEvent.value.signerEventBody.key), correctPrimaryKey);
-        } else if (isIdRegisterOnChainEvent(_badEvent.value)) {
-          txn
-            .put(makeIdRegisterEventByCustodyKey(_badEvent.value.idRegisterEventBody.to), correctPrimaryKey)
-            .put(makeIdRegisterEventByFidKey(event.fid), correctPrimaryKey);
-        }
-        await this._db.commit(txn);
-        throw new HubError("bad_request.duplicate", "onChainEvent already exists (txIndex updated)");
-      }
-    }
     const _existingEvent = await ResultAsync.fromPromise(
       getOnChainEvent(this._db, event.type, event.fid, event.blockNumber, event.logIndex),
       () => undefined,
@@ -270,9 +245,13 @@ class OnChainEventStore {
       {},
       1 * 60 * 60 * 1000,
     );
-    const state = await getHubState(db);
-    state.lastL2Block = 0;
-    await putHubState(db, state);
+    const result = await ResultAsync.fromPromise(getHubState(db), (e) => e as HubError);
+    if (result.isOk()) {
+      result.value.lastL2Block = 0;
+      await putHubState(db, result.value);
+    } else {
+      logger.warn(result.error, "Could not reset hub state when clearing events");
+    }
     return count;
   }
 }

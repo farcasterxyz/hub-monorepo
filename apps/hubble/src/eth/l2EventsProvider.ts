@@ -165,15 +165,7 @@ export class L2EventsProvider {
     return this._lastBlockNumber;
   }
 
-  public get ready(): boolean {
-    return !!this.idRegistryAddress && !!this.keyRegistryAddress && !!this.storageRegistryAddress;
-  }
-
   public async start() {
-    if (!this.ready) {
-      log.warn("Deferring start until L2 contract addresses are available");
-      return;
-    }
     // Connect to L2 RPC
     await this.connectAndSyncHistoricalEvents();
 

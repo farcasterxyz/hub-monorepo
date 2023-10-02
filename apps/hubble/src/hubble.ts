@@ -290,8 +290,8 @@ export class Hub implements HubInterface {
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
 
   engine: Engine;
-  fNameRegistryEventsProvider?: FNameRegistryEventsProvider;
-  l2RegistryProvider?: L2EventsProvider;
+  fNameRegistryEventsProvider: FNameRegistryEventsProvider;
+  l2RegistryProvider: L2EventsProvider;
 
   constructor(options: HubOptions) {
     this.options = options;
@@ -610,12 +610,8 @@ export class Hub implements HubInterface {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
 
-    // Start the L2 registry provider second
-    if (this.l2RegistryProvider) {
-      await this.l2RegistryProvider.start();
-    }
-
-    await this.fNameRegistryEventsProvider?.start();
+    await this.l2RegistryProvider.start();
+    await this.fNameRegistryEventsProvider.start();
 
     // Start the sync engine
     await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
@@ -680,21 +676,6 @@ export class Hub implements HubInterface {
 
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
-
-      if (!this.l2RegistryProvider?.ready) {
-        if (
-          networkConfig.storageRegistryAddress &&
-          networkConfig.keyRegistryAddress &&
-          networkConfig.idRegistryAddress
-        ) {
-          this.l2RegistryProvider?.setAddresses(
-            networkConfig.storageRegistryAddress,
-            networkConfig.keyRegistryAddress,
-            networkConfig.idRegistryAddress,
-          );
-          this.l2RegistryProvider?.start();
-        }
-      }
 
       log.info({ allowedPeerIds, deniedPeerIds }, "Network config applied");
 
@@ -849,12 +830,8 @@ export class Hub implements HubInterface {
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
 
-    // Stop the L2 registry provider
-    if (this.l2RegistryProvider) {
-      await this.l2RegistryProvider.stop();
-    }
-
-    await this.fNameRegistryEventsProvider?.stop();
+    await this.l2RegistryProvider.stop();
+    await this.fNameRegistryEventsProvider.stop();
 
     // Stop the engine
     await this.engine.stop();
