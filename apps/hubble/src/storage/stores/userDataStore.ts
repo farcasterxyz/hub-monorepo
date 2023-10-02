@@ -4,7 +4,6 @@ import {
   HubEventType,
   isUserDataAddMessage,
   MessageType,
-  NameRegistryEvent,
   UserNameProof,
   UserDataAddMessage,
   UserDataType,

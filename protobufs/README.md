@@ -19,8 +19,6 @@ If you make changes to the protobufs, you will need to run `yarn protoc` in the 
 - `packages/hub-nodejs`
 - `packages/hub-web`
 
-You will need [protoc version `3.15.3`](https://github.com/protocolbuffers/protobuf/releases/tag/v3.15.3) to compile the protobufs. 
-
 ### Generate Bindings
 
 Coming soon
