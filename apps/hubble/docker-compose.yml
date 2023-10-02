@@ -8,6 +8,7 @@ version: '3.9'
 services:
   hubble:
     image: farcasterxyz/hubble:latest
+    pull_policy: always
     restart: unless-stopped
     command: [
       "node", "--no-warnings",  "build/cli.js", "start",
