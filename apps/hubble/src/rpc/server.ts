@@ -417,6 +417,7 @@ export default class Server {
                     divergenceSecondsAgo: status.divergenceSecondsAgo,
                     ourMessages: status.ourSnapshot.numMessages,
                     theirMessages: status.theirSnapshot.numMessages,
+                    score: status.score,
                   }),
                 );
               }

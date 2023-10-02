@@ -13,8 +13,6 @@ import {
   getSSLHubRpcClient,
   getInsecureHubRpcClient,
   UserNameProof,
-  AckMessageBody,
-  NetworkLatencyMessage,
   OnChainEvent,
   onChainEventTypeToJSON,
   ClientOptions,
@@ -361,6 +359,12 @@ export class Hub implements HubInterface {
       this.fNameRegistryEventsProvider,
       profileSync,
     );
+
+    // On syncComplete, we update the denied peer ids list with the bad peers.
+    // This is not active yet.
+    // this.syncEngine.on("syncComplete", async (success) => {
+    //   this.gossipNode.updateDeniedPeerIds(this.syncEngine.getBadPeerIds());
+    // });
 
     // If profileSync is true, exit after sync is complete
     if (profileSync) {

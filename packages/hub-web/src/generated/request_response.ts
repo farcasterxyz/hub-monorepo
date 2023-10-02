@@ -126,6 +126,7 @@ export interface SyncStatus {
   theirMessages: number;
   ourMessages: number;
   lastBadSync: number;
+  score: number;
 }
 
 export interface TrieNodeMetadataResponse {
@@ -910,6 +911,7 @@ function createBaseSyncStatus(): SyncStatus {
     theirMessages: 0,
     ourMessages: 0,
     lastBadSync: 0,
+    score: 0,
   };
 }
 
@@ -938,6 +940,9 @@ export const SyncStatus = {
     }
     if (message.lastBadSync !== 0) {
       writer.uint32(64).int64(message.lastBadSync);
+    }
+    if (message.score !== 0) {
+      writer.uint32(72).int64(message.score);
     }
     return writer;
   },
@@ -1005,6 +1010,13 @@ export const SyncStatus = {
 
           message.lastBadSync = longToNumber(reader.int64() as Long);
           continue;
+        case 9:
+          if (tag != 72) {
+            break;
+          }
+
+          message.score = longToNumber(reader.int64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1024,6 +1036,7 @@ export const SyncStatus = {
       theirMessages: isSet(object.theirMessages) ? Number(object.theirMessages) : 0,
       ourMessages: isSet(object.ourMessages) ? Number(object.ourMessages) : 0,
       lastBadSync: isSet(object.lastBadSync) ? Number(object.lastBadSync) : 0,
+      score: isSet(object.score) ? Number(object.score) : 0,
     };
   },
 
@@ -1037,6 +1050,7 @@ export const SyncStatus = {
     message.theirMessages !== undefined && (obj.theirMessages = Math.round(message.theirMessages));
     message.ourMessages !== undefined && (obj.ourMessages = Math.round(message.ourMessages));
     message.lastBadSync !== undefined && (obj.lastBadSync = Math.round(message.lastBadSync));
+    message.score !== undefined && (obj.score = Math.round(message.score));
     return obj;
   },
 
@@ -1054,6 +1068,7 @@ export const SyncStatus = {
     message.theirMessages = object.theirMessages ?? 0;
     message.ourMessages = object.ourMessages ?? 0;
     message.lastBadSync = object.lastBadSync ?? 0;
+    message.score = object.score ?? 0;
     return message;
   },
 };
