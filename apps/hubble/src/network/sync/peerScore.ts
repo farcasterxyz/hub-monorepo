@@ -12,14 +12,25 @@ const log = logger.child({
 export class PeerScore {
   score: number;
   blocked: boolean;
-  blockedAt?: number;
-  lastSyncTime?: number;
-  lastBadSyncTime?: number;
-  lastSyncResult?: MergeResult;
+  blockedAt: number | undefined;
+  lastSyncTime: number | undefined;
+  lastBadSyncTime: number | undefined;
+  lastSyncResult: MergeResult | undefined;
 
   constructor() {
     this.score = 0;
     this.blocked = false;
+  }
+
+  clone(): PeerScore {
+    const score = new PeerScore();
+    score.score = this.score;
+    score.blocked = this.blocked;
+    score.blockedAt = this.blockedAt;
+    score.lastSyncTime = this.lastSyncTime;
+    score.lastBadSyncTime = this.lastBadSyncTime;
+    score.lastSyncResult = this.lastSyncResult;
+    return score;
   }
 }
 
