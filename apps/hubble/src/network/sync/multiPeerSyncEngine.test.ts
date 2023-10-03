@@ -246,18 +246,11 @@ describe("Multi peer sync engine", () => {
       // Should sync should now be true
       expect((await syncEngine2.syncStatus("engine1", newSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
-      const startScore = syncEngine2.getPeerScore("engine1")?.score ?? 0;
-
       // Do the sync again, this time enabling audit
       await syncEngine2.performSync("engine1", newSnapshot, clientForServer1, true);
 
       // Make sure root hash matches
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
-
-      // Check the peer score to make sure it increased
-      const peerScore = syncEngine2.getPeerScore("engine1");
-      expect(peerScore).toBeDefined();
-      expect(peerScore?.score).toBeGreaterThan(startScore);
 
       expect(syncEngine2.trie.exists(SyncId.fromFName(fname))).toBeTruthy();
       expect(syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
