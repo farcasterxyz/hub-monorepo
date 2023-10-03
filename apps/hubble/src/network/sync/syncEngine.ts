@@ -44,7 +44,7 @@ import { addProgressBar, finishAllProgressBars } from "../../utils/progressBars.
 import { SingleBar } from "cli-progress";
 import { SemVer } from "semver";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
-import { PeerScorer } from "./peerScore.js";
+import { PeerScore, PeerScorer } from "./peerScore.js";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -375,6 +375,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this._peerScorer.getBadPeerIds();
   }
 
+  public getPeerScore(peerId: string): PeerScore | undefined {
+    return this._peerScorer.getScore(peerId);
+  }
+
   public getSyncProfile(): SyncEngineProfiler | undefined {
     return this._syncProfiler;
   }
@@ -615,7 +619,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     });
   }
 
-  async performSync(peerId: string, otherSnapshot: TrieSnapshot, rpcClient: HubRpcClient): Promise<MergeResult> {
+  async performSync(
+    peerId: string,
+    otherSnapshot: TrieSnapshot,
+    rpcClient: HubRpcClient,
+    doAudit = false,
+  ): Promise<MergeResult> {
     log.info({ peerId }, "Perform sync: Start");
 
     const start = Date.now();
@@ -660,6 +669,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           "Divergence prefix",
         );
 
+        let auditPeerPromise: Promise<void>;
+        if (doAudit) {
+          auditPeerPromise = this.auditPeer(peerId, rpcClient);
+        } else {
+          auditPeerPromise = Promise.resolve();
+        }
+
         await this.compareNodeAtPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
           const missingSyncIds = missingIds.map((id) => SyncId.fromBytes(id));
           const missingMessageIds = missingSyncIds.filter((id) => id.type() === SyncIdType.Message);
@@ -693,6 +709,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           statsd().increment("syncengine.sync_messages.deferred", result.deferredCount);
         });
 
+        await auditPeerPromise; // Wait for audit to complete
+
         log.info({ syncResult: fullSyncResult }, "Perform sync: Sync Complete");
         statsd().timing("syncengine.sync_time_ms", Date.now() - start);
       }
@@ -712,6 +730,84 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     return fullSyncResult;
+  }
+
+  // We will get a few messages that we already have from this peer, to make sure that the peer is being honest
+  // and is returning the correct messages. If the peer is not being honest, we will score them down.
+  async auditPeer(peerId: string, rpcClient: HubRpcClient) {
+    // Start at the root node, and go down a random path
+    let node = await this._trie.getTrieNodeMetadata(new Uint8Array());
+    while (node && node.numMessages > 5) {
+      // Pick a random child from the Map of children
+      const children = Array.from(node.children?.entries() ?? []);
+      const [, randomChild] = children[Math.floor(Math.random() * children.length)] ?? [];
+      if (!randomChild) {
+        break;
+      }
+      node = await this._trie.getTrieNodeMetadata(randomChild.prefix);
+    }
+
+    if (!node) {
+      return;
+    }
+
+    // If we found a node, we'll audit it. Fetch upto 5 of the messages of this node
+    // from the peer and make sure they match what we have.
+    const syncIdBytes = (await this._trie.getAllValues(node.prefix)).slice(0, 5);
+    const syncIds = syncIdBytes.map((id) => SyncId.fromBytes(id));
+    const messagesResult = await rpcClient.getAllMessagesBySyncIds(
+      SyncIds.create({ syncIds: syncIdBytes }),
+      new Metadata(),
+      rpcDeadline(),
+    );
+
+    if (messagesResult.isErr()) {
+      log.warn(err, "PeerError: Error fetching messages for audit");
+      this._peerScorer.decrementScore(peerId);
+      return;
+    }
+
+    const mismatched = !this.validateFetchedMessagesAgainstSyncIds(syncIds, messagesResult.value.messages);
+    if (mismatched) {
+      log.warn(
+        { syncIds, messages: messagesResult.value, peerId },
+        "PeerError: Fetched Messages do not match SyncIDs requested during audit",
+      );
+      this._peerScorer.decrementScore(this._currentSyncStatus.peerId?.toString());
+      return;
+    }
+
+    // Get our own messages for the same syncIDs
+    const ourMessagesResult = await this.getAllMessagesBySyncIds(syncIds);
+    if (ourMessagesResult.isErr()) {
+      log.warn(err, "PeerError: Error fetching our messages for audit");
+      return;
+    }
+
+    // And make sure that for each message in our Messages, the peer has the same message
+    const anyFailed =
+      ourMessagesResult.value
+        .map((message) => {
+          const peerMessage = messagesResult.value.messages.find((m) => m.hash === message.hash);
+          if (!peerMessage) {
+            log.warn({ message, peerId }, "PeerError: Peer is missing message during audit");
+            return "failed";
+          } else if (Message.toJSON(message) !== Message.toJSON(peerMessage)) {
+            log.warn({ message, peerId }, "PeerError: Peer has different message during audit");
+            return "failed";
+          }
+          return "passed";
+        })
+        .find((result) => result === "failed") ?? false;
+
+    // If peer passed the audit, score them up
+    if (!anyFailed) {
+      this._peerScorer.incrementScore(peerId);
+      log.info({ peerId, numMessages: syncIds.length }, "Peer passed audit");
+    } else {
+      this._peerScorer.decrementScore(peerId, 10);
+      log.warn({ peerId, numMessages: syncIds.length }, "Peer failed audit");
+    }
   }
 
   async getAllMessagesBySyncIds(syncIds: SyncId[]): HubAsyncResult<Message[]> {
@@ -814,17 +910,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     await messagesResult.match(
       async (msgs) => {
         // Make sure that the messages are actually for the SyncIDs
-        const syncIdHashes = new Set(
-          syncIds
-            .map((syncId) => syncId.unpack())
-            .map((syncId) => (syncId.type === SyncIdType.Message ? bytesToHexString(syncId.hash).unwrapOr("") : ""))
-            .filter((str) => str !== ""),
-        );
-
-        // Go over the SyncID hashes and the messages and make sure that the messages are for the SyncIDs
-        const mismatched = msgs.messages.some(
-          (msg) => !syncIdHashes.has(bytesToHexString(msg.hash).unwrapOr("0xUnknown")),
-        );
+        const mismatched = !this.validateFetchedMessagesAgainstSyncIds(syncIds, msgs.messages);
 
         if (mismatched) {
           log.warn(
@@ -843,6 +929,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       },
     );
     return result;
+  }
+
+  private validateFetchedMessagesAgainstSyncIds(syncIds: SyncId[], messages: Message[]): boolean {
+    // Make sure that the messages are actually for the SyncIDs
+    const syncIdHashes = new Set(
+      syncIds
+        .map((syncId) => syncId.unpack())
+        .map((syncId) => (syncId.type === SyncIdType.Message ? bytesToHexString(syncId.hash).unwrapOr("") : ""))
+        .filter((str) => str !== ""),
+    );
+
+    // Go over the SyncID hashes and the messages and make sure that the messages are for the SyncIDs
+    return messages.every((msg) => syncIdHashes.has(bytesToHexString(msg.hash).unwrapOr("0xUnknown")));
   }
 
   public async mergeMessages(messages: Message[], rpcClient: HubRpcClient): Promise<MergeResult> {

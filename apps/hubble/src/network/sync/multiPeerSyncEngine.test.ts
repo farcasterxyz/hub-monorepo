@@ -247,11 +247,15 @@ describe("Multi peer sync engine", () => {
       // Should sync should now be true
       expect((await syncEngine2.syncStatus("engine1", newSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
-      // Do the sync again
-      await syncEngine2.performSync("engine1", newSnapshot, clientForServer1);
+      // Do the sync again, this time enabling audit
+      await syncEngine2.performSync("engine1", newSnapshot, clientForServer1, true);
 
       // Make sure root hash matches
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+      // Check the peer score
+      const peerScore = syncEngine2.getPeerScore("engine1");
+      expect(peerScore).toBeDefined();
+      expect(peerScore?.score).toBeGreaterThan(0);
 
       expect(syncEngine2.trie.exists(SyncId.fromFName(fname))).toBeTruthy();
       expect(syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
@@ -337,6 +341,40 @@ describe("Multi peer sync engine", () => {
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     expect(await syncEngine2.trie.rootHash()).toEqual(beforeRootHash);
+  });
+
+  test("audit should fail if peer withholds messages", async () => {
+    await expect(engine1.mergeOnChainEvent(custodyEvent)).resolves.toBeDefined();
+    await expect(engine1.mergeOnChainEvent(signerEvent)).resolves.toBeDefined();
+    await expect(engine1.mergeOnChainEvent(storageEvent)).resolves.toBeDefined();
+    await expect(engine1.mergeUserNameProof(fname)).resolves.toBeDefined();
+
+    // Add messages to engine 1
+    await addMessagesWithTimeDelta(engine1, [167]);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    // Sync engine 2 with engine 1
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+    // Make sure root hash matches
+    expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+    // Now, delete the messages from engine 1
+    const allValues = await syncEngine1.trie.getAllValues(new Uint8Array());
+    for (const value of allValues) {
+      await syncEngine1.trie.deleteByBytes(value);
+    }
+
+    // Now, engine 1 should have no messages
+    expect((await syncEngine1.trie.getTrieNodeMetadata(new Uint8Array()))?.numMessages).toEqual(0);
+
+    // Sync engine 2 with engine 1, but this time the audit will fail
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1, true);
+
+    // Check the peer score
+    const peerScore = syncEngine2.getPeerScore("engine1");
+    expect(peerScore).toBeDefined();
+    expect(peerScore?.score).toBeLessThan(0);
   });
 
   test("shouldn't fetch messages that already exist", async () => {
