@@ -1355,6 +1355,8 @@ export class Hub implements HubInterface {
       region: S3_REGION,
     });
 
+    // Note: We get the snapshots across all DB_SCHEMA versions
+    // when determining which snapshots to delete, we only delete snapshots from the current DB_SCHEMA version
     const params = {
       Bucket: this.s3_snapshot_bucket,
       Prefix: `snapshots/${network}/`,
