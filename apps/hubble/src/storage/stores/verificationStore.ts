@@ -1,18 +1,29 @@
 import {
   getDefaultStoreLimit,
   HubAsyncResult,
+  HubError,
   isVerificationAddEthAddressMessage,
   isVerificationRemoveMessage,
+  Message,
   MessageType,
   StoreType,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
-import { ok } from "neverthrow";
-import { makeUserKey } from "../db/message.js";
-import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { err, ok, Result, ResultAsync } from "neverthrow";
+import {
+  deleteMessageTransaction,
+  makeFidKey,
+  makeMessagePrimaryKey,
+  makeTsHash,
+  makeUserKey,
+  readFidKey,
+} from "../db/message.js";
+import { FID_BYTES, RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "./types.js";
 import { Store } from "./store.js";
+import { Transaction } from "../db/rocksdb.js";
+import { logger } from "../../utils/logger.js";
 
 /**
  * Generates a unique key used to store a VerificationAdds message key in the VerificationsAdds
@@ -23,7 +34,7 @@ import { Store } from "./store.js";
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<address?>
  */
-const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
+export const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
   return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationAdds]), Buffer.from(address ?? "")]);
 };
 
@@ -36,8 +47,19 @@ const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
  *
  * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
  */
-const makeVerificationRemovesKey = (fid: number, address?: Uint8Array): Buffer => {
+export const makeVerificationRemovesKey = (fid: number, address?: Uint8Array): Buffer => {
   return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationRemoves]), Buffer.from(address ?? "")]);
+};
+
+/**
+ * Generates a unique key used to store a VerificationAdd message by address to validate uniqueness
+ *
+ * @param address Ethereum address being verified
+ *
+ * @returns RocksDB key of the form <RootPrefix>:<address>
+ */
+export const makeVerificationByAddressKey = (address: Uint8Array): Buffer => {
+  return Buffer.concat([Buffer.from([RootPrefix.VerificationByAddress]), Buffer.from(address)]);
 };
 
 /**
@@ -106,7 +128,9 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
    * @returns the VerificationAddEthAddressModel if it exists, throws HubError otherwise
    */
   async getVerificationAdd(fid: number, address: Uint8Array): Promise<VerificationAddEthAddressMessage> {
-    return await this.getAdd({ data: { fid, verificationAddEthAddressBody: { address } } });
+    return await this.getAdd({
+      data: { fid, verificationAddEthAddressBody: { address } },
+    });
   }
 
   /**
@@ -117,7 +141,9 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
    * @returns the VerificationRemoveEthAddress if it exists, throws HubError otherwise
    */
   async getVerificationRemove(fid: number, address: Uint8Array): Promise<VerificationRemoveMessage> {
-    return await this.getRemove({ data: { fid, verificationRemoveBody: { address } } });
+    return await this.getRemove({
+      data: { fid, verificationRemoveBody: { address } },
+    });
   }
 
   /**
@@ -146,11 +172,195 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
     return await this.getRemovesByFid({ data: { fid } }, pageOptions);
   }
 
+  override async buildSecondaryIndices(
+    txn: Transaction,
+    message: VerificationAddEthAddressMessage,
+  ): HubAsyncResult<void> {
+    const tsHash = makeTsHash(message.data.timestamp, message.hash);
+
+    if (tsHash.isErr()) {
+      return err(tsHash.error);
+    }
+
+    const address = message.data.verificationAddEthAddressBody.address;
+
+    if (address.length === 0) {
+      return err(new HubError("bad_request.invalid_param", "address empty"));
+    }
+
+    // Puts the fid into the byAddress index
+    const byAddressKey = makeVerificationByAddressKey(address);
+    txn.put(byAddressKey, makeFidKey(message.data.fid));
+
+    return ok(undefined);
+  }
+  override async deleteSecondaryIndices(
+    txn: Transaction,
+    message: VerificationAddEthAddressMessage,
+  ): HubAsyncResult<void> {
+    const address = message.data.verificationAddEthAddressBody.address;
+
+    if (address.length === 0) {
+      return err(new HubError("bad_request.invalid_param", "address empty"));
+    }
+
+    // Delete the message key from byAddress index
+    const byAddressKey = makeVerificationByAddressKey(address);
+    txn.del(byAddressKey);
+
+    return ok(undefined);
+  }
+
+  override async getMergeConflicts(
+    message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
+  ): HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]> {
+    const res = await super.getMergeConflicts(message);
+    if (res.isErr()) {
+      return res;
+    }
+
+    if (isVerificationRemoveMessage(message)) {
+      return res;
+    }
+
+    // For adds, we also need to check for conflicts across all fids (by eth address)
+    const conflicts = res.value;
+
+    const byAddressKey = makeVerificationByAddressKey(message.data.verificationAddEthAddressBody.address);
+    const fidResult = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
+    if (fidResult.isOk()) {
+      const fid = readFidKey(fidResult.value);
+      // If the existing verification is for a different fid, then we need decide which fids wins based on tsHash
+      if (fid !== undefined && fid !== message.data.fid) {
+        const existingMessage = await this.getAdd({
+          data: {
+            fid,
+            verificationAddEthAddressBody: {
+              address: message.data.verificationAddEthAddressBody.address,
+            },
+          },
+        });
+        const tsHash = makeTsHash(message.data.timestamp, message.hash);
+        const existingTsHash = makeTsHash(existingMessage.data.timestamp, existingMessage.hash);
+
+        if (tsHash.isErr() || existingTsHash.isErr()) {
+          throw new HubError("bad_request", "failed to make tsHash");
+        }
+
+        const messageCompare = this.messageCompare(
+          this._addMessageType,
+          existingTsHash.value,
+          this._addMessageType,
+          tsHash.value,
+        );
+        if (messageCompare > 0) {
+          return err(new HubError("bad_request.conflict", "message conflicts with a more recent add"));
+        } else if (messageCompare === 0) {
+          return err(new HubError("bad_request.duplicate", "message has already been merged"));
+        } else {
+          conflicts.push(existingMessage);
+        }
+      }
+    }
+    return ok(conflicts);
+  }
+
   async getAllVerificationMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
   ): Promise<MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
+  }
+
+  async migrateVerifications(): HubAsyncResult<{ total: number; duplicates: number }> {
+    let verificationsCount = 0;
+    let duplicatesCount = 0;
+
+    await this._db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.User]),
+      async (key, value) => {
+        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+        if (postfix !== this._postfix) {
+          return false; // Ignore non-verification messages
+        }
+        const message = Result.fromThrowable(
+          () => Message.decode(new Uint8Array(value as Buffer)),
+          (e) => e,
+        )();
+
+        if (message.isErr()) {
+          return false; // Ignore invalid messages
+        }
+
+        if (!this._isAddType(message.value)) {
+          return false; // Ignore non-add messages
+        }
+
+        const fid = message.value.data.fid;
+        const verificationAdd = message.value.data.verificationAddEthAddressBody;
+        const txn = this._db.transaction();
+        const byAddressKey = makeVerificationByAddressKey(message.value.data.verificationAddEthAddressBody.address);
+        const existingFidRes = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
+        if (existingFidRes.isOk()) {
+          const existingFid = readFidKey(existingFidRes.value);
+          const existingMessage = await this.getAdd({
+            data: {
+              fid: existingFid,
+              verificationAddEthAddressBody: {
+                address: verificationAdd.address,
+              },
+            },
+          });
+          const tsHash = makeTsHash(message.value.data.timestamp, message.value.hash);
+          const existingTsHash = makeTsHash(existingMessage.data.timestamp, existingMessage.hash);
+
+          if (tsHash.isErr() || existingTsHash.isErr()) {
+            throw new HubError("bad_request", "failed to make tsHash");
+          }
+
+          const messageCompare = this.messageCompare(
+            this._addMessageType,
+            existingTsHash.value,
+            this._addMessageType,
+            tsHash.value,
+          );
+
+          if (messageCompare === 0) {
+            logger.info(
+              { fid: fid },
+              `Unexpected duplicate during migration: ${Buffer.from(verificationAdd.address).toString("hex")}`,
+            );
+          } else if (messageCompare > 0) {
+            logger.info(
+              { fid: fid, existingFid: existingFid },
+              `Deleting duplicate verification for fid: ${fid} ${Buffer.from(verificationAdd.address).toString("hex")}`,
+            );
+            deleteMessageTransaction(txn, message.value);
+            txn.put(byAddressKey, makeFidKey(existingFid));
+            duplicatesCount += 1;
+          } else {
+            logger.info(
+              { fid: existingFid, existingFid: fid },
+              `Deleting duplicate verification for fid: ${existingFid} ${Buffer.from(verificationAdd.address).toString(
+                "hex",
+              )}`,
+            );
+            deleteMessageTransaction(txn, existingMessage);
+            txn.put(byAddressKey, makeFidKey(fid));
+            duplicatesCount += 1;
+          }
+        } else {
+          txn.put(byAddressKey, makeFidKey(fid));
+        }
+        verificationsCount += 1;
+        await this._db.commit(txn);
+
+        return false; // Continue iterating
+      },
+      { valueAsBuffer: true },
+      1 * 60 * 60 * 1000, // 1 hour
+    );
+    return ok({ total: verificationsCount, duplicates: duplicatesCount });
   }
 }
 
