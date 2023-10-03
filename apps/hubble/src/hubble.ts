@@ -698,8 +698,7 @@ export class Hub implements HubInterface {
           if (dbFiles.isErr() || dbFiles.value.length === 0) {
             log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
 
-            const network = FarcasterNetwork[this.options.network].toString();
-            const response = await axios.get(`https://download.farcaster.xyz/snapshots/${network}/latest.json`);
+            const response = await axios.get(`https://download.farcaster.xyz/${this.getSnapshotFolder()}/latest.json`);
             const { key } = response.data;
 
             if (!key) {
@@ -1300,6 +1299,11 @@ export class Hub implements HubInterface {
     return true;
   }
 
+  private getSnapshotFolder(): string {
+    const network = FarcasterNetwork[this.options.network].toString();
+    return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION}`;
+  }
+
   async uploadToS3(filePath: string): HubAsyncResult<string> {
     const network = FarcasterNetwork[this.options.network].toString();
 
@@ -1308,7 +1312,7 @@ export class Hub implements HubInterface {
     });
 
     // The AWS key is "snapshots/{network}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
-    const key = `snapshots/${network}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
+    const key = `${this.getSnapshotFolder()}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
       Date.now() / 1000,
     )}.tar.gz`;
 
@@ -1328,7 +1332,7 @@ export class Hub implements HubInterface {
 
     const latestJsonParams = {
       Bucket: this.s3_snapshot_bucket,
-      Key: `snapshots/${network}/latest.json`,
+      Key: `${this.getSnapshotFolder()}/latest.json`,
       Body: JSON.stringify({ key, timestamp: Date.now(), serverDate: new Date().toISOString() }),
     };
 
@@ -1351,6 +1355,8 @@ export class Hub implements HubInterface {
       region: S3_REGION,
     });
 
+    // Note: We get the snapshots across all DB_SCHEMA versions
+    // when determining which snapshots to delete, we only delete snapshots from the current DB_SCHEMA version
     const params = {
       Bucket: this.s3_snapshot_bucket,
       Prefix: `snapshots/${network}/`,
