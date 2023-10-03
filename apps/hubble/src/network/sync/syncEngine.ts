@@ -36,7 +36,7 @@ import { sleepWhile } from "../../utils/crypto.js";
 import { statsd } from "../../utils/statsd.js";
 import { logger, messageToLog } from "../../utils/logger.js";
 import { OnChainEventPostfix, RootPrefix } from "../../storage/db/types.js";
-import { bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
+import { bytesCompare, bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 import os from "os";
@@ -788,7 +788,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const anyFailed =
       ourMessagesResult.value
         .map((message) => {
-          const peerMessage = messagesResult.value.messages.find((m) => m.hash === message.hash);
+          const peerMessage = messagesResult.value.messages.find((m) => bytesCompare(m.hash, message.hash) === 0);
           if (!peerMessage) {
             log.warn({ message: messageToLog(message), peerId }, "PeerError: Peer is missing message during audit");
             return "failed";
