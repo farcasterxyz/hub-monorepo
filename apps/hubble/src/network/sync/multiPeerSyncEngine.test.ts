@@ -254,6 +254,19 @@ describe("Multi peer sync engine", () => {
 
       expect(syncEngine2.trie.exists(SyncId.fromFName(fname))).toBeTruthy();
       expect(syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
+
+      // Sync again, and this time the audit should increase the peer score
+      // First, get the existing peer score
+      const peerScoreBefore = syncEngine2.getPeerScore("engine1");
+
+      // Now sync again
+      await syncEngine2.performSync("engine1", newSnapshot, clientForServer1, true);
+
+      // Make sure root hash matches and peer score has increased
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+      const peerScoreAfter = syncEngine2.getPeerScore("engine1");
+      expect(peerScoreAfter).toBeDefined();
+      expect(peerScoreAfter?.score).toBeGreaterThan(peerScoreBefore?.score ?? Infinity);
     },
     TEST_TIMEOUT_LONG,
   );

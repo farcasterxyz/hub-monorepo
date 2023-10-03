@@ -376,7 +376,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public getPeerScore(peerId: string): PeerScore | undefined {
-    return this._peerScorer.getScore(peerId);
+    return this._peerScorer.getScore(peerId)?.clone();
   }
 
   public getSyncProfile(): SyncEngineProfiler | undefined {
@@ -802,8 +802,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // If peer passed the audit, score them up
     if (!anyFailed) {
+      const before = this._peerScorer.getScore(peerId)?.score ?? 0;
       this._peerScorer.incrementScore(peerId);
-      log.info({ peerId, numMessages: syncIds.length }, "Peer passed audit");
+      const after = this._peerScorer.getScore(peerId)?.score ?? 0;
+      log.info({ peerId, numMessages: syncIds.length, before, after }, "Peer passed audit");
     } else {
       this._peerScorer.decrementScore(peerId, 10);
       log.warn({ peerId, numMessages: syncIds.length }, "Peer failed audit");
