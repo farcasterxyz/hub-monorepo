@@ -34,7 +34,7 @@ import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
 import { statsd } from "../../utils/statsd.js";
-import { logger } from "../../utils/logger.js";
+import { logger, messageToLog } from "../../utils/logger.js";
 import { OnChainEventPostfix, RootPrefix } from "../../storage/db/types.js";
 import { bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
@@ -545,7 +545,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         log.info({ peerId }, "Diffsync: Starting Sync with peer");
         const start = Date.now();
 
-        const result = await this.performSync(updatedPeerIdString, peerState, rpcClient);
+        const result = await this.performSync(updatedPeerIdString, peerState, rpcClient, true);
 
         log.info({ peerId, result, timeTakenMs: Date.now() - start }, "Diffsync: complete");
         this.emit("syncComplete", true);
@@ -790,10 +790,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         .map((message) => {
           const peerMessage = messagesResult.value.messages.find((m) => m.hash === message.hash);
           if (!peerMessage) {
-            log.warn({ message, peerId }, "PeerError: Peer is missing message during audit");
+            log.warn({ message: messageToLog(message), peerId }, "PeerError: Peer is missing message during audit");
             return "failed";
           } else if (Message.toJSON(message) !== Message.toJSON(peerMessage)) {
-            log.warn({ message, peerId }, "PeerError: Peer has different message during audit");
+            log.warn({ message: messageToLog(message), peerId }, "PeerError: Peer has different message during audit");
             return "failed";
           }
           return "passed";

@@ -20,7 +20,6 @@ import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EMPTY_HASH } from "./trieNode.js";
-import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -247,15 +246,18 @@ describe("Multi peer sync engine", () => {
       // Should sync should now be true
       expect((await syncEngine2.syncStatus("engine1", newSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
+      const startScore = syncEngine2.getPeerScore("engine1")?.score ?? 0;
+
       // Do the sync again, this time enabling audit
       await syncEngine2.performSync("engine1", newSnapshot, clientForServer1, true);
 
       // Make sure root hash matches
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
-      // Check the peer score
+
+      // Check the peer score to make sure it increased
       const peerScore = syncEngine2.getPeerScore("engine1");
       expect(peerScore).toBeDefined();
-      expect(peerScore?.score).toBeGreaterThan(0);
+      expect(peerScore?.score).toBeGreaterThan(startScore);
 
       expect(syncEngine2.trie.exists(SyncId.fromFName(fname))).toBeTruthy();
       expect(syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
@@ -368,13 +370,15 @@ describe("Multi peer sync engine", () => {
     // Now, engine 1 should have no messages
     expect((await syncEngine1.trie.getTrieNodeMetadata(new Uint8Array()))?.numMessages).toEqual(0);
 
+    const startScore = syncEngine2.getPeerScore("engine1")?.score ?? 0;
+
     // Sync engine 2 with engine 1, but this time the audit will fail
     await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1, true);
 
-    // Check the peer score
+    // Check the peer score to make sure it reduced
     const peerScore = syncEngine2.getPeerScore("engine1");
     expect(peerScore).toBeDefined();
-    expect(peerScore?.score).toBeLessThan(0);
+    expect(peerScore?.score).toBeLessThan(startScore);
   });
 
   test("shouldn't fetch messages that already exist", async () => {
