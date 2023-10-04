@@ -4,6 +4,7 @@ import { logger } from "../../../utils/logger.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
 import { fnameProofIndexMigration } from "./2.fnameproof.js";
 import { clearEventsMigration } from "./3.clearEvents.js";
+import { uniqueVerificationsMigration } from "./4.uniqueVerifications.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
@@ -21,6 +22,9 @@ migrations.set(2, async (db: RocksDB) => {
 });
 migrations.set(3, async (db: RocksDB) => {
   return await clearEventsMigration(db);
+});
+migrations.set(4, async (db: RocksDB) => {
+  return await uniqueVerificationsMigration(db);
 });
 
 // To Add a new migration
