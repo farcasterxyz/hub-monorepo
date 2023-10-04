@@ -856,7 +856,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(event);
   }
 
-  private async validateMessage(message: Message): HubAsyncResult<Message> {
+  async validateMessage(message: Message): HubAsyncResult<Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError("bad_request.validation_failure", "message data is missing"));
