@@ -1,5 +1,14 @@
 # @farcaster/hub-nodejs
 
+## 0.10.11
+
+### Patch Changes
+
+- 14f67cf2: feat: Add peer scoring
+- Updated dependencies [ef795c71]
+- Updated dependencies [14f67cf2]
+  - @farcaster/core@0.12.11
+
 ## 0.10.10
 
 ### Patch Changes

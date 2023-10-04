@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.12.11
+
+### Patch Changes
+
+- ef795c71: upgrade viem to 1.12.2
+- 14f67cf2: feat: Add peer scoring
+
 ## 0.12.10
 
 ### Patch Changes

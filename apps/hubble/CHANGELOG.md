@@ -1,5 +1,25 @@
 # @farcaster/hubble
 
+## 1.6.0
+
+### Minor Changes
+
+- 09b7949c: feat: make verifications globally unique
+
+### Patch Changes
+
+- 8abf1864: feat: add migration to clear onchain events and force re-sync
+- c64400dc: fix: Use DB_SCHEMA version in snapshot path
+- 4dea7e28: chore: Upgrade ed25519-dalek in rust
+- 472e8ae3: feat: Add a flag to clear l2 events
+- ef795c71: upgrade viem to 1.12.2
+- ef795c71: fall back to eth_getLogs in event sync
+- b7c2b0a9: chore: Replace hub-web with HTTP api examples
+- 14f67cf2: feat: Add peer scoring
+- 03cd3333: feat: Audit peer's messages during sync
+- Updated dependencies [14f67cf2]
+  - @farcaster/hub-nodejs@0.10.11
+
 ## 1.5.6
 
 ### Patch Changes
