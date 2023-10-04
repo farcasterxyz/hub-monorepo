@@ -504,7 +504,8 @@ export class L2EventsProvider {
 
     const hubState = await this._hub.getHubState();
     if (hubState.isOk() && hubState.value.lastL2Block) {
-      lastSyncedBlock = hubState.value.lastL2Block;
+      // Look back 2 blocks just in case hub was shut down before it received enough confirmations to persist the cached events
+      lastSyncedBlock = hubState.value.lastL2Block - L2EventsProvider.numConfirmations;
     }
 
     if (this._resyncEvents) {
