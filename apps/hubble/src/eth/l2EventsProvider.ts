@@ -84,9 +84,8 @@ export class L2EventsProvider {
   private _isHandlingBlock = false;
 
   // Number of blocks to wait before processing an event. This is hardcoded to
-  // 6 for now, because that's the threshold beyond which blocks are unlikely
-  // to reorg anymore. 6 blocks represents ~72 seconds on Goerli, so the delay
-  // is not too long.
+  // 2 for now, because that's the threshold beyond which blocks are unlikely
+  // to reorg anymore. Note that these are blocks on the L2 chain, not the L1.
   static numConfirmations = 2;
 
   // Events are only processed after `numConfirmations` blocks have been confirmed; poll less

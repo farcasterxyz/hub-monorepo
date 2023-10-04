@@ -104,7 +104,7 @@ describe("process events", () => {
   });
 
   const waitForBlock = async (blockNumber: number) => {
-    while (l2EventsProvider.getLatestBlockNumber() <= blockNumber) {
+    while (l2EventsProvider.getLatestBlockNumber() < blockNumber) {
       // Wait for all async promises to resolve
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -113,8 +113,14 @@ describe("process events", () => {
   test(
     "handles new blocks",
     async () => {
+      const firstBlockNumber = await publicClient.getBlockNumber();
       await testClient.mine({ blocks: 1 });
-      const latestBlockNumber = await publicClient.getBlockNumber();
+
+      let latestBlockNumber = await publicClient.getBlockNumber();
+      while ((await publicClient.getBlockNumber()) <= firstBlockNumber) {
+        await sleep(100);
+        latestBlockNumber = await publicClient.getBlockNumber();
+      }
       await waitForBlock(Number(latestBlockNumber));
       expect(l2EventsProvider.getLatestBlockNumber()).toBeGreaterThanOrEqual(latestBlockNumber);
     },
@@ -181,7 +187,7 @@ describe("process events", () => {
       const maxUnitsTrx = await publicClient.waitForTransactionReceipt({ hash: setMaxUnitsHash });
       await sleep(1000); // allow time for the rent event to be polled for
 
-      await testClient.mine({ blocks: 7 });
+      await testClient.mine({ blocks: L2EventsProvider.numConfirmations });
       await waitForBlock(Number(maxUnitsTrx.blockNumber) + L2EventsProvider.numConfirmations);
 
       const events = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
