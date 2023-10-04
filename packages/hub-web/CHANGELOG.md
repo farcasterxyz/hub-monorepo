@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.6.6
+
+### Patch Changes
+
+- b7c2b0a9: chore: Replace hub-web with HTTP api examples
+- 14f67cf2: feat: Add peer scoring
+- Updated dependencies [ef795c71]
+- Updated dependencies [14f67cf2]
+  - @farcaster/core@0.12.11
+
 ## 0.6.5
 
 ### Patch Changes
