@@ -3,24 +3,22 @@ import { bytesToHex, hexToBytes } from "viem";
 import { HubError, HubResult } from "./errors";
 
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
-  const aValue = a[0];
-  const bValue = b[0];
+  const len = Math.min(a.length, b.length);
 
-  if (typeof aValue !== "number" && typeof bValue !== "number") {
-    return 0;
-  } else if (typeof aValue !== "number") {
-    return -1;
-  } else if (typeof bValue !== "number") {
-    return 1;
+  for (let i = 0; i < len; i++) {
+    if ((a[i] as number) < (b[i] as number)) {
+      return -1;
+    } else if ((a[i] as number) > (b[i] as number)) {
+      return 1;
+    }
   }
 
-  if (aValue < bValue) {
+  if (a.length < b.length) {
     return -1;
-  } else if (aValue > bValue) {
+  } else if (a.length > b.length) {
     return 1;
-  } else {
-    return bytesCompare(a.subarray(1), b.subarray(1));
   }
+  return 0;
 };
 
 export const bytesIncrement = (inputBytes: Uint8Array): HubResult<Uint8Array> => {

@@ -368,6 +368,7 @@ describe("Multi peer sync engine", () => {
     expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
     // Now, delete the messages from engine 1
+    await engine1.getDb().clear();
     const allValues = await syncEngine1.trie.getAllValues(new Uint8Array());
     for (const value of allValues) {
       await syncEngine1.trie.deleteByBytes(value);

@@ -24,8 +24,10 @@ describe("bytesCompare", () => {
     [new Uint8Array([1, 0, 0, 1, 0]), new Uint8Array([1, 0, 0, 2, 0]), -1],
   ];
   for (const [a, b, result] of cases) {
-    test(`returns byte-wise order for two byte arrays: ${a}, ${b}`, () => {
+    test(`returns byte-wise order for two byte arrays: [${a}], [${b}]`, () => {
       expect(bytesCompare(a, b)).toEqual(result);
+      expect(bytesCompare(b, a)).toEqual(result !== 0 ? -result : result);
+      expect(bytesCompare(Buffer.from(a), Buffer.from(b))).toEqual(result);
     });
   }
 });

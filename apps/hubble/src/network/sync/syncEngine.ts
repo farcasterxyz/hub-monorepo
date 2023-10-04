@@ -786,26 +786,40 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // And make sure that for each message in our Messages, the peer has the same message
     const anyFailed =
-      ourMessagesResult.value
-        .map((message) => {
-          const peerMessage = messagesResult.value.messages.find((m) => bytesCompare(m.hash, message.hash) === 0);
-          if (!peerMessage) {
-            log.warn({ message: messageToLog(message), peerId }, "PeerError: Peer is missing message during audit");
-            return "failed";
-          } else if (Message.toJSON(message) !== Message.toJSON(peerMessage)) {
-            log.warn({ message: messageToLog(message), peerId }, "PeerError: Peer has different message during audit");
-            return "failed";
-          }
-          return "passed";
-        })
-        .find((result) => result === "failed") ?? false;
+      (
+        await Promise.all(
+          ourMessagesResult.value.map(async (message) => {
+            const peerMessage = messagesResult.value.messages.find((m) => bytesCompare(m.hash, message.hash) === 0);
+            if (!peerMessage) {
+              log.warn({ message: messageToLog(message), peerId }, "PeerError: Peer is missing message during audit");
+              return "failed";
+            } else {
+              const validateResult = await this._hub.engine.validateMessage(peerMessage);
+              if (validateResult.isErr()) {
+                log.warn(
+                  { err: validateResult.error, peerMessage: Message.toJSON(peerMessage), peerId },
+                  "PeerError: Peer has message validation failure during audit",
+                );
+                return "failed";
+              }
+              if (bytesCompare(message.hash, peerMessage.hash) !== 0) {
+                log.warn(
+                  { ourJSON: Message.toJSON(message), peerJSON: Message.toJSON(peerMessage), peerId },
+                  "PeerError: Peer has different message hash during audit",
+                );
+                return "failed";
+              }
+            }
+            return "passed";
+          }),
+        )
+      ).find((result) => result === "failed") ?? false;
 
     // If peer passed the audit, score them up
     if (!anyFailed) {
-      const before = this._peerScorer.getScore(peerId)?.score ?? 0;
       this._peerScorer.incrementScore(peerId);
-      const after = this._peerScorer.getScore(peerId)?.score ?? 0;
-      log.info({ peerId, numMessages: syncIds.length, before, after }, "Peer passed audit");
+      const peerScore = this._peerScorer.getScore(peerId)?.score ?? 0;
+      log.info({ peerId, numMessages: syncIds.length, scoreAfter: peerScore }, "Peer passed audit");
     } else {
       this._peerScorer.decrementScore(peerId, 10);
       log.warn({ peerId, numMessages: syncIds.length }, "Peer failed audit");
