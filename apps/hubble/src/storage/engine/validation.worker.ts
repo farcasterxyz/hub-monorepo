@@ -4,12 +4,12 @@ import { workerData, parentPort } from "worker_threads";
 import { http, createPublicClient, fallback } from "viem";
 import { optimism, mainnet } from "viem/chains";
 
-interface WorkerData {
+export interface ValidationWorkerData {
   l2RpcUrl: string;
   ethMainnetRpcUrl: string;
 }
 
-const config = workerData as WorkerData;
+const config = workerData as ValidationWorkerData;
 const opMainnetRpcUrls = config.l2RpcUrl.split(",");
 const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
 const opClient = createPublicClient({

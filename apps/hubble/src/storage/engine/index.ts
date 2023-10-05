@@ -63,6 +63,7 @@ import { isRateLimitedByKey, consumeRateLimitByKey, getRateLimiterForTotalMessag
 import { nativeValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
+import { ValidationWorkerData } from "./validation.worker.js";
 
 const log = logger.child({
   component: "Engine",
@@ -1102,7 +1103,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(undefined);
   }
 
-  private getPublicClients() {
+  private getPublicClients(): { [chainId: number]: PublicClient } | undefined {
     const clients: { [chainId: number]: PublicClient } = {};
     if (this._publicClient?.chain) {
       clients[this._publicClient.chain.id] = this._publicClient;
@@ -1113,7 +1114,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     return Object.keys(clients).length > 0 ? clients : undefined;
   }
 
-  private getWorkerData() {
+  private getWorkerData(): ValidationWorkerData {
     const l1Transports: string[] = [];
     this._publicClient?.transport["transports"].forEach((transport: { value?: { url: string } }) => {
       if (transport?.value) {
