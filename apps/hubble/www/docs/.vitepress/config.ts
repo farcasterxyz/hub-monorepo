@@ -36,6 +36,7 @@ export default defineConfig({
               { text: "Reactions API", link: "/docs/httpapi/reactions" },
               { text: "Links API", link: "/docs/httpapi/links" },
               { text: "UserData API", link: "/docs/httpapi/userdata" },
+              { text: "FIDS API", link: "/docs/httpapi/fids" },
               { text: "Storage API", link: "/docs/httpapi/storagelimits" },
               { text: "Username Proofs API", link: "/docs/httpapi/usernameproof" },
               { text: "Verifications API", link: "/docs/httpapi/verification" },

@@ -1,4 +1,5 @@
 import {
+  FidsResponse,
   HubError,
   HubEvent,
   HubInfoResponse,
@@ -430,6 +431,15 @@ export class HttpAPIServer {
       },
     );
 
+    //=================FIDs=================
+    // @doc-tag: /fids
+    this.app.get<{ Querystring: QueryPageParams }>("/v1/fids", (request, reply) => {
+      const pageOptions = getPageOptions(request.query);
+
+      const call = getCallObject("getFids", pageOptions, request);
+      this.grpcImpl.getFids(call, handleResponse(reply, FidsResponse));
+    });
+
     //=================Storage API================
     // @doc-tag: /storageLimitsByFid?fid=...
     this.app.get<{ Querystring: { fid: string } }>("/v1/storageLimitsByFid", (request, reply) => {
@@ -450,8 +460,8 @@ export class HttpAPIServer {
       this.grpcImpl.getUsernameProof(call, handleResponse(reply, UserNameProof));
     });
 
-    // @doc-tag: /usernameproofsByFid?fid=...
-    this.app.get<{ Querystring: { fid: string } }>("/v1/usernameproofsByFid", (request, reply) => {
+    // @doc-tag: /userNameProofsByFid?fid=...
+    this.app.get<{ Querystring: { fid: string } }>("/v1/userNameProofsByFid", (request, reply) => {
       const { fid } = request.query;
 
       const call = getCallObject("getUserNameProofsByFid", { fid: parseInt(fid) }, request);

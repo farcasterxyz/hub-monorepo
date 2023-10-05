@@ -251,6 +251,17 @@ describe("httpServer", () => {
     });
   });
 
+  describe("FID APIs", () => {
+    test("fid", async () => {
+      // Get a http client for port 2181
+      const url = getFullUrl("/v1/fids");
+      const response = await axiosGet(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data.fids).toEqual([fid]);
+    });
+  });
+
   describe("cast APIs", () => {
     let castAdd: CastAddMessage;
 
@@ -595,7 +606,7 @@ describe("httpServer", () => {
       expect(response.data).toEqual((protoToJSON(proof, Message) as UsernameProofMessage).data.usernameProofBody);
 
       // Get via fid
-      const url2 = getFullUrl(`/v1/usernameproofsByFid?fid=${fid}`);
+      const url2 = getFullUrl(`/v1/userNameProofsByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
