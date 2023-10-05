@@ -5,7 +5,6 @@ import {
   DbStats,
   FidsResponse,
   getServer,
-  HubAsyncResult,
   HubError,
   HubEvent,
   HubEventType,
@@ -342,11 +341,11 @@ export default class Server {
     this.subscribeIpLimiter.clear();
   }
 
-  getImpl = (): HubServiceServer => {
+  getImpl(): HubServiceServer {
     return this.impl;
-  };
+  }
 
-  makeImpl = (): HubServiceServer => {
+  makeImpl(): HubServiceServer {
     return {
       getInfo: (call, callback) => {
         (async () => {
@@ -1244,5 +1243,5 @@ export default class Server {
         }
       },
     };
-  };
+  }
 }
