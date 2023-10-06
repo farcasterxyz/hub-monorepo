@@ -254,6 +254,10 @@ export const validateVerificationAddEthAddressSignature = async (
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
+  if (body.ethSignature.length > 256) {
+    return err(new HubError("bad_request.validation_failure", "ethSignature > 256 bytes"));
+  }
+
   const reconstructedClaim = makeVerificationEthAddressClaim(fid, body.address, network, body.blockHash);
   if (reconstructedClaim.isErr()) {
     return err(reconstructedClaim.error);
@@ -273,7 +277,7 @@ export const validateVerificationAddEthAddressSignature = async (
   }
 
   if (!verificationResult.value) {
-    return err(new HubError("bad_request.validation_failure", "ethSignature does not match address"));
+    return err(new HubError("bad_request.validation_failure", "invalid ethSignature"));
   }
 
   return ok(body.ethSignature);

@@ -689,6 +689,14 @@ describe("validateVerificationAddEthAddressSignature", () => {
     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid chain ID")));
   });
 
+  test("fails if ethSignature is > 256 bytes", async () => {
+    const body = await Factories.VerificationAddEthAddressBody.create({
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 257 } }),
+    });
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "ethSignature > 256 bytes")));
+  });
+
   test("succeeds for contract signatures", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create(
       {
@@ -712,7 +720,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
       { transient: { fid, network, contractSignature: true } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "ethSignature does not match address")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid ethSignature")));
   });
 
   test("fails with eth signature from different address", async () => {
@@ -726,7 +734,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
       address: Factories.EthAddress.build(),
     });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "ethSignature does not match address")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid ethSignature")));
   });
 });
 
