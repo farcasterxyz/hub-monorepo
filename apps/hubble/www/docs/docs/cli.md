@@ -6,9 +6,8 @@ Documentation for the Hubble CLI.
 2. `identity` - generate or validate hub identities
 3. `status` - status reports on sync, storage and other systems.
 4. `dbreset` - clear the database. 
-4. `events-reset` - clear l2 events data from the db. 
-4. `profile` - profile the storage usage of the db. 
-5. `console` - start an interactive repl console for debugging.
+5. `profile` - profile the storage usage of the db.
+6. `console` - start an interactive repl console for debugging.
 
 Commands must invoked with yarn by running: 
 
@@ -124,19 +123,6 @@ Commands:
 Usage: yarn dbreset [options]
 
 Completely remove the database
-
-Options:
-  --db-name <name>         The name of the RocksDB instance
-  -c, --config <filepath>  Path to a config file with options
-  -h, --help               display help for command
-```
-
-### events-reset
-
-```
-Usage: yarn events-reset [options]
-
-Clears all data about L2 events from the database.
 
 Options:
   --db-name <name>         The name of the RocksDB instance

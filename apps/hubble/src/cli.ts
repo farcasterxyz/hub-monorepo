@@ -631,15 +631,13 @@ app
     });
 
     process.on("uncaughtException", (err) => {
-      logger.error({ reason: "Uncaught exception" }, "shutting down hub");
-      logger.fatal(err);
+      logger.error({ reason: "Uncaught exception", err }, "shutting down hub");
 
       handleShutdownSignal("uncaughtException");
     });
 
     process.on("unhandledRejection", (err) => {
-      logger.error({ reason: "Unhandled Rejection" }, "shutting down hub");
-      logger.fatal(err);
+      logger.error({ reason: "Unhandled Rejection", err }, "shutting down hub");
 
       handleShutdownSignal("unhandledRejection");
     });
@@ -822,35 +820,6 @@ app
 
     logger.info({ rocksDBName }, "Database cleared.");
     exit(0);
-  });
-
-/*//////////////////////////////////////////////////////////////
-                          EVENTSRESET COMMAND
-//////////////////////////////////////////////////////////////*/
-
-app
-  .command("events-reset")
-  .description("Clear L2 contract events from the database")
-  .option("--db-name <name>", "The name of the RocksDB instance")
-  .option("-c, --config <filepath>", "Path to a config file with options")
-  .action(async (cliOptions) => {
-    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
-    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
-
-    if (!rocksDBName) throw new Error("No RocksDB name provided.");
-
-    const rocksDB = new RocksDB(rocksDBName);
-
-    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
-    if (dbResult.isErr()) {
-      logger.warn({ rocksDBName }, "Failed to open RocksDB");
-      exit(1);
-    } else {
-      const count = await OnChainEventStore.clearEvents(rocksDB);
-      await rocksDB.close();
-      logger.info({ rocksDBName, count }, "Events cleared");
-      exit(0);
-    }
   });
 
 /*//////////////////////////////////////////////////////////////
