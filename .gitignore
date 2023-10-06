@@ -1,6 +1,7 @@
 # Logs
 yarn-debug.log*
 yarn-error.log*
+hub.log
 
 .DS_Store
 **/.DS_Store
