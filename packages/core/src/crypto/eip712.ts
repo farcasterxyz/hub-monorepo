@@ -91,7 +91,7 @@ const verifyVerificationClaimContractSignature = async (
   if (!client) {
     return ResultAsync.fromPromise(
       Promise.reject(),
-      () => new HubError("bad_request.invalid_param", "Invalid chain ID"),
+      () => new HubError("bad_request.invalid_param", `RPC client not provided for chainId ${chainId}`),
     );
   }
   const valid = await ResultAsync.fromPromise(
@@ -103,7 +103,7 @@ const verifyVerificationClaimContractSignature = async (
       message: claim,
       signature,
     }),
-    (e) => new HubError("unknown", e as Error),
+    (e) => new HubError("unavailable.network_failure", e as Error),
   );
   return valid;
 };

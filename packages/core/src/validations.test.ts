@@ -686,14 +686,14 @@ describe("validateVerificationAddEthAddressSignature", () => {
     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid chain ID")));
   });
 
-  test("fails if chainId not supported by client", async () => {
+  test("fails if client not provided for chainId", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({
       ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
       chainId: 1,
       verificationType: 1,
     });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
-    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid chain ID")));
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "RPC client not provided for chainId 1")));
   });
 
   test("fails if ethSignature is > 256 bytes", async () => {

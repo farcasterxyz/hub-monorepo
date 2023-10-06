@@ -407,6 +407,10 @@ class Engine extends TypedEmitter<EngineEvents> {
     const isValid = await this.validateMessage(message);
 
     if (isValid.isErr() && message.data) {
+      if (isValid.error.errCode === "unavailable.network_failure") {
+        return err(isValid.error);
+      }
+
       const setPostfix = typeToSetPostfix(message.data.type);
 
       switch (setPostfix) {
@@ -426,11 +430,7 @@ class Engine extends TypedEmitter<EngineEvents> {
           return this._verificationStore.revoke(message);
         }
         case UserPostfix.UsernameProofMessage: {
-          if (isValid.error.errCode === "unavailable.network_failure") {
-            return err(isValid.error);
-          } else {
-            return this._usernameProofStore.revoke(message);
-          }
+          return this._usernameProofStore.revoke(message);
         }
         default: {
           return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -1103,7 +1103,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(undefined);
   }
 
-  private getPublicClients(): { [chainId: number]: PublicClient } | undefined {
+  private getPublicClients(): { [chainId: number]: PublicClient } {
     const clients: { [chainId: number]: PublicClient } = {};
     if (this._publicClient?.chain) {
       clients[this._publicClient.chain.id] = this._publicClient;
@@ -1111,7 +1111,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     if (this._l2PublicClient?.chain) {
       clients[this._l2PublicClient.chain.id] = this._l2PublicClient;
     }
-    return Object.keys(clients).length > 0 ? clients : undefined;
+    return clients;
   }
 
   private getWorkerData(): ValidationWorkerData {

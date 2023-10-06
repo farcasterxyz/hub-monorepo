@@ -17,7 +17,7 @@ export const anvilChain = {
       http: [localHttpUrl],
     },
   },
-} as const satisfies Chain;
+} satisfies Chain;
 
 const provider = {
   // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
