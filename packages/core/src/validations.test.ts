@@ -8,6 +8,9 @@ import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
+import { defaultL1PublicClient } from "./eth/clients";
+import { optimism } from "viem/chains";
+import { jest } from "@jest/globals";
 
 const signer = Factories.Ed25519Signer.build();
 const ethSigner = Factories.Eip712Signer.build();
@@ -15,6 +18,10 @@ let ethSignerKey: Uint8Array;
 
 beforeAll(async () => {
   ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
+});
+
+afterEach(async () => {
+  jest.restoreAllMocks();
 });
 
 describe("validateFid", () => {
@@ -698,28 +705,40 @@ describe("validateVerificationAddEthAddressSignature", () => {
   });
 
   test("succeeds for contract signatures", async () => {
+    jest.spyOn(defaultL1PublicClient, "verifyTypedData").mockImplementation(() => {
+      return Promise.resolve(true);
+    });
+    const chainId = 1;
+    const publicClients = {
+      [chainId]: defaultL1PublicClient,
+    };
     const body = await Factories.VerificationAddEthAddressBody.create(
       {
-        address: Uint8Array.from(Buffer.from("C89858205c6AdDAD842E1F58eD6c42452671885A", "hex")),
-        chainId: 1,
+        chainId,
         verificationType: 1,
       },
       { transient: { fid, network, contractSignature: true } },
     );
-    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
     expect(result.isOk()).toBeTruthy();
   });
 
-  test("fails with invalid contract address", async () => {
+  test("fails with invalid contract signature", async () => {
+    jest.spyOn(defaultL1PublicClient, "verifyTypedData").mockImplementation(() => {
+      return Promise.resolve(false);
+    });
+    const chainId = 1;
+    const publicClients = {
+      [chainId]: defaultL1PublicClient,
+    };
     const body = await Factories.VerificationAddEthAddressBody.create(
       {
-        address: Uint8Array.from(Buffer.from("D89858205c6AdDAD842E1F58eD6c42452671885A", "hex")),
-        chainId: 1,
+        chainId,
         verificationType: 1,
       },
       { transient: { fid, network, contractSignature: true } },
     );
-    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
+    const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
     expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid ethSignature")));
   });
 
