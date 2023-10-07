@@ -39,10 +39,14 @@ export class EthersV5Eip712Signer extends Eip712Signer {
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
+  public async signVerificationEthAddressClaim(
+    claim: VerificationEthAddressClaim,
+    chainId = 0,
+  ): HubAsyncResult<Uint8Array> {
+    const domain = chainId === 0 ? eip712.EIP_712_FARCASTER_DOMAIN : { ...eip712.EIP_712_FARCASTER_DOMAIN, chainId };
     const hexSignature = await ResultAsync.fromPromise(
       this._typedDataSigner._signTypedData(
-        eip712.EIP_712_FARCASTER_DOMAIN,
+        domain,
         { VerificationClaim: [...eip712.EIP_712_FARCASTER_VERIFICATION_CLAIM] },
         claim,
       ),

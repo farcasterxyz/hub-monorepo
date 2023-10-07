@@ -431,6 +431,10 @@ export interface VerificationAddEthAddressBody {
   ethSignature: Uint8Array;
   /** Hash of the latest Ethereum block when the signature was produced */
   blockHash: Uint8Array;
+  /** Type of verification. 0 = EOA, 1 = contract */
+  verificationType: number;
+  /** 0 for EOA verifications, 1 or 10 for contract verifications */
+  chainId: number;
 }
 
 /** Removes a Verification of any type */
@@ -1382,7 +1386,13 @@ export const ReactionBody = {
 };
 
 function createBaseVerificationAddEthAddressBody(): VerificationAddEthAddressBody {
-  return { address: new Uint8Array(), ethSignature: new Uint8Array(), blockHash: new Uint8Array() };
+  return {
+    address: new Uint8Array(),
+    ethSignature: new Uint8Array(),
+    blockHash: new Uint8Array(),
+    verificationType: 0,
+    chainId: 0,
+  };
 }
 
 export const VerificationAddEthAddressBody = {
@@ -1395,6 +1405,12 @@ export const VerificationAddEthAddressBody = {
     }
     if (message.blockHash.length !== 0) {
       writer.uint32(26).bytes(message.blockHash);
+    }
+    if (message.verificationType !== 0) {
+      writer.uint32(32).uint32(message.verificationType);
+    }
+    if (message.chainId !== 0) {
+      writer.uint32(40).uint32(message.chainId);
     }
     return writer;
   },
@@ -1427,6 +1443,20 @@ export const VerificationAddEthAddressBody = {
 
           message.blockHash = reader.bytes();
           continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.verificationType = reader.uint32();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.chainId = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1441,6 +1471,8 @@ export const VerificationAddEthAddressBody = {
       address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
       ethSignature: isSet(object.ethSignature) ? bytesFromBase64(object.ethSignature) : new Uint8Array(),
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
+      verificationType: isSet(object.verificationType) ? Number(object.verificationType) : 0,
+      chainId: isSet(object.chainId) ? Number(object.chainId) : 0,
     };
   },
 
@@ -1454,6 +1486,8 @@ export const VerificationAddEthAddressBody = {
       ));
     message.blockHash !== undefined &&
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
+    message.verificationType !== undefined && (obj.verificationType = Math.round(message.verificationType));
+    message.chainId !== undefined && (obj.chainId = Math.round(message.chainId));
     return obj;
   },
 
@@ -1468,6 +1502,8 @@ export const VerificationAddEthAddressBody = {
     message.address = object.address ?? new Uint8Array();
     message.ethSignature = object.ethSignature ?? new Uint8Array();
     message.blockHash = object.blockHash ?? new Uint8Array();
+    message.verificationType = object.verificationType ?? 0;
+    message.chainId = object.chainId ?? 0;
     return message;
   },
 };

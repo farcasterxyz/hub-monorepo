@@ -8,6 +8,7 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
+import { defaultPublicClients, PublicClients } from "./eth/clients";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -113,13 +114,14 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
 export const validateMessage = async (
   message: protobufs.Message,
   validationMethods: ValidationMethods = pureJSValidationMethods,
+  publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<protobufs.Message> => {
   // 1. Check the message data
   const data = message.data;
   if (!data) {
     return err(new HubError("bad_request.validation_failure", "data is missing"));
   }
-  const validData = await validateMessageData(data);
+  const validData = await validateMessageData(data, publicClients);
   if (validData.isErr()) {
     return err(validData.error);
   }
@@ -166,7 +168,10 @@ export const validateMessage = async (
   return ok(message);
 };
 
-export const validateMessageData = async <T extends protobufs.MessageData>(data: T): HubAsyncResult<T> => {
+export const validateMessageData = async <T extends protobufs.MessageData>(
+  data: T,
+  publicClients: PublicClients = defaultPublicClients,
+): HubAsyncResult<T> => {
   // 1. Validate fid
   const validFid = validateFid(data.fid);
   if (validFid.isErr()) {
@@ -226,6 +231,7 @@ export const validateMessageData = async <T extends protobufs.MessageData>(data:
       data.verificationAddEthAddressBody,
       validFid.value,
       validNetwork.value,
+      publicClients,
     );
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
@@ -246,7 +252,12 @@ export const validateVerificationAddEthAddressSignature = async (
   body: protobufs.VerificationAddEthAddressBody,
   fid: number,
   network: protobufs.FarcasterNetwork,
+  publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
+  if (body.ethSignature.length > 256) {
+    return err(new HubError("bad_request.validation_failure", "ethSignature > 256 bytes"));
+  }
+
   const reconstructedClaim = makeVerificationEthAddressClaim(fid, body.address, network, body.blockHash);
   if (reconstructedClaim.isErr()) {
     return err(reconstructedClaim.error);
@@ -256,6 +267,9 @@ export const validateVerificationAddEthAddressSignature = async (
     reconstructedClaim.value,
     body.ethSignature,
     body.address,
+    body.verificationType,
+    body.chainId,
+    publicClients,
   );
 
   if (verificationResult.isErr()) {
@@ -263,7 +277,7 @@ export const validateVerificationAddEthAddressSignature = async (
   }
 
   if (!verificationResult.value) {
-    return err(new HubError("bad_request.validation_failure", "ethSignature does not match address"));
+    return err(new HubError("bad_request.validation_failure", "invalid ethSignature"));
   }
 
   return ok(body.ethSignature);
@@ -501,6 +515,7 @@ export const validateVerificationAddEthAddressBody = async (
   body: protobufs.VerificationAddEthAddressBody,
   fid: number,
   network: protobufs.FarcasterNetwork,
+  publicClients: PublicClients,
 ): HubAsyncResult<protobufs.VerificationAddEthAddressBody> => {
   const validAddress = validateEthAddress(body.address);
   if (validAddress.isErr()) {
@@ -512,7 +527,7 @@ export const validateVerificationAddEthAddressBody = async (
     return err(validBlockHash.error);
   }
 
-  const validSignature = await validateVerificationAddEthAddressSignature(body, fid, network);
+  const validSignature = await validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
   if (validSignature.isErr()) {
     return err(validSignature.error);
   }

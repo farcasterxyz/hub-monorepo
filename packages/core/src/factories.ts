@@ -386,12 +386,19 @@ const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddress
 
 const VerificationAddEthAddressBodyFactory = Factory.define<
   protobufs.VerificationAddEthAddressBody,
-  { fid?: number; network?: protobufs.FarcasterNetwork; signer?: Eip712Signer | undefined },
+  {
+    fid?: number;
+    network?: protobufs.FarcasterNetwork;
+    signer?: Eip712Signer | undefined;
+    contractSignature?: boolean;
+  },
   protobufs.VerificationAddEthAddressBody
 >(({ onCreate, transientParams }) => {
   onCreate(async (body) => {
     const ethSigner = transientParams.signer ?? Eip712SignerFactory.build();
-    body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
+    if (!transientParams.contractSignature) {
+      body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
+    }
 
     if (body.ethSignature.length === 0) {
       // Generate address and signature
@@ -404,7 +411,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
         blockHash: blockHash.isOk() ? blockHash.value : "0x",
         address: bytesToHexString(body.address)._unsafeUnwrap(),
       });
-      body.ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
+      body.ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim, body.chainId))._unsafeUnwrap();
     }
 
     return body;
