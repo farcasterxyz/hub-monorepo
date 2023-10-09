@@ -147,7 +147,8 @@ describe("MerkleTrie", () => {
       const syncId2 = SyncId.fromOnChainEvent(event2);
       const idLength = syncId1.syncId().length;
 
-      expect(syncId1).not.toEqual(syncId2);
+      expect(syncId1.syncId()).not.toEqual(syncId2.syncId());
+      expect(syncId1.syncId().length).toEqual(syncId2.syncId().length);
       expect(syncId1.syncId().slice(0, idLength - 1)).toEqual(syncId2.syncId().slice(0, idLength - 1));
 
       expect(await trie.insert(syncId1)).toBeTruthy();
@@ -155,6 +156,16 @@ describe("MerkleTrie", () => {
 
       expect(await trie.exists(syncId1)).toBeTruthy();
       expect(await trie.exists(syncId2)).toBeTruthy();
+
+      await trie.deleteBySyncId(syncId1);
+
+      expect(await trie.exists(syncId1)).toBeFalsy();
+      expect(await trie.exists(syncId2)).toBeTruthy();
+
+      await trie.deleteBySyncId(syncId2);
+
+      expect(await trie.exists(syncId1)).toBeFalsy();
+      expect(await trie.exists(syncId2)).toBeFalsy();
     });
 
     test(
