@@ -211,7 +211,7 @@ class MerkleTrie {
     return this.callMethod("initialize");
   }
 
-  public async rebuild(eventsEnabled = false): Promise<void> {
+  public async rebuild(): Promise<void> {
     // First, delete the root node
     const dbStatus = await ResultAsync.fromPromise(
       this._db.del(TrieNode.makePrimaryKey(new Uint8Array())),
@@ -250,9 +250,6 @@ class MerkleTrie {
       1 * 60 * 60 * 1000,
     );
     log.info({ count }, "Rebuilt messages trie");
-    if (!eventsEnabled) {
-      return;
-    }
     // On chain events
     await this._db.forEachIteratorByPrefix(
       Buffer.from([RootPrefix.OnChainEvent]),
