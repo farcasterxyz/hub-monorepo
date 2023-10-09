@@ -855,7 +855,7 @@ export class Hub implements HubInterface {
     const result = await ResultAsync.fromPromise(getHubState(this.rocksDB), (e) => e as HubError);
     if (result.isErr() && result.error.errCode === "not_found") {
       log.info("hub state not found, resetting state");
-      const hubState = HubState.create({ lastEthBlock: 0, lastFnameProof: 0, syncEvents: false });
+      const hubState = HubState.create({ lastL2Block: 0, lastFnameProof: 0 });
       await putHubState(this.rocksDB, hubState);
       return ok(hubState);
     }

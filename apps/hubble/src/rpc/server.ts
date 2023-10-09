@@ -367,7 +367,7 @@ export default class Server {
           if (call.request.dbStats && this.syncEngine) {
             const stats = await this.syncEngine.getDbStats();
             info.dbStats = DbStats.create({
-              numMessages: stats?.numMessages,
+              numMessages: stats?.numItems,
               numFidEvents: stats?.numFids,
               numFnameEvents: stats?.numFnames,
             });

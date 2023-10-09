@@ -44,15 +44,25 @@ import { UserNameProof } from "./username_proof";
 export interface HubService {
   /** Submit Methods */
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
-  /** Event Methods */
+  /**
+   * Event Methods
+   * @http-api: none
+   */
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent>;
+  /** @http-api: events */
   getEvent(request: DeepPartial<EventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubEvent>;
-  /** Casts */
+  /**
+   * Casts
+   * @http-api: castById
+   */
   getCast(request: DeepPartial<CastId>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getCastsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   getCastsByParent(request: DeepPartial<CastsByParentRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   getCastsByMention(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** Reactions */
+  /**
+   * Reactions
+   * @http-api: reactionById
+   */
   getReaction(request: DeepPartial<ReactionRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getReactionsByFid(request: DeepPartial<ReactionsByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   /** To be deprecated */
@@ -64,51 +74,88 @@ export interface HubService {
     request: DeepPartial<ReactionsByTargetRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse>;
-  /** User Data */
+  /**
+   * User Data
+   * @http-api: none
+   */
   getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** Username Proof */
+  /**
+   * Username Proof
+   * @http-api: userNameProofByName
+   */
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof>;
   getUserNameProofsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UsernameProofsResponse>;
-  /** Verifications */
+  /**
+   * Verifications
+   * @http-api: none
+   */
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** OnChain Events */
+  /**
+   * OnChain Events
+   * @http-api: none
+   */
   getOnChainSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
   getOnChainSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
+  /** @http-api: none */
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
+  /** @http-api: none */
   getIdRegistryOnChainEvent(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
+  /** @http-api: onChainIdRegistryEventByAddress */
   getIdRegistryOnChainEventByAddress(
     request: DeepPartial<IdRegistryEventByAddressRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<OnChainEvent>;
+  /** @http-api: storageLimitsByFid */
   getCurrentStorageLimitsByFid(
     request: DeepPartial<FidRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<StorageLimitsResponse>;
   getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse>;
-  /** Links */
+  /**
+   * Links
+   * @http-api: linkById
+   */
   getLink(request: DeepPartial<LinkRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getLinksByFid(request: DeepPartial<LinksByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  /** @http-api: linksByTargetFid */
   getLinksByTarget(request: DeepPartial<LinksByTargetRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** Bulk Methods */
+  /**
+   * Bulk Methods
+   * The Bulk methods don't have corresponding HTTP API endpoints because the
+   * regular endpoints can be used to get all the messages
+   * @http-api: none
+   */
   getAllCastMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  /** @http-api: none */
   getAllReactionMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  /** @http-api: none */
   getAllVerificationMessagesByFid(
     request: DeepPartial<FidRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse>;
+  /** @http-api: none */
   getAllUserDataMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  /** @http-api: none */
   getAllLinkMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** Sync Methods */
+  /**
+   * Sync Methods
+   * Outside the "info" RPC, the HTTP API doesn't implement any of the sync methods
+   */
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
+  /** @http-api: none */
   getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
+  /** @http-api: none */
   getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds>;
+  /** @http-api: none */
   getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  /** @http-api: none */
   getSyncMetadataByPrefix(
     request: DeepPartial<TrieNodePrefix>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<TrieNodeMetadataResponse>;
+  /** @http-api: none */
   getSyncSnapshotByPrefix(
     request: DeepPartial<TrieNodePrefix>,
     metadata?: grpcWeb.grpc.Metadata,

@@ -132,7 +132,6 @@ describe("Multi peer sync engine", () => {
     hub1 = new MockHub(testDb1, engine1);
     syncEngine1 = new SyncEngine(hub1, testDb1);
     await syncEngine1.start();
-    await syncEngine1.enableEventsSync();
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
     clientForServer1 = getInsecureHubRpcClient(`127.0.0.1:${port1}`);
@@ -395,7 +394,6 @@ describe("Multi peer sync engine", () => {
     await engine1.mergeOnChainEvent(storageEvent);
 
     // Engine2 has 2 messages
-    await syncEngine2.enableEventsSync();
     await engine2.mergeOnChainEvent(custodyEvent);
     await engine2.mergeOnChainEvent(signerEvent);
     await engine2.mergeOnChainEvent(storageEvent);
@@ -458,7 +456,6 @@ describe("Multi peer sync engine", () => {
   });
 
   test("recovers if there are missing messages in the engine", async () => {
-    await syncEngine2.enableEventsSync();
     // Add a message to engine1 synctrie, but not to the engine itself.
     await syncEngine1.trie.insert(SyncId.fromMessage(castAdd));
 
@@ -479,7 +476,6 @@ describe("Multi peer sync engine", () => {
   });
 
   test("recovers if there are missing messages in the engine during sync", async () => {
-    await syncEngine2.enableEventsSync();
     await engine2.mergeOnChainEvent(custodyEvent);
     await engine1.mergeOnChainEvent(custodyEvent);
 
@@ -525,7 +521,6 @@ describe("Multi peer sync engine", () => {
     await engine1.mergeUserNameProof(fname);
 
     // We add it to the engine2 synctrie as normal...
-    await syncEngine2.enableEventsSync();
     await engine2.mergeOnChainEvent(custodyEvent);
     await engine2.mergeOnChainEvent(signerEvent);
     await engine2.mergeOnChainEvent(storageEvent);
@@ -560,7 +555,6 @@ describe("Multi peer sync engine", () => {
   });
 
   test("syncEngine syncs with same numMessages but different hashes", async () => {
-    await syncEngine2.enableEventsSync();
     await engine1.mergeOnChainEvent(custodyEvent);
     await engine1.mergeOnChainEvent(signerEvent);
     await engine1.mergeOnChainEvent(storageEvent);
@@ -607,7 +601,6 @@ describe("Multi peer sync engine", () => {
   });
 
   test("syncEngine syncs with more numMessages and different hashes", async () => {
-    await syncEngine2.enableEventsSync();
     await engine1.mergeOnChainEvent(custodyEvent);
     await engine1.mergeOnChainEvent(signerEvent);
     await engine1.mergeOnChainEvent(storageEvent);

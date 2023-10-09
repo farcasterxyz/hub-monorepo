@@ -43,6 +43,7 @@ let custodyEvent: IdRegisterOnChainEvent;
 let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 let castAdd: Message;
+let fnameProof: UserNameProof;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -50,6 +51,7 @@ beforeAll(async () => {
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
   signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+  fnameProof = Factories.UserNameProof.build({ fid, owner: custodyEvent.idRegisterEventBody.to });
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
@@ -103,15 +105,22 @@ describe("SyncEngine", () => {
     const rstorage = await engine.mergeOnChainEvent(storageEvent);
     expect(rstorage.isOk()).toBeTruthy();
 
+    const fname = await engine.mergeUserNameProof(fnameProof);
+    expect(fname.isOk()).toBeTruthy();
+
     const result = await engine.mergeMessage(castAdd);
     expect(result.isOk()).toBeTruthy();
 
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-    // Two messages (signerEvent + castAdd) was added to the trie
-    expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
+    // One message + 3 on chain events + 1 fnane proof
+    expect((await syncEngine.trie.items()) - existingItems).toEqual(5);
     expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
+    expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
+    expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
+    expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
+    expect(await syncEngine.trie.exists(SyncId.fromFName(fnameProof))).toBeTruthy();
   });
 
   test("trie is not updated on merge failure", async () => {
@@ -189,17 +198,17 @@ describe("SyncEngine", () => {
       { transient: { signer } },
     );
 
-    const existingItems = await syncEngine.trie.items();
-    expect(existingItems).toEqual(0);
-
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
+    const existingItems = await syncEngine.trie.items();
+    expect(existingItems).toEqual(3);
+
     expect((await engine.mergeMessage(proof)).isOk()).toBeTruthy();
 
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-    // SignerAdd and Username proof is added to the trie
+    // ENS Username proof is added to the trie
     expect((await syncEngine.trie.items()) - existingItems).toEqual(1);
     expect(await syncEngine.trie.exists(SyncId.fromMessage(proof))).toBeTruthy();
   });
@@ -224,6 +233,9 @@ describe("SyncEngine", () => {
 
     const currentTime = getFarcasterTime()._unsafeUnwrap();
 
+    const existingItems = await syncEngine.trie.items();
+    expect(existingItems).toEqual(3); // On chain events
+
     // Reaction
     const reactionBody = {
       targetCastId: { fid, hash: castAdd.hash },
@@ -246,7 +258,7 @@ describe("SyncEngine", () => {
 
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
-    expect(await syncEngine.trie.items()).toEqual(1); // reaction1
+    expect(await syncEngine.trie.items()).toEqual(existingItems + 1); // reaction1
 
     // Then merging the second reaction should also succeed and remove reaction1
     result = await engine.mergeMessage(reaction2);
@@ -254,7 +266,7 @@ describe("SyncEngine", () => {
 
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
-    expect(await syncEngine.trie.items()).toEqual(1); // reaction2 (reaction1 is removed)
+    expect(await syncEngine.trie.items()).toEqual(existingItems + 1); // reaction2 (reaction1 is removed)
 
     // Create a new engine and sync engine
     testDb2.clear();
@@ -271,7 +283,7 @@ describe("SyncEngine", () => {
 
     // Wait for the trie to be updated
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
-    expect(await syncEngine2.trie.items()).toEqual(1); //reaction2
+    expect(await syncEngine2.trie.items()).toEqual(existingItems + 1); //reaction2
 
     // Roothashes must match
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
@@ -393,27 +405,32 @@ describe("SyncEngine", () => {
     const stats = await syncEngine.getDbStats();
     expect(stats.numFids).toEqual(1);
     expect(stats.numFnames).toEqual(2);
-    expect(stats.numMessages).toEqual(3);
+    expect(stats.numItems).toEqual(8); // Total items in the trie (3 messages + 2 fnames + 3 on chain events)
   });
 
   test("initialize populates the trie with all existing messages", async () => {
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
+    await engine.mergeUserNameProof(fnameProof);
 
     const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
-    expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
+    expect(await syncEngine.trie.items()).toEqual(7); // 3 messages + 3 on chain events + 1 fname
 
     const syncEngine2 = new SyncEngine(hub, testDb);
     await syncEngine2.start();
 
     // Make sure all messages exist
-    expect(await syncEngine2.trie.items()).toEqual(3);
+    expect(await syncEngine2.trie.items()).toEqual(7);
     expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[0] as Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[1] as Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[2] as Message))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
+    expect(await syncEngine2.trie.exists(SyncId.fromFName(fnameProof))).toBeTruthy();
 
     await syncEngine2.stop();
   });
@@ -424,20 +441,25 @@ describe("SyncEngine", () => {
       await engine.mergeOnChainEvent(custodyEvent);
       await engine.mergeOnChainEvent(signerEvent);
       await engine.mergeOnChainEvent(storageEvent);
+      await engine.mergeUserNameProof(fnameProof);
 
       const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
-      expect(await syncEngine.trie.items()).toEqual(3); // 3 messages
+      expect(await syncEngine.trie.items()).toEqual(7); // 3 messages + 3 on chain events + 1 fname
 
       const syncEngine2 = new SyncEngine(hub, testDb);
       await syncEngine2.start(true); // Rebuild from engine messages
 
       // Make sure all messages exist
-      expect(await syncEngine2.trie.items()).toEqual(3);
+      expect(await syncEngine2.trie.items()).toEqual(7);
       expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
       expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[0] as Message))).toBeTruthy();
       expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[1] as Message))).toBeTruthy();
       expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[2] as Message))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromFName(fnameProof))).toBeTruthy();
 
       await syncEngine2.stop();
     },
@@ -524,30 +546,7 @@ describe("SyncEngine", () => {
         fid: custodyEvent.fid,
       });
     });
-    describe("events sync disabled", () => {
-      test("does not update trie for on chain events and fnames by default", async () => {
-        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
-        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
-        await engine.mergeOnChainEvent(custodyEvent);
-        await engine.mergeUserNameProof(userNameProof);
-        expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
-        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
-      });
-      test("enables events sync when onchainEvent is encountered for the first time", async () => {
-        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeFalsy();
-        await syncEngine.validateAndMergeFnames([SyncId.fromOnChainEvent(custodyEvent)]);
-        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeTruthy();
-      });
-      test("enables events sync when fname is encountered for the first time", async () => {
-        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeFalsy();
-        await syncEngine.validateAndMergeFnames([SyncId.fromFName(userNameProof)]);
-        expect((await hub.getHubState())._unsafeUnwrap().syncEvents).toBeTruthy();
-      });
-    });
     describe("events sync enabled", () => {
-      beforeEach(async () => {
-        await syncEngine.enableEventsSync();
-      });
       test("updates the trie for on chain events", async () => {
         expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
         await engine.mergeOnChainEvent(custodyEvent);
@@ -618,26 +617,18 @@ describe("SyncEngine", () => {
       await engine.mergeOnChainEvent(custodyEvent);
       await engine.mergeOnChainEvent(signerEvent);
       await engine.mergeOnChainEvent(storageEvent);
-      const usernameProof = Factories.UserNameProof.build();
-      await engine.mergeUserNameProof(usernameProof);
+      await engine.mergeUserNameProof(fnameProof);
       await engine.mergeMessage(castAdd);
 
       // Manually remove cast add to have an emtpy trie
       await syncEngine.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
+      await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(custodyEvent));
+      await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(signerEvent));
+      await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(storageEvent));
+      await syncEngine.trie.deleteBySyncId(SyncId.fromFName(fnameProof));
       expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
       expect(await syncEngine.trie.items()).toEqual(0);
 
-      await syncEngine.rebuildSyncTrie();
-
-      // No events or fnames by default
-      expect(await syncEngine.trie.items()).toEqual(1);
-      expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeTruthy();
-
-      // Remove cast add again
-      await syncEngine.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
-
-      // Includes events and proofs if enabled
-      await syncEngine.enableEventsSync();
       await syncEngine.rebuildSyncTrie();
 
       expect(await syncEngine.trie.items()).toEqual(5);
@@ -645,7 +636,7 @@ describe("SyncEngine", () => {
       expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
       expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
       expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
-      expect(await syncEngine.trie.exists(SyncId.fromFName(usernameProof))).toBeTruthy();
+      expect(await syncEngine.trie.exists(SyncId.fromFName(fnameProof))).toBeTruthy();
     });
   });
 });
