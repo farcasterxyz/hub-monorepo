@@ -25,7 +25,6 @@
   },
   "devDependencies": {
     "biome-config-custom": "*",
-    "eslint-config-custom": "*",
     "ts-proto": "^1.146.0"
   },
   "dependencies": {

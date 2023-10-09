@@ -40,7 +40,6 @@
     "@types/ffi-napi": "^4.0.7",
     "@types/ref-napi": "^3.0.7",
     "biome-config-custom": "*",
-    "eslint-config-custom": "*",
     "ethers": "^6.6.1",
     "ethers5": "npm:ethers@^5.7.0",
     "node-gyp": "^9.4.0",
