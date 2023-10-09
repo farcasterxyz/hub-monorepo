@@ -1,8 +1,8 @@
-name: Publish Hubble
+name: Publish Replicator
 on:
   push:
     tags:
-      - '@farcaster/hubble@*'
+      - '@farcaster/replicator@*'
 
 concurrency: package-tags
 
@@ -22,7 +22,7 @@ jobs:
 
       - uses: depot/setup-action@v1
 
-      - run: ./scripts/publish-image.sh
+      - run: ./scripts/publish-replicator-image.sh
         shell: bash
         env:
           DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
