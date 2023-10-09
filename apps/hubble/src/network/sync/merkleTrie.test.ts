@@ -1,11 +1,11 @@
 import { blake3 } from "@noble/hashes/blake3";
-import { DbTrieNode } from "@farcaster/hub-nodejs";
+import { DbTrieNode, Factories } from "@farcaster/hub-nodejs";
 import { MerkleTrie } from "../sync/merkleTrie.js";
 import { NetworkFactories } from "../utils/factories.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
-import { TIMESTAMP_LENGTH } from "./syncId.js";
+import { SyncId, TIMESTAMP_LENGTH } from "./syncId.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { Worker } from "worker_threads";
 import { jest } from "@jest/globals";
@@ -133,6 +133,29 @@ describe("MerkleTrie", () => {
       },
       TEST_TIMEOUT_LONG,
     );
+
+    test("inserting multiple items that differ by one byte succeds", async () => {
+      const event1 = await Factories.IdRegistryOnChainEvent.build();
+      const event2 = await Factories.IdRegistryOnChainEvent.build({
+        blockNumber: event1.blockNumber,
+        blockTimestamp: event1.blockTimestamp,
+        fid: event1.fid,
+        txIndex: event1.txIndex,
+        logIndex: event1.logIndex + 1,
+      });
+      const syncId1 = SyncId.fromOnChainEvent(event1);
+      const syncId2 = SyncId.fromOnChainEvent(event2);
+      const idLength = syncId1.syncId().length;
+
+      expect(syncId1).not.toEqual(syncId2);
+      expect(syncId1.syncId().slice(0, idLength - 1)).toEqual(syncId2.syncId().slice(0, idLength - 1));
+
+      expect(await trie.insert(syncId1)).toBeTruthy();
+      expect(await trie.insert(syncId2)).toBeTruthy();
+
+      expect(await trie.exists(syncId1)).toBeTruthy();
+      expect(await trie.exists(syncId2)).toBeTruthy();
+    });
 
     test(
       "inserting multiple doesnt cause unload conflict",
