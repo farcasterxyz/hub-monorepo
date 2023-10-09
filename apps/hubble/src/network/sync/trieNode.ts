@@ -74,7 +74,7 @@ class TrieNode {
     dbUpdatesMap: Map<Buffer, Buffer>,
     current_index = 0,
   ): Promise<TrieNodeOpResult> {
-    if (current_index >= key.length) {
+    if (current_index > key.length) {
       throw new Error("Key length exceeded");
     }
     const char = key.at(current_index) as number;
@@ -155,7 +155,7 @@ class TrieNode {
       }
     }
 
-    if (current_index >= key.length) {
+    if (current_index > key.length) {
       throw "Key length exceeded2";
     }
     const char = key.at(current_index) as number;
@@ -216,7 +216,7 @@ class TrieNode {
       return true;
     }
 
-    if (current_index >= key.length) {
+    if (current_index > key.length) {
       throw "Key length exceeded3";
     }
     const char = key.at(current_index) as number;
