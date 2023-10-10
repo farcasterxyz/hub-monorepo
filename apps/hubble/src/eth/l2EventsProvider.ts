@@ -702,13 +702,18 @@ export class L2EventsProvider {
     toBlock: bigint;
     strict: boolean;
   }) {
-    if (this._useFilters) {
-      const filter = await this._publicClient.createContractEventFilter(params);
-      return this._publicClient.getFilterLogs({
-        filter,
-      });
-    } else {
-      return this._publicClient.getContractEvents(params);
+    try {
+      if (this._useFilters) {
+        const filter = await this._publicClient.createContractEventFilter(params);
+        return this._publicClient.getFilterLogs({
+          filter,
+        });
+      } else {
+        return this._publicClient.getContractEvents(params);
+      }
+    } catch (err) {
+      log.error({ err, params }, "failed to get contract events");
+      return [];
     }
   }
 
