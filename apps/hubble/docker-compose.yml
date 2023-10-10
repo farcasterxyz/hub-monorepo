@@ -71,6 +71,7 @@ services:
     # Mount the grafana config file
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/data:/var/lib/grafana  # Persistent Grafana data
     ports:
       - '3000:3000' # Grafana web
     networks:
