@@ -386,14 +386,6 @@ set_platform_commands() {
         echo "Error: No suitable hash command found."
         exit 1
     fi
-
-    if [[ "$(uname)" == "Linux" ]]; then
-        # Extract the username from the current directory, since we're running as root
-        local user=$(pwd | cut -d/ -f3)
-        CRONTAB_CMD="crontab -u ${user}"
-    else
-        CRONTAB_CMD="crontab"
-    fi
 }
 
 reexec_as_root_if_needed() {
