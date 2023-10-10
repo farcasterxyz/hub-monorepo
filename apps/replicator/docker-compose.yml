@@ -61,6 +61,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+    networks:
+      - replicator-network
 
   statsd:
     image: graphiteapp/graphite-statsd:1.1.10-5
