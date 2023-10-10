@@ -569,7 +569,9 @@ describe("SyncEngine", () => {
         await engine.mergeUserNameProof(userNameProof);
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
         await engine.mergeUserNameProof(supercedingUserNameProof);
-        await sleep(10); // Have to wait for the worker to finish processing messages
+
+        await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeTruthy();
       });
@@ -590,7 +592,7 @@ describe("SyncEngine", () => {
         expect(eventResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
         expect(fnameResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
 
-        await sleep(10);
+        await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
         expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
