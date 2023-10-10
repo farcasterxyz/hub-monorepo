@@ -246,7 +246,7 @@ ensure_grafana() {
 
 ## Configure Grafana
 setup_grafana() {
-    local grafana_url="http://127.0.0.1:3000"
+    local grafana_url="http://127.0.0.1:9001"
     local credentials
     local response dashboard_uid prefs
 
@@ -480,7 +480,7 @@ if [ "$1" == "upgrade" ]; then
 
     echo "✅ Upgrade complete."
     echo ""
-    echo "Monitor your replicator at http://localhost:3000/ and http://localhost:9000/"
+    echo "Monitor your replicator at http://localhost:9000/ and http://localhost:9001/"
 
     # Sleep for 5 seconds
     sleep 5
