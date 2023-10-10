@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.10.13
+
+### Patch Changes
+
+- f4e50b95: fix: use interface for Viem PublicClient, add optional publicClients to builders
+- Updated dependencies [f4e50b95]
+  - @farcaster/core@0.12.13
+
 ## 0.10.12
 
 ### Patch Changes
