@@ -1,5 +1,11 @@
 # @farcaster/replicator
 
+## 0.2.3
+
+### Patch Changes
+
+- 87f518a6: Don't backfill chain events that were already backfilled
+
 ## 0.2.2
 
 ### Patch Changes
