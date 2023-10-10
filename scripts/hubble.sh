@@ -345,12 +345,34 @@ setup_crontab() {
         exit 1
     fi
 
+    # If the crontab was installed for the current user (instead of root) then
+    # remove it
+    if [[ "$(uname)" == "Linux" ]]; then
+        # Extract the username from the current directory, since we're running as root
+        local user=$(pwd | cut -d/ -f3)
+        USER_CRONTAB_CMD="crontab -u ${user}"
+
+        if $USER_CRONTAB_CMD -l 2>/dev/null | grep -q "hubble.sh"; then
+            $USER_CRONTAB_CMD -l > /tmp/temp_cron.txt
+            sed -i '/hubble\.sh/d' /tmp/temp_cron.txt
+            $USER_CRONTAB_CMD /tmp/temp_cron.txt
+            rm /tmp/temp_cron.txt
+        fi
+    fi
+
     # Check if the crontab file is already installed
     if $CRONTAB_CMD -l 2>/dev/null | grep -q "hubble.sh"; then
       # Fix buggy crontab entry which would run every minute
       if $CRONTAB_CMD -l 2>/dev/null | grep "hubble.sh" | grep -q "^\*"; then
         echo "Removing crontab for upgrade"
-        $CRONTAB_CMD -r
+  
+        # Export the existing crontab entries to a temporary file in /tmp/
+        crontab -l > /tmp/temp_cron.txt
+  
+        # Remove the line containing "hubble.sh" from the temporary file
+        sed -i '/hubble\.sh/d' /tmp/temp_cron.txt
+        crontab /tmp/temp_cron.txt
+        rm /tmp/temp_cron.txt
       else
         echo "✅ crontab entry is already installed."
         return 0
@@ -419,13 +441,7 @@ set_platform_commands() {
         exit 1
     fi
 
-    if [[ "$(uname)" == "Linux" ]]; then
-        # Extract the username from the current directory, since we're running as root
-        local user=$(pwd | cut -d/ -f3)
-        CRONTAB_CMD="crontab -u ${user}"
-    else
-        CRONTAB_CMD="crontab"
-    fi
+    CRONTAB_CMD="crontab"
 }
 
 reexec_as_root_if_needed() {
