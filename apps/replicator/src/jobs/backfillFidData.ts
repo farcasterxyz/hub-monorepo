@@ -45,7 +45,7 @@ export const BackfillFidData = registerJob({
     if (!(await redis.sismember("backfilled-username-proofs", fid))) {
       await BackfillFidUserNameProofs.enqueue({ fid });
     }
-    if (!(await redis.sismember("backfilled-other-chain-events", fid))) {
+    if (!(await redis.sismember("backfilled-other-onchain-events", fid))) {
       await BackfillFidOtherOnChainEvents.enqueue({ fid });
     }
   },
