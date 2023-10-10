@@ -202,7 +202,7 @@ write_env_file() {
     fi
 
     if ! key_exists "POSTGRES_URL"; then
-        echo "POSTGRES_URL=postgres://replicator:password@postgres:6541/replicator" >> .env
+        echo "POSTGRES_URL=postgres://replicator:password@postgres:5432/replicator" >> .env
     fi
 
     if ! key_exists "STATSD_HOST"; then
