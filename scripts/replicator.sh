@@ -134,10 +134,8 @@ portable_nproc() {
 }
 
 get_hub_host() {
-    while true; do
-        read -p "> Enter your HUB_HOST (e.g. my-hub.domain.com:2283): " HUB_HOST
-        echo "HUB_HOST=$HUB_HOST" >> .env
-    done
+    read -p "> Enter your HUB_HOST (e.g. my-hub.domain.com:2283): " HUB_HOST
+    echo "HUB_HOST=$HUB_HOST" >> .env
 }
 
 get_hub_ssl() {
