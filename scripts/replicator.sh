@@ -9,7 +9,7 @@ CURRENT_VERSION="1"
 
 REPO="farcasterxyz/hub-monorepo"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
-LATEST_TAG="@farcaster/replicator@latest"
+LATEST_TAG="@latest-replicator"
 
 DOCKER_COMPOSE_FILE_PATH="apps/replicator/docker-compose.yml"
 SCRIPT_FILE_PATH="scripts/replicator.sh"
