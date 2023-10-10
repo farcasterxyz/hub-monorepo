@@ -4,4 +4,4 @@
 "@farcaster/hub-web": patch
 ---
 
-use interface for Viem PublicClient, add optional publicClients to builders
+fix: use interface for Viem PublicClient, add optional publicClients to builders
