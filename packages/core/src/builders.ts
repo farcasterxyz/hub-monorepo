@@ -5,6 +5,7 @@ import { HubAsyncResult } from "./errors";
 import { Signer } from "./signers";
 import { getFarcasterTime } from "./time";
 import * as validations from "./validations";
+import { PublicClients, defaultPublicClients } from "./eth/clients";
 
 /** Internal Types  */
 
@@ -32,6 +33,7 @@ const makeMessageData = async <TData extends protobufs.MessageData>(
   bodyOptions: MessageBodyOptions,
   messageType: protobufs.MessageType,
   dataOptions: MessageDataOptions,
+  publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<TData> => {
   if (!dataOptions.timestamp) {
     getFarcasterTime().map((timestamp) => {
@@ -45,7 +47,7 @@ const makeMessageData = async <TData extends protobufs.MessageData>(
     ...dataOptions,
   });
 
-  return validations.validateMessageData(data as TData);
+  return validations.validateMessageData(data as TData, publicClients);
 };
 
 const makeMessage = async <TMessage extends protobufs.Message>(
@@ -231,8 +233,9 @@ export const makeVerificationAddEthAddress = async (
   body: protobufs.VerificationAddEthAddressBody,
   dataOptions: MessageDataOptions,
   signer: Signer,
+  publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<protobufs.VerificationAddEthAddressMessage> => {
-  const data = await makeVerificationAddEthAddressData(body, dataOptions);
+  const data = await makeVerificationAddEthAddressData(body, dataOptions, publicClients);
   if (data.isErr()) {
     return err(data.error);
   }
@@ -254,11 +257,13 @@ export const makeVerificationRemove = async (
 export const makeVerificationAddEthAddressData = (
   body: protobufs.VerificationAddEthAddressBody,
   dataOptions: MessageDataOptions,
+  publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<protobufs.VerificationAddEthAddressData> => {
   return makeMessageData(
     { verificationAddEthAddressBody: body },
     protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
     dataOptions,
+    publicClients,
   );
 };
 
