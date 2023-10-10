@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.13
+
+### Patch Changes
+
+- f4e50b95: fix: use interface for Viem PublicClient, add optional publicClients to builders
+
 ## 0.12.12
 
 ### Patch Changes
