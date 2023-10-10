@@ -54,7 +54,7 @@ export const EIP_712_USERNAME_PROOF = [
   { name: "owner", type: "address" },
 ] as const;
 
-const verifyVerificationClaimEOASignature = async (
+export const verifyVerificationClaimEOASignature = async (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array,
   address: Uint8Array,
@@ -80,7 +80,7 @@ const verifyVerificationClaimEOASignature = async (
   return valid;
 };
 
-const verifyVerificationClaimContractSignature = async (
+export const verifyVerificationClaimContractSignature = async (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array,
   address: Uint8Array,
@@ -112,8 +112,8 @@ export const verifyVerificationEthAddressClaimSignature = async (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array,
   address: Uint8Array,
-  verificationType: number,
-  chainId: number,
+  verificationType = 0,
+  chainId = 0,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<boolean> => {
   if (!EIP_712_FARCASTER_VERIFICATION_CLAIM_CHAIN_IDS.includes(chainId)) {
