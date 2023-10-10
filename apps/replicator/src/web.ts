@@ -26,6 +26,6 @@ export function getWebApp(redis: Redis) {
   // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   app.register(serverAdapter.registerPlugin() as any);
 
-  app.listen({ port: WEB_UI_PORT });
+  app.listen({ port: WEB_UI_PORT, host: "0.0.0.0" });
   return app;
 }
