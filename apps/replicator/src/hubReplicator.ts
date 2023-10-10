@@ -213,7 +213,9 @@ export class HubReplicator {
         (elapsedMs / (dataBackfilled - alreadyBackfilled)) * (maxFid - alreadyBackfilled - dataBackfilled),
       );
       const timeRemaining =
-        millisRemaining === Infinity ? "Calculating..." : humanizeDuration(millisRemaining, { round: true });
+        millisRemaining === Infinity || millisRemaining > 864000000
+          ? "Calculating..."
+          : humanizeDuration(millisRemaining, { round: true });
 
       this.log.info(
         `Backfilled registrations for ${dataBackfilled} of ${maxFid} FIDs. Estimated time remaining: ${timeRemaining}`,
@@ -248,7 +250,9 @@ export class HubReplicator {
         (elapsedMs / (dataBackfilled - alreadyBackfilled)) * (maxFid - alreadyBackfilled - dataBackfilled),
       );
       const timeRemaining =
-        millisRemaining === Infinity ? "Calculating..." : humanizeDuration(millisRemaining, { round: true });
+        millisRemaining === Infinity || millisRemaining > 864000000
+          ? "Calculating..."
+          : humanizeDuration(millisRemaining, { round: true });
       this.log.info(
         `Backfilled events for ${dataBackfilled} of ${maxFid} FIDs. Estimated time remaining: ${timeRemaining}`,
       );
