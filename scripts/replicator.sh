@@ -133,6 +133,45 @@ portable_nproc() {
     echo "$NPROCS"
 }
 
+get_hub_host() {
+    while true; do
+        read -p "> Enter your HUB_HOST (e.g. localhost:2283 or my-hub.domain.com:2283): " HUB_HOST
+        RESPONSE=$(curl -s -X GET "$HUB_HOST/v1/info")
+
+        # Convert both the response and expected chain ID to lowercase for comparison
+        local lower_response=$(echo "$RESPONSE" | tr '[:upper:]' '[:lower:]')
+
+        if [[ $lower_response == *'"version":'* ]]; then
+            echo "HUB_HOST=$HUB_HOST" >> .env
+            break
+        else
+            echo "!!! Invalid !!!"
+            echo "Hub host is not reachable or returned invalid response. Please retry."
+            echo "It is recommended that you point the replicator at a local hub to reduce sync time."
+            echo "Server returned \"$RESPONSE\""
+        fi
+    done
+}
+
+get_hub_ssl() {
+    while true; do
+        read -p "> Does your hub use SSL? " HUB_SSL
+
+        local answer=$(echo "$HUB_SSL" | tr '[:upper:]' '[:lower:]')
+
+        if [[ $lower_response == true || $lower_answer == t || $lower_answer == y ]]; then
+            echo "HUB_SSL=true" >> .env
+            break
+        elif [[ $lower_answer == false || $lower_answer = f || $lower_answer == n ]]; then
+            echo "HUB_SSL=false" >> .env
+            break
+        else
+            echo "!!! Invalid !!!"
+            echo "You must specify a boolean value (true/false)"
+        fi
+    done
+}
+
 write_env_file() {
     if [[ ! -f .env ]]; then
         touch .env
@@ -163,11 +202,19 @@ write_env_file() {
     fi
 
     if ! key_exists "POSTGRES_URL"; then
-        echo "POSTGRES_URL=postgres://replicator:password@postgres:5432/replicator" >> .env
+        echo "POSTGRES_URL=postgres://replicator:password@postgres:6541/replicator" >> .env
     fi
 
     if ! key_exists "STATSD_HOST"; then
         echo "STATSD_HOST=statsd:8125" >> .env
+    fi
+
+    if ! key_exists "HUB_HOST"; then
+        get_hub_host
+    fi
+
+    if ! key_exists "HUB_SSL"; then
+        get_hub_ssl
     fi
 
     echo "✅ .env file updated."

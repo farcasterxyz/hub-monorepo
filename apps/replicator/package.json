@@ -27,6 +27,7 @@
   "dependencies": {
     "@bull-board/api": "^5.8.4",
     "@bull-board/fastify": "^5.8.4",
+    "@commander-js/extra-typings": "^11.0.0",
     "@farcaster/hub-nodejs": "^0.10.9",
     "bullmq": "^4.11.4",
     "commander": "^11.0.0",
@@ -46,7 +47,6 @@
     "viem": "^1.12.1"
   },
   "devDependencies": {
-    "@commander-js/extra-typings": "^11.0.0",
     "@types/humanize-duration": "^3.27.1",
     "@types/pg": "^8.10.3",
     "@types/pg-cursor": "^2.7.0",
