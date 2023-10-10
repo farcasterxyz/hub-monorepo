@@ -220,6 +220,32 @@ write_env_file() {
     echo "✅ .env file updated."
 }
 
+ensure_postgres() {
+      if $COMPOSE_CMD ps postgres 2>&1 >/dev/null; then
+          if $COMPOSE_CMD ps postgres | grep -q "Up"; then
+              $COMPOSE_CMD restart postgres
+          else
+              $COMPOSE_CMD up -d postgres
+          fi
+      else
+          echo "❌ Docker is not running or there's another issue with Docker. Please start Docker manually."
+          exit 1
+      fi
+}
+
+ensure_redis() {
+      if $COMPOSE_CMD ps redis 2>&1 >/dev/null; then
+          if $COMPOSE_CMD ps redis | grep -q "Up"; then
+              $COMPOSE_CMD restart redis
+          else
+              $COMPOSE_CMD up -d redis
+          fi
+      else
+          echo "❌ Docker is not running or there's another issue with Docker. Please start Docker manually."
+          exit 1
+      fi
+}
+
 ensure_grafana() {
       if $COMPOSE_CMD ps statsd 2>&1 >/dev/null; then
           if $COMPOSE_CMD ps statsd | grep -q "Up"; then
@@ -466,6 +492,10 @@ if [ "$1" == "upgrade" ]; then
     # Fetch the latest docker-compose.yml
     fetch_latest_docker_compose_and_dashboard
 
+    # Setup persistent stores
+    ensure_postgres
+    ensure_redis
+
     # Setup the Grafana dashboard
     setup_grafana
 
@@ -473,7 +503,7 @@ if [ "$1" == "upgrade" ]; then
 
     echo "✅ Upgrade complete."
     echo ""
-    echo "Monitor your node at http://localhost:3000/"
+    echo "Monitor your replicator at http://localhost:3000/ and http://localhost:9000/"
 
     # Sleep for 5 seconds
     sleep 5
