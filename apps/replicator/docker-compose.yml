@@ -2,11 +2,10 @@ version: '3.9'
 
 services:
   replicator:
-    build:
-      context: ../.. # Repository root
-      dockerfile: Dockerfile.replicator
+    image: farcasterxyz/replicator:latest
     restart: unless-stopped
     init: true
+    command: ['node', 'build/app.js', 'start']
     environment:
       - LOG_LEVEL
       - HUB_HOST
