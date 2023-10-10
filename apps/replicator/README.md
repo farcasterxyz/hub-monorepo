@@ -1,11 +1,8 @@
-# Replicator (Work in progress — do not use yet)
+# Replicator
 
-A Node.js application that synchronizes a Farcaster Hub with a Postgres DB. Sync is performed through two mechanisms:
+A Node.js application that synchronizes a Farcaster Hub with a Postgres DB.
 
-1. A backfilling process that will fetch older messages from the Hub
-2. A streaming process that will receive new messages from the Hub
-
-When the app is run, both processes are kicked off to bring the database in sync. The streaming ensures that new messages are pushed to the DB. The backfill downloads older messages and can take 1 or more hours depending on your configuration.
+When the app is run, the replicator fetches historical data from the hub, which can take a few hours. Once backfilled, the replicator will then stream new events and messages into the database. The replicator will run fastest if the hub it communicates with is on the same private network (or same machine) as the replicator itself. If running the replicator and hub on the same machine, total sync time can be under 20 minutes with a modern laptop.
 
 ## Run locally
 
@@ -13,15 +10,15 @@ Sets up the Node.js application and Postgres DB locally using Docker containers.
 
 ### Requirements
 
-* 1GB of memory
+Note: these are the bare minimum and are likely to increase as the network increases in size and activity.
+
+* 2GB of memory
 * 4GB of free disk space
-* Docker. If you're running macOS, run `brew install --cask docker && open -a Docker` from this directory, otherwise go [here](https://docs.docker.com/get-docker/).
-* Postgres 15+ (if not using the provided Postgres Docker image)
 
 ### Instructions
 
-1. Clone the repo locally: `git clone git@github.com:farcasterxyz/hub-monorepo.git`
-3. Run `scripts/replicator.sh up`
+1. Run: `curl -sSL https://download.farcaster.xyz/bootstrap-replicator.sh | bash`
+2. Answer the prompts.
 
 Once the Docker images have finished downloading, you should start to see messages like:
 
@@ -66,12 +63,12 @@ select timestamp, text, mentions, mentions_positions, embeds from casts where fi
 
 Get the number of likes for a user's last 20 casts:
 ```sql
-select timestamp, (select count(*) from reactions where type = 1 and target_hash = casts.hash and target_fid = casts.fid) from casts where fid = 3 order by timestamp desc limit 20;
+select timestamp, (select count(*) from reactions where type = 1 and target_cast_hash = casts.hash and target_cast_fid = casts.fid) from casts where fid = 3 order by timestamp desc limit 20;
 ```
 
 Get the top-20 most recasted casts:
 ```sql
-select c.hash, count(*) as recast_count from casts as c join reactions as r on r.target_hash = c.hash and r.target_fid = c.fid where r.type = 2 group by c.hash order by recast_count desc limit 20;
+select c.hash, count(*) as recast_count from casts as c join reactions as r on r.target_cast_hash = c.hash and r.target_cast_fid = c.fid where r.type = 2 group by c.hash order by recast_count desc limit 20;
 ```
 
 See the list of tables below for the schema.
