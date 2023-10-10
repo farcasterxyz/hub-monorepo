@@ -347,8 +347,14 @@ setup_crontab() {
 
     # Check if the crontab file is already installed
     if $CRONTAB_CMD -l 2>/dev/null | grep -q "hubble.sh"; then
+      # Fix buggy crontab entry which would run every minute
+      if $CRONTAB_CMD -l 2>/dev/null | grep "hubble.sh" | grep -q "^\*"; then
+        echo "Removing crontab for upgrade"
+        $CRONTAB_CMD -r
+      else
         echo "✅ crontab entry is already installed."
         return 0
+      fi
     fi
 
     local content_to_hash
@@ -371,9 +377,9 @@ setup_crontab() {
     local day_of_week=$(( ( 0x${sha:0:8} % 5 ) + 1 ))
     # Pick a random hour between midnight and 6am
     local hour=$((RANDOM % 7))
-    local crontab_entry="* $hour * * $day_of_week $(pwd)/hubble.sh autoupgrade >> $(pwd)/hubble-autoupgrade.log 2>&1"
+    local crontab_entry="0 $hour * * $day_of_week $(pwd)/hubble.sh autoupgrade >> $(pwd)/hubble-autoupgrade.log 2>&1"
     if ($CRONTAB_CMD -l 2>/dev/null; echo "${crontab_entry}") | $CRONTAB_CMD -; then
-        echo "✅ added auto-upgrade to crontab (* $hour * * $day_of_week)"
+        echo "✅ added auto-upgrade to crontab (0 $hour * * $day_of_week)"
     else
         echo "❌ failed to add auto-upgrade to crontab"
     fi
