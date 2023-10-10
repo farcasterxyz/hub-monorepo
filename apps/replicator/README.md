@@ -40,7 +40,7 @@ Run:
 
 ```sh
 cd ~/replicator
-docker compose exec postgres psql -U app hub
+docker compose exec postgres psql -U replicator replicator
 ```
 
 See [Examples of SQL queries](#examples-of-sql-queries) below.
