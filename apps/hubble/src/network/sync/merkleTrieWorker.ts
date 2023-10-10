@@ -197,7 +197,7 @@ class MerkleTrieImpl {
 
           resolve(status);
         } catch (e) {
-          log.error({ e }, "Insert Error");
+          log.error({ e }, `Insert Error for ${id}: ${e?.toString()}`);
 
           resolve(false);
         }
@@ -217,7 +217,7 @@ class MerkleTrieImpl {
 
           resolve(status);
         } catch (e) {
-          log.error({ e }, "Delete Error");
+          log.error({ e }, `Delete Error for ${id}: ${e?.toString()}`);
 
           resolve(false);
         }
@@ -233,11 +233,15 @@ class MerkleTrieImpl {
   public async exists(id: Uint8Array): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.readLock(async (release) => {
-        const r = await this._root.exists(id, this._dbGetter());
+        try {
+          const r = await this._root.exists(id, this._dbGetter());
+          await this._unloadFromMemory(false);
 
-        await this._unloadFromMemory(false);
-
-        resolve(r);
+          resolve(r);
+        } catch (e) {
+          log.error({ e }, `Exists Error for ${id}: ${e?.toString()}`);
+          resolve(false);
+        }
         release();
       });
     });
