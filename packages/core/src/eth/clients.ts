@@ -1,26 +1,30 @@
-import { PublicClient, createPublicClient, http } from "viem";
+import { VerifyTypedDataParameters, createPublicClient, http } from "viem";
 import { mainnet, goerli, optimism, optimismGoerli } from "viem/chains";
 
+export interface ViemPublicClient {
+  verifyTypedData: (args: VerifyTypedDataParameters) => Promise<boolean>;
+}
+
 export type PublicClients = {
-  [chainId: number]: PublicClient;
+  [chainId: number]: ViemPublicClient;
 };
 
-export const defaultL1PublicClient: PublicClient = createPublicClient({
+export const defaultL1PublicClient: ViemPublicClient = createPublicClient({
   chain: mainnet,
   transport: http(),
 });
 
-export const defaultL2PublicClient: PublicClient = createPublicClient({
+export const defaultL2PublicClient: ViemPublicClient = createPublicClient({
   chain: optimism,
   transport: http(),
 });
 
-export const defaultL1PublicTestClient: PublicClient = createPublicClient({
+export const defaultL1PublicTestClient: ViemPublicClient = createPublicClient({
   chain: goerli,
   transport: http(),
 });
 
-export const defaultL2PublicTestClient: PublicClient = createPublicClient({
+export const defaultL2PublicTestClient: ViemPublicClient = createPublicClient({
   chain: optimismGoerli,
   transport: http(),
 });
