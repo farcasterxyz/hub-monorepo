@@ -1,5 +1,14 @@
 # @farcaster/core
 
+## 0.12.12
+
+### Patch Changes
+
+- 81e6d8ec: FIP-8 contract verifications
+- aacff028: Remove eslint-config-custom dependencies
+- c33f5270: fix: Run protoc as user instead of root
+- 433bee81: feat: Enable events sync by default
+
 ## 0.12.11
 
 ### Patch Changes

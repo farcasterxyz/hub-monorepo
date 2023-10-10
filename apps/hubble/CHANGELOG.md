@@ -1,5 +1,25 @@
 # @farcaster/hubble
 
+## 1.6.1
+
+### Patch Changes
+
+- 902447f8: fix: Fix buggy crontab entry that would try to upgrade every minute
+- e10a8c93: fix: Improve logging on unhandled errors
+- 81e6d8ec: FIP-8 contract verifications
+- aacff028: Remove eslint-config-custom dependencies
+- c7b28b06: fix: Run crontab as root for hubble.sh
+- 9ca079e4: chore: Add peer scores to grafana dashboard
+- 433bee81: feat: Enable events sync by default
+- f5c70348: docs: Linter now checks the rpc.proto to make sure all methods and implemented in HTTP API
+- c0741888: fix: Fix off by one error when inserting into trie
+- 5b7d5686: fix: Handle errors from L2 getevents
+- Updated dependencies [81e6d8ec]
+- Updated dependencies [aacff028]
+- Updated dependencies [c33f5270]
+- Updated dependencies [433bee81]
+  - @farcaster/hub-nodejs@0.10.12
+
 ## 1.6.0
 
 ### Minor Changes

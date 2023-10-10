@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/core",
-  "version": "0.12.11",
+  "version": "0.12.12",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -11,7 +11,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "dependencies": {
     "@noble/curves": "^1.0.0",

@@ -1,5 +1,19 @@
 # @farcaster/hub-nodejs
 
+## 0.10.12
+
+### Patch Changes
+
+- 81e6d8ec: FIP-8 contract verifications
+- aacff028: Remove eslint-config-custom dependencies
+- c33f5270: fix: Run protoc as user instead of root
+- 433bee81: feat: Enable events sync by default
+- Updated dependencies [81e6d8ec]
+- Updated dependencies [aacff028]
+- Updated dependencies [c33f5270]
+- Updated dependencies [433bee81]
+  - @farcaster/core@0.12.12
+
 ## 0.10.11
 
 ### Patch Changes
