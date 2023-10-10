@@ -135,21 +135,8 @@ portable_nproc() {
 
 get_hub_host() {
     while true; do
-        read -p "> Enter your HUB_HOST (e.g. localhost:2283 or my-hub.domain.com:2283): " HUB_HOST
-        RESPONSE=$(curl -s -X GET "$HUB_HOST/v1/info")
-
-        # Convert both the response and expected chain ID to lowercase for comparison
-        local lower_response=$(echo "$RESPONSE" | tr '[:upper:]' '[:lower:]')
-
-        if [[ $lower_response == *'"version":'* ]]; then
-            echo "HUB_HOST=$HUB_HOST" >> .env
-            break
-        else
-            echo "!!! Invalid !!!"
-            echo "Hub host is not reachable or returned invalid response. Please retry."
-            echo "It is recommended that you point the replicator at a local hub to reduce sync time."
-            echo "Server returned \"$RESPONSE\""
-        fi
+        read -p "> Enter your HUB_HOST (e.g. my-hub.domain.com:2283): " HUB_HOST
+        echo "HUB_HOST=$HUB_HOST" >> .env
     done
 }
 
