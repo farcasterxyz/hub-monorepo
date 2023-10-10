@@ -1,5 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import * as repl from "repl";
+import { readFileSync } from "fs";
 import { DB, getDbClient, migrateToLatest, migrationStatus } from "./db.js";
 import { CONCURRENCY, HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL, STATSD_HOST, STATSD_METRICS_PREFIX } from "./env.js";
 import { Logger, log } from "./log.js";
@@ -121,7 +122,7 @@ async function start() {
 const program = new Command()
   .name("replicator")
   .description("Synchronizes a Farcaster Hub with a Postgres database")
-  .version("0.1.0");
+  .version(JSON.parse(readFileSync("./package.json").toString()).version);
 
 program.command("console").description("Starts a REPL console").action(console);
 
