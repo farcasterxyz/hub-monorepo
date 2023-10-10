@@ -1,5 +1,12 @@
 # @farcaster/replicator
 
+## 0.2.2
+
+### Patch Changes
+
+- 28b2e654: Bind job dashboard to all interfaces
+- 51842b03: Don't show very large time estimates
+
 ## 0.2.1
 
 ### Patch Changes
