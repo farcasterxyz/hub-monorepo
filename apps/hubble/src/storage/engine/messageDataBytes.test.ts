@@ -149,6 +149,8 @@ describe("messageDataBytes", () => {
       expect(result._unsafeUnwrapErr().message).toContain("dataBytes > 1024 bytes");
     });
 
+    // This function re-encodes the fid with a different varint encoding, simulating what
+    // the Rust code would do.
     const reencodeFidWithDifferetnVarInt = (messageData: MessageData): Buffer => {
       // Step 1: Encode the original message
       const bytes = MessageData.encode(castAdd.data).finish();
