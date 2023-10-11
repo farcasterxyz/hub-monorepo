@@ -47,7 +47,6 @@ export class StorageCache {
 
   async syncFromDb(): Promise<void> {
     log.info("starting storage cache sync");
-    const usage = new Map<string, number>();
 
     const start = Date.now();
 
@@ -62,32 +61,6 @@ export class StorageCache {
     );
 
     const progressBar = addProgressBar("Syncing storage cache", totalFids * 2);
-
-    let lastFid = 0;
-    const prefix = Buffer.from([RootPrefix.User]);
-    await this._db.forEachIteratorByPrefix(
-      prefix,
-      async (key) => {
-        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-        if (postfix < UserMessagePostfixMax) {
-          const lookupKey = (key as Buffer).subarray(1, 1 + FID_BYTES + 1).toString("hex");
-          const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
-          const count = usage.get(lookupKey) ?? 0;
-          if (this._earliestTsHashes.get(lookupKey) === undefined) {
-            const tsHash = Uint8Array.from((key as Buffer).subarray(1 + FID_BYTES + 1));
-            this._earliestTsHashes.set(lookupKey, tsHash);
-          }
-          usage.set(lookupKey, count + 1);
-
-          if (lastFid !== fid) {
-            progressBar?.increment();
-            lastFid = fid;
-          }
-        }
-      },
-      { values: false },
-      15 * 60 * 1000, // 15 minutes
-    );
 
     const time = getFarcasterTime();
     if (time.isErr()) {
@@ -112,23 +85,26 @@ export class StorageCache {
     progressBar?.update(progressBar?.getTotal());
     progressBar?.stop();
 
-    this._counts = usage;
+    this._counts = new Map();
     this._earliestTsHashes = new Map();
+
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
   }
 
   async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
     const key = makeKey(fid, set);
     if (this._counts.get(key) === undefined) {
+      let total = 0;
       await this._db.forEachIteratorByPrefix(
         makeMessagePrimaryKey(fid, set),
         () => {
-          const count = this._counts.get(key) ?? 0;
-          this._counts.set(key, count + 1);
+          total += 1;
         },
         { keys: false, valueAsBuffer: true },
       );
+      this._counts.set(key, total);
     }
+
     return ok(this._counts.get(key) ?? 0);
   }
 
