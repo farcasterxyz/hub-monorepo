@@ -12,6 +12,7 @@ message Message {
   bytes signature = 4; // Signature of the hash digest
   SignatureScheme signature_scheme = 5; // Signature scheme that produced the signature
   bytes signer = 6; // Public key or address of the key pair that produced the signature
+  optional bytes data_bytes = 7; // MessageData serialized to bytes if using protobuf serialization other than ts-proto
 }
 
   /**
@@ -29,9 +30,9 @@ message MessageData {
     ReactionBody reaction_body = 7;
     VerificationAddEthAddressBody verification_add_eth_address_body = 9;
     VerificationRemoveBody verification_remove_body = 10;
-//    SignerAddBody signer_add_body = 11; // Deprecated
+    // SignerAddBody signer_add_body = 11; // Deprecated
     UserDataBody user_data_body = 12;
-//    SignerRemoveBody signer_remove_body = 13; // Deprecated
+    // SignerRemoveBody signer_remove_body = 13; // Deprecated
     LinkBody link_body = 14;
     UserNameProof username_proof_body = 15;
   } // Properties specific to the MessageType

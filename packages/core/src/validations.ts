@@ -126,16 +126,27 @@ export const validateMessage = async (
     return err(validData.error);
   }
 
-  // 2. Check that the hashScheme and hash are valid
+  // The hash to verify the signature against. This is either the hash of the data_bytes, or the hash
+  // of the data field encoded using ts-proto protobuf
   const hash = message.hash;
   if (!hash) {
     return err(new HubError("bad_request.validation_failure", "hash is missing"));
   }
 
-  const dataBytes = protobufs.MessageData.encode(data).finish();
-  if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
-    const computedHash = validationMethods.blake3_20(dataBytes);
+  // Computed from the data_bytes if set, otherwise from the data
+  let computedHash;
 
+  // 2. If the data_bytes are set, we'll validate signature against that (instead of hash)
+  if (message.dataBytes && message.dataBytes.length > 0) {
+    // 2a. Use the databytes as the hash to check the signature against
+    computedHash = validationMethods.blake3_20(message.dataBytes);
+  } else {
+    // 2b. Use the protobuf encoded data as the hash to check the signature against
+    computedHash = validationMethods.blake3_20(protobufs.MessageData.encode(data).finish());
+  }
+
+  // 3. Check that the hashScheme and hash are valid
+  if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
       return err(new HubError("bad_request.validation_failure", "invalid hash"));
@@ -144,17 +155,19 @@ export const validateMessage = async (
     return err(new HubError("bad_request.validation_failure", "invalid hashScheme"));
   }
 
-  // 2. Check that the signatureScheme and signature are valid
+  // 4. Check that the signatureScheme and signature are valid
   const signature = message.signature;
   if (!signature) {
     return err(new HubError("bad_request.validation_failure", "signature is missing"));
   }
 
+  // 5. Check that the signer is valid
   const signer = message.signer;
   if (!signer) {
     return err(new HubError("bad_request.validation_failure", "signer is missing"));
   }
 
+  // 6. Check that the signature is valid
   if (message.signatureScheme === protobufs.SignatureScheme.ED25519) {
     const signatureIsValid = await validationMethods.ed25519_verify(signature, hash, signer);
 

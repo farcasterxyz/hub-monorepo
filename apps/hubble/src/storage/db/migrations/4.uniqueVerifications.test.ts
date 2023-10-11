@@ -11,7 +11,7 @@ import RocksDB from "../rocksdb.js";
 import { makeTsHash, putMessageTransaction } from "../message.js";
 import OnChainEventStore from "../../stores/onChainEventStore.js";
 
-const db = jestRocksDB("clearEvents.migration.test");
+const db = jestRocksDB("uniqueverifications.migration.test");
 
 describe("uniqueVerifications migration", () => {
   const putVerificationMessage = async (

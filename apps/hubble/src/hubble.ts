@@ -71,6 +71,7 @@ import { HttpAPIServer } from "./rpc/httpServer.js";
 import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
+import { ensureMessageData } from "./storage/db/message.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -1113,9 +1114,9 @@ export class Hub implements HubInterface {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
-  async submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number> {
+  async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
     // message is a reserved key in some logging systems, so we use submittedMessage instead
-    const logMessage = log.child({ submittedMessage: messageToLog(message), source });
+    const logMessage = log.child({ submittedMessage: messageToLog(submittedMessage), source });
 
     if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
       log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
@@ -1124,6 +1125,7 @@ export class Hub implements HubInterface {
 
     const start = Date.now();
 
+    const message = ensureMessageData(submittedMessage);
     const mergeResult = await this.engine.mergeMessage(message);
 
     mergeResult.match(
