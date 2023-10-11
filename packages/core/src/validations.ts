@@ -136,8 +136,11 @@ export const validateMessage = async (
   // Computed from the data_bytes if set, otherwise from the data
   let computedHash;
 
-  // 2. If the data_bytes are set, we'll validate signature against that (instead of hash)
+  // 2. If the data_bytes are set, we'll validate signature against that
   if (message.dataBytes && message.dataBytes.length > 0) {
+    if (message.dataBytes.length > 1024) {
+      return err(new HubError("bad_request.validation_failure", "dataBytes > 1024 bytes"));
+    }
     // 2a. Use the databytes as the hash to check the signature against
     computedHash = validationMethods.blake3_20(message.dataBytes);
   } else {

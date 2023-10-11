@@ -312,7 +312,7 @@ export const deleteMessageTransaction = (txn: Transaction, message: Message): Tr
 export const messageEncode = (message: Message): Uint8Array => {
   if (message.dataBytes && message.dataBytes.length > 0) {
     const cloned = Message.decode(Message.encode(message).finish());
-    cloned.data = MessageData.create();
+    cloned.data = undefined;
     return Message.encode(cloned).finish();
   } else {
     return Message.encode(message).finish();
