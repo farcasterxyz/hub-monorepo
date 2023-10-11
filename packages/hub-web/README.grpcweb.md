@@ -1,7 +1,7 @@
 # @farcaster/hub-web
 
 **Deprecation Notice:**
-grpc-web has been deprecated and will be removed in a future release. Please use the [HTTP API](./README.md) instead.
+grpc-web has been deprecated and is no longer supported. Please use the [HTTP API](./README.md) instead. This original document has been kept only for historical reference.
 
 
 A lightweight, fast Typescript interface for Farcaster Hubs. Designed to work with [Hubble](https://github.com/farcasterxyz/hubble/) and any other Hub that implements the [Farcaster protocol](https://github.com/farcasterxyz/protocol).

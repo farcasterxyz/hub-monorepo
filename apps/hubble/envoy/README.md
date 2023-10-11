@@ -1,6 +1,13 @@
+
+**Deprecation Notice:**
+grpc-web has been deprecated and is no longer supported. Please use the [HTTP API](https://www.thehubble.xyz/docs/httpapi/httpapi.html) instead. This original document has been kept only for historical reference.
+
+
+## Using grpc-web
+While grpc-web is not supported via Hubble, you can run your own envoy proxy to use grpc-web if you need to. 
 In order for farcaster to support grpc-web, we need to set up envoy alongside the server.
 
-## Requirement
+## Requirements
 
 Install docker if the farcaster instance doesn't support docker yet
 
@@ -13,11 +20,9 @@ re-login
 ```
 
 ## Infra setting
-
 update inbound/outbound traffic to allow tcp through envoy port (default: 2284)
 
 ## Start envoy
-
 update envoy.yaml for the correct rpc port (default: 2283) and envoy port (default: 2284)
 
 ```
