@@ -1,7 +1,6 @@
 import {
   HubError,
   HubEvent,
-  HubResult,
   isMergeMessageHubEvent,
   isMergeOnChainHubEvent,
   isMergeUsernameProofHubEvent,
@@ -20,6 +19,7 @@ import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from 
 import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
 import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
+import { sleep } from "../../utils/crypto.js";
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
@@ -88,7 +88,36 @@ export class StorageCache {
     this._counts = new Map();
     this._earliestTsHashes = new Map();
 
+    // Start prepopulating the cache in the background
+    this.prepopulateMessageCounts();
+
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
+  }
+
+  async prepopulateMessageCounts(): Promise<void> {
+    let prevFid = 0;
+    let prevPostfix = 0;
+
+    const prefix = Buffer.from([RootPrefix.User]);
+    await this._db.forEachIteratorByPrefix(
+      prefix,
+      async (key) => {
+        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+        if (postfix < UserMessagePostfixMax) {
+          const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
+
+          if (prevFid !== fid || prevPostfix !== postfix) {
+            await this.getMessageCount(fid, postfix);
+            await sleep(10); // Sleep to allow other threads to run
+
+            prevFid = fid;
+            prevPostfix = postfix;
+          }
+        }
+      },
+      { values: false },
+      1 * 60 * 60 * 1000, // 1 hour
+    );
   }
 
   async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
@@ -102,7 +131,11 @@ export class StorageCache {
         },
         { keys: false, values: false },
       );
-      this._counts.set(key, total);
+
+      // Recheck the count in case it was set by another thread (i.e. no race conditions)
+      if (this._counts.get(key) === undefined) {
+        this._counts.set(key, total);
+      }
     }
 
     return ok(this._counts.get(key) ?? 0);
@@ -178,7 +211,7 @@ export class StorageCache {
     }
   }
 
-  processEvent(event: HubEvent): HubResult<void> {
+  async processEvent(event: HubEvent): HubAsyncResult<void> {
     if (isMergeMessageHubEvent(event)) {
       this.addMessage(event.mergeMessageBody.message);
       for (const message of event.mergeMessageBody.deletedMessages) {
@@ -200,12 +233,12 @@ export class StorageCache {
     return ok(undefined);
   }
 
-  private addMessage(message: Message): void {
+  private async addMessage(message: Message): Promise<void> {
     if (message.data !== undefined) {
       const set = typeToSetPostfix(message.data.type);
       const fid = message.data.fid;
       const key = makeKey(fid, set);
-      const count = this._counts.get(key) ?? 0;
+      const count = this._counts.get(key) ?? (await this.getMessageCount(fid, set)).unwrapOr(0);
       this._counts.set(key, count + 1);
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
@@ -220,12 +253,12 @@ export class StorageCache {
     }
   }
 
-  private removeMessage(message: Message): void {
+  private async removeMessage(message: Message): Promise<void> {
     if (message.data !== undefined) {
       const set = typeToSetPostfix(message.data.type);
       const fid = message.data.fid;
       const key = makeKey(fid, set);
-      const count = this._counts.get(key) ?? 0;
+      const count = this._counts.get(key) ?? (await this.getMessageCount(fid, set)).unwrapOr(0);
       if (count === 0) {
         log.error(`error: ${set} store message count is already at 0 for fid ${fid}`);
       } else {
