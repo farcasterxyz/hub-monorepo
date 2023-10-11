@@ -100,7 +100,7 @@ export class StorageCache {
         () => {
           total += 1;
         },
-        { keys: false, valueAsBuffer: true },
+        { keys: false, values: false },
       );
       this._counts.set(key, total);
     }
