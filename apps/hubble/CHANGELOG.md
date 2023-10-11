@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.6.2
+
+### Patch Changes
+
+- 17ca659b: fix: Persist grafana container data
+- e2ada603: fix: Exists check should not crash the hub
+
 ## 1.6.1
 
 ### Patch Changes
