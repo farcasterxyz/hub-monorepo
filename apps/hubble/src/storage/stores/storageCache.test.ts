@@ -149,7 +149,7 @@ describe("processEvent", () => {
 
     await cache.syncFromDb();
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(0));
-    cache.processEvent(event);
+    await cache.processEvent(event);
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
@@ -160,7 +160,7 @@ describe("processEvent", () => {
 
     await cache.syncFromDb();
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(0));
-    cache.processEvent(event);
+    await cache.processEvent(event);
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
@@ -178,7 +178,7 @@ describe("processEvent", () => {
     await putMessage(db, cast);
     await cache.syncFromDb();
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
-    cache.processEvent(event);
+    await cache.processEvent(event);
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
   });
 
@@ -190,7 +190,7 @@ describe("processEvent", () => {
     await putMessage(db, message);
     await cache.syncFromDb();
     await expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).resolves.toEqual(ok(1));
-    cache.processEvent(event);
+    await cache.processEvent(event);
     await expect(cache.getMessageCount(fid, UserPostfix.ReactionMessage)).resolves.toEqual(ok(0));
   });
 
@@ -202,7 +202,7 @@ describe("processEvent", () => {
     await putMessage(db, message);
     await cache.syncFromDb();
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
-    cache.processEvent(event);
+    await cache.processEvent(event);
     await expect(cache.getMessageCount(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(0));
   });
 
@@ -214,7 +214,7 @@ describe("processEvent", () => {
 
     // Earliest tsHash is undefined initially
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(undefined));
-    cache.processEvent(event);
+    await cache.processEvent(event);
 
     // Earliest tsHash is set
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
@@ -226,7 +226,7 @@ describe("processEvent", () => {
       data: { fid, timestamp: middleMessage.data.timestamp + 10 },
     });
     event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: laterMessage } });
-    cache.processEvent(event);
+    await cache.processEvent(event);
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
       makeTsHash(middleMessage.data.timestamp, middleMessage.hash),
     );
@@ -236,7 +236,7 @@ describe("processEvent", () => {
       data: { fid, timestamp: middleMessage.data.timestamp - 10 },
     });
     event = HubEvent.create({ type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: earlierMessage } });
-    cache.processEvent(event);
+    await cache.processEvent(event);
     await expect(cache.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
       makeTsHash(earlierMessage.data.timestamp, earlierMessage.hash),
     );
