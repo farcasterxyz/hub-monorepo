@@ -221,19 +221,19 @@ export class StorageCache {
 
   async processEvent(event: HubEvent): HubAsyncResult<void> {
     if (isMergeMessageHubEvent(event)) {
-      this.addMessage(event.mergeMessageBody.message);
+      await this.addMessage(event.mergeMessageBody.message);
       for (const message of event.mergeMessageBody.deletedMessages) {
-        this.removeMessage(message);
+        await this.removeMessage(message);
       }
     } else if (isPruneMessageHubEvent(event)) {
-      this.removeMessage(event.pruneMessageBody.message);
+      await this.removeMessage(event.pruneMessageBody.message);
     } else if (isRevokeMessageHubEvent(event)) {
-      this.removeMessage(event.revokeMessageBody.message);
+      await this.removeMessage(event.revokeMessageBody.message);
     } else if (isMergeUsernameProofHubEvent(event)) {
       if (event.mergeUsernameProofBody.usernameProofMessage) {
-        this.addMessage(event.mergeUsernameProofBody.usernameProofMessage);
+        await this.addMessage(event.mergeUsernameProofBody.usernameProofMessage);
       } else if (event.mergeUsernameProofBody.deletedUsernameProofMessage) {
-        this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
+        await this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
       }
     } else if (isMergeOnChainHubEvent(event) && isStorageRentOnChainEvent(event.mergeOnChainEventBody.onChainEvent)) {
       this.addRent(event.mergeOnChainEventBody.onChainEvent);
