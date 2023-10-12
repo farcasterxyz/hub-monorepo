@@ -98,6 +98,9 @@ export class StorageCache {
     let prevFid = 0;
     let prevPostfix = 0;
 
+    const start = Date.now();
+    log.info("starting storage cache prepopulation");
+
     const prefix = Buffer.from([RootPrefix.User]);
     await this._db.forEachIteratorByPrefix(
       prefix,
@@ -108,7 +111,11 @@ export class StorageCache {
 
           if (prevFid !== fid || prevPostfix !== postfix) {
             await this.getMessageCount(fid, postfix);
-            await sleep(10); // Sleep to allow other threads to run
+
+            if (prevFid !== fid) {
+              // Sleep to allow other threads to run between each fid
+              await sleep(1);
+            }
 
             prevFid = fid;
             prevPostfix = postfix;
@@ -118,6 +125,7 @@ export class StorageCache {
       { values: false },
       1 * 60 * 60 * 1000, // 1 hour
     );
+    log.info({ timeTakenMs: Date.now() - start }, "storage cache prepopulation finished");
   }
 
   async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
