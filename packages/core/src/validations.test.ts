@@ -897,6 +897,14 @@ describe("validateMessage", () => {
     expect(result._unsafeUnwrap()).toEqual(message);
   });
 
+  test("succeeds with data_bytes and Ed25519 signer", async () => {
+    const message = await Factories.Message.create({}, { transient: { signer } });
+    // biome-ignore lint/style/noNonNullAssertion: <explanation>
+    message.dataBytes = protobufs.MessageData.encode(message.data!).finish();
+    const result = await validations.validateMessage(message);
+    expect(result._unsafeUnwrap()).toEqual(message);
+  });
+
   test("fails with EIP712 signer and non-signer message type", async () => {
     // Default message type is CastAdd
     const message = await Factories.Message.create({}, { transient: { signer: ethSigner } });
@@ -917,6 +925,17 @@ describe("validateMessage", () => {
     const message = await Factories.Message.create({
       hash: Factories.Bytes.build({}, { transient: { length: 1 } }),
     });
+
+    const result = await validations.validateMessage(message);
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid hash")));
+  });
+
+  test("fails with invalid hash and data_bytes", async () => {
+    const message = await Factories.Message.create({
+      hash: Factories.Bytes.build({}, { transient: { length: 1 } }),
+    });
+    // biome-ignore lint/style/noNonNullAssertion: <explanation>
+    message.dataBytes = protobufs.MessageData.encode(message.data!).finish();
 
     const result = await validations.validateMessage(message);
     expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid hash")));

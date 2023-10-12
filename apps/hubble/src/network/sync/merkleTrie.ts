@@ -13,6 +13,7 @@ import {
 } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
 import { getStatusdInitialization } from "../../utils/statsd.js";
+import { messageDecode } from "../../storage/db/message.js";
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -234,7 +235,7 @@ class MerkleTrie {
         const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
         if (postfix < UserMessagePostfixMax) {
           const message = Result.fromThrowable(
-            () => Message.decode(new Uint8Array(value as Buffer)),
+            () => messageDecode(new Uint8Array(value as Buffer)),
             (e) => e as HubError,
           )();
           if (message.isOk() && message.value.hash.length === HASH_LENGTH) {

@@ -1,36 +1,30 @@
 import {
-  EthersEip712Signer,
   FarcasterNetwork,
   NobleEd25519Signer,
   getSSLHubRpcClient,
   makeCastAdd,
-  makeSignerAdd,
+  getInsecureHubRpcClient,
+  getAuthMetadata,
 } from "@farcaster/hub-nodejs";
-import * as ed from "@noble/ed25519";
-import { Wallet } from "ethers";
+import { hexToBytes } from "@noble/hashes/utils";
 
 /**
  * Populate the following constants with your own values
  */
 
-// Recovery phrase of the custody address and the
-const MNEMONIC = "ordinary long coach bounce thank quit become youth belt pretty diet caught attract melt bargain";
-
+// Signer private key registered with the Hub (see write-data example)
+const SIGNER = "<REQUIRED>";
 // Fid owned by the custody address
-const FID = 2;
+const FID = -1; // <REQUIRED>
 
 // Testnet Configuration
 const HUB_URL = "testnet1.farcaster.xyz:2283"; // URL + Port of the Hub
 const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
 (async () => {
-  // Create an EIP712 Signer with the wallet that holds the custody address of the user
-  const wallet = Wallet.fromPhrase(MNEMONIC);
-  const eip712Signer = new EthersEip712Signer(wallet);
-
-  // Generate a new Ed25519 key pair which will become the Signer and store the private key securely
-  const signerPrivateKey = ed.utils.randomPrivateKey();
-  const ed25519Signer = new NobleEd25519Signer(signerPrivateKey);
+  // Set up the signer
+  const privateKeyBytes = hexToBytes(SIGNER.slice(2));
+  const ed25519Signer = new NobleEd25519Signer(privateKeyBytes);
   const signerPublicKey = (await ed25519Signer.getSignerKey())._unsafeUnwrap();
 
   const dataOptions = {
@@ -38,31 +32,13 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
     network: NETWORK,
   };
 
-  const signerAddResult = await makeSignerAdd({ signer: signerPublicKey }, dataOptions, eip712Signer);
-  const signerAdd = signerAddResult._unsafeUnwrap();
+  // If your client does not use SSL.
+  const client = getInsecureHubRpcClient(HUB_URL);
 
-  /**
-   * Step 2: Broadcast SignerAdd to Hub
-   *
-   * You should have acquired a SignerAdd message either through the Signer Request flow in an app like Warpcast or by
-   * generating it yourself if your application manages the user's mnemonic. Now you can submit it to the Hub.
-   */
-
-  // 1. If your client does not use SSL.
-  // const client = getInsecureHubRpcClient(HUB_URL);
-
-  const client = getSSLHubRpcClient(HUB_URL);
-  const result = await client.submitMessage(signerAdd);
-
-  // 3. If your client uses SSL and requires authentication.
+  // If your client uses SSL and requires authentication.
   // const client = getSSLHubRpcClient(HUB_URL);
   // const authMetadata = getAuthMetadata("username", "password");
-  // const result = await client.submitMessage(signerAdd, authMetadata);
-
-  if (result.isErr()) {
-    console.log(result.error);
-    return;
-  }
+  // const result = await client.submitMessage(message, authMetadata);
 
   const castResults = [];
 

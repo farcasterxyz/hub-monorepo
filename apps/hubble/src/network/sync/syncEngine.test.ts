@@ -121,6 +121,8 @@ describe("SyncEngine", () => {
     expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
     expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
     expect(await syncEngine.trie.exists(SyncId.fromFName(fnameProof))).toBeTruthy();
+    expect((await syncEngine.getDbStats()).numFids).toEqual(1);
+    expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
   });
 
   test("trie is not updated on merge failure", async () => {
@@ -556,6 +558,7 @@ describe("SyncEngine", () => {
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         await engine.mergeUserNameProof(userNameProof);
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
+        expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
       test("removes deleted fname proofs", async () => {
         const supercedingUserNameProof = Factories.UserNameProof.build({
@@ -565,15 +568,18 @@ describe("SyncEngine", () => {
 
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeFalsy();
+        expect((await syncEngine.getDbStats()).numFnames).toEqual(0);
 
         await engine.mergeUserNameProof(userNameProof);
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
-        await engine.mergeUserNameProof(supercedingUserNameProof);
+        expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
 
+        await engine.mergeUserNameProof(supercedingUserNameProof);
         await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeTruthy();
+        expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
 
       test("adds sync ids to the trie when not present and egnine rejects as duplicate", async () => {

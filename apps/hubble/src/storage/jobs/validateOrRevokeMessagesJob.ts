@@ -5,7 +5,7 @@ import { logger } from "../../utils/logger.js";
 import { FID_BYTES, TSHASH_LENGTH, UserMessagePostfixMax } from "../db/types.js";
 import RocksDB from "../db/rocksdb.js";
 import Engine from "../engine/index.js";
-import { makeUserKey } from "../db/message.js";
+import { makeUserKey, messageDecode } from "../db/message.js";
 import { statsd } from "../../utils/statsd.js";
 
 export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "0 1 * * *"; // Every day at 01:00 UTC
@@ -121,7 +121,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         }
 
         const message = Result.fromThrowable(
-          () => Message.decode(new Uint8Array(value as Buffer)),
+          () => messageDecode(new Uint8Array(value as Buffer)),
           (e) => e as HubError,
         )();
 

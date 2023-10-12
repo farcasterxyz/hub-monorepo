@@ -36,7 +36,7 @@ import { sleepWhile } from "../../utils/crypto.js";
 import { statsd } from "../../utils/statsd.js";
 import { logger, messageToLog } from "../../utils/logger.js";
 import { OnChainEventPostfix, RootPrefix } from "../../storage/db/types.js";
-import { bytesCompare, bytesStartsWith, fromFarcasterTime } from "@farcaster/core";
+import { bytesCompare, bytesStartsWith, fromFarcasterTime, isIdRegisterOnChainEvent } from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 import os from "os";
@@ -173,6 +173,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Has the syncengine started yet?
   private _started = false;
 
+  private _dbStats: DbStats = {
+    numItems: 0,
+    numFids: 0,
+    numFnames: 0,
+  };
+
   constructor(
     hub: HubInterface,
     rocksDb: RocksDB,
@@ -215,6 +221,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
       await this.addOnChainEvent(onChainEvent);
       this._syncTrieQ -= 1;
+
+      // Keep track of total FIDs
+      if (isIdRegisterOnChainEvent(event.mergeOnChainEventBody.onChainEvent)) {
+        this._dbStats.numFids += 1;
+      }
     });
 
     // Note: There's no guarantee that the message is actually deleted, because the transaction could fail.
@@ -256,6 +267,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
         await this.addFname(event.mergeUsernameProofBody.usernameProof);
         this._syncTrieQ -= 1;
+
+        this._dbStats.numFnames += 1;
       }
       if (
         event.mergeUsernameProofBody.deletedUsernameProof &&
@@ -265,6 +278,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
         await this.removeFname(event.mergeUsernameProofBody.deletedUsernameProof);
         this._syncTrieQ -= 1;
+
+        this._dbStats.numFnames -= 1;
       }
     });
     this._hub.engine.on("duplicateUserNameProofEvent", async (event: UserNameProof) => {
@@ -309,6 +324,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const rootHash = await this._trie.rootHash();
+
+    // Read the initial DB stats
+    this._dbStats = await this.readDbStatsFromDb();
 
     this._started = true;
     log.info({ rootHash }, "Sync engine initialized (eventsSync: true)");
@@ -1257,6 +1275,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async getDbStats(): Promise<DbStats> {
+    return { ...this._dbStats, numItems: await this._trie.items() };
+  }
+
+  private async readDbStatsFromDb(): Promise<DbStats> {
     let numFids = 0;
     let numFnames = 0;
 

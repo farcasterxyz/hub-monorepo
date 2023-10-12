@@ -1,5 +1,5 @@
-import { bytesIncrement, CastId, HubError, HubResult, Message, MessageType } from "@farcaster/hub-nodejs";
-import { err, ok, ResultAsync } from "neverthrow";
+import { bytesIncrement, CastId, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
 import { FID_BYTES, RootPrefix, TRUE_VALUE, UserMessagePostfix, UserMessagePostfixMax, UserPostfix } from "./types.js";
 import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
@@ -114,7 +114,7 @@ export const getMessage = async <T extends Message>(
   tsHash: Uint8Array,
 ): Promise<T> => {
   const buffer = await db.get(makeMessagePrimaryKey(fid, set, tsHash));
-  return Message.decode(new Uint8Array(buffer)) as T;
+  return messageDecode(new Uint8Array(buffer)) as T;
 };
 
 export const deleteMessage = (db: RocksDB, message: Message): Promise<void> => {
@@ -124,7 +124,7 @@ export const deleteMessage = (db: RocksDB, message: Message): Promise<void> => {
 
 export const getManyMessages = async <T extends Message>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> => {
   const buffers = await db.getMany(primaryKeys);
-  return buffers.map((buffer) => Message.decode(new Uint8Array(buffer)) as T);
+  return buffers.map((buffer) => messageDecode(new Uint8Array(buffer)) as T);
 };
 
 export const getManyMessagesByFid = async <T extends Message>(
@@ -151,7 +151,7 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<Mes
 
   const messages: Message[] = [];
   await db.forEachIterator((_key, buffer) => {
-    messages.push(Message.decode(new Uint8Array(buffer as Buffer)));
+    messages.push(messageDecode(new Uint8Array(buffer as Buffer)));
   }, iteratorOptions);
 
   return messages;
@@ -200,7 +200,7 @@ export const getMessagesPageByPrefix = async <T extends Message>(
 
   const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Message]> => {
     const [key, value] = await iterator.next();
-    return [key as Buffer, Message.decode(new Uint8Array(value as Buffer))];
+    return [key as Buffer, messageDecode(new Uint8Array(value as Buffer))];
   };
 
   let iteratorFinished = false;
@@ -287,9 +287,10 @@ export const putMessageTransaction = (txn: Transaction, message: Message): Trans
     throw tsHash.error; // TODO: use result pattern
   }
   const primaryKey = makeMessagePrimaryKey(message.data.fid, typeToSetPostfix(message.data.type), tsHash.value);
-  const messageBuffer = Buffer.from(Message.encode(message).finish());
   const bySignerKey = makeMessageBySignerKey(message.data.fid, message.signer, message.data.type, tsHash.value);
-  return txn.put(primaryKey, messageBuffer).put(bySignerKey, TRUE_VALUE);
+
+  const messageBuffer = messageEncode(message);
+  return txn.put(primaryKey, Buffer.from(messageBuffer)).put(bySignerKey, TRUE_VALUE);
 };
 
 export const deleteMessageTransaction = (txn: Transaction, message: Message): Transaction => {
@@ -303,4 +304,44 @@ export const deleteMessageTransaction = (txn: Transaction, message: Message): Tr
   const primaryKey = makeMessagePrimaryKey(message.data.fid, typeToSetPostfix(message.data.type), tsHash.value);
   const bySignerKey = makeMessageBySignerKey(message.data.fid, message.signer, message.data.type, tsHash.value);
   return txn.del(bySignerKey).del(primaryKey);
+};
+
+// If the message's data_bytes is set, then we'll not store the data field in the DB.
+// to save space. Instead, we'll store the message with the data_bytes field set, and
+// then when we read the message, we'll decode it, set the data field
+export const messageEncode = (message: Message): Uint8Array => {
+  if (message.dataBytes && message.dataBytes.length > 0) {
+    const cloned = Message.decode(Message.encode(message).finish());
+    cloned.data = undefined;
+    return Message.encode(cloned).finish();
+  } else {
+    return Message.encode(message).finish();
+  }
+};
+
+// If the message's data_bytes is set, then we'll decode it and populate the data field
+// to make the Message object easier to work with
+export const messageDecode = (messageBytes: Uint8Array): Message => {
+  const message = Message.decode(messageBytes);
+  if (message.dataBytes && message.dataBytes.length > 0) {
+    message.data = MessageData.decode(message.dataBytes);
+  }
+  return message;
+};
+
+// Ensure that the message has a data field set, by decoding the data_bytes field if it exists
+export const ensureMessageData = (message: Message): Message => {
+  // If the message has a data_bytes field set, use that instead of the data field
+  if (message.dataBytes && message.dataBytes.length > 0) {
+    const decodedMessageData = Result.fromThrowable(
+      // biome-ignore lint/style/noNonNullAssertion: <explanation>
+      () => MessageData.decode(message.dataBytes!),
+      (e) => e,
+    )();
+    if (decodedMessageData.isOk()) {
+      message.data = decodedMessageData.value;
+    }
+  }
+
+  return message;
 };
