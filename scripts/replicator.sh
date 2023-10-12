@@ -143,10 +143,10 @@ get_hub_ssl() {
         read -p "> Does your hub use SSL? " HUB_SSL
 
         local lower_response=$(echo "$HUB_SSL" | tr '[:upper:]' '[:lower:]')
-        if [[ $lower_response == "true" || $lower_answer == "t" || $lower_answer == "y" || $lower_answer == "yes" ]]; then
+        if [[ $lower_response == "true" || $lower_response == "t" || $lower_response == "y" || $lower_response == "yes" ]]; then
             echo "HUB_SSL=true" >> .env
             break
-        elif [[ $lower_answer == "false" || $lower_answer = "f" || $lower_answer == "n" || $lower_answer == "no" ]]; then
+        elif [[ $lower_response == "false" || $lower_response = "f" || $lower_response == "n" || $lower_response == "no" ]]; then
             echo "HUB_SSL=false" >> .env
             break
         else
