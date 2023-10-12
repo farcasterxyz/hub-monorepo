@@ -182,7 +182,7 @@ describe("messageDataBytes", () => {
 
       // Step 3: Replace the varint bytes (hacky example)
       // WARNING: This is a hacky way to manually manipulate the varint encoding.
-      // Only do this for testing purposes and be aware of the risks involved.
+      // Only do this in tests.
       const newVarintBytes = [];
       let value = fid;
       while (value >= 0x80) {
