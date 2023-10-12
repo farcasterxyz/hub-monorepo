@@ -9,8 +9,10 @@
     "typecheck": "yarn tsc --noEmit"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.8.4",
-    "ethers": "^6.2.0"
+    "@farcaster/hub-nodejs": "^0.10.13",
+    "axios": "^1.5.1",
+    "viem": "^1.15.4",
+    "wagmi": "^1.4.3"
   },
   "devDependencies": {
     "tsx": "^3.12.5",
