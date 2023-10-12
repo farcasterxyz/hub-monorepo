@@ -16,6 +16,7 @@ import {
   getPageIteratorByPrefix,
   makeMessagePrimaryKey,
   makeTsHash,
+  messageDecode,
   putMessageTransaction,
 } from "../db/message.js";
 import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
@@ -271,7 +272,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       makeMessagePrimaryKey(fid, this._postfix),
       async (_key, value) => {
         const message = Result.fromThrowable(
-          () => Message.decode(new Uint8Array(value as Buffer)),
+          () => messageDecode(new Uint8Array(value as Buffer)),
           (e) => e,
         )();
 

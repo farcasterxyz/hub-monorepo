@@ -14,9 +14,9 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import {
   deleteMessageTransaction,
   makeFidKey,
-  makeMessagePrimaryKey,
   makeTsHash,
   makeUserKey,
+  messageDecode,
   readFidKey,
 } from "../db/message.js";
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
@@ -284,7 +284,7 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
           return false; // Ignore non-verification messages
         }
         const message = Result.fromThrowable(
-          () => Message.decode(new Uint8Array(value as Buffer)),
+          () => messageDecode(new Uint8Array(value as Buffer)),
           (e) => e,
         )();
 

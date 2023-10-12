@@ -331,6 +331,8 @@ export interface Message {
   signatureScheme: SignatureScheme;
   /** Public key or address of the key pair that produced the signature */
   signer: Uint8Array;
+  /** MessageData serialized to bytes if using protobuf serialization other than ts-proto */
+  dataBytes?: Uint8Array | undefined;
 }
 
 /**
@@ -463,6 +465,7 @@ function createBaseMessage(): Message {
     signature: new Uint8Array(),
     signatureScheme: 0,
     signer: new Uint8Array(),
+    dataBytes: undefined,
   };
 }
 
@@ -485,6 +488,9 @@ export const Message = {
     }
     if (message.signer.length !== 0) {
       writer.uint32(50).bytes(message.signer);
+    }
+    if (message.dataBytes !== undefined) {
+      writer.uint32(58).bytes(message.dataBytes);
     }
     return writer;
   },
@@ -538,6 +544,13 @@ export const Message = {
 
           message.signer = reader.bytes();
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.dataBytes = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -555,6 +568,7 @@ export const Message = {
       signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
       signatureScheme: isSet(object.signatureScheme) ? signatureSchemeFromJSON(object.signatureScheme) : 0,
       signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      dataBytes: isSet(object.dataBytes) ? bytesFromBase64(object.dataBytes) : undefined,
     };
   },
 
@@ -569,6 +583,8 @@ export const Message = {
     message.signatureScheme !== undefined && (obj.signatureScheme = signatureSchemeToJSON(message.signatureScheme));
     message.signer !== undefined &&
       (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    message.dataBytes !== undefined &&
+      (obj.dataBytes = message.dataBytes !== undefined ? base64FromBytes(message.dataBytes) : undefined);
     return obj;
   },
 
@@ -586,6 +602,7 @@ export const Message = {
     message.signature = object.signature ?? new Uint8Array();
     message.signatureScheme = object.signatureScheme ?? 0;
     message.signer = object.signer ?? new Uint8Array();
+    message.dataBytes = object.dataBytes ?? undefined;
     return message;
   },
 };
