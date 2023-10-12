@@ -1,2 +1,0 @@
-# Install Docker Desktop
-cask 'docker'

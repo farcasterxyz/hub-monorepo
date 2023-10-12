@@ -5,6 +5,5 @@ A collection of Typescript examples showcasing the things you can do with `hub-n
 - [Generate a chronological feed](./chron-feed/)
 - [Writing data for a user](./write-data/)
 - [Building casts correctly](./make-cast/)
-- [Replicating data into Postgres](./replicate-data-postgres/)
 
 Contributions for other examples are welcome!
