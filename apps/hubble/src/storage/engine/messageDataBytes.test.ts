@@ -5,6 +5,7 @@ import {
   Message,
   MessageData,
   OnChainEvent,
+  bytesCompare,
   bytesDecrement,
 } from "@farcaster/hub-nodejs";
 import { ensureMessageData, messageDecode, messageEncode } from "../db/message.js";
@@ -151,9 +152,9 @@ describe("messageDataBytes", () => {
 
     // This function re-encodes the fid with a different varint encoding, simulating what
     // the Rust code would do.
-    const reencodeFidWithDifferetnVarInt = (messageData: MessageData): Buffer => {
+    const reencodeFidWithDifferentVarInt = (messageData: MessageData): Buffer => {
       // Step 1: Encode the original message
-      const bytes = MessageData.encode(castAdd.data).finish();
+      const bytes = MessageData.encode(messageData).finish();
 
       // Step 2: Find the varint bytes for the 'fid' field
       const fidKey = 16; // 2 << 3 | 0
@@ -206,7 +207,9 @@ describe("messageDataBytes", () => {
     };
 
     test("varint encoding", async () => {
-      const changedDataBytes = reencodeFidWithDifferetnVarInt(castAdd.data);
+      const changedDataBytes = reencodeFidWithDifferentVarInt(castAdd.data);
+      expect(bytesCompare(changedDataBytes, MessageData.encode(castAdd.data).finish()) !== 0).toBeTruthy();
+
       const castAddClone = cloneMessage(castAdd);
       castAddClone.data = undefined;
       castAddClone.dataBytes = changedDataBytes;

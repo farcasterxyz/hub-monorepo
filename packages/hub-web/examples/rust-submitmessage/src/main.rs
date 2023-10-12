@@ -12,7 +12,7 @@ const FARCASTER_EPOCH: u64 = 1609459200; // January 1, 2021 UTC
 
 #[tokio::main]
 async fn main() {
-    let fid = 6833; // FID of the user on submitting the message
+    let fid = 6833; // FID of the user submitting the message
     let network = FarcasterNetwork::FARCASTER_NETWORK_MAINNET;
 
     // Construct the cast add message
@@ -52,6 +52,7 @@ async fn main() {
 
     msg.set_signature_scheme(message::SignatureScheme::SIGNATURE_SCHEME_ED25519);
     msg.set_signature(signature.to_vec());
+    msg.set_signer(private_key.verifying_key().to_bytes().to_vec());
 
     // Serialize the message
     msg.set_data_bytes(msg_data_bytes.to_vec());
