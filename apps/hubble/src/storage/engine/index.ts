@@ -441,8 +441,8 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(undefined);
   }
 
-  async removeOnChainIdRegisterEventByFid(fid: number): Promise<void> {
-    return this._onchainEventsStore.removeOnChainIdRegisterEventByFid(fid);
+  async removeOnChainIdRegisterEventByFid(event: OnChainEvent): Promise<void> {
+    return this._onchainEventsStore.removeOnChainIdRegisterEventByFid(event);
   }
 
   /* -------------------------------------------------------------------------- */

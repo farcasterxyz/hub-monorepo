@@ -56,7 +56,8 @@ export class RemoveFidsWithNoStorageJobScheduler {
 
     const start = Date.now();
 
-    const allFids = [];
+    let totalFidsRemoved = 0;
+    let totalFidsChecked = 0;
     let finished = false;
     let pageToken: Uint8Array | undefined;
     do {
@@ -70,24 +71,16 @@ export class RemoveFidsWithNoStorageJobScheduler {
       } else {
         pageToken = nextPageToken;
       }
-      allFids.push(...fids);
+
+      for (let i = 0; i < fids.length; i++) {
+        const numChecked = await this.doJobForFid(fids[i] as number);
+        totalFidsRemoved += numChecked.unwrapOr(0);
+      }
+      totalFidsChecked += fids.length;
     } while (!finished);
 
-    let totalFidsRemoved = 0;
-
-    const numFids = allFids.length;
-
-    for (let i = 0; i < numFids; i++) {
-      const fid = allFids[i] as number;
-      const numChecked = await this.doJobForFid(fid);
-      totalFidsRemoved += numChecked.unwrapOr(0);
-    }
-
     const timeTakenMs = Date.now() - start;
-    log.info(
-      { timeTakenMs, numFids, totalMessagesChecked: totalFidsRemoved },
-      "finished RemoveFidsWithNoStorageJobScheduler",
-    );
+    log.info({ timeTakenMs, totalFidsChecked, totalFidsRemoved }, "finished RemoveFidsWithNoStorageJobScheduler");
 
     // StatsD metrics
     statsd().timing("RemoveFidsWithNoStorageJobScheduler.timeTakenMs", timeTakenMs);
@@ -108,8 +101,8 @@ export class RemoveFidsWithNoStorageJobScheduler {
         if (!result) {
           log.error({ fid }, "RemoveFidsWithNoStorageJobScheduler trie.deleteBySyncId failed");
         }
+        await this._engine.removeOnChainIdRegisterEventByFid(onChainEvent.value);
       }
-      await this._engine.removeOnChainIdRegisterEventByFid(fid);
 
       log.info({ fid }, "RemoveFids removed OnChainIdRegisterEvent for FID with no storage");
     }
