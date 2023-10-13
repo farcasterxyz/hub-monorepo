@@ -10,6 +10,7 @@ import {
   getFarcasterTime,
   OnChainEvent,
   UserNameProof,
+  MessageData,
 } from "@farcaster/hub-nodejs";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../../hubble.js";
 import SyncEngine from "./syncEngine.js";
@@ -20,6 +21,7 @@ import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EMPTY_HASH } from "./trieNode.js";
+import { ensureMessageData } from "../../storage/db/message.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -229,6 +231,12 @@ describe("Multi peer sync engine", () => {
 
       // Add more messages
       await addMessagesWithTimeDelta(engine1, [367, 369, 372]);
+      // Add a message with data_bytes to make sure it gets synced OK.
+      const castAddClone = Message.decode(Message.encode(castAdd).finish());
+      castAddClone.data = undefined;
+      castAddClone.dataBytes = MessageData.encode(castAdd.data as MessageData).finish();
+      const result = await engine1.mergeMessage(ensureMessageData(castAddClone));
+      expect(result.isOk()).toBeTruthy();
       await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
       // grab a new snapshot from the RPC for engine1
@@ -253,6 +261,7 @@ describe("Multi peer sync engine", () => {
 
       expect(syncEngine2.trie.exists(SyncId.fromFName(fname))).toBeTruthy();
       expect(syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
+      expect(syncEngine2.trie.exists(SyncId.fromMessage(castAddClone))).toBeTruthy();
 
       // Sync again, and this time the audit should increase the peer score
       // First, get the existing peer score

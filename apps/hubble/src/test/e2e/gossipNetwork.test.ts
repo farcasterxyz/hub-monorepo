@@ -1,6 +1,6 @@
 import { GossipNode } from "../../network/p2p/gossipNode.js";
 import { sleep } from "../../utils/crypto.js";
-import { Factories, GossipMessage } from "@farcaster/hub-nodejs";
+import { Factories, GossipMessage, MessageData } from "@farcaster/hub-nodejs";
 
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
@@ -69,7 +69,7 @@ describe("gossip network tests", () => {
       });
 
       // Create a message and send it to a random node
-      const message = Factories.Message.build();
+      const message = await Factories.Message.create();
       const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as GossipNode;
       const publishResult = await randomNode.gossipMessage(message);
       expect(publishResult.isOk()).toBeTruthy();
@@ -88,6 +88,28 @@ describe("gossip network tests", () => {
         const topicMessages = topics?.get(primaryTopic) ?? [];
         expect(topicMessages.length).toBe(1);
         expect((topicMessages[0] as GossipMessage).message).toEqual(message);
+      });
+
+      // Make sure a message with data_bytes is also received
+      const messageWithDataBytes = await Factories.Message.create({ data: { castAddBody: { text: "data" } } });
+      messageWithDataBytes.dataBytes = MessageData.encode(messageWithDataBytes.data as MessageData).finish();
+      messageWithDataBytes.data = undefined;
+      const publishResultWithDataBytes = await randomNode.gossipMessage(messageWithDataBytes);
+      expect(publishResultWithDataBytes.isOk()).toBeTruthy();
+      expect(publishResultWithDataBytes._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
+
+      // Sleep 5 heartbeat ticks
+      await sleep(PROPAGATION_DELAY);
+
+      // Assert that every node except the sender has pushed the message into its MessageStore
+
+      nonSenderNodes.map((n) => {
+        const topics = messageStore.get(n.peerId()?.toString() ?? "");
+        expect(topics).toBeDefined();
+        expect(topics?.has(primaryTopic)).toBeTruthy();
+        const topicMessages = topics?.get(primaryTopic) ?? [];
+        expect(topicMessages.length).toBe(2);
+        expect((topicMessages[1] as GossipMessage).message).toEqual(messageWithDataBytes);
       });
     },
     TEST_TIMEOUT_LONG,
