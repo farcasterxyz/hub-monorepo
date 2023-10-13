@@ -72,6 +72,7 @@ import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData } from "./storage/db/message.js";
+import { RemoveFidsWithNoStorageJobScheduler } from "./storage/jobs/removeFidsWithNoStorageJob.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -290,6 +291,7 @@ export class Hub implements HubInterface {
   private gossipContactInfoJobScheduler: GossipContactInfoJobScheduler;
   private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
+  private removeFidsWithNoStorageJobScheduler: RemoveFidsWithNoStorageJobScheduler;
 
   engine: Engine;
   fNameRegistryEventsProvider: FNameRegistryEventsProvider;
@@ -432,6 +434,7 @@ export class Hub implements HubInterface {
     this.gossipContactInfoJobScheduler = new GossipContactInfoJobScheduler(this);
     this.checkIncomingPortsJobScheduler = new CheckIncomingPortsJobScheduler(this.rpcServer, this.gossipNode);
     this.updateNetworkConfigJobScheduler = new UpdateNetworkConfigJobScheduler(this);
+    this.removeFidsWithNoStorageJobScheduler = new RemoveFidsWithNoStorageJobScheduler(this.engine, this.syncEngine);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -650,6 +653,7 @@ export class Hub implements HubInterface {
     this.validateOrRevokeMessagesJobScheduler.start();
     this.gossipContactInfoJobScheduler.start();
     this.checkIncomingPortsJobScheduler.start();
+    this.removeFidsWithNoStorageJobScheduler.start();
 
     // Mainnet only jobs
     if (this.options.network === FarcasterNetwork.MAINNET) {
@@ -837,6 +841,7 @@ export class Hub implements HubInterface {
     this.gossipContactInfoJobScheduler.stop();
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
+    this.removeFidsWithNoStorageJobScheduler.stop();
 
     await this.l2RegistryProvider.stop();
     await this.fNameRegistryEventsProvider.stop();

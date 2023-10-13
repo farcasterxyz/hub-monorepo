@@ -55,6 +55,18 @@ class OnChainEventStore {
     return this._mergeEvent(event);
   }
 
+  async removeOnChainIdRegisterEventByFid(fid: number): Promise<void> {
+    const id = makeIdRegisterEventByFidKey(fid);
+    const txn = this._db.transaction();
+    txn.del(id);
+    // TODO: Do we need an event handler for this?
+    // this._eventHandler.commitTransaction(txn, {
+    //   type: HubEventType.REMOVE_ON_CHAIN_ID_REGISTER_EVENT,
+    //   removeOnChainIdRegisterEventBody: { fid },
+    // });
+    await this._db.commit(txn);
+  }
+
   async getOnChainEvents<T extends OnChainEvent>(type: OnChainEventType, fid: number): Promise<T[]> {
     const keys: Buffer[] = [];
     await this._db.forEachIteratorByPrefix(
