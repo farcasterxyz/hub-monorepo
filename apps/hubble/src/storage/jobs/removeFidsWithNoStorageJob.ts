@@ -105,8 +105,9 @@ export class RemoveFidsWithNoStorageJobScheduler {
       }
 
       log.info({ fid }, "RemoveFids removed OnChainIdRegisterEvent for FID with no storage");
+      return ok(1);
     }
 
-    return ok(1);
+    return ok(0);
   }
 }
