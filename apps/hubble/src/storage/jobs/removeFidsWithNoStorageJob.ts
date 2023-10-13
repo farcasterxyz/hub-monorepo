@@ -101,8 +101,6 @@ export class RemoveFidsWithNoStorageJobScheduler {
     // See if this FID has any storage
     const storage = await this._engine.getCurrentStorageLimitsByFid(fid);
     if (storage.isOk() && storage.value.limits[0]?.limit === 0) {
-      await this._engine.removeOnChainIdRegisterEventByFid(fid);
-
       const onChainEvent = await this._engine.getIdRegistryOnChainEvent(fid);
       if (onChainEvent.isOk()) {
         const syncId = SyncId.fromOnChainEvent(onChainEvent.value);
@@ -111,6 +109,7 @@ export class RemoveFidsWithNoStorageJobScheduler {
           log.error({ fid }, "RemoveFidsWithNoStorageJobScheduler trie.deleteBySyncId failed");
         }
       }
+      await this._engine.removeOnChainIdRegisterEventByFid(fid);
 
       log.info({ fid }, "RemoveFids removed OnChainIdRegisterEvent for FID with no storage");
     }
