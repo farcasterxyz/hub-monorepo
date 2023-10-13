@@ -773,12 +773,38 @@ export class L2EventsProvider {
       progressBar = addProgressBar("Processing Farcaster L2 Contract Events", totalBlocks);
     }
 
-    for (const cachedBlock of cachedBlocks) {
+    for (let i = 0; i < cachedBlocks.length; i++) {
+      const cachedBlock = cachedBlocks[i] as number;
       if (cachedBlock + L2EventsProvider.numConfirmations <= blockNumber) {
         const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
         this._onChainEventsByBlock.delete(cachedBlock);
         if (onChainEvents) {
           for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
+            if (onChainEvent.type === OnChainEventType.EVENT_TYPE_ID_REGISTER) {
+              // Don't process this event unless this FID also has a storage event
+              let storageEvents;
+
+              for (let j = i; j < cachedBlocks.length; j++) {
+                storageEvents = this._onChainEventsByBlock
+                  .get(j)
+                  ?.filter(
+                    (event) =>
+                      event.type === OnChainEventType.EVENT_TYPE_STORAGE_RENT && event.fid === onChainEvent.fid,
+                  );
+                if (!storageEvents || storageEvents.length === 0) {
+                  break;
+                }
+              }
+
+              if (!storageEvents || storageEvents.length === 0) {
+                log.info(
+                  { fid: onChainEvent.fid, blockNumber: onChainEvent.blockNumber },
+                  "skipping ID register event because no storage event was found",
+                );
+                continue;
+              }
+            }
+
             await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
           }
         }
