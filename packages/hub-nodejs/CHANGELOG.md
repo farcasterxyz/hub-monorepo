@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.10.14
+
+### Patch Changes
+
+- ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
+- Updated dependencies [ba86d374]
+  - @farcaster/core@0.12.14
+
 ## 0.10.13
 
 ### Patch Changes

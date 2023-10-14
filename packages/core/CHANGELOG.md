@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.14
+
+### Patch Changes
+
+- ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
+
 ## 0.12.13
 
 ### Patch Changes

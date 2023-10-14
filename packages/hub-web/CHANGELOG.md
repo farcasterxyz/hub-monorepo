@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.6.9
+
+### Patch Changes
+
+- 06bb2f43: chore: Go lang example for submitMessage()
+- a5708f85: chore: Remove grpc-web
+- ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
+- Updated dependencies [ba86d374]
+  - @farcaster/core@0.12.14
+
 ## 0.6.8
 
 ### Patch Changes
