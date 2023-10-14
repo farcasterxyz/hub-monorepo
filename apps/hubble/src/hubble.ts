@@ -892,7 +892,7 @@ export class Hub implements HubInterface {
   /*                                  Private Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  private async handleGossipMessage(gossipMessage: GossipMessage): HubAsyncResult<void> {
+  private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId): HubAsyncResult<void> {
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError("bad_request.parse_failure", error as Error),
@@ -916,6 +916,17 @@ export class Hub implements HubInterface {
 
       // Merge the message
       const result = await this.submitMessage(message, "gossip");
+      if (result.isErr()) {
+        log.info(
+          {
+            errCode: result.error.errCode,
+            peerId: source.toString(),
+            origin: peerIdResult.value,
+            hash: bytesToHexString(message.hash).unwrapOr(""),
+          },
+          "Received bad gossip message from peer",
+        );
+      }
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
@@ -1085,10 +1096,10 @@ export class Hub implements HubInterface {
     await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
     await this.gossipNode.subscribe(this.gossipNode.contactInfoTopic());
 
-    this.gossipNode.on("message", async (_topic, message) => {
+    this.gossipNode.on("message", async (_topic, message, source) => {
       await message.match(
         async (gossipMessage: GossipMessage) => {
-          await this.handleGossipMessage(gossipMessage);
+          await this.handleGossipMessage(gossipMessage, source);
         },
         async (error: HubError) => {
           log.error(error, "failed to decode message");
@@ -1134,7 +1145,7 @@ export class Hub implements HubInterface {
           eventId,
           fid: message.data?.fid,
           type: messageTypeToName(message.data?.type),
-          hash: bytesToHexString(message.hash)._unsafeUnwrap(),
+          submittedMessage: messageToLog(submittedMessage),
           source,
         };
         const msg = "submitMessage success";

@@ -35,7 +35,7 @@ const workerLog = logger.child({ component: "GossipNodeWorker" });
 /** Events emitted by a Farcaster Gossip Node */
 interface NodeEvents {
   /** Triggers on receipt of a new message and includes the topic and message contents */
-  message: (topic: string, message: HubResult<GossipMessage>) => void;
+  message: (topic: string, message: HubResult<GossipMessage>, source: PeerId) => void;
   /** Triggers when a peer connects and includes the libp2p Connection object*/
   peerConnect: (connection: Connection) => void;
   /** Triggers when a peer disconnects and includes the libp2p Connection object */
@@ -385,7 +385,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
-          this.emit("message", detail.msg.topic, GossipNode.decodeMessage(data));
+          this.emit("message", detail.msg.topic, GossipNode.decodeMessage(data), detail.propagationSource);
         } catch (e) {
           logger.error({ e, data: detail.msg.data }, "Failed to decode message");
         }
