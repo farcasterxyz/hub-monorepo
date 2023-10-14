@@ -18,7 +18,7 @@ import {
   ClientOptions,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
-import { peerIdFromBytes } from "@libp2p/peer-id";
+import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
@@ -892,7 +892,7 @@ export class Hub implements HubInterface {
   /*                                  Private Methods                           */
   /* -------------------------------------------------------------------------- */
 
-  private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId): HubAsyncResult<void> {
+  private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId, msgId: string): HubAsyncResult<void> {
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError("bad_request.parse_failure", error as Error),
@@ -916,13 +916,16 @@ export class Hub implements HubInterface {
 
       // Merge the message
       const result = await this.submitMessage(message, "gossip");
-      if (result.isErr()) {
+      if (result.isOk()) {
+        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes());
+      } else {
         log.info(
           {
             errCode: result.error.errCode,
             peerId: source.toString(),
             origin: peerIdResult.value,
             hash: bytesToHexString(message.hash).unwrapOr(""),
+            msgId,
           },
           "Received bad gossip message from peer",
         );
@@ -1096,10 +1099,10 @@ export class Hub implements HubInterface {
     await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
     await this.gossipNode.subscribe(this.gossipNode.contactInfoTopic());
 
-    this.gossipNode.on("message", async (_topic, message, source) => {
+    this.gossipNode.on("message", async (_topic, message, source, msgId) => {
       await message.match(
         async (gossipMessage: GossipMessage) => {
-          await this.handleGossipMessage(gossipMessage, source);
+          await this.handleGossipMessage(gossipMessage, source, msgId);
         },
         async (error: HubError) => {
           log.error(error, "failed to decode message");

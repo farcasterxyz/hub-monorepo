@@ -1,14 +1,14 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult, TopicValidatorResult } from "@libp2p/interface-pubsub";
 import {
+  GossipNode,
+  LibP2PNodeInterface,
   LibP2PNodeMessage,
   LibP2PNodeMethodGenericMessage,
-  NodeOptions,
-  GossipNode,
   LibP2PNodeMethodReturnType,
-  LibP2PNodeInterface,
+  NodeOptions,
 } from "./gossipNode.js";
 import {
   ContactInfoContent,
@@ -21,8 +21,8 @@ import {
   Message,
 } from "@farcaster/hub-nodejs";
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
-import { Libp2p, createLibp2p } from "libp2p";
-import { Result, ResultAsync, err, ok } from "neverthrow";
+import { createLibp2p, Libp2p } from "libp2p";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
 import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
@@ -109,6 +109,7 @@ export class LibP2PNode {
     const gossip = gossipsub({
       emitSelf: false,
       allowPublishToZeroPeers: true,
+      asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
       globalSignaturePolicy: "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
@@ -372,6 +373,10 @@ export class LibP2PNode {
     }
   }
 
+  async reportValid(messageId: string, propagationSource: PeerId) {
+    this.gossip?.reportMessageValidationResult(messageId, propagationSource, TopicValidatorResult.Accept);
+  }
+
   registerEventListeners() {
     // When serializing data, we need to handle some data types specially.
     // 1, BigInts are not supported by JSON.stringify, so we convert them to strings
@@ -570,6 +575,14 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : [],
         }),
       });
+      break;
+    }
+    case "reportValid": {
+      const specificMsg = msg as LibP2PNodeMessage<"reportValid">;
+      const [msgId, source] = specificMsg.args;
+      const sourceId = peerIdFromBytes(source);
+      await libp2pNode.reportValid(msgId, sourceId);
+      parentPort?.postMessage({ methodCallId, result: makeResult<"reportValid">(undefined) });
       break;
     }
   }
