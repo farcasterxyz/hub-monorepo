@@ -20,7 +20,7 @@ import { TypedEmitter } from "tiny-typed-emitter";
 import { logger } from "../../utils/logger.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
-import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
+import { AddrInfo, MsgIdStr } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
@@ -35,7 +35,7 @@ const workerLog = logger.child({ component: "GossipNodeWorker" });
 /** Events emitted by a Farcaster Gossip Node */
 interface NodeEvents {
   /** Triggers on receipt of a new message and includes the topic and message contents */
-  message: (topic: string, message: HubResult<GossipMessage>, source: PeerId) => void;
+  message: (topic: string, message: HubResult<GossipMessage>, source: PeerId, msgId: string) => void;
   /** Triggers when a peer connects and includes the libp2p Connection object*/
   peerConnect: (connection: Connection) => void;
   /** Triggers when a peer disconnects and includes the libp2p Connection object */
@@ -84,6 +84,7 @@ export interface LibP2PNodeInterface {
   subscribe: (topic: string) => Promise<void>;
   gossipMessage: (message: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
+  reportValid: (messageId: string, propagationSource: Uint8Array) => Promise<void>;
 }
 
 // Extract the method names (as strings) from the LibP2PNodeInterface
@@ -385,7 +386,14 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
-          this.emit("message", detail.msg.topic, GossipNode.decodeMessage(data), detail.propagationSource);
+          const messageId = detail.msg;
+          this.emit(
+            "message",
+            detail.msg.topic,
+            GossipNode.decodeMessage(data),
+            detail.propagationSource,
+            detail.msgId,
+          );
         } catch (e) {
           logger.error({ e, data: detail.msg.data }, "Failed to decode message");
         }
@@ -461,6 +469,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   updateDeniedPeerIds(peerIds: string[]) {
     statsd().gauge("gossip.denied_peers", peerIds.length);
     this.callMethod("updateDeniedPeerIds", peerIds);
+  }
+
+  reportValid(messageId: string, propagationSource: Uint8Array) {
+    this.callMethod("reportValid", messageId, propagationSource);
   }
 
   /* -------------------------------------------------------------------------- */
