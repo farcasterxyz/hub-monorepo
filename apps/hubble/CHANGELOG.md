@@ -1,5 +1,17 @@
 # @farcaster/hubble
 
+## 1.6.3
+
+### Patch Changes
+
+- 89ce7d2d: fix: enable asyncValidation so we don't forward invalid messages on gossip
+- a5708f85: chore: Remove grpc-web
+- b518b97f: fix: Cache numFids and numFnames
+- 86bed6f5: fix: Make message counts on-demand to speed startup
+- ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
+- Updated dependencies [ba86d374]
+  - @farcaster/hub-nodejs@0.10.14
+
 ## 1.6.2
 
 ### Patch Changes
