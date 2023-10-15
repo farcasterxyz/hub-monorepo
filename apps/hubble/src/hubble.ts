@@ -917,7 +917,7 @@ export class Hub implements HubInterface {
       // Merge the message
       const result = await this.submitMessage(message, "gossip");
       if (result.isOk()) {
-        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes());
+        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
       } else {
         log.info(
           {
@@ -929,10 +929,12 @@ export class Hub implements HubInterface {
           },
           "Received bad gossip message from peer",
         );
+        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
       }
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
+      this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
