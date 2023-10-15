@@ -374,8 +374,12 @@ export class LibP2PNode {
     }
   }
 
-  async reportValid(messageId: string, propagationSource: PeerId) {
-    this.gossip?.reportMessageValidationResult(messageId, propagationSource, TopicValidatorResult.Accept);
+  async reportValid(messageId: string, propagationSource: PeerId, isValid: boolean) {
+    this.gossip?.reportMessageValidationResult(
+      messageId,
+      propagationSource,
+      isValid ? TopicValidatorResult.Accept : TopicValidatorResult.Reject,
+    );
   }
 
   registerEventListeners() {
@@ -580,9 +584,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
     }
     case "reportValid": {
       const specificMsg = msg as LibP2PNodeMessage<"reportValid">;
-      const [msgId, source] = specificMsg.args;
+      const [msgId, source, isValid] = specificMsg.args;
       const sourceId = peerIdFromBytes(source);
-      await libp2pNode.reportValid(msgId, sourceId);
+      await libp2pNode.reportValid(msgId, sourceId, isValid);
       parentPort?.postMessage({ methodCallId, result: makeResult<"reportValid">(undefined) });
       break;
     }

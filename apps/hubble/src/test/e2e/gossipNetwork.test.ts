@@ -76,7 +76,9 @@ describe("gossip network tests", () => {
 
             // we'll treat reaction add messages as invalid and everything else as valid
             if (gossipMessage.message && !isReactionAddMessage(gossipMessage.message)) {
-              n.reportValid(msgId, peerIdFromString(source.toString()).toBytes());
+              n.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+            } else {
+              n.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
             }
           });
           n.registerDebugListeners();

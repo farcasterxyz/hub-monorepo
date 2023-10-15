@@ -84,7 +84,7 @@ export interface LibP2PNodeInterface {
   subscribe: (topic: string) => Promise<void>;
   gossipMessage: (message: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
-  reportValid: (messageId: string, propagationSource: Uint8Array) => Promise<void>;
+  reportValid: (messageId: string, propagationSource: Uint8Array, isValid: boolean) => Promise<void>;
 }
 
 // Extract the method names (as strings) from the LibP2PNodeInterface
@@ -399,7 +399,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         statsd().increment("gossip.messages");
       } else {
         // Report other messages we don't care about (peer discovery mainly) as being valid, so they can be forwarded correctly
-        this.reportValid(detail.msgId, peerIdFromString(detail.propagationSource.toString()).toBytes());
+        this.reportValid(detail.msgId, peerIdFromString(detail.propagationSource.toString()).toBytes(), true);
       }
     });
   }
@@ -473,8 +473,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this.callMethod("updateDeniedPeerIds", peerIds);
   }
 
-  reportValid(messageId: string, propagationSource: Uint8Array) {
-    this.callMethod("reportValid", messageId, propagationSource);
+  reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean) {
+    this.callMethod("reportValid", messageId, propagationSource, isValid);
   }
 
   /* -------------------------------------------------------------------------- */
