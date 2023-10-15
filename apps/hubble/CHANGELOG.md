@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.6.4
+
+### Patch Changes
+
+- a3e12f54: fix: Fix contactInfo messages not being forwarded and increase seen ttl to prevent future loops
+
 ## 1.6.3
 
 ### Patch Changes
