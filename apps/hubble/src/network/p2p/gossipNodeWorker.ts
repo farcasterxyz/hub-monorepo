@@ -114,6 +114,7 @@ export class LibP2PNode {
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
       canRelayMessage: true,
+      seenTTL: 1000 * 60 * 10, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
     });
 

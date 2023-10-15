@@ -933,6 +933,7 @@ export class Hub implements HubInterface {
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
+      this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes());
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));

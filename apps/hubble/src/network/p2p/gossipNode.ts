@@ -13,7 +13,7 @@ import {
 } from "@farcaster/hub-nodejs";
 import { Connection } from "@libp2p/interface-connection";
 import { PeerId } from "@libp2p/interface-peer-id";
-import { peerIdFromBytes } from "@libp2p/peer-id";
+import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
 import { err, ok, Result } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
@@ -386,7 +386,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
-          const messageId = detail.msg;
           this.emit(
             "message",
             detail.msg.topic,
@@ -398,6 +397,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           logger.error({ e, data: detail.msg.data }, "Failed to decode message");
         }
         statsd().increment("gossip.messages");
+      } else {
+        // Report other messages we don't care about (peer discovery mainly) as being valid, so they can be forwarded correctly
+        this.reportValid(detail.msgId, peerIdFromString(detail.propagationSource.toString()).toBytes());
       }
     });
   }
