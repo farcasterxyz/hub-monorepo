@@ -174,7 +174,8 @@ class OnChainEventStore {
         return txn;
       } else if (
         existingEvent.signerEventBody.eventType === SignerEventType.REMOVE &&
-        event.signerEventBody.eventType === SignerEventType.ADD
+        event.signerEventBody.eventType === SignerEventType.ADD &&
+        event.version === existingEvent.version
       ) {
         throw new HubError("bad_request.conflict", "attempting to re-add removed key");
       }

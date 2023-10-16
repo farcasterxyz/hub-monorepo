@@ -145,6 +145,7 @@ export interface OnChainEvent {
   idRegisterEventBody?: IdRegisterEventBody | undefined;
   storageRentEventBody?: StorageRentEventBody | undefined;
   txIndex: number;
+  version: number;
 }
 
 export interface SignerEventBody {
@@ -187,6 +188,7 @@ function createBaseOnChainEvent(): OnChainEvent {
     idRegisterEventBody: undefined,
     storageRentEventBody: undefined,
     txIndex: 0,
+    version: 0,
   };
 }
 
@@ -230,6 +232,9 @@ export const OnChainEvent = {
     }
     if (message.txIndex !== 0) {
       writer.uint32(104).uint32(message.txIndex);
+    }
+    if (message.version !== 0) {
+      writer.uint32(112).uint32(message.version);
     }
     return writer;
   },
@@ -332,6 +337,13 @@ export const OnChainEvent = {
 
           message.txIndex = reader.uint32();
           continue;
+        case 14:
+          if (tag != 112) {
+            break;
+          }
+
+          message.version = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -362,6 +374,7 @@ export const OnChainEvent = {
         ? StorageRentEventBody.fromJSON(object.storageRentEventBody)
         : undefined,
       txIndex: isSet(object.txIndex) ? Number(object.txIndex) : 0,
+      version: isSet(object.version) ? Number(object.version) : 0,
     };
   },
 
@@ -391,6 +404,7 @@ export const OnChainEvent = {
       ? StorageRentEventBody.toJSON(message.storageRentEventBody)
       : undefined);
     message.txIndex !== undefined && (obj.txIndex = Math.round(message.txIndex));
+    message.version !== undefined && (obj.version = Math.round(message.version));
     return obj;
   },
 
@@ -422,6 +436,7 @@ export const OnChainEvent = {
       ? StorageRentEventBody.fromPartial(object.storageRentEventBody)
       : undefined;
     message.txIndex = object.txIndex ?? 0;
+    message.version = object.version ?? 0;
     return message;
   },
 };

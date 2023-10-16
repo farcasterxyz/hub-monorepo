@@ -17,6 +17,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
@@ -34,6 +36,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, undefined, [], network, []);
@@ -54,6 +58,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
@@ -74,6 +80,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
@@ -93,6 +101,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
@@ -113,6 +123,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
@@ -130,6 +142,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, undefined, [], network, []);
@@ -150,6 +164,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
@@ -167,6 +183,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, [], [], network, []);
@@ -182,6 +200,8 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result2 = applyNetworkConfig(networkConfig2, [], [], network, []);

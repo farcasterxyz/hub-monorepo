@@ -22,6 +22,8 @@ export type NetworkConfig = {
   keyRegistryAddress: `0x${string}` | undefined;
   idRegistryAddress: `0x${string}` | undefined;
   allowlistedImmunePeers: string[] | undefined;
+  keyRegistryV2Address: `0x${string}` | undefined;
+  idRegistryV2Address: `0x${string}` | undefined;
 };
 
 export type NetworkConfigResult = {

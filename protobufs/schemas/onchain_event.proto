@@ -24,6 +24,7 @@ message OnChainEvent {
     StorageRentEventBody storage_rent_event_body = 12;
   }
   uint32 tx_index = 13;
+  uint32 version = 14;
 }
 
 enum SignerEventType {
