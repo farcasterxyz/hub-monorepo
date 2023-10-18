@@ -1201,12 +1201,6 @@ export class Hub implements HubInterface {
           source,
         };
         const msg = "submitMessage success";
-        // track memory usage on successful merges
-        const memoryData = process.memoryUsage();
-        statsd().gauge("memory.rss", memoryData.rss);
-        statsd().gauge("memory.heap_total", memoryData.heapTotal);
-        statsd().gauge("memory.heap_used", memoryData.heapUsed);
-        statsd().gauge("memory.external", memoryData.external);
 
         if (source === "sync") {
           log.debug(logData, msg);
