@@ -520,7 +520,11 @@ export class Hub implements HubInterface {
       if (dbResult.isErr()) {
         retryCount++;
         logger.error(
-          { retryCount, error: dbResult.error, errorMessage: dbResult.error.message },
+          {
+            retryCount,
+            error: dbResult.error,
+            errorMessage: dbResult.error.message,
+          },
           "failed to open rocksdb. Retry in 15s",
         );
 
@@ -598,7 +602,9 @@ export class Hub implements HubInterface {
     if (this.options.network === FarcasterNetwork.MAINNET) {
       const networkConfig = await fetchNetworkConfig();
       if (networkConfig.isErr()) {
-        log.error("failed to fetch network config", { error: networkConfig.error });
+        log.error("failed to fetch network config", {
+          error: networkConfig.error,
+        });
       } else {
         const shouldExit = this.applyNetworkConfig(networkConfig.value);
         if (shouldExit) {
@@ -720,7 +726,9 @@ export class Hub implements HubInterface {
             log.info({ latestSnapshotKey }, "found latest S3 snapshot");
 
             const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
-            const response2 = await axios.get(snapshotUrl, { responseType: "stream" });
+            const response2 = await axios.get(snapshotUrl, {
+              responseType: "stream",
+            });
             const totalSize = parseInt(response2.headers["content-length"], 10);
 
             let downloadedSize = 0;
@@ -787,7 +795,11 @@ export class Hub implements HubInterface {
     const gossipPort = nodeMultiAddr?.nodeAddress().port;
     const rpcPort = this.rpcServer.address?.map((addr) => addr.port).unwrapOr(0);
 
-    const gossipAddressContactInfo = GossipAddressInfo.create({ address: announceIp, family, port: gossipPort });
+    const gossipAddressContactInfo = GossipAddressInfo.create({
+      address: announceIp,
+      family,
+      port: gossipPort,
+    });
     const rpcAddressContactInfo = GossipAddressInfo.create({
       address: announceIp,
       family,
@@ -805,6 +817,7 @@ export class Hub implements HubInterface {
         hubVersion: FARCASTER_VERSION,
         network: this.options.network,
         appVersion: APP_VERSION,
+        timestamp: Date.now(),
       });
     });
   }
@@ -879,7 +892,10 @@ export class Hub implements HubInterface {
     } else {
       const contactInfo = contactInfoResult.value;
       log.info(
-        { rpcAddress: contactInfo.rpcAddress?.address, rpcPort: contactInfo.rpcAddress?.port },
+        {
+          rpcAddress: contactInfo.rpcAddress?.address,
+          rpcPort: contactInfo.rpcAddress?.port,
+        },
         "gossiping contact info",
       );
 
@@ -908,7 +924,10 @@ export class Hub implements HubInterface {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
         // will eventually re-fetch and merge this message in anyway.
         log.warn(
-          { syncTrieQ: this.syncEngine.syncTrieQSize, syncMergeQ: this.syncEngine.syncMergeQSize },
+          {
+            syncTrieQ: this.syncEngine.syncTrieQSize,
+            syncMergeQ: this.syncEngine.syncMergeQSize,
+          },
           "Sync queue is full, dropping gossip message",
         );
         return err(new HubError("unavailable", "Sync queue is full"));
@@ -960,7 +979,11 @@ export class Hub implements HubInterface {
 
       if (p2pMultiAddrResult.isErr()) {
         log.error(
-          { error: p2pMultiAddrResult.error, message, address: addressInfo.value },
+          {
+            error: p2pMultiAddrResult.error,
+            message,
+            address: addressInfo.value,
+          },
           "failed to create multiaddr",
         );
         return;
@@ -968,7 +991,11 @@ export class Hub implements HubInterface {
 
       if (p2pMultiAddrResult.value.isErr()) {
         log.error(
-          { error: p2pMultiAddrResult.value.error, message, address: addressInfo.value },
+          {
+            error: p2pMultiAddrResult.value.error,
+            message,
+            address: addressInfo.value,
+          },
           "failed to parse multiaddr",
         );
         return;
@@ -982,6 +1009,7 @@ export class Hub implements HubInterface {
 
       const multiaddrValue = p2pMultiAddrResult.value.value;
       await this.gossipNode.addPeerToAddressBook(peerId, multiaddrValue);
+      statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
     }
 
     log.debug({ identity: this.identity, peer: peerId, message }, "received peer ContactInfo");
@@ -1118,11 +1146,13 @@ export class Hub implements HubInterface {
       setTimeout(async () => {
         await this.gossipContactInfo();
       }, 1 * 1000);
+      statsd().increment("peer_connect.count");
     });
 
     this.gossipNode.on("peerDisconnect", async (connection) => {
       // Remove this peer's connection
       this.syncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
+      statsd().increment("peer_disconnect.count");
     });
   }
 
@@ -1132,7 +1162,10 @@ export class Hub implements HubInterface {
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
     // message is a reserved key in some logging systems, so we use submittedMessage instead
-    const logMessage = log.child({ submittedMessage: messageToLog(submittedMessage), source });
+    const logMessage = log.child({
+      submittedMessage: messageToLog(submittedMessage),
+      source,
+    });
 
     if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
       log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
@@ -1178,7 +1211,10 @@ export class Hub implements HubInterface {
   }
 
   async submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number> {
-    const logEvent = log.child({ event: usernameProofToLog(usernameProof), source });
+    const logEvent = log.child({
+      event: usernameProofToLog(usernameProof),
+      source,
+    });
 
     const mergeResult = await this.engine.mergeUserNameProof(usernameProof);
 
@@ -1308,7 +1344,12 @@ export class Hub implements HubInterface {
     const versionCheckResult = ensureAboveMinFarcasterVersion(theirVersion);
     if (versionCheckResult.isErr()) {
       log.warn(
-        { peerId: otherPeerId, theirVersion, ourVersion: FARCASTER_VERSION, errMsg: versionCheckResult.error.message },
+        {
+          peerId: otherPeerId,
+          theirVersion,
+          ourVersion: FARCASTER_VERSION,
+          errMsg: versionCheckResult.error.message,
+        },
         "Peer is running an outdated version, ignoring",
       );
       return false;
@@ -1359,7 +1400,11 @@ export class Hub implements HubInterface {
     const latestJsonParams = {
       Bucket: this.s3_snapshot_bucket,
       Key: `${this.getSnapshotFolder()}/latest.json`,
-      Body: JSON.stringify({ key, timestamp: Date.now(), serverDate: new Date().toISOString() }),
+      Body: JSON.stringify({
+        key,
+        timestamp: Date.now(),
+        serverDate: new Date().toISOString(),
+      }),
     };
 
     try {
@@ -1373,7 +1418,11 @@ export class Hub implements HubInterface {
   }
 
   async listS3Snapshots(): HubAsyncResult<
-    Array<{ Key: string | undefined; Size: number | undefined; LastModified: Date | undefined }>
+    Array<{
+      Key: string | undefined;
+      Size: number | undefined;
+      LastModified: Date | undefined;
+    }>
   > {
     const network = FarcasterNetwork[this.options.network].toString();
 
