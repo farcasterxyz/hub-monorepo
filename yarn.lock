@@ -2363,7 +2363,7 @@
   dependencies:
     multiformats "^11.0.0"
 
-"@libp2p/interface-peer-info@^1.0.0", "@libp2p/interface-peer-info@^1.0.2", "@libp2p/interface-peer-info@^1.0.3":
+"@libp2p/interface-peer-info@^1.0.0", "@libp2p/interface-peer-info@^1.0.3":
   version "1.0.8"
   resolved "https://registry.npmjs.org/@libp2p/interface-peer-info/-/interface-peer-info-1.0.8.tgz#8380e9e40d0ec2c8be8e1a43e8a82ae97a0687c4"
   integrity sha512-LRvZt/9bZFYW7seAwuSg2hZuPl+FRTAsij5HtyvVwmpfVxipm6yQrKjQ+LiK/SZhIDVsSJ+UjF0mluJj+jeAzQ==
@@ -2459,7 +2459,7 @@
     p-defer "^4.0.0"
     uint8arraylist "^2.4.3"
 
-"@libp2p/interfaces@^3.0.0", "@libp2p/interfaces@^3.0.2", "@libp2p/interfaces@^3.0.3", "@libp2p/interfaces@^3.2.0":
+"@libp2p/interfaces@^3.0.0", "@libp2p/interfaces@^3.0.2", "@libp2p/interfaces@^3.2.0":
   version "3.3.1"
   resolved "https://registry.npmjs.org/@libp2p/interfaces/-/interfaces-3.3.1.tgz#519c77c030b10d776250bbebf65990af53ccb2ee"
   integrity sha512-3N+goQt74SmaVOjwpwMPKLNgh1uDQGw8GD12c40Kc86WOq0qvpm3NfACW+H8Su2X6KmWjCSMzk9JWs9+8FtUfg==
@@ -2636,21 +2636,6 @@
     uint8arraylist "^2.1.1"
     uint8arrays "^4.0.2"
 
-"@libp2p/pubsub-peer-discovery@^8.0.0":
-  version "8.0.0"
-  resolved "https://registry.npmjs.org/@libp2p/pubsub-peer-discovery/-/pubsub-peer-discovery-8.0.0.tgz#3ba28875d5b3466fcd3764bcf72981a0885cee84"
-  integrity sha512-BRQXObeyyayAAcvG7C0+lwrM+/edvUKHuv5em4UiHAZ19PFe0GQDQ1/RXP8kQUWyVOn8jMmbhSfDPPq3pGcK1Q==
-  dependencies:
-    "@libp2p/interface-peer-discovery" "^1.0.1"
-    "@libp2p/interface-peer-id" "^2.0.0"
-    "@libp2p/interface-peer-info" "^1.0.2"
-    "@libp2p/interface-pubsub" "^3.0.0"
-    "@libp2p/interfaces" "^3.0.3"
-    "@libp2p/logger" "^2.0.1"
-    "@libp2p/peer-id" "^2.0.0"
-    "@multiformats/multiaddr" "^11.0.5"
-    protons-runtime "^4.0.1"
-
 "@libp2p/pubsub@^6.0.0":
   version "6.0.1"
   resolved "https://registry.npmjs.org/@libp2p/pubsub/-/pubsub-6.0.1.tgz#b8e2636697aa6ef4af758c16e734bc6dbc2fc51f"
@@ -2818,7 +2803,7 @@
   dependencies:
     "@multiformats/multiaddr" "^12.0.0"
 
-"@multiformats/multiaddr@^11.0.0", "@multiformats/multiaddr@^11.0.5":
+"@multiformats/multiaddr@^11.0.0":
   version "11.4.0"
   resolved "https://registry.npmjs.org/@multiformats/multiaddr/-/multiaddr-11.4.0.tgz#101c04291f18a5bc9e07b8354d0672a4e8fbd810"
   integrity sha512-rLIhSOCKQhm/fCjg+5tVM9xrtjbZjZKJg6bb65YbFsNoPSYhweEohXO8Pkg2xbRy3NqVEVkS+8DB/+VhNvjd5Q==

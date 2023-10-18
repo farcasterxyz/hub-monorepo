@@ -20,7 +20,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 1,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -75,7 +75,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -129,7 +131,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -373,7 +377,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -429,7 +435,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -465,7 +473,10 @@
       "type": "row"
     },
     {
-      "datasource": "Graphite",
+      "datasource": {
+        "type": "graphite",
+        "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
+      },
       "description": "Number of gossip messages received from peers",
       "fieldConfig": {
         "defaults": {
@@ -502,7 +513,6 @@
               "mode": "off"
             }
           },
-          "displayName": "Messages",
           "mappings": [],
           "noValue": "Starting up... Please wait",
           "thresholds": {
@@ -536,14 +546,21 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "10.0.3",
       "targets": [
         {
-          "refId": "A",
-          "target": "stats_counts.hubble.gossip.messages",
+          "datasource": {
+            "type": "graphite",
+            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
+          },
+          "hide": false,
+          "refCount": 0,
+          "refId": "Protocol Messages",
+          "target": "stats_counts.hubble.gossip.*.*",
           "textEditor": true
         }
       ],
@@ -599,7 +616,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -618,7 +637,10 @@
       "type": "gauge"
     },
     {
-      "datasource": "Graphite",
+      "datasource": {
+        "type": "graphite",
+        "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
+      },
       "description": "Number of peers that Hubble is connected with for outbound and inbound flow.",
       "fieldConfig": {
         "defaults": {
@@ -695,6 +717,18 @@
                 "value": "Outbound Peers"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stats.gauges.hubble.peer_store.count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Discovered Peers"
+              }
+            ]
           }
         ]
       },
@@ -713,21 +747,39 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
       "targets": [
         {
+          "datasource": {
+            "type": "graphite",
+            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
+          },
           "refCount": 0,
           "refId": "A",
           "target": "stats.gauges.hubble.gossip.peers.inbound"
         },
         {
+          "datasource": {
+            "type": "graphite",
+            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
+          },
           "hide": false,
           "refCount": 0,
           "refId": "B",
           "target": "stats.gauges.hubble.gossip.peers.outbound"
+        },
+        {
+          "datasource": {
+            "type": "graphite",
+            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
+          },
+          "hide": false,
+          "refCount": 0,
+          "refId": "C",
+          "target": "stats.gauges.hubble.peer_store.count"
         }
       ],
       "title": "Gossip Peers",
@@ -870,7 +922,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -923,7 +977,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1173,7 +1229,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1258,7 +1315,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1357,7 +1415,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1465,7 +1524,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1586,7 +1646,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1669,7 +1730,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1766,7 +1828,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1863,7 +1926,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -1888,7 +1953,9 @@
         {
           "id": "reduce",
           "options": {
-            "reducers": ["lastNotNull"]
+            "reducers": [
+              "lastNotNull"
+            ]
           }
         }
       ],
@@ -1910,6 +1977,6 @@
   "timezone": "",
   "title": "Hubble Dashboard",
   "uid": "af04c037-bd8f-484a-b93e-0cb4b7d3b026",
-  "version": 4,
+  "version": 2,
   "weekStart": ""
 }
