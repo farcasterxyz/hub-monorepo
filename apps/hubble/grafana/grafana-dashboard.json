@@ -473,10 +473,7 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "graphite",
-        "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
-      },
+      "datasource": "Graphite",
       "description": "Number of gossip messages received from peers",
       "fieldConfig": {
         "defaults": {
@@ -553,10 +550,7 @@
       "pluginVersion": "10.0.3",
       "targets": [
         {
-          "datasource": {
-            "type": "graphite",
-            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
-          },
+          "datasource": "Graphite",
           "hide": false,
           "refCount": 0,
           "refId": "Protocol Messages",
@@ -637,10 +631,7 @@
       "type": "gauge"
     },
     {
-      "datasource": {
-        "type": "graphite",
-        "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
-      },
+      "datasource": "Graphite",
       "description": "Number of peers that Hubble is connected with for outbound and inbound flow.",
       "fieldConfig": {
         "defaults": {
@@ -753,29 +744,20 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "graphite",
-            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
-          },
+          "datasource": "Graphite",
           "refCount": 0,
           "refId": "A",
           "target": "stats.gauges.hubble.gossip.peers.inbound"
         },
         {
-          "datasource": {
-            "type": "graphite",
-            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
-          },
+          "datasource": "Graphite",
           "hide": false,
           "refCount": 0,
           "refId": "B",
           "target": "stats.gauges.hubble.gossip.peers.outbound"
         },
         {
-          "datasource": {
-            "type": "graphite",
-            "uid": "b77c804f-b4d3-4bee-83e7-9b6cdb4b581e"
-          },
+          "datasource": "Graphite",
           "hide": false,
           "refCount": 0,
           "refId": "C",
