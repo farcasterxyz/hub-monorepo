@@ -22,7 +22,7 @@ import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
-import { GossipNode, MAX_MESSAGE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
+import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
@@ -90,6 +90,8 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.8.23", expiresAt: 1697587200000 }, // expires at 10/18/23 00:00 UTC
   { version: "2023.10.4", expiresAt: 1701216000000 }, // expires at 11/28/23 00:00 UTC
 ];
+
+const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
 
 export interface HubInterface {
   engine: Engine;
@@ -654,7 +656,7 @@ export class Hub implements HubInterface {
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
     this.checkFarcasterVersionJobScheduler.start();
     this.validateOrRevokeMessagesJobScheduler.start();
-    this.gossipContactInfoJobScheduler.start();
+    this.gossipContactInfoJobScheduler.start("*/1 * * * *"); // Every minute
     this.checkIncomingPortsJobScheduler.start();
 
     // Mainnet only jobs
@@ -952,22 +954,29 @@ export class Hub implements HubInterface {
       }
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
-      await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
-      this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+      const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
+      this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
   }
 
-  private async handleContactInfo(peerId: PeerId, message: ContactInfoContent): Promise<void> {
+  private async handleContactInfo(peerId: PeerId, message: ContactInfoContent): Promise<boolean> {
+    statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+
+    // Don't process messages that are too old
+    if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
+      log.debug({ message }, "contact info message is too old");
+      return false;
+    }
     // Updates the address book for this peer
     const gossipAddress = message.gossipAddress;
     if (gossipAddress) {
       const addressInfo = addressInfoFromGossip(gossipAddress);
       if (addressInfo.isErr()) {
         log.error({ error: addressInfo.error, gossipAddress }, "unable to parse gossip address for peer");
-        return;
+        return false;
       }
 
       const p2pMultiAddrResult = p2pMultiAddrStr(addressInfo.value, peerId.toString()).map((addr: string) =>
@@ -986,7 +995,7 @@ export class Hub implements HubInterface {
           },
           "failed to create multiaddr",
         );
-        return;
+        return false;
       }
 
       if (p2pMultiAddrResult.value.isErr()) {
@@ -998,18 +1007,17 @@ export class Hub implements HubInterface {
           },
           "failed to parse multiaddr",
         );
-        return;
+        return false;
       }
 
       if (!(await this.isValidPeer(peerId, message))) {
         await this.gossipNode.removePeerFromAddressBook(peerId);
         this.syncEngine.removeContactInfoForPeerId(peerId.toString());
-        return;
+        return false;
       }
 
       const multiaddrValue = p2pMultiAddrResult.value.value;
       await this.gossipNode.addPeerToAddressBook(peerId, multiaddrValue);
-      statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
     }
 
     log.debug({ identity: this.identity, peer: peerId, message }, "received peer ContactInfo");
@@ -1018,7 +1026,7 @@ export class Hub implements HubInterface {
     const peerInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
     if (peerInfo) {
       log.debug({ peerInfo }, "Already have this peer, skipping sync");
-      return;
+      return true;
     } else {
       // If it is a new client, we do a sync against it
       log.info({ peerInfo, connectedPeers: this.syncEngine.getPeerCount() }, "New Peer ContactInfo");
@@ -1031,6 +1039,12 @@ export class Hub implements HubInterface {
         log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
       }
     }
+
+    // if the contact info doesn't include a timestamp, consider it invalid but allow the peer to stay in the address book
+    // TODO remove this once all peers are updated past 1.6.4
+    if (message.timestamp === 0) return false;
+
+    return true;
   }
 
   /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,

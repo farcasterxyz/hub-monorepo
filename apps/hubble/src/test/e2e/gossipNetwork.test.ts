@@ -118,7 +118,7 @@ describe("gossip network tests", () => {
             numReactionAddMessages++;
           } else {
             castAddMessage = msg.message;
-            numCastAddMessages += 1;
+            numCastAddMessages++;
           }
         }
         // Cast add message must always be present, but it's ok for the reaction add message to be missing sometimes
@@ -126,7 +126,7 @@ describe("gossip network tests", () => {
       });
 
       expect(numCastAddMessages).toBe(NUM_NODES - 1);
-      // Reaction messages are not forwarded to all nodes because they are considered in valid. They stop after the first node.
+      // Reaction messages are not forwarded to all nodes because they are considered invalid. They stop after the first node.
       // This is a test that asyncValidation is working as expected.
       expect(numReactionAddMessages).toBe(1);
 

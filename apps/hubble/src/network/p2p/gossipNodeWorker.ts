@@ -9,6 +9,7 @@ import {
   LibP2PNodeMethodGenericMessage,
   LibP2PNodeMethodReturnType,
   NodeOptions,
+  GOSSIP_SEEN_TTL,
 } from "./gossipNode.js";
 import {
   ContactInfoContent,
@@ -32,6 +33,7 @@ import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign, msgIdFnStrictSign } from 
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
+import { statsd } from "../../utils/statsd.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 
@@ -114,7 +116,7 @@ export class LibP2PNode {
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
       canRelayMessage: true,
-      seenTTL: 1000 * 60 * 5, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
+      seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
     });
 
@@ -390,6 +392,10 @@ export class LibP2PNode {
   }
 
   async reportValid(messageId: string, propagationSource: PeerId, isValid: boolean) {
+    isValid
+      ? statsd().increment("gossip.async_validation.accept")
+      : statsd().increment("gossip.async_validation.reject");
+
     this.gossip?.reportMessageValidationResult(
       messageId,
       propagationSource,
