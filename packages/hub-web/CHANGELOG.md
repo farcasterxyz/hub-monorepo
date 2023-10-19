@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.6.10
+
+### Patch Changes
+
+- 153da45a: Remove PubSub PeerDiscovery in favor of ContactInfo based PeerDiscovery
+- Updated dependencies [153da45a]
+  - @farcaster/core@0.12.15
+
 ## 0.6.9
 
 ### Patch Changes

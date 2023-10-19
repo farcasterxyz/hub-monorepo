@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.12.15
+
+### Patch Changes
+
+- 153da45a: Remove PubSub PeerDiscovery in favor of ContactInfo based PeerDiscovery
+
 ## 0.12.14
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.6.5
+
+### Patch Changes
+
+- 153da45a: Remove PubSub PeerDiscovery in favor of ContactInfo based PeerDiscovery
+- ec2711df: fix: Lower seenTTL to 5 mins to reduce memory consumption
+- 6d54786e: fix: Prevent hub startup if protocol version is expired
+- 2abaa115: add memory stats
+- Updated dependencies [153da45a]
+  - @farcaster/hub-nodejs@0.10.15
+
 ## 1.6.4
 
 ### Patch Changes
