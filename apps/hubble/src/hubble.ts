@@ -45,7 +45,7 @@ import {
   p2pMultiAddrStr,
 } from "./utils/p2p.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
-import { ensureAboveMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
+import { ensureAboveMinFarcasterVersion, getMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
 import { ValidateOrRevokeMessagesJobScheduler } from "./storage/jobs/validateOrRevokeMessagesJob.js";
 import { GossipContactInfoJobScheduler } from "./storage/jobs/gossipContactInfoJob.js";
@@ -335,6 +335,10 @@ export class Hub implements HubInterface {
     } else {
       log.warn("No FName Registry URL provided, unable to sync fname events");
       throw new HubError("bad_request.invalid_param", "Invalid fname server url");
+    }
+
+    if (getMinFarcasterVersion().isErr()) {
+      throw new HubError("unavailable", `Farcaster version ${FARCASTER_VERSION} expired, please upgrade hub`);
     }
 
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
