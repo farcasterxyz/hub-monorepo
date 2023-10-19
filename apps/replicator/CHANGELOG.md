@@ -1,5 +1,11 @@
 # @farcaster/replicator
 
+## 0.2.4
+
+### Patch Changes
+
+- 24357fd5: Increment minimum hub-nodejs version
+
 ## 0.2.3
 
 ### Patch Changes
