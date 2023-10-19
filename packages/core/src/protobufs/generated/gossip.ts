@@ -47,6 +47,7 @@ export interface ContactInfoContent {
   hubVersion: string;
   network: FarcasterNetwork;
   appVersion: string;
+  timestamp: number;
 }
 
 export interface PingMessageBody {
@@ -187,6 +188,7 @@ function createBaseContactInfoContent(): ContactInfoContent {
     hubVersion: "",
     network: 0,
     appVersion: "",
+    timestamp: 0,
   };
 }
 
@@ -212,6 +214,9 @@ export const ContactInfoContent = {
     }
     if (message.appVersion !== "") {
       writer.uint32(58).string(message.appVersion);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(64).uint64(message.timestamp);
     }
     return writer;
   },
@@ -272,6 +277,13 @@ export const ContactInfoContent = {
 
           message.appVersion = reader.string();
           continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -290,6 +302,7 @@ export const ContactInfoContent = {
       hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : "",
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
     };
   },
 
@@ -308,6 +321,7 @@ export const ContactInfoContent = {
     message.hubVersion !== undefined && (obj.hubVersion = message.hubVersion);
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.appVersion !== undefined && (obj.appVersion = message.appVersion);
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
     return obj;
   },
 
@@ -328,6 +342,7 @@ export const ContactInfoContent = {
     message.hubVersion = object.hubVersion ?? "";
     message.network = object.network ?? 0;
     message.appVersion = object.appVersion ?? "";
+    message.timestamp = object.timestamp ?? 0;
     return message;
   },
 };

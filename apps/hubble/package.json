@@ -77,7 +77,6 @@
     "@libp2p/interface-peer-id": "^2.0.1",
     "@libp2p/mplex": "^7.0.0",
     "@libp2p/peer-id-factory": "^2.0.0",
-    "@libp2p/pubsub-peer-discovery": "^8.0.0",
     "@libp2p/tcp": "^6.0.0",
     "@libp2p/utils": "^3.0.2",
     "@multiformats/multiaddr": "^11.0.0",

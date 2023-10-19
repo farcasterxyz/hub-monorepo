@@ -205,16 +205,16 @@ describe("GossipNode", () => {
       expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
     });
 
-    test("Gossip Ids do not match for gossip internal messages", async () => {
+    test("Gossip Ids do match for gossip internal messages", async () => {
       await node.start([]);
 
       const contactInfo = ContactInfoContent.create();
       await node.gossipContactInfo(contactInfo);
       const res2 = await node.gossipContactInfo(contactInfo);
-      expect(res2.isOk()).toBeTruthy();
+      expect(res2.isErr()).toBeTruthy();
     });
 
-    test("Gossip Ids do not match for gossip V1 messages", async () => {
+    test("Gossip Ids do match for gossip V1 messages", async () => {
       const node = new LibP2PNode(FarcasterNetwork.DEVNET);
       await node.makeNode({});
 
@@ -226,10 +226,10 @@ describe("GossipNode", () => {
       });
 
       await node.publish(v1Message);
-      // won't be detected as a duplicate
+      // should be detected as a duplicate
       const result = await node.publish(v1Message);
       result.forEach((res) => {
-        expect(res.isOk()).toBeTruthy();
+        expect(res.isErr()).toBeTruthy();
       });
     });
 
