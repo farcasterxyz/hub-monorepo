@@ -14,7 +14,7 @@ import {
   OnChainEvent,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
-import { ok } from "neverthrow";
+import { Err, Ok, ok } from "neverthrow";
 import { anything, instance, mock, when } from "ts-mockito";
 import SyncEngine from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
@@ -27,6 +27,7 @@ import { MockHub } from "../../test/mocks.js";
 import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
+import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 
 const TEST_TIMEOUT_SHORT = 60 * 1000;
 const SLEEPWHILE_TIMEOUT = 10 * 1000;
@@ -645,6 +646,37 @@ describe("SyncEngine", () => {
       expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
       expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
       expect(await syncEngine.trie.exists(SyncId.fromFName(fnameProof))).toBeTruthy();
+    });
+  });
+
+  describe("addContactInfoForPeerId", () => {
+    test("adds contact info for peer id", async () => {
+      const contactInfo = await NetworkFactories.GossipContactInfoContent.build();
+      const peerId = await createEd25519PeerId();
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())).toBeUndefined();
+
+      expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo)).toBeInstanceOf(Ok);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.peerId).toEqual(peerId);
+    });
+
+    test("replaces contact info if newer", async () => {
+      const now = Date.now();
+      const contactInfo = await NetworkFactories.GossipContactInfoContent.build({ timestamp: now });
+      const olderContactInfo = await NetworkFactories.GossipContactInfoContent.build({ timestamp: now - 10 });
+      const newerContactInfo = await NetworkFactories.GossipContactInfoContent.build({ timestamp: now + 10 });
+      const peerId = await createEd25519PeerId();
+
+      expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo)).toBeInstanceOf(Ok);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
+
+      // Adding an older contact info should not replace the existing one
+      expect(syncEngine.addContactInfoForPeerId(peerId, olderContactInfo)).toBeInstanceOf(Err);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
+
+      // Adding a newer contact info should replace the existing one
+      expect(syncEngine.addContactInfoForPeerId(peerId, newerContactInfo)).toBeInstanceOf(Err);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(newerContactInfo);
     });
   });
 });

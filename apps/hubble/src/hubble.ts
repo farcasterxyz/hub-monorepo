@@ -818,7 +818,7 @@ export class Hub implements HubInterface {
       return ContactInfoContent.create({
         gossipAddress: gossipAddressContactInfo,
         rpcAddress: rpcAddressContactInfo,
-        excludedHashes: snapshot.excludedHashes,
+        excludedHashes: [], // Hubs don't rely on this anymore,
         count: snapshot.numMessages,
         hubVersion: FARCASTER_VERSION,
         network: this.options.network,
@@ -1027,14 +1027,8 @@ export class Hub implements HubInterface {
     log.debug({ identity: this.identity, peer: peerId, message }, "received peer ContactInfo");
 
     // Check if we already have this client
-    const peerInfo = this.syncEngine.getContactInfoForPeerId(peerId.toString());
-    if (peerInfo) {
-      log.debug({ peerInfo }, "Already have this peer, skipping sync");
-      return true;
-    } else {
-      // If it is a new client, we do a sync against it
-      log.info({ peerInfo, connectedPeers: this.syncEngine.getPeerCount() }, "New Peer ContactInfo");
-      this.syncEngine.addContactInfoForPeerId(peerId, message);
+    const result = this.syncEngine.addContactInfoForPeerId(peerId, message);
+    if (result.isOk()) {
       const syncResult = await ResultAsync.fromPromise(
         this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
         (e) => e,
@@ -1042,6 +1036,8 @@ export class Hub implements HubInterface {
       if (syncResult.isErr()) {
         log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
       }
+    } else {
+      log.debug({ peerInfo: message }, "Already have this peer, skipping sync");
     }
 
     // if the contact info doesn't include a timestamp, consider it invalid but allow the peer to stay in the address book
