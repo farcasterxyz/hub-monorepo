@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.11.0
+
+### Minor Changes
+
+- 153da45a: Remove PubSub PeerDiscovery in favor of ContactInfo based PeerDiscovery
+
+### Patch Changes
+
+- Updated dependencies [153da45a]
+  - @farcaster/core@0.13.0
+
 ## 0.10.14
 
 ### Patch Changes

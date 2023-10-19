@@ -1,5 +1,12 @@
 # @farcaster/replicator
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [153da45a]
+  - @farcaster/hub-nodejs@0.11.0
+
 ## 0.2.3
 
 ### Patch Changes
