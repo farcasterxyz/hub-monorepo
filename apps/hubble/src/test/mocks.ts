@@ -72,4 +72,8 @@ export class MockHub implements HubInterface {
   async getRPCClientForPeer(_peerId: PeerId, _peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
     return undefined;
   }
+
+  async updateApplicationPeerScore(_peerId: String, _score: number) {
+    return ok(undefined);
+  }
 }

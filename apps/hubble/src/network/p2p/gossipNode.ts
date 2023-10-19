@@ -25,6 +25,7 @@ import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
+import { PeerScore } from "network/sync/peerScore.js";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
@@ -62,6 +63,10 @@ export interface NodeOptions {
   directPeers?: AddrInfo[] | undefined;
   /** Override peer scoring. Useful for tests */
   scoreThresholds?: Partial<PeerScoreThresholds>;
+  /** A list of PeerIds that will bypass application-specific peer scoring and return the cap. */
+  allowlistedImmunePeers?: string[] | undefined;
+  /** Override application score cap. */
+  applicationScoreCap?: number | undefined;
 }
 
 // A common return type for several methods on the libp2p node.
@@ -92,6 +97,7 @@ export interface LibP2PNodeInterface {
   gossipMessage: (message: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   reportValid: (messageId: string, propagationSource: Uint8Array, isValid: boolean) => Promise<void>;
+  updateApplicationPeerScore: (peerId: string, score: number) => Promise<void>;
 }
 
 // Extract the method names (as strings) from the LibP2PNodeInterface
@@ -497,6 +503,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   updateDeniedPeerIds(peerIds: string[]) {
     statsd().gauge("gossip.denied_peers", peerIds.length);
     this.callMethod("updateDeniedPeerIds", peerIds);
+  }
+
+  updateApplicationPeerScore(peerId: string, score: number) {
+    this.callMethod("updateApplicationPeerScore", peerId, score);
   }
 
   reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean) {

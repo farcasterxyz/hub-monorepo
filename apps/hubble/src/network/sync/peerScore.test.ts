@@ -3,9 +3,16 @@ import { MergeResult } from "./syncEngine.js";
 
 describe("peerScore", () => {
   let peerScorer: PeerScorer;
+  let scoreChanged: Map<string, number>;
 
   beforeEach(() => {
-    peerScorer = new PeerScorer();
+    scoreChanged = new Map<string, number>();
+    peerScorer = new PeerScorer({
+      onPeerScoreChanged(peerId, score) {
+        scoreChanged.set(peerId, score);
+      },
+      overrideBadSyncWindowThreshold: 0,
+    });
   });
 
   test("not blocked by default", () => {
@@ -40,5 +47,12 @@ describe("peerScore", () => {
     expect(peerScorer.getScore("peerId")?.score).toBe(1);
     expect(peerScorer.getBadPeerIds()).toEqual([]);
     expect(peerScorer.getScore("peerId")?.blocked).toBe(false);
+  });
+
+  test("changing score reports back to optional callback", () => {
+    peerScorer.incrementScore("peerId", 2);
+    expect(scoreChanged.get("peerId")).toBe(2);
+    peerScorer.decrementScore("peerId", 3);
+    expect(scoreChanged.get("peerId")).toBe(-1);
   });
 });

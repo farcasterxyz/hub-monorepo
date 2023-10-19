@@ -93,6 +93,28 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
 
 const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
 
+// Used temporarily while peer scoring is being vetted in the wild. Will be set to [].
+const PEER_SCORE_IMMUNE_PEERS = [
+  // hoyt.farcaster.xyz
+  "12D3KooWRnSZUxjVJjbSHhVKpXtvibMarSfLSKDBeMpfVaNm1Joo",
+  // lamia.farcaster.xyz
+  "12D3KooWJECuSHn5edaorpufE9ceAoqR5zcAuD4ThoyDzVaz77GV",
+  // nemes.farcaster.xyz
+  "12D3KooWMQrf6unpGJfLBmTGy3eKTo4cGcXktWRbgMnfbZLXqBbn",
+  // keats.farcaster.xyz
+  "12D3KooWBPXFPS656B76tCmbbX6PB4vunmQcd8F38MZjkR88ofBx",
+  // @v
+  "12D3KooWFbnaXtbD5fwbMGq2JRjPaj7C6EpZRgaxC8jdtcX7FJbZ",
+  // @sanjay
+  "12D3KooWPNDmUeNiGdCdoHp8iAf8Uay3c2C9n5QVygd3J1hfv65w",
+  // @deodad
+  "12D3KooWNMAd358HmUe7HgkLYasGmZDfLM9iEEthE4VhqBFEr8dv",
+  // @neynar
+  "12D3KooWNsC2vzuHdKDfSM6xnMZwMjWK8zZCYHyLXuhRMeVRebGK",
+  // @neynar
+  "12D3KooWH9ojvuodLfc6bVyWArFaVAPgaKFiLFqH4Em48KQpSfwL",
+];
+
 export interface HubInterface {
   engine: Engine;
   identity: string;
@@ -108,6 +130,7 @@ export interface HubInterface {
     peer: ContactInfoContent,
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined>;
+  updateApplicationPeerScore(peerId: String, score: number): HubAsyncResult<void>;
 }
 
 export interface HubOptions {
@@ -257,6 +280,12 @@ export interface HubOptions {
 
   /** Hub Operator's FID */
   hubOperatorFid?: number;
+
+  /** If set, defines a list of PeerIds who will have a constantly high internal peer score. */
+  allowlistedImmunePeers?: string[];
+
+  /** If set, overrides the default application-specific score cap */
+  applicationScoreCap?: number;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -650,6 +679,8 @@ export class Hub implements HubInterface {
       allowedPeerIdStrs: this.allowedPeerIds,
       deniedPeerIdStrs: this.deniedPeerIds,
       directPeers: this.options.directPeers,
+      allowlistedImmunePeers: this.options.allowlistedImmunePeers ?? PEER_SCORE_IMMUNE_PEERS,
+      applicationScoreCap: this.options.applicationScoreCap,
     });
 
     await this.registerEventHandlers();
@@ -1382,6 +1413,10 @@ export class Hub implements HubInterface {
     }
 
     return true;
+  }
+
+  async updateApplicationPeerScore(peerId: string, score: number): HubAsyncResult<void> {
+    return ok(this.gossipNode?.updateApplicationPeerScore(peerId, score));
   }
 
   private getSnapshotFolder(): string {
