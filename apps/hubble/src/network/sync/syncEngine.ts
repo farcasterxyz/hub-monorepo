@@ -168,7 +168,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _peerSyncSnapshot = new Map<string, TrieSnapshot>();
 
   // Peer Scoring
-  private _peerScorer = new PeerScorer();
+  private _peerScorer: PeerScorer;
 
   // Has the syncengine started yet?
   private _started = false;
@@ -185,6 +185,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     l2EventsProvider?: L2EventsProvider,
     fnameEventsProvider?: FNameRegistryEventsProvider,
     profileSync = false,
+    minSyncWindow?: number,
   ) {
     super();
 
@@ -200,6 +201,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     this._hub = hub;
+    this._peerScorer = new PeerScorer({
+      onPeerScoreChanged: this._hub.updateApplicationPeerScore,
+      overrideBadSyncWindowThreshold: minSyncWindow,
+    });
 
     this._hub.engine.eventHandler.on("mergeMessage", async (event: MergeMessageHubEvent) => {
       const { message, deletedMessages } = event.mergeMessageBody;

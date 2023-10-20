@@ -108,6 +108,7 @@ export interface HubInterface {
     peer: ContactInfoContent,
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined>;
+  updateApplicationPeerScore(peerId: String, score: number): HubAsyncResult<void>;
 }
 
 export interface HubOptions {
@@ -257,6 +258,12 @@ export interface HubOptions {
 
   /** Hub Operator's FID */
   hubOperatorFid?: number;
+
+  /** If set, defines a list of PeerIds who will have a constantly high internal peer score. */
+  allowlistedImmunePeers?: string[];
+
+  /** If set, overrides the default application-specific score cap */
+  applicationScoreCap?: number;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -280,6 +287,7 @@ export class Hub implements HubInterface {
   private syncEngine: SyncEngine;
   private allowedPeerIds: string[] | undefined;
   private deniedPeerIds: string[];
+  private allowlistedImmunePeers: string[] | undefined;
 
   private s3_snapshot_bucket: string;
 
@@ -650,6 +658,8 @@ export class Hub implements HubInterface {
       allowedPeerIdStrs: this.allowedPeerIds,
       deniedPeerIdStrs: this.deniedPeerIds,
       directPeers: this.options.directPeers,
+      allowlistedImmunePeers: this.options.allowlistedImmunePeers,
+      applicationScoreCap: this.options.applicationScoreCap,
     });
 
     await this.registerEventHandlers();
@@ -682,11 +692,12 @@ export class Hub implements HubInterface {
 
   /** Apply the new the network config. Will return true if the Hub should exit */
   public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
-    const { allowedPeerIds, deniedPeerIds, shouldExit } = applyNetworkConfig(
+    const { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit } = applyNetworkConfig(
       networkConfig,
       this.allowedPeerIds,
       this.deniedPeerIds,
       this.options.network,
+      this.options.allowlistedImmunePeers,
     );
 
     if (shouldExit) {
@@ -698,7 +709,9 @@ export class Hub implements HubInterface {
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
 
-      log.info({ allowedPeerIds, deniedPeerIds }, "Network config applied");
+      this.allowlistedImmunePeers = allowlistedImmunePeers;
+
+      log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 
       return false;
     }
@@ -1378,6 +1391,10 @@ export class Hub implements HubInterface {
     }
 
     return true;
+  }
+
+  async updateApplicationPeerScore(peerId: string, score: number): HubAsyncResult<void> {
+    return ok(this.gossipNode?.updateApplicationPeerScore(peerId, score));
   }
 
   private getSnapshotFolder(): string {

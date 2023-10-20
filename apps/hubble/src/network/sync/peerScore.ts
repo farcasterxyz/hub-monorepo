@@ -4,6 +4,7 @@ import { MergeResult } from "./syncEngine.js";
 
 const BAD_PEER_MESSAGE_THRESHOLD = 1000; // Number of messages we can't merge before we consider a peer "bad"
 const BLOCKED_PEER_SCORE_THRESHOLD = -100; // A score below this threshold means a peer is blocked
+const BAD_SYNC_WINDOW_THRESHOLD = 120000; // Number of milliseconds between expected sync intervals in the minimum case
 
 const log = logger.child({
   component: "PeerScorer",
@@ -34,12 +35,27 @@ export class PeerScore {
   }
 }
 
+export type PeerScorerOptions = {
+  onPeerScoreChanged?: (peerId: string, score: number) => void;
+  overrideBadSyncWindowThreshold?: number | undefined;
+};
+
 /**
  * Keeps track of the score of each peer.
  */
 export class PeerScorer {
   // PeerID (string) -> Score
   private scores: Map<string, PeerScore> = new Map();
+  private onPeerScoreChanged?: ((peerId: string, score: number) => void) | undefined;
+  private badSyncWindowThreshold: number;
+
+  constructor(peerScorerOptions: PeerScorerOptions) {
+    this.onPeerScoreChanged = peerScorerOptions.onPeerScoreChanged;
+    this.badSyncWindowThreshold =
+      peerScorerOptions.overrideBadSyncWindowThreshold === undefined
+        ? BAD_SYNC_WINDOW_THRESHOLD
+        : peerScorerOptions.overrideBadSyncWindowThreshold;
+  }
 
   incrementScore(peerID?: string, by = 1) {
     if (!peerID) {
@@ -53,6 +69,10 @@ export class PeerScorer {
     const score = this.scores.get(peerID) as PeerScore;
     score.score += by;
 
+    if (this.onPeerScoreChanged) {
+      this.onPeerScoreChanged(peerID, score.score);
+    }
+
     statsd().gauge(`peer.${peerID}.score`, score.score);
   }
 
@@ -65,6 +85,12 @@ export class PeerScorer {
       this.scores.set(peerId, new PeerScore());
     }
     const score = this.scores.get(peerId) as PeerScore;
+
+    // If the peer is somehow inducing synchronization more frequently than the minimum possible timeframe, penalize.
+    if (Date.now() - (score.lastSyncTime ?? 0) < this.badSyncWindowThreshold) {
+      log.warn({ peerId }, "Perform sync: Peer is syncing too often.");
+      this.decrementScore(peerId, 2);
+    }
 
     // If we did not merge any messages and didn't defer any. Then this peer only had old messages.
     if (result.total >= BAD_PEER_MESSAGE_THRESHOLD && result.successCount === 0 && result.deferredCount === 0) {
@@ -94,7 +120,7 @@ export class PeerScorer {
   }
 
   /**
-   * A PeerID with a score < 100 is considered a bad peer.
+   * A PeerID with a score <= -100 is considered a bad peer.
    */
   getBadPeerIds(): string[] {
     const blocked = [];

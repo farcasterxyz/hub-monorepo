@@ -132,7 +132,7 @@ describe("Multi peer sync engine", () => {
     // Engine 1 is where we add events, and see if engine 2 will sync them
     engine1 = new Engine(testDb1, network);
     hub1 = new MockHub(testDb1, engine1);
-    syncEngine1 = new SyncEngine(hub1, testDb1);
+    syncEngine1 = new SyncEngine(hub1, testDb1, undefined, undefined, undefined, 0);
     await syncEngine1.start();
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
@@ -152,7 +152,7 @@ describe("Multi peer sync engine", () => {
     });
     engine2 = new Engine(testDb2, network);
     hub2 = new MockHub(testDb2, engine2);
-    syncEngine2 = new SyncEngine(hub2, testDb2, l2EventsProvider, fnameEventsProvider);
+    syncEngine2 = new SyncEngine(hub2, testDb2, l2EventsProvider, fnameEventsProvider, undefined, 0);
   }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {

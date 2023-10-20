@@ -34,8 +34,10 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
 import { statsd } from "../../utils/statsd.js";
+import { PeerScore } from "network/sync/peerScore.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
+const APPLICATION_SCORE_CAP_DEFAULT = 10;
 
 // We use a proxy to log messages to the main thread
 const log = new Proxy<Logger>({} as Logger, {
@@ -56,9 +58,11 @@ export class LibP2PNode {
   _node?: Libp2p;
   private _connectionGater?: ConnectionFilter;
   private _network: FarcasterNetwork;
+  private _peerScores: Map<string, number>;
 
   constructor(network: FarcasterNetwork) {
     this._network = network;
+    this._peerScores = new Map<string, number>();
   }
 
   get identity() {
@@ -118,6 +122,20 @@ export class LibP2PNode {
       canRelayMessage: true,
       seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
+      scoreParams: {
+        appSpecificScore: (peerId) => {
+          const score = this._peerScores?.get(peerId) ?? 0;
+          if (options.allowlistedImmunePeers?.includes(peerId)) {
+            if (score < -100) {
+              log.warn({ peerId, score }, "GossipSub: Allowlisted peer would have been kicked out.");
+            }
+
+            return options.applicationScoreCap ?? APPLICATION_SCORE_CAP_DEFAULT;
+          }
+
+          return Math.min(score, options.applicationScoreCap ?? APPLICATION_SCORE_CAP_DEFAULT);
+        },
+      },
     });
 
     if (options.allowedPeerIdStrs) {
@@ -403,6 +421,10 @@ export class LibP2PNode {
     );
   }
 
+  updateApplicationPeerScore(peerId: string, score: number) {
+    this._peerScores.set(peerId, score);
+  }
+
   registerEventListeners() {
     // When serializing data, we need to handle some data types specially.
     // 1, BigInts are not supported by JSON.stringify, so we convert them to strings
@@ -652,6 +674,16 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"reportValid">(undefined),
+      });
+      break;
+    }
+    case "updateApplicationPeerScore": {
+      const specificMsg = msg as LibP2PNodeMessage<"updateApplicationPeerScore">;
+      const [peerId, score] = specificMsg.args;
+      await libp2pNode.updateApplicationPeerScore(peerId, score);
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"updateApplicationPeerScore">(undefined),
       });
       break;
     }
