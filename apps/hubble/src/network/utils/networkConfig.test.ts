@@ -16,9 +16,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -32,9 +33,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network);
+    const result = applyNetworkConfig(networkConfig, undefined, [], network, []);
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
@@ -51,9 +53,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
@@ -70,9 +73,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4", "5"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -88,9 +92,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual(["4", "5"]);
     expect(result.shouldExit).toEqual(false);
@@ -107,9 +112,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -123,9 +129,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network);
+    const result = applyNetworkConfig(networkConfig, undefined, [], network, []);
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
@@ -142,9 +149,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -158,9 +166,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, [], [], network);
+    const result = applyNetworkConfig(networkConfig, [], [], network, []);
     expect(result.shouldExit).toEqual(true);
 
     const prevVer = `${semver.major(APP_VERSION)}.${semver.minor(APP_VERSION)}.${semver.patch(APP_VERSION) - 1}`;
@@ -172,9 +181,10 @@ describe("networkConfig", () => {
       storageRegistryAddress: undefined,
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
     };
 
-    const result2 = applyNetworkConfig(networkConfig2, [], [], network);
+    const result2 = applyNetworkConfig(networkConfig2, [], [], network, []);
     expect(result2.shouldExit).toEqual(false);
   });
 });
