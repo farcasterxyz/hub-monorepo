@@ -395,7 +395,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContent) {
-    this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
+    const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
+    if (existingPeerInfo) {
+      if (contactInfo.timestamp > existingPeerInfo.contactInfo.timestamp) {
+        log.info({ peerInfo: existingPeerInfo }, "Updating peer with latest contactInfo");
+        this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
+      }
+      return err(new HubError("bad_request.duplicate", "peer already exists"));
+    } else {
+      log.info({ peerInfo: contactInfo, connectedPeers: this.getPeerCount() }, "New Peer ContactInfo");
+      this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
+      return ok(undefined);
+    }
   }
 
   public removeContactInfoForPeerId(peerId: string) {
