@@ -9,7 +9,7 @@ services:
   hubble:
     image: farcasterxyz/hubble:latest
     pull_policy: always
-    restart: unless-stopped
+    restart: on-failure:5
     command: [
       "node", "--no-warnings",  "build/cli.js", "start",
       "--ip", "0.0.0.0",

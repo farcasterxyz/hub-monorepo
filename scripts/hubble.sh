@@ -77,7 +77,13 @@ fetch_file_from_repo() {
 }
 
 # Upgrade the script
-self_upgrade() {    
+self_upgrade() {
+    # To allow easier testing
+    if key_exists "SKIP_SELF_UPGRADE"; then
+      echo "Skipping self upgrade"
+      return 1
+    fi
+
     local tmp_file
     tmp_file=$(mktemp)
     fetch_file_from_repo "$SCRIPT_FILE_PATH" "$tmp_file"
@@ -420,6 +426,12 @@ start_hubble() {
     $COMPOSE_CMD up -d hubble
 }
 
+cleanup() {
+  # Prune unused docker cruft. Make sure to call this only when hub is already running
+  echo "Pruning unused docker images and volumes"
+  docker system prune --volumes -f
+}
+
 set_compose_command() {
     # Detect whether "docker-compose" or "docker compose" is available
     if command -v docker-compose &> /dev/null; then
@@ -568,6 +580,10 @@ if [ "$1" == "autoupgrade" ]; then
 
     echo "$(date) Attempting hubble autoupgrade..."
 
+    # Since cronjob is running under root, make sure the dependencies are installed
+    install_jq
+    install_docker "$@"
+
     set_platform_commands
     set_compose_command
 
@@ -576,6 +592,9 @@ if [ "$1" == "autoupgrade" ]; then
     fetch_latest_docker_compose_and_dashboard
     ensure_grafana
     start_hubble
+    sleep 5
+    cleanup
+
     echo "$(date) Completed hubble autoupgrade"
 
     exit 0
