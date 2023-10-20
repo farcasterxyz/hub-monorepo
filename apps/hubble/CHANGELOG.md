@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.6.6
+
+### Patch Changes
+
+- b47c65bb: Adds application-specific peer scoring to peer scoring for gossipsub with early immune list
+- 559afd0e: fix: hubble autoupgrade should ensure dependencies and clean unused docker data
+- 173c9d61: fix: Fix stale contactInfo caches on SyncEngine
+
 ## 1.6.5
 
 ### Patch Changes
