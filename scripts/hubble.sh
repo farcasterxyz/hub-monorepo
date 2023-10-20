@@ -77,7 +77,13 @@ fetch_file_from_repo() {
 }
 
 # Upgrade the script
-self_upgrade() {    
+self_upgrade() {
+    # To allow easier testing
+    if key_exists "SKIP_SELF_UPGRADE"; then
+      echo "Skipping self upgrade"
+      return 1
+    fi
+
     local tmp_file
     tmp_file=$(mktemp)
     fetch_file_from_repo "$SCRIPT_FILE_PATH" "$tmp_file"
