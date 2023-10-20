@@ -21,11 +21,13 @@ export type NetworkConfig = {
   storageRegistryAddress: `0x${string}` | undefined;
   keyRegistryAddress: `0x${string}` | undefined;
   idRegistryAddress: `0x${string}` | undefined;
+  allowlistedImmunePeers: string[] | undefined;
 };
 
 export type NetworkConfigResult = {
   allowedPeerIds: string[] | undefined;
   deniedPeerIds: string[];
+  allowlistedImmunePeers: string[] | undefined;
   shouldExit: boolean;
 };
 
@@ -81,10 +83,11 @@ export function applyNetworkConfig(
   allowedPeerIds: string[] | undefined,
   deniedPeerIds: string[],
   currentNetwork: number,
+  allowlistedImmunePeers: string[] | undefined,
 ): NetworkConfigResult {
   if (networkConfig.network !== currentNetwork) {
     log.error({ networkConfig, network: currentNetwork }, "network config mismatch");
-    return { allowedPeerIds, deniedPeerIds, shouldExit: false };
+    return { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit: false };
   }
 
   // Refuse to start if we are below the minAppVersion
@@ -94,7 +97,7 @@ export function applyNetworkConfig(
     if (semver.lt(APP_VERSION, minAppVersion)) {
       const errMsg = "Hubble version is too old too start. Please update your node.";
       log.fatal({ minAppVersion, ourVersion: APP_VERSION }, errMsg);
-      return { allowedPeerIds, deniedPeerIds, shouldExit: true };
+      return { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit: true };
     }
   } else {
     log.error({ networkConfig }, "invalid minAppVersion");
@@ -118,5 +121,17 @@ export function applyNetworkConfig(
     log.info({ networkConfig }, "network config does not contain 'deniedPeers'");
   }
 
-  return { allowedPeerIds: newPeerIdList, deniedPeerIds: newDeniedPeerIdList, shouldExit: false };
+  let newAllowlistedImmunePeers: string[] = [];
+  if (networkConfig.allowlistedImmunePeers) {
+    newAllowlistedImmunePeers = [
+      ...new Set([...(allowlistedImmunePeers ?? []), ...networkConfig.allowlistedImmunePeers]),
+    ];
+  }
+
+  return {
+    allowedPeerIds: newPeerIdList,
+    deniedPeerIds: newDeniedPeerIdList,
+    allowlistedImmunePeers: newAllowlistedImmunePeers,
+    shouldExit: false,
+  };
 }

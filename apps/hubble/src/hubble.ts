@@ -93,28 +93,6 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
 
 const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
 
-// Used temporarily while peer scoring is being vetted in the wild. Will be set to [].
-const PEER_SCORE_IMMUNE_PEERS = [
-  // hoyt.farcaster.xyz
-  "12D3KooWRnSZUxjVJjbSHhVKpXtvibMarSfLSKDBeMpfVaNm1Joo",
-  // lamia.farcaster.xyz
-  "12D3KooWJECuSHn5edaorpufE9ceAoqR5zcAuD4ThoyDzVaz77GV",
-  // nemes.farcaster.xyz
-  "12D3KooWMQrf6unpGJfLBmTGy3eKTo4cGcXktWRbgMnfbZLXqBbn",
-  // keats.farcaster.xyz
-  "12D3KooWBPXFPS656B76tCmbbX6PB4vunmQcd8F38MZjkR88ofBx",
-  // @v
-  "12D3KooWFbnaXtbD5fwbMGq2JRjPaj7C6EpZRgaxC8jdtcX7FJbZ",
-  // @sanjay
-  "12D3KooWPNDmUeNiGdCdoHp8iAf8Uay3c2C9n5QVygd3J1hfv65w",
-  // @deodad
-  "12D3KooWNMAd358HmUe7HgkLYasGmZDfLM9iEEthE4VhqBFEr8dv",
-  // @neynar
-  "12D3KooWNsC2vzuHdKDfSM6xnMZwMjWK8zZCYHyLXuhRMeVRebGK",
-  // @neynar
-  "12D3KooWH9ojvuodLfc6bVyWArFaVAPgaKFiLFqH4Em48KQpSfwL",
-];
-
 export interface HubInterface {
   engine: Engine;
   identity: string;
@@ -309,6 +287,7 @@ export class Hub implements HubInterface {
   private syncEngine: SyncEngine;
   private allowedPeerIds: string[] | undefined;
   private deniedPeerIds: string[];
+  private allowlistedImmunePeers: string[] | undefined;
 
   private s3_snapshot_bucket: string;
 
@@ -679,7 +658,7 @@ export class Hub implements HubInterface {
       allowedPeerIdStrs: this.allowedPeerIds,
       deniedPeerIdStrs: this.deniedPeerIds,
       directPeers: this.options.directPeers,
-      allowlistedImmunePeers: this.options.allowlistedImmunePeers ?? PEER_SCORE_IMMUNE_PEERS,
+      allowlistedImmunePeers: this.options.allowlistedImmunePeers,
       applicationScoreCap: this.options.applicationScoreCap,
     });
 
@@ -713,11 +692,12 @@ export class Hub implements HubInterface {
 
   /** Apply the new the network config. Will return true if the Hub should exit */
   public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
-    const { allowedPeerIds, deniedPeerIds, shouldExit } = applyNetworkConfig(
+    const { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit } = applyNetworkConfig(
       networkConfig,
       this.allowedPeerIds,
       this.deniedPeerIds,
       this.options.network,
+      this.options.allowlistedImmunePeers,
     );
 
     if (shouldExit) {
@@ -729,7 +709,9 @@ export class Hub implements HubInterface {
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
       this.deniedPeerIds = deniedPeerIds;
 
-      log.info({ allowedPeerIds, deniedPeerIds }, "Network config applied");
+      this.allowlistedImmunePeers = allowlistedImmunePeers;
+
+      log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 
       return false;
     }

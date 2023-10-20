@@ -124,18 +124,16 @@ export class LibP2PNode {
       scoreThresholds: { ...options.scoreThresholds },
       scoreParams: {
         appSpecificScore: (peerId) => {
+          const score = this._peerScores?.get(peerId) ?? 0;
           if (options.allowlistedImmunePeers?.includes(peerId)) {
-            if ((this._peerScores?.get(peerId) ?? 0) < -100) {
-              log.warn({ peerId }, "GossipSub: Allowlisted peer would have been kicked out.");
+            if (score < -100) {
+              log.warn({ peerId, score }, "GossipSub: Allowlisted peer would have been kicked out.");
             }
 
             return options.applicationScoreCap ?? APPLICATION_SCORE_CAP_DEFAULT;
           }
 
-          return Math.min(
-            this._peerScores?.get(peerId) ?? 0,
-            options.applicationScoreCap ?? APPLICATION_SCORE_CAP_DEFAULT,
-          );
+          return Math.min(score, options.applicationScoreCap ?? APPLICATION_SCORE_CAP_DEFAULT);
         },
       },
     });
