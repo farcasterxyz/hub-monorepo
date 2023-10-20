@@ -429,7 +429,7 @@ start_hubble() {
 cleanup() {
   # Prune unused docker cruft. Make sure to call this only when hub is already running
   echo "Pruning unused docker images and volumes"
-  $COMPOSE_CMD system prune --volumes -f
+  docker system prune --volumes -f
 }
 
 set_compose_command() {
@@ -592,10 +592,10 @@ if [ "$1" == "autoupgrade" ]; then
     fetch_latest_docker_compose_and_dashboard
     ensure_grafana
     start_hubble
-    echo "$(date) Completed hubble autoupgrade"
-
     sleep 5
     cleanup
+
+    echo "$(date) Completed hubble autoupgrade"
 
     exit 0
 fi
