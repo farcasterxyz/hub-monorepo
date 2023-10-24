@@ -22,7 +22,7 @@ import {
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
-import { unmarshalPrivateKey } from "@libp2p/crypto/keys";
+import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
@@ -268,6 +268,12 @@ export interface HubOptions {
 
   /** If set, overrides the default application-specific score cap */
   applicationScoreCap?: number;
+
+  /** If set, requires contact info messages to be signed */
+  strictContactInfoValidation?: boolean;
+
+  /** If set, requires gossip messages to utilize StrictNoSign */
+  strictNoSign?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -292,6 +298,8 @@ export class Hub implements HubInterface {
   private allowedPeerIds: string[] | undefined;
   private deniedPeerIds: string[];
   private allowlistedImmunePeers: string[] | undefined;
+  private strictContactInfoValidation: boolean;
+  private strictNoSign: boolean;
 
   private s3_snapshot_bucket: string;
 
@@ -386,6 +394,8 @@ export class Hub implements HubInterface {
       this.fNameRegistryEventsProvider,
       profileSync,
     );
+    this.strictContactInfoValidation = options.strictContactInfoValidation || false;
+    this.strictNoSign = options.strictNoSign || false;
 
     // On syncComplete, we update the denied peer ids list with the bad peers.
     // This is not active yet.
@@ -664,6 +674,7 @@ export class Hub implements HubInterface {
       directPeers: this.options.directPeers,
       allowlistedImmunePeers: this.options.allowlistedImmunePeers,
       applicationScoreCap: this.options.applicationScoreCap,
+      strictNoSign: this.options.strictNoSign,
     });
 
     await this.registerEventHandlers();
@@ -696,12 +707,21 @@ export class Hub implements HubInterface {
 
   /** Apply the new the network config. Will return true if the Hub should exit */
   public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
-    const { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit } = applyNetworkConfig(
+    const {
+      allowedPeerIds,
+      deniedPeerIds,
+      allowlistedImmunePeers,
+      strictContactInfoValidation,
+      strictNoSign,
+      shouldExit,
+    } = applyNetworkConfig(
       networkConfig,
       this.allowedPeerIds,
       this.deniedPeerIds,
       this.options.network,
       this.options.allowlistedImmunePeers,
+      this.options.strictContactInfoValidation,
+      this.options.strictNoSign,
     );
 
     if (shouldExit) {
@@ -714,6 +734,8 @@ export class Hub implements HubInterface {
       this.deniedPeerIds = deniedPeerIds;
 
       this.allowlistedImmunePeers = allowlistedImmunePeers;
+      this.strictContactInfoValidation = !!strictContactInfoValidation;
+      this.strictNoSign = !!strictNoSign;
 
       log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 
@@ -1006,14 +1028,60 @@ export class Hub implements HubInterface {
     }
   }
 
-  private async handleContactInfo(peerId: PeerId, message: ContactInfoContent): Promise<boolean> {
+  private async handleContactInfo(peerId: PeerId, content: ContactInfoContent): Promise<boolean> {
     statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+
+    let message = content;
+    if (message.signature && message.signer && peerId.publicKey) {
+      let bytes: Uint8Array;
+      if (message.dataBytes) {
+        bytes = message.dataBytes;
+      } else {
+        bytes = ContactInfoContent.encode(message).finish();
+      }
+
+      const pubKey = unmarshalPublicKey(peerId.publicKey);
+      if (Buffer.compare(pubKey.marshal(), message.signer) !== 0) {
+        log.debug({ message }, "signer mismatch for contact info");
+        return false;
+      }
+
+      const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, nativeValidationMethods);
+      if (hash.isErr()) {
+        log.debug({ message }, "could not hash message");
+        return false;
+      }
+
+      const result = await validations.verifySignedMessageHash(
+        hash.value,
+        message.signature,
+        message.signer,
+        nativeValidationMethods,
+      );
+      if (result.isErr()) {
+        log.debug({ message, error: result.error }, "signature verification failed for contact info");
+        return false;
+      }
+
+      if (!result.value) {
+        log.debug({ message }, "signature verification failed for contact info");
+        return false;
+      }
+
+      if (message.dataBytes) {
+        message = ContactInfoContent.decode(message.dataBytes);
+      }
+    } else if (this.strictContactInfoValidation) {
+      log.debug({ message, peerId }, "provided contact info does not have a signature");
+      return false;
+    }
 
     // Don't process messages that are too old
     if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
       log.debug({ message }, "contact info message is too old");
       return false;
     }
+
     // Updates the address book for this peer
     const gossipAddress = message.gossipAddress;
     if (gossipAddress) {

@@ -71,6 +71,27 @@ export const signMessageHash = async (
   return ok(await validationMethods.ed25519_signMessageHash(hash, signingKey));
 };
 
+export const verifySignedMessageHash = async (
+  hash?: Uint8Array,
+  signature?: Uint8Array,
+  signer?: Uint8Array,
+  validationMethods: ValidationMethods = pureJSValidationMethods,
+): HubAsyncResult<boolean> => {
+  if (!hash || hash.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "hash is missing"));
+  }
+
+  if (!signature || signature.length !== 64) {
+    return err(new HubError("bad_request.validation_failure", "signature is invalid"));
+  }
+
+  if (!signer || signer.length !== 32) {
+    return err(new HubError("bad_request.validation_failure", "signer is invalid"));
+  }
+
+  return ok(await validationMethods.ed25519_verify(signature, hash, signer));
+};
+
 export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> => {
   if (!hash || hash.length === 0) {
     return err(new HubError("bad_request.validation_failure", "hash is missing"));

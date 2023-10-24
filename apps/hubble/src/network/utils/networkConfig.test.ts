@@ -17,9 +17,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -34,9 +36,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network, []);
+    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
@@ -54,9 +58,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
@@ -74,9 +80,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4", "5"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -93,9 +101,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual(["4", "5"]);
     expect(result.shouldExit).toEqual(false);
@@ -113,9 +123,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -130,9 +142,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network, []);
+    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
@@ -150,9 +164,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, []);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -167,9 +183,11 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, [], [], network, []);
+    const result = applyNetworkConfig(networkConfig, [], [], network, [], undefined, undefined);
     expect(result.shouldExit).toEqual(true);
 
     const prevVer = `${semver.major(APP_VERSION)}.${semver.minor(APP_VERSION)}.${semver.patch(APP_VERSION) - 1}`;
@@ -182,9 +200,59 @@ describe("networkConfig", () => {
       keyRegistryAddress: undefined,
       idRegistryAddress: undefined,
       allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: undefined,
     };
 
-    const result2 = applyNetworkConfig(networkConfig2, [], [], network, []);
+    const result2 = applyNetworkConfig(networkConfig2, [], [], network, [], undefined, undefined);
+    expect(result2.shouldExit).toEqual(false);
+  });
+
+  test("strict contact info enabled at network overrides local", () => {
+    const existingPeerIds = ["1", "2", "3"];
+
+    const networkConfig = {
+      network: 2,
+      allowedPeers: ["4", "5"],
+      deniedPeers: [],
+      minAppVersion: APP_VERSION,
+      storageRegistryAddress: undefined,
+      keyRegistryAddress: undefined,
+      idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: true,
+      strictNoSign: undefined,
+    };
+
+    const result1 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], false, undefined);
+    expect(result1.strictContactInfoValidation).toEqual(true);
+    expect(result2.strictContactInfoValidation).toEqual(true);
+    expect(result1.shouldExit).toEqual(false);
+    expect(result2.shouldExit).toEqual(false);
+  });
+
+  test("strict no sign enabled at network overrides local", () => {
+    const existingPeerIds = ["1", "2", "3"];
+
+    const networkConfig = {
+      network: 2,
+      allowedPeers: ["4", "5"],
+      deniedPeers: [],
+      minAppVersion: APP_VERSION,
+      storageRegistryAddress: undefined,
+      keyRegistryAddress: undefined,
+      idRegistryAddress: undefined,
+      allowlistedImmunePeers: undefined,
+      strictContactInfoValidation: undefined,
+      strictNoSign: true,
+    };
+
+    const result1 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, false);
+    expect(result1.strictNoSign).toEqual(true);
+    expect(result2.strictNoSign).toEqual(true);
+    expect(result1.shouldExit).toEqual(false);
     expect(result2.shouldExit).toEqual(false);
   });
 });

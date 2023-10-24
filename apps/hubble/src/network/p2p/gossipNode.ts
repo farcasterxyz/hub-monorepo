@@ -67,6 +67,8 @@ export interface NodeOptions {
   allowlistedImmunePeers?: string[] | undefined;
   /** Override application score cap. */
   applicationScoreCap?: number | undefined;
+  /** Determines whether messages are required to be strictly unsigned */
+  strictNoSign?: boolean | undefined;
 }
 
 // A common return type for several methods on the libp2p node.

@@ -52,6 +52,8 @@ export interface ContactInfoContent {
   signature: Uint8Array;
   /** Public key of the peer that originated the contact info */
   signer: Uint8Array;
+  /** Optional alternative serialization used for signing */
+  dataBytes?: Uint8Array | undefined;
 }
 
 export interface PingMessageBody {
@@ -195,6 +197,7 @@ function createBaseContactInfoContent(): ContactInfoContent {
     timestamp: 0,
     signature: new Uint8Array(),
     signer: new Uint8Array(),
+    dataBytes: undefined,
   };
 }
 
@@ -229,6 +232,9 @@ export const ContactInfoContent = {
     }
     if (message.signer.length !== 0) {
       writer.uint32(82).bytes(message.signer);
+    }
+    if (message.dataBytes !== undefined) {
+      writer.uint32(90).bytes(message.dataBytes);
     }
     return writer;
   },
@@ -310,6 +316,13 @@ export const ContactInfoContent = {
 
           message.signer = reader.bytes();
           continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.dataBytes = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -331,6 +344,7 @@ export const ContactInfoContent = {
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
       signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
       signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      dataBytes: isSet(object.dataBytes) ? bytesFromBase64(object.dataBytes) : undefined,
     };
   },
 
@@ -354,6 +368,8 @@ export const ContactInfoContent = {
       (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
     message.signer !== undefined &&
       (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    message.dataBytes !== undefined &&
+      (obj.dataBytes = message.dataBytes !== undefined ? base64FromBytes(message.dataBytes) : undefined);
     return obj;
   },
 
@@ -377,6 +393,7 @@ export const ContactInfoContent = {
     message.timestamp = object.timestamp ?? 0;
     message.signature = object.signature ?? new Uint8Array();
     message.signer = object.signer ?? new Uint8Array();
+    message.dataBytes = object.dataBytes ?? undefined;
     return message;
   },
 };
