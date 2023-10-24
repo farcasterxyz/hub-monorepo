@@ -1,7 +1,28 @@
 use std::convert::TryInto;
 
-use ed25519_dalek::{Signature, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, EXPANDED_SECRET_KEY_LENGTH, VerifyingKey};
 use neon::{prelude::*, types::buffer::TypedArray};
+
+fn ed25519_sign_message_hash(mut cx: FunctionContext) -> JsResult<JsBuffer> {
+  let hash_arg = cx.argument::<JsBuffer>(0)?;
+  let signing_key_arg = cx.argument::<JsBuffer>(1)?;
+
+  let signing_key_bytes: [u8; EXPANDED_SECRET_KEY_LENGTH] = match signing_key_arg.as_slice(&cx).try_into() {
+      Ok(bytes) => bytes,
+      Err(_) => return cx.throw_error("could not decode signing key"),
+  };
+
+  let signer = match SigningKey::from_keypair_bytes(&signing_key_bytes) {
+    Ok(signer) => signer,
+    Err(_) => return cx.throw_error("could not construct signing key"),
+  };
+
+  let signature = signer.sign(&hash_arg.as_slice(&cx)).to_bytes();
+  let mut buffer = cx.buffer(signature.len())?;
+  let target = buffer.as_mut_slice(&mut cx);
+  target.copy_from_slice(&signature);
+  Ok(buffer)
+}
 
 fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let signature_arg = cx.argument::<JsBuffer>(0)?;
@@ -47,6 +68,7 @@ fn blake3_20(mut cx: FunctionContext) -> JsResult<JsBuffer> {
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
+    cx.export_function("ed25519_signMessageHash", ed25519_sign_message_hash)?;
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", blake3_20)?;
     Ok(())

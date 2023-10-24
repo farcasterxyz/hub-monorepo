@@ -48,6 +48,10 @@ export interface ContactInfoContent {
   network: FarcasterNetwork;
   appVersion: string;
   timestamp: number;
+  /** Signature of the message digest */
+  signature: Uint8Array;
+  /** Public key of the peer that originated the contact info */
+  signer: Uint8Array;
 }
 
 export interface PingMessageBody {
@@ -189,6 +193,8 @@ function createBaseContactInfoContent(): ContactInfoContent {
     network: 0,
     appVersion: "",
     timestamp: 0,
+    signature: new Uint8Array(),
+    signer: new Uint8Array(),
   };
 }
 
@@ -217,6 +223,12 @@ export const ContactInfoContent = {
     }
     if (message.timestamp !== 0) {
       writer.uint32(64).uint64(message.timestamp);
+    }
+    if (message.signature.length !== 0) {
+      writer.uint32(74).bytes(message.signature);
+    }
+    if (message.signer.length !== 0) {
+      writer.uint32(82).bytes(message.signer);
     }
     return writer;
   },
@@ -284,6 +296,20 @@ export const ContactInfoContent = {
 
           message.timestamp = longToNumber(reader.uint64() as Long);
           continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.signature = reader.bytes();
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.signer = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -303,6 +329,8 @@ export const ContactInfoContent = {
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
+      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
     };
   },
 
@@ -322,6 +350,10 @@ export const ContactInfoContent = {
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.appVersion !== undefined && (obj.appVersion = message.appVersion);
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.signature !== undefined &&
+      (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
+    message.signer !== undefined &&
+      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
     return obj;
   },
 
@@ -343,6 +375,8 @@ export const ContactInfoContent = {
     message.network = object.network ?? 0;
     message.appVersion = object.appVersion ?? "";
     message.timestamp = object.timestamp ?? 0;
+    message.signature = object.signature ?? new Uint8Array();
+    message.signer = object.signer ?? new Uint8Array();
     return message;
   },
 };

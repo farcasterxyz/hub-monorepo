@@ -16,6 +16,13 @@ export function nativeBlake3Hash20(data: Uint8Array): Uint8Array {
   return new Uint8Array(lib.blake3_20(dataBuf));
 }
 
+export function nativeEd25519SignMessageHash(hash: Uint8Array, signerKey: Uint8Array): Uint8Array {
+  const hashBuf = Buffer.from(hash);
+  const signerKeyBuf = Buffer.from(signerKey);
+
+  return lib.ed25519_signMessageHash(hashBuf, signerKeyBuf);
+}
+
 // Use this function in TypeScript to call the rust code.
 export function nativeEd25519Verify(signature: Uint8Array, hash: Uint8Array, signer: Uint8Array): boolean {
   const sigBuf = Buffer.from(signature);
@@ -28,5 +35,6 @@ export function nativeEd25519Verify(signature: Uint8Array, hash: Uint8Array, sig
 /** Fast, native implementation of validation methods to improve perf */
 export const nativeValidationMethods: validations.ValidationMethods = {
   ed25519_verify: async (s: Uint8Array, m: Uint8Array, p: Uint8Array) => nativeEd25519Verify(s, m, p),
+  ed25519_signMessageHash: async (m: Uint8Array, s: Uint8Array) => nativeEd25519SignMessageHash(m, s),
   blake3_20: (message: Uint8Array) => nativeBlake3Hash20(message),
 };

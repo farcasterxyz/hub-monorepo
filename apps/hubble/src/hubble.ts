@@ -16,10 +16,13 @@ import {
   OnChainEvent,
   onChainEventTypeToJSON,
   ClientOptions,
+  validations,
+  HashScheme,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
+import { unmarshalPrivateKey } from "@libp2p/crypto/keys";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
@@ -34,6 +37,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
+import { nativeValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -827,18 +831,41 @@ export class Hub implements HubInterface {
     });
 
     const snapshot = await this.syncEngine.getSnapshot();
-    return snapshot.map((snapshot) => {
-      return ContactInfoContent.create({
-        gossipAddress: gossipAddressContactInfo,
-        rpcAddress: rpcAddressContactInfo,
-        excludedHashes: [], // Hubs don't rely on this anymore,
-        count: snapshot.numMessages,
-        hubVersion: FARCASTER_VERSION,
-        network: this.options.network,
-        appVersion: APP_VERSION,
-        timestamp: Date.now(),
-      });
+    if (snapshot.isErr()) {
+      return err(snapshot.error);
+    }
+
+    const content = ContactInfoContent.create({
+      gossipAddress: gossipAddressContactInfo,
+      rpcAddress: rpcAddressContactInfo,
+      excludedHashes: [], // Hubs don't rely on this anymore,
+      count: snapshot.value.numMessages,
+      hubVersion: FARCASTER_VERSION,
+      network: this.options.network,
+      appVersion: APP_VERSION,
+      timestamp: Date.now(),
     });
+    const peerId = this.gossipNode.peerId();
+    const privKey = peerId?.privateKey;
+    if (privKey) {
+      const rawPrivKey = await unmarshalPrivateKey(privKey);
+      const hash = await validations.createMessageHash(
+        ContactInfoContent.encode(content).finish(),
+        HashScheme.BLAKE3,
+        nativeValidationMethods,
+      );
+      if (hash.isErr()) {
+        return err(hash.error);
+      }
+      const signature = await validations.signMessageHash(hash.value, rawPrivKey.marshal(), nativeValidationMethods);
+      if (signature.isErr()) {
+        return err(signature.error);
+      }
+
+      content.signature = signature.value;
+      content.signer = rawPrivKey.public.marshal();
+    }
+    return ok(content);
   }
 
   async teardown() {

@@ -23,6 +23,8 @@ message ContactInfoContent {
   FarcasterNetwork network = 6;
   string app_version = 7;
   uint64 timestamp = 8;
+  bytes signature = 9; // Signature of the message digest
+  bytes signer = 10; // Public key of the peer that originated the contact info
 }
 
 message PingMessageBody {

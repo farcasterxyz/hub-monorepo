@@ -24,6 +24,7 @@ export const EMBEDS_V1_CUTOFF = 73612800; // 5/3/23 00:00 UTC
  */
 export type ValidationMethods = {
   ed25519_verify: (signature: Uint8Array, message: Uint8Array, publicKey: Uint8Array) => Promise<boolean>;
+  ed25519_signMessageHash: (hash: Uint8Array, signingKey: Uint8Array) => Promise<Uint8Array>;
   blake3_20: (message: Uint8Array) => Uint8Array;
 };
 
@@ -33,7 +34,41 @@ export type ValidationMethods = {
 const pureJSValidationMethods: ValidationMethods = {
   ed25519_verify: async (s: Uint8Array, m: Uint8Array, p: Uint8Array) =>
     (await ed25519.verifyMessageHashSignature(s, m, p)).unwrapOr(false),
+  ed25519_signMessageHash: async (h: Uint8Array, s: Uint8Array) =>
+    (await ed25519.signMessageHash(h, s)).unwrapOr(new Uint8Array([])),
   blake3_20: (message: Uint8Array) => blake3(message, { dkLen: 20 }),
+};
+
+export const createMessageHash = async (
+  message?: Uint8Array,
+  hashScheme?: protobufs.HashScheme,
+  validationMethods: ValidationMethods = pureJSValidationMethods,
+): HubAsyncResult<Uint8Array> => {
+  if (!message || message.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "hash is missing"));
+  }
+
+  if (hashScheme !== protobufs.HashScheme.BLAKE3) {
+    return err(new HubError("bad_request.validation_failure", "unsupported hash scheme"));
+  }
+
+  return ok(validationMethods.blake3_20(message));
+};
+
+export const signMessageHash = async (
+  hash?: Uint8Array,
+  signingKey?: Uint8Array,
+  validationMethods: ValidationMethods = pureJSValidationMethods,
+): HubAsyncResult<Uint8Array> => {
+  if (!hash || hash.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "hash is missing"));
+  }
+
+  if (!signingKey || signingKey.length !== 64) {
+    return err(new HubError("bad_request.validation_failure", "signingKey is invalid"));
+  }
+
+  return ok(await validationMethods.ed25519_signMessageHash(hash, signingKey));
 };
 
 export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> => {
