@@ -1032,8 +1032,8 @@ export class Hub implements HubInterface {
     statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
 
     let message = ContactInfoContent.create({
-      gossipAddress: content.gossipAddressContactInfo,
-      rpcAddress: content.rpcAddressContactInfo,
+      gossipAddress: content.gossipAddress,
+      rpcAddress: content.rpcAddress,
       excludedHashes: content.excludedHashes,
       count: content.count,
       hubVersion: content.hubVersion,
