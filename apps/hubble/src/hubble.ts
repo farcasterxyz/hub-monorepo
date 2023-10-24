@@ -1031,8 +1031,18 @@ export class Hub implements HubInterface {
   private async handleContactInfo(peerId: PeerId, content: ContactInfoContent): Promise<boolean> {
     statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
 
-    let message = content;
-    if (message.signature && message.signer && peerId.publicKey) {
+    let message = ContactInfoContent.create({
+      gossipAddress: content.gossipAddressContactInfo,
+      rpcAddress: content.rpcAddressContactInfo,
+      excludedHashes: content.excludedHashes,
+      count: content.count,
+      hubVersion: content.hubVersion,
+      network: content.network,
+      appVersion: content.appVersion,
+      timestamp: content.timestamp,
+      dataBytes: content.dataBytes,
+    });
+    if (content.signature && content.signer && peerId.publicKey) {
       let bytes: Uint8Array;
       if (message.dataBytes) {
         bytes = message.dataBytes;
@@ -1041,30 +1051,30 @@ export class Hub implements HubInterface {
       }
 
       const pubKey = unmarshalPublicKey(peerId.publicKey);
-      if (Buffer.compare(pubKey.marshal(), message.signer) !== 0) {
-        log.debug({ message }, "signer mismatch for contact info");
+      if (Buffer.compare(pubKey.marshal(), content.signer) !== 0) {
+        log.debug({ message: content }, "signer mismatch for contact info");
         return false;
       }
 
       const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, nativeValidationMethods);
       if (hash.isErr()) {
-        log.debug({ message }, "could not hash message");
+        log.debug({ message: content }, "could not hash message");
         return false;
       }
 
       const result = await validations.verifySignedMessageHash(
         hash.value,
-        message.signature,
-        message.signer,
+        content.signature,
+        content.signer,
         nativeValidationMethods,
       );
       if (result.isErr()) {
-        log.debug({ message, error: result.error }, "signature verification failed for contact info");
+        log.debug({ message: content, error: result.error }, "signature verification failed for contact info");
         return false;
       }
 
       if (!result.value) {
-        log.debug({ message }, "signature verification failed for contact info");
+        log.debug({ message: content }, "signature verification failed for contact info");
         return false;
       }
 
