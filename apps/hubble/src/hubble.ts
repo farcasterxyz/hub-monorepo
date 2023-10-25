@@ -635,7 +635,7 @@ export class Hub implements HubInterface {
           error: networkConfig.error,
         });
       } else {
-        const shouldExit = this.applyNetworkConfig(networkConfig.value);
+        const { shouldExit } = this.applyNetworkConfig(networkConfig.value);
         if (shouldExit) {
           throw new HubError("unavailable", "Quitting due to network config");
         }
@@ -675,7 +675,7 @@ export class Hub implements HubInterface {
       directPeers: this.options.directPeers,
       allowlistedImmunePeers: this.options.allowlistedImmunePeers,
       applicationScoreCap: this.options.applicationScoreCap,
-      strictNoSign: this.options.strictNoSign,
+      strictNoSign: this.strictNoSign,
     });
 
     await this.registerEventHandlers();
@@ -707,7 +707,7 @@ export class Hub implements HubInterface {
   }
 
   /** Apply the new the network config. Will return true if the Hub should exit */
-  public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
+  public applyNetworkConfig(networkConfig: NetworkConfig): { shouldRestart: boolean; shouldExit: boolean } {
     const {
       allowedPeerIds,
       deniedPeerIds,
@@ -726,7 +726,7 @@ export class Hub implements HubInterface {
     );
 
     if (shouldExit) {
-      return true;
+      return { shouldExit: true, shouldRestart: false };
     } else {
       this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
       this.allowedPeerIds = allowedPeerIds;
@@ -736,11 +736,12 @@ export class Hub implements HubInterface {
 
       this.allowlistedImmunePeers = allowlistedImmunePeers;
       this.strictContactInfoValidation = !!strictContactInfoValidation;
+      const shouldRestart = this.strictNoSign !== !!strictNoSign;
       this.strictNoSign = !!strictNoSign;
 
       log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 
-      return false;
+      return { shouldExit: false, shouldRestart };
     }
   }
 
