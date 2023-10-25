@@ -29,6 +29,7 @@ import { PageOptions } from "../storage/stores/types.js";
 import { DeepPartial } from "../storage/stores/store.js";
 import Engine from "../storage/engine/index.js";
 import { statsd } from "../utils/statsd.js";
+import { SiweMessage } from "siwe";
 
 const log = logger.child({ component: "HttpAPIServer" });
 
