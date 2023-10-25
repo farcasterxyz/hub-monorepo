@@ -74,8 +74,10 @@ describe("server rpc tests", () => {
     test("succeeds", async () => {
       const idRegistryEvent2 = Factories.IdRegistryOnChainEvent.build({ fid: fid + 1 });
       const signerEvent2 = Factories.SignerOnChainEvent.build({ blockNumber: signerEvent.blockNumber + 1, fid });
+      const signerMigratedEvent = Factories.SignerMigratedOnChainEvent.build();
       await expect(engine.mergeOnChainEvent(idRegistryEvent2)).resolves.toBeInstanceOf(Ok);
       await expect(engine.mergeOnChainEvent(signerEvent2)).resolves.toBeInstanceOf(Ok);
+      await expect(engine.mergeOnChainEvent(signerMigratedEvent)).resolves.toBeInstanceOf(Ok);
 
       const idResult = await client.getOnChainEvents(
         OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER, fid }),
@@ -86,6 +88,11 @@ describe("server rpc tests", () => {
         OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_SIGNER, fid }),
       );
       assertEventsMatchResult(signerResult, [signerEvent, signerEvent2]);
+
+      const signerMigratedResult = await client.getOnChainEvents(
+        OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED, fid: 0 }),
+      );
+      assertEventsMatchResult(signerMigratedResult, [signerMigratedEvent]);
 
       const emptyResult = await client.getOnChainEvents(
         OnChainEventRequest.create({ eventType: OnChainEventType.EVENT_TYPE_STORAGE_RENT, fid: fid + 1 }),

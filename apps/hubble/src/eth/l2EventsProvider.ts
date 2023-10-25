@@ -13,7 +13,7 @@ import {
   toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
-import { IdRegistryV2, KeyRegistry, StorageRegistry } from "./abis.js";
+import { IdRegistry, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
 import { optimismGoerli } from "viem/chains";
@@ -73,10 +73,14 @@ export class L2EventsProvider {
   private storageRegistryAddress: `0x${string}` | undefined;
   private keyRegistryAddress: `0x${string}` | undefined;
   private idRegistryAddress: `0x${string}` | undefined;
+  private keyRegistryV2Address: `0x${string}` | undefined;
+  private idRegistryV2Address: `0x${string}` | undefined;
 
   private _watchStorageContractEvents?: WatchContractEvent<typeof StorageRegistry.abi, string, true>;
   private _watchKeyRegistryContractEvents?: WatchContractEvent<typeof KeyRegistry.abi, string, true>;
-  private _watchIdRegistryContractEvents?: WatchContractEvent<typeof IdRegistryV2.abi, string, true>;
+  private _watchIdRegistryContractEvents?: WatchContractEvent<typeof IdRegistry.abi, string, true>;
+  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent<typeof KeyRegistry.abi, string, true>;
+  private _watchIdRegistryV2ContractEvents?: WatchContractEvent<typeof IdRegistry.abi, string, true>;
   private _watchBlockNumber?: WatchBlockNumber;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
@@ -97,9 +101,11 @@ export class L2EventsProvider {
   constructor(
     hub: HubInterface,
     publicClient: PublicClient<FallbackTransport>,
-    storageRegistryAddress: `0x${string}` | undefined,
-    keyRegistryAddress: `0x${string}` | undefined,
-    idRegistryAddress: `0x${string}` | undefined,
+    storageRegistryAddress: `0x${string}`,
+    keyRegistryAddress: `0x${string}`,
+    idRegistryAddress: `0x${string}`,
+    keyRegistryV2Address: `0x${string}` | undefined,
+    idRegistryV2Address: `0x${string}` | undefined,
     firstBlock: number,
     chunkSize: number,
     chainId: number,
@@ -123,7 +129,8 @@ export class L2EventsProvider {
     this._retryDedupMap = new Map();
     this._blockTimestampsCache = new Map();
 
-    this.setAddresses(storageRegistryAddress, keyRegistryAddress, idRegistryAddress);
+    this.setV1Addresses(storageRegistryAddress, keyRegistryAddress, idRegistryAddress);
+    this.setV2Addresses(keyRegistryV2Address, idRegistryV2Address);
 
     if (expiryOverride) {
       log.warn(`Overriding rent expiry to ${expiryOverride} seconds`);
@@ -138,9 +145,11 @@ export class L2EventsProvider {
     hub: HubInterface,
     l2RpcUrl: string,
     rankRpcs: boolean,
-    storageRegistryAddress: `0x${string}` | undefined,
-    keyRegistryAddress: `0x${string}` | undefined,
-    idRegistryAddress: `0x${string}` | undefined,
+    storageRegistryAddress: `0x${string}`,
+    keyRegistryAddress: `0x${string}`,
+    idRegistryAddress: `0x${string}`,
+    keyRegistryV2Address: `0x${string}` | undefined,
+    idRegistryV2Address: `0x${string}` | undefined,
     firstBlock: number,
     chunkSize: number,
     chainId: number,
@@ -161,6 +170,8 @@ export class L2EventsProvider {
       storageRegistryAddress,
       keyRegistryAddress,
       idRegistryAddress,
+      keyRegistryV2Address,
+      idRegistryV2Address,
       firstBlock,
       chunkSize,
       chainId,
@@ -199,7 +210,7 @@ export class L2EventsProvider {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async processStorageEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+  private async processStorageEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -246,6 +257,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             undefined,
             undefined,
             undefined,
@@ -259,7 +271,11 @@ export class L2EventsProvider {
     }
   }
 
-  private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+  private async processKeyRegistryEventsV2(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+    await this.processKeyRegistryEvents(logs, 2);
+  }
+
+  private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -300,6 +316,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             signerEventBody,
           );
         } else if (event.eventName === "Remove") {
@@ -323,6 +340,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             signerEventBody,
           );
         } else if (event.eventName === "AdminReset") {
@@ -346,6 +364,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             signerEventBody,
           );
         } else if (event.eventName === "Migrated") {
@@ -365,6 +384,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             undefined,
             SignerMigratedEventBody.create({
               migratedAt: Number(migratedEvent.args.keysMigratedAt),
@@ -378,7 +398,11 @@ export class L2EventsProvider {
     }
   }
 
-  private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+  private async processIdRegistryV2Events(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+    await this.processIdRegistryEvents(logs, 2);
+  }
+
+  private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -400,9 +424,9 @@ export class L2EventsProvider {
             bigint,
             number,
             boolean,
-            ExtractAbiEvent<typeof IdRegistryV2.abi, "Register">,
+            ExtractAbiEvent<typeof IdRegistry.abi, "Register">,
             true,
-            typeof IdRegistryV2.abi
+            typeof IdRegistry.abi
           >;
           const idRegisterEventBody = IdRegisterEventBody.create({
             eventType: IdRegisterEventType.REGISTER,
@@ -417,6 +441,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             undefined,
             undefined,
             idRegisterEventBody,
@@ -426,9 +451,9 @@ export class L2EventsProvider {
             bigint,
             number,
             boolean,
-            ExtractAbiEvent<typeof IdRegistryV2.abi, "Transfer">,
+            ExtractAbiEvent<typeof IdRegistry.abi, "Transfer">,
             true,
-            typeof IdRegistryV2.abi
+            typeof IdRegistry.abi
           >;
           const idRegisterEventBody = IdRegisterEventBody.create({
             eventType: IdRegisterEventType.TRANSFER,
@@ -443,6 +468,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             undefined,
             undefined,
             idRegisterEventBody,
@@ -452,9 +478,9 @@ export class L2EventsProvider {
             bigint,
             number,
             boolean,
-            ExtractAbiEvent<typeof IdRegistryV2.abi, "ChangeRecoveryAddress">,
+            ExtractAbiEvent<typeof IdRegistry.abi, "ChangeRecoveryAddress">,
             true,
-            typeof IdRegistryV2.abi
+            typeof IdRegistry.abi
           >;
           const idRegisterEventBody = IdRegisterEventBody.create({
             eventType: IdRegisterEventType.CHANGE_RECOVERY,
@@ -468,6 +494,7 @@ export class L2EventsProvider {
             transactionHash,
             transactionIndex,
             logIndex,
+            version,
             undefined,
             undefined,
             idRegisterEventBody,
@@ -545,16 +572,11 @@ export class L2EventsProvider {
     await this.syncHistoricalEvents(blockNumber, blockNumber + 1, 1);
   }
 
-  public setAddresses(
-    storageRegistryAddress?: `0x${string}`,
-    keyRegistryAddress?: `0x${string}`,
-    idRegistryAddress?: `0x${string}`,
+  private setV1Addresses(
+    storageRegistryAddress: `0x${string}`,
+    keyRegistryAddress: `0x${string}`,
+    idRegistryAddress: `0x${string}`,
   ) {
-    if (!storageRegistryAddress || !keyRegistryAddress || !idRegistryAddress) {
-      log.info("No L2 addresses provided. Not watching events");
-      return;
-    }
-
     this.idRegistryAddress = idRegistryAddress;
     this.keyRegistryAddress = keyRegistryAddress;
     this.storageRegistryAddress = storageRegistryAddress;
@@ -588,7 +610,7 @@ export class L2EventsProvider {
       this._publicClient,
       {
         address: idRegistryAddress,
-        abi: IdRegistryV2.abi,
+        abi: IdRegistry.abi,
         onLogs: this.processIdRegistryEvents.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
@@ -606,6 +628,49 @@ export class L2EventsProvider {
     log.info(
       `StorageRegistry: ${storageRegistryAddress}, KeyRegistry: ${keyRegistryAddress}, IdRegistry: ${idRegistryAddress}`,
     );
+  }
+
+  public setV2Addresses(
+    keyRegistryV2Address: `0x${string}` | undefined,
+    idRegistryV2Address: `0x${string}` | undefined,
+  ) {
+    if (!keyRegistryV2Address || !idRegistryV2Address) {
+      log.info("No V2 addresses provided. Not watching V2 contract events");
+      return;
+    }
+
+    // Ignore if we're already watching these addresses
+    if (this.idRegistryV2Address && this.keyRegistryV2Address) {
+      return;
+    }
+
+    this.idRegistryV2Address = idRegistryV2Address;
+    this.keyRegistryV2Address = keyRegistryV2Address;
+
+    this._watchKeyRegistryV2ContractEvents = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: keyRegistryV2Address,
+        abi: KeyRegistry.abi,
+        onLogs: this.processKeyRegistryEventsV2.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      "KeyRegistryV2",
+    );
+
+    this._watchIdRegistryV2ContractEvents = new WatchContractEvent(
+      this._publicClient,
+      {
+        address: idRegistryV2Address,
+        abi: IdRegistry.abi,
+        onLogs: this.processIdRegistryV2Events.bind(this),
+        pollingInterval: L2EventsProvider.eventPollingInterval,
+        strict: true,
+      },
+      "IdRegistryV2",
+    );
+    log.info(`KeyRegistryV2: ${keyRegistryV2Address}, IdRegistryV2: ${idRegistryV2Address}`);
   }
 
   /**
@@ -661,7 +726,7 @@ export class L2EventsProvider {
 
       const idLogsPromise = this.getContractEvents({
         address: this.idRegistryAddress,
-        abi: IdRegistryV2.abi,
+        abi: IdRegistry.abi,
         fromBlock: BigInt(nextFromBlock),
         toBlock: BigInt(nextToBlock),
         strict: true,
@@ -686,6 +751,27 @@ export class L2EventsProvider {
       await this.processIdRegistryEvents(await idLogsPromise);
       await this.processStorageEvents(await storageLogsPromise);
       await this.processKeyRegistryEvents(await keyLogsPromise);
+
+      if (this.idRegistryV2Address && this.keyRegistryV2Address) {
+        const idV2LogsPromise = this.getContractEvents({
+          address: this.idRegistryV2Address,
+          abi: IdRegistry.abi,
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
+
+        const keyV2LogsPromise = this.getContractEvents({
+          address: this.keyRegistryV2Address,
+          abi: KeyRegistry.abi,
+          fromBlock: BigInt(nextFromBlock),
+          toBlock: BigInt(nextToBlock),
+          strict: true,
+        });
+
+        await this.processIdRegistryV2Events(await idV2LogsPromise);
+        await this.processKeyRegistryEventsV2(await keyV2LogsPromise);
+      }
     }
 
     progressBar?.update(totalBlocks);
@@ -816,6 +902,7 @@ export class L2EventsProvider {
     transactionHash: string,
     txIndex: number,
     logIndex: number,
+    version: number,
     signerEventBody?: SignerEventBody,
     signerMigratedEventBody?: SignerMigratedEventBody,
     idRegisterEventBody?: IdRegisterEventBody,
@@ -845,6 +932,7 @@ export class L2EventsProvider {
       transactionHash: transactionHashBytes,
       txIndex: txIndex,
       logIndex: logIndex,
+      version: version,
       signerEventBody: signerEventBody,
       signerMigratedEventBody: signerMigratedEventBody,
       idRegisterEventBody: idRegisterEventBody,

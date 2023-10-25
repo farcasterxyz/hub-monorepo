@@ -149,11 +149,18 @@ describe("OnChainEventStore", () => {
   });
 
   describe("getSignerMigratedAt", () => {
-    test("returns timestamp of signer migrated event", async () => {
+    test("returns timestamp of the latest signer migrated event", async () => {
       const event = Factories.SignerMigratedOnChainEvent.build();
+      const event2 = Factories.SignerMigratedOnChainEvent.build({
+        blockTimestamp: event.blockTimestamp + 1,
+        blockNumber: event.blockNumber + 1,
+      });
+      event2.signerMigratedEventBody.migratedAt += 1;
+      await set.mergeOnChainEvent(event2);
       await set.mergeOnChainEvent(event);
+      expect(event.signerMigratedEventBody.migratedAt).not.toEqual(event2.signerMigratedEventBody.migratedAt);
       const result = await set.getSignerMigratedAt();
-      expect(result).toEqual(ok(event.signerMigratedEventBody.migratedAt));
+      expect(result).toEqual(ok(event2.signerMigratedEventBody.migratedAt));
     });
 
     test("returns 0 if not migrated", async () => {
