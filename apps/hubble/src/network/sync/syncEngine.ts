@@ -334,7 +334,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._dbStats = await this.readDbStatsFromDb();
 
     this._started = true;
-    log.info({ rootHash }, "Sync engine initialized (eventsSync: true)");
+    log.info({ rootHash }, "Sync engine initialized");
   }
 
   /** Rebuild the entire Sync Trie */

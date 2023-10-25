@@ -24,6 +24,8 @@ export type NetworkConfig = {
   allowlistedImmunePeers: string[] | undefined;
   strictContactInfoValidation: boolean | undefined;
   strictNoSign: boolean | undefined;
+  keyRegistryV2Address: `0x${string}` | undefined;
+  idRegistryV2Address: `0x${string}` | undefined;
 };
 
 export type NetworkConfigResult = {

@@ -19,6 +19,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
@@ -38,6 +40,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined);
@@ -60,6 +64,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
@@ -82,6 +88,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
@@ -103,6 +111,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
@@ -125,6 +135,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
@@ -144,6 +156,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined);
@@ -166,6 +180,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
@@ -185,6 +201,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, [], [], network, [], undefined, undefined);
@@ -202,6 +220,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result2 = applyNetworkConfig(networkConfig2, [], [], network, [], undefined, undefined);
@@ -222,6 +242,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: true,
       strictNoSign: undefined,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result1 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
@@ -246,6 +268,8 @@ describe("networkConfig", () => {
       allowlistedImmunePeers: undefined,
       strictContactInfoValidation: undefined,
       strictNoSign: true,
+      keyRegistryV2Address: undefined,
+      idRegistryV2Address: undefined,
     };
 
     const result1 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);

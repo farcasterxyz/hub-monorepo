@@ -180,6 +180,12 @@ export interface HubOptions {
   /** Address of the Key Registry contract  */
   l2KeyRegistryAddress?: `0x${string}`;
 
+  /** Address of the V2 Id Registry contract  */
+  l2IdRegistryV2Address?: `0x${string}`;
+
+  /** Address of the V2 Key Registry contract  */
+  l2KeyRegistryV2Address?: `0x${string}`;
+
   /** Address of the StorageRegistry contract  */
   l2StorageRegistryAddress?: `0x${string}`;
 
@@ -336,6 +342,8 @@ export class Hub implements HubInterface {
         options.l2StorageRegistryAddress ?? OptimismConstants.StorageRegistryAddress,
         options.l2KeyRegistryAddress ?? OptimismConstants.KeyRegistryAddress,
         options.l2IdRegistryAddress ?? OptimismConstants.IdRegistryAddress,
+        options.l2KeyRegistryV2Address,
+        options.l2IdRegistryV2Address,
         options.l2FirstBlock ?? OptimismConstants.FirstBlock,
         options.l2ChunkSize ?? OptimismConstants.ChunkSize,
         options.l2ChainId ?? OptimismConstants.ChainId,
@@ -738,6 +746,10 @@ export class Hub implements HubInterface {
       this.strictContactInfoValidation = !!strictContactInfoValidation;
       const shouldRestart = this.strictNoSign !== !!strictNoSign;
       this.strictNoSign = !!strictNoSign;
+
+      if (networkConfig.idRegistryV2Address && networkConfig.keyRegistryV2Address) {
+        this.l2RegistryProvider.setV2Addresses(networkConfig.keyRegistryV2Address, networkConfig.idRegistryV2Address);
+      }
 
       log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 

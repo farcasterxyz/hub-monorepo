@@ -80,6 +80,8 @@ app
   .option("-l, --l2-rpc-url <url>", "RPC URL of a mainnet Optimism Node (or comma separated list of URLs)")
   .option("--l2-id-registry-address <address>", "The address of the L2 Farcaster ID Registry contract")
   .option("--l2-key-registry-address <address>", "The address of the L2 Farcaster Key Registry contract")
+  .option("--l2-id-registry-v2-address <address>", "The address of the L2 Farcaster ID Registry V2 contract")
+  .option("--l2-key-registry-v2-address <address>", "The address of the L2 Farcaster Key Registry V2 contract")
   .option("--l2-storage-registry-address <address>", "The address of the L2 Farcaster Storage Registry contract")
   .option("--l2-resync-events", "Resync events from the L2 Farcaster contracts before starting (default: disabled)")
   .option("--l2-clear-events", "Deletes all events from the L2 Farcaster contracts before starting (default: disabled)")
@@ -486,6 +488,8 @@ app
       l2RpcUrl: cliOptions.l2RpcUrl ?? hubConfig.l2RpcUrl,
       l2IdRegistryAddress: cliOptions.l2IdRegistryAddress ?? hubConfig.l2IdRegistryAddress,
       l2KeyRegistryAddress: cliOptions.l2KeyRegistryAddress ?? hubConfig.l2KeyRegistryAddress,
+      l2IdRegistryV2Address: cliOptions.l2IdRegistryV2Address ?? hubConfig.l2IdRegistryV2Address,
+      l2KeyRegistryV2Address: cliOptions.l2KeyRegistryV2Address ?? hubConfig.l2KeyRegistryV2Address,
       l2StorageRegistryAddress: cliOptions.l2StorageRegistryAddress ?? hubConfig.l2StorageRegistryAddress,
       l2FirstBlock: cliOptions.l2FirstBlock ?? hubConfig.l2FirstBlock,
       l2ChunkSize: cliOptions.l2ChunkSize ?? hubConfig.l2ChunkSize,
