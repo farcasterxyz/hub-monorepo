@@ -1,6 +1,6 @@
 import {
   bytesToHexString,
-  ContactInfoContent,
+  ContactInfoContentBody,
   FidRequest,
   getFarcasterTime,
   HubAsyncResult,
@@ -71,7 +71,7 @@ interface SyncEvents {
 }
 
 type PeerContact = {
-  contactInfo: ContactInfoContent;
+  contactInfo: ContactInfoContentBody;
   peerId: PeerId;
 };
 
@@ -399,7 +399,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this.currentHubPeerContacts.get(peerId);
   }
 
-  public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContent) {
+  public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContentBody) {
     const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
     if (existingPeerInfo) {
       if (contactInfo.timestamp > existingPeerInfo.contactInfo.timestamp) {

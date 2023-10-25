@@ -1,5 +1,6 @@
 import {
   ContactInfoContent,
+  ContactInfoContentBody,
   FarcasterNetwork,
   GossipAddressInfo,
   GossipMessage,
@@ -109,7 +110,7 @@ export interface HubInterface {
   gossipContactInfo(): HubAsyncResult<void>;
   getRPCClientForPeer(
     peerId: PeerId,
-    peer: ContactInfoContent,
+    peer: ContactInfoContentBody,
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined>;
   updateApplicationPeerScore(peerId: String, score: number): HubAsyncResult<void>;
@@ -857,7 +858,7 @@ export class Hub implements HubInterface {
       return err(snapshot.error);
     }
 
-    const content = ContactInfoContent.create({
+    const body = ContactInfoContentBody.create({
       gossipAddress: gossipAddressContactInfo,
       rpcAddress: rpcAddressContactInfo,
       excludedHashes: [], // Hubs don't rely on this anymore,
@@ -867,12 +868,24 @@ export class Hub implements HubInterface {
       appVersion: APP_VERSION,
       timestamp: Date.now(),
     });
+    const content = ContactInfoContent.create({
+      gossipAddress: gossipAddressContactInfo,
+      rpcAddress: rpcAddressContactInfo,
+      excludedHashes: [], // Hubs don't rely on this anymore,
+      count: snapshot.value.numMessages,
+      hubVersion: FARCASTER_VERSION,
+      network: this.options.network,
+      appVersion: APP_VERSION,
+      timestamp: Date.now(),
+      // omit above in a subsequent version
+      body: body,
+    });
     const peerId = this.gossipNode.peerId();
     const privKey = peerId?.privateKey;
     if (privKey) {
       const rawPrivKey = await unmarshalPrivateKey(privKey);
       const hash = await validations.createMessageHash(
-        ContactInfoContent.encode(content).finish(),
+        ContactInfoContentBody.encode(body).finish(),
         HashScheme.BLAKE3,
         nativeValidationMethods,
       );
@@ -1031,34 +1044,35 @@ export class Hub implements HubInterface {
   private async handleContactInfo(peerId: PeerId, content: ContactInfoContent): Promise<boolean> {
     statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
 
-    let message = ContactInfoContent.create({
-      gossipAddress: content.gossipAddress,
-      rpcAddress: content.rpcAddress,
-      excludedHashes: content.excludedHashes,
-      count: content.count,
-      hubVersion: content.hubVersion,
-      network: content.network,
-      appVersion: content.appVersion,
-      timestamp: content.timestamp,
-      dataBytes: content.dataBytes,
-    });
-    if (content.signature && content.signer && peerId.publicKey) {
+    let message: ContactInfoContentBody = content.body
+      ? content.body
+      : ContactInfoContentBody.create({
+          gossipAddress: content.gossipAddress,
+          rpcAddress: content.rpcAddress,
+          excludedHashes: content.excludedHashes,
+          count: content.count,
+          hubVersion: content.hubVersion,
+          network: content.network,
+          appVersion: content.appVersion,
+          timestamp: content.timestamp,
+        });
+    if (content.signature && content.signer && peerId.publicKey && content.body) {
       let bytes: Uint8Array;
-      if (message.dataBytes) {
-        bytes = message.dataBytes;
+      if (content.dataBytes) {
+        bytes = content.dataBytes;
       } else {
-        bytes = ContactInfoContent.encode(message).finish();
+        bytes = ContactInfoContentBody.encode(content.body).finish();
       }
 
       const pubKey = unmarshalPublicKey(peerId.publicKey);
       if (Buffer.compare(pubKey.marshal(), content.signer) !== 0) {
-        log.debug({ message: content }, "signer mismatch for contact info");
+        log.error({ message: content }, "signer mismatch for contact info");
         return false;
       }
 
       const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, nativeValidationMethods);
       if (hash.isErr()) {
-        log.debug({ message: content }, "could not hash message");
+        log.warn({ message: content }, "could not hash message");
         return false;
       }
 
@@ -1069,20 +1083,20 @@ export class Hub implements HubInterface {
         nativeValidationMethods,
       );
       if (result.isErr()) {
-        log.debug({ message: content, error: result.error }, "signature verification failed for contact info");
+        log.warn({ message: content, error: result.error }, "signature verification failed for contact info");
         return false;
       }
 
       if (!result.value) {
-        log.debug({ message: content }, "signature verification failed for contact info");
+        log.warn({ message: content }, "signature verification failed for contact info");
         return false;
       }
 
-      if (message.dataBytes) {
-        message = ContactInfoContent.decode(message.dataBytes);
+      if (content.dataBytes) {
+        message = ContactInfoContentBody.decode(content.dataBytes);
       }
     } else if (this.strictContactInfoValidation) {
-      log.debug({ message, peerId }, "provided contact info does not have a signature");
+      log.warn({ message: content, peerId }, "provided contact info does not have a signature");
       return false;
     }
 
@@ -1193,7 +1207,7 @@ export class Hub implements HubInterface {
 
   public async getRPCClientForPeer(
     peerId: PeerId,
-    peer: ContactInfoContent,
+    peer: ContactInfoContentBody,
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined> {
     /*
@@ -1464,7 +1478,7 @@ export class Hub implements HubInterface {
     return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
 
-  async isValidPeer(otherPeerId: PeerId, message: ContactInfoContent) {
+  async isValidPeer(otherPeerId: PeerId, message: ContactInfoContentBody) {
     if (!this.gossipNode.isPeerAllowed(otherPeerId)) {
       log.warn(`Peer ${otherPeerId.toString()} is not in allowlist or is in the denylist`);
       return false;
