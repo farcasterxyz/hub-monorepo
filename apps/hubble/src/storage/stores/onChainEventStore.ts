@@ -129,8 +129,9 @@ class OnChainEventStore {
       OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
       0,
     );
-    if (signerMigrated[0]) {
-      return ok(signerMigrated[0].signerMigratedEventBody?.migratedAt);
+    const byHighestBlock = signerMigrated.sort((a, b) => b.blockNumber - a.blockNumber);
+    if (byHighestBlock[0]) {
+      return ok(byHighestBlock[0].signerMigratedEventBody?.migratedAt);
     }
     return ok(0);
   }

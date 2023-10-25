@@ -59,7 +59,7 @@ import { PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
-import { isRateLimitedByKey, consumeRateLimitByKey, getRateLimiterForTotalMessages } from "../../utils/rateLimits.js";
+import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByKey } from "../../utils/rateLimits.js";
 import { nativeValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
@@ -689,9 +689,15 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   async getOnChainEvents(type: OnChainEventType, fid: number): HubAsyncResult<OnChainEventResponse> {
-    const validatedFid = validations.validateFid(fid);
-    if (validatedFid.isErr()) {
-      return err(validatedFid.error);
+    if (type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED) {
+      if (fid !== 0) {
+        return err(new HubError("bad_request.invalid_param", "fid must be 0 for signer migrated events"));
+      }
+    } else {
+      const validatedFid = validations.validateFid(fid);
+      if (validatedFid.isErr()) {
+        return err(validatedFid.error);
+      }
     }
 
     return ResultAsync.fromPromise(this._onchainEventsStore.getOnChainEvents(type, fid), (e) => e as HubError).map(

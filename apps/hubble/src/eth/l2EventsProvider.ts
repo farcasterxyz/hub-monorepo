@@ -638,6 +638,12 @@ export class L2EventsProvider {
       log.info("No V2 addresses provided. Not watching V2 contract events");
       return;
     }
+
+    // Ignore if we're already watching these addresses
+    if (this.idRegistryV2Address && this.keyRegistryV2Address) {
+      return;
+    }
+
     this.idRegistryV2Address = idRegistryV2Address;
     this.keyRegistryV2Address = keyRegistryV2Address;
 
