@@ -202,11 +202,23 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const methodCall = { method, args, methodCallId };
 
     const result = new Promise<LibP2PNodeMethodReturnType<MethodName>>((resolve, reject) => {
-      this._nodeMethodCallMap.set(methodCallId, { resolve, reject });
-      this._nodeWorker?.postMessage(methodCall);
+      this.waitIfNotStarted().then(() => {
+        this._nodeMethodCallMap.set(methodCallId, { resolve, reject });
+        this._nodeWorker?.postMessage(methodCall);
+      });
     });
 
     return result;
+  }
+
+  // Provides a waiting interval when a node is not started, at a resolution of 200ms, with a maximum
+  // reattempt window so contingent invoking methods can fail out.
+  async waitIfNotStarted(reattempts = 25): Promise<void> {
+    let reattempt = 0;
+    while (!this._isStarted && reattempt < reattempts) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      reattempt++;
+    }
   }
 
   /** Returns the PeerId (public key) of this node */
