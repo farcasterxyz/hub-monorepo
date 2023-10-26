@@ -1,5 +1,6 @@
 import {
   ContactInfoContent,
+  ContactInfoContentBody,
   FarcasterNetwork,
   GossipAddressInfo,
   GossipMessage,
@@ -16,10 +17,13 @@ import {
   OnChainEvent,
   onChainEventTypeToJSON,
   ClientOptions,
+  validations,
+  HashScheme,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
+import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
@@ -34,6 +38,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
+import { nativeValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -105,7 +110,7 @@ export interface HubInterface {
   gossipContactInfo(): HubAsyncResult<void>;
   getRPCClientForPeer(
     peerId: PeerId,
-    peer: ContactInfoContent,
+    peer: ContactInfoContentBody,
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined>;
   updateApplicationPeerScore(peerId: String, score: number): HubAsyncResult<void>;
@@ -270,6 +275,12 @@ export interface HubOptions {
 
   /** If set, overrides the default application-specific score cap */
   applicationScoreCap?: number;
+
+  /** If set, requires contact info messages to be signed */
+  strictContactInfoValidation?: boolean;
+
+  /** If set, requires gossip messages to utilize StrictNoSign */
+  strictNoSign?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -294,6 +305,8 @@ export class Hub implements HubInterface {
   private allowedPeerIds: string[] | undefined;
   private deniedPeerIds: string[];
   private allowlistedImmunePeers: string[] | undefined;
+  private strictContactInfoValidation: boolean;
+  private strictNoSign: boolean;
 
   private s3_snapshot_bucket: string;
 
@@ -390,6 +403,8 @@ export class Hub implements HubInterface {
       this.fNameRegistryEventsProvider,
       profileSync,
     );
+    this.strictContactInfoValidation = options.strictContactInfoValidation || false;
+    this.strictNoSign = options.strictNoSign || false;
 
     // On syncComplete, we update the denied peer ids list with the bad peers.
     // This is not active yet.
@@ -628,7 +643,7 @@ export class Hub implements HubInterface {
           error: networkConfig.error,
         });
       } else {
-        const shouldExit = this.applyNetworkConfig(networkConfig.value);
+        const { shouldExit } = this.applyNetworkConfig(networkConfig.value);
         if (shouldExit) {
           throw new HubError("unavailable", "Quitting due to network config");
         }
@@ -668,6 +683,7 @@ export class Hub implements HubInterface {
       directPeers: this.options.directPeers,
       allowlistedImmunePeers: this.options.allowlistedImmunePeers,
       applicationScoreCap: this.options.applicationScoreCap,
+      strictNoSign: this.strictNoSign,
     });
 
     await this.registerEventHandlers();
@@ -699,17 +715,26 @@ export class Hub implements HubInterface {
   }
 
   /** Apply the new the network config. Will return true if the Hub should exit */
-  public applyNetworkConfig(networkConfig: NetworkConfig): boolean {
-    const { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit } = applyNetworkConfig(
+  public applyNetworkConfig(networkConfig: NetworkConfig): { shouldRestart: boolean; shouldExit: boolean } {
+    const {
+      allowedPeerIds,
+      deniedPeerIds,
+      allowlistedImmunePeers,
+      strictContactInfoValidation,
+      strictNoSign,
+      shouldExit,
+    } = applyNetworkConfig(
       networkConfig,
       this.allowedPeerIds,
       this.deniedPeerIds,
       this.options.network,
       this.options.allowlistedImmunePeers,
+      this.options.strictContactInfoValidation,
+      this.options.strictNoSign,
     );
 
     if (shouldExit) {
-      return true;
+      return { shouldExit: true, shouldRestart: false };
     } else {
       this.gossipNode.updateAllowedPeerIds(allowedPeerIds);
       this.allowedPeerIds = allowedPeerIds;
@@ -718,6 +743,9 @@ export class Hub implements HubInterface {
       this.deniedPeerIds = deniedPeerIds;
 
       this.allowlistedImmunePeers = allowlistedImmunePeers;
+      this.strictContactInfoValidation = !!strictContactInfoValidation;
+      const shouldRestart = this.strictNoSign !== !!strictNoSign;
+      this.strictNoSign = !!strictNoSign;
 
       if (networkConfig.idRegistryV2Address && networkConfig.keyRegistryV2Address) {
         this.l2RegistryProvider.setV2Addresses(networkConfig.keyRegistryV2Address, networkConfig.idRegistryV2Address);
@@ -725,7 +753,7 @@ export class Hub implements HubInterface {
 
       log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 
-      return false;
+      return { shouldExit: false, shouldRestart };
     }
   }
 
@@ -839,18 +867,53 @@ export class Hub implements HubInterface {
     });
 
     const snapshot = await this.syncEngine.getSnapshot();
-    return snapshot.map((snapshot) => {
-      return ContactInfoContent.create({
-        gossipAddress: gossipAddressContactInfo,
-        rpcAddress: rpcAddressContactInfo,
-        excludedHashes: [], // Hubs don't rely on this anymore,
-        count: snapshot.numMessages,
-        hubVersion: FARCASTER_VERSION,
-        network: this.options.network,
-        appVersion: APP_VERSION,
-        timestamp: Date.now(),
-      });
+    if (snapshot.isErr()) {
+      return err(snapshot.error);
+    }
+
+    const body = ContactInfoContentBody.create({
+      gossipAddress: gossipAddressContactInfo,
+      rpcAddress: rpcAddressContactInfo,
+      excludedHashes: [], // Hubs don't rely on this anymore,
+      count: snapshot.value.numMessages,
+      hubVersion: FARCASTER_VERSION,
+      network: this.options.network,
+      appVersion: APP_VERSION,
+      timestamp: Date.now(),
     });
+    const content = ContactInfoContent.create({
+      gossipAddress: gossipAddressContactInfo,
+      rpcAddress: rpcAddressContactInfo,
+      excludedHashes: [], // Hubs don't rely on this anymore,
+      count: snapshot.value.numMessages,
+      hubVersion: FARCASTER_VERSION,
+      network: this.options.network,
+      appVersion: APP_VERSION,
+      timestamp: Date.now(),
+      // omit above in a subsequent version
+      body: body,
+    });
+    const peerId = this.gossipNode.peerId();
+    const privKey = peerId?.privateKey;
+    if (privKey) {
+      const rawPrivKey = await unmarshalPrivateKey(privKey);
+      const hash = await validations.createMessageHash(
+        ContactInfoContentBody.encode(body).finish(),
+        HashScheme.BLAKE3,
+        nativeValidationMethods,
+      );
+      if (hash.isErr()) {
+        return err(hash.error);
+      }
+      const signature = await validations.signMessageHash(hash.value, rawPrivKey.marshal(), nativeValidationMethods);
+      if (signature.isErr()) {
+        return err(signature.error);
+      }
+
+      content.signature = signature.value;
+      content.signer = rawPrivKey.public.marshal();
+    }
+    return ok(content);
   }
 
   async teardown() {
@@ -858,7 +921,7 @@ export class Hub implements HubInterface {
   }
 
   /** Stop the GossipNode and RPC Server */
-  async stop() {
+  async stop(terminateGossipWorker = true) {
     log.info("Stopping Hubble...");
     clearInterval(this.contactTimer);
 
@@ -869,7 +932,7 @@ export class Hub implements HubInterface {
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine
-    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(), this.syncEngine.stop()]);
+    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(terminateGossipWorker), this.syncEngine.stop()]);
 
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();
@@ -991,14 +1054,71 @@ export class Hub implements HubInterface {
     }
   }
 
-  private async handleContactInfo(peerId: PeerId, message: ContactInfoContent): Promise<boolean> {
+  private async handleContactInfo(peerId: PeerId, content: ContactInfoContent): Promise<boolean> {
     statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+
+    let message: ContactInfoContentBody = content.body
+      ? content.body
+      : ContactInfoContentBody.create({
+          gossipAddress: content.gossipAddress,
+          rpcAddress: content.rpcAddress,
+          excludedHashes: content.excludedHashes,
+          count: content.count,
+          hubVersion: content.hubVersion,
+          network: content.network,
+          appVersion: content.appVersion,
+          timestamp: content.timestamp,
+        });
+    if (content.signature && content.signer && peerId.publicKey && content.body) {
+      let bytes: Uint8Array;
+      if (content.dataBytes) {
+        bytes = content.dataBytes;
+      } else {
+        bytes = ContactInfoContentBody.encode(content.body).finish();
+      }
+
+      const pubKey = unmarshalPublicKey(peerId.publicKey);
+      if (Buffer.compare(pubKey.marshal(), content.signer) !== 0) {
+        log.error({ message: content }, "signer mismatch for contact info");
+        return false;
+      }
+
+      const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, nativeValidationMethods);
+      if (hash.isErr()) {
+        log.warn({ message: content }, "could not hash message");
+        return false;
+      }
+
+      const result = await validations.verifySignedMessageHash(
+        hash.value,
+        content.signature,
+        content.signer,
+        nativeValidationMethods,
+      );
+      if (result.isErr()) {
+        log.warn({ message: content, error: result.error }, "signature verification failed for contact info");
+        return false;
+      }
+
+      if (!result.value) {
+        log.warn({ message: content }, "signature verification failed for contact info");
+        return false;
+      }
+
+      if (content.dataBytes) {
+        message = ContactInfoContentBody.decode(content.dataBytes);
+      }
+    } else if (this.strictContactInfoValidation) {
+      log.warn({ message: content, peerId }, "provided contact info does not have a signature");
+      return false;
+    }
 
     // Don't process messages that are too old
     if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
       log.debug({ message }, "contact info message is too old");
       return false;
     }
+
     // Updates the address book for this peer
     const gossipAddress = message.gossipAddress;
     if (gossipAddress) {
@@ -1100,7 +1220,7 @@ export class Hub implements HubInterface {
 
   public async getRPCClientForPeer(
     peerId: PeerId,
-    peer: ContactInfoContent,
+    peer: ContactInfoContentBody,
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined> {
     /*
@@ -1371,7 +1491,7 @@ export class Hub implements HubInterface {
     return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
 
-  async isValidPeer(otherPeerId: PeerId, message: ContactInfoContent) {
+  async isValidPeer(otherPeerId: PeerId, message: ContactInfoContentBody) {
     if (!this.gossipNode.isPeerAllowed(otherPeerId)) {
       log.warn(`Peer ${otherPeerId.toString()} is not in allowlist or is in the denylist`);
       return false;

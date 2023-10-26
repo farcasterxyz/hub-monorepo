@@ -41,10 +41,16 @@ export class UpdateNetworkConfigJobScheduler {
       return err(networkConfig.error);
     }
 
-    const shouldExit = this._hub.applyNetworkConfig(networkConfig.value);
+    const { shouldRestart, shouldExit } = this._hub.applyNetworkConfig(networkConfig.value);
     if (shouldExit) {
       log.error({}, "Network config exit signal");
       process.kill(process.pid, "SIGQUIT");
+    }
+
+    if (shouldRestart) {
+      log.info({}, "Network config restart signal");
+      await this._hub.stop(false);
+      await this._hub.start();
     }
 
     log.info({}, "Network config updated");

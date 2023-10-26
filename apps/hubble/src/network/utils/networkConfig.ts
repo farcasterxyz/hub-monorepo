@@ -22,6 +22,8 @@ export type NetworkConfig = {
   keyRegistryAddress: `0x${string}` | undefined;
   idRegistryAddress: `0x${string}` | undefined;
   allowlistedImmunePeers: string[] | undefined;
+  strictContactInfoValidation: boolean | undefined;
+  strictNoSign: boolean | undefined;
   keyRegistryV2Address: `0x${string}` | undefined;
   idRegistryV2Address: `0x${string}` | undefined;
 };
@@ -30,6 +32,8 @@ export type NetworkConfigResult = {
   allowedPeerIds: string[] | undefined;
   deniedPeerIds: string[];
   allowlistedImmunePeers: string[] | undefined;
+  strictContactInfoValidation: boolean | undefined;
+  strictNoSign: boolean | undefined;
   shouldExit: boolean;
 };
 
@@ -86,10 +90,19 @@ export function applyNetworkConfig(
   deniedPeerIds: string[],
   currentNetwork: number,
   allowlistedImmunePeers: string[] | undefined,
+  strictContactInfoValidation: boolean | undefined,
+  strictNoSign: boolean | undefined,
 ): NetworkConfigResult {
   if (networkConfig.network !== currentNetwork) {
     log.error({ networkConfig, network: currentNetwork }, "network config mismatch");
-    return { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit: false };
+    return {
+      allowedPeerIds,
+      deniedPeerIds,
+      allowlistedImmunePeers,
+      strictContactInfoValidation,
+      strictNoSign,
+      shouldExit: false,
+    };
   }
 
   // Refuse to start if we are below the minAppVersion
@@ -99,7 +112,14 @@ export function applyNetworkConfig(
     if (semver.lt(APP_VERSION, minAppVersion)) {
       const errMsg = "Hubble version is too old too start. Please update your node.";
       log.fatal({ minAppVersion, ourVersion: APP_VERSION }, errMsg);
-      return { allowedPeerIds, deniedPeerIds, allowlistedImmunePeers, shouldExit: true };
+      return {
+        allowedPeerIds,
+        deniedPeerIds,
+        allowlistedImmunePeers,
+        strictContactInfoValidation,
+        strictNoSign,
+        shouldExit: true,
+      };
     }
   } else {
     log.error({ networkConfig }, "invalid minAppVersion");
@@ -134,6 +154,8 @@ export function applyNetworkConfig(
     allowedPeerIds: newPeerIdList,
     deniedPeerIds: newDeniedPeerIdList,
     allowlistedImmunePeers: newAllowlistedImmunePeers,
+    strictContactInfoValidation: strictContactInfoValidation || !!networkConfig.strictContactInfoValidation,
+    strictNoSign: strictNoSign || !!networkConfig.strictNoSign,
     shouldExit: false,
   };
 }

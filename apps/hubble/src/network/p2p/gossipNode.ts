@@ -67,6 +67,8 @@ export interface NodeOptions {
   allowlistedImmunePeers?: string[] | undefined;
   /** Override application score cap. */
   applicationScoreCap?: number | undefined;
+  /** Determines whether messages are required to be strictly unsigned */
+  strictNoSign?: boolean | undefined;
 }
 
 // A common return type for several methods on the libp2p node.
@@ -200,11 +202,23 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const methodCall = { method, args, methodCallId };
 
     const result = new Promise<LibP2PNodeMethodReturnType<MethodName>>((resolve, reject) => {
-      this._nodeMethodCallMap.set(methodCallId, { resolve, reject });
-      this._nodeWorker?.postMessage(methodCall);
+      this.waitIfNotStarted().then(() => {
+        this._nodeMethodCallMap.set(methodCallId, { resolve, reject });
+        this._nodeWorker?.postMessage(methodCall);
+      });
     });
 
     return result;
+  }
+
+  // Provides a waiting interval when a node is not started, at a resolution of 200ms, with a maximum
+  // reattempt window so contingent invoking methods can fail out.
+  async waitIfNotStarted(reattempts = 5): Promise<void> {
+    let reattempt = 0;
+    while (!this._isStarted && reattempt < reattempts) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      reattempt++;
+    }
   }
 
   /** Returns the PeerId (public key) of this node */
@@ -287,9 +301,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Removes the node from the libp2p network and tears down pubsub */
-  async stop() {
+  async stop(terminateWorker = true) {
     await this.callMethod("stop");
-    await this._nodeWorker?.terminate();
+    if (terminateWorker) {
+      await this._nodeWorker?.terminate();
+    }
     this._periodicPeerCheckJob?.stop();
 
     log.info({ identity: this.identity }, "Stopped libp2p...");

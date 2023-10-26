@@ -116,7 +116,7 @@ export class LibP2PNode {
       emitSelf: false,
       allowPublishToZeroPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
-      globalSignaturePolicy: "StrictSign",
+      globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
       canRelayMessage: true,

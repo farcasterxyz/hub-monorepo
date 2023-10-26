@@ -1,5 +1,7 @@
 import { blake3 } from "@noble/hashes/blake3";
-import { nativeBlake3Hash20, nativeEd25519Verify } from "./rustfunctions.js";
+import { createEd25519PeerId } from "@libp2p/peer-id-factory";
+import { unmarshalPrivateKey } from "@libp2p/crypto/keys";
+import { nativeBlake3Hash20, nativeEd25519SignMessageHash, nativeEd25519Verify } from "./rustfunctions.js";
 import { Factories, ed25519 } from "@farcaster/hub-nodejs";
 
 describe("blake3 tests", () => {
@@ -23,6 +25,23 @@ describe("blake3 tests", () => {
 });
 
 describe("ed25519 tests", () => {
+  test("native signing with peer key and verification", async () => {
+    const peerId = await createEd25519PeerId();
+    const hash = Factories.Bytes.build({}, { transient: { length: 32 } });
+    const privateKey = peerId.privateKey;
+    if (!privateKey) {
+      fail("peerid does not contain private key");
+    }
+
+    const rawPrivKey = await unmarshalPrivateKey(privateKey);
+    const nativeSignature = await nativeEd25519SignMessageHash(hash, rawPrivKey.marshal());
+
+    expect(
+      (await ed25519.verifyMessageHashSignature(nativeSignature, hash, rawPrivKey.public.marshal()))._unsafeUnwrap(),
+    ).toBeTruthy();
+    expect(await nativeEd25519Verify(nativeSignature, hash, rawPrivKey.public.marshal())).toBeTruthy();
+  });
+
   test("create and verify signature", async () => {
     const signer = Factories.Ed25519Signer.build();
     const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
