@@ -4,9 +4,25 @@ import { HubAsyncResult, HubError, HubResult } from "../errors";
 import { defaultL2PublicClient } from "../eth/clients";
 import { Hex, PublicClient } from "viem";
 
-const FID_URI_REGEX = /^farcaster:\/\/fids\/([1-9]\d*)\/?$/;
+type UserDataTypeParam = "pfp" | "display" | "bio" | "url" | "username";
+type ConnectParams = Partial<SiweMessage> & { fid: number; userData?: UserDataTypeParam[] };
 
-export function build(params: string | Partial<SiweMessage>): HubResult<SiweMessage> {
+type ConnectResponse = SiweResponse & { fid: number };
+
+const FID_URI_REGEX = /^farcaster:\/\/fid\/([1-9]\d*)\/?$/;
+const STATEMENT = "Farcaster Connect";
+const CHAIN_ID = 10;
+
+export function build(params: ConnectParams): HubResult<SiweMessage> {
+  const { fid, userData, ...siweParams } = params;
+  const resources = siweParams.resources ?? [];
+  siweParams.statement = STATEMENT;
+  siweParams.chainId = CHAIN_ID;
+  siweParams.resources = [...buildResources(fid, userData), ...resources];
+  return validate(siweParams);
+}
+
+export function validate(params: string | Partial<SiweMessage>): HubResult<SiweMessage> {
   return Result.fromThrowable(
     // SiweMessage validates itself when constructed
     () => new SiweMessage(params),
@@ -19,13 +35,20 @@ export function build(params: string | Partial<SiweMessage>): HubResult<SiweMess
 }
 
 export async function verify(message: SiweMessage, signature: string): HubAsyncResult<SiweResponse> {
-  const verify = (await verifySiweMessage(message, signature)).andThen(mergeFid);
-  if (verify.isErr()) return err(verify.error);
-  if (!verify.value.success) {
-    return ok(verify.value);
+  const siwe = (await verifySiweMessage(message, signature)).andThen(mergeFid);
+  if (siwe.isErr()) return err(siwe.error);
+  if (!siwe.value.success) {
+    const message = siwe.value.error?.type ?? "Unknown error";
+    return err(new HubError("unauthorized", message));
   }
 
-  return verifyFidOwner(verify.value);
+  const fid = await verifyFidOwner(siwe.value);
+  if (fid.isErr()) return err(fid.error);
+  if (!fid.value.success) {
+    const message = siwe.value.error?.type ?? "Unknown error";
+    return err(new HubError("unauthorized", message));
+  }
+  return ok(fid.value);
 }
 
 export function parseFid(message: SiweMessage): HubResult<number> {
@@ -42,21 +65,21 @@ export function parseFid(message: SiweMessage): HubResult<number> {
   return ok(fid);
 }
 
-function validateStatement(message: SiweMessage): HubResult<SiweMessage> {
-  if (message.statement !== "Log in With Farcaster") {
+export function validateStatement(message: SiweMessage): HubResult<SiweMessage> {
+  if (message.statement !== STATEMENT) {
     return err(new HubError("bad_request.validation_failure", "Invalid statement"));
   }
   return ok(message);
 }
 
-function validateChainId(message: SiweMessage): HubResult<SiweMessage> {
-  if (message.chainId !== 10) {
-    return err(new HubError("bad_request.validation_failure", "Chain ID must be 10"));
+export function validateChainId(message: SiweMessage): HubResult<SiweMessage> {
+  if (message.chainId !== CHAIN_ID) {
+    return err(new HubError("bad_request.validation_failure", `Chain ID must be ${CHAIN_ID}`));
   }
   return ok(message);
 }
 
-function validateResources(message: SiweMessage): HubResult<SiweMessage> {
+export function validateResources(message: SiweMessage): HubResult<SiweMessage> {
   const fidResources = (message.resources ?? []).filter((resource) => {
     return FID_URI_REGEX.test(resource);
   });
@@ -75,18 +98,18 @@ async function verifySiweMessage(message: SiweMessage, signature: string): HubAs
   });
 }
 
-function mergeFid(response: SiweResponse): HubResult<SiweResponse & { fid: number }> {
-  const message = response.data;
-  return parseFid(message).andThen((fid) => {
+function mergeFid(response: SiweResponse): HubResult<ConnectResponse> {
+  return parseFid(response.data).andThen((fid) => {
     return ok({ fid, ...response });
   });
 }
 
 async function verifyFidOwner(
-  response: SiweResponse & { fid: number },
+  response: ConnectResponse,
   publicClient: PublicClient = defaultL2PublicClient as PublicClient,
 ): HubAsyncResult<SiweResponse & { fid: number }> {
   return ResultAsync.fromPromise(
+    // TODO: Configure address and abi
     publicClient.readContract({
       address: "0x00000000FcAf86937e41bA038B4fA40BAA4B780A",
       abi: [
@@ -108,11 +131,26 @@ async function verifyFidOwner(
     if (fid !== BigInt(response.fid)) {
       response.success = false;
       response.error = new SiweError(
-        "Invalid resource: fid does not belong to signer",
+        "Invalid resource: signer is not owner of fid.",
         response.fid.toString(),
         fid.toString(),
       );
     }
     return ok(response);
   });
+}
+
+function buildResources(fid: number, userDataParams: UserDataTypeParam[] | undefined): string[] {
+  const userData = userDataParams ?? [];
+  if (userData.length === 0) return [buildFidResource(fid)];
+  return [buildFidResource(fid), buildUserDataResource(fid, userData)];
+}
+
+function buildFidResource(fid: number): string {
+  return `farcaster://fid/${fid}`;
+}
+
+function buildUserDataResource(fid: number, userData: UserDataTypeParam[]): string {
+  const params = Array.from(new Set(userData)).join("&");
+  return `farcaster://fid/${fid}/userdata?${params}`;
 }
