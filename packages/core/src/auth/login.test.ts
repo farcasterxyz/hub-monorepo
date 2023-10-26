@@ -2,10 +2,13 @@ import { SiweError, SiweErrorType } from "siwe";
 import { build, parseFid, verify } from "./login";
 import { HubError } from "../errors";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { zeroAddress } from "viem";
+import { PublicClient, zeroAddress } from "viem";
+import { defaultL2PublicClient } from "../eth/clients";
+import { jest } from "@jest/globals";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
+const publicClient = defaultL2PublicClient as PublicClient;
 
 const validParams = {
   domain: "example.com",
@@ -18,6 +21,10 @@ const validParams = {
   chainId: 10,
   resources: ["farcaster://fids/1234"],
 };
+
+afterEach(async () => {
+  jest.restoreAllMocks();
+});
 
 describe("build", () => {
   test("default parameters are valid", () => {
@@ -82,20 +89,14 @@ describe("parseFid", () => {
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toEqual(42);
   });
-
-  test("parses fid from valid message", () => {
-    const message = build({
-      ...validParams,
-      resources: ["farcaster://fids/42"],
-    });
-    const result = parseFid(message._unsafeUnwrap());
-    expect(result.isOk()).toBe(true);
-    expect(result._unsafeUnwrap()).toEqual(42);
-  });
 });
 
 describe("verify", () => {
   test("verifies valid messages", async () => {
+    jest.spyOn(publicClient, "readContract").mockImplementation(() => {
+      return Promise.resolve(1234n);
+    });
+
     const res = build({
       ...validParams,
       address: account.address,
@@ -111,7 +112,11 @@ describe("verify", () => {
     });
   });
 
-  test("invalid message", async () => {
+  test("invalid SIWE message", async () => {
+    jest.spyOn(publicClient, "readContract").mockImplementation(() => {
+      return Promise.resolve(1234n);
+    });
+
     const message = build({
       ...validParams,
       address: zeroAddress,
@@ -125,5 +130,40 @@ describe("verify", () => {
       error: new SiweError(SiweErrorType.INVALID_SIGNATURE, account.address, `Resolved address to be ${zeroAddress}`),
       fid: 1234,
     });
+  });
+
+  test("invalid fid owner", async () => {
+    jest.spyOn(publicClient, "readContract").mockImplementation(() => {
+      return Promise.resolve(5678n);
+    });
+
+    const message = build({
+      ...validParams,
+      address: account.address,
+    });
+    const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
+    const result = await verify(message._unsafeUnwrap(), sig);
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      data: message._unsafeUnwrap(),
+      success: false,
+      error: new SiweError("Invalid resource: fid does not belong to signer", "1234", "5678"),
+      fid: 1234,
+    });
+  });
+
+  test("client error", async () => {
+    jest.spyOn(publicClient, "readContract").mockRejectedValue(new Error("client error"));
+
+    const message = build({
+      ...validParams,
+      address: account.address,
+    });
+    const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
+    const result = await verify(message._unsafeUnwrap(), sig);
+    expect(result.isOk()).toBe(false);
+    const err = result._unsafeUnwrapErr();
+    expect(err.errCode).toBe("unavailable.network_failure");
+    expect(err.message).toBe("client error");
   });
 });

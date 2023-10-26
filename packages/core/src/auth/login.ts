@@ -1,6 +1,8 @@
-import { SiweMessage, SiweResponse } from "siwe";
-import { Result, ResultAsync, err, ok, okAsync } from "neverthrow";
+import { SiweMessage, SiweResponse, SiweError } from "siwe";
+import { Result, ResultAsync, err, ok } from "neverthrow";
 import { HubAsyncResult, HubError, HubResult } from "../errors";
+import { defaultL2PublicClient } from "../eth/clients";
+import { Hex, PublicClient } from "viem";
 
 const FID_URI_REGEX = /^farcaster:\/\/fids\/([1-9]\d*)\/?$/;
 
@@ -17,7 +19,13 @@ export function build(params: string | Partial<SiweMessage>): HubResult<SiweMess
 }
 
 export async function verify(message: SiweMessage, signature: string): HubAsyncResult<SiweResponse> {
-  return (await verifySiweMessage(message, signature)).andThen(verifyFidOwner);
+  const verify = (await verifySiweMessage(message, signature)).andThen(mergeFid);
+  if (verify.isErr()) return err(verify.error);
+  if (!verify.value.success) {
+    return ok(verify.value);
+  }
+
+  return verifyFidOwner(verify.value);
 }
 
 export function parseFid(message: SiweMessage): HubResult<number> {
@@ -67,9 +75,44 @@ async function verifySiweMessage(message: SiweMessage, signature: string): HubAs
   });
 }
 
-function verifyFidOwner(response: SiweResponse): HubResult<SiweResponse & { fid: number }> {
+function mergeFid(response: SiweResponse): HubResult<SiweResponse & { fid: number }> {
   const message = response.data;
   return parseFid(message).andThen((fid) => {
     return ok({ fid, ...response });
+  });
+}
+
+async function verifyFidOwner(
+  response: SiweResponse & { fid: number },
+  publicClient: PublicClient = defaultL2PublicClient as PublicClient,
+): HubAsyncResult<SiweResponse & { fid: number }> {
+  return ResultAsync.fromPromise(
+    publicClient.readContract({
+      address: "0x00000000FcAf86937e41bA038B4fA40BAA4B780A",
+      abi: [
+        {
+          inputs: [{ internalType: "address", name: "owner", type: "address" }],
+          name: "idOf",
+          outputs: [{ internalType: "uint256", name: "fid", type: "uint256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      functionName: "idOf",
+      args: [response.data.address as Hex],
+    }),
+    (e) => {
+      return new HubError("unavailable.network_failure", e as Error);
+    },
+  ).andThen((fid) => {
+    if (fid !== BigInt(response.fid)) {
+      response.success = false;
+      response.error = new SiweError(
+        "Invalid resource: fid does not belong to signer",
+        response.fid.toString(),
+        fid.toString(),
+      );
+    }
+    return ok(response);
   });
 }
