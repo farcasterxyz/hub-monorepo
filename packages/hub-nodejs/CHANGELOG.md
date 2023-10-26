@@ -1,5 +1,14 @@
 # @farcaster/hub-nodejs
 
+## 0.10.16
+
+### Patch Changes
+
+- f3d32227: feat: Support v2 id and key registry contracts
+- Updated dependencies [3313c232]
+- Updated dependencies [f3d32227]
+  - @farcaster/core@0.13.0
+
 ## 0.10.15
 
 ### Patch Changes
