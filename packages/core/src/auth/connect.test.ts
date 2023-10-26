@@ -1,13 +1,10 @@
 import { validate, parseFid, verify, build } from "./connect";
 import { HubError } from "../errors";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { PublicClient, zeroAddress } from "viem";
-import { defaultL2PublicClient } from "../eth/clients";
-import { jest } from "@jest/globals";
+import { Hex, zeroAddress } from "viem";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
-const publicClient = defaultL2PublicClient as PublicClient;
 
 const siweParams = {
   domain: "example.com",
@@ -24,10 +21,6 @@ const connectParams = {
   chainId: 10,
   resources: ["farcaster://fid/1234"],
 };
-
-afterEach(async () => {
-  jest.restoreAllMocks();
-});
 
 describe("build", () => {
   test("adds connect-specific parameters", () => {
@@ -142,9 +135,7 @@ describe("parseFid", () => {
 
 describe("verify", () => {
   test("verifies valid messages", async () => {
-    jest.spyOn(publicClient, "readContract").mockImplementation(() => {
-      return Promise.resolve(1234n);
-    });
+    const verifier = (_custody: Hex) => Promise.resolve(1234n);
 
     const res = build({
       ...siweParams,
@@ -153,7 +144,7 @@ describe("verify", () => {
     });
     const message = res._unsafeUnwrap();
     const sig = await account.signMessage({ message: message.toMessage() });
-    const result = await verify(message, sig);
+    const result = await verify(message, sig, verifier);
     expect(result.isOk()).toBe(true);
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toStrictEqual({
@@ -164,9 +155,7 @@ describe("verify", () => {
   });
 
   test("invalid SIWE message", async () => {
-    jest.spyOn(publicClient, "readContract").mockImplementation(() => {
-      return Promise.resolve(1234n);
-    });
+    const verifier = (_custody: Hex) => Promise.resolve(1234n);
 
     const message = build({
       ...siweParams,
@@ -174,7 +163,7 @@ describe("verify", () => {
       fid: 1234,
     });
     const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
-    const result = await verify(message._unsafeUnwrap(), sig);
+    const result = await verify(message._unsafeUnwrap(), sig, verifier);
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toBe("unauthorized");
@@ -182,9 +171,7 @@ describe("verify", () => {
   });
 
   test("invalid fid owner", async () => {
-    jest.spyOn(publicClient, "readContract").mockImplementation(() => {
-      return Promise.resolve(5678n);
-    });
+    const verifier = (_custody: Hex) => Promise.resolve(5678n);
 
     const message = build({
       ...siweParams,
@@ -192,7 +179,7 @@ describe("verify", () => {
       fid: 1234,
     });
     const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
-    const result = await verify(message._unsafeUnwrap(), sig);
+    const result = await verify(message._unsafeUnwrap(), sig, verifier);
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toBe("unauthorized");
@@ -200,8 +187,22 @@ describe("verify", () => {
   });
 
   test("client error", async () => {
-    jest.spyOn(publicClient, "readContract").mockRejectedValue(new Error("client error"));
+    const verifier = (_custody: Hex) => Promise.reject(new Error("client error"));
 
+    const message = build({
+      ...siweParams,
+      address: account.address,
+      fid: 1234,
+    });
+    const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
+    const result = await verify(message._unsafeUnwrap(), sig, verifier);
+    expect(result.isOk()).toBe(false);
+    const err = result._unsafeUnwrapErr();
+    expect(err.errCode).toBe("unavailable.network_failure");
+    expect(err.message).toBe("client error");
+  });
+
+  test("missing verifier", async () => {
     const message = build({
       ...siweParams,
       address: account.address,

@@ -1,8 +1,7 @@
 import { SiweMessage, SiweResponse, SiweError } from "siwe";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { HubAsyncResult, HubError, HubResult } from "../errors";
-import { defaultL2PublicClient } from "../eth/clients";
-import { Hex, PublicClient } from "viem";
+import { Hex } from "viem";
 
 type UserDataTypeParam = "pfp" | "display" | "bio" | "url" | "username";
 type ConnectParams = Partial<SiweMessage> & { fid: number; userData?: UserDataTypeParam[] };
@@ -12,6 +11,8 @@ type ConnectResponse = SiweResponse & { fid: number };
 const FID_URI_REGEX = /^farcaster:\/\/fid\/([1-9]\d*)\/?$/;
 const STATEMENT = "Farcaster Connect";
 const CHAIN_ID = 10;
+
+const voidVerifier = (_custody: Hex) => Promise.reject(new Error("Not implemented: Must provide a verifier"));
 
 export function build(params: ConnectParams): HubResult<SiweMessage> {
   const { fid, userData, ...siweParams } = params;
@@ -34,7 +35,11 @@ export function validate(params: string | Partial<SiweMessage>): HubResult<SiweM
     .andThen(validateResources);
 }
 
-export async function verify(message: SiweMessage, signature: string): HubAsyncResult<SiweResponse> {
+export async function verify(
+  message: SiweMessage,
+  signature: string,
+  verifier: (custody: Hex) => Promise<BigInt> = voidVerifier,
+): HubAsyncResult<SiweResponse> {
   const siwe = (await verifySiweMessage(message, signature)).andThen(mergeFid);
   if (siwe.isErr()) return err(siwe.error);
   if (!siwe.value.success) {
@@ -42,7 +47,7 @@ export async function verify(message: SiweMessage, signature: string): HubAsyncR
     return err(new HubError("unauthorized", message));
   }
 
-  const fid = await verifyFidOwner(siwe.value);
+  const fid = await verifyFidOwner(siwe.value, verifier);
   if (fid.isErr()) return err(fid.error);
   if (!fid.value.success) {
     const message = siwe.value.error?.type ?? "Unknown error";
@@ -106,28 +111,11 @@ function mergeFid(response: SiweResponse): HubResult<ConnectResponse> {
 
 async function verifyFidOwner(
   response: ConnectResponse,
-  publicClient: PublicClient = defaultL2PublicClient as PublicClient,
+  verifier: (custody: Hex) => Promise<BigInt> = voidVerifier,
 ): HubAsyncResult<SiweResponse & { fid: number }> {
-  return ResultAsync.fromPromise(
-    // TODO: Configure address and abi
-    publicClient.readContract({
-      address: "0x00000000FcAf86937e41bA038B4fA40BAA4B780A",
-      abi: [
-        {
-          inputs: [{ internalType: "address", name: "owner", type: "address" }],
-          name: "idOf",
-          outputs: [{ internalType: "uint256", name: "fid", type: "uint256" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
-      functionName: "idOf",
-      args: [response.data.address as Hex],
-    }),
-    (e) => {
-      return new HubError("unavailable.network_failure", e as Error);
-    },
-  ).andThen((fid) => {
+  return ResultAsync.fromPromise(verifier(response.data.address as Hex), (e) => {
+    return new HubError("unavailable.network_failure", e as Error);
+  }).andThen((fid) => {
     if (fid !== BigInt(response.fid)) {
       response.success = false;
       response.error = new SiweError(
