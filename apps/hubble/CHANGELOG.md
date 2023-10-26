@@ -1,5 +1,17 @@
 # @farcaster/hubble
 
+## 1.7.0
+
+### Minor Changes
+
+- 3313c232: Adds support for contact info content signing + strictNoSign
+- f3d32227: feat: Support v2 id and key registry contracts
+
+### Patch Changes
+
+- Updated dependencies [f3d32227]
+  - @farcaster/hub-nodejs@0.10.16
+
 ## 1.6.6
 
 ### Patch Changes
