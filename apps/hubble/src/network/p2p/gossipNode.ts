@@ -213,7 +213,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   // Provides a waiting interval when a node is not started, at a resolution of 200ms, with a maximum
   // reattempt window so contingent invoking methods can fail out.
-  async waitIfNotStarted(reattempts = 25): Promise<void> {
+  async waitIfNotStarted(reattempts = 5): Promise<void> {
     let reattempt = 0;
     while (!this._isStarted && reattempt < reattempts) {
       await new Promise((resolve) => setTimeout(resolve, 200));
