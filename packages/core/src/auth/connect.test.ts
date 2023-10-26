@@ -2,6 +2,7 @@ import { validate, parseFid, verify, build } from "./connect";
 import { HubError } from "../errors";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { Hex, zeroAddress } from "viem";
+import { getDefaultProvider } from "ethers";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
@@ -90,7 +91,9 @@ describe("validate", () => {
       statement: "Invalid statement",
     });
     expect(result.isErr()).toBe(true);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "Invalid statement"));
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", "Statement must be 'Farcaster Connect'"),
+    );
   });
 
   test("message must include chainId 10", () => {
@@ -108,7 +111,9 @@ describe("validate", () => {
       resources: [],
     });
     expect(result.isErr()).toBe(true);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "No fid resource found"));
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", "No fid resource provided"),
+    );
   });
 
   test("message must only include one FID resource", () => {
@@ -117,7 +122,9 @@ describe("validate", () => {
       resources: ["farcaster://fid/1", "farcaster://fid/2"],
     });
     expect(result.isErr()).toBe(true);
-    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "Multiple fid resources"));
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", "Multiple fid resources provided"),
+    );
   });
 });
 
@@ -134,8 +141,8 @@ describe("parseFid", () => {
 });
 
 describe("verify", () => {
-  test("verifies valid messages", async () => {
-    const verifier = (_custody: Hex) => Promise.resolve(1234n);
+  test("verifies valid EOA signatures", async () => {
+    const fidVerifier = (_custody: Hex) => Promise.resolve(1234n);
 
     const res = build({
       ...siweParams,
@@ -144,8 +151,7 @@ describe("verify", () => {
     });
     const message = res._unsafeUnwrap();
     const sig = await account.signMessage({ message: message.toMessage() });
-    const result = await verify(message, sig, verifier);
-    expect(result.isOk()).toBe(true);
+    const result = await verify(message, sig, { fidVerifier });
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toStrictEqual({
       data: message,
@@ -154,8 +160,45 @@ describe("verify", () => {
     });
   });
 
+  test("verifies valid 1271 signatures", async () => {
+    const fidVerifier = (_custody: Hex) => Promise.resolve(1234n);
+    const provider = getDefaultProvider(10);
+
+    const res = build({
+      ...siweParams,
+      address: "0xC89858205c6AdDAD842E1F58eD6c42452671885A",
+      fid: 1234,
+    });
+    const message = res._unsafeUnwrap();
+    const sig = await account.signMessage({ message: message.toMessage() });
+    const result = await verify(message, sig, { fidVerifier, provider });
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      data: message,
+      success: true,
+      fid: 1234,
+    });
+  });
+
+  test("1271 signatures fail without provider", async () => {
+    const fidVerifier = (_custody: Hex) => Promise.resolve(1234n);
+
+    const res = build({
+      ...siweParams,
+      address: "0xC89858205c6AdDAD842E1F58eD6c42452671885A",
+      fid: 1234,
+    });
+    const message = res._unsafeUnwrap();
+    const sig = await account.signMessage({ message: message.toMessage() });
+    const result = await verify(message, sig, { fidVerifier });
+    expect(result.isOk()).toBe(false);
+    const err = result._unsafeUnwrapErr();
+    expect(err.errCode).toBe("unauthorized");
+    expect(err.message).toBe("Signature does not match address of the message.");
+  });
+
   test("invalid SIWE message", async () => {
-    const verifier = (_custody: Hex) => Promise.resolve(1234n);
+    const fidVerifier = (_custody: Hex) => Promise.resolve(1234n);
 
     const message = build({
       ...siweParams,
@@ -163,7 +206,7 @@ describe("verify", () => {
       fid: 1234,
     });
     const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
-    const result = await verify(message._unsafeUnwrap(), sig, verifier);
+    const result = await verify(message._unsafeUnwrap(), sig, { fidVerifier });
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toBe("unauthorized");
@@ -171,7 +214,7 @@ describe("verify", () => {
   });
 
   test("invalid fid owner", async () => {
-    const verifier = (_custody: Hex) => Promise.resolve(5678n);
+    const fidVerifier = (_custody: Hex) => Promise.resolve(5678n);
 
     const message = build({
       ...siweParams,
@@ -179,15 +222,15 @@ describe("verify", () => {
       fid: 1234,
     });
     const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
-    const result = await verify(message._unsafeUnwrap(), sig, verifier);
+    const result = await verify(message._unsafeUnwrap(), sig, { fidVerifier });
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toBe("unauthorized");
-    expect(err.message).toBe("Invalid resource: signer is not owner of fid.");
+    expect(err.message).toBe(`Invalid resource: signer ${account.address} does not own fid 5678.`);
   });
 
   test("client error", async () => {
-    const verifier = (_custody: Hex) => Promise.reject(new Error("client error"));
+    const fidVerifier = (_custody: Hex) => Promise.reject(new Error("client error"));
 
     const message = build({
       ...siweParams,
@@ -195,7 +238,7 @@ describe("verify", () => {
       fid: 1234,
     });
     const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
-    const result = await verify(message._unsafeUnwrap(), sig, verifier);
+    const result = await verify(message._unsafeUnwrap(), sig, { fidVerifier });
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toBe("unavailable.network_failure");
@@ -213,6 +256,6 @@ describe("verify", () => {
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toBe("unavailable.network_failure");
-    expect(err.message).toBe("client error");
+    expect(err.message).toBe("Not implemented: Must provide an fid verifier");
   });
 });
