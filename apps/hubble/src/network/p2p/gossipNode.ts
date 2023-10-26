@@ -289,9 +289,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Removes the node from the libp2p network and tears down pubsub */
-  async stop() {
+  async stop(terminateWorker = true) {
     await this.callMethod("stop");
-    await this._nodeWorker?.terminate();
+    if (terminateWorker) {
+      await this._nodeWorker?.terminate();
+    }
     this._periodicPeerCheckJob?.stop();
 
     log.info({ identity: this.identity }, "Stopped libp2p...");

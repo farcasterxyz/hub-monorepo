@@ -49,7 +49,7 @@ export class UpdateNetworkConfigJobScheduler {
 
     if (shouldRestart) {
       log.info({}, "Network config restart signal");
-      await this._hub.stop();
+      await this._hub.stop(false);
       await this._hub.start();
     }
 
