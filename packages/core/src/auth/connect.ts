@@ -2,9 +2,14 @@ import { SiweMessage, SiweResponse, SiweError } from "siwe";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { HubAsyncResult, HubError, HubResult } from "../errors";
 import { Hex } from "viem";
+import { Provider } from "ethers";
 
 type UserDataTypeParam = "pfp" | "display" | "bio" | "url" | "username";
 type ConnectParams = Partial<SiweMessage> & { fid: number; userData?: UserDataTypeParam[] };
+type ConnectOpts = {
+  fidVerifier: (custody: Hex) => Promise<BigInt>;
+  provider?: Provider;
+};
 
 type ConnectResponse = SiweResponse & { fid: number };
 
@@ -12,7 +17,7 @@ const FID_URI_REGEX = /^farcaster:\/\/fid\/([1-9]\d*)\/?$/;
 const STATEMENT = "Farcaster Connect";
 const CHAIN_ID = 10;
 
-const voidVerifier = (_custody: Hex) => Promise.reject(new Error("Not implemented: Must provide a verifier"));
+const voidFidVerifier = (_custody: Hex) => Promise.reject(new Error("Not implemented: Must provide an fid verifier"));
 
 export function build(params: ConnectParams): HubResult<SiweMessage> {
   const { fid, userData, ...siweParams } = params;
@@ -38,16 +43,19 @@ export function validate(params: string | Partial<SiweMessage>): HubResult<SiweM
 export async function verify(
   message: SiweMessage,
   signature: string,
-  verifier: (custody: Hex) => Promise<BigInt> = voidVerifier,
+  options: ConnectOpts = {
+    fidVerifier: voidFidVerifier,
+  },
 ): HubAsyncResult<SiweResponse> {
-  const siwe = (await verifySiweMessage(message, signature)).andThen(mergeFid);
+  const { fidVerifier, provider } = options;
+  const siwe = (await verifySiweMessage(message, signature, provider)).andThen(mergeFid);
   if (siwe.isErr()) return err(siwe.error);
   if (!siwe.value.success) {
     const message = siwe.value.error?.type ?? "Unknown error";
     return err(new HubError("unauthorized", message));
   }
 
-  const fid = await verifyFidOwner(siwe.value, verifier);
+  const fid = await verifyFidOwner(siwe.value, fidVerifier);
   if (fid.isErr()) return err(fid.error);
   if (!fid.value.success) {
     const message = siwe.value.error?.type ?? "Unknown error";
@@ -61,18 +69,18 @@ export function parseFid(message: SiweMessage): HubResult<number> {
     return FID_URI_REGEX.test(resource);
   });
   if (!resource) {
-    return err(new HubError("bad_request.validation_failure", "Invalid resources"));
+    return err(new HubError("bad_request.validation_failure", "No fid resource provided"));
   }
   const fid = parseInt(resource.match(FID_URI_REGEX)?.[1] ?? "");
   if (isNaN(fid)) {
-    return err(new HubError("bad_request.validation_failure", "Invalid resources"));
+    return err(new HubError("bad_request.validation_failure", "Invalid fid"));
   }
   return ok(fid);
 }
 
 export function validateStatement(message: SiweMessage): HubResult<SiweMessage> {
   if (message.statement !== STATEMENT) {
-    return err(new HubError("bad_request.validation_failure", "Invalid statement"));
+    return err(new HubError("bad_request.validation_failure", `Statement must be '${STATEMENT}'`));
   }
   return ok(message);
 }
@@ -89,16 +97,20 @@ export function validateResources(message: SiweMessage): HubResult<SiweMessage> 
     return FID_URI_REGEX.test(resource);
   });
   if (fidResources.length === 0) {
-    return err(new HubError("bad_request.validation_failure", "No fid resource found"));
+    return err(new HubError("bad_request.validation_failure", "No fid resource provided"));
   } else if (fidResources.length > 1) {
-    return err(new HubError("bad_request.validation_failure", "Multiple fid resources"));
+    return err(new HubError("bad_request.validation_failure", "Multiple fid resources provided"));
   } else {
     return ok(message);
   }
 }
 
-async function verifySiweMessage(message: SiweMessage, signature: string): HubAsyncResult<SiweResponse> {
-  return ResultAsync.fromPromise(message.verify({ signature }, { suppressExceptions: true }), (e) => {
+async function verifySiweMessage(
+  message: SiweMessage,
+  signature: string,
+  provider?: Provider,
+): HubAsyncResult<SiweResponse> {
+  return ResultAsync.fromPromise(message.verify({ signature }, { provider, suppressExceptions: true }), (e) => {
     return new HubError("unauthorized", e as Error);
   });
 }
@@ -111,15 +123,16 @@ function mergeFid(response: SiweResponse): HubResult<ConnectResponse> {
 
 async function verifyFidOwner(
   response: ConnectResponse,
-  verifier: (custody: Hex) => Promise<BigInt> = voidVerifier,
+  fidVerifier: (custody: Hex) => Promise<BigInt>,
 ): HubAsyncResult<SiweResponse & { fid: number }> {
-  return ResultAsync.fromPromise(verifier(response.data.address as Hex), (e) => {
+  const signer = response.data.address as Hex;
+  return ResultAsync.fromPromise(fidVerifier(signer), (e) => {
     return new HubError("unavailable.network_failure", e as Error);
   }).andThen((fid) => {
     if (fid !== BigInt(response.fid)) {
       response.success = false;
       response.error = new SiweError(
-        "Invalid resource: signer is not owner of fid.",
+        `Invalid resource: signer ${signer} does not own fid ${fid}.`,
         response.fid.toString(),
         fid.toString(),
       );
