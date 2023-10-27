@@ -11,9 +11,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "MIT",
   "dependencies": {
     "@noble/curves": "^1.0.0",
@@ -22,6 +20,7 @@
     "neverthrow": "^6.0.0",
     "ref-napi": "^3.0.3",
     "siwe": "^2.1.4",
+    "ethers": "^6.6.1",
     "viem": "^1.12.2"
   },
   "scripts": {
@@ -41,7 +40,6 @@
     "@types/ffi-napi": "^4.0.7",
     "@types/ref-napi": "^3.0.7",
     "biome-config-custom": "*",
-    "ethers": "^6.6.1",
     "ethers5": "npm:ethers@^5.7.0",
     "node-gyp": "^9.4.0",
     "prettier-config-custom": "*",
