@@ -234,24 +234,28 @@ export class HttpAPIServer {
         const statusCode = statusCodes[errorCode] || 500;
         reply.code(statusCode).type("application/json").send({ error: errorCode, message: auth.error.message });
       } else {
-        const fid = auth.value.fid;
-        const call = getCallObject("getUserDataByFid", { fid }, request);
-        this.grpcImpl.getUserDataByFid(call, (err, response) => {
-          if (err) {
-            reply.code(400).type("application/json").send(JSON.stringify(err));
-          } else {
-            if (response) {
-              // Convert the protobuf object to JSON
-              const protobufJSON = protoToJSON(response, MessagesResponse);
-              reply.send({
-                ...auth.value,
-                userData: protobufJSON,
-              });
+        const { fid, userDataParams } = auth.value;
+        if (userDataParams) {
+          const call = getCallObject("getUserDataByFid", { fid }, request);
+          this.grpcImpl.getUserDataByFid(call, (err, response) => {
+            if (err) {
+              reply.code(400).type("application/json").send(JSON.stringify(err));
             } else {
-              reply.send(err);
+              if (response) {
+                // Convert the protobuf object to JSON
+                const protobufJSON = protoToJSON(response, MessagesResponse);
+                reply.send({
+                  ...auth.value,
+                  userData: protobufJSON,
+                });
+              } else {
+                reply.send(err);
+              }
             }
-          }
-        });
+          });
+        } else {
+          reply.code(200).type("application/json").send(auth.value);
+        }
       }
     });
 
