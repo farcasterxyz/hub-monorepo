@@ -3,6 +3,7 @@ import { HubError } from "../errors";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { Hex, zeroAddress } from "viem";
 import { getDefaultProvider } from "ethers";
+import { SiweMessage } from "siwe";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
@@ -28,7 +29,7 @@ describe("build", () => {
     const result = build({
       ...siweParams,
       fid: 5678,
-      userData: ["pfp", "display", "username"],
+      userDataParams: ["pfp", "display", "username"],
     });
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toMatchObject({
@@ -150,6 +151,63 @@ describe("verify", () => {
       fid: 1234,
     });
     const message = res._unsafeUnwrap();
+    const sig = await account.signMessage({ message: message.toMessage() });
+    const result = await verify(message, sig, { fidVerifier });
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      data: message,
+      success: true,
+      fid: 1234,
+    });
+  });
+
+  test("adds parsed resources to response", async () => {
+    const fidVerifier = (_custody: Hex) => Promise.resolve(1234n);
+
+    const res = build({
+      ...siweParams,
+      address: account.address,
+      fid: 1234,
+      userDataParams: ["bio", "pfp", "display"],
+    });
+    const message = res._unsafeUnwrap();
+    const sig = await account.signMessage({ message: message.toMessage() });
+    const result = await verify(message, sig, { fidVerifier });
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      data: message,
+      success: true,
+      fid: 1234,
+      userDataParams: ["bio", "pfp", "display"],
+    });
+  });
+
+  test("omits mismatched userdata", async () => {
+    const fidVerifier = (_custody: Hex) => Promise.resolve(1234n);
+
+    const message = new SiweMessage({
+      ...connectParams,
+      address: account.address,
+      resources: ["farcaster://fid/1234", "farcaster://fid/5678/userdata?pfp&display&username"],
+    });
+    const sig = await account.signMessage({ message: message.toMessage() });
+    const result = await verify(message, sig, { fidVerifier });
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      data: message,
+      success: true,
+      fid: 1234,
+    });
+  });
+
+  test("omits userdata with invalid parameters", async () => {
+    const fidVerifier = (_custody: Hex) => Promise.resolve(1234n);
+
+    const message = new SiweMessage({
+      ...connectParams,
+      address: account.address,
+      resources: ["farcaster://fid/1234", "farcaster://fid/1234/userdata?invalid&param"],
+    });
     const sig = await account.signMessage({ message: message.toMessage() });
     const result = await verify(message, sig, { fidVerifier });
     expect(result.isOk()).toBe(true);

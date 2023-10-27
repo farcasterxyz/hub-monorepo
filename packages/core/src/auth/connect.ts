@@ -5,26 +5,29 @@ import { Hex } from "viem";
 import { Provider } from "ethers";
 
 type UserDataTypeParam = "pfp" | "display" | "bio" | "url" | "username";
-type ConnectParams = Partial<SiweMessage> & { fid: number; userData?: UserDataTypeParam[] };
+type ConnectResourceParams = { fid: number; userDataParams?: UserDataTypeParam[] };
+type ConnectParams = Partial<SiweMessage> & ConnectResourceParams;
 type ConnectOpts = {
   fidVerifier: (custody: Hex) => Promise<BigInt>;
   provider?: Provider;
 };
 
-type ConnectResponse = SiweResponse & { fid: number };
+type ConnectResponse = SiweResponse & ConnectResourceParams;
 
 const FID_URI_REGEX = /^farcaster:\/\/fid\/([1-9]\d*)\/?$/;
+const USER_DATA_URI_REGEX =
+  /^farcaster:\/\/fid\/([1-9]\d*)\/userdata\?((pfp|display|bio|url|username)(?:&(pfp|display|bio|url|username))*)$/;
 const STATEMENT = "Farcaster Connect";
 const CHAIN_ID = 10;
 
 const voidFidVerifier = (_custody: Hex) => Promise.reject(new Error("Not implemented: Must provide an fid verifier"));
 
 export function build(params: ConnectParams): HubResult<SiweMessage> {
-  const { fid, userData, ...siweParams } = params;
+  const { fid, userDataParams, ...siweParams } = params;
   const resources = siweParams.resources ?? [];
   siweParams.statement = STATEMENT;
   siweParams.chainId = CHAIN_ID;
-  siweParams.resources = [...buildResources(fid, userData), ...resources];
+  siweParams.resources = [...buildResources(fid, userDataParams), ...resources];
   return validate(siweParams);
 }
 
@@ -51,7 +54,7 @@ export async function verify(
   const valid = validate(message);
   if (valid.isErr()) return err(valid.error);
 
-  const siwe = (await verifySiweMessage(valid.value, signature, provider)).andThen(mergeFid);
+  const siwe = (await verifySiweMessage(valid.value, signature, provider)).andThen(mergeResources);
   if (siwe.isErr()) return err(siwe.error);
   if (!siwe.value.success) {
     const errMessage = siwe.value.error?.type ?? "Unknown error";
@@ -67,6 +70,21 @@ export async function verify(
   return ok(fid.value);
 }
 
+export function parseResources(message: SiweMessage): HubResult<ConnectResourceParams> {
+  const fid = parseFid(message);
+  if (fid.isErr()) return err(fid.error);
+
+  const userDataParams = parseUserData(message);
+  if (userDataParams.isErr()) return err(userDataParams.error);
+
+  if (userDataParams.value) {
+    if (userDataParams.value.fid === fid.value) {
+      return ok(userDataParams.value);
+    }
+  }
+  return ok({ fid: fid.value });
+}
+
 export function parseFid(message: SiweMessage): HubResult<number> {
   const resource = (message.resources ?? []).find((resource) => {
     return FID_URI_REGEX.test(resource);
@@ -79,6 +97,22 @@ export function parseFid(message: SiweMessage): HubResult<number> {
     return err(new HubError("bad_request.validation_failure", "Invalid fid"));
   }
   return ok(fid);
+}
+
+export function parseUserData(message: SiweMessage): HubResult<ConnectResourceParams | undefined> {
+  const resource = (message.resources ?? []).find((resource) => {
+    return USER_DATA_URI_REGEX.test(resource);
+  });
+  if (resource) {
+    const fid = parseInt(resource.match(USER_DATA_URI_REGEX)?.[1] ?? "");
+    const userDataParams = parseUserDataResources(resource.match(USER_DATA_URI_REGEX)?.[2] ?? "");
+    if (isNaN(fid)) {
+      return err(new HubError("bad_request.validation_failure", "Invalid fid"));
+    }
+    return ok({ fid, userDataParams });
+  } else {
+    return ok(undefined);
+  }
 }
 
 export function validateStatement(message: SiweMessage): HubResult<SiweMessage> {
@@ -118,9 +152,9 @@ async function verifySiweMessage(
   });
 }
 
-function mergeFid(response: SiweResponse): HubResult<ConnectResponse> {
-  return parseFid(response.data).andThen((fid) => {
-    return ok({ fid, ...response });
+function mergeResources(response: SiweResponse): HubResult<ConnectResponse> {
+  return parseResources(response.data).andThen((resources) => {
+    return ok({ ...resources, ...response });
   });
 }
 
@@ -157,4 +191,10 @@ function buildFidResource(fid: number): string {
 function buildUserDataResource(fid: number, userData: UserDataTypeParam[]): string {
   const params = Array.from(new Set(userData)).join("&");
   return `farcaster://fid/${fid}/userdata?${params}`;
+}
+
+function parseUserDataResources(queryString: string) {
+  const isUserDataParam = (param: string): param is UserDataTypeParam =>
+    ["pfp", "display", "bio", "url", "username"].includes(param);
+  return queryString.split("&").filter(isUserDataParam);
 }
