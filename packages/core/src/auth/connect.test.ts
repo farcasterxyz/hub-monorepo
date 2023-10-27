@@ -226,7 +226,7 @@ describe("verify", () => {
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toBe("unauthorized");
-    expect(err.message).toBe(`Invalid resource: signer ${account.address} does not own fid 5678.`);
+    expect(err.message).toBe(`Invalid resource: signer ${account.address} does not own fid 1234.`);
   });
 
   test("client error", async () => {

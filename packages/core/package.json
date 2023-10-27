@@ -21,6 +21,7 @@
     "ffi-napi": "^4.0.3",
     "neverthrow": "^6.0.0",
     "ref-napi": "^3.0.3",
+    "siwe": "^2.1.4",
     "viem": "^1.12.2"
   },
   "scripts": {

@@ -41,25 +41,28 @@ export function validate(params: string | Partial<SiweMessage>): HubResult<SiweM
 }
 
 export async function verify(
-  message: SiweMessage,
+  message: string | Partial<SiweMessage>,
   signature: string,
   options: ConnectOpts = {
     fidVerifier: voidFidVerifier,
   },
 ): HubAsyncResult<SiweResponse> {
   const { fidVerifier, provider } = options;
-  const siwe = (await verifySiweMessage(message, signature, provider)).andThen(mergeFid);
+  const valid = validate(message);
+  if (valid.isErr()) return err(valid.error);
+
+  const siwe = (await verifySiweMessage(valid.value, signature, provider)).andThen(mergeFid);
   if (siwe.isErr()) return err(siwe.error);
   if (!siwe.value.success) {
-    const message = siwe.value.error?.type ?? "Unknown error";
-    return err(new HubError("unauthorized", message));
+    const errMessage = siwe.value.error?.type ?? "Unknown error";
+    return err(new HubError("unauthorized", errMessage));
   }
 
   const fid = await verifyFidOwner(siwe.value, fidVerifier);
   if (fid.isErr()) return err(fid.error);
   if (!fid.value.success) {
-    const message = siwe.value.error?.type ?? "Unknown error";
-    return err(new HubError("unauthorized", message));
+    const errMessage = siwe.value.error?.type ?? "Unknown error";
+    return err(new HubError("unauthorized", errMessage));
   }
   return ok(fid.value);
 }
@@ -132,7 +135,7 @@ async function verifyFidOwner(
     if (fid !== BigInt(response.fid)) {
       response.success = false;
       response.error = new SiweError(
-        `Invalid resource: signer ${signer} does not own fid ${fid}.`,
+        `Invalid resource: signer ${signer} does not own fid ${response.fid}.`,
         response.fid.toString(),
         fid.toString(),
       );

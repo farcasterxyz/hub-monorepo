@@ -20,6 +20,7 @@ import {
   UserNameType,
   utf8StringToBytes,
   VerificationAddEthAddressMessage,
+  clients,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -30,9 +31,12 @@ import axios from "axios";
 import { faker } from "@faker-js/faker";
 import { DeepPartial } from "fishery";
 import { mergeDeepPartial } from "../../test/utils.js";
-import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
 import { APP_VERSION } from "../../hubble.js";
+import { connect } from "@farcaster/hub-nodejs";
+import { PublicClient, zeroAddress } from "viem";
+
+const publicClient = clients.defaultL2PublicClient as PublicClient;
 
 const db = jestRocksDB("httpserver.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -51,7 +55,7 @@ function getFullUrl(path: string) {
 beforeAll(async () => {
   syncEngine = new SyncEngine(hub, db);
   server = new Server(hub, engine, syncEngine);
-  httpServer = new HttpAPIServer(server.getImpl(), engine);
+  httpServer = new HttpAPIServer(server.getImpl(), engine, publicClient);
   httpServerAddress = (await httpServer.start())._unsafeUnwrap();
 });
 
@@ -91,7 +95,7 @@ describe("httpServer", () => {
     test("cors", async () => {
       const syncEngine = new SyncEngine(hub, db);
       const server = new Server(hub, engine, syncEngine);
-      const httpServer = new HttpAPIServer(server.getImpl(), engine, "http://example.com");
+      const httpServer = new HttpAPIServer(server.getImpl(), engine, publicClient, "http://example.com");
       const addr = (await httpServer.start())._unsafeUnwrap();
 
       const url = `${addr}/v1/info`;
@@ -149,7 +153,7 @@ describe("httpServer", () => {
     test("submit with auth", async () => {
       const rpcAuth = "username:password";
       const authGrpcServer = new Server(hub, engine, syncEngine, undefined, rpcAuth);
-      const authServer = new HttpAPIServer(authGrpcServer.getImpl(), engine);
+      const authServer = new HttpAPIServer(authGrpcServer.getImpl(), engine, publicClient);
       const addr = (await authServer.start())._unsafeUnwrap();
 
       const postConfig = {
@@ -698,6 +702,103 @@ describe("httpServer", () => {
       expect(response5.status).toBe(200);
       expect(response5.data).toEqual(protoToJSON(idRegistryEvent, OnChainEvent));
     });
+  });
+});
+
+describe("connect API", () => {
+  const signature =
+    "0xc030c553eebcc41d9300dc578febe8ee41d69f86f13ecbbbc2e621583af8fb2b37e92009d1390d827ff22fdf255db2707773e04724252e3ab5c56cf1b7d2063e1b";
+
+  beforeAll(async () => {
+    httpServer = new HttpAPIServer(server.getImpl(), engine, publicClient);
+    httpServerAddress = (await httpServer.start())._unsafeUnwrap();
+  });
+
+  test("valid message - 200", async () => {
+    const res = connect.build({
+      domain: "example.com",
+      uri: "https://example.com/login",
+      version: "1",
+      nonce: "12345678",
+      issuedAt: "2023-10-01T00:00:00.000Z",
+      address: "0x2311B397957B19FCAe315Ad6726b7305BeBC24a1",
+      fid: 20943,
+    });
+    const message = res._unsafeUnwrap();
+    const url = getFullUrl("/v1/connect");
+    const response = await axios.post(url, { message, signature }, { headers: { "Content-Type": "application/json" } });
+
+    expect(response.status).toBe(200);
+    expect(response.data.success).toBe(true);
+    expect(response.data.fid).toBe(20943);
+  });
+
+  test("invalid signature - 401", async () => {
+    const res = connect.build({
+      domain: "example.com",
+      uri: "https://example.com/login",
+      version: "1",
+      nonce: "12345678",
+      issuedAt: "2023-10-01T00:00:00.000Z",
+      address: zeroAddress,
+      fid: 20943,
+    });
+    const message = res._unsafeUnwrap();
+    const url = getFullUrl("/v1/connect");
+    const response = await axios.post(
+      url,
+      { message, signature },
+      { validateStatus: () => true, headers: { "Content-Type": "application/json" } },
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.data.error).toBe("unauthorized");
+  });
+
+  test("invalid message - 400", async () => {
+    const message = {
+      domain: "example.com",
+      statement: "Farcaster Connect",
+      chainId: 10,
+      uri: "https://example.com/login",
+      version: "1",
+      nonce: "12345678",
+      issuedAt: "2023-10-01T00:00:00.000Z",
+      address: "0x123",
+      resources: ["farcaster://fid/20943"],
+    };
+    const url = getFullUrl("/v1/connect");
+    const response = await axios.post(
+      url,
+      { message, signature },
+      { validateStatus: () => true, headers: { "Content-Type": "application/json" } },
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.data.error).toBe("bad_request.validation_failure");
+  });
+
+  test("provider error - 503", async () => {
+    jest.spyOn(publicClient, "readContract").mockRejectedValue(new Error("client error"));
+    const res = connect.build({
+      domain: "example.com",
+      uri: "https://example.com/login",
+      version: "1",
+      nonce: "12345678",
+      issuedAt: "2023-10-01T00:00:00.000Z",
+      address: "0x2311B397957B19FCAe315Ad6726b7305BeBC24a1",
+      fid: 20943,
+    });
+    const message = res._unsafeUnwrap();
+    const url = getFullUrl("/v1/connect");
+    const response = await axios.post(
+      url,
+      { message, signature },
+      { validateStatus: () => true, headers: { "Content-Type": "application/json" } },
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.data.error).toBe("unavailable.network_failure");
   });
 });
 
