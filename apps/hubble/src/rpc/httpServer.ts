@@ -219,7 +219,7 @@ export class HttpAPIServer {
 
   initHandlers() {
     //================connect================
-    // @doc-tag: /connect
+    // @doc-tag: /connect?message=...&signature=...
     this.app.post<{ Body: { message: string; signature: string } }>("/v1/connect", async (request, reply) => {
       const { message, signature } = request.body;
       const verifierOpts = getVerifier(this.l2PublicClient);
