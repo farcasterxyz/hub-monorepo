@@ -224,38 +224,35 @@ export class HttpAPIServer {
       const { message, signature } = request.body;
       const verifierOpts = getVerifier(this.l2PublicClient);
       const auth = await connect.verify(message, signature, verifierOpts);
+
       const statusCodes: Record<string, number> = {
         "bad_request.validation_failure": 400,
         unauthorized: 401,
         "unavailable.network_failure": 503,
       };
+
       if (auth.isErr()) {
         const errorCode = auth.error.errCode;
         const statusCode = statusCodes[errorCode] || 500;
         reply.code(statusCode).type("application/json").send({ error: errorCode, message: auth.error.message });
+        return;
+      }
+
+      const { fid, userDataParams } = auth.value;
+
+      if (userDataParams) {
+        const call = getCallObject("getUserDataByFid", { fid }, request);
+        this.grpcImpl.getUserDataByFid(call, (err, response) => {
+          if (err) {
+            reply.code(400).type("application/json").send(JSON.stringify(err));
+            return;
+          }
+
+          const protobufJSON = protoToJSON(response, MessagesResponse);
+          reply.send({ ...auth.value, userData: protobufJSON });
+        });
       } else {
-        const { fid, userDataParams } = auth.value;
-        if (userDataParams) {
-          const call = getCallObject("getUserDataByFid", { fid }, request);
-          this.grpcImpl.getUserDataByFid(call, (err, response) => {
-            if (err) {
-              reply.code(400).type("application/json").send(JSON.stringify(err));
-            } else {
-              if (response) {
-                // Convert the protobuf object to JSON
-                const protobufJSON = protoToJSON(response, MessagesResponse);
-                reply.send({
-                  ...auth.value,
-                  userData: protobufJSON,
-                });
-              } else {
-                reply.send(err);
-              }
-            }
-          });
-        } else {
-          reply.code(200).type("application/json").send(auth.value);
-        }
+        reply.send(auth.value);
       }
     });
 
