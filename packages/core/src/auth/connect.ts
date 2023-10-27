@@ -46,7 +46,7 @@ export async function verify(
   options: ConnectOpts = {
     fidVerifier: voidFidVerifier,
   },
-): HubAsyncResult<SiweResponse> {
+): HubAsyncResult<ConnectResponse> {
   const { fidVerifier, provider } = options;
   const valid = validate(message);
   if (valid.isErr()) return err(valid.error);
@@ -127,7 +127,7 @@ function mergeFid(response: SiweResponse): HubResult<ConnectResponse> {
 async function verifyFidOwner(
   response: ConnectResponse,
   fidVerifier: (custody: Hex) => Promise<BigInt>,
-): HubAsyncResult<SiweResponse & { fid: number }> {
+): HubAsyncResult<ConnectResponse> {
   const signer = response.data.address as Hex;
   return ResultAsync.fromPromise(fidVerifier(signer), (e) => {
     return new HubError("unavailable.network_failure", e as Error);
