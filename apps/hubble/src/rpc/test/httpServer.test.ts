@@ -708,6 +708,8 @@ describe("httpServer", () => {
 describe("connect API", () => {
   const signature =
     "0xc030c553eebcc41d9300dc578febe8ee41d69f86f13ecbbbc2e621583af8fb2b37e92009d1390d827ff22fdf255db2707773e04724252e3ab5c56cf1b7d2063e1b";
+  const userDataSignature =
+    "0xa5a5fbcf6d80862928f19a0b6ab2bdcb5f5d9febdafc4d759a99d417dfe58d9029739b29937fb0d78792b049db9602444133931153ea3b1e1fbcd69b50a5a0371c";
 
   beforeAll(async () => {
     httpServer = new HttpAPIServer(server.getImpl(), engine, publicClient);
@@ -731,6 +733,34 @@ describe("connect API", () => {
     expect(response.status).toBe(200);
     expect(response.data.success).toBe(true);
     expect(response.data.fid).toBe(20943);
+    expect(response.data.userDataParams).toBe(undefined);
+    expect(response.data.userData).toBe(undefined);
+  });
+
+  test("valid message with userData - 200", async () => {
+    const res = connect.build({
+      domain: "example.com",
+      uri: "https://example.com/login",
+      version: "1",
+      nonce: "12345678",
+      issuedAt: "2023-10-01T00:00:00.000Z",
+      address: "0x2311B397957B19FCAe315Ad6726b7305BeBC24a1",
+      fid: 20943,
+      userDataParams: ["pfp", "display", "username"],
+    });
+    const message = res._unsafeUnwrap();
+    const url = getFullUrl("/v1/connect");
+    const response = await axios.post(
+      url,
+      { message, signature: userDataSignature },
+      { headers: { "Content-Type": "application/json" } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.data.success).toBe(true);
+    expect(response.data.fid).toBe(20943);
+    expect(response.data.userDataParams).toStrictEqual(["pfp", "display", "username"]);
+    expect(response.data.userData.messages).toStrictEqual([]);
   });
 
   test("invalid signature - 401", async () => {
