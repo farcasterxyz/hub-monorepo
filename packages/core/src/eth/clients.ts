@@ -1,4 +1,5 @@
-import { VerifyTypedDataParameters, createPublicClient, http } from "viem";
+import { JsonRpcProvider, FallbackProvider, Networkish } from "ethers";
+import { HttpTransport, PublicClient, VerifyTypedDataParameters, createPublicClient, http } from "viem";
 import { mainnet, goerli, optimism, optimismGoerli } from "viem/chains";
 
 export interface ViemPublicClient {
@@ -35,3 +36,20 @@ export const defaultPublicClients: PublicClients = {
   [goerli.id]: defaultL1PublicTestClient,
   [optimismGoerli.id]: defaultL2PublicTestClient,
 };
+
+export function publicClientToProvider(publicClient: PublicClient): JsonRpcProvider | FallbackProvider {
+  const { chain, transport } = publicClient;
+  const network = {
+    chainId: chain?.id,
+    name: chain?.name,
+    ensAddress: chain?.contracts?.ensRegistry?.address,
+  } as Networkish;
+  if (transport.type === "fallback") {
+    const providers = (transport["transports"] as ReturnType<HttpTransport>[]).map(
+      ({ value }) => new JsonRpcProvider(value?.url, network),
+    );
+    if (providers.length === 1) return providers[0] as JsonRpcProvider;
+    return new FallbackProvider(providers);
+  }
+  return new JsonRpcProvider(transport["url"], network);
+}
