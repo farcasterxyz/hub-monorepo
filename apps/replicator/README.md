@@ -30,7 +30,11 @@ Once the Docker images have finished downloading, you should start to see messag
 ...
 ```
 
+If you are connected to a hub over the internet (rather than on the same machine or private network) the increased latency will make this take longer, and you will likely need to wait some time before an estimation of the time remaining will appear. This is expected.
+
 You may see messages out of order—this is fine. If messages like above are appearing, replication is working as expected.
+
+Note that the number of messages in the Postgres table will **not** match the number in the hub, because the replicator doesn't backfill "Remove" messages (like `CastRemove` and `ReactionRemove`) since these technically indicate an absence of content, not the presence.
 
 ### Connecting to Postgres
 
