@@ -321,6 +321,11 @@ install_docker() {
     # Install using Docker's convenience script
     curl -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
+    if [[ $? -ne 0 ]]; then
+        echo "❌ Failed to install Docker via official script. Falling back to docker-compose."
+        curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+    fi
     rm get-docker.sh
 
     # Add current user to the docker group
