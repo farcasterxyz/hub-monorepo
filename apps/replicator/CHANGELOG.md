@@ -1,5 +1,12 @@
 # @farcaster/replicator
 
+## 0.2.5
+
+### Patch Changes
+
+- 3621a9fe: Update minimum hub-nodejs version
+- 406de333: Consolidate to single subscription connection
+
 ## 0.2.4
 
 ### Patch Changes
