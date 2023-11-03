@@ -292,6 +292,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
     // Also start the periodic job to make sure we have peers
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
+    this._periodicPeerCheckJob.start();
 
     return ok(undefined);
   }
