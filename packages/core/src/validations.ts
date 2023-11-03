@@ -438,6 +438,15 @@ export const validateCastAddBody = (
     return err(new HubError("bad_request.validation_failure", "cannot use both embeds and string embeds"));
   }
 
+  if (
+    body.text.length === 0 &&
+    body.embeds.length === 0 &&
+    body.embedsDeprecated.length === 0 &&
+    body.mentions.length === 0
+  ) {
+    return err(new HubError("bad_request.validation_failure", "cast is empty"));
+  }
+
   for (let i = 0; i < body.embeds.length; i++) {
     const embed = body.embeds[i];
 

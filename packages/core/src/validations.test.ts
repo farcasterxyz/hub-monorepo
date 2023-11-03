@@ -326,6 +326,17 @@ describe("validateCastAddBody", () => {
         body = Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [`${faker.random.alphaNumeric(254)}🤓`] });
         hubErrorMessage = "url > 256 bytes";
       });
+
+      test("when cast is empty", () => {
+        body = Factories.CastAddBody.build({
+          text: "",
+          mentions: [],
+          mentionsPositions: [],
+          embeds: [],
+          embedsDeprecated: [],
+        });
+        hubErrorMessage = "cast is empty";
+      });
     });
   });
 
