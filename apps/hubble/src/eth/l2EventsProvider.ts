@@ -194,12 +194,16 @@ export class L2EventsProvider {
     this._watchStorageContractEvents?.start();
     this._watchKeyRegistryContractEvents?.start();
     this._watchIdRegistryContractEvents?.start();
+    this._watchIdRegistryV2ContractEvents?.start();
+    this._watchKeyRegistryV2ContractEvents?.start();
   }
 
   public async stop() {
     this._watchStorageContractEvents?.stop();
     this._watchKeyRegistryContractEvents?.stop();
     this._watchIdRegistryContractEvents?.stop();
+    this._watchIdRegistryV2ContractEvents?.stop();
+    this._watchKeyRegistryV2ContractEvents?.stop();
     this._watchBlockNumber?.stop();
 
     // Wait for all async promises to resolve
