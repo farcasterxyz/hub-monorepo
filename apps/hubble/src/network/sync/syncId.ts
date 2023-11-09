@@ -40,6 +40,7 @@ export type MessageSyncId = BaseUnpackedSyncId & {
 export type FNameSyncId = BaseUnpackedSyncId & {
   type: SyncIdType.FName;
   name: Uint8Array;
+  padded: boolean;
 };
 
 export type OnChainEventSyncId = BaseUnpackedSyncId & {
@@ -171,6 +172,7 @@ class SyncId {
         type: SyncIdType.FName,
         fid: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1), // 1 byte for the root prefix
         name: nameBytes,
+        padded: firstZeroIndex !== -1,
       };
     } else if (rootPrefix === RootPrefix.OnChainEvent) {
       return {
