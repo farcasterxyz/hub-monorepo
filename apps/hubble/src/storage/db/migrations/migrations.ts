@@ -1,4 +1,4 @@
-import { ResultAsync } from "neverthrow";
+import { Result, ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
 import { logger } from "../../../utils/logger.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
@@ -7,6 +7,9 @@ import { clearEventsMigration } from "./3.clearEvents.js";
 import { uniqueVerificationsMigration } from "./4.uniqueVerifications.js";
 import { fnameSyncIds } from "./5.fnameSyncIds.js";
 import { oldContractEvents } from "./6.oldContractEvents.js";
+import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
+import { RootPrefix } from "../types.js";
+import rocksdb from "../rocksdb.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
@@ -60,8 +63,41 @@ export async function performDbMigrations(
     if (success.isErr() || success.value === false) {
       log.error({ error: success, i }, "DB migration failed");
       return false;
+    } else {
+      const res = await setDbSchemaVersion(db, i);
+      if (res.isErr()) {
+        log.error({ error: res, i }, "Failed to set schema version");
+        return false;
+      }
     }
   }
 
   return true;
+}
+
+export async function getDbSchemaVersion(db: RocksDB): Promise<number> {
+  const dbResult = await ResultAsync.fromPromise(
+    db.get(Buffer.from([RootPrefix.DBSchemaVersion])),
+    (e) => e as HubError,
+  );
+  if (dbResult.isErr()) {
+    return 0;
+  }
+
+  // parse the buffer as an int
+  const schemaVersion = Result.fromThrowable(
+    () => dbResult.value.readUInt32BE(0),
+    (e) => e as HubError,
+  )();
+
+  return schemaVersion.unwrapOr(0);
+}
+
+async function setDbSchemaVersion(db: rocksdb, version: number): HubAsyncResult<void> {
+  const txn = db.transaction();
+  const value = Buffer.alloc(4);
+  value.writeUInt32BE(version, 0);
+  txn.put(Buffer.from([RootPrefix.DBSchemaVersion]), value);
+
+  return ResultAsync.fromPromise(db.commit(txn), (e) => e as HubError);
 }
