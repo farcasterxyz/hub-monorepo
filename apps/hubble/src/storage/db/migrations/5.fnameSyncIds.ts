@@ -28,17 +28,21 @@ export const fnameSyncIds = async (db: RocksDB): Promise<boolean> => {
         (e) => e as HubError,
       )();
       if (proof.isOk()) {
-        const paddedSyncIdBytes = SyncId.fromFName(proof.value).syncId();
-        const nameStartIndex = TIMESTAMP_LENGTH + 1 + FID_BYTES;
-        const firstZeroIndex = paddedSyncIdBytes.slice(nameStartIndex).findIndex((byte) => byte === 0);
-        if (firstZeroIndex === -1) {
-          return;
-        }
-        const unpaddedBytes = paddedSyncIdBytes.slice(0, nameStartIndex + firstZeroIndex);
+        try {
+          const paddedSyncIdBytes = SyncId.fromFName(proof.value).syncId();
+          const nameStartIndex = TIMESTAMP_LENGTH + 1 + FID_BYTES;
+          const firstZeroIndex = paddedSyncIdBytes.slice(nameStartIndex).findIndex((byte) => byte === 0);
+          if (firstZeroIndex === -1) {
+            return;
+          }
+          const unpaddedBytes = paddedSyncIdBytes.slice(0, nameStartIndex + firstZeroIndex);
 
-        if (await syncTrie.existsByBytes(unpaddedBytes)) {
-          count += 1;
-          await syncTrie.deleteByBytes(unpaddedBytes);
+          if (await syncTrie.existsByBytes(unpaddedBytes)) {
+            count += 1;
+            await syncTrie.deleteByBytes(unpaddedBytes);
+          }
+        } catch (e) {
+          log.error({ err: e }, `Failed to delete fname sync id for fname: ${proof.value.name}`);
         }
       }
     },
