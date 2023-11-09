@@ -1,6 +1,13 @@
 import { makeFidKey, makeMessagePrimaryKey, typeToSetPostfix } from "../../storage/db/message.js";
 import { FID_BYTES, HASH_LENGTH, RootPrefix } from "../../storage/db/types.js";
-import { Message, OnChainEvent, toFarcasterTime, UserNameProof } from "@farcaster/hub-nodejs";
+import {
+  bytesToUtf8String,
+  Message,
+  OnChainEvent,
+  toFarcasterTime,
+  UserNameProof,
+  validations,
+} from "@farcaster/hub-nodejs";
 import { makeOnChainEventPrimaryKey } from "../../storage/db/onChainEvent.js";
 
 const TIMESTAMP_LENGTH = 10; // Used to represent a decimal timestamp
@@ -80,12 +87,19 @@ class SyncId {
     if (timestampRes.isErr()) {
       throw timestampRes.error;
     }
+    const nameStrResult = bytesToUtf8String(usernameProof.name);
+    if (nameStrResult.isErr()) {
+      throw nameStrResult.error;
+    }
+    // Pad the name with null bytes to ensure all names have the same length. The trie cannot handle entries that are
+    // substrings for another (e.g. "net" and "network")
+    const paddedName = nameStrResult.value.padEnd(validations.USERNAME_MAX_LENGTH, "\0");
     return SyncId.fromTimestamp(
       timestampRes.value,
       Buffer.concat([
         Buffer.from([RootPrefix.FNameUserNameProof]),
         makeFidKey(usernameProof.fid),
-        Buffer.from(usernameProof.name),
+        Buffer.from(paddedName),
       ]),
     );
   }
@@ -143,10 +157,17 @@ class SyncId {
         hash: syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES + 1), // 1 byte after fid for the set postfix
       };
     } else if (rootPrefix === RootPrefix.FNameUserNameProof) {
+      // Name bytes could be zero padded, so we need to trim the null bytes
+      const paddedNameBytes = syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES);
+      const firstZeroIndex = paddedNameBytes.findIndex((byte) => byte === 0);
+      let nameBytes = paddedNameBytes;
+      if (firstZeroIndex !== -1) {
+        nameBytes = paddedNameBytes.slice(0, firstZeroIndex);
+      }
       return {
         type: SyncIdType.FName,
         fid: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1), // 1 byte for the root prefix
-        name: syncId.slice(TIMESTAMP_LENGTH + 1 + FID_BYTES),
+        name: nameBytes,
       };
     } else if (rootPrefix === RootPrefix.OnChainEvent) {
       return {

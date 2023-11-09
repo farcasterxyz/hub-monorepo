@@ -16,6 +16,8 @@ export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
 
+export const USERNAME_MAX_LENGTH = 20;
+
 export const EMBEDS_V1_CUTOFF = 73612800; // 5/3/23 00:00 UTC
 
 /**
@@ -438,6 +440,15 @@ export const validateCastAddBody = (
     return err(new HubError("bad_request.validation_failure", "cannot use both embeds and string embeds"));
   }
 
+  if (
+    body.text.length === 0 &&
+    body.embeds.length === 0 &&
+    body.embedsDeprecated.length === 0 &&
+    body.mentions.length === 0
+  ) {
+    return err(new HubError("bad_request.validation_failure", "cast is empty"));
+  }
+
   for (let i = 0; i < body.embeds.length; i++) {
     const embed = body.embeds[i];
 
@@ -729,6 +740,7 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
     return err(new HubError("bad_request.validation_failure", "fname is missing"));
   }
 
+  // FNAME_MAX_LENGTH - ".eth".length
   if (fname.length > 16) {
     return err(new HubError("bad_request.validation_failure", `fname "${fname}" > 16 characters`));
   }
@@ -776,7 +788,7 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
     return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`));
   }
 
-  if (ensName.length > 20) {
+  if (ensName.length > USERNAME_MAX_LENGTH) {
     return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`));
   }
 

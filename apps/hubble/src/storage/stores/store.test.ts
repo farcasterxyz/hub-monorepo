@@ -77,7 +77,7 @@ describe("store", () => {
     const ed25519Signer = new NobleEd25519Signer(privKey);
     const castAdd = await makeCastAdd(
       {
-        text: "",
+        text: "test",
         embeds: [],
         embedsDeprecated: [],
         mentions: [],

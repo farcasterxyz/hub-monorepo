@@ -4,7 +4,7 @@ import cron from "node-cron";
 import { GossipNode } from "./gossipNode.js";
 
 const log = logger.child({
-  component: "PeriodicSyncJob",
+  component: "PeriodicPeerCheckScheduler",
 });
 
 type SchedulerStatus = "started" | "stopped";
@@ -41,6 +41,10 @@ export class PeriodicPeerCheckScheduler {
 
   async doJobs() {
     // If there are no peers, try to connect to the bootstrap peers
+    const allPeerIds = await this._gossipNode.allPeerIds();
+    if (allPeerIds.length > 0) {
+      return;
+    }
     const result = await this._gossipNode.bootstrap(this._bootstrapPeers);
     if (result.isErr()) {
       log.warn({ err: result.error }, "No Connected Peers");
