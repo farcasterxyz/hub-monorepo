@@ -1,4 +1,4 @@
-import { Factories, FarcasterNetwork, Message, validations } from "@farcaster/hub-nodejs";
+import { Factories, FarcasterNetwork, Message, validations, OnChainEventType } from "@farcaster/hub-nodejs";
 import { FNameSyncId, MessageSyncId, OnChainEventSyncId, SyncId, SyncIdType, TIMESTAMP_LENGTH } from "./syncId.js";
 import { makeFidKey, makeMessagePrimaryKeyFromMessage } from "../../storage/db/message.js";
 import { FID_BYTES, RootPrefix } from "../../storage/db/types.js";
@@ -87,8 +87,10 @@ describe("SyncId", () => {
       expect(syncId.type()).toEqual(SyncIdType.OnChainEvent);
       const unpackedSyncId = syncId.unpack() as OnChainEventSyncId;
       expect(unpackedSyncId.type).toEqual(SyncIdType.OnChainEvent);
+      expect(unpackedSyncId.eventType).toEqual(OnChainEventType.EVENT_TYPE_ID_REGISTER);
       expect(unpackedSyncId.fid).toEqual(onChainEvent.fid);
       expect(unpackedSyncId.blockNumber).toEqual(onChainEvent.blockNumber);
+      expect(unpackedSyncId.logIndex).toEqual(onChainEvent.logIndex);
     });
   });
 

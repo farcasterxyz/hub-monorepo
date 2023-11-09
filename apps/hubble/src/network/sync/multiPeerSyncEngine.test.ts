@@ -22,6 +22,7 @@ import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { ensureMessageData } from "../../storage/db/message.js";
+import { bytesCompare } from "@farcaster/core";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -464,7 +465,29 @@ describe("Multi peer sync engine", () => {
     expect(retryEventsMock).not.toHaveBeenCalled();
   });
 
-  test("recovers if there are missing messages in the engine", async () => {
+  test("local peer removes bad syncId entries from the sync trie", async () => {
+    await engine1.mergeOnChainEvent(custodyEvent);
+    await engine2.mergeOnChainEvent(custodyEvent);
+
+    const engine1Hash = await syncEngine1.trie.rootHash();
+    expect(engine1Hash).toEqual(await syncEngine2.trie.rootHash());
+    await syncEngine2.trie.insert(
+      SyncId.fromOnChainEvent(Factories.IdRegistryOnChainEvent.build({ blockNumber: custodyEvent.blockNumber + 1 })),
+    );
+    await syncEngine2.trie.insert(SyncId.fromMessage(castAdd));
+    // Insert the same name but for a different fid, and it should still be removed
+    await syncEngine2.trie.insert(SyncId.fromFName(Factories.UserNameProof.build({ name: fname.name, fid: fid + 1 })));
+
+    expect(engine1Hash).not.toEqual(await syncEngine2.trie.rootHash());
+    await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+
+    // Because do it without awaiting, we need to wait for the promise to resolve
+    await sleep(100);
+    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
+    expect(engine1Hash).toEqual(await syncEngine2.trie.rootHash());
+  });
+
+  test("remote peers recovers if there are missing data in the engine", async () => {
     // Add a message to engine1 synctrie, but not to the engine itself.
     await syncEngine1.trie.insert(SyncId.fromMessage(castAdd));
 
