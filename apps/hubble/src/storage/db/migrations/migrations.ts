@@ -1,4 +1,4 @@
-import { ResultAsync } from "neverthrow";
+import { Result, ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
 import { logger } from "../../../utils/logger.js";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
@@ -73,6 +73,24 @@ export async function performDbMigrations(
   }
 
   return true;
+}
+
+export async function getDbSchemaVersion(db: RocksDB): Promise<number> {
+  const dbResult = await ResultAsync.fromPromise(
+    db.get(Buffer.from([RootPrefix.DBSchemaVersion])),
+    (e) => e as HubError,
+  );
+  if (dbResult.isErr()) {
+    return 0;
+  }
+
+  // parse the buffer as an int
+  const schemaVersion = Result.fromThrowable(
+    () => dbResult.value.readUInt32BE(0),
+    (e) => e as HubError,
+  )();
+
+  return schemaVersion.unwrapOr(0);
 }
 
 async function setDbSchemaVersion(db: rocksdb, version: number): HubAsyncResult<void> {

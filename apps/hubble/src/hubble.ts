@@ -66,7 +66,11 @@ import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPort
 import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { statsd } from "./utils/statsd.js";
-import { LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./storage/db/migrations/migrations.js";
+import {
+  getDbSchemaVersion,
+  LATEST_DB_SCHEMA_VERSION,
+  performDbMigrations,
+} from "./storage/db/migrations/migrations.js";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
@@ -612,7 +616,7 @@ export class Hub implements HubInterface {
     );
 
     // Get the DB Schema version
-    const dbSchemaVersion = await this.getDbSchemaVersion();
+    const dbSchemaVersion = await getDbSchemaVersion(this.rocksDB);
     if (dbSchemaVersion > LATEST_DB_SCHEMA_VERSION) {
       throw new HubError(
         "unavailable.storage_failure",
@@ -1446,24 +1450,6 @@ export class Hub implements HubInterface {
 
     // get the enum value from the number
     return networkNumber.map((n) => n as FarcasterNetwork);
-  }
-
-  async getDbSchemaVersion(): Promise<number> {
-    const dbResult = await ResultAsync.fromPromise(
-      this.rocksDB.get(Buffer.from([RootPrefix.DBSchemaVersion])),
-      (e) => e as HubError,
-    );
-    if (dbResult.isErr()) {
-      return 0;
-    }
-
-    // parse the buffer as an int
-    const schemaVersion = Result.fromThrowable(
-      () => dbResult.value.readUInt32BE(0),
-      (e) => e as HubError,
-    )();
-
-    return schemaVersion.unwrapOr(0);
   }
 
   async setDbNetwork(network: FarcasterNetwork): HubAsyncResult<void> {
