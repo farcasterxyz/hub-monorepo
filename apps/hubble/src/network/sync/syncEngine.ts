@@ -405,7 +405,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
     if (existingPeerInfo) {
       if (contactInfo.timestamp > existingPeerInfo.contactInfo.timestamp) {
-        log.info({ peerInfo: existingPeerInfo }, "Updating peer with latest contactInfo");
+        log.debug({ peerInfo: existingPeerInfo }, "Updating peer with latest contactInfo");
         this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
       }
       return err(new HubError("bad_request.duplicate", "peer already exists"));

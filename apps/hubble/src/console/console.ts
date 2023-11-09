@@ -5,6 +5,8 @@ import {
   getAuthMetadata,
   getInsecureHubRpcClient,
   getSSLHubRpcClient,
+  toFarcasterTime,
+  fromFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import path from "path";
 import * as repl from "repl";
@@ -15,6 +17,7 @@ import { GenCommand } from "./genCommand.js";
 import { FactoriesCommand, ProtobufCommand } from "./protobufCommand.js";
 import { RpcClientCommand } from "./rpcClientCommand.js";
 import { WarpcastTestCommand } from "./warpcastTestCommand.js";
+import { SyncId } from "../network/sync/syncId.js";
 
 export const DEFAULT_RPC_CONSOLE = "127.0.0.1:2283";
 
@@ -86,6 +89,9 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
 
   // Add some utility functions
   replServer.context["getAuthMetadata"] = getAuthMetadata;
+  replServer.context["SyncId"] = SyncId;
+  replServer.context["toFarcasterTime"] = toFarcasterTime;
+  replServer.context["fromFarcasterTime"] = fromFarcasterTime;
 
   // Run the info command to start
 
