@@ -7,6 +7,9 @@ import { clearEventsMigration } from "./3.clearEvents.js";
 import { uniqueVerificationsMigration } from "./4.uniqueVerifications.js";
 import { fnameSyncIds } from "./5.fnameSyncIds.js";
 import { oldContractEvents } from "./6.oldContractEvents.js";
+import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
+import { RootPrefix } from "../types.js";
+import rocksdb from "../rocksdb.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
@@ -60,8 +63,23 @@ export async function performDbMigrations(
     if (success.isErr() || success.value === false) {
       log.error({ error: success, i }, "DB migration failed");
       return false;
+    } else {
+      const res = await setDbSchemaVersion(db, i);
+      if (res.isErr()) {
+        log.error({ error: res, i }, "Failed to set schema version");
+        return false;
+      }
     }
   }
 
   return true;
+}
+
+async function setDbSchemaVersion(db: rocksdb, version: number): HubAsyncResult<void> {
+  const txn = db.transaction();
+  const value = Buffer.alloc(4);
+  value.writeUInt32BE(version, 0);
+  txn.put(Buffer.from([RootPrefix.DBSchemaVersion]), value);
+
+  return ResultAsync.fromPromise(db.commit(txn), (e) => e as HubError);
 }

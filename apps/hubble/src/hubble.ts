@@ -625,7 +625,6 @@ export class Hub implements HubInterface {
       const success = await performDbMigrations(this.rocksDB, dbSchemaVersion);
       if (success) {
         log.info({}, "All DB migrations successful");
-        await this.setDbSchemaVersion(LATEST_DB_SCHEMA_VERSION);
       } else {
         throw new HubError("unavailable.storage_failure", "DB migrations failed");
       }
@@ -1465,15 +1464,6 @@ export class Hub implements HubInterface {
     )();
 
     return schemaVersion.unwrapOr(0);
-  }
-
-  async setDbSchemaVersion(version: number): HubAsyncResult<void> {
-    const txn = this.rocksDB.transaction();
-    const value = Buffer.alloc(4);
-    value.writeUInt32BE(version, 0);
-    txn.put(Buffer.from([RootPrefix.DBSchemaVersion]), value);
-
-    return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
 
   async setDbNetwork(network: FarcasterNetwork): HubAsyncResult<void> {
