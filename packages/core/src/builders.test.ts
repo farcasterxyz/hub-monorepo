@@ -239,9 +239,10 @@ describe("makeMessageHash", () => {
 describe("makeMessageWithSignature", () => {
   test("succeeds", async () => {
     const body = protobufs.CastAddBody.create({ text: "test" });
-    const castAdd = await builders.makeCastAdd(body, { fid, network }, ed25519Signer);
+    const timestamp = getFarcasterTime()._unsafeUnwrap();
+    const castAdd = await builders.makeCastAdd(body, { fid, network, timestamp }, ed25519Signer);
 
-    const data = await builders.makeCastAddData(body, { fid, network });
+    const data = await builders.makeCastAddData(body, { fid, network, timestamp });
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
     const signature = (await ed25519Signer.signMessageHash(hash._unsafeUnwrap()))._unsafeUnwrap();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
