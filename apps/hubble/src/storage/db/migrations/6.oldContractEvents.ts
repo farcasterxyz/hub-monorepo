@@ -40,8 +40,12 @@ export const oldContractEvents = async (db: RocksDB): Promise<boolean> => {
             return;
           }
           count += 1;
-          await db.del(key);
-          await syncTrie.deleteBySyncId(SyncId.fromOnChainEvent(event));
+          try {
+            await db.del(key);
+            await syncTrie.deleteBySyncId(SyncId.fromOnChainEvent(event));
+          } catch (e) {
+            log.error({ err: e }, `Failed to delete event ${event.type} ${event.fid} from block ${event.blockNumber}`);
+          }
         }
       }
     },
