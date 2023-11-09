@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.7.1
+
+### Patch Changes
+
+- 5199f66e: fix: disallow empty casts
+- 6890969b: fix: remove references to old contracts
+- 5199f66e: fix: Allow syncTrie to handle names that are substrings
+- 5199f66e: fix: Fix peer check job not actually starting
+- Updated dependencies [6890969b]
+  - @farcaster/hub-nodejs@0.10.17
+
 ## 1.7.0
 
 ### Minor Changes

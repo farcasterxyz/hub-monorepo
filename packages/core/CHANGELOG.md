@@ -1,5 +1,13 @@
 # @farcaster/core
 
+## 0.13.1
+
+### Patch Changes
+
+- 5199f66e: fix: disallow empty casts
+- 6890969b: fix: remove references to old contracts
+- 5199f66e: fix: Allow syncTrie to handle names that are substrings
+
 ## 0.13.0
 
 ### Minor Changes
