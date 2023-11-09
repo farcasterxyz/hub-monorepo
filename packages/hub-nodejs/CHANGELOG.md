@@ -1,5 +1,15 @@
 # @farcaster/hub-nodejs
 
+## 0.10.17
+
+### Patch Changes
+
+- 6890969b: fix: remove references to old contracts
+- Updated dependencies [5199f66e]
+- Updated dependencies [6890969b]
+- Updated dependencies [5199f66e]
+  - @farcaster/core@0.13.1
+
 ## 0.10.16
 
 ### Patch Changes
