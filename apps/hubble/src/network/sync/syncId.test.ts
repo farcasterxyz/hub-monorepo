@@ -64,6 +64,7 @@ describe("SyncId", () => {
       const fnameProof = Factories.UserNameProof.build({ name: Buffer.from("net00") });
       const unpackedSyncId = SyncId.fromFName(fnameProof).unpack() as FNameSyncId;
       expect(Buffer.from(unpackedSyncId.name)).toEqual(Buffer.from("net00"));
+      expect(unpackedSyncId.padded).toEqual(true);
     });
 
     test("handles max length names", async () => {
@@ -71,12 +72,14 @@ describe("SyncId", () => {
       const unpackedSyncId = SyncId.fromFName(fnameProof).unpack() as FNameSyncId;
       expect(Buffer.from(unpackedSyncId.name).length).toEqual(validations.USERNAME_MAX_LENGTH);
       expect(Buffer.from(unpackedSyncId.name)).toEqual(Buffer.from("iamaverylongname.eth"));
+      expect(unpackedSyncId.padded).toEqual(false);
     });
 
     test("works if names are longer than expected", async () => {
       const fnameProof = Factories.UserNameProof.build({ name: Buffer.from("iamaverylongname.eth.toolong") });
       const unpackedSyncId = SyncId.fromFName(fnameProof).unpack() as FNameSyncId;
       expect(Buffer.from(unpackedSyncId.name)).toEqual(Buffer.from("iamaverylongname.eth.toolong"));
+      expect(unpackedSyncId.padded).toEqual(false);
     });
   });
 

@@ -42,6 +42,7 @@ let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 let castAdd: Message;
 let fname: UserNameProof;
+const blockNumber = 111888235; // Post v2 migration block
 
 const eventsByBlock = new Map<number, OnChainEvent>();
 // biome-ignore lint/suspicious/noExplicitAny: mock used only in tests
@@ -57,7 +58,7 @@ const retryTransferByName = fnameEventsProvider.retryTransferByName;
 beforeAll(async () => {
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
-  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
+  custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid, blockNumber }, { transient: { to: custodySignerKey } });
 
   signerEvent = Factories.SignerOnChainEvent.build(
     { fid, blockNumber: custodyEvent.blockNumber + 1 },
