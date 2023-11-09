@@ -4,6 +4,7 @@ import {
   bytesToUtf8String,
   Message,
   OnChainEvent,
+  OnChainEventType,
   toFarcasterTime,
   UserNameProof,
   validations,
@@ -43,7 +44,9 @@ export type FNameSyncId = BaseUnpackedSyncId & {
 
 export type OnChainEventSyncId = BaseUnpackedSyncId & {
   type: SyncIdType.OnChainEvent;
+  eventType: OnChainEventType;
   blockNumber: number;
+  logIndex: number;
 };
 
 export type UnpackedSyncId = UnknownSyncId | MessageSyncId | FNameSyncId | OnChainEventSyncId;
@@ -172,8 +175,10 @@ class SyncId {
     } else if (rootPrefix === RootPrefix.OnChainEvent) {
       return {
         type: SyncIdType.OnChainEvent,
+        eventType: idBuf.readUInt8(TIMESTAMP_LENGTH + 1 + 1),
         fid: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1 + 1 + 1), // 1 byte for the root prefix, 1 byte for the postfix, 1 byte for the event type
         blockNumber: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1 + 1 + 1 + FID_BYTES),
+        logIndex: idBuf.readUInt32BE(TIMESTAMP_LENGTH + 1 + 1 + 1 + FID_BYTES + 4),
       };
     }
     return {
