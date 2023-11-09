@@ -1,12 +1,13 @@
-import { CastAddMessage, Factories, FARCASTER_EPOCH, HubEvent, HubEventType } from "@farcaster/hub-nodejs";
+import { CastAddMessage, Factories, FARCASTER_EPOCH, HubEvent, HubEventType, StoreType } from "@farcaster/hub-nodejs";
 import { ok, Result } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { getMessage, makeTsHash, putMessage, putMessageTransaction } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
-import { getFarcasterTime, extractEventTimestamp } from "@farcaster/core";
+import { extractEventTimestamp, getFarcasterTime } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
+import CastStore from "./castStore.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
@@ -204,5 +205,35 @@ describe("getCurrentStorageUnitsForFid", () => {
     const onChainEventStore = new OnChainEventStore(db, eventHandler);
     await onChainEventStore.mergeOnChainEvent(storageEvent);
     expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(storageEvent.storageRentEventBody.units));
+  });
+});
+
+describe("getUsage", () => {
+  test("returns 0 if no messages", async () => {
+    const usage = await eventHandler.getUsage(message.data.fid, StoreType.CASTS);
+    expect(usage.isOk()).toBeTruthy();
+    expect(usage._unsafeUnwrap().used).toEqual(0);
+    expect(usage._unsafeUnwrap().earliestTimestamp).toEqual(0);
+    expect(usage._unsafeUnwrap().earliestHash.length).toEqual(0);
+  });
+
+  test("returns actual usage based on messages", async () => {
+    const fid = Factories.Fid.build();
+    const storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+    const onChainEventStore = new OnChainEventStore(db, eventHandler);
+    await onChainEventStore.mergeOnChainEvent(storageEvent);
+
+    const castStore = new CastStore(db, eventHandler);
+    const newCast = await Factories.CastAddMessage.create({ data: { fid } });
+    const olderCast = await Factories.CastAddMessage.create({
+      data: { fid, timestamp: newCast.data.timestamp - 10 },
+    });
+    await castStore.merge(newCast);
+    await castStore.merge(olderCast);
+
+    const usage = (await eventHandler.getUsage(newCast.data.fid, StoreType.CASTS))._unsafeUnwrap();
+    expect(usage.used).toEqual(2);
+    expect(usage.earliestTimestamp).toEqual(olderCast.data.timestamp);
+    expect(usage.earliestHash).toEqual(olderCast.hash);
   });
 });

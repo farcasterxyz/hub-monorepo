@@ -1,7 +1,15 @@
 import { bytesIncrement, CastId, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
-import { FID_BYTES, RootPrefix, TRUE_VALUE, UserMessagePostfix, UserMessagePostfixMax, UserPostfix } from "./types.js";
+import {
+  FID_BYTES,
+  RootPrefix,
+  TRUE_VALUE,
+  TSHASH_LENGTH,
+  UserMessagePostfix,
+  UserMessagePostfixMax,
+  UserPostfix,
+} from "./types.js";
 import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
 
 export const makeFidKey = (fid: number): Buffer => {
@@ -72,6 +80,15 @@ export const makeTsHash = (timestamp: number, hash: Uint8Array): HubResult<Uint8
   buffer.set(hash, 4);
 
   return ok(new Uint8Array(buffer));
+};
+
+export const unpackTsHash = (tsHash: Uint8Array): HubResult<[number, Uint8Array]> => {
+  if (tsHash.length !== TSHASH_LENGTH) {
+    return err(new HubError("bad_request.invalid_param", "invalid tsHash length"));
+  }
+  const timestamp = tsHash.slice(0, 4);
+  const hash = tsHash.slice(4);
+  return ok([Buffer.from(timestamp).readUInt32BE(0), hash]);
 };
 
 export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {

@@ -109,30 +109,82 @@ describe("server rpc tests", () => {
     });
 
     test("succeeds for user with storage", async () => {
+      // Add some data, so we can test usage responses
+      const verification = await Factories.VerificationAddEthAddressMessage.create(
+        { data: { fid } },
+        { transient: { signer } },
+      );
+      const olderCast = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
+      const newerCast = await Factories.CastAddMessage.create(
+        { data: { fid, timestamp: olderCast.data.timestamp + 10 } },
+        { transient: { signer } },
+      );
+
+      await engine.mergeMessage(verification);
+      await engine.mergeMessage(olderCast);
+      await engine.mergeMessage(newerCast);
+
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
+
       const storageLimits = StorageLimitsResponse.fromJSON(result._unsafeUnwrap()).limits;
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.CASTS), storeType: StoreType.CASTS }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.CASTS),
+          storeType: StoreType.CASTS,
+          name: "CASTS",
+          used: 2,
+          earliestHash: olderCast.hash,
+          earliestTimestamp: olderCast.data.timestamp,
+        }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.REACTIONS), storeType: StoreType.REACTIONS }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.REACTIONS),
+          storeType: StoreType.REACTIONS,
+          name: "REACTIONS",
+          used: 0,
+          earliestTimestamp: 0,
+          earliestHash: new Uint8Array(),
+        }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.LINKS), storeType: StoreType.LINKS }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.LINKS),
+          storeType: StoreType.LINKS,
+          name: "LINKS",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
+        }),
       );
       expect(storageLimits).toContainEqual(
-        StorageLimit.create({ limit: getDefaultStoreLimit(StoreType.USER_DATA), storeType: StoreType.USER_DATA }),
+        StorageLimit.create({
+          limit: getDefaultStoreLimit(StoreType.USER_DATA),
+          storeType: StoreType.USER_DATA,
+          name: "USER_DATA",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
+        }),
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
           limit: getDefaultStoreLimit(StoreType.VERIFICATIONS),
           storeType: StoreType.VERIFICATIONS,
+          name: "VERIFICATIONS",
+          used: 1,
+          earliestHash: verification.hash,
+          earliestTimestamp: verification.data.timestamp,
         }),
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
           limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS),
           storeType: StoreType.USERNAME_PROOFS,
+          name: "USERNAME_PROOFS",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
         }),
       );
 
@@ -144,12 +196,10 @@ describe("server rpc tests", () => {
       await engine.mergeOnChainEvent(rentEvent2);
       const result2 = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
       const newLimits = StorageLimitsResponse.fromJSON(result2._unsafeUnwrap()).limits;
-      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5000 * 3, storeType: StoreType.CASTS }));
-      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 2500 * 3, storeType: StoreType.REACTIONS }));
-      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 2500 * 3, storeType: StoreType.LINKS }));
-      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 50 * 3, storeType: StoreType.USER_DATA }));
-      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 25 * 3, storeType: StoreType.VERIFICATIONS }));
-      expect(newLimits).toContainEqual(StorageLimit.create({ limit: 5 * 3, storeType: StoreType.USERNAME_PROOFS }));
+      expect(newLimits.length).toEqual(6);
+      for (const limit of newLimits) {
+        expect(limit.limit).toEqual(getDefaultStoreLimit(limit.storeType) * 3);
+      }
     });
   });
 });

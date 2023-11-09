@@ -29,7 +29,9 @@ import {
   RevokeMessagesBySignerJobPayload,
   SignerEventType,
   SignerOnChainEvent,
+  StorageLimit,
   StorageLimitsResponse,
+  StoreType,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -717,8 +719,28 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(units.error);
     }
 
+    const storeLimits = getStoreLimits(units.value);
+    const limits: StorageLimit[] = [];
+    for (const limit of storeLimits) {
+      const usageResult = await this.eventHandler.getUsage(fid, limit.storeType);
+      if (usageResult.isErr()) {
+        log.warn({ err: usageResult.error }, `error getting usage for storage limit for ${fid} and ${limit.storeType}`);
+        continue;
+      }
+      limits.push(
+        StorageLimit.create({
+          limit: limit.limit,
+          name: StoreType[limit.storeType],
+          used: usageResult.value.used,
+          earliestTimestamp: usageResult.value.earliestTimestamp,
+          earliestHash: usageResult.value.earliestHash,
+          storeType: limit.storeType,
+        }),
+      );
+    }
     return ok({
-      limits: getStoreLimits(units.value),
+      units: units.value,
+      limits: limits,
     });
   }
 
