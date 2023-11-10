@@ -460,12 +460,7 @@ export class Hub implements HubInterface {
       options.rpcRateLimit,
       options.rpcSubscribePerIpLimit,
     );
-    this.httpApiServer = new HttpAPIServer(
-      this.rpcServer.getImpl(),
-      this.engine,
-      opClient,
-      this.options.httpCorsOrigin,
-    );
+    this.httpApiServer = new HttpAPIServer(this.rpcServer.getImpl(), this.engine, this.options.httpCorsOrigin);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers

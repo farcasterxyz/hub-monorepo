@@ -19,7 +19,6 @@ import {
   sendUnaryData,
   userDataTypeFromJSON,
   utf8StringToBytes,
-  connect,
 } from "@farcaster/hub-nodejs";
 import { Metadata, ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
@@ -30,8 +29,6 @@ import { PageOptions } from "../storage/stores/types.js";
 import { DeepPartial } from "../storage/stores/store.js";
 import Engine from "../storage/engine/index.js";
 import { statsd } from "../utils/statsd.js";
-import { getVerifier } from "../eth/fidVerifier.js";
-import { PublicClient } from "viem";
 
 const log = logger.child({ component: "HttpAPIServer" });
 
@@ -185,14 +182,12 @@ function getPageOptions(query: QueryPageParams): PageOptions {
 export class HttpAPIServer {
   grpcImpl: HubServiceServer;
   engine: Engine;
-  l2PublicClient: PublicClient;
 
   app = fastify();
 
-  constructor(grpcImpl: HubServiceServer, engine: Engine, l2PublicClient: PublicClient, corsOrigin = "*") {
+  constructor(grpcImpl: HubServiceServer, engine: Engine, corsOrigin = "*") {
     this.grpcImpl = grpcImpl;
     this.engine = engine;
-    this.l2PublicClient = l2PublicClient;
 
     // Handle binary data
     this.app.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, function (req, body, done) {
@@ -218,44 +213,6 @@ export class HttpAPIServer {
   }
 
   initHandlers() {
-    //================connect================
-    // @doc-tag: /connect?message=...&signature=...
-    this.app.post<{ Body: { message: string; signature: string } }>("/v1/connect", async (request, reply) => {
-      const { message, signature } = request.body;
-      const verifierOpts = getVerifier(this.l2PublicClient);
-      const auth = await connect.verify(message, signature, verifierOpts);
-
-      const statusCodes: Record<string, number> = {
-        "bad_request.validation_failure": 400,
-        unauthorized: 401,
-        "unavailable.network_failure": 503,
-      };
-
-      if (auth.isErr()) {
-        const errorCode = auth.error.errCode;
-        const statusCode = statusCodes[errorCode] || 500;
-        reply.code(statusCode).type("application/json").send({ error: errorCode, message: auth.error.message });
-        return;
-      }
-
-      const { fid, userDataParams } = auth.value;
-
-      if (userDataParams) {
-        const call = getCallObject("getUserDataByFid", { fid }, request);
-        this.grpcImpl.getUserDataByFid(call, (err, response) => {
-          if (err) {
-            reply.code(400).type("application/json").send(JSON.stringify(err));
-            return;
-          }
-
-          const protobufJSON = protoToJSON(response, MessagesResponse);
-          reply.send({ ...auth.value, userData: protobufJSON });
-        });
-      } else {
-        reply.send(auth.value);
-      }
-    });
-
     //================getInfo================
     // @doc-tag: /info?dbstats=...
     this.app.get<{ Querystring: { dbstats: string } }>("/v1/info", (request, reply) => {
