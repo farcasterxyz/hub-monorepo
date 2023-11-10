@@ -43,8 +43,6 @@ Ethereum Options:
 L2 Options:
   --l2-id-registry-address                The address of the L2 Farcaster ID Registry contract
   --l2-key-registry-address <address>     The address of the L2 Farcaster Key Registry contract
-  --l2-id-registry-v2-address             The address of the L2 Farcaster ID Registry V2 contract
-  --l2-key-registry-v2-address <address>  The address of the L2 Farcaster Key Registry V2 contract
   --l2-storage-registry-address <address> The address of the L2 Farcaster Storage Registry contract
   --l2-resync-events                      Resync events from the L2 Farcaster contracts before starting (default: disabled)
   --l2-clear-events                       Deletes all L2 events before starting (default: disabled)
