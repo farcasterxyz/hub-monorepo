@@ -558,7 +558,11 @@ export class L2EventsProvider {
     this._retryDedupMap.set(blockNumber, true);
 
     // Sync old events
-    await this.syncHistoricalEvents(blockNumber, blockNumber + 1, 1);
+    try {
+      await this.syncHistoricalEvents(blockNumber, blockNumber + 1, 1);
+    } catch (e) {
+      log.error(e, `Error retrying events from block ${blockNumber}`);
+    }
   }
 
   private setAddresses(
