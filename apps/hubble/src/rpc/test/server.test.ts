@@ -20,6 +20,7 @@ import { MockHub } from "../../test/mocks.js";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { Ok } from "neverthrow";
+import { sleep } from "../../utils/crypto.js";
 
 const db = jestRocksDB("protobufs.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -44,7 +45,7 @@ afterAll(async () => {
   await engine.stop();
 });
 
-const fid = Factories.Fid.build();
+let fid: number;
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
@@ -52,7 +53,8 @@ let custodyEvent: OnChainEvent;
 let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 
-beforeAll(async () => {
+beforeEach(async () => {
+  fid = Factories.Fid.build();
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
@@ -105,6 +107,7 @@ describe("server rpc tests", () => {
     test("succeeds for user with no storage", async () => {
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid: fid - 1 }));
       // zero storage
+      expect(result._unsafeUnwrap().units).toEqual(0);
       expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([0, 0, 0, 0, 0, 0]);
     });
 
@@ -120,13 +123,18 @@ describe("server rpc tests", () => {
         { transient: { signer } },
       );
 
-      await engine.mergeMessage(verification);
-      await engine.mergeMessage(olderCast);
-      await engine.mergeMessage(newerCast);
+      expect(await engine.mergeMessage(verification)).toBeInstanceOf(Ok);
+      expect(await engine.mergeMessage(olderCast)).toBeInstanceOf(Ok);
+      expect(await engine.mergeMessage(newerCast)).toBeInstanceOf(Ok);
 
+      await sleep(100); // Wait for events to be processed
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
 
-      const storageLimits = StorageLimitsResponse.fromJSON(result._unsafeUnwrap()).limits;
+      expect((await client.getOnChainEvents({ fid: fid, eventType: 4 }))._unsafeUnwrap().events.length).toEqual(1);
+
+      const limitsResponse = StorageLimitsResponse.fromJSON(result._unsafeUnwrap());
+      expect(limitsResponse.units).toEqual(1);
+      const storageLimits = limitsResponse.limits;
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
           limit: getDefaultStoreLimit(StoreType.CASTS),
@@ -195,7 +203,9 @@ describe("server rpc tests", () => {
       });
       await engine.mergeOnChainEvent(rentEvent2);
       const result2 = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid }));
-      const newLimits = StorageLimitsResponse.fromJSON(result2._unsafeUnwrap()).limits;
+      const limitsResponse2 = StorageLimitsResponse.fromJSON(result2._unsafeUnwrap());
+      expect(limitsResponse2.units).toEqual(3);
+      const newLimits = limitsResponse2.limits;
       expect(newLimits.length).toEqual(6);
       for (const limit of newLimits) {
         expect(limit.limit).toEqual(getDefaultStoreLimit(limit.storeType) * 3);
