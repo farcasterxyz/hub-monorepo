@@ -12,22 +12,22 @@ export type PublicClients = {
 
 export const defaultL1PublicClient: ViemPublicClient = createPublicClient({
   chain: mainnet,
-  transport: http(),
+  transport: http(mainnet.rpcUrls.default.http[0]),
 });
 
 export const defaultL2PublicClient: ViemPublicClient = createPublicClient({
   chain: optimism,
-  transport: http(),
+  transport: http(optimism.rpcUrls.default.http[0]),
 });
 
 export const defaultL1PublicTestClient: ViemPublicClient = createPublicClient({
   chain: goerli,
-  transport: http(),
+  transport: http(goerli.rpcUrls.default.http[0]),
 });
 
 export const defaultL2PublicTestClient: ViemPublicClient = createPublicClient({
   chain: optimismGoerli,
-  transport: http(),
+  transport: http(optimismGoerli.rpcUrls.default.http[0]),
 });
 
 export const defaultPublicClients: PublicClients = {
