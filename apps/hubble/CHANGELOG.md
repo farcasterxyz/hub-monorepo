@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.7.2
+
+### Patch Changes
+
+- 912f680f: fix: catch and ignore provider errors during retry
+
 ## 1.7.1
 
 ### Patch Changes
