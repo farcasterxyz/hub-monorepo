@@ -209,7 +209,7 @@ ensure_grafana() {
       mkdir -p grafana/data
       chmod 777 grafana/data
 
-      if $COMPOSE_CMD ps statsd 2>&1 >/dev/null; then
+      if $COMPOSE_CMD ps 2>&1 >/dev/null; then
           if $COMPOSE_CMD ps statsd | grep -q "Up"; then
               $COMPOSE_CMD restart statsd grafana
           else
