@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.8.0
+
+### Minor Changes
+
+- Expiry date changed to 1/10/24 0:00:00 UTC
+
+### Patch Changes
+
+- 6bfb694b: fix: Handle docker-compose versions in hubble.sh
+
 ## 1.7.2
 
 ### Patch Changes
