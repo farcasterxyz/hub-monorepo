@@ -41,4 +41,5 @@ export abstract class Eip712Signer implements Signer {
     message: IdRegistryChangeRecoveryAddressMessage,
   ): HubAsyncResult<Uint8Array>;
   public abstract signKeyRequest(message: SignedKeyRequestMessage): HubAsyncResult<Uint8Array>;
+  public abstract getSignedKeyRequestMetadata(message: SignedKeyRequestMessage): HubAsyncResult<Uint8Array>;
 }

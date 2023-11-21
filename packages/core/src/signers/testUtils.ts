@@ -1,13 +1,13 @@
 import { blake3 } from "@noble/hashes/blake3";
 import { ok } from "neverthrow";
-import { bytesToHexString } from "../bytes";
+import { bytesToHexString, hexStringToBytes } from "../bytes";
 import { eip712 } from "../crypto";
 import { Factories } from "../factories";
 import { FarcasterNetwork } from "../protobufs";
 import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from "../verifications";
 import { makeUserNameProofClaim, UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
-import { bytesToHex } from "viem";
+import { bytesToHex, decodeAbiParameters } from "viem";
 import { IdGatewayRegisterMessage, verifyRegister } from "../eth/contracts/idGateway";
 import { KeyRegistryRemoveMessage, verifyRemove } from "../eth/contracts/keyRegistry";
 import {
@@ -19,6 +19,7 @@ import {
 } from "../eth/contracts/idRegistry";
 import { KeyGatewayAddMessage, verifyAdd } from "../eth/contracts/keyGateway";
 import { SignedKeyRequestMessage, verifyKeyRequest } from "../eth/contracts/signedKeyRequestValidator";
+import { sign } from "crypto";
 
 export const testEip712Signer = async (signer: Eip712Signer) => {
   let signerKey: Uint8Array;
@@ -307,7 +308,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
   });
 
-  describe("signKeyRequestMetadata", () => {
+  describe("signKeyRequest", () => {
     let message: SignedKeyRequestMessage;
     let signature: Uint8Array;
 
@@ -330,6 +331,68 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
 
     test("fails with HubError", async () => {
       const result = await signer.signKeyRequest({
+        ...message,
+        deadline: -1n,
+      });
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().errCode).toBe("bad_request.invalid_param");
+    });
+  });
+
+  describe("getSignedKeyRequestMetadata", () => {
+    let message: SignedKeyRequestMessage;
+    let metadata: Uint8Array;
+
+    beforeAll(async () => {
+      const key = Factories.Bytes.build({}, { transient: { length: 65 } });
+      message = {
+        requestFid: 1n,
+        key,
+        deadline: BigInt(Math.floor(Date.now() / 1000)),
+      };
+      const metadataResult = await signer.getSignedKeyRequestMetadata(message);
+      expect(metadataResult.isOk()).toBeTruthy();
+      metadata = metadataResult._unsafeUnwrap();
+    });
+
+    test("succeeds", async () => {
+      const decoded = decodeAbiParameters(
+        [
+          {
+            components: [
+              {
+                name: "requestFid",
+                type: "uint256",
+              },
+              {
+                name: "requestSigner",
+                type: "address",
+              },
+              {
+                name: "signature",
+                type: "bytes",
+              },
+              {
+                name: "deadline",
+                type: "uint256",
+              },
+            ],
+            name: "SignedKeyRequestMetadata",
+            type: "tuple",
+          },
+        ],
+        bytesToHex(metadata),
+      )[0];
+      expect(decoded.requestFid).toEqual(message.requestFid);
+      expect(decoded.deadline).toEqual(message.deadline);
+      expect(decoded.requestSigner.toLowerCase()).toEqual(bytesToHex(signerKey).toLowerCase());
+      const signatureBytes = hexStringToBytes(decoded.signature);
+      const valid = await verifyKeyRequest(message, signatureBytes._unsafeUnwrap(), signerKey);
+      expect(valid).toEqual(ok(true));
+    });
+
+    test("fails with HubError", async () => {
+      const result = await signer.getSignedKeyRequestMetadata({
         ...message,
         deadline: -1n,
       });

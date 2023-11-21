@@ -1,10 +1,10 @@
-import { ResultAsync } from "neverthrow";
+import { ResultAsync, err } from "neverthrow";
 import type { Signer } from "ethers";
 import { HubAsyncResult, HubError } from "../errors";
 import { VerificationEthAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
-import { hexStringToBytes } from "../bytes";
+import { bytesToHexString, hexStringToBytes } from "../bytes";
 import {
   EIP_712_FARCASTER_DOMAIN,
   EIP_712_FARCASTER_MESSAGE_DATA,
@@ -37,6 +37,7 @@ import {
   SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
   SignedKeyRequestMessage,
 } from "../eth/contracts/signedKeyRequestValidator";
+import { encodeAbiParameters } from "viem";
 
 export type MinimalEthersSigner = Pick<Signer, "signTypedData" | "getAddress">;
 
@@ -168,5 +169,62 @@ export class EthersEip712Signer extends Eip712Signer {
       (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async getSignedKeyRequestMetadata(message: SignedKeyRequestMessage): HubAsyncResult<Uint8Array> {
+    const signatureBytes = await this.signKeyRequest(message);
+    if (signatureBytes.isErr()) {
+      return err(signatureBytes.error);
+    }
+
+    const signature = bytesToHexString(signatureBytes.value);
+    if (signature.isErr()) {
+      return err(signature.error);
+    }
+
+    const signerAddressBytes = await this.getSignerKey();
+    if (signerAddressBytes.isErr()) {
+      return err(signerAddressBytes.error);
+    }
+
+    const signerAddress = bytesToHexString(signerAddressBytes.value);
+    if (signerAddress.isErr()) {
+      return err(signerAddress.error);
+    }
+
+    const metadataStruct = {
+      requestFid: message.requestFid,
+      requestSigner: signerAddress.value,
+      signature: signature.value,
+      deadline: message.deadline,
+    };
+    const encodedStruct = encodeAbiParameters(
+      [
+        {
+          components: [
+            {
+              name: "requestFid",
+              type: "uint256",
+            },
+            {
+              name: "requestSigner",
+              type: "address",
+            },
+            {
+              name: "signature",
+              type: "bytes",
+            },
+            {
+              name: "deadline",
+              type: "uint256",
+            },
+          ],
+          name: "SignedKeyRequestMetadata",
+          type: "tuple",
+        },
+      ],
+      [metadataStruct],
+    );
+    return hexStringToBytes(encodedStruct);
   }
 }

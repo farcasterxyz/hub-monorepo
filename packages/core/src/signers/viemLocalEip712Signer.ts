@@ -1,7 +1,7 @@
-import { ResultAsync } from "neverthrow";
+import { ResultAsync, err } from "neverthrow";
 import { LocalAccount } from "viem/accounts";
-import { bytesToHex } from "viem/utils";
-import { hexStringToBytes } from "../bytes";
+import { bytesToHex, encodeAbiParameters } from "viem/utils";
+import { bytesToHexString, hexStringToBytes } from "../bytes";
 import {
   EIP_712_FARCASTER_MESSAGE_DATA,
   EIP_712_FARCASTER_VERIFICATION_CLAIM,
@@ -190,5 +190,62 @@ export class ViemLocalEip712Signer extends Eip712Signer {
       (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async getSignedKeyRequestMetadata(message: SignedKeyRequestMessage): HubAsyncResult<Uint8Array> {
+    const signatureBytes = await this.signKeyRequest(message);
+    if (signatureBytes.isErr()) {
+      return err(signatureBytes.error);
+    }
+
+    const signature = bytesToHexString(signatureBytes.value);
+    if (signature.isErr()) {
+      return err(signature.error);
+    }
+
+    const signerAddressBytes = await this.getSignerKey();
+    if (signerAddressBytes.isErr()) {
+      return err(signerAddressBytes.error);
+    }
+
+    const signerAddress = bytesToHexString(signerAddressBytes.value);
+    if (signerAddress.isErr()) {
+      return err(signerAddress.error);
+    }
+
+    const metadataStruct = {
+      requestFid: message.requestFid,
+      requestSigner: signerAddress.value,
+      signature: signature.value,
+      deadline: message.deadline,
+    };
+    const encodedStruct = encodeAbiParameters(
+      [
+        {
+          components: [
+            {
+              name: "requestFid",
+              type: "uint256",
+            },
+            {
+              name: "requestSigner",
+              type: "address",
+            },
+            {
+              name: "signature",
+              type: "bytes",
+            },
+            {
+              name: "deadline",
+              type: "uint256",
+            },
+          ],
+          name: "SignedKeyRequestMetadata",
+          type: "tuple",
+        },
+      ],
+      [metadataStruct],
+    );
+    return hexStringToBytes(encodedStruct);
   }
 }
