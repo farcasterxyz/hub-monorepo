@@ -3,12 +3,25 @@ import { ResultAsync } from "neverthrow";
 import { verifyTypedData, bytesToHex } from "viem";
 
 export type KeyGatewayAddMessage = {
+  /** FID owner address */
   owner: `0x${string}`;
+
+  /** Key type. The only currently supported key type is 1, for EdDSA signers. */
   keyType: number;
+
+  /** Bytes of public key to register onchain */
   key: Uint8Array;
+
+  /** Metadata type. The only currently supported metadata type is 1. */
   metadataType: number;
+
+  /** ABI-encoded SignedKeyRequestMetadata struct */
   metadata: `0x${string}`;
+
+  /** KeyGateway nonce for signer address */
   nonce: bigint;
+
+  /** Unix timestamp when this message expires */
   deadline: bigint;
 };
 

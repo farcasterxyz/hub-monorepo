@@ -3,9 +3,16 @@ import { ResultAsync } from "neverthrow";
 import { verifyTypedData, bytesToHex } from "viem";
 
 export type IdGatewayRegisterMessage = {
+  /** FID custody address */
   to: `0x${string}`;
+
+  /** FID recovery address */
   recovery: `0x${string}`;
+
+  /** IdGateway nonce for signer address */
   nonce: bigint;
+
+  /** Unix timestamp when this message expires */
   deadline: bigint;
 };
 

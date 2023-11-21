@@ -3,9 +3,16 @@ import { ResultAsync } from "neverthrow";
 import { verifyTypedData, bytesToHex } from "viem";
 
 export type KeyRegistryRemoveMessage = {
+  /** FID owner address */
   owner: `0x${string}`;
+
+  /** Bytes of public key to remove onchain */
   key: Uint8Array;
+
+  /** KeyRegistry nonce for signer address */
   nonce: bigint;
+
+  /** Unix timestamp when this message expires */
   deadline: bigint;
 };
 

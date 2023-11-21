@@ -3,8 +3,13 @@ import { ResultAsync } from "neverthrow";
 import { verifyTypedData, bytesToHex } from "viem";
 
 export type SignedKeyRequestMessage = {
+  /** FID of user or app requesting key */
   requestFid: bigint;
+
+  /** Bytes of public key */
   key: Uint8Array;
+
+  /** Unix timestamp when this message expires */
   deadline: bigint;
 };
 

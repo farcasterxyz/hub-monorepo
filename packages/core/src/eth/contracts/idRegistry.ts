@@ -3,25 +3,50 @@ import { ResultAsync } from "neverthrow";
 import { verifyTypedData, bytesToHex } from "viem";
 
 export type IdRegistryTransferMessage = {
+  /** FID to transfer */
   fid: bigint;
+
+  /** Transfer recipient address */
   to: `0x${string}`;
+
+  /** IdRegistry nonce for signer address */
   nonce: bigint;
+
+  /** Unix timestamp when this message expires */
   deadline: bigint;
 };
 
 export type IdRegistryTransferAndChangeRecoveryMessage = {
+  /** FID to transfer */
   fid: bigint;
+
+  /** Transfer recipient address */
   to: `0x${string}`;
+
+  /** New recovery address */
   recovery: `0x${string}`;
+
+  /** IdRegistry nonce for signer address */
   nonce: bigint;
+
+  /** Unix timestamp when this message expires */
   deadline: bigint;
 };
 
 export type IdRegistryChangeRecoveryAddressMessage = {
+  /** FID to change */
   fid: bigint;
+
+  /** Previous recovery address */
   from: `0x${string}`;
+
+  /** New recovery address */
   to: `0x${string}`;
+
+  /** IdRegistry nonce for signer address */
   nonce: bigint;
+
+  /** Unix timestamp when this message expires */
   deadline: bigint;
 };
 
