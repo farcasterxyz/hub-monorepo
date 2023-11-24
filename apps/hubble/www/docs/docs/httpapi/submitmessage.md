@@ -1,7 +1,7 @@
 
 
 # SubmitMessage API
-The SubmitMessage API lets you submit signed Farcaster protocol messages to the Hub. Note that the message has to be sent as the encoded bytestream of the protobuf (`Message.enocde(msg).finish()` in typescript), as POST data to the endpoint. 
+The SubmitMessage API lets you submit signed Farcaster protocol messages to the Hub. Note that the message has to be sent as the encoded bytestream of the protobuf (`Message.encode(msg).finish()` in typescript), as POST data to the endpoint. 
 
 The encoding of the POST data has to be set to `application/octet-stream`. The endpoint returns the Message object as JSON if it was successfully submitted
 
