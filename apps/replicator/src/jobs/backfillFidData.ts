@@ -7,6 +7,8 @@ import { BackfillFidVerifications } from "./backfillFidVerifications.js";
 import { BackfillFidLinks } from "./backfillFidLinks.js";
 import { BackfillFidUserNameProofs } from "./backfillFidUserNameProofs.js";
 import { BackfillFidOtherOnChainEvents } from "./backfillFidOtherOnChainEvents.js";
+import { BackfillFidReactions } from "./backfillFidReactions.js";
+import { BackfillFidStorageAllocations } from "./backfillFidStorageAllocations.js";
 
 const MAX_PAGE_SIZE = 1_000;
 
@@ -14,7 +16,7 @@ export const BackfillFidData = registerJob({
   name: "BackfillFidData",
   run: async ({ fid }: { fid: number }, { db, log, redis, hub }) => {
     const alreadyBackfilledSigners = await redis.sismember("backfilled-signers", fid);
-    if (!alreadyBackfilledSigners) {
+    if (!alreadyBackfilledSigners) {    
       let signerEvents: OnChainEvent[] = [];
       for await (const events of getOnChainEventsByFidInBatchesOf(hub, {
         fid,
@@ -38,12 +40,18 @@ export const BackfillFidData = registerJob({
     }
     if (!(await redis.sismember("backfilled-links", fid))) {
       await BackfillFidLinks.enqueue({ fid });
+    }   
+    if(!(await redis.sismember("backfilled-reactions", fid))){
+      await BackfillFidReactions.enqueue({ fid });
     }
     if (!(await redis.sismember("backfilled-verifications", fid))) {
       await BackfillFidVerifications.enqueue({ fid });
     }
     if (!(await redis.sismember("backfilled-username-proofs", fid))) {
       await BackfillFidUserNameProofs.enqueue({ fid });
+    }
+    if (!(await redis.sismember("backfilled-storage-allocations", fid))) {
+      await BackfillFidStorageAllocations.enqueue({ fid });
     }
     if (!(await redis.sismember("backfilled-other-onchain-events", fid))) {
       await BackfillFidOtherOnChainEvents.enqueue({ fid });

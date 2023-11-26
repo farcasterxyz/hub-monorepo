@@ -12,7 +12,7 @@ export const BackfillFidOtherOnChainEvents = registerJob({
     for await (const events of getOnChainEventsByFidInBatchesOf(hub, {
       fid,
       pageSize: MAX_PAGE_SIZE,
-      eventTypes: [OnChainEventType.EVENT_TYPE_ID_REGISTER, OnChainEventType.EVENT_TYPE_STORAGE_RENT],
+      eventTypes: [OnChainEventType.EVENT_TYPE_ID_REGISTER],
       idRegisterEventTypes: [
         // We've already processed REGISTER events by this point, so skip them
         IdRegisterEventType.TRANSFER,
