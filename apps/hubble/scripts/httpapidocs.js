@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "fs";
-import { join, dirname } from "path";
+import { join, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { remark } from "remark";
 import remarkParse from "remark-parse";
@@ -149,6 +149,84 @@ export function httpapidocs() {
     return anyError;
   }
 
+  function extractRPCProtoMethods() {
+    const filePath = resolve(__dirname, "../../../protobufs/schemas/rpc.proto");
+    let lineNumber = 0;
+
+    try {
+      const data = readFileSync(filePath, "utf8");
+      const lines = data.split("\n");
+      const methodNames = [];
+      let httpApiName = null;
+
+      let insideHubService = false;
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+
+        if (trimmedLine === "service HubService {") {
+          insideHubService = true;
+          continue;
+        }
+
+        if (insideHubService && trimmedLine === "}") {
+          break;
+        }
+
+        if (insideHubService) {
+          // Check for @http-api comment
+          const httpApiMatch = trimmedLine.match(/@http-api:\s*(\w+|none)/);
+          if (httpApiMatch) {
+            httpApiName = httpApiMatch[1];
+          }
+
+          // Check for rpc method
+          const rpcMatch = trimmedLine.match(/rpc (\w+)\(/);
+          if (rpcMatch) {
+            // Skip this rpc method if @http-api is "none"
+            if (httpApiName === "none") {
+              httpApiName = null;
+              continue;
+            }
+
+            let name = httpApiName || rpcMatch[1];
+
+            // Use the standard naming convention if @http-api is not specified
+            if (!httpApiName && name.startsWith("Get")) {
+              name = name.substring(3);
+            }
+
+            const camelCaseName = name.charAt(0).toLowerCase() + name.slice(1);
+
+            methodNames.push({ methodName: camelCaseName, lineNumber });
+            httpApiName = null; // Reset for next rpc method
+          }
+        }
+        lineNumber++;
+      }
+
+      return methodNames;
+    } catch (err) {
+      console.error("Error reading the file:", err);
+      return [];
+    }
+  }
+
+  function findMissingRpcProtoInHttpApi(rpcMethodNames, endpoints) {
+    const missingRpcMethods = [];
+    for (const rpcMethod of rpcMethodNames) {
+      const { methodName, lineNumber } = rpcMethod;
+      if (!endpoints.includes(methodName)) {
+        console.error(
+          `RPC method "${methodName}" (on rpc.proto: line ${lineNumber}) is missing from the HTTP API in httpserver.ts`,
+        );
+        missingRpcMethods.push(methodName);
+      }
+    }
+
+    return missingRpcMethods;
+  }
+
   const apiFilePath = join(__dirname, "../src/rpc/httpServer.ts");
   const contents = readFileSync(apiFilePath, "utf-8");
 
@@ -179,6 +257,10 @@ export function httpapidocs() {
   // Next, get all endpoints that are documented but are missing doc tags
   const missingDocTags = findMissingDocTags(docTags, endpoints);
 
+  // Get a list of all the RPC methods in the proto file
+  const protoMethodNames = extractRPCProtoMethods();
+  const missingRpcMethods = findMissingRpcProtoInHttpApi(protoMethodNames, endpoints);
+
   // console.log(docTags);
   // Last, check for parameters
   let anyError = false;
@@ -207,6 +289,11 @@ export function httpapidocs() {
   if (missingDocTags.length > 0) {
     console.error("The following endpoints specified in httpServer.ts are missing doc tags:");
     console.error(missingDocTags);
+    anyError = true;
+  }
+
+  if (missingRpcMethods.length > 0) {
+    console.error("Some RPC methods are missing from the HTTP API");
     anyError = true;
   }
 

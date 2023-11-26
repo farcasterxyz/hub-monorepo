@@ -13,7 +13,7 @@ Get a cast by its FID and Hash.
 
 **Example**
 ```bash
-curl http://127.0.0.1:2281/v1/castById?id=2&hash=0xd2b1ddc6c88e865a33cb1a565e0058d757042974
+curl http://127.0.0.1:2281/v1/castById?fid=2&hash=0xd2b1ddc6c88e865a33cb1a565e0058d757042974
 ```
 
 

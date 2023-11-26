@@ -1,9 +1,9 @@
 import { DeployContractParameters, createTestClient, createWalletClient, custom } from "viem";
 import { Chain, localhost } from "viem/chains";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, fallback } from "viem";
 import { Abi } from "abitype";
 import { accounts, localHttpUrl } from "./constants.js";
-import { IdRegistry, NameRegistry, StorageRegistry } from "../eth/abis.js";
+import { StorageRegistry } from "../eth/abis.js";
 import { DeepPartial } from "fishery";
 
 export const anvilChain = {
@@ -17,7 +17,7 @@ export const anvilChain = {
       http: [localHttpUrl],
     },
   },
-} as const satisfies Chain;
+} satisfies Chain;
 
 const provider = {
   // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
@@ -73,7 +73,11 @@ export const httpClient = createPublicClient({
   transport: http(localHttpUrl),
 });
 
-export const publicClient = httpClient;
+export const publicClient = createPublicClient({
+  chain: anvilChain,
+  pollingInterval: 1_000,
+  transport: fallback([http(localHttpUrl)]),
+});
 
 export const testClient = createTestClient({
   chain: anvilChain,
@@ -113,24 +117,6 @@ export const deploy = async <TAbi extends Abi | readonly unknown[]>(
   });
 
   return { contractAddress: obj.contractAddress };
-};
-
-export const deployIdRegistry = async () => {
-  return deploy({
-    abi: IdRegistry.abi,
-    bytecode: IdRegistry.bytecode,
-    account: accounts[0].address,
-    args: [accounts[0].address],
-  });
-};
-
-export const deployNameRegistry = async () => {
-  return deploy({
-    abi: NameRegistry.abi,
-    bytecode: NameRegistry.bytecode,
-    account: accounts[0].address,
-    args: [accounts[0].address],
-  });
 };
 
 export const deployStorageRegistry = async () => {

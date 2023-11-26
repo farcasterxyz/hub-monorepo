@@ -1,10 +1,4 @@
-import {
-  FarcasterNetwork,
-  getInsecureHubRpcClient,
-  getSSLHubRpcClient,
-  HubInfoRequest,
-  SyncStatusRequest,
-} from "@farcaster/hub-nodejs";
+import { FarcasterNetwork } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
@@ -21,7 +15,6 @@ import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
 import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { parseNetwork } from "./utils/command.js";
-import { sleep } from "./utils/crypto.js";
 import { Config as DefaultConfig } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
@@ -87,8 +80,11 @@ app
   .option("-l, --l2-rpc-url <url>", "RPC URL of a mainnet Optimism Node (or comma separated list of URLs)")
   .option("--l2-id-registry-address <address>", "The address of the L2 Farcaster ID Registry contract")
   .option("--l2-key-registry-address <address>", "The address of the L2 Farcaster Key Registry contract")
+  .option("--l2-id-registry-v2-address <address>", "The address of the L2 Farcaster ID Registry V2 contract")
+  .option("--l2-key-registry-v2-address <address>", "The address of the L2 Farcaster Key Registry V2 contract")
   .option("--l2-storage-registry-address <address>", "The address of the L2 Farcaster Storage Registry contract")
   .option("--l2-resync-events", "Resync events from the L2 Farcaster contracts before starting (default: disabled)")
+  .option("--l2-clear-events", "Deletes all events from the L2 Farcaster contracts before starting (default: disabled)")
   .option(
     "--l2-first-block <number>",
     "The block number to begin syncing events from L2 Farcaster contracts",
@@ -112,7 +108,8 @@ app
   .option("-b, --bootstrap <peer-multiaddrs...>", "Peers to bootstrap gossip and sync from. (default: none)")
   .option("-g, --gossip-port <port>", `Port to use for gossip (default: ${DEFAULT_GOSSIP_PORT})`)
   .option("-r, --rpc-port <port>", `Port to use for gRPC  (default: ${DEFAULT_RPC_PORT})`)
-  .option("--httpApiPort <port>", `Port to use for HTTP API (default: ${DEFAULT_HTTP_API_PORT})`)
+  .option("-h, --http-api-port <port>", `Port to use for HTTP API (default: ${DEFAULT_HTTP_API_PORT})`)
+  .option("--http-cors-origin <origin>", "CORS origin for HTTP API (default: *)")
   .option("--ip <ip-address>", 'IP address to listen on (default: "127.0.0.1")')
   .option("--announce-ip <ip-address>", "Public IP address announced to peers (default: fetched with external service)")
   .option(
@@ -491,17 +488,21 @@ app
       l2RpcUrl: cliOptions.l2RpcUrl ?? hubConfig.l2RpcUrl,
       l2IdRegistryAddress: cliOptions.l2IdRegistryAddress ?? hubConfig.l2IdRegistryAddress,
       l2KeyRegistryAddress: cliOptions.l2KeyRegistryAddress ?? hubConfig.l2KeyRegistryAddress,
+      l2IdRegistryV2Address: cliOptions.l2IdRegistryV2Address ?? hubConfig.l2IdRegistryV2Address,
+      l2KeyRegistryV2Address: cliOptions.l2KeyRegistryV2Address ?? hubConfig.l2KeyRegistryV2Address,
       l2StorageRegistryAddress: cliOptions.l2StorageRegistryAddress ?? hubConfig.l2StorageRegistryAddress,
       l2FirstBlock: cliOptions.l2FirstBlock ?? hubConfig.l2FirstBlock,
       l2ChunkSize: cliOptions.l2ChunkSize ?? hubConfig.l2ChunkSize,
       l2ChainId: cliOptions.l2ChainId ?? hubConfig.l2ChainId,
       l2ResyncEvents: cliOptions.l2ResyncEvents ?? hubConfig.l2ResyncEvents ?? false,
+      l2ClearEvents: cliOptions.l2ClearEvents ?? hubConfig.l2ClearEvents ?? false,
       l2RentExpiryOverride: cliOptions.l2RentExpiryOverride ?? hubConfig.l2RentExpiryOverride,
       bootstrapAddrs,
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       deniedPeers: cliOptions.deniedPeers ?? hubConfig.deniedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
       httpApiPort: cliOptions.httpApiPort ?? hubConfig.httpApiPort ?? DEFAULT_HTTP_API_PORT,
+      httpCorsOrigin: cliOptions.httpCorsOrigin ?? hubConfig.httpCorsOrigin ?? "*",
       rpcAuth,
       rpcRateLimit,
       rpcSubscribePerIpLimit: cliOptions.rpcSubscribePerIpLimit ?? hubConfig.rpcSubscribePerIpLimit,
@@ -634,15 +635,13 @@ app
     });
 
     process.on("uncaughtException", (err) => {
-      logger.error({ reason: "Uncaught exception" }, "shutting down hub");
-      logger.fatal(err);
+      logger.error({ reason: "Uncaught exception", err }, "shutting down hub");
 
       handleShutdownSignal("uncaughtException");
     });
 
     process.on("unhandledRejection", (err) => {
-      logger.error({ reason: "Unhandled Rejection" }, "shutting down hub");
-      logger.fatal(err);
+      logger.error({ reason: "Unhandled Rejection", err }, "shutting down hub");
 
       handleShutdownSignal("unhandledRejection");
     });
@@ -723,76 +722,17 @@ app
   .option("--insecure", "Allow insecure connections to the RPC server", false)
   .option("--watch", "Keep running and periodically report status", false)
   .option("-p, --peerId <peerId>", "Peer id of the hub to compare with (defaults to bootstrap peers)")
-  .action(async (cliOptions) => {
-    let rpcClient;
-    if (cliOptions.insecure) {
-      rpcClient = getInsecureHubRpcClient(cliOptions.server);
-    } else {
-      rpcClient = getSSLHubRpcClient(cliOptions.server);
-    }
-    const infoResult = await rpcClient.getInfo(HubInfoRequest.create({ dbStats: true }));
-    if (infoResult.isErr()) {
-      logger.error(
-        { errCode: infoResult.error.errCode, errMsg: infoResult.error.message },
-        "Failed to get hub status. Do you need to pass in --insecure?",
-      );
-      exit(1);
-    }
-    const dbStats = infoResult.value.dbStats;
-    logger.info(
-      `Hub Version: ${infoResult.value.version} Messages: ${dbStats?.numMessages} FIDs: ${dbStats?.numFidEvents} FNames: ${dbStats?.numFnameEvents}}`,
+  .action(async (_cliOptions) => {
+    logger.error(
+      "DEPRECATED:" +
+        "The 'status' command has been deprecated." +
+        "Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html",
     );
-    for (;;) {
-      logger.warn(
-        "DEPRECATION WARNING:" +
-          "The 'status' command has been deprecated, and will be removed in a future release." +
-          "Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html",
-      );
-      const syncResult = await rpcClient.getSyncStatus(SyncStatusRequest.create({ peerId: cliOptions.peerId }));
-      if (syncResult.isErr()) {
-        logger.error(
-          { errCode: syncResult.error.errCode, errMsg: syncResult.error.message },
-          "Failed to get sync status",
-        );
-        exit(1);
-      }
-
-      let isSyncing = false;
-      const syncEngingStarted = syncResult.value.engineStarted;
-      const msgPercents: number[] = [];
-      for (const peerStatus of syncResult.value.syncStatus) {
-        if (peerStatus.theirMessages === 0) {
-          continue;
-        }
-        const messagePercent = (peerStatus.ourMessages / peerStatus.theirMessages) * 100;
-        msgPercents.push(messagePercent);
-        if (syncResult.value.isSyncing) {
-          isSyncing = true;
-        }
-      }
-
-      const numPeers = msgPercents.length;
-      if (syncEngingStarted === false && numPeers === 0) {
-        logger.info("Sync Status: Getting blockchain events (Sync not started yet)");
-      } else if (numPeers === 0) {
-        logger.info("Sync Status: No peers");
-      } else {
-        const avgMsgPercent = msgPercents.reduce((a, b) => a + b, 0) / numPeers;
-        if (isSyncing) {
-          logger.info(
-            `Sync Status: Sync in progress. Hub has ${avgMsgPercent.toFixed(2)}% of messages of ${numPeers} peers`,
-          );
-        } else {
-          logger.info(`Sync Status: Hub has ${avgMsgPercent.toFixed(2)}% of messages of ${numPeers} peers`);
-        }
-      }
-
-      if (!cliOptions.watch) {
-        break;
-      }
-
-      await sleep(60 * 1000);
-    }
+    console.error(
+      "DEPRECATED:\n" +
+        "The 'status' command has been deprecated\n" +
+        "Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html\n",
+    );
     exit(0);
   });
 
@@ -884,35 +824,6 @@ app
 
     logger.info({ rocksDBName }, "Database cleared.");
     exit(0);
-  });
-
-/*//////////////////////////////////////////////////////////////
-                          EVENTSRESET COMMAND
-//////////////////////////////////////////////////////////////*/
-
-app
-  .command("events-reset")
-  .description("Clear L2 contract events from the database")
-  .option("--db-name <name>", "The name of the RocksDB instance")
-  .option("-c, --config <filepath>", "Path to a config file with options")
-  .action(async (cliOptions) => {
-    const hubConfig = cliOptions.config ? (await import(resolve(cliOptions.config))).Config : DefaultConfig;
-    const rocksDBName = cliOptions.dbName ?? hubConfig.dbName ?? "";
-
-    if (!rocksDBName) throw new Error("No RocksDB name provided.");
-
-    const rocksDB = new RocksDB(rocksDBName);
-
-    const dbResult = await ResultAsync.fromPromise(rocksDB.open(), (e) => e as Error);
-    if (dbResult.isErr()) {
-      logger.warn({ rocksDBName }, "Failed to open RocksDB");
-      exit(1);
-    } else {
-      const count = await OnChainEventStore.clearEvents(rocksDB);
-      await rocksDB.close();
-      logger.info({ rocksDBName, count }, "Events cleared");
-      exit(0);
-    }
   });
 
 /*//////////////////////////////////////////////////////////////

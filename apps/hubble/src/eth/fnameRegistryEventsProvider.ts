@@ -29,8 +29,13 @@ export type FNameTransfer = {
   to: number;
 };
 
+export type FNameTransferRequest = {
+  from_id?: number;
+  name?: string;
+};
+
 export interface FNameRegistryClientInterface {
-  getTransfers(fromId: number): Promise<FNameTransfer[]>;
+  getTransfers(params: FNameTransferRequest): Promise<FNameTransfer[]>;
   getSigner(): Promise<string>;
 }
 
@@ -40,8 +45,9 @@ export class FNameRegistryClient implements FNameRegistryClientInterface {
     this.url = url;
   }
 
-  public async getTransfers(fromId = 0): Promise<FNameTransfer[]> {
-    const response = await axios.get(`${this.url}/transfers?from_id=${fromId}`, {
+  public async getTransfers(params: FNameTransferRequest): Promise<FNameTransfer[]> {
+    const response = await axios.get(`${this.url}/transfers`, {
+      params,
       timeout: DEFAULT_READ_TIMEOUT_IN_MS,
     });
     return response.data.transfers;
@@ -114,7 +120,7 @@ export class FNameRegistryEventsProvider {
     }
 
     this.lastTransferId = fromId;
-    let transfers = await this.safeGetTransfers(fromId);
+    let transfers = await this.safeGetTransfers({ from_id: fromId });
     let transfersCount = 0;
     while (transfers.length > 0 && !this.shouldStop) {
       transfersCount += transfers.length;
@@ -124,7 +130,7 @@ export class FNameRegistryEventsProvider {
         break;
       }
       this.lastTransferId = lastTransfer.id;
-      transfers = await this.safeGetTransfers(this.lastTransferId);
+      transfers = await this.safeGetTransfers({ from_id: this.lastTransferId });
     }
     log.info(`Fetched ${transfersCount} fname events upto ${this.lastTransferId}`);
     const result = await this.hub.getHubState();
@@ -136,11 +142,18 @@ export class FNameRegistryEventsProvider {
     }
   }
 
-  private async safeGetTransfers(fromId: number) {
+  public async retryTransferByName(name: Uint8Array) {
+    const nameStr = Buffer.from(name).toString("utf-8");
+    const transfers = await this.safeGetTransfers({ name: nameStr });
+    await this.mergeTransfers(transfers);
+    log.info(`Retried ${transfers.length} fname events for ${nameStr}`);
+  }
+
+  private async safeGetTransfers(params: FNameTransferRequest) {
     try {
-      return await this.client.getTransfers(fromId);
+      return await this.client.getTransfers(params);
     } catch (err) {
-      log.error(err, `Failed to get transfers from ${fromId}`);
+      log.error(err, `Failed to get transfers ${params}`);
       return [];
     }
   }

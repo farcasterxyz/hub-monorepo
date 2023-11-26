@@ -77,7 +77,13 @@ fetch_file_from_repo() {
 }
 
 # Upgrade the script
-self_upgrade() {    
+self_upgrade() {
+    # To allow easier testing
+    if key_exists "SKIP_SELF_UPGRADE"; then
+      echo "Skipping self upgrade"
+      return 1
+    fi
+
     local tmp_file
     tmp_file=$(mktemp)
     fetch_file_from_repo "$SCRIPT_FILE_PATH" "$tmp_file"
@@ -199,7 +205,11 @@ write_env_file() {
 }
 
 ensure_grafana() {
-      if $COMPOSE_CMD ps statsd 2>&1 >/dev/null; then
+      # Create a grafana data directory if it doesn't exist
+      mkdir -p grafana/data
+      chmod 777 grafana/data
+
+      if $COMPOSE_CMD ps 2>&1 >/dev/null; then
           if $COMPOSE_CMD ps statsd | grep -q "Up"; then
               $COMPOSE_CMD restart statsd grafana
           else
@@ -311,6 +321,11 @@ install_docker() {
     # Install using Docker's convenience script
     curl -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
+    if [[ $? -ne 0 ]]; then
+        echo "❌ Failed to install Docker via official script. Falling back to docker-compose."
+        curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+    fi
     rm get-docker.sh
 
     # Add current user to the docker group
@@ -345,10 +360,38 @@ setup_crontab() {
         exit 1
     fi
 
+    # If the crontab was installed for the current user (instead of root) then
+    # remove it
+    if [[ "$(uname)" == "Linux" ]]; then
+        # Extract the username from the current directory, since we're running as root
+        local user=$(pwd | cut -d/ -f3)
+        USER_CRONTAB_CMD="crontab -u ${user}"
+
+        if $USER_CRONTAB_CMD -l 2>/dev/null | grep -q "hubble.sh"; then
+            $USER_CRONTAB_CMD -l > /tmp/temp_cron.txt
+            sed -i '/hubble\.sh/d' /tmp/temp_cron.txt
+            $USER_CRONTAB_CMD /tmp/temp_cron.txt
+            rm /tmp/temp_cron.txt
+        fi
+    fi
+
     # Check if the crontab file is already installed
     if $CRONTAB_CMD -l 2>/dev/null | grep -q "hubble.sh"; then
+      # Fix buggy crontab entry which would run every minute
+      if $CRONTAB_CMD -l 2>/dev/null | grep "hubble.sh" | grep -q "^\*"; then
+        echo "Removing crontab for upgrade"
+  
+        # Export the existing crontab entries to a temporary file in /tmp/
+        crontab -l > /tmp/temp_cron.txt
+  
+        # Remove the line containing "hubble.sh" from the temporary file
+        sed -i '/hubble\.sh/d' /tmp/temp_cron.txt
+        crontab /tmp/temp_cron.txt
+        rm /tmp/temp_cron.txt
+      else
         echo "✅ crontab entry is already installed."
         return 0
+      fi
     fi
 
     local content_to_hash
@@ -371,9 +414,9 @@ setup_crontab() {
     local day_of_week=$(( ( 0x${sha:0:8} % 5 ) + 1 ))
     # Pick a random hour between midnight and 6am
     local hour=$((RANDOM % 7))
-    local crontab_entry="* $hour * * $day_of_week $(pwd)/hubble.sh autoupgrade >> $(pwd)/hubble-autoupgrade.log 2>&1"
+    local crontab_entry="0 $hour * * $day_of_week $(pwd)/hubble.sh autoupgrade >> $(pwd)/hubble-autoupgrade.log 2>&1"
     if ($CRONTAB_CMD -l 2>/dev/null; echo "${crontab_entry}") | $CRONTAB_CMD -; then
-        echo "✅ added auto-upgrade to crontab (* $hour * * $day_of_week)"
+        echo "✅ added auto-upgrade to crontab (0 $hour * * $day_of_week)"
     else
         echo "❌ failed to add auto-upgrade to crontab"
     fi
@@ -386,6 +429,12 @@ start_hubble() {
 
     # Start the "hubble" service
     $COMPOSE_CMD up -d hubble
+}
+
+cleanup() {
+  # Prune unused docker cruft. Make sure to call this only when hub is already running
+  echo "Pruning unused docker images and volumes"
+  docker system prune --volumes -f
 }
 
 set_compose_command() {
@@ -413,13 +462,7 @@ set_platform_commands() {
         exit 1
     fi
 
-    if [[ "$(uname)" == "Linux" ]]; then
-        # Extract the username from the current directory, since we're running as root
-        local user=$(pwd | cut -d/ -f3)
-        CRONTAB_CMD="crontab -u ${user}"
-    else
-        CRONTAB_CMD="crontab"
-    fi
+    CRONTAB_CMD="crontab"
 }
 
 reexec_as_root_if_needed() {
@@ -542,6 +585,10 @@ if [ "$1" == "autoupgrade" ]; then
 
     echo "$(date) Attempting hubble autoupgrade..."
 
+    # Since cronjob is running under root, make sure the dependencies are installed
+    install_jq
+    install_docker "$@"
+
     set_platform_commands
     set_compose_command
 
@@ -550,6 +597,9 @@ if [ "$1" == "autoupgrade" ]; then
     fetch_latest_docker_compose_and_dashboard
     ensure_grafana
     start_hubble
+    sleep 5
+    cleanup
+
     echo "$(date) Completed hubble autoupgrade"
 
     exit 0

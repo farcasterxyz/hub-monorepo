@@ -4,9 +4,7 @@ import {
   HubError,
   HubRpcClient,
   HubState,
-  IdRegistryEvent,
   Message,
-  NameRegistryEvent,
   OnChainEvent,
   UserNameProof,
 } from "@farcaster/hub-nodejs";
@@ -55,7 +53,7 @@ export class MockHub implements HubInterface {
   async getHubState(): HubAsyncResult<HubState> {
     const result = await ResultAsync.fromPromise(getHubState(this.db), (e) => e as HubError);
     if (result.isErr() && result.error.errCode === "not_found") {
-      const hubState = HubState.create({ lastEthBlock: 0, lastFnameProof: 0 });
+      const hubState = HubState.create({ lastL2Block: 0, lastFnameProof: 0 });
       await putHubState(this.db, hubState);
       return ok(hubState);
     }
@@ -73,5 +71,9 @@ export class MockHub implements HubInterface {
 
   async getRPCClientForPeer(_peerId: PeerId, _peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
     return undefined;
+  }
+
+  async updateApplicationPeerScore(_peerId: String, _score: number) {
+    return ok(undefined);
   }
 }

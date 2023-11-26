@@ -129,14 +129,14 @@ describe("merge", () => {
 
   const assertVerificationExists = async (message: VerificationAddEthAddressMessage | VerificationRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
-    await expect(getMessage(db, fid, UserPostfix.VerificationMessage, tsHash)).resolves.toEqual(message);
+    await expect(getMessage(db, message.data.fid, UserPostfix.VerificationMessage, tsHash)).resolves.toEqual(message);
   };
 
   const assertVerificationDoesNotExist = async (
     message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
   ) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
-    await expect(getMessage(db, fid, UserPostfix.VerificationMessage, tsHash)).rejects.toThrow(HubError);
+    await expect(getMessage(db, message.data.fid, UserPostfix.VerificationMessage, tsHash)).rejects.toThrow(HubError);
   };
 
   const assertVerificationAddWins = async (message: VerificationAddEthAddressMessage) => {
@@ -414,6 +414,57 @@ describe("merge", () => {
           [verificationRemove, [verificationAddSameTime]],
         ]);
       });
+    });
+  });
+
+  describe("with conflicting verification for different fid", () => {
+    test("message with newer timestamp is merged", async () => {
+      const verificationAddDifferentFid = await Factories.VerificationAddEthAddressMessage.create({
+        data: {
+          ...verificationAdd.data,
+          timestamp: verificationAdd.data.timestamp + 1,
+          fid: Factories.Fid.build(),
+        },
+      });
+
+      // First merge the original add
+      await expect(set.merge(verificationAdd)).resolves.toBeTruthy();
+
+      // Then merge a newer add for the same address but a different fid
+      await expect(set.merge(verificationAddDifferentFid)).resolves.toBeTruthy();
+
+      // This replaces the original verification
+      await assertVerificationDoesNotExist(verificationAdd);
+      await assertVerificationExists(verificationAddDifferentFid);
+
+      // Re-adding the older verification fails
+      await expect(set.merge(verificationAdd)).rejects.toEqual(
+        new HubError("bad_request.conflict", "message conflicts with a more recent add"),
+      );
+      // Verification remove for the old fid merges successfully, but does not impact the current verification
+      await expect(set.merge(verificationRemove)).resolves.toBeTruthy();
+      await assertVerificationExists(verificationRemove);
+      await assertVerificationExists(verificationAddDifferentFid);
+
+      expect(mergeEvents).toEqual([
+        [verificationAdd, []],
+        [verificationAddDifferentFid, [verificationAdd]],
+        [verificationRemove, []],
+      ]);
+    });
+
+    test("message with older timestamp is rejected", async () => {
+      const verificationEarlierAddDifferentFid = await Factories.VerificationAddEthAddressMessage.create({
+        data: {
+          ...verificationAdd.data,
+          timestamp: verificationAdd.data.timestamp - 100,
+          fid: Factories.Fid.build(),
+        },
+      });
+      await expect(set.merge(verificationAdd)).resolves.toBeTruthy();
+      await expect(set.merge(verificationEarlierAddDifferentFid)).rejects.toEqual(
+        new HubError("bad_request.conflict", "message conflicts with a more recent add"),
+      );
     });
   });
 });

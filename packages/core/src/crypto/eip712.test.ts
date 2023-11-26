@@ -1,9 +1,11 @@
+import { Factories } from "../factories";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { ok } from "neverthrow";
 import { hexStringToBytes } from "../bytes";
 import * as eip712 from "./eip712";
 import { ViemLocalEip712Signer } from "../signers";
 import { makeUserNameProofClaim } from "../userNameProof";
+import { makeVerificationEthAddressClaim } from "../verifications";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
@@ -40,6 +42,26 @@ describe("verifyUserNameProofClaim", () => {
       nameProof,
       signature._unsafeUnwrap(),
       hexStringToBytes("0xBc5274eFc266311015793d89E9B591fa46294741")._unsafeUnwrap(),
+    );
+    expect(valid).toEqual(ok(true));
+  });
+});
+
+describe("verifyVerificationEthAddressClaimSignature", () => {
+  test("succeeds with a generated claim", async () => {
+    const claimRes = makeVerificationEthAddressClaim(
+      Factories.Fid.build(),
+      (await signer.getSignerKey())._unsafeUnwrap(),
+      Factories.FarcasterNetwork.build(),
+      Factories.BlockHash.build(),
+    );
+    const claim = claimRes._unsafeUnwrap();
+    const signature = await signer.signVerificationEthAddressClaim(claim);
+    expect(signature.isOk()).toBeTruthy();
+    const valid = await eip712.verifyVerificationEthAddressClaimSignature(
+      claim,
+      signature._unsafeUnwrap(),
+      (await signer.getSignerKey())._unsafeUnwrap(),
     );
     expect(valid).toEqual(ok(true));
   });

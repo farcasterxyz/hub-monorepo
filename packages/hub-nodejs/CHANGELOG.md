@@ -1,5 +1,82 @@
 # @farcaster/hub-nodejs
 
+## 0.10.17
+
+### Patch Changes
+
+- 6890969b: fix: remove references to old contracts
+- Updated dependencies [5199f66e]
+- Updated dependencies [6890969b]
+- Updated dependencies [5199f66e]
+  - @farcaster/core@0.13.1
+
+## 0.10.16
+
+### Patch Changes
+
+- f3d32227: feat: Support v2 id and key registry contracts
+- Updated dependencies [3313c232]
+- Updated dependencies [f3d32227]
+  - @farcaster/core@0.13.0
+
+## 0.10.15
+
+### Patch Changes
+
+- 153da45a: Remove PubSub PeerDiscovery in favor of ContactInfo based PeerDiscovery
+- Updated dependencies [153da45a]
+  - @farcaster/core@0.12.15
+
+## 0.10.14
+
+### Patch Changes
+
+- ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
+- Updated dependencies [ba86d374]
+  - @farcaster/core@0.12.14
+
+## 0.10.13
+
+### Patch Changes
+
+- f4e50b95: fix: use interface for Viem PublicClient, add optional publicClients to builders
+- Updated dependencies [f4e50b95]
+  - @farcaster/core@0.12.13
+
+## 0.10.12
+
+### Patch Changes
+
+- 81e6d8ec: FIP-8 contract verifications
+- aacff028: Remove eslint-config-custom dependencies
+- c33f5270: fix: Run protoc as user instead of root
+- 433bee81: feat: Enable events sync by default
+- Updated dependencies [81e6d8ec]
+- Updated dependencies [aacff028]
+- Updated dependencies [c33f5270]
+- Updated dependencies [433bee81]
+  - @farcaster/core@0.12.12
+
+## 0.10.11
+
+### Patch Changes
+
+- 14f67cf2: feat: Add peer scoring
+- Updated dependencies [ef795c71]
+- Updated dependencies [14f67cf2]
+  - @farcaster/core@0.12.11
+
+## 0.10.10
+
+### Patch Changes
+
+- aeab5a4c: docs: Refactor HTTP API docs
+- Updated dependencies [31641c17]
+- Updated dependencies [fb1f5c61]
+- Updated dependencies [aeab5a4c]
+- Updated dependencies [4b99eddb]
+  - @farcaster/core@0.12.10
+
 ## 0.10.9
 
 ### Patch Changes

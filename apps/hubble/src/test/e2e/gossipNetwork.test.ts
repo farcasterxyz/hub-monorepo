@@ -1,6 +1,15 @@
 import { GossipNode } from "../../network/p2p/gossipNode.js";
 import { sleep } from "../../utils/crypto.js";
-import { Factories, GossipMessage } from "@farcaster/hub-nodejs";
+import {
+  Factories,
+  GossipMessage,
+  isCastAddMessage,
+  isReactionAddMessage,
+  Message,
+  MessageData,
+  MessageType,
+} from "@farcaster/hub-nodejs";
+import { peerIdFromString } from "@libp2p/peer-id";
 
 const NUM_NODES = 10;
 const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
@@ -49,31 +58,42 @@ describe("gossip network tests", () => {
       await sleep(PROPAGATION_DELAY);
 
       await Promise.all(nodes.map(async (n) => expect((await n.allPeerIds()).length).toBeGreaterThanOrEqual(1)));
-
+      const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as GossipNode;
       // Add listeners that receive new GossipMessages and push them to the MessageStore
       nodes.forEach((n) => {
         {
-          n.addListener("message", async (topic, message) => {
+          n.addListener("message", async (topic, message, source, msgId) => {
             expect(message.isOk()).toBeTruthy();
 
             const peerId = n.peerId()?.toString() ?? "";
             const existingTopics = messageStore.get(peerId) || new Map();
             const existingMessages = existingTopics.get(topic) || [];
 
-            existingMessages.push(message._unsafeUnwrap());
+            const gossipMessage = message._unsafeUnwrap();
+            existingMessages.push(gossipMessage);
             existingTopics.set(topic, existingMessages);
             messageStore.set(peerId, existingTopics);
+
+            // we'll treat reaction add messages as invalid and everything else as valid
+            if (gossipMessage.message && !isReactionAddMessage(gossipMessage.message)) {
+              n.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+            } else {
+              n.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+            }
           });
           n.registerDebugListeners();
         }
       });
 
       // Create a message and send it to a random node
-      const message = Factories.Message.build();
-      const randomNode = nodes[Math.floor(Math.random() * nodes.length)] as GossipNode;
-      const publishResult = await randomNode.gossipMessage(message);
-      expect(publishResult.isOk()).toBeTruthy();
-      expect(publishResult._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
+      const validMessage = await Factories.CastAddMessage.create();
+      const invalidMessage = await Factories.ReactionAddMessage.create();
+      const validPublishResult = await randomNode.gossipMessage(validMessage);
+      expect(validPublishResult.isOk()).toBeTruthy();
+      expect(validPublishResult._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
+      const invalidPublishResult = await randomNode.gossipMessage(invalidMessage);
+      expect(invalidPublishResult.isOk()).toBeTruthy();
+      expect(invalidPublishResult._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
 
       // Sleep 5 heartbeat ticks
       await sleep(PROPAGATION_DELAY);
@@ -81,13 +101,57 @@ describe("gossip network tests", () => {
       // Assert that every node except the sender has pushed the message into its MessageStore
       const nonSenderNodes = nodes.filter((n) => n.peerId()?.toString() !== randomNode.peerId()?.toString());
 
+      let numReactionAddMessages = 0;
+      let numCastAddMessages = 0;
+
+      nonSenderNodes.map((n) => {
+        const topics = messageStore.get(n.peerId()?.toString() ?? "");
+        expect(topics).toBeDefined();
+        expect(topics?.has(primaryTopic)).toBeTruthy();
+        const topicMessages = topics?.get(primaryTopic) ?? [];
+        let castAddMessage: Message | undefined;
+        let reactionAddMessage: Message | undefined;
+        expect(topicMessages.length).toBeGreaterThan(0);
+        for (const msg of topicMessages) {
+          if (msg.message && isReactionAddMessage(msg.message)) {
+            reactionAddMessage = msg.message;
+            numReactionAddMessages++;
+          } else {
+            castAddMessage = msg.message;
+            numCastAddMessages++;
+          }
+        }
+        // Cast add message must always be present, but it's ok for the reaction add message to be missing sometimes
+        expect(castAddMessage).toBeDefined();
+      });
+
+      expect(numCastAddMessages).toBe(NUM_NODES - 1);
+      // Reaction messages are not forwarded to all nodes because they are considered invalid. They stop after the first node.
+      // This is a test that asyncValidation is working as expected.
+      expect(numReactionAddMessages).toBe(1);
+
+      messageStore.clear();
+
+      // Make sure a message with data_bytes is also received
+      const messageWithDataBytes = await Factories.Message.create({ data: { castAddBody: { text: "data" } } });
+      messageWithDataBytes.dataBytes = MessageData.encode(messageWithDataBytes.data as MessageData).finish();
+      messageWithDataBytes.data = undefined;
+      const publishResultWithDataBytes = await randomNode.gossipMessage(messageWithDataBytes);
+      expect(publishResultWithDataBytes.isOk()).toBeTruthy();
+      expect(publishResultWithDataBytes._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
+
+      // Sleep 5 heartbeat ticks
+      await sleep(PROPAGATION_DELAY);
+
+      // Assert that every node except the sender has pushed the message into its MessageStore
+
       nonSenderNodes.map((n) => {
         const topics = messageStore.get(n.peerId()?.toString() ?? "");
         expect(topics).toBeDefined();
         expect(topics?.has(primaryTopic)).toBeTruthy();
         const topicMessages = topics?.get(primaryTopic) ?? [];
         expect(topicMessages.length).toBe(1);
-        expect((topicMessages[0] as GossipMessage).message).toEqual(message);
+        expect((topicMessages[0] as GossipMessage).message).toEqual(messageWithDataBytes);
       });
     },
     TEST_TIMEOUT_LONG,

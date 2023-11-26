@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { HubInterface } from "../../hubble.js";
 import { logger } from "../../utils/logger.js";
 import { HubAsyncResult } from "@farcaster/core";
+import { statsd } from "../../utils/statsd.js";
 
 const log = logger.child({
   component: "GossipContactInfo",
@@ -34,6 +35,11 @@ export class GossipContactInfoJobScheduler {
 
   async doJobs(): HubAsyncResult<void> {
     log.info({}, "starting gossip contact info job");
+    const memoryData = process.memoryUsage();
+    statsd().gauge("memory.rss", memoryData.rss);
+    statsd().gauge("memory.heap_total", memoryData.heapTotal);
+    statsd().gauge("memory.heap_used", memoryData.heapUsed);
+    statsd().gauge("memory.external", memoryData.external);
 
     return await this._hub.gossipContactInfo();
   }

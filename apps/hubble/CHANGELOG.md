@@ -1,5 +1,145 @@
 # @farcaster/hubble
 
+## 1.8.0
+
+### Minor Changes
+
+- Expiry date changed to 1/10/24 0:00:00 UTC
+
+### Patch Changes
+
+- 6bfb694b: fix: Handle docker-compose versions in hubble.sh
+
+## 1.7.2
+
+### Patch Changes
+
+- 912f680f: fix: catch and ignore provider errors during retry
+
+## 1.7.1
+
+### Patch Changes
+
+- 5199f66e: fix: disallow empty casts
+- 6890969b: fix: remove references to old contracts
+- 5199f66e: fix: Allow syncTrie to handle names that are substrings
+- 5199f66e: fix: Fix peer check job not actually starting
+- Updated dependencies [6890969b]
+  - @farcaster/hub-nodejs@0.10.17
+
+## 1.7.0
+
+### Minor Changes
+
+- 3313c232: Adds support for contact info content signing + strictNoSign
+- f3d32227: feat: Support v2 id and key registry contracts
+
+### Patch Changes
+
+- Updated dependencies [f3d32227]
+  - @farcaster/hub-nodejs@0.10.16
+
+## 1.6.6
+
+### Patch Changes
+
+- b47c65bb: Adds application-specific peer scoring to peer scoring for gossipsub with early immune list
+- 559afd0e: fix: hubble autoupgrade should ensure dependencies and clean unused docker data
+- 173c9d61: fix: Fix stale contactInfo caches on SyncEngine
+
+## 1.6.5
+
+### Patch Changes
+
+- 153da45a: Remove PubSub PeerDiscovery in favor of ContactInfo based PeerDiscovery
+- ec2711df: fix: Lower seenTTL to 5 mins to reduce memory consumption
+- 6d54786e: fix: Prevent hub startup if protocol version is expired
+- 2abaa115: add memory stats
+- Updated dependencies [153da45a]
+  - @farcaster/hub-nodejs@0.10.15
+
+## 1.6.4
+
+### Patch Changes
+
+- a3e12f54: fix: Fix contactInfo messages not being forwarded and increase seen ttl to prevent future loops
+
+## 1.6.3
+
+### Patch Changes
+
+- 89ce7d2d: fix: enable asyncValidation so we don't forward invalid messages on gossip
+- a5708f85: chore: Remove grpc-web
+- b518b97f: fix: Cache numFids and numFnames
+- 86bed6f5: fix: Make message counts on-demand to speed startup
+- ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
+- Updated dependencies [ba86d374]
+  - @farcaster/hub-nodejs@0.10.14
+
+## 1.6.2
+
+### Patch Changes
+
+- 17ca659b: fix: Persist grafana container data
+- e2ada603: fix: Exists check should not crash the hub
+
+## 1.6.1
+
+### Patch Changes
+
+- 902447f8: fix: Fix buggy crontab entry that would try to upgrade every minute
+- e10a8c93: fix: Improve logging on unhandled errors
+- 81e6d8ec: FIP-8 contract verifications
+- aacff028: Remove eslint-config-custom dependencies
+- c7b28b06: fix: Run crontab as root for hubble.sh
+- 9ca079e4: chore: Add peer scores to grafana dashboard
+- 433bee81: feat: Enable events sync by default
+- f5c70348: docs: Linter now checks the rpc.proto to make sure all methods and implemented in HTTP API
+- c0741888: fix: Fix off by one error when inserting into trie
+- 5b7d5686: fix: Handle errors from L2 getevents
+- Updated dependencies [81e6d8ec]
+- Updated dependencies [aacff028]
+- Updated dependencies [c33f5270]
+- Updated dependencies [433bee81]
+  - @farcaster/hub-nodejs@0.10.12
+
+## 1.6.0
+
+### Minor Changes
+
+- 09b7949c: feat: make verifications globally unique
+
+### Patch Changes
+
+- 8abf1864: feat: add migration to clear onchain events and force re-sync
+- c64400dc: fix: Use DB_SCHEMA version in snapshot path
+- 4dea7e28: chore: Upgrade ed25519-dalek in rust
+- 472e8ae3: feat: Add a flag to clear l2 events
+- ef795c71: upgrade viem to 1.12.2
+- ef795c71: fall back to eth_getLogs in event sync
+- b7c2b0a9: chore: Replace hub-web with HTTP api examples
+- 14f67cf2: feat: Add peer scoring
+- 03cd3333: feat: Audit peer's messages during sync
+- Updated dependencies [14f67cf2]
+  - @farcaster/hub-nodejs@0.10.11
+
+## 1.5.6
+
+### Patch Changes
+
+- aa6553b1: feat: Enable HTTP API server
+- fb1f5c61: feat: Support onchain events and fnames in sync trie
+- f743a430: feat: Allow settings CORS for http api
+- f0ad204e: feat: Repair sync trie when events and fnames are already present
+- 833d9651: fix: hubble.sh - Don't delete before overwriting
+- bc4a1366: fix: HTTP API add getInfo and other doc fixes
+- aeab5a4c: docs: Refactor HTTP API docs
+- 4809c9c8: fix: HTTP API port in docker-compose
+- f163fa3d: chore: Remove "yarn status" command
+- 4b99eddb: feat: Support fname and onchain event syncids
+- Updated dependencies [aeab5a4c]
+  - @farcaster/hub-nodejs@0.10.10
+
 ## 1.5.5
 
 ### Patch Changes

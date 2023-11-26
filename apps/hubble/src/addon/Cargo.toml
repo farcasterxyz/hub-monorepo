@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 blake3 = "1.4.1"
-ed25519-dalek = "1.0.1"
+ed25519-dalek = "2.0.0"
 
 [dependencies.neon]
 version = "0.10"

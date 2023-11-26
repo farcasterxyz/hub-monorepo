@@ -44,10 +44,14 @@ export class ViemLocalEip712Signer extends Eip712Signer {
     return hexSignature.andThen((hex) => hexStringToBytes(hex));
   }
 
-  public async signVerificationEthAddressClaim(claim: VerificationEthAddressClaim): HubAsyncResult<Uint8Array> {
+  public async signVerificationEthAddressClaim(
+    claim: VerificationEthAddressClaim,
+    chainId = 0,
+  ): HubAsyncResult<Uint8Array> {
+    const domain = chainId === 0 ? EIP_712_FARCASTER_DOMAIN : { ...EIP_712_FARCASTER_DOMAIN, chainId };
     const hexSignature = await ResultAsync.fromPromise(
       this._viemLocalAccount.signTypedData({
-        domain: EIP_712_FARCASTER_DOMAIN,
+        domain,
         types: { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
         primaryType: "VerificationClaim",
         message: claim,

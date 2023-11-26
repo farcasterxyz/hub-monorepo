@@ -31,10 +31,12 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: "Using HTTP APIs", link: "/docs/httpapi/httpapi" },
+              { text: "Info API", link: "/docs/httpapi/info" },
               { text: "Casts API", link: "/docs/httpapi/casts" },
               { text: "Reactions API", link: "/docs/httpapi/reactions" },
               { text: "Links API", link: "/docs/httpapi/links" },
               { text: "UserData API", link: "/docs/httpapi/userdata" },
+              { text: "FIDS API", link: "/docs/httpapi/fids" },
               { text: "Storage API", link: "/docs/httpapi/storagelimits" },
               { text: "Username Proofs API", link: "/docs/httpapi/usernameproof" },
               { text: "Verifications API", link: "/docs/httpapi/verification" },

@@ -30,7 +30,7 @@ curl http://127.0.0.1:2281/v1/userNameProofByName?name=adityapk
 ```
 
 
-## usernameproofsByFid
+## userNameProofsByFid
 Get a list of proofs provided by an FID
 
 **Query Parameters**
@@ -41,7 +41,7 @@ Get a list of proofs provided by an FID
 
 **Example**
 ```bash
-curl http://127.0.0.1:2281/v1/usernameproofsByFid?fid=2
+curl http://127.0.0.1:2281/v1/userNameProofsByFid?fid=2
 ```
 
 

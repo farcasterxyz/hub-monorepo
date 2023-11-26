@@ -59,20 +59,28 @@ import { PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
-import { isRateLimitedByKey, consumeRateLimitByKey, getRateLimiterForTotalMessages } from "../../utils/rateLimits.js";
+import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByKey } from "../../utils/rateLimits.js";
 import { nativeValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
+import { TypedEmitter } from "tiny-typed-emitter";
+import { ValidationWorkerData } from "./validation.worker.js";
 
 const log = logger.child({
   component: "Engine",
 });
 
-class Engine {
+export type EngineEvents = {
+  duplicateUserNameProofEvent: (usernameProof: UserNameProof) => void;
+  duplicateOnChainEvent: (onChainEvent: OnChainEvent) => void;
+};
+
+class Engine extends TypedEmitter<EngineEvents> {
   public eventHandler: StoreEventHandler;
 
   private _db: RocksDB;
   private _network: FarcasterNetwork;
   private _publicClient: PublicClient | undefined;
+  private _l2PublicClient: PublicClient | undefined;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -92,10 +100,18 @@ class Engine {
 
   private _totalPruneSize: number;
 
-  constructor(db: RocksDB, network: FarcasterNetwork, eventHandler?: StoreEventHandler, publicClient?: PublicClient) {
+  constructor(
+    db: RocksDB,
+    network: FarcasterNetwork,
+    eventHandler?: StoreEventHandler,
+    publicClient?: PublicClient,
+    l2PublicClient?: PublicClient,
+  ) {
+    super();
     this._db = db;
     this._network = network;
     this._publicClient = publicClient;
+    this._l2PublicClient = l2PublicClient;
 
     this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
@@ -135,7 +151,7 @@ class Engine {
       const workerPath = "./build/storage/engine/validation.worker.js";
       try {
         if (fs.existsSync(workerPath)) {
-          this._validationWorker = new Worker(workerPath);
+          this._validationWorker = new Worker(workerPath, { workerData: this.getWorkerData() });
           log.info({ workerPath }, "created validation worker thread");
 
           this._validationWorker.on("message", (data) => {
@@ -266,12 +282,22 @@ class Engine {
       this._onchainEventsStore.mergeOnChainEvent(event),
       (e) => e as HubError,
     );
+    if (mergeResult.isErr() && mergeResult.error.errCode === "bad_request.duplicate") {
+      this.emit("duplicateOnChainEvent", event);
+    }
     return mergeResult;
   }
 
   async mergeUserNameProof(usernameProof: UserNameProof): HubAsyncResult<number> {
     // TODO: Validate signature here instead of the fname event provider
-    return ResultAsync.fromPromise(this._userDataStore.mergeUserNameProof(usernameProof), (e) => e as HubError);
+    const mergeResult = await ResultAsync.fromPromise(
+      this._userDataStore.mergeUserNameProof(usernameProof),
+      (e) => e as HubError,
+    );
+    if (mergeResult.isErr() && mergeResult.error.errCode === "bad_request.duplicate") {
+      this.emit("duplicateUserNameProofEvent", usernameProof);
+    }
+    return mergeResult;
   }
 
   async revokeMessagesBySigner(fid: number, signer: Uint8Array): HubAsyncResult<void> {
@@ -381,6 +407,10 @@ class Engine {
     const isValid = await this.validateMessage(message);
 
     if (isValid.isErr() && message.data) {
+      if (isValid.error.errCode === "unavailable.network_failure") {
+        return err(isValid.error);
+      }
+
       const setPostfix = typeToSetPostfix(message.data.type);
 
       switch (setPostfix) {
@@ -400,11 +430,7 @@ class Engine {
           return this._verificationStore.revoke(message);
         }
         case UserPostfix.UsernameProofMessage: {
-          if (isValid.error.errCode === "unavailable.network_failure") {
-            return err(isValid.error);
-          } else {
-            return this._usernameProofStore.revoke(message);
-          }
+          return this._usernameProofStore.revoke(message);
         }
         default: {
           return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -663,9 +689,15 @@ class Engine {
   }
 
   async getOnChainEvents(type: OnChainEventType, fid: number): HubAsyncResult<OnChainEventResponse> {
-    const validatedFid = validations.validateFid(fid);
-    if (validatedFid.isErr()) {
-      return err(validatedFid.error);
+    if (type === OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED) {
+      if (fid !== 0) {
+        return err(new HubError("bad_request.invalid_param", "fid must be 0 for signer migrated events"));
+      }
+    } else {
+      const validatedFid = validations.validateFid(fid);
+      if (validatedFid.isErr()) {
+        return err(validatedFid.error);
+      }
     }
 
     return ResultAsync.fromPromise(this._onchainEventsStore.getOnChainEvents(type, fid), (e) => e as HubError).map(
@@ -839,7 +871,7 @@ class Engine {
     return ok(event);
   }
 
-  private async validateMessage(message: Message): HubAsyncResult<Message> {
+  async validateMessage(message: Message): HubAsyncResult<Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError("bad_request.validation_failure", "message data is missing"));
@@ -955,7 +987,7 @@ class Engine {
         worker.postMessage({ id, message });
       });
     } else {
-      return validations.validateMessage(message, nativeValidationMethods);
+      return validations.validateMessage(message, nativeValidationMethods, this.getPublicClients());
     }
   }
 
@@ -1075,6 +1107,37 @@ class Engine {
     }
 
     return ok(undefined);
+  }
+
+  private getPublicClients(): { [chainId: number]: PublicClient } {
+    const clients: { [chainId: number]: PublicClient } = {};
+    if (this._publicClient?.chain) {
+      clients[this._publicClient.chain.id] = this._publicClient;
+    }
+    if (this._l2PublicClient?.chain) {
+      clients[this._l2PublicClient.chain.id] = this._l2PublicClient;
+    }
+    return clients;
+  }
+
+  private getWorkerData(): ValidationWorkerData {
+    const l1Transports: string[] = [];
+    this._publicClient?.transport["transports"].forEach((transport: { value?: { url: string } }) => {
+      if (transport?.value) {
+        l1Transports.push(transport.value["url"]);
+      }
+    });
+    const l2Transports: string[] = [];
+    this._l2PublicClient?.transport["transports"].forEach((transport: { value?: { url: string } }) => {
+      if (transport?.value) {
+        l2Transports.push(transport.value["url"]);
+      }
+    });
+
+    return {
+      ethMainnetRpcUrl: l1Transports.join(","),
+      l2RpcUrl: l2Transports.join(","),
+    };
   }
 }
 

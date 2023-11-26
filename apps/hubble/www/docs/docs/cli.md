@@ -6,9 +6,8 @@ Documentation for the Hubble CLI.
 2. `identity` - generate or validate hub identities
 3. `status` - status reports on sync, storage and other systems.
 4. `dbreset` - clear the database. 
-4. `events-reset` - clear l2 events data from the db. 
-4. `profile` - profile the storage usage of the db. 
-5. `console` - start an interactive repl console for debugging.
+5. `profile` - profile the storage usage of the db.
+6. `console` - start an interactive repl console for debugging.
 
 Commands must invoked with yarn by running: 
 
@@ -42,14 +41,17 @@ Ethereum Options:
   --fname-server-url <url>              The URL for the FName registry server (default: https://fnames.farcaster.xyz)
 
 L2 Options:
-  --l2-id-registry-address              The address of the L2 Farcaster ID Registry contract
-  --l2-key-registry-address <address>   The address of the L2 Farcaster Key Registry contract
-  --l2-storage-registry-address <address>  The address of the L2 Farcaster Storage Registry contract
-  --l2-resync-events                    Resync events from the L2 Farcaster contracts before starting (default: disabled)
-  --l2-first-block <number>             The block number to begin syncing events from L2 Farcaster contracts
-  --l2-chunk-size <number>              The number of events to fetch from L2 Farcaster contracts at a time
-  --l2-chain-id <number>                The chain ID of the L2 Farcaster contracts are deployed to
-  --l2-rent-expiry-override <number>    The storage rent expiry in seconds to use instead of the default 1 year (ONLY FOR TESTS)
+  --l2-id-registry-address                The address of the L2 Farcaster ID Registry contract
+  --l2-key-registry-address <address>     The address of the L2 Farcaster Key Registry contract
+  --l2-id-registry-v2-address             The address of the L2 Farcaster ID Registry V2 contract
+  --l2-key-registry-v2-address <address>  The address of the L2 Farcaster Key Registry V2 contract
+  --l2-storage-registry-address <address> The address of the L2 Farcaster Storage Registry contract
+  --l2-resync-events                      Resync events from the L2 Farcaster contracts before starting (default: disabled)
+  --l2-clear-events                       Deletes all L2 events before starting (default: disabled)
+  --l2-first-block <number>               The block number to begin syncing events from L2 Farcaster contracts
+  --l2-chunk-size <number>                The number of events to fetch from L2 Farcaster contracts at a time
+  --l2-chain-id <number>                  The chain ID of the L2 Farcaster contracts are deployed to
+  --l2-rent-expiry-override <number>      The storage rent expiry in seconds to use instead of the default 1 year (ONLY FOR TESTS)
 
 Snapshots Options:
   --enable-snapshot-to-s3               Enable daily snapshots to be uploaded to S3. (default: disabled)
@@ -64,7 +66,8 @@ Networking Options:
   -b, --bootstrap <peer-multiaddrs...>  Peers to bootstrap gossip and sync from. (default: none)
   -g, --gossip-port <port>              Port to use for gossip (default: 2282)
   -r, --rpc-port <port>                 Port to use for gRPC  (default: 2283)
-  --httpApiPort <port>                  Port to use for HTTP API (default: 2281)
+  -h, --http-api-port <port>            Port to use for HTTP API (default: 2281)
+  --http-cors-origin                    CORS origin for HTTP API (default: *)
   --ip <ip-address>                     IP address to listen on (default: "127.0.0.1")
   --announce-ip <ip-address>            Public IP address announced to peers (default: fetched with external service)
   --announce-server-name <name>         Server name announced to peers, useful if SSL/TLS enabled. (default: "none")
@@ -115,21 +118,6 @@ Commands:
   help [command]    display help for command
 ```
 
-### status
-
-```
-Usage: yarn status [options]
-
-Reports the db and sync status of the hub
-WARNING: This command has been deprecated, and will be removed in a future release. Please use Grafana monitoring. See https://www.thehubble.xyz/intro/monitoring.html
-
-Options:
-  -s, --server <url>     Farcaster RPC server address:port to connect to (eg. 127.0.0.1:2283) (default: "127.0.0.1:2283")
-  --insecure             Allow insecure connections to the RPC server (default: false)
-  --watch                Keep running and periodically report status (default: false)
-  -p, --peerId <peerId>  Peer id of the hub to compare with (defaults to bootstrap peers)
-  -h, --help             display help for command
-```
 
 ### dbreset
 
@@ -137,19 +125,6 @@ Options:
 Usage: yarn dbreset [options]
 
 Completely remove the database
-
-Options:
-  --db-name <name>         The name of the RocksDB instance
-  -c, --config <filepath>  Path to a config file with options
-  -h, --help               display help for command
-```
-
-### events-reset
-
-```
-Usage: yarn events-reset [options]
-
-Clears all data about L2 events from the database.
 
 Options:
   --db-name <name>         The name of the RocksDB instance

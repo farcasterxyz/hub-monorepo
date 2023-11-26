@@ -5,7 +5,6 @@ import {
   DbStats,
   FidsResponse,
   getServer,
-  HubAsyncResult,
   HubError,
   HubEvent,
   HubEventType,
@@ -342,11 +341,11 @@ export default class Server {
     this.subscribeIpLimiter.clear();
   }
 
-  getImpl = (): HubServiceServer => {
+  getImpl(): HubServiceServer {
     return this.impl;
-  };
+  }
 
-  makeImpl = (): HubServiceServer => {
+  makeImpl(): HubServiceServer {
     return {
       getInfo: (call, callback) => {
         (async () => {
@@ -368,7 +367,7 @@ export default class Server {
           if (call.request.dbStats && this.syncEngine) {
             const stats = await this.syncEngine.getDbStats();
             info.dbStats = DbStats.create({
-              numMessages: stats?.numMessages,
+              numMessages: stats?.numItems,
               numFidEvents: stats?.numFids,
               numFnameEvents: stats?.numFnames,
             });
@@ -417,6 +416,7 @@ export default class Server {
                     divergenceSecondsAgo: status.divergenceSecondsAgo,
                     ourMessages: status.ourSnapshot.numMessages,
                     theirMessages: status.theirSnapshot.numMessages,
+                    score: status.score,
                   }),
                 );
               }
@@ -1243,5 +1243,5 @@ export default class Server {
         }
       },
     };
-  };
+  }
 }

@@ -2,6 +2,7 @@ import {
   FNameRegistryClientInterface,
   FNameRegistryEventsProvider,
   FNameTransfer,
+  FNameTransferRequest,
 } from "./fnameRegistryEventsProvider.js";
 import { jestRocksDB } from "../storage/db/jestUtils.js";
 import Engine from "../storage/engine/index.js";
@@ -11,6 +12,7 @@ import { getUserNameProof } from "../storage/db/nameRegistryEvent.js";
 import { utf8ToBytes } from "@noble/curves/abstract/utils";
 import { generatePrivateKey, privateKeyToAccount, PrivateKeyAccount, Address } from "viem/accounts";
 import { bytesToHex } from "viem";
+import { HubState } from "@farcaster/hub-nodejs";
 
 class MockFnameRegistryClient implements FNameRegistryClientInterface {
   private transfersToReturn: FNameTransfer[][] = [];
@@ -57,12 +59,12 @@ class MockFnameRegistryClient implements FNameRegistryClientInterface {
     this.timesToThrow = 1;
   }
 
-  async getTransfers(since: 0): Promise<FNameTransfer[]> {
+  async getTransfers(params: FNameTransferRequest): Promise<FNameTransfer[]> {
     if (this.timesToThrow > 0) {
       this.timesToThrow--;
       throw new Error("connection failed");
     }
-    expect(since).toBeGreaterThanOrEqual(this.minimumSince);
+    expect(params.from_id).toBeGreaterThanOrEqual(this.minimumSince);
     const transfers = this.transfersToReturn.shift();
     if (!transfers) {
       return Promise.resolve([]);
@@ -146,7 +148,7 @@ describe("fnameRegistryEventsProvider", () => {
     });
 
     it("fetches events from where it left off", async () => {
-      await hub.putHubState({ lastFnameProof: transferEvents[0]?.id ?? 0, lastEthBlock: 0, lastL2Block: 0 });
+      await hub.putHubState(HubState.create({ lastFnameProof: transferEvents[0]?.id ?? 0 }));
       mockFnameRegistryClient.setMinimumSince(transferEvents[0]?.id ?? 0);
       await provider.start();
       expect(await getUserNameProof(db, utf8ToBytes("test2"))).toBeTruthy();

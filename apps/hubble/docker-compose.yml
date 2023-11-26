@@ -8,22 +8,25 @@ version: '3.9'
 services:
   hubble:
     image: farcasterxyz/hubble:latest
-    restart: unless-stopped
+    pull_policy: always
+    restart: on-failure:5
     command: [
       "node", "--no-warnings",  "build/cli.js", "start",
       "--ip", "0.0.0.0",
-      "--gossip-port", "2282",
-      "--rpc-port", "2283",      
+      "--gossip-port", "${GOSSIP_PORT:-2282}",
+      "--rpc-port", "${RPC_PORT:-2283}",   
       "--eth-mainnet-rpc-url", "$ETH_MAINNET_RPC_URL",
       "--l2-rpc-url", "$OPTIMISM_L2_RPC_URL",
       "--network", "${FC_NETWORK_ID:-1}",
+      "--rpc-subscribe-per-ip-limit", "${RPC_SUBSCRIBE_PER_IP_LIMIT:-4}",
       "-b", "${BOOTSTRAP_NODE:-/dns/nemes.farcaster.xyz/tcp/2282}",
       "--statsd-metrics-server", "$STATSD_METRICS_SERVER",
       "--hub-operator-fid", "${HUB_OPERATOR_FID:-0}",
     ]
     ports:
-      - '2282:2282' # Gossip
-      - '2283:2283' # RPC
+      - '${HTTPAPI_PORT:-2281}:${HTTPAPI_PORT:-2281}' # HTTP API. You can set HTTP_PORT in .env
+      - '${GOSSIP_PORT:-2282}:${GOSSIP_PORT:-2282}' # Gossip. You can set GOSSIP_PORT in .env
+      - '${RPC_PORT:-2283}:${RPC_PORT:-2283}' # RPC. You can set RPC_PORT in .env
     volumes:
       - ./.hub:/home/node/app/apps/hubble/.hub
       - ./.rocks:/home/node/app/apps/hubble/.rocks
@@ -35,18 +38,6 @@ services:
         max-size: "1g"
         max-file: "2"
   
-  # Start if you want to expose your hub over grpc-web (for browser clients)
-  envoy:
-    image: envoyproxy/envoy:v1.26.1
-    depends_on:
-      - hubble
-    ports:
-      - '2285:2285'
-    volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
-    networks:
-      - my-network
-
   # Start this if you want perf metrics for your hubble node. Remember to start `grafana` as well.
   statsd:
     image: graphiteapp/graphite-statsd:1.1.10-5
@@ -68,6 +59,7 @@ services:
     # Mount the grafana config file
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/data:/var/lib/grafana  # Persistent Grafana data
     ports:
       - '3000:3000' # Grafana web
     networks:

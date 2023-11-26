@@ -3,6 +3,8 @@ import { ResultAsync } from "neverthrow";
 import { HubAsyncResult, HubError } from "../errors";
 import { VerificationEthAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
+import { PublicClients, defaultPublicClients } from "../eth/clients";
+import { CHAIN_IDS } from "../eth/chains";
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: "Farcaster Verify Ethereum Address",
@@ -30,6 +32,8 @@ export const EIP_712_FARCASTER_VERIFICATION_CLAIM = [
   },
 ] as const;
 
+export const EIP_712_FARCASTER_VERIFICATION_CLAIM_CHAIN_IDS = [...CHAIN_IDS, 0];
+
 export const EIP_712_FARCASTER_MESSAGE_DATA = [
   {
     name: "hash",
@@ -50,11 +54,18 @@ export const EIP_712_USERNAME_PROOF = [
   { name: "owner", type: "address" },
 ] as const;
 
-export const verifyVerificationEthAddressClaimSignature = async (
+export const verifyVerificationClaimEOASignature = async (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array,
   address: Uint8Array,
+  chainId: number,
 ): HubAsyncResult<boolean> => {
+  if (chainId !== 0) {
+    return ResultAsync.fromPromise(
+      Promise.reject(),
+      () => new HubError("bad_request.invalid_param", "Invalid chain ID"),
+    );
+  }
   const valid = await ResultAsync.fromPromise(
     verifyTypedData({
       address: bytesToHex(address),
@@ -66,8 +77,62 @@ export const verifyVerificationEthAddressClaimSignature = async (
     }),
     (e) => new HubError("unknown", e as Error),
   );
-
   return valid;
+};
+
+export const verifyVerificationClaimContractSignature = async (
+  claim: VerificationEthAddressClaim,
+  signature: Uint8Array,
+  address: Uint8Array,
+  chainId: number,
+  publicClients: PublicClients = defaultPublicClients,
+): HubAsyncResult<boolean> => {
+  const client = publicClients[chainId];
+  if (!client) {
+    return ResultAsync.fromPromise(
+      Promise.reject(),
+      () => new HubError("bad_request.invalid_param", `RPC client not provided for chainId ${chainId}`),
+    );
+  }
+  const valid = await ResultAsync.fromPromise(
+    client.verifyTypedData({
+      address: bytesToHex(address),
+      domain: { ...EIP_712_FARCASTER_DOMAIN, chainId },
+      types: { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
+      primaryType: "VerificationClaim",
+      message: claim,
+      signature,
+    }),
+    (e) => new HubError("unavailable.network_failure", e as Error),
+  );
+  return valid;
+};
+
+export const verifyVerificationEthAddressClaimSignature = async (
+  claim: VerificationEthAddressClaim,
+  signature: Uint8Array,
+  address: Uint8Array,
+  verificationType = 0,
+  chainId = 0,
+  publicClients: PublicClients = defaultPublicClients,
+): HubAsyncResult<boolean> => {
+  if (!EIP_712_FARCASTER_VERIFICATION_CLAIM_CHAIN_IDS.includes(chainId)) {
+    return ResultAsync.fromPromise(
+      Promise.reject(),
+      () => new HubError("bad_request.invalid_param", "Invalid chain ID"),
+    );
+  }
+
+  if (verificationType === 0) {
+    return verifyVerificationClaimEOASignature(claim, signature, address, chainId);
+  } else if (verificationType === 1) {
+    return verifyVerificationClaimContractSignature(claim, signature, address, chainId, publicClients);
+  } else {
+    return ResultAsync.fromPromise(
+      Promise.reject(),
+      () => new HubError("bad_request.invalid_param", "Invalid verification type"),
+    );
+  }
 };
 
 export const verifyUserNameProofClaim = async (

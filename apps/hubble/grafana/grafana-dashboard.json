@@ -20,7 +20,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 1,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -75,7 +75,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -129,7 +131,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -373,7 +377,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -429,7 +435,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -502,7 +510,6 @@
               "mode": "off"
             }
           },
-          "displayName": "Messages",
           "mappings": [],
           "noValue": "Starting up... Please wait",
           "thresholds": {
@@ -536,14 +543,18 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "10.0.3",
       "targets": [
         {
-          "refId": "A",
-          "target": "stats_counts.hubble.gossip.messages",
+          "datasource": "Graphite",
+          "hide": false,
+          "refCount": 0,
+          "refId": "Protocol Messages",
+          "target": "stats_counts.hubble.gossip.*.*",
           "textEditor": true
         }
       ],
@@ -599,7 +610,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -695,6 +708,18 @@
                 "value": "Outbound Peers"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stats.gauges.hubble.peer_store.count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Discovered Peers"
+              }
+            ]
           }
         ]
       },
@@ -713,21 +738,30 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
       "targets": [
         {
+          "datasource": "Graphite",
           "refCount": 0,
           "refId": "A",
           "target": "stats.gauges.hubble.gossip.peers.inbound"
         },
         {
+          "datasource": "Graphite",
           "hide": false,
           "refCount": 0,
           "refId": "B",
           "target": "stats.gauges.hubble.gossip.peers.outbound"
+        },
+        {
+          "datasource": "Graphite",
+          "hide": false,
+          "refCount": 0,
+          "refId": "C",
+          "target": "stats.gauges.hubble.peer_store.count"
         }
       ],
       "title": "Gossip Peers",
@@ -870,7 +904,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -923,7 +959,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1173,7 +1211,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1258,7 +1297,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1302,12 +1342,119 @@
       "type": "timeseries"
     },
     {
+      "datasource": "Graphite",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
+      "id": 33,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "datasource": "Graphite",
+          "refCount": 0,
+          "refId": "A",
+          "target": "stats.gauges.hubble.memory.external"
+        },
+        {
+          "datasource": "Graphite",
+          "hide": false,
+          "refCount": 0,
+          "refId": "B",
+          "target": "stats.gauges.hubble.memory.heap_total"
+        },
+        {
+          "datasource": "Graphite",
+          "hide": false,
+          "refCount": 0,
+          "refId": "C",
+          "target": "stats.gauges.hubble.memory.heap_used"
+        },
+        {
+          "datasource": "Graphite",
+          "hide": false,
+          "refCount": 0,
+          "refId": "D",
+          "target": "stats.gauges.hubble.memory.rss"
+        }
+      ],
+      "title": "Memory Usage",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 51
       },
       "id": 15,
       "panels": [],
@@ -1357,7 +1504,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1397,7 +1545,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 44
+        "y": 52
       },
       "id": 16,
       "options": {
@@ -1465,7 +1613,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1505,7 +1654,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 44
+        "y": 52
       },
       "id": 17,
       "options": {
@@ -1537,7 +1686,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 52
+        "y": 60
       },
       "id": 28,
       "panels": [],
@@ -1586,7 +1735,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1601,7 +1751,7 @@
         "h": 10,
         "w": 7,
         "x": 0,
-        "y": 53
+        "y": 61
       },
       "id": 30,
       "options": {
@@ -1669,7 +1819,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1698,7 +1849,7 @@
         "h": 10,
         "w": 9,
         "x": 7,
-        "y": 53
+        "y": 61
       },
       "id": 27,
       "options": {
@@ -1766,7 +1917,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1781,7 +1933,7 @@
         "h": 10,
         "w": 8,
         "x": 16,
-        "y": 53
+        "y": 61
       },
       "id": 29,
       "options": {
@@ -1806,6 +1958,97 @@
       ],
       "title": "Messages Fetched",
       "type": "timeseries"
+    },
+    {
+      "datasource": "Graphite",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Field"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 494
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 0,
+        "y": 71
+      },
+      "id": 32,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Last *"
+          }
+        ]
+      },
+      "pluginVersion": "10.0.3",
+      "targets": [
+        {
+          "datasource": "Graphite",
+          "refId": "A",
+          "target": "aliasByNode(stats.gauges.hubble.peer.*.score, 4)",
+          "textEditor": true
+        }
+      ],
+      "title": "Peer Scores",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ],
+      "type": "table"
     }
   ],
   "refresh": "30s",
@@ -1823,6 +2066,6 @@
   "timezone": "",
   "title": "Hubble Dashboard",
   "uid": "af04c037-bd8f-484a-b93e-0cb4b7d3b026",
-  "version": 4,
+  "version": 2,
   "weekStart": ""
 }

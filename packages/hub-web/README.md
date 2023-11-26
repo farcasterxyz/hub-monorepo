@@ -1,111 +1,51 @@
 # @farcaster/hub-web
 
-A lightweight, fast Typescript interface for Farcaster Hubs. Designed to work with [Hubble](https://github.com/farcasterxyz/hubble/) and any other Hub that implements the [Farcaster protocol](https://github.com/farcasterxyz/protocol).
+A fast and easy REST-like interface to work with Farcaster Hubs. Designed to work with [Hubble](https://github.com/farcasterxyz/hubble/) and any other Hub that implements the [Farcaster protocol](https://github.com/farcasterxyz/protocol).
 
 ## Features
-
-- Call any Hub endpoint from a browser environment using gRPC-Web.
-- Serializes and deserializes Farcaster protobufs into Javascript objects.
-- Has helpers to create and sign Farcaster messages.
-- Written entirely in TypeScript, with strict types for safety.
+- Call any endpoint using a simple HTTP API, including from a browser environment
+- Responses are plain JSON
+- Written entirely in Typescript, with strict types for safety. 
 
 ## Installation
-
-Install @farcaster/hub-web with the package manager of your choice
+The examples in this package use `axios` to make HTTP requests, but you can use any library. It is also useful to install the `@farcaster/core` library which has several helper methods that are useful while working with Farcaster messages. 
 
 ```bash
-npm install @farcaster/hub-web
-yarn add @farcaster/hub-web
-pnpm install @farcaster/hub-web
+yarn add axios @farcaster/core
+yarn add -D @types/axios 
 ```
 
 ## Documentation
+The HTTP API endpoints are [documented here](https://www.thehubble.xyz/docs/httpapi/httpapi.html). 
 
-The @farcaster/hub-web APIs are largely the same as @farcaster/hub-nodejs. Read the [@farcaster/hub-nodejs documentation](https://github.com/farcasterxyz/hubble/tree/main/packages/hub-nodejs/docs) and browse code [examples](https://github.com/farcasterxyz/hubble/tree/main/packages/hub-nodejs/examples). We're also including sample @farcaster/hub-web code below as well as a list of differences with the other package.
-
-### Getting start: fetching casts
-
+### Getting started: fetching casts
 ```typescript
-import { getHubRpcClient } from '@farcaster/hub-web';
+import axios from "axios";
 
-(async () => {
-  const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
+const fid = 2;
+const server = "http://nemes.farcaster.xyz:2281";
 
-  const castsResult = await client.getCastsByFid({ fid: 15 });
+try {
+    const response = await axios.get(`${server}/v1/castsByFid?fid=${fid}`);
 
-  castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
-})();
+    console.log(`API Returned HTTP status ${response.status}`);    
+    console.log(`First Cast's text is ${response.messages[0].data.castAddBody.text}`);
+} catch (e) {
+    // Handle errors
+    console.log(response);
+}
 ```
 
-### Instantiating a client
+### Running the examples
+There are several examples in the `examples/` folder. To run the examples, please look at the individual README files in the examples directory. Most examples can be run by
 
-The method to construct a Hub gRPC client differs from @farcaster/hub-nodejs. Use `getHubRpcClient`, which returns a Hub gRPC-Web client. Make sure that the gRPC server you're connecting to implements a gRPC-Web proxy. The standard is to expose the gRPC-Web proxy at port 2285.
-
-#### Usage
-
-```typescript
-import { getHubRpcClient } from '@farcaster/hub-web';
-
-(async () => {
-  const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
-
-  // If you're using gRPC-Web from a Nodejs environment, add a second false parameter
-  // const nodeClient = getHubRpcClient('https://testnet1.farcaster.xyz:2285', false);
-})();
+```bash
+yarn install
+yarn start
 ```
 
-#### Returns
-
-| Type           | Description                     |
-| :------------- | :------------------------------ |
-| `HubRpcClient` | A new gRPC-Web Client instance. |
-
-#### Parameters
-
-| Name        | Type      | Description                                                                |
-| :---------- | :-------- | :------------------------------------------------------------------------- |
-| `url`       | `string`  | Address and RPC port string (e.g. `https://testnet1.farcaster.xyz:2285`)   |
-| `isBrowser` | `boolean` | Optional parameter indicating whether to use the gRPC-Web Nodejs transport |
-
-### Streaming hub events
-
-gRPC-Web hub event streams are instances of the [Observable class](https://rxjs.dev/guide/observable) in @farcaster/hub-web.
-
-#### Usage
-
-```typescript
-import { getHubRpcClient } from '@farcaster/hub-web';
-
-async () => {
-  const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
-
-  const result = client.subscribe({ eventTypes: [HubEventType.PRUNE_MESSAGE], fromId: 0 });
-
-  result.map((observable) => {
-    observable.subscribe({
-      next(event: HubEvent) {
-        console.log('received event', event);
-      },
-      error(err) {
-        console.error(err);
-      },
-    });
-  });
-};
-```
-
-#### Returns
-
-| Type                              | Description                                                                   |
-| :-------------------------------- | :---------------------------------------------------------------------------- |
-| `HubResult<Observable<HubEvent>>` | An [Observable](https://rxjs.dev/guide/observable) stream wrapped in a Result |
-
-#### Parameters
-
-| Name         | Type             | Description                                                                                                                                                                           |
-| :----------- | :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fromId`     | `number`         | (Optional) ID of the hub event to start streaming from. A `fromId` of `0` will stream all events from the hub, and passing no `fromId` will start the stream from the present moment. |
-| `eventTypes` | `HubEventType[]` | Array of hub event types to return. If `eventTypes` is `[]`, all event types will be returned.                                                                                        |
+## grpc-Web
+grpc-web was an older way of proxying to the grpc API from web environments. This has been deprecated and is no longer supported. You can read the original [grpc-web documentation and examples here](./README.grpcweb.md).
 
 ## Contributing
 

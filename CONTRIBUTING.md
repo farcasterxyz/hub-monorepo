@@ -277,15 +277,16 @@ Permissions to publish to the @farcaster organization in NPM is necessary. This 
 are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Warpcast](https://warpcast.com/v))
 
 1. Checkout a new branch and run `yarn changeset version`
-2. Check that the version bumps are consistent with our versioning system
-3. Check that all CHANGELOG.mds represent the important changes made
-4. Check in all the files and merge the branch to main
-5. Checkout main, pull down to the merged commit (should be latest) and run `yarn build`
-6. Publish changes by running `yarn changeset publish`
-7. Manually tag Hubble with `git tag -a @farcaster/hubble@<version>` if version was changed..
-8. Update the `@latest` tag: `git tag -f @latest`
-9. Push all tags to the remote repo: `git push origin @latest --force && git push origin HEAD --tags`
-10. Create a GitHub Release for Hubble, marking it as the latest.
+2. Review CHANGELOG.md and confirm that it is accurate
+3. Check that `package.json` was bumped correctly
+3. If protocol version change, bump `FARCASTER_VERSIONS_SCHEDULE` and  `FARCASTER_VERSION`
+4. Create commit, merge to main, check out commit on main and run `yarn build`
+5. Publish changes by running `yarn changeset publish`
+6. Fetch and update tags with `git fetch origin --tags && yarn changeset tag && git tag -f @latest`
+7. Delete the biome tags `git tag -d biome-config-custom@0.0.1`
+8. Push tags with `git push upstream HEAD --tags -f`
+9. If docker build does not start `git push upstream --delete @farcaster/hubble@<version> && git push upstream --tags @farcaster/hubble@<version>` to re-trigger it.
+10. Create a GitHub Release for Hubble, copying over the changelog and marking it as the latest.
 11. If this is a non-patch change, create an NFT for the release.
 12. Make sure that the Docker image for the latest release gets built and published to [Docker hub](https://hub.docker.com/r/farcasterxyz/hubble/tags).
 

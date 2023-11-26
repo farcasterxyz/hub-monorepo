@@ -331,6 +331,8 @@ export interface Message {
   signatureScheme: SignatureScheme;
   /** Public key or address of the key pair that produced the signature */
   signer: Uint8Array;
+  /** MessageData serialized to bytes if using protobuf serialization other than ts-proto */
+  dataBytes?: Uint8Array | undefined;
 }
 
 /**
@@ -431,6 +433,10 @@ export interface VerificationAddEthAddressBody {
   ethSignature: Uint8Array;
   /** Hash of the latest Ethereum block when the signature was produced */
   blockHash: Uint8Array;
+  /** Type of verification. 0 = EOA, 1 = contract */
+  verificationType: number;
+  /** 0 for EOA verifications, 1 or 10 for contract verifications */
+  chainId: number;
 }
 
 /** Removes a Verification of any type */
@@ -459,6 +465,7 @@ function createBaseMessage(): Message {
     signature: new Uint8Array(),
     signatureScheme: 0,
     signer: new Uint8Array(),
+    dataBytes: undefined,
   };
 }
 
@@ -481,6 +488,9 @@ export const Message = {
     }
     if (message.signer.length !== 0) {
       writer.uint32(50).bytes(message.signer);
+    }
+    if (message.dataBytes !== undefined) {
+      writer.uint32(58).bytes(message.dataBytes);
     }
     return writer;
   },
@@ -534,6 +544,13 @@ export const Message = {
 
           message.signer = reader.bytes();
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.dataBytes = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -551,6 +568,7 @@ export const Message = {
       signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
       signatureScheme: isSet(object.signatureScheme) ? signatureSchemeFromJSON(object.signatureScheme) : 0,
       signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      dataBytes: isSet(object.dataBytes) ? bytesFromBase64(object.dataBytes) : undefined,
     };
   },
 
@@ -565,6 +583,8 @@ export const Message = {
     message.signatureScheme !== undefined && (obj.signatureScheme = signatureSchemeToJSON(message.signatureScheme));
     message.signer !== undefined &&
       (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    message.dataBytes !== undefined &&
+      (obj.dataBytes = message.dataBytes !== undefined ? base64FromBytes(message.dataBytes) : undefined);
     return obj;
   },
 
@@ -582,6 +602,7 @@ export const Message = {
     message.signature = object.signature ?? new Uint8Array();
     message.signatureScheme = object.signatureScheme ?? 0;
     message.signer = object.signer ?? new Uint8Array();
+    message.dataBytes = object.dataBytes ?? undefined;
     return message;
   },
 };
@@ -1382,7 +1403,13 @@ export const ReactionBody = {
 };
 
 function createBaseVerificationAddEthAddressBody(): VerificationAddEthAddressBody {
-  return { address: new Uint8Array(), ethSignature: new Uint8Array(), blockHash: new Uint8Array() };
+  return {
+    address: new Uint8Array(),
+    ethSignature: new Uint8Array(),
+    blockHash: new Uint8Array(),
+    verificationType: 0,
+    chainId: 0,
+  };
 }
 
 export const VerificationAddEthAddressBody = {
@@ -1395,6 +1422,12 @@ export const VerificationAddEthAddressBody = {
     }
     if (message.blockHash.length !== 0) {
       writer.uint32(26).bytes(message.blockHash);
+    }
+    if (message.verificationType !== 0) {
+      writer.uint32(32).uint32(message.verificationType);
+    }
+    if (message.chainId !== 0) {
+      writer.uint32(40).uint32(message.chainId);
     }
     return writer;
   },
@@ -1427,6 +1460,20 @@ export const VerificationAddEthAddressBody = {
 
           message.blockHash = reader.bytes();
           continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.verificationType = reader.uint32();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.chainId = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1441,6 +1488,8 @@ export const VerificationAddEthAddressBody = {
       address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
       ethSignature: isSet(object.ethSignature) ? bytesFromBase64(object.ethSignature) : new Uint8Array(),
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
+      verificationType: isSet(object.verificationType) ? Number(object.verificationType) : 0,
+      chainId: isSet(object.chainId) ? Number(object.chainId) : 0,
     };
   },
 
@@ -1454,6 +1503,8 @@ export const VerificationAddEthAddressBody = {
       ));
     message.blockHash !== undefined &&
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
+    message.verificationType !== undefined && (obj.verificationType = Math.round(message.verificationType));
+    message.chainId !== undefined && (obj.chainId = Math.round(message.chainId));
     return obj;
   },
 
@@ -1468,6 +1519,8 @@ export const VerificationAddEthAddressBody = {
     message.address = object.address ?? new Uint8Array();
     message.ethSignature = object.ethSignature ?? new Uint8Array();
     message.blockHash = object.blockHash ?? new Uint8Array();
+    message.verificationType = object.verificationType ?? 0;
+    message.chainId = object.chainId ?? 0;
     return message;
   },
 };

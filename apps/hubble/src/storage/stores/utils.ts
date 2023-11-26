@@ -1,14 +1,16 @@
-import { UserNameProof, HubError, bytesIncrement } from "@farcaster/hub-nodejs";
+import { UserNameProof, bytesIncrement } from "@farcaster/hub-nodejs";
+import { bytesCompare } from "@farcaster/core";
 
 export const usernameProofCompare = (a: UserNameProof, b: UserNameProof): number => {
-  // Compare timestamps
+  // Compare timestamps (assumes name and proof type have already been checked by the caller)
   if (a.timestamp < b.timestamp) {
     return -1;
   } else if (a.timestamp > b.timestamp) {
     return 1;
   }
 
-  throw new HubError("bad_request.validation_failure", "proofs have the same timestamp");
+  // If timestamps match, order by signature bytes so we can deterministically choose the same proof everywhere
+  return bytesCompare(a.signature, b.signature);
 };
 
 export const makeEndPrefix = (prefix: Buffer): Buffer | undefined => {

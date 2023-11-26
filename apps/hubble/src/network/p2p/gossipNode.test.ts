@@ -205,16 +205,16 @@ describe("GossipNode", () => {
       expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
     });
 
-    test("Gossip Ids do not match for gossip internal messages", async () => {
+    test("Gossip Ids do match for gossip internal messages", async () => {
       await node.start([]);
 
       const contactInfo = ContactInfoContent.create();
       await node.gossipContactInfo(contactInfo);
       const res2 = await node.gossipContactInfo(contactInfo);
-      expect(res2.isOk()).toBeTruthy();
+      expect(res2.isErr()).toBeTruthy();
     });
 
-    test("Gossip Ids do not match for gossip V1 messages", async () => {
+    test("Gossip Ids do match for gossip V1 messages", async () => {
       const node = new LibP2PNode(FarcasterNetwork.DEVNET);
       await node.makeNode({});
 
@@ -226,10 +226,10 @@ describe("GossipNode", () => {
       });
 
       await node.publish(v1Message);
-      // won't be detected as a duplicate
+      // should be detected as a duplicate
       const result = await node.publish(v1Message);
       result.forEach((res) => {
-        expect(res.isOk()).toBeTruthy();
+        expect(res.isErr()).toBeTruthy();
       });
     });
 
@@ -273,11 +273,24 @@ describe("GossipNode", () => {
       gossipMessage = GossipMessage.create({
         message: castAdd,
         topics: ["foobar"],
+        // invalid peerIds are not allowed
+        peerId: undefined as unknown as Uint8Array,
+      });
+      expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+
+      gossipMessage = GossipMessage.create({
+        message: castAdd,
+        topics: ["foobar"],
         peerId: peerId.toBytes(),
         // invalid versions are not allowed
         version: 12345 as GossipVersion,
       });
       expect(LibP2PNode.decodeMessage(LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap()).isErr()).toBeTruthy();
+
+      // Invalid encoding
+      expect(LibP2PNode.decodeMessage(new Uint8Array([1, 2, 3, 4, 5])).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(new Uint8Array([])).isErr()).toBeTruthy();
+      expect(LibP2PNode.decodeMessage(undefined as unknown as Uint8Array).isErr()).toBeTruthy();
     });
   });
 });

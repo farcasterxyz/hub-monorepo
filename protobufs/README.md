@@ -13,6 +13,12 @@ Specifications for API's and data formats used in Hubble, including both Farcast
 
 ## Getting Started
 
+### Compiling Protobufs
+If you make changes to the protobufs, you will need to run `yarn protoc` in the following directories to compile and generate the JS files
+- `packages/core`
+- `packages/hub-nodejs`
+- `packages/hub-web`
+
 ### Generate Bindings
 
 Coming soon

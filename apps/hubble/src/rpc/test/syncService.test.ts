@@ -72,7 +72,7 @@ describe("getInfo", () => {
 
     const result = await client.getInfo(HubInfoRequest.create({ dbStats: true }));
     expect(result.isOk()).toBeTruthy();
-    expect(result._unsafeUnwrap().dbStats?.numMessages).toEqual(2);
+    expect(result._unsafeUnwrap().dbStats?.numMessages).toEqual(5); // Currently returns all items in the trie (3 events + 2 messages)
     expect(result._unsafeUnwrap().dbStats?.numFidEvents).toEqual(1);
     expect(result._unsafeUnwrap().dbStats?.numFnameEvents).toEqual(0);
   });

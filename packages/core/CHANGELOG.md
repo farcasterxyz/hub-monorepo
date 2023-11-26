@@ -1,5 +1,66 @@
 # @farcaster/core
 
+## 0.13.1
+
+### Patch Changes
+
+- 5199f66e: fix: disallow empty casts
+- 6890969b: fix: remove references to old contracts
+- 5199f66e: fix: Allow syncTrie to handle names that are substrings
+
+## 0.13.0
+
+### Minor Changes
+
+- 3313c232: Adds support for contact info content signing + strictNoSign
+
+### Patch Changes
+
+- f3d32227: feat: Support v2 id and key registry contracts
+
+## 0.12.15
+
+### Patch Changes
+
+- 153da45a: Remove PubSub PeerDiscovery in favor of ContactInfo based PeerDiscovery
+
+## 0.12.14
+
+### Patch Changes
+
+- ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
+
+## 0.12.13
+
+### Patch Changes
+
+- f4e50b95: fix: use interface for Viem PublicClient, add optional publicClients to builders
+
+## 0.12.12
+
+### Patch Changes
+
+- 81e6d8ec: FIP-8 contract verifications
+- aacff028: Remove eslint-config-custom dependencies
+- c33f5270: fix: Run protoc as user instead of root
+- 433bee81: feat: Enable events sync by default
+
+## 0.12.11
+
+### Patch Changes
+
+- ef795c71: upgrade viem to 1.12.2
+- 14f67cf2: feat: Add peer scoring
+
+## 0.12.10
+
+### Patch Changes
+
+- 31641c17: fix: Bound generated timestamps for tests
+- fb1f5c61: feat: Support onchain events and fnames in sync trie
+- aeab5a4c: docs: Refactor HTTP API docs
+- 4b99eddb: feat: Support fname and onchain event syncids
+
 ## 0.12.9
 
 ### Patch Changes

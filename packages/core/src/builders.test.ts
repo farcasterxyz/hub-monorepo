@@ -238,10 +238,11 @@ describe("makeMessageHash", () => {
 
 describe("makeMessageWithSignature", () => {
   test("succeeds", async () => {
-    const body = protobufs.CastAddBody.create();
-    const castAdd = await builders.makeCastAdd(body, { fid, network }, ed25519Signer);
+    const body = protobufs.CastAddBody.create({ text: "test" });
+    const timestamp = getFarcasterTime()._unsafeUnwrap();
+    const castAdd = await builders.makeCastAdd(body, { fid, network, timestamp }, ed25519Signer);
 
-    const data = await builders.makeCastAddData(body, { fid, network });
+    const data = await builders.makeCastAddData(body, { fid, network, timestamp });
     const hash = await builders.makeMessageHash(data._unsafeUnwrap());
     const signature = (await ed25519Signer.signMessageHash(hash._unsafeUnwrap()))._unsafeUnwrap();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
@@ -260,7 +261,7 @@ describe("makeMessageWithSignature", () => {
     const signature = hexStringToBytes(
       "0xf8dc77d52468483806addab7d397836e802551bfb692604e2d7df4bc4820556c63524399a63d319ae4b027090ce296ade08286878dc1f414b62412f89e8bc4e01b",
     )._unsafeUnwrap();
-    const data = await builders.makeCastAddData(protobufs.CastAddBody.create(), { fid, network });
+    const data = await builders.makeCastAddData(protobufs.CastAddBody.create({ text: "test" }), { fid, network });
     expect(data.isOk()).toBeTruthy();
     const message = await builders.makeMessageWithSignature(data._unsafeUnwrap(), {
       signer: (await ed25519Signer.getSignerKey())._unsafeUnwrap(),

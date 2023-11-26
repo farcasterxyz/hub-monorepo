@@ -1,9 +1,9 @@
 syntax = "proto3";
 import "username_proof.proto";
 
-/** 
-  * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope 
-  * that wraps a MessageData object and contains a hash and signature which can verify its authenticity. 
+/**
+  * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope
+  * that wraps a MessageData object and contains a hash and signature which can verify its authenticity.
   */
 message Message {
   MessageData data = 1; // Contents of the message
@@ -12,14 +12,15 @@ message Message {
   bytes signature = 4; // Signature of the hash digest
   SignatureScheme signature_scheme = 5; // Signature scheme that produced the signature
   bytes signer = 6; // Public key or address of the key pair that produced the signature
+  optional bytes data_bytes = 7; // MessageData serialized to bytes if using protobuf serialization other than ts-proto
 }
 
-  /** 
- * A MessageData object contains properties common to all messages and wraps a body object which 
+  /**
+ * A MessageData object contains properties common to all messages and wraps a body object which
  * contains properties specific to the MessageType.
  */
 message MessageData {
-  MessageType type = 1; // Type of message contained in the body 
+  MessageType type = 1; // Type of message contained in the body
   uint64 fid = 2; // Farcaster ID of the user producing the message
   uint32 timestamp = 3; // Farcaster epoch timestamp in seconds
   FarcasterNetwork network = 4; // Farcaster network the message is intended for
@@ -29,9 +30,9 @@ message MessageData {
     ReactionBody reaction_body = 7;
     VerificationAddEthAddressBody verification_add_eth_address_body = 9;
     VerificationRemoveBody verification_remove_body = 10;
-//    SignerAddBody signer_add_body = 11; // Deprecated
+    // SignerAddBody signer_add_body = 11; // Deprecated
     UserDataBody user_data_body = 12;
-//    SignerRemoveBody signer_remove_body = 13; // Deprecated
+    // SignerRemoveBody signer_remove_body = 13; // Deprecated
     LinkBody link_body = 14;
     UserNameProof username_proof_body = 15;
   } // Properties specific to the MessageType
@@ -47,7 +48,7 @@ enum HashScheme {
 enum SignatureScheme {
   SIGNATURE_SCHEME_NONE = 0;
   SIGNATURE_SCHEME_ED25519 = 1; // Ed25519 signature (default)
-  SIGNATURE_SCHEME_EIP712 = 2; // ECDSA signature using EIP-712 scheme 
+  SIGNATURE_SCHEME_EIP712 = 2; // ECDSA signature using EIP-712 scheme
 }
 
 /** Type of the MessageBody */
@@ -144,6 +145,8 @@ message VerificationAddEthAddressBody {
   bytes address = 1; // Ethereum address being verified
   bytes eth_signature = 2; // Signature produced by the user's Ethereum address
   bytes block_hash = 3; // Hash of the latest Ethereum block when the signature was produced
+  uint32 verification_type = 4; // Type of verification. 0 = EOA, 1 = contract
+  uint32 chain_id = 5; // 0 for EOA verifications, 1 or 10 for contract verifications
 }
 
 /** Removes a Verification of any type */

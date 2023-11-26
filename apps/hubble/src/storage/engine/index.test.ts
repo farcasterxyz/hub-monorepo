@@ -204,9 +204,70 @@ describe("mergeMessage", () => {
         );
         const result = await engine.mergeMessage(testnetVerificationAdd);
         // Signature will not match because we're attempting to recover the address based on the wrong network
-        expect(result).toEqual(
-          err(new HubError("bad_request.validation_failure", "ethSignature does not match address")),
-        );
+        expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid ethSignature")));
+      });
+
+      describe("validateOrRevokeMessage", () => {
+        let mergedMessage: Message;
+        let verifications: VerificationAddEthAddressMessage[] = [];
+
+        const getVerifications = async () => {
+          const verificationsResult = await engine.getVerificationsByFid(fid);
+          if (verificationsResult.isOk()) {
+            verifications = verificationsResult.value.messages;
+          }
+        };
+
+        const createVerification = async () => {
+          return await Factories.VerificationAddEthAddressMessage.create(
+            {
+              data: {
+                fid,
+                verificationAddEthAddressBody: Factories.VerificationAddEthAddressBody.build({
+                  chainId: 1,
+                  verificationType: 1,
+                }),
+              },
+            },
+            { transient: { signer } },
+          );
+        };
+
+        beforeEach(async () => {
+          jest.replaceProperty(publicClient.chain, "id", 1);
+          jest.spyOn(publicClient, "verifyTypedData").mockResolvedValue(true);
+          mergedMessage = await createVerification();
+          const result = await engine.mergeMessage(mergedMessage);
+          expect(result.isOk()).toBeTruthy();
+          await getVerifications();
+          expect(verifications.length).toBe(1);
+        });
+
+        afterEach(async () => {
+          jest.restoreAllMocks();
+        });
+
+        test("revokes a contract verification when signature is no longer valid", async () => {
+          jest.spyOn(publicClient, "verifyTypedData").mockResolvedValue(false);
+          const result = await engine.validateOrRevokeMessage(mergedMessage);
+          expect(result.isOk()).toBeTruthy();
+
+          const verificationsResult = await engine.getVerificationsByFid(fid);
+          expect(verificationsResult.isOk()).toBeTruthy();
+
+          await getVerifications();
+          expect(verifications.length).toBe(0);
+        });
+
+        test("does not revoke contract verifications when RPC call fails", async () => {
+          jest.spyOn(publicClient, "verifyTypedData").mockRejectedValue(new Error("verify failed"));
+          const result = await engine.validateOrRevokeMessage(mergedMessage);
+          expect(result._unsafeUnwrapErr().errCode).toEqual("unavailable.network_failure");
+          expect(result._unsafeUnwrapErr().message).toMatch("verify failed");
+
+          await getVerifications();
+          expect(verifications.length).toBe(1);
+        });
       });
     });
 

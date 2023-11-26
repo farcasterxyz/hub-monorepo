@@ -32,6 +32,7 @@ import { DeepPartial } from "fishery";
 import { mergeDeepPartial } from "../../test/utils.js";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
+import { APP_VERSION } from "../../hubble.js";
 
 const db = jestRocksDB("httpserver.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -84,6 +85,35 @@ describe("httpServer", () => {
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
+  });
+
+  describe("cors", () => {
+    test("cors", async () => {
+      const syncEngine = new SyncEngine(hub, db);
+      const server = new Server(hub, engine, syncEngine);
+      const httpServer = new HttpAPIServer(server.getImpl(), engine, "http://example.com");
+      const addr = (await httpServer.start())._unsafeUnwrap();
+
+      const url = `${addr}/v1/info`;
+      const response = await axios.get(url, { headers: { Origin: "http://example.com" } });
+
+      expect(response.status).toBe(200);
+      expect(response.headers["access-control-allow-origin"]).toBe("http://example.com");
+
+      await httpServer.stop();
+      await server.stop();
+      await syncEngine.stop();
+    });
+  });
+
+  describe("getInfo", () => {
+    test("getInfo", async () => {
+      const url = getFullUrl("/v1/info");
+      const response = await axios.get(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data.version).toEqual(APP_VERSION);
+    });
   });
 
   describe("submit APIs", () => {
@@ -218,6 +248,17 @@ describe("httpServer", () => {
       expect(response3.status).toBe(200);
       expect(response3.data.events.length).toEqual(0);
       expect(response3.data.nextPageEventId).toBe(response2.data.nextPageEventId + 1);
+    });
+  });
+
+  describe("FID APIs", () => {
+    test("fid", async () => {
+      // Get a http client for port 2181
+      const url = getFullUrl("/v1/fids");
+      const response = await axiosGet(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data.fids).toEqual([fid]);
     });
   });
 
@@ -565,7 +606,7 @@ describe("httpServer", () => {
       expect(response.data).toEqual((protoToJSON(proof, Message) as UsernameProofMessage).data.usernameProofBody);
 
       // Get via fid
-      const url2 = getFullUrl(`/v1/usernameproofsByFid?fid=${fid}`);
+      const url2 = getFullUrl(`/v1/userNameProofsByFid?fid=${fid}`);
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);

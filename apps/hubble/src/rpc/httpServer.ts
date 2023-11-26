@@ -1,6 +1,8 @@
 import {
+  FidsResponse,
   HubError,
   HubEvent,
+  HubInfoResponse,
   HubResult,
   HubServiceServer,
   Message,
@@ -20,11 +22,13 @@ import {
 } from "@farcaster/hub-nodejs";
 import { Metadata, ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
+import fastifyCors from "@fastify/cors";
 import { Result, err, ok } from "neverthrow";
 import { logger } from "../utils/logger.js";
 import { PageOptions } from "../storage/stores/types.js";
 import { DeepPartial } from "../storage/stores/store.js";
 import Engine from "../storage/engine/index.js";
+import { statsd } from "../utils/statsd.js";
 
 const log = logger.child({ component: "HttpAPIServer" });
 
@@ -50,11 +54,13 @@ type StaticEncodable<T> = {
 
 // Get the call Object for a given method
 function getCallObject<M extends keyof HubServiceServer>(
-  _method: M,
+  method: M,
   params: DeepPartial<FirstTemplateParamType<M>>,
   request: fastify.FastifyRequest,
   metadata?: Metadata,
 ): CallTypeForMethod<M> {
+  statsd().increment(`httpapi.${method}`);
+
   return {
     request: params,
     metadata,
@@ -179,7 +185,7 @@ export class HttpAPIServer {
 
   app = fastify();
 
-  constructor(grpcImpl: HubServiceServer, engine: Engine) {
+  constructor(grpcImpl: HubServiceServer, engine: Engine, corsOrigin = "*") {
     this.grpcImpl = grpcImpl;
     this.engine = engine;
 
@@ -193,6 +199,7 @@ export class HttpAPIServer {
       reply.code(500).send({ error: error.message });
     });
 
+    this.app.register(fastifyCors, { origin: [corsOrigin] });
     this.initHandlers();
   }
 
@@ -206,6 +213,16 @@ export class HttpAPIServer {
   }
 
   initHandlers() {
+    //================getInfo================
+    // @doc-tag: /info?dbstats=...
+    this.app.get<{ Querystring: { dbstats: string } }>("/v1/info", (request, reply) => {
+      const { dbstats } = request.query;
+      const dbStats = dbstats === "true" ? true : parseInt(dbstats) ? true : false;
+
+      const call = getCallObject("getInfo", { dbStats }, request);
+      this.grpcImpl.getInfo(call, handleResponse(reply, HubInfoResponse));
+    });
+
     //================Casts================
     // @doc-tag: /castById?fid=...&hash=...
     this.app.get<{ Querystring: { fid: string; hash: string } }>("/v1/castById", (request, reply) => {
@@ -414,6 +431,15 @@ export class HttpAPIServer {
       },
     );
 
+    //=================FIDs=================
+    // @doc-tag: /fids
+    this.app.get<{ Querystring: QueryPageParams }>("/v1/fids", (request, reply) => {
+      const pageOptions = getPageOptions(request.query);
+
+      const call = getCallObject("getFids", pageOptions, request);
+      this.grpcImpl.getFids(call, handleResponse(reply, FidsResponse));
+    });
+
     //=================Storage API================
     // @doc-tag: /storageLimitsByFid?fid=...
     this.app.get<{ Querystring: { fid: string } }>("/v1/storageLimitsByFid", (request, reply) => {
@@ -434,8 +460,8 @@ export class HttpAPIServer {
       this.grpcImpl.getUsernameProof(call, handleResponse(reply, UserNameProof));
     });
 
-    // @doc-tag: /usernameproofsByFid?fid=...
-    this.app.get<{ Querystring: { fid: string } }>("/v1/usernameproofsByFid", (request, reply) => {
+    // @doc-tag: /userNameProofsByFid?fid=...
+    this.app.get<{ Querystring: { fid: string } }>("/v1/userNameProofsByFid", (request, reply) => {
       const { fid } = request.query;
 
       const call = getCallObject("getUserNameProofsByFid", { fid: parseInt(fid) }, request);
@@ -563,6 +589,7 @@ export class HttpAPIServer {
           reply.code(400).send({ error: resp.error.message });
         } else {
           const nextPageEventId = resp.value.nextPageEventId;
+          statsd().increment("httpapi.events");
           const events = resp.value.events.map((event) => protoToJSON(event, HubEvent));
           reply.send({ nextPageEventId, events });
         }

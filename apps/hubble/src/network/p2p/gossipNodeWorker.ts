@@ -1,14 +1,15 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult, TopicValidatorResult } from "@libp2p/interface-pubsub";
 import {
+  GossipNode,
+  LibP2PNodeInterface,
   LibP2PNodeMessage,
   LibP2PNodeMethodGenericMessage,
-  NodeOptions,
-  GossipNode,
   LibP2PNodeMethodReturnType,
-  LibP2PNodeInterface,
+  NodeOptions,
+  GOSSIP_SEEN_TTL,
 } from "./gossipNode.js";
 import {
   ContactInfoContent,
@@ -21,27 +22,31 @@ import {
   Message,
 } from "@farcaster/hub-nodejs";
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
-import { Libp2p, createLibp2p } from "libp2p";
-import { Result, ResultAsync, err, ok } from "neverthrow";
+import { createLibp2p, Libp2p } from "libp2p";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
 import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
 import { noise } from "@chainsafe/libp2p-noise";
-import { pubsubPeerDiscovery } from "@libp2p/pubsub-peer-discovery";
-import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictSign } from "./protocol.js";
+import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign, msgIdFnStrictSign } from "./protocol.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
+import { statsd } from "../../utils/statsd.js";
+import { PeerScore } from "network/sync/peerScore.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
+const APPLICATION_SCORE_CAP_DEFAULT = 10;
 
 // We use a proxy to log messages to the main thread
 const log = new Proxy<Logger>({} as Logger, {
   get: (_target, prop) => {
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     return (...args: any[]) => {
-      parentPort?.postMessage({ log: { level: prop, logObj: args[0], message: args[1] } });
+      parentPort?.postMessage({
+        log: { level: prop, logObj: args[0], message: args[1] },
+      });
     };
   },
 });
@@ -53,9 +58,11 @@ export class LibP2PNode {
   _node?: Libp2p;
   private _connectionGater?: ConnectionFilter;
   private _network: FarcasterNetwork;
+  private _peerScores: Map<string, number>;
 
   constructor(network: FarcasterNetwork) {
     this._network = network;
+    this._peerScores = new Map<string, number>();
   }
 
   get identity() {
@@ -85,7 +92,6 @@ export class LibP2PNode {
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
-    const peerDiscoveryTopic = `_farcaster.${this._network}.peer_discovery`;
 
     const peerId = options.peerId ? await createFromProtobuf(options.peerId) : undefined;
 
@@ -109,11 +115,27 @@ export class LibP2PNode {
     const gossip = gossipsub({
       emitSelf: false,
       allowPublishToZeroPeers: true,
-      globalSignaturePolicy: "StrictSign",
+      asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
+      globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
       directPeers: options.directPeers || [],
       canRelayMessage: true,
+      seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
+      scoreParams: {
+        appSpecificScore: (peerId) => {
+          const score = this._peerScores?.get(peerId) ?? 0;
+          if (options.allowlistedImmunePeers?.includes(peerId)) {
+            if (score < -100) {
+              log.warn({ peerId, score }, "GossipSub: Allowlisted peer would have been kicked out.");
+            }
+
+            return options.applicationScoreCap ?? APPLICATION_SCORE_CAP_DEFAULT;
+          }
+
+          return Math.min(score, options.applicationScoreCap ?? APPLICATION_SCORE_CAP_DEFAULT);
+        },
+      },
     });
 
     if (options.allowedPeerIdStrs) {
@@ -128,7 +150,11 @@ export class LibP2PNode {
       );
     } else {
       log.warn(
-        { identity: this.identity, deniedPeerIds: options.deniedPeerIdStrs, function: "createNode" },
+        {
+          identity: this.identity,
+          deniedPeerIds: options.deniedPeerIdStrs,
+          function: "createNode",
+        },
         "No PEER-ID RESTRICTIONS ENABLED. This node will accept connections from any peer",
       );
     }
@@ -147,11 +173,13 @@ export class LibP2PNode {
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
         pubsub: gossip,
-        peerDiscovery: [pubsubPeerDiscovery({ topics: [peerDiscoveryTopic] })],
       }),
       (e) => {
         log.error({ identity: this.identity, error: e }, "failed to create libp2p node");
-        return new HubError("unavailable", { message: "failed to create libp2p node", cause: e as Error });
+        return new HubError("unavailable", {
+          message: "failed to create libp2p node",
+          cause: e as Error,
+        });
       },
     );
 
@@ -210,7 +238,7 @@ export class LibP2PNode {
         }
       }
     }
-    return msgIdFnStrictSign(message);
+    return msgIdFnStrictNoSign(message);
   }
 
   static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
@@ -247,7 +275,11 @@ export class LibP2PNode {
       log.error(error, `Failed to connect to peer at address: ${address}`);
       return err(new HubError("unavailable", error));
     }
-    return err(new HubError("unavailable", { message: `cannot connect to peer: ${address}` }));
+    return err(
+      new HubError("unavailable", {
+        message: `cannot connect to peer: ${address}`,
+      }),
+    );
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: MultiAddr.Multiaddr) {
@@ -263,6 +295,11 @@ export class LibP2PNode {
         log.error({ error: addResult.error, peerId }, "failed to add contact info to address book");
       }
     }
+  }
+
+  async peerStoreCount() {
+    const peers = await this._node?.peerStore.all();
+    return peers?.length ?? 0;
   }
 
   /** Removes the peer from the address book and hangs up on them */
@@ -372,6 +409,22 @@ export class LibP2PNode {
     }
   }
 
+  async reportValid(messageId: string, propagationSource: PeerId, isValid: boolean) {
+    isValid
+      ? statsd().increment("gossip.async_validation.accept")
+      : statsd().increment("gossip.async_validation.reject");
+
+    this.gossip?.reportMessageValidationResult(
+      messageId,
+      propagationSource,
+      isValid ? TopicValidatorResult.Accept : TopicValidatorResult.Reject,
+    );
+  }
+
+  updateApplicationPeerScore(peerId: string, score: number) {
+    this._peerScores.set(peerId, score);
+  }
+
   registerEventListeners() {
     // When serializing data, we need to handle some data types specially.
     // 1, BigInts are not supported by JSON.stringify, so we convert them to strings
@@ -387,7 +440,12 @@ export class LibP2PNode {
       return (event: any) => {
         // console.log("Worker: Reboardcasting ", eventName, event.detail);
         // console.log(" with ", JSON.stringify(event.detail, bigIntSerializer, 2));
-        parentPort?.postMessage({ event: { eventName, detail: JSON.stringify(event.detail, jsonSerializer) } });
+        parentPort?.postMessage({
+          event: {
+            eventName,
+            detail: JSON.stringify(event.detail, jsonSerializer),
+          },
+        });
       };
     };
 
@@ -439,12 +497,18 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const peerId = libp2pNode.peerId ? exportToProtobuf(libp2pNode.peerId) : new Uint8Array();
       const multiaddrs = libp2pNode._node?.getMultiaddrs().map((m) => m.bytes) ?? [];
 
-      parentPort?.postMessage({ methodCallId, result: makeResult<"start">({ peerId, multiaddrs }) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"start">({ peerId, multiaddrs }),
+      });
       break;
     }
     case "stop": {
       await libp2pNode.stop();
-      parentPort?.postMessage({ methodCallId, result: makeResult<"stop">(undefined) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"stop">(undefined),
+      });
 
       // Exit the worker thread
       setTimeout(() => process.exit(0), 1000);
@@ -452,7 +516,10 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
     }
     case "allPeerIds": {
       const peerIds = libp2pNode.allPeerIds();
-      parentPort?.postMessage({ methodCallId, result: makeResult<"allPeerIds">(peerIds) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"allPeerIds">(peerIds),
+      });
       break;
     }
     case "addToAddressBook": {
@@ -460,7 +527,19 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [peerId, multiaddr] = specificMsg.args;
 
       await libp2pNode.addPeerToAddressBook(await createFromProtobuf(peerId), MultiAddr.multiaddr(multiaddr));
-      parentPort?.postMessage({ methodCallId, result: makeResult<"addToAddressBook">(undefined) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"addToAddressBook">(undefined),
+      });
+      break;
+    }
+    case "peerStoreCount": {
+      const count = await libp2pNode.peerStoreCount();
+
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"peerStoreCount">(count),
+      });
       break;
     }
     case "removeFromAddressBook": {
@@ -468,7 +547,10 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [peerId] = specificMsg.args;
 
       await libp2pNode.removePeerFromAddressBook(await createFromProtobuf(peerId));
-      parentPort?.postMessage({ methodCallId, result: makeResult<"removeFromAddressBook">(undefined) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"removeFromAddressBook">(undefined),
+      });
       break;
     }
     case "connectAddress": {
@@ -488,7 +570,10 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
     }
     case "connectionStats": {
       const stats = await libp2pNode.connectionStats();
-      parentPort?.postMessage({ methodCallId, result: makeResult<"connectionStats">(stats) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"connectionStats">(stats),
+      });
       break;
     }
     case "getPeerAddresses": {
@@ -517,7 +602,10 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [peerIds] = specificMsg.args;
 
       libp2pNode.updateAllowedPeerIds(peerIds);
-      parentPort?.postMessage({ methodCallId, result: makeResult<"updateAllowedPeerIds">(undefined) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"updateAllowedPeerIds">(undefined),
+      });
       break;
     }
     case "updateDeniedPeerIds": {
@@ -525,7 +613,10 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [peerIds] = specificMsg.args;
 
       libp2pNode.updateDeniedPeerIds(peerIds);
-      parentPort?.postMessage({ methodCallId, result: makeResult<"updateDeniedPeerIds">(undefined) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"updateDeniedPeerIds">(undefined),
+      });
       break;
     }
     case "subscribe": {
@@ -533,7 +624,10 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [topic] = specificMsg.args;
 
       libp2pNode.subscribe(topic);
-      parentPort?.postMessage({ methodCallId, result: makeResult<"subscribe">(undefined) });
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"subscribe">(undefined),
+      });
       break;
     }
     case "gossipMessage": {
@@ -569,6 +663,27 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           errorType: publishResult.isErr() ? publishResult.error.errCode : undefined,
           peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : [],
         }),
+      });
+      break;
+    }
+    case "reportValid": {
+      const specificMsg = msg as LibP2PNodeMessage<"reportValid">;
+      const [msgId, source, isValid] = specificMsg.args;
+      const sourceId = peerIdFromBytes(source);
+      await libp2pNode.reportValid(msgId, sourceId, isValid);
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"reportValid">(undefined),
+      });
+      break;
+    }
+    case "updateApplicationPeerScore": {
+      const specificMsg = msg as LibP2PNodeMessage<"updateApplicationPeerScore">;
+      const [peerId, score] = specificMsg.args;
+      await libp2pNode.updateApplicationPeerScore(peerId, score);
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"updateApplicationPeerScore">(undefined),
       });
       break;
     }

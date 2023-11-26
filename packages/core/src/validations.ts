@@ -8,12 +8,15 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
+import { defaultPublicClients, PublicClients } from "./eth/clients";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
+
+export const USERNAME_MAX_LENGTH = 20;
 
 export const EMBEDS_V1_CUTOFF = 73612800; // 5/3/23 00:00 UTC
 
@@ -23,6 +26,7 @@ export const EMBEDS_V1_CUTOFF = 73612800; // 5/3/23 00:00 UTC
  */
 export type ValidationMethods = {
   ed25519_verify: (signature: Uint8Array, message: Uint8Array, publicKey: Uint8Array) => Promise<boolean>;
+  ed25519_signMessageHash: (hash: Uint8Array, signingKey: Uint8Array) => Promise<Uint8Array>;
   blake3_20: (message: Uint8Array) => Uint8Array;
 };
 
@@ -32,7 +36,62 @@ export type ValidationMethods = {
 const pureJSValidationMethods: ValidationMethods = {
   ed25519_verify: async (s: Uint8Array, m: Uint8Array, p: Uint8Array) =>
     (await ed25519.verifyMessageHashSignature(s, m, p)).unwrapOr(false),
+  ed25519_signMessageHash: async (h: Uint8Array, s: Uint8Array) =>
+    (await ed25519.signMessageHash(h, s)).unwrapOr(new Uint8Array([])),
   blake3_20: (message: Uint8Array) => blake3(message, { dkLen: 20 }),
+};
+
+export const createMessageHash = async (
+  message?: Uint8Array,
+  hashScheme?: protobufs.HashScheme,
+  validationMethods: ValidationMethods = pureJSValidationMethods,
+): HubAsyncResult<Uint8Array> => {
+  if (!message || message.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "hash is missing"));
+  }
+
+  if (hashScheme !== protobufs.HashScheme.BLAKE3) {
+    return err(new HubError("bad_request.validation_failure", "unsupported hash scheme"));
+  }
+
+  return ok(validationMethods.blake3_20(message));
+};
+
+export const signMessageHash = async (
+  hash?: Uint8Array,
+  signingKey?: Uint8Array,
+  validationMethods: ValidationMethods = pureJSValidationMethods,
+): HubAsyncResult<Uint8Array> => {
+  if (!hash || hash.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "hash is missing"));
+  }
+
+  if (!signingKey || signingKey.length !== 64) {
+    return err(new HubError("bad_request.validation_failure", "signingKey is invalid"));
+  }
+
+  return ok(await validationMethods.ed25519_signMessageHash(hash, signingKey));
+};
+
+export const verifySignedMessageHash = async (
+  hash?: Uint8Array,
+  signature?: Uint8Array,
+  signer?: Uint8Array,
+  validationMethods: ValidationMethods = pureJSValidationMethods,
+): HubAsyncResult<boolean> => {
+  if (!hash || hash.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "hash is missing"));
+  }
+
+  if (!signature || signature.length !== 64) {
+    return err(new HubError("bad_request.validation_failure", "signature is invalid"));
+  }
+
+  if (!signer || signer.length !== 32) {
+    return err(new HubError("bad_request.validation_failure", "signer is invalid"));
+  }
+
+  return ok(await validationMethods.ed25519_verify(signature, hash, signer));
 };
 
 export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> => {
@@ -113,27 +172,42 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
 export const validateMessage = async (
   message: protobufs.Message,
   validationMethods: ValidationMethods = pureJSValidationMethods,
+  publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<protobufs.Message> => {
   // 1. Check the message data
   const data = message.data;
   if (!data) {
     return err(new HubError("bad_request.validation_failure", "data is missing"));
   }
-  const validData = await validateMessageData(data);
+  const validData = await validateMessageData(data, publicClients);
   if (validData.isErr()) {
     return err(validData.error);
   }
 
-  // 2. Check that the hashScheme and hash are valid
+  // The hash to verify the signature against. This is either the hash of the data_bytes, or the hash
+  // of the data field encoded using ts-proto protobuf
   const hash = message.hash;
   if (!hash) {
     return err(new HubError("bad_request.validation_failure", "hash is missing"));
   }
 
-  const dataBytes = protobufs.MessageData.encode(data).finish();
-  if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
-    const computedHash = validationMethods.blake3_20(dataBytes);
+  // Computed from the data_bytes if set, otherwise from the data
+  let computedHash;
 
+  // 2. If the data_bytes are set, we'll validate signature against that
+  if (message.dataBytes && message.dataBytes.length > 0) {
+    if (message.dataBytes.length > 1024) {
+      return err(new HubError("bad_request.validation_failure", "dataBytes > 1024 bytes"));
+    }
+    // 2a. Use the databytes as the hash to check the signature against
+    computedHash = validationMethods.blake3_20(message.dataBytes);
+  } else {
+    // 2b. Use the protobuf encoded data as the hash to check the signature against
+    computedHash = validationMethods.blake3_20(protobufs.MessageData.encode(data).finish());
+  }
+
+  // 3. Check that the hashScheme and hash are valid
+  if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
       return err(new HubError("bad_request.validation_failure", "invalid hash"));
@@ -142,17 +216,19 @@ export const validateMessage = async (
     return err(new HubError("bad_request.validation_failure", "invalid hashScheme"));
   }
 
-  // 2. Check that the signatureScheme and signature are valid
+  // 4. Check that the signatureScheme and signature are valid
   const signature = message.signature;
   if (!signature) {
     return err(new HubError("bad_request.validation_failure", "signature is missing"));
   }
 
+  // 5. Check that the signer is valid
   const signer = message.signer;
   if (!signer) {
     return err(new HubError("bad_request.validation_failure", "signer is missing"));
   }
 
+  // 6. Check that the signature is valid
   if (message.signatureScheme === protobufs.SignatureScheme.ED25519) {
     const signatureIsValid = await validationMethods.ed25519_verify(signature, hash, signer);
 
@@ -166,7 +242,10 @@ export const validateMessage = async (
   return ok(message);
 };
 
-export const validateMessageData = async <T extends protobufs.MessageData>(data: T): HubAsyncResult<T> => {
+export const validateMessageData = async <T extends protobufs.MessageData>(
+  data: T,
+  publicClients: PublicClients = defaultPublicClients,
+): HubAsyncResult<T> => {
   // 1. Validate fid
   const validFid = validateFid(data.fid);
   if (validFid.isErr()) {
@@ -226,6 +305,7 @@ export const validateMessageData = async <T extends protobufs.MessageData>(data:
       data.verificationAddEthAddressBody,
       validFid.value,
       validNetwork.value,
+      publicClients,
     );
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
@@ -246,7 +326,12 @@ export const validateVerificationAddEthAddressSignature = async (
   body: protobufs.VerificationAddEthAddressBody,
   fid: number,
   network: protobufs.FarcasterNetwork,
+  publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
+  if (body.ethSignature.length > 256) {
+    return err(new HubError("bad_request.validation_failure", "ethSignature > 256 bytes"));
+  }
+
   const reconstructedClaim = makeVerificationEthAddressClaim(fid, body.address, network, body.blockHash);
   if (reconstructedClaim.isErr()) {
     return err(reconstructedClaim.error);
@@ -256,6 +341,9 @@ export const validateVerificationAddEthAddressSignature = async (
     reconstructedClaim.value,
     body.ethSignature,
     body.address,
+    body.verificationType,
+    body.chainId,
+    publicClients,
   );
 
   if (verificationResult.isErr()) {
@@ -263,7 +351,7 @@ export const validateVerificationAddEthAddressSignature = async (
   }
 
   if (!verificationResult.value) {
-    return err(new HubError("bad_request.validation_failure", "ethSignature does not match address"));
+    return err(new HubError("bad_request.validation_failure", "invalid ethSignature"));
   }
 
   return ok(body.ethSignature);
@@ -350,6 +438,15 @@ export const validateCastAddBody = (
 
   if (body.embeds.length > 0 && body.embedsDeprecated.length > 0) {
     return err(new HubError("bad_request.validation_failure", "cannot use both embeds and string embeds"));
+  }
+
+  if (
+    body.text.length === 0 &&
+    body.embeds.length === 0 &&
+    body.embedsDeprecated.length === 0 &&
+    body.mentions.length === 0
+  ) {
+    return err(new HubError("bad_request.validation_failure", "cast is empty"));
   }
 
   for (let i = 0; i < body.embeds.length; i++) {
@@ -501,6 +598,7 @@ export const validateVerificationAddEthAddressBody = async (
   body: protobufs.VerificationAddEthAddressBody,
   fid: number,
   network: protobufs.FarcasterNetwork,
+  publicClients: PublicClients,
 ): HubAsyncResult<protobufs.VerificationAddEthAddressBody> => {
   const validAddress = validateEthAddress(body.address);
   if (validAddress.isErr()) {
@@ -512,7 +610,7 @@ export const validateVerificationAddEthAddressBody = async (
     return err(validBlockHash.error);
   }
 
-  const validSignature = await validateVerificationAddEthAddressSignature(body, fid, network);
+  const validSignature = await validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
   if (validSignature.isErr()) {
     return err(validSignature.error);
   }
@@ -642,6 +740,7 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
     return err(new HubError("bad_request.validation_failure", "fname is missing"));
   }
 
+  // FNAME_MAX_LENGTH - ".eth".length
   if (fname.length > 16) {
     return err(new HubError("bad_request.validation_failure", `fname "${fname}" > 16 characters`));
   }
@@ -689,7 +788,7 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
     return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`));
   }
 
-  if (ensName.length > 20) {
+  if (ensName.length > USERNAME_MAX_LENGTH) {
     return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`));
   }
 

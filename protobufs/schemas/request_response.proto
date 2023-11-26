@@ -56,6 +56,7 @@ message SyncStatus {
   uint64 theirMessages = 6;
   uint64 ourMessages = 7;
   int64 lastBadSync = 8;
+  int64 score = 9;
 }
 
 message TrieNodeMetadataResponse {

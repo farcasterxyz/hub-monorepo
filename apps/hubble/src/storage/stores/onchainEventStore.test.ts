@@ -1,5 +1,5 @@
 import { jestRocksDB } from "../db/jestUtils.js";
-import OnChainEventStore, { MIGRATION_BLOCK } from "./onChainEventStore.js";
+import OnChainEventStore from "./onChainEventStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   Factories,
@@ -29,58 +29,6 @@ describe("OnChainEventStore", () => {
       const onChainEvent = Factories.SignerOnChainEvent.build();
       await set.mergeOnChainEvent(onChainEvent);
       await expect(set.mergeOnChainEvent(onChainEvent)).rejects.toThrow("already exists");
-    });
-
-    describe("old events based on txIndex", () => {
-      test("replaces txIndex with logIndex if it exists", async () => {
-        // There was a bug where we were using txIndex instead of logIndex for ordering.
-        // If we re-merge the same event, then we should silently replace the old event with the correct one
-        const txIndex = 2;
-        const logIndex = 10;
-        const badSignerEvent = Factories.SignerOnChainEvent.build({
-          logIndex: txIndex, // Log index was incorrectly set to txIndex
-          txIndex: 0, // Did not have this field
-          blockNumber: MIGRATION_BLOCK - 100,
-        });
-        const badRegisterEvent = Factories.IdRegistryOnChainEvent.build({
-          logIndex: txIndex, // Log index was incorrectly set to txIndex
-          txIndex: 0, // Did not have this field
-          blockNumber: MIGRATION_BLOCK - 10,
-        });
-        await set.mergeOnChainEvent(badSignerEvent);
-        await set.mergeOnChainEvent(badRegisterEvent);
-        badSignerEvent.txIndex = txIndex;
-        badSignerEvent.logIndex = logIndex;
-        badRegisterEvent.txIndex = txIndex;
-        badRegisterEvent.logIndex = txIndex; // Assume log index is the same as tx index
-
-        await expect(set.mergeOnChainEvent(badSignerEvent)).rejects.toThrow("already exists");
-        await expect(set.mergeOnChainEvent(badSignerEvent)).rejects.toThrow("already exists");
-        const signerEvents = await set.getOnChainEvents(OnChainEventType.EVENT_TYPE_SIGNER, badSignerEvent.fid);
-        expect(signerEvents).toHaveLength(1);
-        expect(signerEvents[0]?.txIndex).toEqual(txIndex);
-        expect(signerEvents[0]?.logIndex).toEqual(logIndex);
-
-        const onChainSigner = await set.getActiveSigner(badSignerEvent.fid, badSignerEvent.signerEventBody.key);
-        expect(onChainSigner.signerEventBody.key).toEqual(badSignerEvent.signerEventBody.key);
-
-        await expect(set.mergeOnChainEvent(badRegisterEvent)).rejects.toThrow("already exists");
-        await expect(set.mergeOnChainEvent(badRegisterEvent)).rejects.toThrow("already exists");
-        const registerEvents = await set.getOnChainEvents(
-          OnChainEventType.EVENT_TYPE_ID_REGISTER,
-          badRegisterEvent.fid,
-        );
-        expect(registerEvents).toHaveLength(1);
-        expect(registerEvents[0]?.txIndex).toEqual(txIndex);
-        expect(registerEvents[0]?.logIndex).toEqual(txIndex);
-
-        const idRegisterByFid = await set.getIdRegisterEventByFid(badRegisterEvent.fid);
-        expect(idRegisterByFid).toEqual(badRegisterEvent);
-        const idRegisterByCustody = await set.getIdRegisterEventByCustodyAddress(
-          badRegisterEvent.idRegisterEventBody.to,
-        );
-        expect(idRegisterByCustody).toEqual(badRegisterEvent);
-      });
     });
 
     describe("signers", () => {
@@ -201,11 +149,18 @@ describe("OnChainEventStore", () => {
   });
 
   describe("getSignerMigratedAt", () => {
-    test("returns timestamp of signer migrated event", async () => {
+    test("returns timestamp of the latest signer migrated event", async () => {
       const event = Factories.SignerMigratedOnChainEvent.build();
+      const event2 = Factories.SignerMigratedOnChainEvent.build({
+        blockTimestamp: event.blockTimestamp + 1,
+        blockNumber: event.blockNumber + 1,
+      });
+      event2.signerMigratedEventBody.migratedAt += 1;
+      await set.mergeOnChainEvent(event2);
       await set.mergeOnChainEvent(event);
+      expect(event.signerMigratedEventBody.migratedAt).not.toEqual(event2.signerMigratedEventBody.migratedAt);
       const result = await set.getSignerMigratedAt();
-      expect(result).toEqual(ok(event.signerMigratedEventBody.migratedAt));
+      expect(result).toEqual(ok(event2.signerMigratedEventBody.migratedAt));
     });
 
     test("returns 0 if not migrated", async () => {

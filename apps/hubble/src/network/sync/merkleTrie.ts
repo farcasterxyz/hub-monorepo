@@ -1,12 +1,19 @@
 import { Result, ResultAsync } from "neverthrow";
 import { Worker } from "worker_threads";
-import { HubError, Message } from "@farcaster/hub-nodejs";
+import { HubError, Message, OnChainEvent, UserNameProof } from "@farcaster/hub-nodejs";
 import { SyncId } from "./syncId.js";
 import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import RocksDB from "../../storage/db/rocksdb.js";
-import { FID_BYTES, HASH_LENGTH, RootPrefix, UserMessagePostfixMax } from "../../storage/db/types.js";
+import {
+  FID_BYTES,
+  HASH_LENGTH,
+  OnChainEventPostfix,
+  RootPrefix,
+  UserMessagePostfixMax,
+} from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
 import { getStatusdInitialization } from "../../utils/statsd.js";
+import { messageDecode } from "../../storage/db/message.js";
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -218,17 +225,17 @@ class MerkleTrie {
     // Brand new empty root node
     await this.callMethod("clear");
 
-    // Rebuild the trie by iterating over all the messages in the db
-    const prefix = Buffer.from([RootPrefix.User]);
+    // Rebuild the trie by iterating over all the messages, on chain events and fnames  in the db
     let count = 0;
 
+    // Messages
     await this._db.forEachIteratorByPrefix(
-      prefix,
+      Buffer.from([RootPrefix.User]),
       async (key, value) => {
         const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
         if (postfix < UserMessagePostfixMax) {
           const message = Result.fromThrowable(
-            () => Message.decode(new Uint8Array(value as Buffer)),
+            () => messageDecode(new Uint8Array(value as Buffer)),
             (e) => e as HubError,
           )();
           if (message.isOk() && message.value.hash.length === HASH_LENGTH) {
@@ -243,6 +250,49 @@ class MerkleTrie {
       {},
       1 * 60 * 60 * 1000,
     );
+    log.info({ count }, "Rebuilt messages trie");
+    // On chain events
+    await this._db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.OnChainEvent]),
+      async (key, value) => {
+        const postfix = (key as Buffer).readUint8(1);
+        if (postfix === OnChainEventPostfix.OnChainEvents) {
+          const event = Result.fromThrowable(
+            () => OnChainEvent.decode(new Uint8Array(value as Buffer)),
+            (e) => e as HubError,
+          )();
+          if (event.isOk()) {
+            await this.insert(SyncId.fromOnChainEvent(event.value));
+            count += 1;
+            if (count % 10_000 === 0) {
+              log.info({ count }, "Rebuilding Merkle Trie (events)");
+            }
+          }
+        }
+      },
+      {},
+      1 * 60 * 60 * 1000,
+    );
+    log.info({ count }, "Rebuilt events trie");
+    await this._db.forEachIteratorByPrefix(
+      Buffer.from([RootPrefix.FNameUserNameProof]),
+      async (key, value) => {
+        const proof = Result.fromThrowable(
+          () => UserNameProof.decode(new Uint8Array(value as Buffer)),
+          (e) => e as HubError,
+        )();
+        if (proof.isOk()) {
+          await this.insert(SyncId.fromFName(proof.value));
+          count += 1;
+          if (count % 10_000 === 0) {
+            log.info({ count }, "Rebuilding Merkle Trie (proofs)");
+          }
+        }
+      },
+      {},
+      1 * 60 * 60 * 1000,
+    );
+    log.info({ count }, "Rebuilt fnmames trie");
   }
 
   public async insert(id: SyncId): Promise<boolean> {

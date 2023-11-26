@@ -39,6 +39,17 @@ export interface GossipAddressInfo {
   dnsName: string;
 }
 
+export interface ContactInfoContentBody {
+  gossipAddress: GossipAddressInfo | undefined;
+  rpcAddress: GossipAddressInfo | undefined;
+  excludedHashes: string[];
+  count: number;
+  hubVersion: string;
+  network: FarcasterNetwork;
+  appVersion: string;
+  timestamp: number;
+}
+
 export interface ContactInfoContent {
   gossipAddress: GossipAddressInfo | undefined;
   rpcAddress: GossipAddressInfo | undefined;
@@ -47,6 +58,16 @@ export interface ContactInfoContent {
   hubVersion: string;
   network: FarcasterNetwork;
   appVersion: string;
+  timestamp: number;
+  body:
+    | ContactInfoContentBody
+    | undefined;
+  /** Signature of the message digest */
+  signature: Uint8Array;
+  /** Public key of the peer that originated the contact info */
+  signer: Uint8Array;
+  /** Optional alternative serialization used for signing */
+  dataBytes?: Uint8Array | undefined;
 }
 
 export interface PingMessageBody {
@@ -178,6 +199,174 @@ export const GossipAddressInfo = {
   },
 };
 
+function createBaseContactInfoContentBody(): ContactInfoContentBody {
+  return {
+    gossipAddress: undefined,
+    rpcAddress: undefined,
+    excludedHashes: [],
+    count: 0,
+    hubVersion: "",
+    network: 0,
+    appVersion: "",
+    timestamp: 0,
+  };
+}
+
+export const ContactInfoContentBody = {
+  encode(message: ContactInfoContentBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.gossipAddress !== undefined) {
+      GossipAddressInfo.encode(message.gossipAddress, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.rpcAddress !== undefined) {
+      GossipAddressInfo.encode(message.rpcAddress, writer.uint32(18).fork()).ldelim();
+    }
+    for (const v of message.excludedHashes) {
+      writer.uint32(26).string(v!);
+    }
+    if (message.count !== 0) {
+      writer.uint32(32).uint32(message.count);
+    }
+    if (message.hubVersion !== "") {
+      writer.uint32(42).string(message.hubVersion);
+    }
+    if (message.network !== 0) {
+      writer.uint32(48).int32(message.network);
+    }
+    if (message.appVersion !== "") {
+      writer.uint32(58).string(message.appVersion);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(64).uint64(message.timestamp);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ContactInfoContentBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseContactInfoContentBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.gossipAddress = GossipAddressInfo.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.rpcAddress = GossipAddressInfo.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.excludedHashes.push(reader.string());
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.count = reader.uint32();
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.hubVersion = reader.string();
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.network = reader.int32() as any;
+          continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.appVersion = reader.string();
+          continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ContactInfoContentBody {
+    return {
+      gossipAddress: isSet(object.gossipAddress) ? GossipAddressInfo.fromJSON(object.gossipAddress) : undefined,
+      rpcAddress: isSet(object.rpcAddress) ? GossipAddressInfo.fromJSON(object.rpcAddress) : undefined,
+      excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
+      count: isSet(object.count) ? Number(object.count) : 0,
+      hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : "",
+      network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
+      appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+    };
+  },
+
+  toJSON(message: ContactInfoContentBody): unknown {
+    const obj: any = {};
+    message.gossipAddress !== undefined &&
+      (obj.gossipAddress = message.gossipAddress ? GossipAddressInfo.toJSON(message.gossipAddress) : undefined);
+    message.rpcAddress !== undefined &&
+      (obj.rpcAddress = message.rpcAddress ? GossipAddressInfo.toJSON(message.rpcAddress) : undefined);
+    if (message.excludedHashes) {
+      obj.excludedHashes = message.excludedHashes.map((e) => e);
+    } else {
+      obj.excludedHashes = [];
+    }
+    message.count !== undefined && (obj.count = Math.round(message.count));
+    message.hubVersion !== undefined && (obj.hubVersion = message.hubVersion);
+    message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
+    message.appVersion !== undefined && (obj.appVersion = message.appVersion);
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ContactInfoContentBody>, I>>(base?: I): ContactInfoContentBody {
+    return ContactInfoContentBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ContactInfoContentBody>, I>>(object: I): ContactInfoContentBody {
+    const message = createBaseContactInfoContentBody();
+    message.gossipAddress = (object.gossipAddress !== undefined && object.gossipAddress !== null)
+      ? GossipAddressInfo.fromPartial(object.gossipAddress)
+      : undefined;
+    message.rpcAddress = (object.rpcAddress !== undefined && object.rpcAddress !== null)
+      ? GossipAddressInfo.fromPartial(object.rpcAddress)
+      : undefined;
+    message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
+    message.count = object.count ?? 0;
+    message.hubVersion = object.hubVersion ?? "";
+    message.network = object.network ?? 0;
+    message.appVersion = object.appVersion ?? "";
+    message.timestamp = object.timestamp ?? 0;
+    return message;
+  },
+};
+
 function createBaseContactInfoContent(): ContactInfoContent {
   return {
     gossipAddress: undefined,
@@ -187,6 +376,11 @@ function createBaseContactInfoContent(): ContactInfoContent {
     hubVersion: "",
     network: 0,
     appVersion: "",
+    timestamp: 0,
+    body: undefined,
+    signature: new Uint8Array(),
+    signer: new Uint8Array(),
+    dataBytes: undefined,
   };
 }
 
@@ -212,6 +406,21 @@ export const ContactInfoContent = {
     }
     if (message.appVersion !== "") {
       writer.uint32(58).string(message.appVersion);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(64).uint64(message.timestamp);
+    }
+    if (message.body !== undefined) {
+      ContactInfoContentBody.encode(message.body, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.signature.length !== 0) {
+      writer.uint32(82).bytes(message.signature);
+    }
+    if (message.signer.length !== 0) {
+      writer.uint32(90).bytes(message.signer);
+    }
+    if (message.dataBytes !== undefined) {
+      writer.uint32(98).bytes(message.dataBytes);
     }
     return writer;
   },
@@ -272,6 +481,41 @@ export const ContactInfoContent = {
 
           message.appVersion = reader.string();
           continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.body = ContactInfoContentBody.decode(reader, reader.uint32());
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.signature = reader.bytes();
+          continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.signer = reader.bytes();
+          continue;
+        case 12:
+          if (tag != 98) {
+            break;
+          }
+
+          message.dataBytes = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -290,6 +534,11 @@ export const ContactInfoContent = {
       hubVersion: isSet(object.hubVersion) ? String(object.hubVersion) : "",
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      body: isSet(object.body) ? ContactInfoContentBody.fromJSON(object.body) : undefined,
+      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
+      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
+      dataBytes: isSet(object.dataBytes) ? bytesFromBase64(object.dataBytes) : undefined,
     };
   },
 
@@ -308,6 +557,14 @@ export const ContactInfoContent = {
     message.hubVersion !== undefined && (obj.hubVersion = message.hubVersion);
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.appVersion !== undefined && (obj.appVersion = message.appVersion);
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.body !== undefined && (obj.body = message.body ? ContactInfoContentBody.toJSON(message.body) : undefined);
+    message.signature !== undefined &&
+      (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
+    message.signer !== undefined &&
+      (obj.signer = base64FromBytes(message.signer !== undefined ? message.signer : new Uint8Array()));
+    message.dataBytes !== undefined &&
+      (obj.dataBytes = message.dataBytes !== undefined ? base64FromBytes(message.dataBytes) : undefined);
     return obj;
   },
 
@@ -328,6 +585,13 @@ export const ContactInfoContent = {
     message.hubVersion = object.hubVersion ?? "";
     message.network = object.network ?? 0;
     message.appVersion = object.appVersion ?? "";
+    message.timestamp = object.timestamp ?? 0;
+    message.body = (object.body !== undefined && object.body !== null)
+      ? ContactInfoContentBody.fromPartial(object.body)
+      : undefined;
+    message.signature = object.signature ?? new Uint8Array();
+    message.signer = object.signer ?? new Uint8Array();
+    message.dataBytes = object.dataBytes ?? undefined;
     return message;
   },
 };
