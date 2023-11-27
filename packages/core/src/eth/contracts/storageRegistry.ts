@@ -1,0 +1,1 @@
+export const STORAGE_REGISTRY_ADDRESS = "0x00000000fcCe7f938e7aE6D3c335bD6a1a7c593D" as const;
