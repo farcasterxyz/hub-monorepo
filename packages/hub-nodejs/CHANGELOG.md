@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.10.18
+
+### Patch Changes
+
+- ab245ce5: Add EIP-712 helpers
+- Updated dependencies [ab245ce5]
+  - @farcaster/core@0.13.2
+
 ## 0.10.17
 
 ### Patch Changes

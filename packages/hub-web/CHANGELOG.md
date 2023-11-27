@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.7.1
+
+### Patch Changes
+
+- ab245ce5: Add EIP-712 helpers
+- Updated dependencies [ab245ce5]
+  - @farcaster/core@0.13.2
+
 ## 0.7.0
 
 ### Minor Changes
