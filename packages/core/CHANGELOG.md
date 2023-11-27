@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.13.2
+
+### Patch Changes
+
+- ab245ce5: Add EIP-712 helpers
+
 ## 0.13.1
 
 ### Patch Changes
