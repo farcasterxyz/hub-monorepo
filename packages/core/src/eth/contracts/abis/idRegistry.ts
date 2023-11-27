@@ -1,9 +1,4 @@
-// Explicitly export ABI in TypeScript so that type inference + auto-completion
-// works automagically. We need the `as const` at the end.
-//
-// See https://viem.sh/docs/typescript.html#type-inference
-
-export const abi = [
+export const idRegistryABI = [
   {
     inputs: [
       {

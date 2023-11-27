@@ -1,4 +1,4 @@
-export const abi = [
+export const keyRegistryABI = [
   {
     inputs: [
       {
@@ -1258,5 +1258,3 @@ export const abi = [
     type: "function",
   },
 ] as const;
-
-export default abi;

@@ -1,4 +1,4 @@
-export const abi = [
+export const idGatewayABI = [
   {
     inputs: [
       {
@@ -667,5 +667,3 @@ export const abi = [
     type: "receive",
   },
 ] as const;
-
-export default abi;

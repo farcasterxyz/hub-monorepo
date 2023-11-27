@@ -1,4 +1,4 @@
-export const abi = [
+export const signedKeyRequestValidatorABI = [
   {
     inputs: [
       {
