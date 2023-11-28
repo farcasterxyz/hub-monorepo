@@ -1,5 +1,11 @@
 # @farcaster/replicator
 
+## 0.2.6
+
+### Patch Changes
+
+- d8a5caaf: Include storage allocations and reactions
+
 ## 0.2.5
 
 ### Patch Changes
