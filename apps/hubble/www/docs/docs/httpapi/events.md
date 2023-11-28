@@ -14,7 +14,7 @@ Get an event by its Id
 
 **Example**
 ```bash
-curl http://127.0.0.1:2281/v1/eventById?id=350909155450880
+curl http://127.0.0.1:2281/v1/eventById?event_id=350909155450880
 
 ```
 
