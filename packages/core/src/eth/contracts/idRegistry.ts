@@ -82,6 +82,15 @@ export const ID_REGISTRY_CHANGE_RECOVERY_ADDRESS_TYPE = [
   { name: "deadline", type: "uint256" },
 ] as const;
 
+export const ID_REGISTRY_EIP_712_TYPES = {
+  domain: ID_REGISTRY_EIP_712_DOMAIN,
+  types: {
+    Transfer: ID_REGISTRY_TRANSFER_TYPE,
+    TransferAndChangeRecovery: ID_REGISTRY_TRANSFER_AND_CHANGE_RECOVERY_TYPE,
+    ChangeRecoveryAddress: ID_REGISTRY_CHANGE_RECOVERY_ADDRESS_TYPE,
+  },
+} as const;
+
 export const verifyTransfer = async (
   message: IdRegistryTransferMessage,
   signature: Uint8Array,

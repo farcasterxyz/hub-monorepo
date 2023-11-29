@@ -44,6 +44,11 @@ export const KEY_GATEWAY_ADD_TYPE = [
   { name: "deadline", type: "uint256" },
 ] as const;
 
+export const KEY_GATEWAY_EIP_712_TYPES = {
+  domain: KEY_GATEWAY_EIP_712_DOMAIN,
+  types: { Add: KEY_GATEWAY_ADD_TYPE },
+} as const;
+
 export const verifyAdd = async (
   message: KeyGatewayAddMessage,
   signature: Uint8Array,

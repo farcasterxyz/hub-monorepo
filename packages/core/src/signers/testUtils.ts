@@ -19,7 +19,6 @@ import {
 } from "../eth/contracts/idRegistry";
 import { KeyGatewayAddMessage, verifyAdd } from "../eth/contracts/keyGateway";
 import { SignedKeyRequestMessage, verifyKeyRequest } from "../eth/contracts/signedKeyRequestValidator";
-import { sign } from "crypto";
 
 export const testEip712Signer = async (signer: Eip712Signer) => {
   let signerKey: Uint8Array;

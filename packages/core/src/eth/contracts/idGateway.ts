@@ -32,6 +32,11 @@ export const ID_GATEWAY_REGISTER_TYPE = [
   { name: "deadline", type: "uint256" },
 ] as const;
 
+export const ID_GATEWAY_EIP_712_TYPES = {
+  domain: ID_GATEWAY_EIP_712_DOMAIN,
+  types: { Register: ID_GATEWAY_REGISTER_TYPE },
+} as const;
+
 export const verifyRegister = async (
   message: IdGatewayRegisterMessage,
   signature: Uint8Array,

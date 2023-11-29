@@ -32,6 +32,11 @@ export const KEY_REGISTRY_REMOVE_TYPE = [
   { name: "deadline", type: "uint256" },
 ] as const;
 
+export const KEY_REGISTRY_EIP_712_TYPES = {
+  domain: KEY_REGISTRY_EIP_712_DOMAIN,
+  types: { Remove: KEY_REGISTRY_REMOVE_TYPE },
+} as const;
+
 export const verifyRemove = async (
   message: KeyRegistryRemoveMessage,
   signature: Uint8Array,
