@@ -1,12 +1,11 @@
 import { ResultAsync, err } from "neverthrow";
-import { LocalAccount } from "viem/accounts";
 import { bytesToHex, encodeAbiParameters } from "viem/utils";
 import { bytesToHexString, hexStringToBytes } from "../bytes";
 import {
   EIP_712_FARCASTER_VERIFICATION_CLAIM,
   EIP_712_FARCASTER_DOMAIN,
-  USERNAME_PROOF_EIP_712_TYPES,
   MESSAGE_DATA_EIP_712_TYPES,
+  USERNAME_PROOF_EIP_712_TYPES,
 } from "../crypto/eip712";
 import { HubAsyncResult, HubError } from "../errors";
 import { VerificationEthAddressClaim } from "../verifications";
@@ -25,21 +24,24 @@ import {
   SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_TYPES,
   SignedKeyRequestMessage,
 } from "../eth/contracts/signedKeyRequestValidator";
-import { TypedDataDefinition } from "viem";
+import { SignTypedDataParameters, WalletClient } from "viem";
 
-export class ViemLocalEip712Signer extends Eip712Signer {
-  private readonly _viemLocalAccount: LocalAccount<string>;
+export class ViemWalletEip712Signer extends Eip712Signer {
+  private readonly _viemWalletClient: WalletClient;
 
-  constructor(viemLocalAccount: LocalAccount<string>) {
+  constructor(viemWalletClient: WalletClient) {
     super();
-    this._viemLocalAccount = viemLocalAccount;
+    this._viemWalletClient = viemWalletClient;
   }
 
   public async getSignerKey(): HubAsyncResult<Uint8Array> {
-    return ResultAsync.fromPromise(
-      Promise.resolve(this._viemLocalAccount.address),
-      (e) => new HubError("unknown", e as Error),
-    ).andThen(hexStringToBytes);
+    const address = this._viemWalletClient.account?.address;
+    if (!address) {
+      return err(new HubError("unavailable", "wallet not connected"));
+    }
+    return ResultAsync.fromPromise(Promise.resolve(address), (e) => new HubError("unknown", e as Error)).andThen(
+      hexStringToBytes,
+    );
   }
 
   public async signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array> {
@@ -188,9 +190,13 @@ export class ViemLocalEip712Signer extends Eip712Signer {
     return hexStringToBytes(encodedStruct);
   }
 
-  private async _signTypedData(params: TypedDataDefinition): HubAsyncResult<Uint8Array> {
+  private async _signTypedData(params: Omit<SignTypedDataParameters, "account">): HubAsyncResult<Uint8Array> {
+    const account = this._viemWalletClient.account;
+    if (!account) {
+      return err(new HubError("unavailable", "wallet not connected"));
+    }
     const hexSignature = await ResultAsync.fromPromise(
-      this._viemLocalAccount.signTypedData(params),
+      this._viemWalletClient.signTypedData({ ...params, account }),
       (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));

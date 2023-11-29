@@ -28,6 +28,11 @@ export const SIGNED_KEY_REQUEST_TYPE = [
   { name: "deadline", type: "uint256" },
 ] as const;
 
+export const SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_TYPES = {
+  domain: SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
+  types: { SignedKeyRequest: SIGNED_KEY_REQUEST_TYPE },
+} as const;
+
 export const verifyKeyRequest = async (
   message: SignedKeyRequestMessage,
   signature: Uint8Array,

@@ -54,6 +54,16 @@ export const EIP_712_USERNAME_PROOF = [
   { name: "owner", type: "address" },
 ] as const;
 
+export const USERNAME_PROOF_EIP_712_TYPES = {
+  domain: EIP_712_USERNAME_DOMAIN,
+  types: { UserNameProof: EIP_712_USERNAME_PROOF },
+} as const;
+
+export const MESSAGE_DATA_EIP_712_TYPES = {
+  domain: EIP_712_FARCASTER_DOMAIN,
+  types: { MessageData: EIP_712_FARCASTER_MESSAGE_DATA },
+} as const;
+
 export const verifyVerificationClaimEOASignature = async (
   claim: VerificationEthAddressClaim,
   signature: Uint8Array,
