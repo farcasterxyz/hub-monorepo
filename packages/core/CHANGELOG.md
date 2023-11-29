@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.13.3
+
+### Patch Changes
+
+- b001fee9: Add ViemWalletEip712Signer
+
 ## 0.13.2
 
 ### Patch Changes
