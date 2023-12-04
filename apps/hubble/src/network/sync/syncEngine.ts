@@ -405,7 +405,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
     if (existingPeerInfo) {
       if (contactInfo.timestamp > existingPeerInfo.contactInfo.timestamp) {
-        log.info({ peerInfo: existingPeerInfo }, "Updating peer with latest contactInfo");
+        log.debug({ peerInfo: existingPeerInfo }, "Updating peer with latest contactInfo");
         this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
       }
       return err(new HubError("bad_request.duplicate", "peer already exists"));
@@ -880,12 +880,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const promises: Promise<void>[] = [];
     for (const syncId of syncIds) {
       const unpacked = syncId.unpack();
-      if (unpacked.type === SyncIdType.FName && this._fnameEventsProvider && unpacked.padded) {
-        // Temporarily add padded check here so newer hubs don't think unpadded fnames from older hubs are missing.
-        // TODO: Remove after most hubs are >1.7.1
-        if (!unpacked.padded) {
-          continue;
-        }
+      if (unpacked.type === SyncIdType.FName && this._fnameEventsProvider) {
         log.info(`Retrying missing fname ${Buffer.from(unpacked.name).toString("utf-8")} during sync`, {
           fid: unpacked.fid,
         });
@@ -904,11 +899,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     for (const syncId of syncIds) {
       const unpacked = syncId.unpack();
       if (unpacked.type === SyncIdType.OnChainEvent && this._l2EventsProvider) {
-        // Add block number check here so newer hubs don't think attempt to sync v1 id and key registry events from older hubs
-        // TODO: Remove after most hubs are >1.7.1
-        if (unpacked.eventType !== OnChainEventType.EVENT_TYPE_STORAGE_RENT && unpacked.blockNumber < 111888232) {
-          continue;
-        }
         log.info(`Retrying missing block ${unpacked.blockNumber} during sync`, { fid: unpacked.fid });
         promises.push(this._l2EventsProvider.retryEventsFromBlock(unpacked.blockNumber));
       }
