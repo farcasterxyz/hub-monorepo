@@ -170,6 +170,7 @@ message OnChainEventResponse {
 
 message StorageLimitsResponse {
   repeated StorageLimit limits = 1;
+  uint32 units = 2;
 }
 
 enum StoreType {
@@ -184,7 +185,11 @@ enum StoreType {
 
 message StorageLimit {
   StoreType store_type = 1;
-  uint64 limit = 2;
+  string name = 2;
+  uint64 limit = 3;
+  uint64 used = 4;
+  uint64 earliestTimestamp = 5;
+  bytes earliestHash = 6;
 }
 
 message UsernameProofRequest {

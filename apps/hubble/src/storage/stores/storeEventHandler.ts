@@ -3,28 +3,29 @@ import {
   FARCASTER_EPOCH,
   HubAsyncResult,
   HubError,
+  HubEvent,
   HubResult,
   isHubError,
-  HubEvent,
   isMergeMessageHubEvent,
+  isMergeOnChainHubEvent,
   isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
   MergeMessageHubEvent,
+  MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-  MergeOnChainEventHubEvent,
-  isMergeOnChainHubEvent,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import AbstractRocksDB from "@farcaster/rocksdb";
 import AsyncLock from "async-lock";
 import { err, ok, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import RocksDB, { Transaction } from "../db/rocksdb.js";
-import { RootPrefix, UserMessagePostfix } from "../db/types.js";
+import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
-import { makeTsHash } from "../db/message.js";
+import { makeTsHash, unpackTsHash } from "../db/message.js";
 import {
   bytesCompare,
   CastAddMessage,
@@ -44,6 +45,16 @@ const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 1_000;
 const DEFAULT_LOCK_TIMEOUT = 500; // in ms
 
+// @ts-ignore
+const STORE_TO_SET: Record<StoreType, UserMessagePostfix> = {
+  [StoreType.CASTS]: UserPostfix.CastMessage,
+  [StoreType.LINKS]: UserPostfix.LinkMessage,
+  [StoreType.REACTIONS]: UserPostfix.ReactionMessage,
+  [StoreType.USER_DATA]: UserPostfix.UserDataMessage,
+  [StoreType.VERIFICATIONS]: UserPostfix.VerificationMessage,
+  [StoreType.USERNAME_PROOFS]: UserPostfix.UsernameProofMessage,
+};
+
 type PrunableMessage =
   | CastAddMessage
   | CastRemoveMessage
@@ -54,6 +65,12 @@ type PrunableMessage =
   | VerificationRemoveMessage
   | LinkAddMessage
   | LinkRemoveMessage;
+
+export type StoreUsage = {
+  used: number;
+  earliestTimestamp: number;
+  earliestHash: Uint8Array;
+};
 
 export type StoreEvents = {
   /**
@@ -188,6 +205,35 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
     return units.map((u) => {
       return u;
+    });
+  }
+
+  async getUsage(fid: number, store: StoreType): HubAsyncResult<StoreUsage> {
+    const set = STORE_TO_SET[store];
+    if (!set) {
+      return err(new HubError("bad_request.invalid_param", `invalid store type ${store}`));
+    }
+    const messageCount = await this.getCacheMessageCount(fid, set);
+    if (messageCount.isErr()) {
+      return err(messageCount.error);
+    }
+    const earliestTsHash = await this.getEarliestTsHash(fid, set);
+    if (earliestTsHash.isErr()) {
+      return err(earliestTsHash.error);
+    }
+    let earliestTimestamp = 0;
+    let earliestHash = new Uint8Array();
+    if (earliestTsHash.value !== undefined) {
+      const unpackResult = unpackTsHash(earliestTsHash.value);
+      if (unpackResult.isOk()) {
+        [earliestTimestamp, earliestHash] = unpackResult.value;
+      }
+    }
+
+    return ok({
+      used: messageCount.value,
+      earliestTimestamp,
+      earliestHash,
     });
   }
 

@@ -19,6 +19,7 @@ import {
   makeUserKey,
   putMessage,
   typeToSetPostfix,
+  unpackTsHash,
 } from "./message.js";
 
 const db = jestRocksDB("storage.db.message.test");
@@ -79,6 +80,13 @@ describe("makeTsHash", () => {
     const tsHash1 = makeTsHash(castMessage.data.timestamp, castMessage.hash);
     const tsHash2 = makeTsHash(castMessage.data.timestamp, new Uint8Array([...castMessage.hash, 1]));
     expect(bytesCompare(tsHash1._unsafeUnwrap(), tsHash2._unsafeUnwrap())).toEqual(-1);
+  });
+
+  test("unpacks tsHash", () => {
+    const tsHash = makeTsHash(castMessage.data.timestamp, castMessage.hash);
+    const [timestamp, hash] = unpackTsHash(tsHash._unsafeUnwrap())._unsafeUnwrap();
+    expect(timestamp).toEqual(castMessage.data.timestamp);
+    expect(hash).toEqual(castMessage.hash);
   });
 });
 

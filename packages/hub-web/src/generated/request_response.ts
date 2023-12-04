@@ -234,11 +234,16 @@ export interface OnChainEventResponse {
 
 export interface StorageLimitsResponse {
   limits: StorageLimit[];
+  units: number;
 }
 
 export interface StorageLimit {
   storeType: StoreType;
+  name: string;
   limit: number;
+  used: number;
+  earliestTimestamp: number;
+  earliestHash: Uint8Array;
 }
 
 export interface UsernameProofRequest {
@@ -2581,13 +2586,16 @@ export const OnChainEventResponse = {
 };
 
 function createBaseStorageLimitsResponse(): StorageLimitsResponse {
-  return { limits: [] };
+  return { limits: [], units: 0 };
 }
 
 export const StorageLimitsResponse = {
   encode(message: StorageLimitsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     for (const v of message.limits) {
       StorageLimit.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.units !== 0) {
+      writer.uint32(16).uint32(message.units);
     }
     return writer;
   },
@@ -2606,6 +2614,13 @@ export const StorageLimitsResponse = {
 
           message.limits.push(StorageLimit.decode(reader, reader.uint32()));
           continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.units = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -2616,7 +2631,10 @@ export const StorageLimitsResponse = {
   },
 
   fromJSON(object: any): StorageLimitsResponse {
-    return { limits: Array.isArray(object?.limits) ? object.limits.map((e: any) => StorageLimit.fromJSON(e)) : [] };
+    return {
+      limits: Array.isArray(object?.limits) ? object.limits.map((e: any) => StorageLimit.fromJSON(e)) : [],
+      units: isSet(object.units) ? Number(object.units) : 0,
+    };
   },
 
   toJSON(message: StorageLimitsResponse): unknown {
@@ -2626,6 +2644,7 @@ export const StorageLimitsResponse = {
     } else {
       obj.limits = [];
     }
+    message.units !== undefined && (obj.units = Math.round(message.units));
     return obj;
   },
 
@@ -2636,12 +2655,13 @@ export const StorageLimitsResponse = {
   fromPartial<I extends Exact<DeepPartial<StorageLimitsResponse>, I>>(object: I): StorageLimitsResponse {
     const message = createBaseStorageLimitsResponse();
     message.limits = object.limits?.map((e) => StorageLimit.fromPartial(e)) || [];
+    message.units = object.units ?? 0;
     return message;
   },
 };
 
 function createBaseStorageLimit(): StorageLimit {
-  return { storeType: 0, limit: 0 };
+  return { storeType: 0, name: "", limit: 0, used: 0, earliestTimestamp: 0, earliestHash: new Uint8Array() };
 }
 
 export const StorageLimit = {
@@ -2649,8 +2669,20 @@ export const StorageLimit = {
     if (message.storeType !== 0) {
       writer.uint32(8).int32(message.storeType);
     }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
     if (message.limit !== 0) {
-      writer.uint32(16).uint64(message.limit);
+      writer.uint32(24).uint64(message.limit);
+    }
+    if (message.used !== 0) {
+      writer.uint32(32).uint64(message.used);
+    }
+    if (message.earliestTimestamp !== 0) {
+      writer.uint32(40).uint64(message.earliestTimestamp);
+    }
+    if (message.earliestHash.length !== 0) {
+      writer.uint32(50).bytes(message.earliestHash);
     }
     return writer;
   },
@@ -2670,11 +2702,39 @@ export const StorageLimit = {
           message.storeType = reader.int32() as any;
           continue;
         case 2:
-          if (tag != 16) {
+          if (tag != 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        case 3:
+          if (tag != 24) {
             break;
           }
 
           message.limit = longToNumber(reader.uint64() as Long);
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.used = longToNumber(reader.uint64() as Long);
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.earliestTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.earliestHash = reader.bytes();
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -2688,14 +2748,25 @@ export const StorageLimit = {
   fromJSON(object: any): StorageLimit {
     return {
       storeType: isSet(object.storeType) ? storeTypeFromJSON(object.storeType) : 0,
+      name: isSet(object.name) ? String(object.name) : "",
       limit: isSet(object.limit) ? Number(object.limit) : 0,
+      used: isSet(object.used) ? Number(object.used) : 0,
+      earliestTimestamp: isSet(object.earliestTimestamp) ? Number(object.earliestTimestamp) : 0,
+      earliestHash: isSet(object.earliestHash) ? bytesFromBase64(object.earliestHash) : new Uint8Array(),
     };
   },
 
   toJSON(message: StorageLimit): unknown {
     const obj: any = {};
     message.storeType !== undefined && (obj.storeType = storeTypeToJSON(message.storeType));
+    message.name !== undefined && (obj.name = message.name);
     message.limit !== undefined && (obj.limit = Math.round(message.limit));
+    message.used !== undefined && (obj.used = Math.round(message.used));
+    message.earliestTimestamp !== undefined && (obj.earliestTimestamp = Math.round(message.earliestTimestamp));
+    message.earliestHash !== undefined &&
+      (obj.earliestHash = base64FromBytes(
+        message.earliestHash !== undefined ? message.earliestHash : new Uint8Array(),
+      ));
     return obj;
   },
 
@@ -2706,7 +2777,11 @@ export const StorageLimit = {
   fromPartial<I extends Exact<DeepPartial<StorageLimit>, I>>(object: I): StorageLimit {
     const message = createBaseStorageLimit();
     message.storeType = object.storeType ?? 0;
+    message.name = object.name ?? "";
     message.limit = object.limit ?? 0;
+    message.used = object.used ?? 0;
+    message.earliestTimestamp = object.earliestTimestamp ?? 0;
+    message.earliestHash = object.earliestHash ?? new Uint8Array();
     return message;
   },
 };
