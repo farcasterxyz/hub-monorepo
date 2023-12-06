@@ -5,7 +5,10 @@ import { Hex } from "viem";
 import { Provider } from "ethers";
 
 type UserDataTypeParam = "pfp" | "display" | "bio" | "url" | "username";
-type ConnectResourceParams = { fid: number; userDataParams?: UserDataTypeParam[] };
+type ConnectResourceParams = {
+  fid: number;
+  userDataParams?: UserDataTypeParam[];
+};
 type ConnectParams = Partial<SiweMessage> & ConnectResourceParams;
 type ConnectOpts = {
   fidVerifier: (custody: Hex) => Promise<BigInt>;

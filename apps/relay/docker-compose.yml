@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  redis:
+    image: 'redis:7.2-alpine'
+    restart: unless-stopped
+    command: --save 1 1 --loglevel warning --maxmemory-policy noeviction
+    volumes:
+      - redis-data:/data
+    ports:
+      - '16379:6379'
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  redis-data:

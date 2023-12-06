@@ -1,0 +1,33 @@
+{
+  "name": "@farcaster/connect-relay",
+  "version": "0.0.1",
+  "description": "Farcaster Connect relay server",
+  "author": "",
+  "license": "",
+  "private": true,
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/farcasterxyz/hub-monorepo/issues"
+  },
+  "homepage": "https://github.com/farcasterxyz/hub-monorepo/README.md",
+  "scripts": {
+    "build": "tsc --project ./tsconfig.json",
+    "lint": "biome format src/ --write && biome check src/ --apply",
+    "test": "yarn build && jest",
+    "start": "yarn build && node build/app.js start"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@farcaster/hub-nodejs": "^0.10.19",
+    "@fastify/cors": "^8.4.1",
+    "fastify": "^4.24.3",
+    "ioredis": "^5.3.2",
+    "neverthrow": "~6.0.0"
+  },
+  "devDependencies": {
+    "axios": "^1.6.2",
+    "jest": "^29.7.0"
+  }
+}

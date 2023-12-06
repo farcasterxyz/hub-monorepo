@@ -4,9 +4,9 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { Hex, zeroAddress } from "viem";
 import { getDefaultProvider } from "ethers";
 import { SiweMessage } from "siwe";
+import fs from "fs";
 
-const privateKey = generatePrivateKey();
-const account = privateKeyToAccount(privateKey);
+const account = privateKeyToAccount(generatePrivateKey());
 
 const siweParams = {
   domain: "example.com",
@@ -152,6 +152,7 @@ describe("verify", () => {
     });
     const message = res._unsafeUnwrap();
     const sig = await account.signMessage({ message: message.toMessage() });
+    fs.writeFileSync("sig.json", JSON.stringify({ message: message.toMessage(), sig: sig }));
     const result = await verify(message, sig, { fidVerifier });
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toStrictEqual({
@@ -263,7 +264,9 @@ describe("verify", () => {
       address: zeroAddress,
       fid: 1234,
     });
-    const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
+    const sig = await account.signMessage({
+      message: message._unsafeUnwrap().toMessage(),
+    });
     const result = await verify(message._unsafeUnwrap(), sig, { fidVerifier });
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
@@ -279,7 +282,9 @@ describe("verify", () => {
       address: account.address,
       fid: 1234,
     });
-    const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
+    const sig = await account.signMessage({
+      message: message._unsafeUnwrap().toMessage(),
+    });
     const result = await verify(message._unsafeUnwrap(), sig, { fidVerifier });
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
@@ -295,7 +300,9 @@ describe("verify", () => {
       address: account.address,
       fid: 1234,
     });
-    const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
+    const sig = await account.signMessage({
+      message: message._unsafeUnwrap().toMessage(),
+    });
     const result = await verify(message._unsafeUnwrap(), sig, { fidVerifier });
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
@@ -309,7 +316,9 @@ describe("verify", () => {
       address: account.address,
       fid: 1234,
     });
-    const sig = await account.signMessage({ message: message._unsafeUnwrap().toMessage() });
+    const sig = await account.signMessage({
+      message: message._unsafeUnwrap().toMessage(),
+    });
     const result = await verify(message._unsafeUnwrap(), sig);
     expect(result.isOk()).toBe(false);
     const err = result._unsafeUnwrapErr();
