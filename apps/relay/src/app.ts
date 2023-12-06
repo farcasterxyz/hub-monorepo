@@ -1,3 +1,8 @@
 import { RelayServer } from "./server";
+import { CHANNEL_TTL, REDIS_URL, RELAY_SERVER_HOST, RELAY_SERVER_PORT } from "./env";
 
-new RelayServer().start("127.0.0.1", 8765);
+new RelayServer({
+  redisUrl: REDIS_URL,
+  ttl: CHANNEL_TTL,
+  corsOrigin: "*",
+}).start(RELAY_SERVER_HOST, RELAY_SERVER_PORT);

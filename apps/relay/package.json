@@ -23,6 +23,7 @@
   "dependencies": {
     "@farcaster/hub-nodejs": "^0.10.19",
     "@fastify/cors": "^8.4.1",
+    "dotenv": "^16.3.1",
     "fastify": "^4.24.3",
     "ioredis": "^5.3.2",
     "neverthrow": "~6.0.0"

@@ -2,22 +2,35 @@ import fastify from "fastify";
 import fastifyCors from "@fastify/cors";
 import { HubResult, HubError } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
+import { connectRequestSchema, authenticateRequestSchema } from "./schemas";
 import { ChannelStore } from "./channels";
 import { AuthenticateRequest, ConnectRequest, RelaySession, authenticate, connect, status } from "./handlers";
 import { logger } from "./logger";
 
 const log = logger.child({ component: "RelayServer" });
 
+interface RelayServerConfig {
+  redisUrl: string;
+  ttl: number;
+  corsOrigin: string;
+}
+
 export class RelayServer {
   app = fastify();
-  channels = new ChannelStore<RelaySession>({
-    port: 16379,
-  });
+  channels: ChannelStore<RelaySession>;
 
-  constructor(corsOrigin = "*") {
+  constructor({ redisUrl, ttl, corsOrigin }: RelayServerConfig) {
+    this.channels = new ChannelStore<RelaySession>({
+      redisUrl,
+      ttl,
+    });
     this.app.setErrorHandler((error, request, reply) => {
-      log.error({ err: error, errMsg: error.message, request }, "Error in http request");
-      reply.code(500).send({ error: error.message });
+      if (error.validation) {
+        reply.status(400).send({ error: "Bad Request", message: error.message });
+      } else {
+        log.error({ err: error, errMsg: error.message, request }, "Error in http request");
+        reply.code(500).send({ error: error.message });
+      }
     });
 
     this.app.register(fastifyCors, { origin: [corsOrigin] });
@@ -26,6 +39,8 @@ export class RelayServer {
       request.channels = this.channels;
     });
     this.app.get("/healthcheck", async (_request, reply) => reply.send({ status: "OK" }));
+    this.app.addSchema(connectRequestSchema);
+    this.app.addSchema(authenticateRequestSchema);
     this.initHandlers();
   }
 
@@ -33,7 +48,7 @@ export class RelayServer {
     this.app.register(
       (v1, _opts, next) => {
         v1.register((publicRoutes, _opts, next) => {
-          publicRoutes.post<{ Body: ConnectRequest }>("/connect", connect);
+          publicRoutes.post<{ Body: ConnectRequest }>("/connect", { schema: { body: connectRequestSchema } }, connect);
           next();
         });
 
@@ -52,7 +67,7 @@ export class RelayServer {
 
           protectedRoutes.post<{
             Body: AuthenticateRequest;
-          }>("/connect/authenticate", authenticate);
+          }>("/connect/authenticate", { schema: { body: authenticateRequestSchema } }, authenticate);
 
           protectedRoutes.get("/connect/status", status);
 

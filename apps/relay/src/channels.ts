@@ -4,7 +4,7 @@ import { ResultAsync, err, ok } from "neverthrow";
 import { randomUUID } from "crypto";
 
 interface ChannelStoreOpts {
-  port: number;
+  redisUrl: string;
   ttl?: number;
 }
 
@@ -12,8 +12,8 @@ export class ChannelStore<T> {
   private redis: Redis;
   private ttl: number;
 
-  constructor({ port, ttl }: ChannelStoreOpts) {
-    this.redis = new Redis(port);
+  constructor({ redisUrl, ttl }: ChannelStoreOpts) {
+    this.redis = new Redis(redisUrl);
     this.ttl = ttl ?? 3600;
   }
 
