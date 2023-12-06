@@ -49,6 +49,10 @@ export class ChannelStore<T> {
     return ResultAsync.fromPromise(this.redis.del(channelToken), (err) => new HubError("unknown", err as Error));
   }
 
+  async clear() {
+    return this.redis.flushall();
+  }
+
   async stop() {
     return this.redis.quit();
   }

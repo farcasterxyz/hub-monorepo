@@ -27,6 +27,7 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
+  await httpServer.channels.clear();
   jest.restoreAllMocks();
 });
 
@@ -78,11 +79,13 @@ describe("relay server", () => {
     });
 
     test("creates a channel with extra SIWE parameters", async () => {
+      const nonce = "some-custom-nonce";
       const notBefore = "2023-01-01T00:00:00Z";
       const expirationTime = "2023-12-31T00:00:00Z";
       const requestId = "some-request-id";
       const response = await http.post(getFullUrl("/v1/connect"), {
         ...connectParams,
+        nonce,
         notBefore,
         expirationTime,
         requestId,
@@ -94,6 +97,7 @@ describe("relay server", () => {
       const params = new URLSearchParams(connectURI.split("?")[1]);
       expect(params.get("siweUri")).toBe(connectParams.siweUri);
       expect(params.get("domain")).toBe(connectParams.domain);
+      expect(params.get("nonce")).toBe(nonce);
       expect(params.get("notBefore")).toBe(notBefore);
       expect(params.get("expirationTime")).toBe(expirationTime);
       expect(params.get("requestId")).toBe(requestId);
@@ -353,7 +357,11 @@ describe("relay server", () => {
 
   describe("e2e", () => {
     test("end to end connect flow", async () => {
-      let response = await http.post(getFullUrl("/v1/connect"), connectParams);
+      const nonce = "some-custom-nonce";
+      let response = await http.post(getFullUrl("/v1/connect"), {
+        ...connectParams,
+        nonce,
+      });
       expect(response.status).toBe(201);
 
       const channelToken = response.data.channelToken;
@@ -373,6 +381,7 @@ describe("relay server", () => {
       expect(response.data.state).toBe("completed");
       expect(response.data.message).toBe(authenticateParams.message);
       expect(response.data.signature).toBe(authenticateParams.signature);
+      expect(response.data.nonce).toBe(nonce);
 
       response = await http.get(getFullUrl("/v1/connect/status"), authHeaders);
       expect(response.status).toBe(401);

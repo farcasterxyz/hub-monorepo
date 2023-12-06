@@ -4,6 +4,7 @@ import { generateNonce } from "siwe";
 export type ConnectRequest = {
   siweUri: string;
   domain: string;
+  nonce?: string;
   notBefore?: string;
   expirationTime?: string;
   requestId?: string;
@@ -42,7 +43,7 @@ export async function connect(request: FastifyRequest<{ Body: ConnectRequest }>,
   const channel = await request.channels.open();
   if (channel.isOk()) {
     const channelToken = channel.value;
-    const nonce = generateNonce();
+    const nonce = request.body.nonce ?? generateNonce();
     const connectURI = constructConnectURI(channelToken, nonce, request.body);
 
     const update = await request.channels.update(channelToken, {

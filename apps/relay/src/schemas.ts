@@ -10,6 +10,9 @@ export const connectRequestSchema = {
       type: "string",
       format: "hostname",
     },
+    nonce: {
+      type: "string",
+    },
     notBefore: {
       type: "string",
       format: "date-time",
