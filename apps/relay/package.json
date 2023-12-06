@@ -14,6 +14,7 @@
     "build": "tsc --project ./tsconfig.json",
     "lint": "biome format src/ --write && biome check src/ --apply",
     "test": "yarn build && jest",
+    "test:ci": "yarn build && ENVIRONMENT=test NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest --ci --forceExit --coverage",
     "start": "yarn build && node build/app.js start"
   },
   "engines": {

@@ -1,5 +1,6 @@
 import { RelayServer } from "./server.js";
 import axios from "axios";
+import { jest } from "@jest/globals";
 
 let httpServer: RelayServer;
 let httpServerAddress: string;
