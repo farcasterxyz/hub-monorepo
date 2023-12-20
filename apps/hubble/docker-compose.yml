@@ -30,8 +30,6 @@ services:
     volumes:
       - ./.hub:/home/node/app/apps/hubble/.hub
       - ./.rocks:/home/node/app/apps/hubble/.rocks
-    networks:
-      - my-network
     logging:
       driver: "json-file"
       options:
@@ -49,8 +47,6 @@ services:
       # - '7002:7002' # Carbon cache query
       - '8125:8125/udp' # StatsD
       - '8126:8126' # StatsD admin
-    networks:
-      - my-network
 
   # Start this if you want to see perf metrics for your hubble node. Remember to start `statsd` as well.
   grafana:
@@ -62,9 +58,3 @@ services:
       - ./grafana/data:/var/lib/grafana  # Persistent Grafana data
     ports:
       - '3000:3000' # Grafana web
-    networks:
-      - my-network
-
-networks: 
-  my-network:
- 
