@@ -16,7 +16,7 @@ export const BackfillFidData = registerJob({
   name: "BackfillFidData",
   run: async ({ fid }: { fid: number }, { db, log, redis, hub }) => {
     const alreadyBackfilledSigners = await redis.sismember("backfilled-signers", fid);
-    if (!alreadyBackfilledSigners) {    
+    if (!alreadyBackfilledSigners) {
       let signerEvents: OnChainEvent[] = [];
       for await (const events of getOnChainEventsByFidInBatchesOf(hub, {
         fid,
@@ -40,8 +40,8 @@ export const BackfillFidData = registerJob({
     }
     if (!(await redis.sismember("backfilled-links", fid))) {
       await BackfillFidLinks.enqueue({ fid });
-    }   
-    if(!(await redis.sismember("backfilled-reactions", fid))){
+    }
+    if (!(await redis.sismember("backfilled-reactions", fid))) {
       await BackfillFidReactions.enqueue({ fid });
     }
     if (!(await redis.sismember("backfilled-verifications", fid))) {

@@ -1,5 +1,5 @@
 {
-  "name": "example-make-cast",
+  "name": "example-hello-world",
   "private": true,
   "type": "module",
   "version": "0.0.0",
@@ -9,7 +9,10 @@
     "typecheck": "yarn tsc --noEmit"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.10.13"
+    "@farcaster/hub-nodejs": "^0.10.19",
+    "axios": "^1.6.0",
+    "viem": "^1.12.2",
+    "wagmi": "^1.4.3"
   },
   "devDependencies": {
     "tsx": "^3.12.5",
