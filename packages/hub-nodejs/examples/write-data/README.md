@@ -1,23 +1,16 @@
-## Setting Up An Account And Writing Data to Hubs
+## Writing Data to Hubs
 
-An example that signs up a new user on chain, purchases storage, creates a signer and updates the user's profile.
+An example that different types of messages like casts, reactions, follows, etc. given a signer private key for an fid. 
 
-Given a custody address with ~10$ worth of funds on OP Mainnet, this example will:
- - Register an FID on the IdRegistry contract
- - Purchase 1 unit of storage on the StorageContract
- - Create a signer on the KeyRegistry contract
- - Register an fname on the fname registry server
- - Update the user's profile
+The example runs on testnet by default so that you can make changes safely without affecting your mainnet data.
 
 ### Run on StackBlitz
 
 We do not recommend running this example in a cloud environment because it requires your custody address.
 
-You can try out a web version of this at https://farcaster-signup-demo-wkulikowski.vercel.app. Source: https://github.com/wojtekwtf/farcaster-signup-demo by [@woj.eth](https://warpcast.com/woj.eth).
-
 ### Run locally
 
 1. Clone the repo locally
-2. Navigate to this folder with `cd packages/hub-nodejs/examples/write-data`
+2. Navigate to this folder with `cd packages/hub-nodejs/examples/make-cast`
 3. Run `yarn install` to install dependencies
 4. Run `yarn start`

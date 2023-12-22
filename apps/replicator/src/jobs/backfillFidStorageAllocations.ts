@@ -9,7 +9,7 @@ export const BackfillFidStorageAllocations = registerJob({
     const registrationEvents = getOnChainEventsByFidInBatchesOf(hub, {
       fid,
       pageSize: 3_000,
-      eventTypes: [OnChainEventType.EVENT_TYPE_STORAGE_RENT],      
+      eventTypes: [OnChainEventType.EVENT_TYPE_STORAGE_RENT],
     });
 
     for await (const events of registrationEvents) {
