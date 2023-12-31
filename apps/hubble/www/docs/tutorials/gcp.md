@@ -5,12 +5,15 @@ This is a step-by-step guide to setting up Hubble on GCP.
 It usually takes less than 30 minutes to complete the whole process.
 
 ### Requirements
-- [AWS](https://aws.amazon.com/) account
+- [GCP](https://console.cloud.google.com/) account
 - [Alchemy](https://www.alchemy.com/) account
 
 ### Costs
 - GCP setup recommended in this tutorial may cost up to $70/month
 - Alchemy usage should stay within the free tier
+
+
+## Create GCP VM
 
 Open **Google Cloud Shell** and execute following commands:
 
