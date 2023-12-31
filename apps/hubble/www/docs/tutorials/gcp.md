@@ -2,7 +2,7 @@
 
 Open **Google Cloud Shell** and execute following commands:
 
-<figure><img src="../.gitbook/assets/image (10).png" alt=""><figcaption><p>Click on Google Cloud Shell Icon</p></figcaption></figure>
+<figure><img src="../assets/images/google_cloud_shell.png" alt=""><figcaption><p>Click on Google Cloud Shell Icon</p></figcaption></figure>
 
 Execute below commands in the cloud shell:
 
@@ -75,7 +75,7 @@ terraform plan # this will simulate your terraform configuration & check if it i
 
 Example output:
 
-<figure><img src="../.gitbook/assets/image (1).png" alt=""><figcaption><p>Example output of terraform plan</p></figcaption></figure>
+<figure><img src="../assets/images/gcp_terraform_plan.png" alt=""><figcaption><p>Example output of terraform plan</p></figcaption></figure>
 
 Now execute this command:
 
@@ -83,23 +83,20 @@ Now execute this command:
 terraform apply
 ```
 
-<figure><img src="../.gitbook/assets/image.png" alt=""><figcaption><p>Example output of Terraform apply</p></figcaption></figure>
+<figure><img src="../assets/images/gcp_terraform_apply.png" alt=""><figcaption><p>Example output of Terraform apply</p></figcaption></figure>
 
 It will take a few minutes before the VM is created. Time to enjoy your :coffee:
 
-<figure><img src="../.gitbook/assets/image (6).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../assets/images/gcp_vm_overview.png" alt=""><figcaption></figcaption></figure>
 
 Now you should be able to connect to your VM by clicking on the **SSH** button.
 
 \
 Now Install Docker as described here [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/)
 
-```
-sudo snap install docker
-```
 
 Now follow the steps as described on [https://www.thehubble.xyz/intro/install.html#install-via-script](https://www.thehubble.xyz/intro/install.html#install-via-script)\
 \
 Your Hubble is up and running when you see below :white\_check\_mark:
 
-<figure><img src="../.gitbook/assets/image (9).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../assets/images/gcp_hubble_running.png" alt=""><figcaption></figcaption></figure>
