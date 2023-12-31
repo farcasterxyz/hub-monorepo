@@ -110,7 +110,7 @@ Now you should be able to connect to your VM by clicking on the **SSH** button.
 Now Install Docker as described here [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/)
 
 
-Now follow the steps as described on [https://www.thehubble.xyz/intro/install.html#install-via-script](https://www.thehubble.xyz/intro/install.html#install-via-script)\
+Now follow the steps as described on [Install page](../intro/install.md) page \
 \
 Your Hubble is up and running when you see below :white\_check\_mark:
 
