@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.13.4
+
+### Patch Changes
+
+- 704e0777: feat: Add usage information to getCurrentStorageLimitsByFid rpc call
+
 ## 0.13.3
 
 ### Patch Changes

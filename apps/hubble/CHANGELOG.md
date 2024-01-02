@@ -1,5 +1,18 @@
 # @farcaster/hubble
 
+## 1.9.0
+
+### Minor Changes
+
+- chore: Release 1.9
+
+### Patch Changes
+
+- 20b65759: chore: rename/remove v2 contract address cli params after migration
+- 704e0777: feat: Add usage information to getCurrentStorageLimitsByFid rpc call
+- Updated dependencies [704e0777]
+  - @farcaster/hub-nodejs@0.10.20
+
 ## 1.8.0
 
 ### Minor Changes

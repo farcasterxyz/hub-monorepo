@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.7.2
+
+### Patch Changes
+
+- 704e0777: feat: Add usage information to getCurrentStorageLimitsByFid rpc call
+- Updated dependencies [704e0777]
+  - @farcaster/core@0.13.4
+
 ## 0.7.1
 
 ### Patch Changes
