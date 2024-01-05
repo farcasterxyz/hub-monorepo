@@ -32,6 +32,7 @@ import { OnChainEventPostfix, RootPrefix } from "../db/types.js";
 import { getHubState, putHubState } from "../db/hubState.js";
 import { PageOptions } from "./types.js";
 import { logger } from "../../utils/logger.js";
+import { bytesCompare } from "@farcaster/core";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 
@@ -187,8 +188,16 @@ class OnChainEventStore {
         OnChainEventType.EVENT_TYPE_SIGNER,
         event.fid,
       );
-      const signerAdd = signerEvents.find((value) => value.signerEventBody.eventType === SignerEventType.ADD);
+      const signerAdd = signerEvents.find(
+        (value) =>
+          value.signerEventBody.eventType === SignerEventType.ADD &&
+          bytesCompare(value.signerEventBody.key, event.signerEventBody.key) === 0,
+      );
       if (signerAdd) {
+        logger.info(
+          { fid: event.fid },
+          `Admin reset of signer from block ${existingEvent?.blockNumber || -1} with ${signerAdd.blockNumber}`,
+        );
         return txn.put(
           secondaryKey,
           makeOnChainEventPrimaryKey(signerAdd.type, signerAdd.fid, signerAdd.blockNumber, signerAdd.logIndex),
