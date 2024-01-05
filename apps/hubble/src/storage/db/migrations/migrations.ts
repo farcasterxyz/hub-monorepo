@@ -10,6 +10,7 @@ import { oldContractEvents } from "./6.oldContractEvents.js";
 import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
 import { RootPrefix } from "../types.js";
 import rocksdb from "../rocksdb.js";
+import { clearAdminResets } from "./7.clearAdminResets.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
@@ -38,6 +39,10 @@ migrations.set(5, async (db: RocksDB) => {
 
 migrations.set(6, async (db: RocksDB) => {
   return await oldContractEvents(db);
+});
+
+migrations.set(7, async (db: RocksDB) => {
+  return await clearAdminResets(db);
 });
 
 // To Add a new migration

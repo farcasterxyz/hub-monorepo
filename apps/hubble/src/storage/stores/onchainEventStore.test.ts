@@ -230,6 +230,10 @@ describe("OnChainEventStore", () => {
 
     test("return the signer if removal is admin reset", async () => {
       const signer = Factories.SignerOnChainEvent.build();
+      const unrelatedSigner = Factories.SignerOnChainEvent.build({
+        fid: signer.fid,
+        blockNumber: signer.blockNumber - 1,
+      });
       const signerRemoved = Factories.SignerOnChainEvent.build({
         fid: signer.fid,
         blockNumber: signer.blockNumber + 1,
@@ -247,11 +251,38 @@ describe("OnChainEventStore", () => {
         }),
       });
 
+      await set.mergeOnChainEvent(unrelatedSigner); // a different key for the same fid should not impact the reset
       await set.mergeOnChainEvent(signer);
       await set.mergeOnChainEvent(signerRemoved);
       await set.mergeOnChainEvent(adminReset);
 
       await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).resolves.toEqual(signer);
+    });
+
+    test("does not return the signer if older admin reset is processed after removal", async () => {
+      const signer = Factories.SignerOnChainEvent.build();
+      const adminReset = Factories.SignerOnChainEvent.build({
+        fid: signer.fid,
+        blockNumber: signer.blockNumber + 1,
+        signerEventBody: Factories.SignerEventBody.build({
+          eventType: SignerEventType.ADMIN_RESET,
+          key: signer.signerEventBody.key,
+        }),
+      });
+      const signerRemoved = Factories.SignerOnChainEvent.build({
+        fid: signer.fid,
+        blockNumber: signer.blockNumber + 2,
+        signerEventBody: Factories.SignerEventBody.build({
+          eventType: SignerEventType.REMOVE,
+          key: signer.signerEventBody.key,
+        }),
+      });
+
+      await set.mergeOnChainEvent(signer);
+      await set.mergeOnChainEvent(signerRemoved);
+      await set.mergeOnChainEvent(adminReset);
+
+      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("active signer");
     });
 
     test("does not return signer even if events are merged out of order", async () => {
