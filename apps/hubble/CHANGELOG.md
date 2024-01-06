@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.9.1
+
+### Patch Changes
+
+- c78f01b3: fix: Admin reset key event may have reset the wrong key sometimes
+
 ## 1.9.0
 
 ### Minor Changes
