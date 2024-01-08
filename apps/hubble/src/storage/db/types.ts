@@ -21,7 +21,7 @@ export const TSHASH_LENGTH = 4 + HASH_LENGTH;
  * RootPrefix indicates the purpose of the key. It is the 1st byte of every key.
  */
 export enum RootPrefix {
-  /* Used for multiple purposes, starts with a 32-byte fid */
+  /* Used for multiple purposes, starts with a 4-byte fid */
   User = 1,
   /* Used to index casts by parent */
   CastsByParent = 2,
