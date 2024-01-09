@@ -561,6 +561,16 @@ describe("SyncEngine", () => {
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
+      test("does not add a deleted fname to the trie", async () => {
+        userNameProof = Factories.UserNameProof.build({
+          type: UserNameType.USERNAME_TYPE_FNAME,
+          fid: 0,
+        });
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        await engine.mergeUserNameProof(userNameProof);
+        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
+        expect((await syncEngine.getDbStats()).numFnames).toEqual(0);
+      });
       test("removes deleted fname proofs", async () => {
         const supercedingUserNameProof = Factories.UserNameProof.build({
           name: userNameProof.name,
