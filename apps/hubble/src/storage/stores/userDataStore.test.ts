@@ -4,11 +4,13 @@ import {
   getFarcasterTime,
   HubError,
   MergeMessageHubEvent,
+  MergeUsernameProofHubEvent,
   Message,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
   UserDataAddMessage,
   UserDataType,
+  UserNameProof,
 } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../db/jestUtils.js";
 import StoreEventHandler from "./storeEventHandler.js";
@@ -62,11 +64,29 @@ describe("getUserDataAdd", () => {
 });
 
 describe("mergeUserNameProof", () => {
+  let proofEvents: [UserNameProof | undefined, UserNameProof | undefined][] = [];
+
+  const mergeUsernameProofHandler = (event: MergeUsernameProofHubEvent) => {
+    const { usernameProof, deletedUsernameProof } = event.mergeUsernameProofBody;
+    proofEvents.push([usernameProof, deletedUsernameProof]);
+  };
+  beforeAll(() => {
+    eventHandler.on("mergeUsernameProofEvent", mergeUsernameProofHandler);
+  });
+
+  beforeEach(() => {
+    proofEvents = [];
+  });
+
+  afterAll(() => {
+    eventHandler.off("mergeUsernameProofEvent", mergeUsernameProofHandler);
+  });
   test("succeeds", async () => {
     const proof = await Factories.UserNameProof.build();
     await set.mergeUserNameProof(proof);
     await expect(set.getUserNameProof(proof.name)).resolves.toEqual(proof);
     await expect(set.getUserNameProofByFid(proof.fid)).resolves.toEqual(proof);
+    expect(proofEvents).toEqual([[proof, undefined]]);
   });
 
   test("does not merge duplicates", async () => {
@@ -74,7 +94,9 @@ describe("mergeUserNameProof", () => {
     await set.mergeUserNameProof(proof);
     await expect(set.getUserNameProof(proof.name)).resolves.toEqual(proof);
 
+    proofEvents = [];
     await expect(set.mergeUserNameProof(proof)).rejects.toThrow("already exists");
+    expect(proofEvents).toEqual([]);
   });
 
   test("replaces existing proof with proof of greater timestamp", async () => {
@@ -85,10 +107,12 @@ describe("mergeUserNameProof", () => {
       name: existingProof.name,
       fid: Factories.Fid.build(),
     });
+    proofEvents = [];
     await set.mergeUserNameProof(newProof);
     await expect(set.getUserNameProof(existingProof.name)).resolves.toEqual(newProof);
     // Secondary index is updated
     await expect(set.getUserNameProofByFid(existingProof.fid)).resolves.toEqual(newProof);
+    expect(proofEvents).toEqual([[newProof, existingProof]]);
   });
 
   test("does not merge if existing timestamp is greater", async () => {
@@ -113,9 +137,21 @@ describe("mergeUserNameProof", () => {
       name: existingProof.name,
       fid: 0,
     });
+    proofEvents = [];
     await set.mergeUserNameProof(newProof);
     await expect(set.getUserNameProof(existingProof.name)).rejects.toThrowError("NotFound");
     await expect(set.getUserNameProofByFid(existingProof.fid)).rejects.toThrowError("NotFound");
+    expect(proofEvents).toEqual([[newProof, existingProof]]);
+  });
+
+  test("does not emit an event if there is no existing proof and new proof is to fid 0", async () => {
+    const proof = await Factories.UserNameProof.build({
+      fid: 0,
+    });
+    await expect(set.getUserNameProof(proof.name)).rejects.toThrowError("NotFound");
+    await expect(set.mergeUserNameProof(proof)).rejects.toThrowError("proof does not exist");
+    await expect(set.getUserNameProofByFid(proof.fid)).rejects.toThrowError("NotFound");
+    expect(proofEvents).toEqual([]);
   });
 
   test("does not delete existing proof if fid is 0 and timestamp is less than existing", async () => {

@@ -116,6 +116,8 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
       throw new HubError("bad_request.duplicate", "proof already exists");
     } else if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) > 0) {
       throw new HubError("bad_request.conflict", "event conflicts with a more recent UserNameProof");
+    } else if (existingProof.isErr() && usernameProof.fid === 0) {
+      throw new HubError("bad_request.conflict", "proof does not exist");
     }
 
     let txn: Transaction;
