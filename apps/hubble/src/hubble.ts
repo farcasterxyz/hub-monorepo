@@ -81,6 +81,7 @@ import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData } from "./storage/db/message.js";
+import { getFarcasterTime } from "@farcaster/core";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -1024,6 +1025,13 @@ export class Hub implements HubInterface {
       const result = await this.submitMessage(message, "gossip");
       if (result.isOk()) {
         this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+        const currentTime = getFarcasterTime().unwrapOr(0);
+        const messageCreatedTime = message.data?.timestamp ?? 0;
+        // The message time is user provided, so, while not ideal, it's still good enough to use most of the time
+        if (currentTime > 0 && messageCreatedTime > 0 && currentTime > messageCreatedTime) {
+          const diff = currentTime - messageCreatedTime;
+          statsd().timing("gossip.message_delay", diff);
+        }
       } else {
         log.info(
           {
