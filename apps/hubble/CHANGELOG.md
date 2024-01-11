@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.9.2
+
+### Patch Changes
+
+- 11a1e0d2: fix: Don't add deleted fnames to sync trie
+- 7379a05f: feat: add a gossip message delay stat
+- 00473c2a: fix: Do not add fnames to the sync trie when they have not been merged
+
 ## 1.9.1
 
 ### Patch Changes
