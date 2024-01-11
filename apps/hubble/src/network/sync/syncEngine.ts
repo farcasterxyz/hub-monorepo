@@ -268,7 +268,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       }
       if (
         event.mergeUsernameProofBody.usernameProof &&
-        event.mergeUsernameProofBody.usernameProof.type === UserNameType.USERNAME_TYPE_FNAME
+        event.mergeUsernameProofBody.usernameProof.type === UserNameType.USERNAME_TYPE_FNAME &&
+        event.mergeUsernameProofBody.usernameProof.fid !== 0 // Deletes should not be added to the trie
       ) {
         this._syncTrieQ += 1;
         statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);

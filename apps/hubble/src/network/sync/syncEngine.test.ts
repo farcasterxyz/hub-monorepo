@@ -562,12 +562,15 @@ describe("SyncEngine", () => {
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
       test("does not add a deleted fname to the trie", async () => {
-        userNameProof = Factories.UserNameProof.build({
+        await engine.mergeUserNameProof(userNameProof);
+        const deletionProof = Factories.UserNameProof.build({
           type: UserNameType.USERNAME_TYPE_FNAME,
+          name: userNameProof.name,
+          timestamp: userNameProof.timestamp + 10,
           fid: 0,
         });
-        expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         await engine.mergeUserNameProof(userNameProof);
+        await engine.mergeUserNameProof(deletionProof);
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(0);
       });
