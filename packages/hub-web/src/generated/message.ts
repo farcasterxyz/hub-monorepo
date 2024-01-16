@@ -99,6 +99,8 @@ export enum MessageType {
   USER_DATA_ADD = 11,
   /** USERNAME_PROOF - Add or replace a username proof */
   USERNAME_PROOF = 12,
+  /** SOCIAL_DATA_ADD - Add new social data */
+  SOCIAL_DATA_ADD = 13,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -136,6 +138,9 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 12:
     case "MESSAGE_TYPE_USERNAME_PROOF":
       return MessageType.USERNAME_PROOF;
+    case 13:
+    case "MESSAGE_TYPE_SOCIAL_DATA_ADD":
+      return MessageType.SOCIAL_DATA_ADD;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -165,6 +170,8 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_USER_DATA_ADD";
     case MessageType.USERNAME_PROOF:
       return "MESSAGE_TYPE_USERNAME_PROOF";
+    case MessageType.SOCIAL_DATA_ADD:
+      return "MESSAGE_TYPE_SOCIAL_DATA_ADD";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -212,6 +219,42 @@ export function farcasterNetworkToJSON(object: FarcasterNetwork): string {
       return "FARCASTER_NETWORK_DEVNET";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum FarcasterNetwork");
+  }
+}
+
+/** Type of SocialDatat */
+export enum SocialDataType {
+  NONE = 0,
+  NETFLIX = 1,
+  PLAYSTATION = 2,
+}
+
+export function socialDataTypeFromJSON(object: any): SocialDataType {
+  switch (object) {
+    case 0:
+    case "SOCIAL_DATA_TYPE_NONE":
+      return SocialDataType.NONE;
+    case 1:
+    case "SOCIAL_DATA_TYPE_NETFLIX":
+      return SocialDataType.NETFLIX;
+    case 2:
+    case "SOCIAL_DATA_TYPE_PLAYSTATION":
+      return SocialDataType.PLAYSTATION;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SocialDataType");
+  }
+}
+
+export function socialDataTypeToJSON(object: SocialDataType): string {
+  switch (object) {
+    case SocialDataType.NONE:
+      return "SOCIAL_DATA_TYPE_NONE";
+    case SocialDataType.NETFLIX:
+      return "SOCIAL_DATA_TYPE_NETFLIX";
+    case SocialDataType.PLAYSTATION:
+      return "SOCIAL_DATA_TYPE_PLAYSTATION";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SocialDataType");
   }
 }
 
@@ -362,6 +405,13 @@ export interface MessageData {
   /** SignerRemoveBody signer_remove_body = 13; // Deprecated */
   linkBody?: LinkBody | undefined;
   usernameProofBody?: UserNameProof | undefined;
+  socialDataBody?: SocialDataBody | undefined;
+}
+
+/** Adds social data about a user */
+export interface SocialDataBody {
+  type: SocialDataType;
+  emailAddress: string;
 }
 
 /** Adds metadata about a user */
@@ -621,6 +671,7 @@ function createBaseMessageData(): MessageData {
     userDataBody: undefined,
     linkBody: undefined,
     usernameProofBody: undefined,
+    socialDataBody: undefined,
   };
 }
 
@@ -661,6 +712,9 @@ export const MessageData = {
     }
     if (message.usernameProofBody !== undefined) {
       UserNameProof.encode(message.usernameProofBody, writer.uint32(122).fork()).ldelim();
+    }
+    if (message.socialDataBody !== undefined) {
+      SocialDataBody.encode(message.socialDataBody, writer.uint32(130).fork()).ldelim();
     }
     return writer;
   },
@@ -756,6 +810,13 @@ export const MessageData = {
 
           message.usernameProofBody = UserNameProof.decode(reader, reader.uint32());
           continue;
+        case 16:
+          if (tag != 130) {
+            break;
+          }
+
+          message.socialDataBody = SocialDataBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -783,6 +844,7 @@ export const MessageData = {
       userDataBody: isSet(object.userDataBody) ? UserDataBody.fromJSON(object.userDataBody) : undefined,
       linkBody: isSet(object.linkBody) ? LinkBody.fromJSON(object.linkBody) : undefined,
       usernameProofBody: isSet(object.usernameProofBody) ? UserNameProof.fromJSON(object.usernameProofBody) : undefined,
+      socialDataBody: isSet(object.socialDataBody) ? SocialDataBody.fromJSON(object.socialDataBody) : undefined,
     };
   },
 
@@ -810,6 +872,8 @@ export const MessageData = {
     message.linkBody !== undefined && (obj.linkBody = message.linkBody ? LinkBody.toJSON(message.linkBody) : undefined);
     message.usernameProofBody !== undefined &&
       (obj.usernameProofBody = message.usernameProofBody ? UserNameProof.toJSON(message.usernameProofBody) : undefined);
+    message.socialDataBody !== undefined &&
+      (obj.socialDataBody = message.socialDataBody ? SocialDataBody.toJSON(message.socialDataBody) : undefined);
     return obj;
   },
 
@@ -849,6 +913,80 @@ export const MessageData = {
     message.usernameProofBody = (object.usernameProofBody !== undefined && object.usernameProofBody !== null)
       ? UserNameProof.fromPartial(object.usernameProofBody)
       : undefined;
+    message.socialDataBody = (object.socialDataBody !== undefined && object.socialDataBody !== null)
+      ? SocialDataBody.fromPartial(object.socialDataBody)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseSocialDataBody(): SocialDataBody {
+  return { type: 0, emailAddress: "" };
+}
+
+export const SocialDataBody = {
+  encode(message: SocialDataBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.type !== 0) {
+      writer.uint32(8).int32(message.type);
+    }
+    if (message.emailAddress !== "") {
+      writer.uint32(18).string(message.emailAddress);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SocialDataBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSocialDataBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.type = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.emailAddress = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SocialDataBody {
+    return {
+      type: isSet(object.type) ? socialDataTypeFromJSON(object.type) : 0,
+      emailAddress: isSet(object.emailAddress) ? String(object.emailAddress) : "",
+    };
+  },
+
+  toJSON(message: SocialDataBody): unknown {
+    const obj: any = {};
+    message.type !== undefined && (obj.type = socialDataTypeToJSON(message.type));
+    message.emailAddress !== undefined && (obj.emailAddress = message.emailAddress);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SocialDataBody>, I>>(base?: I): SocialDataBody {
+    return SocialDataBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SocialDataBody>, I>>(object: I): SocialDataBody {
+    const message = createBaseSocialDataBody();
+    message.type = object.type ?? 0;
+    message.emailAddress = object.emailAddress ?? "";
     return message;
   },
 };

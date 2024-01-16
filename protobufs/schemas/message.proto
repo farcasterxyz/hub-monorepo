@@ -35,6 +35,7 @@ message MessageData {
     // SignerRemoveBody signer_remove_body = 13; // Deprecated
     LinkBody link_body = 14;
     UserNameProof username_proof_body = 15;
+    SocialDataBody social_data_body = 16;
   } // Properties specific to the MessageType
 }
 
@@ -67,6 +68,7 @@ enum MessageType {
 //  MESSAGE_TYPE_SIGNER_REMOVE = 10; // Remove an Ed25519 key pair that signs messages for a user
   MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
   MESSAGE_TYPE_USERNAME_PROOF = 12; // Add or replace a username proof
+  MESSAGE_TYPE_SOCIAL_DATA_ADD = 13; // Add new social data
 }
 
 /** Farcaster network the message is intended for */
@@ -75,6 +77,19 @@ enum FarcasterNetwork {
   FARCASTER_NETWORK_MAINNET = 1; // Public primary network
   FARCASTER_NETWORK_TESTNET = 2; // Public test network
   FARCASTER_NETWORK_DEVNET = 3; // Private test network
+}
+
+/** Adds social data about a user */
+message SocialDataBody {
+  SocialDataType type = 1;
+  string email_address = 2;
+}
+
+/** Type of SocialDatat */
+enum SocialDataType {
+  SOCIAL_DATA_TYPE_NONE = 0;
+  SOCIAL_DATA_TYPE_NETFLIX = 1;
+  SOCIAL_DATA_TYPE_PLAYSTATION = 2;
 }
 
 /** Adds metadata about a user */
