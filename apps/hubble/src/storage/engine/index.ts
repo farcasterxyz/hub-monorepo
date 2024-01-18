@@ -128,12 +128,12 @@ class Engine extends TypedEmitter<EngineEvents> {
     // Calculate total storage available per unit of store. Note that OnChainEventStore
     // is not included in this calculation because it is not pruned.
     this._totalPruneSize =
-      this._linkStore.pruneSizeLimit +
-      this._reactionStore.pruneSizeLimit +
-      this._castStore.pruneSizeLimit +
-      this._userDataStore.pruneSizeLimit +
-      this._verificationStore.pruneSizeLimit +
-      this._usernameProofStore.pruneSizeLimit;
+      this._linkStore.pruneSizeLimit(1) +
+      this._reactionStore.pruneSizeLimit(1) +
+      this._castStore.pruneSizeLimit(1) +
+      this._userDataStore.pruneSizeLimit(1) +
+      this._verificationStore.pruneSizeLimit(1) +
+      this._usernameProofStore.pruneSizeLimit(1);
 
     log.info({ totalPruneSize: this._totalPruneSize }, "total default storage limit size");
 

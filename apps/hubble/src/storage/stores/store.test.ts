@@ -1,23 +1,32 @@
-import { CastAddMessage, CastRemoveMessage, NobleEd25519Signer, makeCastAdd } from "@farcaster/hub-nodejs";
+import {
+  CastAddMessage,
+  CastRemoveMessage,
+  Factories,
+  getFarcasterTime,
+  getResidualStoreLimit,
+  HubAsyncResult,
+  HubError,
+  isCastAddMessage,
+  makeCastAdd,
+  Message,
+  MessageType,
+  NobleEd25519Signer,
+  StoreType,
+} from "@farcaster/hub-nodejs";
 import * as ed from "@noble/ed25519";
 import { DeepPartial, Store } from "./store.js";
-import { MessageType, HubAsyncResult } from "@farcaster/hub-nodejs";
 import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { Message } from "@farcaster/hub-nodejs";
-import { isCastAddMessage } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
 import { jestRocksDB } from "../db/jestUtils.js";
-import { ResultAsync, ok } from "neverthrow";
-import { HubError } from "@farcaster/hub-nodejs";
+import { ok, ResultAsync } from "neverthrow";
 import { Transaction } from "../db/rocksdb.js";
-import { Factories } from "@farcaster/hub-nodejs";
-import { getFarcasterTime } from "@farcaster/hub-nodejs";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 
 const db = jestRocksDB("protobufs.generalStore.test");
 const eventHandler = new StoreEventHandler(db);
 
 class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
+  override _storeType: StoreType = StoreType.CASTS;
   override makeAddKey(data: DeepPartial<CastAddMessage>) {
     const hash = data.hash as Uint8Array as Buffer;
     return Buffer.concat([
@@ -129,7 +138,8 @@ describe("store", () => {
     await db.commit(txn);
     await eventHandler.syncCache();
 
-    for (let i = 0; i < 200; i++) {
+    const MESSAGE_COUNT = 200;
+    for (let i = 0; i < MESSAGE_COUNT; i++) {
       // don't use fid = 1, will conflict with other test
       const castAddFid2 = await makeCastAdd(
         {
@@ -174,9 +184,9 @@ describe("store", () => {
       await store.merge(castAddFid4._unsafeUnwrap());
     }
 
-    // This user has no storage, so all messages should be pruned
+    // This user has no storage, so should only have upto residual storage limits
     const pruneCount2 = await store.pruneMessages(2);
-    expect(pruneCount2._unsafeUnwrap()).toHaveLength(200);
+    expect(pruneCount2._unsafeUnwrap()).toHaveLength(MESSAGE_COUNT - getResidualStoreLimit(StoreType.CASTS));
 
     // This user has two slots, should be double.
     const pruneCount3 = await store.pruneMessages(3);

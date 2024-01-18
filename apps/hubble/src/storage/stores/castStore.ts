@@ -114,6 +114,7 @@ const makeCastsByMentionKey = (mentionFid: number, fid?: number, tsHash?: Uint8A
  */
 class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   override _postfix: UserMessagePostfix = UserPostfix.CastMessage;
+  override _storeType: StoreType = StoreType.CASTS;
   override makeAddKey(msg: CastAddMessage) {
     return makeCastAddsKey(
       msg.data.fid,
@@ -132,14 +133,6 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
   override _isRemoveType = isCastRemoveMessage;
   override _addMessageType = MessageType.CAST_ADD;
   override _removeMessageType = MessageType.CAST_REMOVE;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return getDefaultStoreLimit(StoreType.CASTS);
-  }
-
-  protected override get PRUNE_TIME_LIMIT_DEFAULT() {
-    return 60 * 60 * 24 * 365; // 1 year
-  }
 
   override async buildSecondaryIndices(txn: Transaction, message: CastAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);

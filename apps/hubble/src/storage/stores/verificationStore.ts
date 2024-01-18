@@ -87,6 +87,7 @@ export const makeVerificationByAddressKey = (address: Uint8Array): Buffer => {
 
 class VerificationStore extends Store<VerificationAddEthAddressMessage, VerificationRemoveMessage> {
   override _postfix: UserMessagePostfix = UserPostfix.VerificationMessage;
+  override _storeType: StoreType = StoreType.VERIFICATIONS;
 
   override makeAddKey(msg: VerificationAddEthAddressMessage) {
     return makeVerificationAddsKey(
@@ -114,10 +115,6 @@ class VerificationStore extends Store<VerificationAddEthAddressMessage, Verifica
   override _isRemoveType = isVerificationRemoveMessage;
   override _addMessageType = MessageType.VERIFICATION_ADD_ETH_ADDRESS;
   override _removeMessageType = MessageType.VERIFICATION_REMOVE;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return getDefaultStoreLimit(StoreType.VERIFICATIONS);
-  }
 
   /**
    * Finds a VerificationAdds Message by checking the adds-set's index

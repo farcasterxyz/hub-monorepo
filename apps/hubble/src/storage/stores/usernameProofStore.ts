@@ -34,6 +34,7 @@ const makeUserNameProofByNameKey = (name: Uint8Array): Buffer => {
 
 class UsernameProofStore extends Store<UsernameProofMessage, never> {
   override _postfix: UserMessagePostfix = UserPostfix.UsernameProofMessage;
+  override _storeType: StoreType = StoreType.USERNAME_PROOFS;
 
   override makeAddKey(msg: UsernameProofMessage) {
     return makeUserNameProofByFidKey(msg.data.fid, msg.data.usernameProofBody.name) as Buffer;
@@ -55,10 +56,6 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
   override _isRemoveType = undefined;
   override _addMessageType = MessageType.USERNAME_PROOF;
   override _removeMessageType = undefined;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return getDefaultStoreLimit(StoreType.USERNAME_PROOFS);
-  }
 
   /**
    * Finds a UserNameProof Message by checking the adds set index

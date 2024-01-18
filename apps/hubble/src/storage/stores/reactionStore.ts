@@ -26,8 +26,6 @@ import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../d
 import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
 import { Store } from "./store.js";
 
-const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
-
 const makeTargetKey = (target: CastId | string): Buffer => {
   return typeof target === "string" ? Buffer.from(target) : makeCastIdKey(target);
 };
@@ -126,6 +124,7 @@ const makeReactionsByTargetKey = (target: CastId | string, fid?: number, tsHash?
  */
 class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   override _postfix: UserMessagePostfix = UserPostfix.ReactionMessage;
+  override _storeType: StoreType = StoreType.REACTIONS;
   override makeAddKey(msg: ReactionAddMessage) {
     return makeReactionAddsKey(
       msg.data.fid,
@@ -146,14 +145,6 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   override _isRemoveType = isReactionRemoveMessage;
   override _addMessageType = MessageType.REACTION_ADD;
   override _removeMessageType = MessageType.REACTION_REMOVE;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return getDefaultStoreLimit(StoreType.REACTIONS);
-  }
-
-  protected override get PRUNE_TIME_LIMIT_DEFAULT() {
-    return PRUNE_TIME_LIMIT_DEFAULT;
-  }
 
   override async findMergeAddConflicts(_message: ReactionAddMessage): HubAsyncResult<void> {
     return ok(undefined);

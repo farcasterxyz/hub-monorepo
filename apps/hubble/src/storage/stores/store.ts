@@ -7,6 +7,8 @@ import {
   bytesCompare,
   getFarcasterTime,
   isHubError,
+  getStoreLimit,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import {
   deleteMessageTransaction,
@@ -53,11 +55,12 @@ const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
 export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _db: RocksDB;
   protected _eventHandler: StoreEventHandler;
-  private _pruneSizeLimit: number;
+  private _pruneSizeLimit: number | undefined;
   protected _pruneTimeLimit: number | undefined;
   private _mergeLock: AsyncLock;
 
   abstract _postfix: UserMessagePostfix;
+  abstract _storeType: StoreType;
 
   abstract makeAddKey(data: DeepPartial<TAdd>): Buffer;
   abstract makeRemoveKey(data: DeepPartial<TRemove>): Buffer;
@@ -104,8 +107,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._db = db;
     this._eventHandler = eventHandler;
-    this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
+    this._pruneSizeLimit = options.pruneSizeLimit;
+    this._pruneTimeLimit = options.pruneTimeLimit;
     this._mergeLock = new AsyncLock();
   }
 
@@ -187,6 +190,11 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       throw new HubError("bad_request.invalid_param", "data null");
     }
 
+    const units = await this._eventHandler.getCurrentStorageUnitsForFid(message.data.fid);
+    if (units.isErr()) {
+      throw units.error;
+    }
+
     return (
       this._mergeLock
         .acquire(
@@ -196,7 +204,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
               // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
               message as any,
               this._postfix,
-              this.pruneSizeLimit,
+              this.pruneSizeLimit(units.value),
               this.pruneTimeLimit,
             );
             if (prunableResult.isErr()) {
@@ -289,7 +297,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         // Since the TS hash has the first 4 bytes be the timestamp (bigendian), we can use it to prune
         // since the iteration will be implicitly sorted by timestamp
         if (
-          count.value <= this.pruneSizeLimit * units.value &&
+          count.value <= this.pruneSizeLimit(units.value) &&
           (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
         ) {
           return true; // Nothing left to prune
@@ -326,20 +334,16 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     return ok(commits);
   }
 
-  get pruneSizeLimit(): number {
-    return this._pruneSizeLimit;
+  pruneSizeLimit(units: number): number {
+    // Allow overriding the default limit for tests. Override does not apply for residual storage (when user has no storage)
+    if (this._pruneSizeLimit !== undefined && units > 0) {
+      return this._pruneSizeLimit * units;
+    }
+    return getStoreLimit(this._storeType, units);
   }
 
   get pruneTimeLimit(): number | undefined {
     // No more time based pruning after the migration
-    return undefined;
-  }
-
-  protected get PRUNE_SIZE_LIMIT_DEFAULT(): number {
-    return 10000;
-  }
-
-  protected get PRUNE_TIME_LIMIT_DEFAULT(): number | undefined {
     return undefined;
   }
 
