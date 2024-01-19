@@ -4,7 +4,7 @@ info:
   version: "1.0"
   description: >
     Perform basic queries of Farcaster state via the REST API of a Farcaster hub.
-    See the [Farcaster docs](https://www.thehubble.xyz/docs/httpapi/httpapi.html) for more details.
+    See the [Farcaster docs](https://docs.farcaster.xyz/reference/hubble/httpapi/httpapi) for more details.
     Some client libraries:
       - [TypeScript](https://www.npmjs.com/package/@standard-crypto/farcaster-js-hub-rest)
 servers:
