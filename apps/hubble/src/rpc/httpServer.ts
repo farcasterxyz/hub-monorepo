@@ -1,4 +1,5 @@
 import {
+  ContactInfoResponse,
   FidsResponse,
   HubError,
   HubEvent,
@@ -221,6 +222,13 @@ export class HttpAPIServer {
 
       const call = getCallObject("getInfo", { dbStats }, request);
       this.grpcImpl.getInfo(call, handleResponse(reply, HubInfoResponse));
+    });
+
+    //================peerList================
+    // @doc-tag: /peerList
+    this.app.get("/v1/peerList", (request, reply) => {
+      const call = getCallObject("getCurrentPeers", {}, request);
+      this.grpcImpl.getCurrentPeers(call, handleResponse(reply, ContactInfoResponse));
     });
 
     //================Casts================

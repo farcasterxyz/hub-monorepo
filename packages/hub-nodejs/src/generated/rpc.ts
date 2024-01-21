@@ -18,6 +18,7 @@ import { CastId, Message } from "./message";
 import { OnChainEvent } from "./onchain_event";
 import {
   CastsByParentRequest,
+  ContactInfoResponse,
   Empty,
   EventRequest,
   FidRequest,
@@ -392,10 +393,7 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
-  /**
-   * Sync Methods
-   * Outside the "info" RPC, the HTTP API doesn't implement any of the sync methods
-   */
+  /** Sync Methods */
   getInfo: {
     path: "/HubService/GetInfo",
     requestStream: false,
@@ -404,6 +402,15 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => HubInfoRequest.decode(value),
     responseSerialize: (value: HubInfoResponse) => Buffer.from(HubInfoResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => HubInfoResponse.decode(value),
+  },
+  getCurrentPeers: {
+    path: "/HubService/GetCurrentPeers",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: ContactInfoResponse) => Buffer.from(ContactInfoResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ContactInfoResponse.decode(value),
   },
   /** @http-api: none */
   getSyncStatus: {
@@ -542,11 +549,9 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** @http-api: none */
   getAllLinkMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
-  /**
-   * Sync Methods
-   * Outside the "info" RPC, the HTTP API doesn't implement any of the sync methods
-   */
+  /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
+  getCurrentPeers: handleUnaryCall<Empty, ContactInfoResponse>;
   /** @http-api: none */
   getSyncStatus: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   /** @http-api: none */
@@ -1069,10 +1074,7 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
-  /**
-   * Sync Methods
-   * Outside the "info" RPC, the HTTP API doesn't implement any of the sync methods
-   */
+  /** Sync Methods */
   getInfo(
     request: HubInfoRequest,
     callback: (error: ServiceError | null, response: HubInfoResponse) => void,
@@ -1087,6 +1089,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: HubInfoResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentPeers(
+    request: Empty,
+    callback: (error: ServiceError | null, response: ContactInfoResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentPeers(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ContactInfoResponse) => void,
+  ): ClientUnaryCall;
+  getCurrentPeers(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ContactInfoResponse) => void,
   ): ClientUnaryCall;
   /** @http-api: none */
   getSyncStatus(
