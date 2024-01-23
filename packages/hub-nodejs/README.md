@@ -41,6 +41,12 @@ client.$.waitForReady(Date.now() + 5000, async (e) => {
 });
 ```
 
+## Documentation
+
+The HTTP API endpoints are [documented here](https://docs.farcaster.xyz/reference/hubble/httpapi/httpapi).
+
+An OpenAPI spec is provided [here](./spec.yaml).
+
 ## Contributing
 
 Please see our [contributing guidelines](https://github.com/farcasterxyz/hubble/blob/main/CONTRIBUTING.md) before making a pull request.
