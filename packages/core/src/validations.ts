@@ -662,12 +662,8 @@ export const validateUsernameProofBody = (
 
 export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubResult<protobufs.FrameActionBody> => {
   // url and buttonId are required and must not exceed the length limits. cast id is optional
-  if (body.buttonId !== undefined) {
-    if (body.buttonId.length === 0 || body.buttonId.length > 8) {
-      return err(new HubError("bad_request.validation_failure", "invalid button id"));
-    }
-  } else {
-    return err(new HubError("bad_request.validation_failure", "button id not provided"));
+  if (body.buttonIndex > 5) {
+    return err(new HubError("bad_request.validation_failure", "invalid button index"));
   }
 
   if (body.url !== undefined) {

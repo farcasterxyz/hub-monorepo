@@ -401,7 +401,7 @@ describe("makeFrameAction", () => {
   test("succeeds", async () => {
     const message = await builders.makeFrameAction(
       protobufs.FrameActionBody.create({
-        buttonId: Buffer.from("1"),
+        buttonIndex: 1,
         url: Buffer.from("https://example.com"),
         castId: { fid, hash: Factories.MessageHash.build() },
       }),

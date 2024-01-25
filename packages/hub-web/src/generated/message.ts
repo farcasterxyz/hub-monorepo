@@ -469,8 +469,8 @@ export interface LinkBody {
 export interface FrameActionBody {
   /** URL of the Frame triggering the action */
   url: Uint8Array;
-  /** The identifier of the button pressed */
-  buttonId: Uint8Array;
+  /** The index of the button pressed (1-4) */
+  buttonIndex: number;
   /** The cast which contained the frame url */
   castId: CastId | undefined;
 }
@@ -1702,7 +1702,7 @@ export const LinkBody = {
 };
 
 function createBaseFrameActionBody(): FrameActionBody {
-  return { url: new Uint8Array(), buttonId: new Uint8Array(), castId: undefined };
+  return { url: new Uint8Array(), buttonIndex: 0, castId: undefined };
 }
 
 export const FrameActionBody = {
@@ -1710,8 +1710,8 @@ export const FrameActionBody = {
     if (message.url.length !== 0) {
       writer.uint32(10).bytes(message.url);
     }
-    if (message.buttonId.length !== 0) {
-      writer.uint32(18).bytes(message.buttonId);
+    if (message.buttonIndex !== 0) {
+      writer.uint32(16).uint32(message.buttonIndex);
     }
     if (message.castId !== undefined) {
       CastId.encode(message.castId, writer.uint32(26).fork()).ldelim();
@@ -1734,11 +1734,11 @@ export const FrameActionBody = {
           message.url = reader.bytes();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag != 16) {
             break;
           }
 
-          message.buttonId = reader.bytes();
+          message.buttonIndex = reader.uint32();
           continue;
         case 3:
           if (tag != 26) {
@@ -1759,7 +1759,7 @@ export const FrameActionBody = {
   fromJSON(object: any): FrameActionBody {
     return {
       url: isSet(object.url) ? bytesFromBase64(object.url) : new Uint8Array(),
-      buttonId: isSet(object.buttonId) ? bytesFromBase64(object.buttonId) : new Uint8Array(),
+      buttonIndex: isSet(object.buttonIndex) ? Number(object.buttonIndex) : 0,
       castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
     };
   },
@@ -1768,8 +1768,7 @@ export const FrameActionBody = {
     const obj: any = {};
     message.url !== undefined &&
       (obj.url = base64FromBytes(message.url !== undefined ? message.url : new Uint8Array()));
-    message.buttonId !== undefined &&
-      (obj.buttonId = base64FromBytes(message.buttonId !== undefined ? message.buttonId : new Uint8Array()));
+    message.buttonIndex !== undefined && (obj.buttonIndex = Math.round(message.buttonIndex));
     message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
     return obj;
   },
@@ -1781,7 +1780,7 @@ export const FrameActionBody = {
   fromPartial<I extends Exact<DeepPartial<FrameActionBody>, I>>(object: I): FrameActionBody {
     const message = createBaseFrameActionBody();
     message.url = object.url ?? new Uint8Array();
-    message.buttonId = object.buttonId ?? new Uint8Array();
+    message.buttonIndex = object.buttonIndex ?? 0;
     message.castId = (object.castId !== undefined && object.castId !== null)
       ? CastId.fromPartial(object.castId)
       : undefined;

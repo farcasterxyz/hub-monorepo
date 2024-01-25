@@ -168,6 +168,6 @@ message LinkBody {
 /** A Farcaster Frame action */
 message FrameActionBody {
   bytes url = 1; // URL of the Frame triggering the action
-  bytes button_id = 2; // The identifier of the button pressed
+  uint32 button_index = 2; // The index of the button pressed (1-4)
   CastId cast_id = 3; // The cast which contained the frame url
 }

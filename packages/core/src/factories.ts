@@ -543,7 +543,7 @@ const UsernameProofMessageFactory = Factory.define<protobufs.UsernameProofMessag
 const FrameActionBodyFactory = Factory.define<protobufs.FrameActionBody>(() => {
   return protobufs.FrameActionBody.create({
     url: Buffer.from(faker.internet.url()),
-    buttonId: Buffer.from(faker.random.alphaNumeric(5)),
+    buttonIndex: faker.datatype.number({ min: 1, max: 4 }),
     castId: CastIdFactory.build(),
   });
 });

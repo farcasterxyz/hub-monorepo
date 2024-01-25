@@ -115,7 +115,7 @@ curl -X POST "http://127.0.0.1:2281/v1/validateMessage" \
       "network": "FARCASTER_NETWORK_MAINNET",
       "frameActionBody": {
         "url": "https://fcpolls.com/polls/1",
-        "buttonId": "2",
+        "buttonIndex": 2,
         "castId": {
           "fid": 226,
           "hash": "0xa48dd46161d8e57725f5e26e34ec19c13ff7f3b9"
