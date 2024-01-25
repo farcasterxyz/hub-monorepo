@@ -42,6 +42,10 @@ export class MockHub implements HubInterface {
     return result;
   }
 
+  async validateMessage(message: Message): HubAsyncResult<Message> {
+    return this.engine.validateMessage(message);
+  }
+
   async submitUserNameProof(proof: UserNameProof): HubAsyncResult<number> {
     return this.engine.mergeUserNameProof(proof);
   }

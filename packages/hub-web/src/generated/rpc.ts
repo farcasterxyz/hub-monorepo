@@ -37,6 +37,7 @@ import {
   UserDataRequest,
   UsernameProofRequest,
   UsernameProofsResponse,
+  ValidationResponse,
   VerificationRequest,
 } from "./request_response";
 import { UserNameProof } from "./username_proof";
@@ -44,6 +45,8 @@ import { UserNameProof } from "./username_proof";
 export interface HubService {
   /** Submit Methods */
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
+  /** Validation Methods */
+  validateMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<ValidationResponse>;
   /**
    * Event Methods
    * @http-api: none
@@ -168,6 +171,7 @@ export class HubServiceClientImpl implements HubService {
   constructor(rpc: Rpc) {
     this.rpc = rpc;
     this.submitMessage = this.submitMessage.bind(this);
+    this.validateMessage = this.validateMessage.bind(this);
     this.subscribe = this.subscribe.bind(this);
     this.getEvent = this.getEvent.bind(this);
     this.getCast = this.getCast.bind(this);
@@ -209,6 +213,10 @@ export class HubServiceClientImpl implements HubService {
 
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceSubmitMessageDesc, Message.fromPartial(request), metadata);
+  }
+
+  validateMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<ValidationResponse> {
+    return this.rpc.unary(HubServiceValidateMessageDesc, Message.fromPartial(request), metadata);
   }
 
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent> {
@@ -400,6 +408,29 @@ export const HubServiceSubmitMessageDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = Message.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceValidateMessageDesc: UnaryMethodDefinitionish = {
+  methodName: "ValidateMessage",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return Message.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ValidationResponse.decode(data);
       return {
         ...value,
         toObject() {

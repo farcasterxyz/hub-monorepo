@@ -18,6 +18,9 @@ service HubService {
   // Submit Methods
   rpc SubmitMessage(Message) returns (Message);
 
+  // Validation Methods
+  rpc ValidateMessage(Message) returns (ValidationResponse);
+
   // Event Methods
   // @http-api: none
   rpc Subscribe(SubscribeRequest) returns (stream HubEvent);

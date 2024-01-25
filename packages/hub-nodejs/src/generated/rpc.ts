@@ -47,6 +47,7 @@ import {
   UserDataRequest,
   UsernameProofRequest,
   UsernameProofsResponse,
+  ValidationResponse,
   VerificationRequest,
 } from "./request_response";
 import { UserNameProof } from "./username_proof";
@@ -62,6 +63,16 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => Message.decode(value),
     responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Message.decode(value),
+  },
+  /** Validation Methods */
+  validateMessage: {
+    path: "/HubService/ValidateMessage",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Message.decode(value),
+    responseSerialize: (value: ValidationResponse) => Buffer.from(ValidationResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ValidationResponse.decode(value),
   },
   /**
    * Event Methods
@@ -462,6 +473,8 @@ export const HubServiceService = {
 export interface HubServiceServer extends UntypedServiceImplementation {
   /** Submit Methods */
   submitMessage: handleUnaryCall<Message, Message>;
+  /** Validation Methods */
+  validateMessage: handleUnaryCall<Message, ValidationResponse>;
   /**
    * Event Methods
    * @http-api: none
@@ -572,6 +585,22 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
+  ): ClientUnaryCall;
+  /** Validation Methods */
+  validateMessage(
+    request: Message,
+    callback: (error: ServiceError | null, response: ValidationResponse) => void,
+  ): ClientUnaryCall;
+  validateMessage(
+    request: Message,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ValidationResponse) => void,
+  ): ClientUnaryCall;
+  validateMessage(
+    request: Message,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ValidationResponse) => void,
   ): ClientUnaryCall;
   /**
    * Event Methods

@@ -311,6 +311,8 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
   } else if (validType.value === protobufs.MessageType.USERNAME_PROOF && !!data.usernameProofBody) {
     bodyResult = validateUsernameProofBody(data.usernameProofBody, data);
+  } else if (validType.value === protobufs.MessageType.FRAME_ACTION && !!data.frameActionBody) {
+    bodyResult = validateFrameActionBody(data.frameActionBody);
   } else {
     return err(new HubError("bad_request.invalid_param", "bodyType is invalid"));
   }
@@ -655,6 +657,34 @@ export const validateUsernameProofBody = (
       ),
     );
   }
+  return ok(body);
+};
+
+export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubResult<protobufs.FrameActionBody> => {
+  // url and buttonId are required and must not exceed the length limits. cast id is optional
+  if (body.buttonId !== undefined) {
+    if (body.buttonId.length === 0 || body.buttonId.length > 8) {
+      return err(new HubError("bad_request.validation_failure", "invalid button id"));
+    }
+  } else {
+    return err(new HubError("bad_request.validation_failure", "button id not provided"));
+  }
+
+  if (body.url !== undefined) {
+    if (body.url.length === 0 || body.url.length > 256) {
+      return err(new HubError("bad_request.validation_failure", "invalid url"));
+    }
+  } else {
+    return err(new HubError("bad_request.validation_failure", "url provided"));
+  }
+
+  if (body.castId !== undefined) {
+    const result = validateCastId(body.castId);
+    if (result.isErr()) {
+      return err(result.error);
+    }
+  }
+
   return ok(body);
 };
 

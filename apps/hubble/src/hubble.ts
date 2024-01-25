@@ -110,6 +110,7 @@ export interface HubInterface {
   identity: string;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
+  validateMessage(message: Message): HubAsyncResult<Message>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
@@ -1368,6 +1369,10 @@ export class Hub implements HubInterface {
     statsd().timing("hub.merge_message", Date.now() - start);
 
     return mergeResult;
+  }
+
+  async validateMessage(message: Message): HubAsyncResult<Message> {
+    return this.engine.validateMessage(message);
   }
 
   async submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number> {
