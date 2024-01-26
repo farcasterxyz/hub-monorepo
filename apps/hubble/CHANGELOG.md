@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.9.3
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+- Updated dependencies [229ea166]
+  - @farcaster/hub-nodejs@0.10.21
+
 ## 1.9.2
 
 ### Patch Changes

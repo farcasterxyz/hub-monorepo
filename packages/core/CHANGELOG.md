@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.13.5
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+
 ## 0.13.4
 
 ### Patch Changes

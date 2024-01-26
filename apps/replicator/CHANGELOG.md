@@ -1,5 +1,13 @@
 # @farcaster/replicator
 
+## 0.2.7
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+- Updated dependencies [229ea166]
+  - @farcaster/hub-nodejs@0.10.21
+
 ## 0.2.6
 
 ### Patch Changes
