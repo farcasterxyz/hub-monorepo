@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.7.3
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+- Updated dependencies [229ea166]
+  - @farcaster/core@0.13.5
+
 ## 0.7.2
 
 ### Patch Changes
