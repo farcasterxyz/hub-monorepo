@@ -31,6 +31,7 @@ import {
   UserDataAddMessage,
   VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
+  ValidationResponse,
   UserNameProof,
   UsernameProofsResponse,
   OnChainEventResponse,
@@ -572,6 +573,18 @@ export default class Server {
         result?.match(
           () => {
             callback(null, message);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      validateMessage: async (call, callback) => {
+        const message = call.request;
+        const result = await this.hub?.validateMessage(message);
+        result?.match(
+          (message: Message) => {
+            callback(null, ValidationResponse.create({ valid: true, message }));
           },
           (err: HubError) => {
             callback(toServiceError(err));

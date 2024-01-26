@@ -239,3 +239,8 @@ message LinksByTargetRequest {
 message IdRegistryEventByAddressRequest {
   bytes address = 1;
 }
+
+message ValidationResponse {
+  bool valid = 1;
+  Message message = 2;
+}

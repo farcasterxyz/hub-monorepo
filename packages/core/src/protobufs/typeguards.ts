@@ -132,6 +132,18 @@ export const isUsernameProofMessage = (message: protobufs.Message): message is t
   );
 };
 
+export const isFrameActionData = (data: protobufs.MessageData): data is types.FrameActionData => {
+  return data.type === protobufs.MessageType.FRAME_ACTION && typeof data.frameActionBody !== "undefined";
+};
+
+export const isFrameActionMessage = (message: protobufs.Message): message is types.FrameActionMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== "undefined" &&
+    isFrameActionData(message.data)
+  );
+};
+
 export const isSignerOnChainEvent = (event: onChainEventProtobufs.OnChainEvent): event is types.SignerOnChainEvent => {
   return (
     event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER &&

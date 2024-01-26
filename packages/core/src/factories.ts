@@ -540,6 +540,34 @@ const UsernameProofMessageFactory = Factory.define<protobufs.UsernameProofMessag
   },
 );
 
+const FrameActionBodyFactory = Factory.define<protobufs.FrameActionBody>(() => {
+  return protobufs.FrameActionBody.create({
+    url: Buffer.from(faker.internet.url()),
+    buttonIndex: faker.datatype.number({ min: 1, max: 4 }),
+    castId: CastIdFactory.build(),
+  });
+});
+
+const FrameActionDataFactory = Factory.define<protobufs.FrameActionData>(() => {
+  return MessageDataFactory.build({
+    frameActionBody: FrameActionBodyFactory.build(),
+    type: protobufs.MessageType.FRAME_ACTION,
+  }) as protobufs.FrameActionData;
+});
+
+const FrameActionMessageFactory = Factory.define<protobufs.FrameActionMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.FrameActionMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: FrameActionDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams },
+    ) as protobufs.FrameActionMessage;
+  },
+);
+
 const OnChainEventFactory = Factory.define<protobufs.OnChainEvent>(() => {
   return protobufs.OnChainEvent.create({
     type: OnChainEventType.EVENT_TYPE_SIGNER,
@@ -659,6 +687,9 @@ export const Factories = {
   CastRemoveBody: CastRemoveBodyFactory,
   CastRemoveData: CastRemoveDataFactory,
   CastRemoveMessage: CastRemoveMessageFactory,
+  FrameActionBody: FrameActionBodyFactory,
+  FrameActionData: FrameActionDataFactory,
+  FrameActionMessage: FrameActionMessageFactory,
   LinkBody: LinkBodyFactory,
   LinkAddData: LinkAddDataFactory,
   LinkAddMessage: LinkAddMessageFactory,

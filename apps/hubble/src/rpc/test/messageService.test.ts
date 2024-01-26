@@ -7,6 +7,7 @@ import {
   Message,
   CastId,
   OnChainEvent,
+  ValidationResponse,
 } from "@farcaster/hub-nodejs";
 import { err } from "neverthrow";
 import SyncEngine from "../../network/sync/syncEngine.js";
@@ -48,6 +49,7 @@ let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 let castAdd: Message;
 let castRemove: Message;
+let frameAction: Message;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -62,6 +64,8 @@ beforeAll(async () => {
     { data: { fid, network, castRemoveBody: { targetHash: castAdd.hash } } },
     { transient: { signer } },
   );
+
+  frameAction = await Factories.FrameActionMessage.create({ data: { fid, network } }, { transient: { signer } });
 });
 
 describe("submitMessage", () => {
@@ -84,6 +88,13 @@ describe("submitMessage", () => {
       const result = await client.submitMessage(castAdd);
       expect(result).toEqual(err(new HubError("bad_request.conflict", "message conflicts with a CastRemove")));
     });
+
+    test("fails for frame action", async () => {
+      const result = await client.submitMessage(frameAction);
+      const err = result._unsafeUnwrapErr();
+      expect(err.errCode).toEqual("bad_request.validation_failure");
+      expect(err.message).toMatch("invalid message type");
+    });
   });
 
   test("fails without signer", async () => {
@@ -91,5 +102,39 @@ describe("submitMessage", () => {
     const err = result._unsafeUnwrapErr();
     expect(err.errCode).toEqual("bad_request.validation_failure");
     expect(err.message).toMatch("unknown fid");
+  });
+});
+
+describe("validateMessage", () => {
+  describe("with signer", () => {
+    beforeEach(async () => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
+    });
+
+    test("succeeds", async () => {
+      const castResult = await client.validateMessage(castAdd);
+      expect(ValidationResponse.toJSON(castResult._unsafeUnwrap())).toEqual(
+        ValidationResponse.toJSON(ValidationResponse.create({ valid: true, message: castAdd })),
+      );
+
+      const frameResult = await client.validateMessage(frameAction);
+      expect(ValidationResponse.toJSON(frameResult._unsafeUnwrap())).toEqual(
+        ValidationResponse.toJSON(ValidationResponse.create({ valid: true, message: frameAction })),
+      );
+    });
+  });
+
+  test("fails without signer", async () => {
+    const castResult = await client.submitMessage(castAdd);
+    const castErr = castResult._unsafeUnwrapErr();
+    expect(castErr.errCode).toEqual("bad_request.validation_failure");
+    expect(castErr.message).toMatch("unknown fid");
+
+    const frameResult = await client.submitMessage(frameAction);
+    const frameErr = frameResult._unsafeUnwrapErr();
+    expect(frameErr.errCode).toEqual("bad_request.validation_failure");
+    expect(frameErr.message).toMatch("unknown fid");
   });
 });

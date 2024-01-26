@@ -19,6 +19,7 @@ import {
   UsernameProofMessage,
   UserNameType,
   utf8StringToBytes,
+  ValidationResponse,
   VerificationAddEthAddressMessage,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
@@ -194,6 +195,52 @@ describe("httpServer", () => {
       expect(response.status).toBe(200);
 
       await authServer.stop();
+    });
+  });
+
+  describe("validateMessage", () => {
+    test("succeeds", async () => {
+      const frameAction = await Factories.FrameActionMessage.create(
+        { data: { fid, network } },
+        { transient: { signer } },
+      );
+      const postConfig = { headers: { "Content-Type": "application/octet-stream" } };
+      const url = getFullUrl("/v1/validateMessage");
+
+      // Encode the message into a Buffer (of bytes)
+      const messageBytes = Buffer.from(Message.encode(frameAction).finish());
+      const response = await axios.post(url, messageBytes, postConfig);
+
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual(
+        protoToJSON(ValidationResponse.create({ valid: true, message: frameAction }), ValidationResponse),
+      );
+    });
+
+    test("returns error when validation fails", async () => {
+      const frameAction = await Factories.FrameActionMessage.create(
+        { data: { fid: Factories.Fid.build(), network } },
+        { transient: { signer } },
+      );
+      const postConfig = { headers: { "Content-Type": "application/octet-stream" } };
+      const url = getFullUrl("/v1/validateMessage");
+
+      // Encode the message into a Buffer (of bytes)
+      const messageBytes = Buffer.from(Message.encode(frameAction).finish());
+      let errored = false;
+      try {
+        const response = await axios.post(url, messageBytes, postConfig);
+      } catch (e) {
+        errored = true;
+
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        const response = (e as any).response;
+
+        expect(response.status).toBe(400);
+        expect(response.data.errCode).toEqual("bad_request.validation_failure");
+        expect(response.data.details).toMatch("unknown fid");
+      }
+      expect(errored).toBeTruthy();
     });
   });
 
