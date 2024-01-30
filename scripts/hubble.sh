@@ -130,7 +130,7 @@ validate_and_store() {
 
     while true; do
         read -p "> Enter your $rpc_name RPC URL: " RPC_URL
-        RESPONSE=$(curl -s -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' "$RPC_URL")
+        RESPONSE=$(curl -s -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' "$RPC_URL")
 
         # Convert both the response and expected chain ID to lowercase for comparison
         local lower_response=$(echo "$RESPONSE" | tr '[:upper:]' '[:lower:]')
