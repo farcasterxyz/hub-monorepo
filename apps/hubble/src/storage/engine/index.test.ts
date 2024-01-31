@@ -238,7 +238,7 @@ describe("mergeMessage", () => {
             {
               data: {
                 fid,
-                verificationAddAddressBody: Factories.VerificationAddEthAddressBody.build({
+                verificationAddAddressBody: Factories.VerificationAddAddressBody.build({
                   chainId: 1,
                   verificationType: 1,
                 }),

@@ -48,6 +48,7 @@ let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 
 let ethVerificationAdd: VerificationAddAddressMessage;
+let solVerificationAdd: VerificationAddAddressMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -57,6 +58,11 @@ beforeAll(async () => {
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
   ethVerificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+    { data: { fid, network } },
+    { transient: { signer } },
+  );
+
+  solVerificationAdd = await Factories.VerificationAddSolAddressMessage.create(
     { data: { fid, network } },
     { transient: { signer } },
   );

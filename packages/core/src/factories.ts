@@ -89,6 +89,10 @@ const EthAddressFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build({}, { transient: { length: 20 } });
 });
 
+const SolAddressFactory = Factory.define<Uint8Array>(() => {
+  return BytesFactory.build({}, { transient: { length: 32 } });
+});
+
 const TransactionHashFactory = Factory.define<Uint8Array>(() => {
   return BytesFactory.build(undefined, { transient: { length: 32 } });
 });
@@ -392,7 +396,7 @@ const VerificationAddAddressBodyFactory = Factory.define<
   {
     fid?: number;
     network?: protobufs.FarcasterNetwork;
-    signer?: Eip712Signer | undefined;
+    signer?: Eip712Signer | Ed25519Signer | undefined;
     contractSignature?: boolean;
     protocol: Protocol;
   },
@@ -416,7 +420,9 @@ const VerificationAddAddressBodyFactory = Factory.define<
             blockHash: blockHash.isOk() ? blockHash.value : "0x",
             address: bytesToHexString(body.address)._unsafeUnwrap(),
           });
-          body.claimSignature = (await ethSigner.signVerificationEthAddressClaim(claim, body.chainId))._unsafeUnwrap();
+          body.claimSignature = (
+            await (ethSigner as Eip712Signer).signVerificationEthAddressClaim(claim, body.chainId)
+          )._unsafeUnwrap();
         }
         return body;
       }
@@ -455,6 +461,57 @@ const VerificationAddEthAddressDataFactory = Factory.define<
     verificationAddAddressBody: VerificationAddAddressBodyFactory.build({ protocol: Protocol.ETHEREUM }),
     type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
   }) as protobufs.VerificationAddAddressData;
+});
+
+const VerificationAddSolAddressDataFactory = Factory.define<
+  protobufs.VerificationAddAddressData,
+  { signer?: Ed25519Signer | undefined }
+>(({ onCreate, transientParams }) => {
+  onCreate(async (data) => {
+    const body = data.verificationAddAddressBody;
+    if (body.claimSignature.length === 0) {
+      data.verificationAddAddressBody = await VerificationAddAddressBodyFactory.create(body, {
+        transient: {
+          fid: data.fid,
+          network: data.network,
+          signer: transientParams.signer,
+          protocol: Protocol.SOLANA,
+        },
+      });
+    }
+    return data;
+  });
+
+  return MessageDataFactory.build({
+    // verificationAddEthAddressBody will not be valid until onCreate
+    verificationAddAddressBody: VerificationAddAddressBodyFactory.build({ protocol: Protocol.SOLANA }),
+    type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+  }) as protobufs.VerificationAddAddressData;
+});
+
+const VerificationAddSolAddressMessageFactory = Factory.define<
+  protobufs.VerificationAddAddressMessage,
+  { signer?: Ed25519Signer }
+>(({ onCreate, transientParams, params }) => {
+  const signer: Ed25519Signer = transientParams.signer ?? Ed25519SignerFactory.build();
+
+  onCreate(async (message) => {
+    message.data = await VerificationAddSolAddressDataFactory.create(message.data, {
+      transient: { signer: transientParams.signer },
+    });
+    return MessageFactory.create(message, {
+      transient: { signer },
+    }) as Promise<protobufs.VerificationAddAddressMessage>;
+  });
+
+  return MessageFactory.build(
+    {
+      data: VerificationAddSolAddressDataFactory.build(params.data, {
+        transient: { signer: transientParams.signer },
+      }),
+    },
+    { transient: { signer } },
+  ) as protobufs.VerificationAddAddressMessage;
 });
 
 const VerificationAddEthAddressMessageFactory = Factory.define<
@@ -682,6 +739,7 @@ export const Factories = {
   MessageHash: MessageHashFactory,
   BlockHash: BlockHashFactory,
   EthAddress: EthAddressFactory,
+  SolAddress: SolAddressFactory,
   EnsName: EnsNameFactory,
   TransactionHash: TransactionHashFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
@@ -719,9 +777,11 @@ export const Factories = {
   ReactionRemoveData: ReactionRemoveDataFactory,
   ReactionRemoveMessage: ReactionRemoveMessageFactory,
   VerificationEthAddressClaim: VerificationEthAddressClaimFactory,
-  VerificationAddEthAddressBody: VerificationAddAddressBodyFactory,
+  VerificationAddAddressBody: VerificationAddAddressBodyFactory,
   VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,
   VerificationAddEthAddressMessage: VerificationAddEthAddressMessageFactory,
+  VerificationAddSolAddressData: VerificationAddSolAddressDataFactory,
+  VerificationAddSolAddressMessage: VerificationAddSolAddressMessageFactory,
   VerificationRemoveBody: VerificationRemoveBodyFactory,
   VerificationRemoveData: VerificationRemoveDataFactory,
   VerificationRemoveMessage: VerificationRemoveMessageFactory,

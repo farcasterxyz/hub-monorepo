@@ -143,7 +143,7 @@ describe("makeVerificationAddEthAddressData", () => {
   let claim: VerificationAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash, Protocol.ETHEREUM)._unsafeUnwrap();
     const signature = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signature).toBeTruthy();
     ethSignature = signature;
