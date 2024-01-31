@@ -91,7 +91,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
   override makeAddKey(msg: VerificationAddAddressMessage) {
     return makeVerificationAddsKey(
       msg.data.fid,
-      (msg.data.verificationAddEthAddressBody || msg.data.verificationRemoveBody).address,
+      (msg.data.verificationAddAddressBody || msg.data.verificationRemoveBody).address,
     ) as Buffer;
   }
 
@@ -179,7 +179,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
       return err(tsHash.error);
     }
 
-    const address = message.data.verificationAddEthAddressBody.address;
+    const address = message.data.verificationAddAddressBody.address;
 
     if (address.length === 0) {
       return err(new HubError("bad_request.invalid_param", "address empty"));
@@ -195,7 +195,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     txn: Transaction,
     message: VerificationAddAddressMessage,
   ): HubAsyncResult<void> {
-    const address = message.data.verificationAddEthAddressBody.address;
+    const address = message.data.verificationAddAddressBody.address;
 
     if (address.length === 0) {
       return err(new HubError("bad_request.invalid_param", "address empty"));
@@ -223,7 +223,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     // For adds, we also need to check for conflicts across all fids (by eth address)
     const conflicts = res.value;
 
-    const byAddressKey = makeVerificationByAddressKey(message.data.verificationAddEthAddressBody.address);
+    const byAddressKey = makeVerificationByAddressKey(message.data.verificationAddAddressBody.address);
     const fidResult = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
     if (fidResult.isOk()) {
       const fid = readFidKey(fidResult.value);
@@ -233,7 +233,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
           data: {
             fid,
             verificationAddAddressBody: {
-              address: message.data.verificationAddEthAddressBody.address,
+              address: message.data.verificationAddAddressBody.address,
             },
           },
         });
@@ -294,9 +294,9 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
         }
 
         const fid = message.value.data.fid;
-        const verificationAdd = message.value.data.verificationAddEthAddressBody;
+        const verificationAdd = message.value.data.verificationAddAddressBody;
         const txn = this._db.transaction();
-        const byAddressKey = makeVerificationByAddressKey(message.value.data.verificationAddEthAddressBody.address);
+        const byAddressKey = makeVerificationByAddressKey(message.value.data.verificationAddAddressBody.address);
         const existingFidRes = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
         if (existingFidRes.isOk()) {
           const existingFid = readFidKey(existingFidRes.value);

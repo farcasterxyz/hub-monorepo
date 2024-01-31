@@ -194,10 +194,10 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       if (!message.data.verificationAddAddressBody) {
         throw new Error("Missing verificationAddEthAddressBody");
       }
-      const { address, ethSignature, blockHash } = message.data.verificationAddAddressBody;
+      const { address, protocolSignature, blockHash } = message.data.verificationAddAddressBody;
       return {
         address: bytesToHex(address),
-        ethSignature: bytesToHex(ethSignature),
+        protocolSignature: bytesToHex(protocolSignature),
         blockHash: bytesToHex(blockHash),
       } satisfies VerificationAddEthAddressBodyJson;
     }
@@ -205,10 +205,10 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       if (!message.data.verificationAddAddressBody) {
         throw new Error("Missing verificationAddSolAddressBody");
       }
-      const { address, solSignature, blockHash } = message.data.verificationAddAddressBody;
+      const { address, protocolSignature, blockHash } = message.data.verificationAddAddressBody;
       return {
         address: bytesToHex(address),
-        solSignature: bytesToHex(solSignature),
+        protocolSignature: bytesToHex(protocolSignature),
         blockHash: bytesToHex(blockHash),
       } satisfies VerificationAddSolAddressBodyJson;
     }

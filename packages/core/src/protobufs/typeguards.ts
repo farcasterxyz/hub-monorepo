@@ -79,7 +79,7 @@ export const isReactionRemoveMessage = (message: protobufs.Message): message is 
 
 export const isVerificationAddEthAddressData = (
   data: protobufs.MessageData,
-): data is types.VerificationAddEthAddressData => {
+): data is types.VerificationAddAddressData => {
   return (
     data.type === protobufs.MessageType.VERIFICATION_ADD_ADDRESS &&
     typeof data.verificationAddAddressBody !== "undefined"

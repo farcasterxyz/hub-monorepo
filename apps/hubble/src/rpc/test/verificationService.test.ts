@@ -76,7 +76,7 @@ describe("getVerification", () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
-        address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
+        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(verificationAdd));
@@ -86,7 +86,7 @@ describe("getVerification", () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
-        address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
+        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
@@ -107,7 +107,7 @@ describe("getVerification", () => {
   test("fails without fid", async () => {
     const result = await client.getVerification(
       VerificationRequest.create({
-        address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
+        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));

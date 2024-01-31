@@ -400,7 +400,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
       body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
     }
 
-    if (body.ethSignature.length === 0) {
+    if (body.protocolSignature.length === 0) {
       // Generate address and signature
       const fid = transientParams.fid ?? FidFactory.build();
       const network = transientParams.network ?? FarcasterNetworkFactory.build();
@@ -411,7 +411,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
         blockHash: blockHash.isOk() ? blockHash.value : "0x",
         address: bytesToHexString(body.address)._unsafeUnwrap(),
       });
-      body.ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim, body.chainId))._unsafeUnwrap();
+      body.protocolSignature = (await ethSigner.signVerificationEthAddressClaim(claim, body.chainId))._unsafeUnwrap();
     }
 
     return body;
@@ -424,16 +424,16 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
 });
 
 const VerificationAddEthAddressDataFactory = Factory.define<
-  protobufs.VerificationAddEthAddressData,
+  protobufs.VerificationAddAddressData,
   { signer?: Eip712Signer | undefined }
 >(({ onCreate, transientParams }) => {
   onCreate(async (data) => {
-    const body = data.verificationAddEthAddressBody;
-    if (body.ethSignature.length === 0) {
+    const body = data.verificationAddAddressBody;
+    if (body.protocolSignature.length === 0) {
       const signedBody = await VerificationAddEthAddressBodyFactory.create(body, {
         transient: { fid: data.fid, network: data.network, signer: transientParams.signer },
       });
-      data.verificationAddEthAddressBody = signedBody;
+      data.verificationAddAddressBody = signedBody;
     }
     return data;
   });
@@ -442,7 +442,7 @@ const VerificationAddEthAddressDataFactory = Factory.define<
     // verificationAddEthAddressBody will not be valid until onCreate
     verificationAddAddressBody: VerificationAddEthAddressBodyFactory.build({}),
     type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
-  }) as protobufs.VerificationAddEthAddressData;
+  }) as protobufs.VerificationAddAddressData;
 });
 
 const VerificationAddEthAddressMessageFactory = Factory.define<

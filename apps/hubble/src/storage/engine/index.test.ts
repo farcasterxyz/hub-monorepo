@@ -177,7 +177,7 @@ describe("mergeMessage", () => {
       test("succeeds", async () => {
         await expect(engine.mergeMessage(verificationAdd)).resolves.toBeInstanceOf(Ok);
         await expect(
-          engine.getVerification(fid, verificationAdd.data.verificationAddEthAddressBody.address),
+          engine.getVerification(fid, verificationAdd.data.verificationAddAddressBody.address),
         ).resolves.toEqual(ok(verificationAdd));
         expect(mergedMessages).toEqual([verificationAdd]);
       });
@@ -197,14 +197,18 @@ describe("mergeMessage", () => {
             data: {
               fid,
               network: FarcasterNetwork.TESTNET,
-              verificationAddEthAddressBody: { address: address, blockHash: blockHash, ethSignature: claimSignature },
+              verificationAddAddressBody: {
+                address: address,
+                blockHash: blockHash,
+                protocolSignature: claimSignature,
+              },
             },
           },
           { transient: { signer: signer, ethSigner: custodySigner } },
         );
         const result = await engine.mergeMessage(testnetVerificationAdd);
         // Signature will not match because we're attempting to recover the address based on the wrong network
-        expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid ethSignature")));
+        expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid protocolSignature")));
       });
 
       describe("validateOrRevokeMessage", () => {
@@ -223,7 +227,7 @@ describe("mergeMessage", () => {
             {
               data: {
                 fid,
-                verificationAddEthAddressBody: Factories.VerificationAddEthAddressBody.build({
+                verificationAddAddressBody: Factories.VerificationAddEthAddressBody.build({
                   chainId: 1,
                   verificationType: 1,
                 }),
@@ -631,7 +635,7 @@ describe("mergeMessage", () => {
     test("succeeds for valid proof for verified eth address", async () => {
       await engine.mergeMessage(verificationAdd);
       const verificationAddress = bytesToHexString(
-        verificationAdd.data.verificationAddEthAddressBody.address,
+        verificationAdd.data.verificationAddAddressBody.address,
       )._unsafeUnwrap();
       jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
         return Promise.resolve(verificationAddress);
@@ -675,7 +679,7 @@ describe("mergeMessage", () => {
       beforeEach(async () => {
         const custodyAddress = bytesToHexString(custodyEvent.idRegisterEventBody.to)._unsafeUnwrap();
         const verificationAddress = bytesToHexString(
-          verificationAdd.data.verificationAddEthAddressBody.address,
+          verificationAdd.data.verificationAddAddressBody.address,
         )._unsafeUnwrap();
 
         jest.spyOn(publicClient, "getEnsAddress").mockImplementation((opts) => {
@@ -746,7 +750,7 @@ describe("mergeMessage", () => {
             data: {
               fid,
               timestamp: verificationAdd.data.timestamp + 2,
-              verificationRemoveBody: { address: verificationAdd.data.verificationAddEthAddressBody.address },
+              verificationRemoveBody: { address: verificationAdd.data.verificationAddAddressBody.address },
             },
           },
           { transient: { signer } },

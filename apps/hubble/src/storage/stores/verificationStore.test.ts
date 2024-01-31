@@ -35,7 +35,7 @@ beforeAll(async () => {
   ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
   verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
     {
-      data: { fid, verificationAddEthAddressBody: { address: ethSignerKey } },
+      data: { fid, verificationAddAddressBody: { address: ethSignerKey } },
     },
     { transient: { ethSigner } },
   );
@@ -499,7 +499,7 @@ describe("revoke", () => {
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address),
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddAddressBody.address),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([verificationAdd]);
   });
@@ -520,7 +520,7 @@ describe("revoke", () => {
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
     await expect(
-      set.getVerificationAdd(fid, verificationAdd.data.verificationAddEthAddressBody.address),
+      set.getVerificationAdd(fid, verificationAdd.data.verificationAddAddressBody.address),
     ).rejects.toThrow();
     expect(revokedMessages).toEqual([verificationAdd]);
   });
@@ -580,11 +580,11 @@ describe("pruneMessages", () => {
     add5 = await generateAddWithTimestamp(fid, time + 5);
     addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
 
-    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.verificationAddEthAddressBody.address);
-    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.verificationAddEthAddressBody.address);
-    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.verificationAddEthAddressBody.address);
-    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.verificationAddEthAddressBody.address);
-    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.verificationAddEthAddressBody.address);
+    remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1.data.verificationAddAddressBody.address);
+    remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2.data.verificationAddAddressBody.address);
+    remove3 = await generateRemoveWithTimestamp(fid, time + 3, add3.data.verificationAddAddressBody.address);
+    remove4 = await generateRemoveWithTimestamp(fid, time + 4, add4.data.verificationAddAddressBody.address);
+    remove5 = await generateRemoveWithTimestamp(fid, time + 5, add5.data.verificationAddAddressBody.address);
   });
 
   describe("with size limit", () => {
@@ -608,8 +608,7 @@ describe("pruneMessages", () => {
       expect(prunedMessages).toEqual([add1, add2]);
 
       for (const message of prunedMessages as VerificationAddAddressMessage[]) {
-        const getAdd = () =>
-          sizePrunedStore.getVerificationAdd(fid, message.data.verificationAddEthAddressBody.address);
+        const getAdd = () => sizePrunedStore.getVerificationAdd(fid, message.data.verificationAddAddressBody.address);
         await expect(getAdd()).rejects.toThrow(HubError);
       }
     });

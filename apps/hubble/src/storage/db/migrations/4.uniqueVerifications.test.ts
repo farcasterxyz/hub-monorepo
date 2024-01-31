@@ -22,7 +22,7 @@ describe("uniqueVerifications migration", () => {
     const tsHash = makeTsHash(message.data?.timestamp, message.hash)._unsafeUnwrap();
     putMessageTransaction(txn, message);
     if (isVerificationAddAddressMessage(message)) {
-      const addKey = makeVerificationAddsKey(message.data.fid, message.data.verificationAddEthAddressBody.address);
+      const addKey = makeVerificationAddsKey(message.data.fid, message.data.verificationAddAddressBody.address);
       txn.put(addKey, Buffer.from(tsHash));
     } else {
       const removeKey = makeVerificationRemovesKey(message.data.fid, message.data.verificationRemoveBody.address);
@@ -37,7 +37,7 @@ describe("uniqueVerifications migration", () => {
     const ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
     const verificationAdd1 = await Factories.VerificationAddEthAddressMessage.create(
       {
-        data: { fid, verificationAddEthAddressBody: { address: ethSignerKey } },
+        data: { fid, verificationAddAddressBody: { address: ethSignerKey } },
       },
       { transient: { ethSigner } },
     );

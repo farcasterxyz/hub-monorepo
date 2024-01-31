@@ -474,16 +474,14 @@ export interface ReactionBody {
 export interface VerificationAddAddressBody {
   /** Address being verified for a given Protocol */
   address: Uint8Array;
-  /** Signature produced by the user's Ethereum address */
-  ethSignature: Uint8Array;
+  /** Signature produced by the user's address for a given Protocol */
+  protocolSignature: Uint8Array;
   /** Hash of the latest Ethereum block when the signature was produced */
   blockHash: Uint8Array;
   /** Type of verification. 0 = EOA, 1 = contract */
   verificationType: number;
   /** 0 for EOA verifications, 1 or 10 for contract verifications */
   chainId: number;
-  /** Signature produced by the user's Solana address */
-  solSignature: Uint8Array;
   /** Protocol of the Verification */
   protocol: Protocol;
 }
@@ -1483,11 +1481,10 @@ export const ReactionBody = {
 function createBaseVerificationAddAddressBody(): VerificationAddAddressBody {
   return {
     address: new Uint8Array(),
-    ethSignature: new Uint8Array(),
+    protocolSignature: new Uint8Array(),
     blockHash: new Uint8Array(),
     verificationType: 0,
     chainId: 0,
-    solSignature: new Uint8Array(),
     protocol: 0,
   };
 }
@@ -1497,8 +1494,8 @@ export const VerificationAddAddressBody = {
     if (message.address.length !== 0) {
       writer.uint32(10).bytes(message.address);
     }
-    if (message.ethSignature.length !== 0) {
-      writer.uint32(18).bytes(message.ethSignature);
+    if (message.protocolSignature.length !== 0) {
+      writer.uint32(18).bytes(message.protocolSignature);
     }
     if (message.blockHash.length !== 0) {
       writer.uint32(26).bytes(message.blockHash);
@@ -1508,9 +1505,6 @@ export const VerificationAddAddressBody = {
     }
     if (message.chainId !== 0) {
       writer.uint32(40).uint32(message.chainId);
-    }
-    if (message.solSignature.length !== 0) {
-      writer.uint32(50).bytes(message.solSignature);
     }
     if (message.protocol !== 0) {
       writer.uint32(56).int32(message.protocol);
@@ -1537,7 +1531,7 @@ export const VerificationAddAddressBody = {
             break;
           }
 
-          message.ethSignature = reader.bytes();
+          message.protocolSignature = reader.bytes();
           continue;
         case 3:
           if (tag != 26) {
@@ -1560,13 +1554,6 @@ export const VerificationAddAddressBody = {
 
           message.chainId = reader.uint32();
           continue;
-        case 6:
-          if (tag != 50) {
-            break;
-          }
-
-          message.solSignature = reader.bytes();
-          continue;
         case 7:
           if (tag != 56) {
             break;
@@ -1586,11 +1573,10 @@ export const VerificationAddAddressBody = {
   fromJSON(object: any): VerificationAddAddressBody {
     return {
       address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
-      ethSignature: isSet(object.ethSignature) ? bytesFromBase64(object.ethSignature) : new Uint8Array(),
+      protocolSignature: isSet(object.protocolSignature) ? bytesFromBase64(object.protocolSignature) : new Uint8Array(),
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
       verificationType: isSet(object.verificationType) ? Number(object.verificationType) : 0,
       chainId: isSet(object.chainId) ? Number(object.chainId) : 0,
-      solSignature: isSet(object.solSignature) ? bytesFromBase64(object.solSignature) : new Uint8Array(),
       protocol: isSet(object.protocol) ? protocolFromJSON(object.protocol) : 0,
     };
   },
@@ -1599,18 +1585,14 @@ export const VerificationAddAddressBody = {
     const obj: any = {};
     message.address !== undefined &&
       (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
-    message.ethSignature !== undefined &&
-      (obj.ethSignature = base64FromBytes(
-        message.ethSignature !== undefined ? message.ethSignature : new Uint8Array(),
+    message.protocolSignature !== undefined &&
+      (obj.protocolSignature = base64FromBytes(
+        message.protocolSignature !== undefined ? message.protocolSignature : new Uint8Array(),
       ));
     message.blockHash !== undefined &&
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
     message.verificationType !== undefined && (obj.verificationType = Math.round(message.verificationType));
     message.chainId !== undefined && (obj.chainId = Math.round(message.chainId));
-    message.solSignature !== undefined &&
-      (obj.solSignature = base64FromBytes(
-        message.solSignature !== undefined ? message.solSignature : new Uint8Array(),
-      ));
     message.protocol !== undefined && (obj.protocol = protocolToJSON(message.protocol));
     return obj;
   },
@@ -1622,11 +1604,10 @@ export const VerificationAddAddressBody = {
   fromPartial<I extends Exact<DeepPartial<VerificationAddAddressBody>, I>>(object: I): VerificationAddAddressBody {
     const message = createBaseVerificationAddAddressBody();
     message.address = object.address ?? new Uint8Array();
-    message.ethSignature = object.ethSignature ?? new Uint8Array();
+    message.protocolSignature = object.protocolSignature ?? new Uint8Array();
     message.blockHash = object.blockHash ?? new Uint8Array();
     message.verificationType = object.verificationType ?? 0;
     message.chainId = object.chainId ?? 0;
-    message.solSignature = object.solSignature ?? new Uint8Array();
     message.protocol = object.protocol ?? 0;
     return message;
   },

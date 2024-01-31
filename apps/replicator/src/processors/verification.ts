@@ -15,7 +15,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   withConflictId(message) {
     const ethAddress =
       message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
-        ? message.data.verificationAddEthAddressBody.address
+        ? message.data.verificationAddAddressBody.address
         : message.data.verificationRemoveBody.address;
 
     return ({ eb, and }) => {
@@ -25,7 +25,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   async getDerivedRow(message, trx) {
     const ethAddress =
       message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
-        ? message.data.verificationAddEthAddressBody.address
+        ? message.data.verificationAddAddressBody.address
         : message.data.verificationRemoveBody.address;
 
     return await executeTakeFirst(
@@ -52,7 +52,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   },
   async mergeDerivedRow(message, deleted, trx) {
     const {
-      data: { fid, verificationAddEthAddressBody: verificationAddBody },
+      data: { fid, verificationAddAddressBody: verificationAddBody },
     } = message;
 
     const timestamp = farcasterTimeToDate(message.data.timestamp);
@@ -62,7 +62,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
       hash: message.hash,
       signerAddress: verificationAddBody.address,
       blockHash: verificationAddBody.blockHash,
-      signature: verificationAddBody.ethSignature,
+      signature: verificationAddBody.protocolSignature,
     };
 
     // Upsert the verification, if it's shadowed by a remove, mark it as deleted

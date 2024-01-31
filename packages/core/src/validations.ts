@@ -355,8 +355,8 @@ export const validateVerificationAddEthAddressSignature = async (
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
-  if (body.ethSignature.length > 256) {
-    return err(new HubError("bad_request.validation_failure", "ethSignature > 256 bytes"));
+  if (body.protocolSignature.length > 256) {
+    return err(new HubError("bad_request.validation_failure", "protocolSignature > 256 bytes"));
   }
 
   const reconstructedClaim = makeVerificationEthAddressClaim(fid, body.address, network, body.blockHash);
@@ -366,7 +366,7 @@ export const validateVerificationAddEthAddressSignature = async (
 
   const verificationResult = await eip712.verifyVerificationEthAddressClaimSignature(
     reconstructedClaim.value,
-    body.ethSignature,
+    body.protocolSignature,
     body.address,
     body.verificationType,
     body.chainId,
@@ -378,10 +378,10 @@ export const validateVerificationAddEthAddressSignature = async (
   }
 
   if (!verificationResult.value) {
-    return err(new HubError("bad_request.validation_failure", "invalid ethSignature"));
+    return err(new HubError("bad_request.validation_failure", "invalid protocolSignature"));
   }
 
-  return ok(body.ethSignature);
+  return ok(body.protocolSignature);
 };
 
 export const validateVerificationAddSolAddressSignature = async (
@@ -390,8 +390,8 @@ export const validateVerificationAddSolAddressSignature = async (
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
-  if (body.solSignature.length > 256) {
-    return err(new HubError("bad_request.validation_failure", "solSignature > 256 bytes"));
+  if (body.protocolSignature.length > 256) {
+    return err(new HubError("bad_request.validation_failure", "protocolSignature > 256 bytes"));
   }
 
   const reconstructedClaim = makeVerificationSolAddressClaim(fid, body.address, network, body.blockHash);
@@ -399,7 +399,7 @@ export const validateVerificationAddSolAddressSignature = async (
     return err(reconstructedClaim.error);
   }
 
-  return ok(body.solSignature);
+  return ok(body.protocolSignature);
 };
 
 export const validateUrl = (url: string): HubResult<string> => {

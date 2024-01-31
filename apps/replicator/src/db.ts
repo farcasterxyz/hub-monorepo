@@ -204,13 +204,13 @@ export type ReactionBodyJson = ReactionBodyCastJson | ReactionBodyUrlJson;
 
 export type VerificationAddEthAddressBodyJson = {
   address: Hex;
-  ethSignature: Hex;
+  protocolSignature: Hex;
   blockHash: Hex;
 };
 
 export type VerificationAddSolAddressBodyJson = {
   address: Hex;
-  solSignature: Hex;
+  protocolSignature: Hex;
   blockHash: Hex;
 };
 
