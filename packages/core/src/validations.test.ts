@@ -1,5 +1,6 @@
 import { faker } from "@faker-js/faker";
 import * as protobufs from "./protobufs";
+import { Protocol } from "./protobufs";
 import { err, ok } from "neverthrow";
 import { bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { HubError } from "./errors";
@@ -7,9 +8,8 @@ import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationAddressClaim } from "./verifications";
-import { Protocol, UserDataType, UserNameType } from "@farcaster/hub-nodejs";
+import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
-import { optimism } from "viem/chains";
 import { jest } from "@jest/globals";
 
 const signer = Factories.Ed25519Signer.build();
@@ -619,7 +619,7 @@ describe("validateVerificationAddEthAddressBody", () => {
   const network = Factories.FarcasterNetwork.build();
 
   test("succeeds", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {},
       { transient: { fid, network, protocol: Protocol.ETHEREUM } },
     );
@@ -628,7 +628,7 @@ describe("validateVerificationAddEthAddressBody", () => {
   });
 
   describe("fails", () => {
-    let body: protobufs.VerificationAddEthAddressBody;
+    let body: protobufs.VerificationAddAddressBody;
     let hubErrorMessage: string;
 
     afterEach(async () => {
@@ -638,24 +638,24 @@ describe("validateVerificationAddEthAddressBody", () => {
     });
 
     test("with missing eth address", async () => {
-      body = Factories.VerificationAddEthAddressBody.build({ address: undefined });
+      body = Factories.VerificationAddAddressBody.build({ address: undefined });
       hubErrorMessage = "Ethereum address is missing";
     });
 
     test("with eth address larger than 20 bytes", async () => {
-      body = Factories.VerificationAddEthAddressBody.build({
+      body = Factories.VerificationAddAddressBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
       hubErrorMessage = "Ethereum address must be 20 bytes";
     });
 
     test("with missing block hash", async () => {
-      body = Factories.VerificationAddEthAddressBody.build({ blockHash: undefined });
+      body = Factories.VerificationAddAddressBody.build({ blockHash: undefined });
       hubErrorMessage = "blockHash is missing";
     });
 
     test("with block hash larger than 32 bytes", async () => {
-      body = Factories.VerificationAddEthAddressBody.build({
+      body = Factories.VerificationAddAddressBody.build({
         blockHash: Factories.Bytes.build({}, { transient: { length: 33 } }),
       });
       hubErrorMessage = "blockHash must be 32 bytes";
@@ -668,7 +668,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
   const network = Factories.FarcasterNetwork.build();
 
   test("succeeds for eoas", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {},
       { transient: { fid, network, protocol: Protocol.ETHEREUM } },
     );
@@ -677,7 +677,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
   });
 
   test("fails with invalid eth signature", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
       },
@@ -688,7 +688,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
   });
 
   test("fails with invalid verificationType", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
         verificationType: 2,
@@ -700,7 +700,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
   });
 
   test("fails with invalid chainId", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
         chainId: 7,
@@ -713,7 +713,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
   });
 
   test("fails if client not provided for chainId", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
         chainId: 1,
@@ -726,7 +726,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
   });
 
   test("fails if ethSignature is > 256 bytes", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 257 } }),
       },
@@ -746,7 +746,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
     const publicClients = {
       [chainId]: defaultL1PublicClient,
     };
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         chainId,
         verificationType: 1,
@@ -765,7 +765,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
     const publicClients = {
       [chainId]: defaultL1PublicClient,
     };
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         chainId,
         verificationType: 1,
@@ -778,10 +778,16 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
   test("fails with eth signature from different address", async () => {
     const blockHash = Factories.BlockHash.build();
-    const claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    const claim = makeVerificationAddressClaim(
+      fid,
+      ethSignerKey,
+      network,
+      blockHash,
+      Protocol.ETHEREUM,
+    )._unsafeUnwrap();
     const ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(ethSignature).toBeTruthy();
-    const body = await Factories.VerificationAddEthAddressBody.create(
+    const body = await Factories.VerificationAddAddressBody.create(
       {
         addressVerificationSignature: ethSignature,
         blockHash,

@@ -133,6 +133,30 @@ export const validateFid = (fid?: number | null): HubResult<number> => {
   return ok(fid);
 };
 
+export const validateSolAddress = (address?: Uint8Array | null): HubResult<Uint8Array> => {
+  if (!address || address.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "solana address is missing"));
+  }
+
+  if (address.length !== 32) {
+    return err(new HubError("bad_request.validation_failure", "solana address must be 32 bytes"));
+  }
+
+  return ok(address);
+};
+
+export const validateSolBlockHash = (blockHash?: Uint8Array | null): HubResult<Uint8Array> => {
+  if (!blockHash || blockHash.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "blockHash is missing"));
+  }
+
+  if (blockHash.length !== 32) {
+    return err(new HubError("bad_request.validation_failure", "blockHash must be 32 bytes"));
+  }
+
+  return ok(blockHash);
+};
+
 export const validateEthAddress = (address?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!address || address.length === 0) {
     return err(new HubError("bad_request.validation_failure", "Ethereum address is missing"));
@@ -650,11 +674,11 @@ export const validateVerificationAddSolAddressBody = (
     return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
   }
 
-  if (body.address.length !== 32) {
+  if (validateSolAddress(body.address).isErr()) {
     return err(new HubError("bad_request.validation_failure", "solana address must be 32 bytes"));
   }
 
-  if (body.blockHash.length !== 32) {
+  if (validateSolBlockHash(body.blockHash).isErr()) {
     return err(new HubError("bad_request.validation_failure", "blockHash must be 32 bytes"));
   }
 
