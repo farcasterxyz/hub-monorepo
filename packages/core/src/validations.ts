@@ -672,7 +672,7 @@ export const validateVerificationAddSolAddressBody = (
   }
 
   if (body.claimSignature.length !== 64) {
-    return err(new HubError("bad_request.validation_failure", "addressVerificationSignature > 256 bytes"));
+    return err(new HubError("bad_request.validation_failure", "claimSignature > 256 bytes"));
   }
 
   return ok(body);

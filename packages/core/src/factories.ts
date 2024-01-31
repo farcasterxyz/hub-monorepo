@@ -25,7 +25,6 @@ import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip71
 import { FARCASTER_EPOCH, getFarcasterTime, toFarcasterTime } from "./time";
 import { VerificationAddressClaim } from "./verifications";
 import { LocalAccount } from "viem";
-import { err } from "neverthrow";
 
 /** Scalars */
 
@@ -426,6 +425,13 @@ const VerificationAddAddressBodyFactory = Factory.define<
         }
         return body;
       }
+      case Protocol.SOLANA: {
+        const solSigner = transientParams.signer ?? Ed25519SignerFactory.build();
+        if (body.claimSignature.length === 0) {
+          body.claimSignature = (await solSigner.signMessageHash(body.address))._unsafeUnwrap();
+        }
+        return body;
+      }
       default:
         throw new Error(`Unsupported protocol [found: ${transientParams.protocol}]`);
     }
@@ -435,32 +441,6 @@ const VerificationAddAddressBodyFactory = Factory.define<
     address: EthAddressFactory.build(),
     blockHash: BlockHashFactory.build(),
   });
-});
-
-const VerificationAddEthAddressDataFactory = Factory.define<
-  protobufs.VerificationAddAddressData,
-  { signer?: Eip712Signer | undefined }
->(({ onCreate, transientParams }) => {
-  onCreate(async (data) => {
-    const body = data.verificationAddAddressBody;
-    if (body.claimSignature.length === 0) {
-      data.verificationAddAddressBody = await VerificationAddAddressBodyFactory.create(body, {
-        transient: {
-          fid: data.fid,
-          network: data.network,
-          signer: transientParams.signer,
-          protocol: Protocol.ETHEREUM,
-        },
-      });
-    }
-    return data;
-  });
-
-  return MessageDataFactory.build({
-    // verificationAddEthAddressBody will not be valid until onCreate
-    verificationAddAddressBody: VerificationAddAddressBodyFactory.build({ protocol: Protocol.ETHEREUM }),
-    type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
-  }) as protobufs.VerificationAddAddressData;
 });
 
 const VerificationAddSolAddressDataFactory = Factory.define<
@@ -484,7 +464,10 @@ const VerificationAddSolAddressDataFactory = Factory.define<
 
   return MessageDataFactory.build({
     // verificationAddEthAddressBody will not be valid until onCreate
-    verificationAddAddressBody: VerificationAddAddressBodyFactory.build({ protocol: Protocol.SOLANA }),
+    verificationAddAddressBody: VerificationAddAddressBodyFactory.build(
+      { protocol: Protocol.SOLANA },
+      { transient: { protocol: Protocol.SOLANA } },
+    ),
     type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
   }) as protobufs.VerificationAddAddressData;
 });
@@ -512,6 +495,32 @@ const VerificationAddSolAddressMessageFactory = Factory.define<
     },
     { transient: { signer } },
   ) as protobufs.VerificationAddAddressMessage;
+});
+
+const VerificationAddEthAddressDataFactory = Factory.define<
+  protobufs.VerificationAddAddressData,
+  { signer?: Eip712Signer | undefined }
+>(({ onCreate, transientParams }) => {
+  onCreate(async (data) => {
+    const body = data.verificationAddAddressBody;
+    if (body.claimSignature.length === 0) {
+      data.verificationAddAddressBody = await VerificationAddAddressBodyFactory.create(body, {
+        transient: {
+          fid: data.fid,
+          network: data.network,
+          signer: transientParams.signer,
+          protocol: Protocol.ETHEREUM,
+        },
+      });
+    }
+    return data;
+  });
+
+  return MessageDataFactory.build({
+    // verificationAddEthAddressBody will not be valid until onCreate
+    verificationAddAddressBody: VerificationAddAddressBodyFactory.build({ protocol: Protocol.ETHEREUM }),
+    type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+  }) as protobufs.VerificationAddAddressData;
 });
 
 const VerificationAddEthAddressMessageFactory = Factory.define<
