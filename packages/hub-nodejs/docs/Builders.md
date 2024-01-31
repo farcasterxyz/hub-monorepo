@@ -361,12 +361,12 @@ if (claimResult.isOk()) {
 
   // Sign the claim
   const ethSignResult = await eip712Signer.signVerificationEthAddressClaim(claim);
-  const ethSignature = ethSignResult._unsafeUnwrap(); // Safety: claim is known and can't error
+  const protocolSignature = ethSignResult._unsafeUnwrap(); // Safety: claim is known and can't error
 
   // Construct a Verification Add Message with the claim signature
   const verificationBody = {
     address: addressBytes,
-    protocolSignature: ethSignature,
+    protocolSignature: protocolSignature,
     blockHash: blockHashBytes,
   };
 

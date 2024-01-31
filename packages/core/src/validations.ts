@@ -297,21 +297,12 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
   } else if (validType.value === protobufs.MessageType.USER_DATA_ADD && !!data.userDataBody) {
     bodyResult = validateUserDataAddBody(data.userDataBody);
   } else if (validType.value === protobufs.MessageType.VERIFICATION_ADD_ADDRESS && !!data.verificationAddAddressBody) {
-    switch (data.verificationAddAddressBody.protocol) {
-      case protobufs.Protocol.ETHEREUM:
-        bodyResult = await validateVerificationAddEthAddressBody(
-          data.verificationAddAddressBody,
-          validFid.value,
-          validNetwork.value,
-          publicClients,
-        );
-        break;
-      case protobufs.Protocol.SOLANA:
-        bodyResult = ok(data.verificationAddAddressBody);
-        break;
-      default:
-        return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
-    }
+    bodyResult = await validateVerificationAddAddressBody(
+      data.verificationAddAddressBody,
+      data.fid,
+      data.network,
+      publicClients,
+    );
     // Special check for verification claim
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
@@ -602,12 +593,32 @@ export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<pr
   return validateTarget(target).map(() => body);
 };
 
+export const validateVerificationAddAddressBody = async (
+  body: protobufs.VerificationAddAddressBody,
+  fid: number,
+  network: protobufs.FarcasterNetwork,
+  publicClients: PublicClients,
+): HubAsyncResult<protobufs.VerificationAddAddressBody> => {
+  switch (body.protocol) {
+    case protobufs.Protocol.ETHEREUM:
+      return await validateVerificationAddEthAddressBody(body, fid, network, publicClients);
+    case protobufs.Protocol.SOLANA:
+      return validateVerificationAddSolAddressBody(body);
+    default:
+      return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
+  }
+};
+
 export const validateVerificationAddEthAddressBody = async (
   body: protobufs.VerificationAddAddressBody,
   fid: number,
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients,
 ): HubAsyncResult<protobufs.VerificationAddAddressBody> => {
+  if (body.protocol !== protobufs.Protocol.ETHEREUM) {
+    return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
+  }
+
   const validAddress = validateEthAddress(body.address);
   if (validAddress.isErr()) {
     return err(validAddress.error);
@@ -621,6 +632,28 @@ export const validateVerificationAddEthAddressBody = async (
   const validSignature = await validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
   if (validSignature.isErr()) {
     return err(validSignature.error);
+  }
+
+  return ok(body);
+};
+
+export const validateVerificationAddSolAddressBody = (
+  body: protobufs.VerificationAddAddressBody,
+): HubResult<protobufs.VerificationAddAddressBody> => {
+  if (body.protocol !== protobufs.Protocol.SOLANA) {
+    return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
+  }
+
+  if (body.address.length !== 32) {
+    return err(new HubError("bad_request.validation_failure", "solana address must be 32 bytes"));
+  }
+
+  if (body.blockHash.length !== 32) {
+    return err(new HubError("bad_request.validation_failure", "blockHash must be 32 bytes"));
+  }
+
+  if (body.addressVerificationSignature.length !== 64) {
+    return err(new HubError("bad_request.validation_failure", "addressVerificationSignature > 256 bytes"));
   }
 
   return ok(body);
