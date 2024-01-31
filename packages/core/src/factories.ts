@@ -22,7 +22,7 @@ import {
 import { bytesToHexString, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip712Signer } from "./signers";
 import { FARCASTER_EPOCH, getFarcasterTime, toFarcasterTime } from "./time";
-import { VerificationEthAddressClaim } from "./verifications";
+import { VerificationAddressClaim } from "./verifications";
 import { LocalAccount } from "viem";
 
 /** Scalars */
@@ -372,7 +372,7 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
   },
 );
 
-const VerificationEthAddressClaimFactory = Factory.define<VerificationEthAddressClaim>(() => {
+const VerificationEthAddressClaimFactory = Factory.define<VerificationAddressClaim>(() => {
   const address = bytesToHexString(EthAddressFactory.build())._unsafeUnwrap();
   const blockHash = bytesToHexString(BlockHashFactory.build())._unsafeUnwrap();
 

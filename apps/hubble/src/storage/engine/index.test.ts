@@ -35,7 +35,7 @@ import Engine from "../engine/index.js";
 import { sleep } from "../../utils/crypto.js";
 import { getMessage, makeTsHash, typeToSetPostfix } from "../db/message.js";
 import { StoreEvents } from "../stores/storeEventHandler.js";
-import { IdRegisterOnChainEvent, makeVerificationEthAddressClaim } from "@farcaster/core";
+import { IdRegisterOnChainEvent, makeVerificationAddressClaim } from "@farcaster/core";
 import { setReferenceDateForTest } from "../../utils/versions.js";
 import { getUserNameProof } from "../db/nameRegistryEvent.js";
 import { publicClient } from "../../test/utils.js";
@@ -185,7 +185,7 @@ describe("mergeMessage", () => {
       test("fails when network does not match claim network", async () => {
         const address = custodySignerKey;
         const blockHash = Factories.BlockHash.build();
-        const mainnetClaim = await makeVerificationEthAddressClaim(
+        const mainnetClaim = await makeVerificationAddressClaim(
           fid,
           address,
           FarcasterNetwork.MAINNET,

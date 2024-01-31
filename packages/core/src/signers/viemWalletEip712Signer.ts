@@ -8,7 +8,7 @@ import {
   USERNAME_PROOF_EIP_712_TYPES,
 } from "../crypto/eip712";
 import { HubAsyncResult, HubError } from "../errors";
-import { VerificationEthAddressClaim } from "../verifications";
+import { VerificationAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
 import { ID_GATEWAY_EIP_712_TYPES, IdGatewayRegisterMessage } from "../eth/contracts/idGateway";
@@ -55,7 +55,7 @@ export class ViemWalletEip712Signer extends Eip712Signer {
   }
 
   public async signVerificationEthAddressClaim(
-    claim: VerificationEthAddressClaim,
+    claim: VerificationAddressClaim,
     chainId = 0,
   ): HubAsyncResult<Uint8Array> {
     const domain = chainId === 0 ? EIP_712_FARCASTER_DOMAIN : { ...EIP_712_FARCASTER_DOMAIN, chainId };

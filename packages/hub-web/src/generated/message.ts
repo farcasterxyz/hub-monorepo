@@ -101,8 +101,6 @@ export enum MessageType {
   USERNAME_PROOF = 12,
   /** FRAME_ACTION - A Farcaster Frame action */
   FRAME_ACTION = 13,
-  /** VERIFICATION_ADD_SOL_ADDRESS - Add a Verification of a Solana Address */
-  VERIFICATION_ADD_SOL_ADDRESS = 14,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -143,9 +141,6 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 13:
     case "MESSAGE_TYPE_FRAME_ACTION":
       return MessageType.FRAME_ACTION;
-    case 14:
-    case "MESSAGE_TYPE_VERIFICATION_ADD_SOL_ADDRESS":
-      return MessageType.VERIFICATION_ADD_SOL_ADDRESS;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -177,8 +172,6 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_USERNAME_PROOF";
     case MessageType.FRAME_ACTION:
       return "MESSAGE_TYPE_FRAME_ACTION";
-    case MessageType.VERIFICATION_ADD_SOL_ADDRESS:
-      return "MESSAGE_TYPE_VERIFICATION_ADD_SOL_ADDRESS";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }

@@ -268,20 +268,6 @@ export const makeVerificationAddEthAddressData = (
   );
 };
 
-// TODO: Add Solana public clients
-export const makeVerificationAddSolAddressData = (
-  body: protobufs.VerificationAddAddressBody,
-  dataOptions: MessageDataOptions,
-  publicClients: PublicClients = defaultPublicClients,
-): HubAsyncResult<protobufs.VerificationAddSolAddressData> => {
-  return makeMessageData(
-    { verificationAddAddressBody: body },
-    protobufs.MessageType.VERIFICATION_ADD_SOL_ADDRESS,
-    dataOptions,
-    publicClients,
-  );
-};
-
 export const makeVerificationRemoveData = (
   body: protobufs.VerificationRemoveBody,
   dataOptions: MessageDataOptions,

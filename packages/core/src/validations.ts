@@ -5,11 +5,10 @@ import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { getFarcasterTime, toFarcasterTime } from "./time";
-import { makeVerificationEthAddressClaim, makeVerificationSolAddressClaim } from "./verifications";
+import { makeVerificationAddressClaim } from "./verifications";
 import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
-import bs58 from "bs58";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -146,18 +145,6 @@ export const validateEthAddress = (address?: Uint8Array | null): HubResult<Uint8
   return ok(address);
 };
 
-export const validateSolAddress = (address?: Uint8Array | null): HubResult<Uint8Array> => {
-  if (!address || address.length === 0) {
-    return err(new HubError("bad_request.validation_failure", "Solana address is missing"));
-  }
-
-  if (address.length !== 32) {
-    return err(new HubError("bad_request.validation_failure", "Solana address must be 32 bytes"));
-  }
-
-  return ok(address);
-};
-
 export const validateEthBlockHash = (blockHash?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!blockHash || blockHash.length === 0) {
     return err(new HubError("bad_request.validation_failure", "blockHash is missing"));
@@ -169,21 +156,6 @@ export const validateEthBlockHash = (blockHash?: Uint8Array | null): HubResult<U
 
   return ok(blockHash);
 };
-
-function validateSolBlockHash(input: Uint8Array): HubResult<Uint8Array> {
-  try {
-    const inputString = new TextDecoder().decode(input);
-    const decoded = bs58.decode(inputString);
-    // Solana block hashes are 32 bytes
-    if (decoded.length === 32) {
-      return ok(input);
-    } else {
-      return err(new HubError("bad_request.validation_failure", "Solana block hash must be 32 bytes"));
-    }
-  } catch (error) {
-    return err(new HubError("bad_request.validation_failure", "Solana block hash must be a valid base58 string"));
-  }
-}
 
 export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResult<Uint8Array> => {
   if (!publicKey || publicKey.length === 0) {
@@ -359,7 +331,7 @@ export const validateVerificationAddEthAddressSignature = async (
     return err(new HubError("bad_request.validation_failure", "protocolSignature > 256 bytes"));
   }
 
-  const reconstructedClaim = makeVerificationEthAddressClaim(fid, body.address, network, body.blockHash);
+  const reconstructedClaim = makeVerificationAddressClaim(fid, body.address, network, body.blockHash);
   if (reconstructedClaim.isErr()) {
     return err(reconstructedClaim.error);
   }
@@ -379,24 +351,6 @@ export const validateVerificationAddEthAddressSignature = async (
 
   if (!verificationResult.value) {
     return err(new HubError("bad_request.validation_failure", "invalid protocolSignature"));
-  }
-
-  return ok(body.protocolSignature);
-};
-
-export const validateVerificationAddSolAddressSignature = async (
-  body: protobufs.VerificationAddAddressBody,
-  fid: number,
-  network: protobufs.FarcasterNetwork,
-  publicClients: PublicClients = defaultPublicClients,
-): HubAsyncResult<Uint8Array> => {
-  if (body.protocolSignature.length > 256) {
-    return err(new HubError("bad_request.validation_failure", "protocolSignature > 256 bytes"));
-  }
-
-  const reconstructedClaim = makeVerificationSolAddressClaim(fid, body.address, network, body.blockHash);
-  if (reconstructedClaim.isErr()) {
-    return err(reconstructedClaim.error);
   }
 
   return ok(body.protocolSignature);
@@ -663,38 +617,12 @@ export const validateVerificationAddEthAddressBody = async (
   return ok(body);
 };
 
-export const validateVerificationAddSolAddressBody = async (
-  body: protobufs.VerificationAddAddressBody,
-  fid: number,
-  network: protobufs.FarcasterNetwork,
-  publicClients: PublicClients,
-): HubAsyncResult<protobufs.VerificationAddAddressBody> => {
-  const validAddress = validateSolAddress(body.address);
-  if (validAddress.isErr()) {
-    return err(validAddress.error);
-  }
-
-  // Solana block hash uses SHA-256 algorithm
-  const validBlockHash = validateSolBlockHash(body.blockHash);
-  if (validBlockHash.isErr()) {
-    return err(validBlockHash.error);
-  }
-
-  const validSignature = await validateVerificationAddSolAddressSignature(body, fid, network, publicClients);
-
-  // TODO: add validation to reconstruct user claim and validate signature against claim using input FID
-
-  return ok(body);
-};
-
 export const validateVerificationRemoveBody = (
   body: protobufs.VerificationRemoveBody,
 ): HubResult<protobufs.VerificationRemoveBody> => {
   switch (body.protocol) {
     case protobufs.Protocol.ETHEREUM:
       return validateEthAddress(body.address).map(() => body);
-    case protobufs.Protocol.SOLANA:
-      return validateSolAddress(body.address).map(() => body);
     default:
       return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
   }

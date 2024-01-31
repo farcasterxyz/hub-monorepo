@@ -6,7 +6,7 @@ import { HubError } from "./errors";
 import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
-import { makeVerificationEthAddressClaim } from "./verifications";
+import { makeVerificationAddressClaim } from "./verifications";
 import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
 import { optimism } from "viem/chains";
@@ -755,7 +755,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
   test("fails with eth signature from different address", async () => {
     const blockHash = Factories.BlockHash.build();
-    const claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    const claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
     const ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(ethSignature).toBeTruthy();
     const body = await Factories.VerificationAddEthAddressBody.create({
