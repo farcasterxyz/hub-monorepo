@@ -69,6 +69,7 @@ enum MessageType {
   MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
   MESSAGE_TYPE_USERNAME_PROOF = 12; // Add or replace a username proof
   MESSAGE_TYPE_FRAME_ACTION = 13; // A Farcaster Frame action
+  MESSAGE_TYPE_VERIFICATION_ADD_SOL_ADDRESS = 14; // Add a Verification of a Solana Address
 }
 
 /** Farcaster network the message is intended for */

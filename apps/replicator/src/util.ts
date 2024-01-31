@@ -29,6 +29,7 @@ import {
   UserDataBodyJson,
   VerificationRemoveBodyJson,
   VerificationAddEthAddressBodyJson,
+  VerificationAddSolAddressBodyJson,
   LinkBodyJson,
   ReactionBodyJson,
   CastRemoveBodyJson,
@@ -199,6 +200,17 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         claimSignature: bytesToHex(claimSignature),
         blockHash: bytesToHex(blockHash),
       } satisfies VerificationAddEthAddressBodyJson;
+    }
+    case MessageType.VERIFICATION_ADD_SOL_ADDRESS: {
+      if (!message.data.verificationAddAddressBody) {
+        throw new Error("Missing verificationAddSolAddressBody");
+      }
+      const { address, claimSignature, blockHash } = message.data.verificationAddAddressBody;
+      return {
+        address: bytesToHex(address),
+        claimSignature: bytesToHex(claimSignature),
+        blockHash: bytesToHex(blockHash),
+      } satisfies VerificationAddSolAddressBodyJson;
     }
     case MessageType.VERIFICATION_REMOVE: {
       if (!message.data.verificationRemoveBody) throw new Error("Missing verificationRemoveBody");

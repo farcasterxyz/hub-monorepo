@@ -26,6 +26,7 @@ import {
   isUserDataAddMessage,
   isUsernameProofMessage,
   isVerificationAddAddressMessage,
+  isVerificationAddSolAddressMessage,
   isVerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import { Redis } from "ioredis";
@@ -179,6 +180,12 @@ export async function processMessage(
         break;
       case MessageType.FRAME_ACTION:
         throw new AssertionError("Unexpected FRAME_ACTION message type");
+      case MessageType.VERIFICATION_ADD_SOL_ADDRESS:
+        if (!isVerificationAddSolAddressMessage(message))
+          throw new AssertionError(`Invalid VerificationAddSolAddressMessage: ${message}`);
+        log.debug(`Processing VerificationAddSolAddressMessage ${hash} (fid ${fid})`, { fid, hash });
+        // await processVerificationAddSolAddress(message, operation, trx);
+        break;
       case MessageType.NONE:
         throw new AssertionError("Message contained no type");
       default:

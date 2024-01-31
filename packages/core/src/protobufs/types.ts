@@ -76,6 +76,16 @@ export type VerificationAddAddressMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type VerificationAddSolAddressData = protobufs.MessageData & {
+  type: protobufs.MessageType.VERIFICATION_ADD_SOL_ADDRESS;
+  verificationAddSolAddressBody: protobufs.VerificationAddAddressBody;
+};
+
+export type VerificationAddSolAddressMessage = protobufs.Message & {
+  data: VerificationAddSolAddressData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
 export type VerificationRemoveData = protobufs.MessageData & {
   type: protobufs.MessageType.VERIFICATION_REMOVE;
   verificationRemoveBody: protobufs.VerificationRemoveBody;

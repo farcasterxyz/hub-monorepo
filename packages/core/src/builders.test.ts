@@ -7,7 +7,11 @@ import { bytesToHexString, hexStringToBytes, utf8StringToBytes } from "./bytes";
 import { HubError } from "./errors";
 import { Factories } from "./factories";
 import * as validations from "./validations";
+<<<<<<< HEAD
 import { makeVerificationAddressClaim, VerificationAddressClaim } from "./verifications";
+=======
+import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from "./verifications";
+>>>>>>> 74c19f02 (feat: rename verification message to support additional protocols in the future)
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeUserNameProofClaim } from "./userNameProof";
 
