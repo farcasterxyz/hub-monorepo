@@ -17,6 +17,7 @@ import {
   MessageType,
   OnChainEvent,
   OnChainEventType,
+  Protocol,
   ReactionAddMessage,
   ReactionType,
   RevokeMessageHubEvent,
@@ -190,6 +191,7 @@ describe("mergeMessage", () => {
           address,
           FarcasterNetwork.MAINNET,
           blockHash,
+          Protocol.ETHEREUM,
         )._unsafeUnwrap();
         const claimSignature = (await custodySigner.signVerificationEthAddressClaim(mainnetClaim))._unsafeUnwrap();
         const testnetVerificationAdd = await Factories.VerificationAddEthAddressMessage.create(

@@ -383,6 +383,7 @@ const VerificationEthAddressClaimFactory = Factory.define<VerificationAddressCla
     address,
     network: FarcasterNetworkFactory.build(),
     blockHash,
+    protocol: Protocol.ETHEREUM,
   };
 });
 

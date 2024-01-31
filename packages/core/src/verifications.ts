@@ -1,23 +1,35 @@
-import { FarcasterNetwork } from "./protobufs";
+import { FarcasterNetwork, Protocol } from "./protobufs";
 import { err, ok } from "neverthrow";
 import { bytesToHexString } from "./bytes";
 import { HubResult } from "./errors";
 import { validateEthAddress, validateEthBlockHash } from "./validations";
 
-export type VerificationAddressClaim = {
+export type VerificationAddressClaim = VerificationAddressClaimEthereum | VerificationAddressClaimSolana;
+
+export type VerificationAddressClaimEthereum = {
   fid: bigint;
   address: `0x${string}`;
-  network: FarcasterNetwork;
   blockHash: `0x${string}`;
+  network: FarcasterNetwork;
+  protocol: Protocol.ETHEREUM;
+};
+
+export type VerificationAddressClaimSolana = {
+  fid: bigint;
+  address: string;
+  blockHash: string;
+  network: FarcasterNetwork;
+  protocol: Protocol.SOLANA;
 };
 
 export const makeVerificationAddressClaim = (
   fid: number,
-  ethAddress: Uint8Array,
+  address: Uint8Array,
   network: FarcasterNetwork,
   blockHash: Uint8Array,
+  protocol: Protocol,
 ): HubResult<VerificationAddressClaim> => {
-  const ethAddressHex = validateEthAddress(ethAddress).andThen((validatedEthAddress) =>
+  const ethAddressHex = validateEthAddress(address).andThen((validatedEthAddress) =>
     bytesToHexString(validatedEthAddress),
   );
   if (ethAddressHex.isErr()) {
@@ -36,5 +48,6 @@ export const makeVerificationAddressClaim = (
     address: ethAddressHex.value,
     network: network,
     blockHash: blockHashHex.value,
+    protocol: protocol,
   });
 };
