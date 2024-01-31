@@ -297,13 +297,22 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
   } else if (validType.value === protobufs.MessageType.USER_DATA_ADD && !!data.userDataBody) {
     bodyResult = validateUserDataAddBody(data.userDataBody);
   } else if (validType.value === protobufs.MessageType.VERIFICATION_ADD_ADDRESS && !!data.verificationAddAddressBody) {
+    switch (data.verificationAddAddressBody.protocol) {
+      case protobufs.Protocol.ETHEREUM:
+        bodyResult = await validateVerificationAddEthAddressBody(
+          data.verificationAddAddressBody,
+          validFid.value,
+          validNetwork.value,
+          publicClients,
+        );
+        break;
+      case protobufs.Protocol.SOLANA:
+        bodyResult = ok(data.verificationAddAddressBody);
+        break;
+      default:
+        return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
+    }
     // Special check for verification claim
-    bodyResult = await validateVerificationAddEthAddressBody(
-      data.verificationAddAddressBody,
-      validFid.value,
-      validNetwork.value,
-      publicClients,
-    );
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
   } else if (validType.value === protobufs.MessageType.USERNAME_PROOF && !!data.usernameProofBody) {
