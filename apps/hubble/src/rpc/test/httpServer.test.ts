@@ -20,7 +20,7 @@ import {
   UserNameType,
   utf8StringToBytes,
   ValidationResponse,
-  VerificationAddEthAddressMessage,
+  VerificationAddAddressMessage,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -664,7 +664,7 @@ describe("httpServer", () => {
   });
 
   describe("verification APIs", () => {
-    let verificationAdd: VerificationAddEthAddressMessage;
+    let verificationAdd: VerificationAddAddressMessage;
 
     beforeAll(async () => {
       verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
@@ -676,17 +676,15 @@ describe("httpServer", () => {
     test("getVerification", async () => {
       expect((await engine.mergeMessage(verificationAdd)).isOk()).toBeTruthy();
 
-      const address = verificationAdd.data.verificationAddEthAddressBody.address;
+      const address = verificationAdd.data.verificationAddAddressBody.address;
       const url = getFullUrl(`/v1/verificationsByFid?fid=${fid}&address=${bytesToHexString(address)._unsafeUnwrap()}`);
       const response = await axiosGet(url);
 
       expect(response.status).toBe(200);
       expect(response.data).toEqual(protoToJSON(verificationAdd, Message));
-      expect(response.data.data.verificationAddEthAddressBody.address).toEqual(
-        bytesToHexString(address)._unsafeUnwrap(),
-      );
-      expect(response.data.data.verificationAddEthAddressBody.blockHash).toEqual(
-        bytesToHexString(verificationAdd.data.verificationAddEthAddressBody.blockHash)._unsafeUnwrap(),
+      expect(response.data.data.verificationAddAddressBody.address).toEqual(bytesToHexString(address)._unsafeUnwrap());
+      expect(response.data.data.verificationAddAddressBody.blockHash).toEqual(
+        bytesToHexString(verificationAdd.data.verificationAddAddressBody.blockHash)._unsafeUnwrap(),
       );
 
       // Get via fid

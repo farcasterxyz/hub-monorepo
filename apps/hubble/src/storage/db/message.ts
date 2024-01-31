@@ -100,7 +100,7 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.ReactionMessage;
   }
 
-  if (type === MessageType.VERIFICATION_ADD_ETH_ADDRESS || type === MessageType.VERIFICATION_REMOVE) {
+  if (type === MessageType.VERIFICATION_ADD_ADDRESS || type === MessageType.VERIFICATION_REMOVE) {
     return UserPostfix.VerificationMessage;
   }
 

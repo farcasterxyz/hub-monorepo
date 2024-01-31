@@ -1,12 +1,12 @@
 import { performDbMigrations } from "./migrations.js";
-import { Factories, isVerificationAddEthAddressMessage } from "@farcaster/hub-nodejs";
+import { Factories, isVerificationAddAddressMessage } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../jestUtils.js";
 import StoreEventHandler from "../../stores/storeEventHandler.js";
 import VerificationStore, {
   makeVerificationAddsKey,
   makeVerificationRemovesKey,
 } from "../../stores/verificationStore.js";
-import { VerificationAddEthAddressMessage, VerificationRemoveMessage } from "@farcaster/core";
+import { VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/core";
 import RocksDB from "../rocksdb.js";
 import { makeTsHash, putMessageTransaction } from "../message.js";
 import OnChainEventStore from "../../stores/onChainEventStore.js";
@@ -16,13 +16,13 @@ const db = jestRocksDB("uniqueverifications.migration.test");
 describe("uniqueVerifications migration", () => {
   const putVerificationMessage = async (
     db: RocksDB,
-    message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
+    message: VerificationAddAddressMessage | VerificationRemoveMessage,
   ) => {
     const txn = db.transaction();
     const tsHash = makeTsHash(message.data?.timestamp, message.hash)._unsafeUnwrap();
     putMessageTransaction(txn, message);
-    if (isVerificationAddEthAddressMessage(message)) {
-      const addKey = makeVerificationAddsKey(message.data.fid, message.data.verificationAddEthAddressBody.address);
+    if (isVerificationAddAddressMessage(message)) {
+      const addKey = makeVerificationAddsKey(message.data.fid, message.data.verificationAddAddressBody.address);
       txn.put(addKey, Buffer.from(tsHash));
     } else {
       const removeKey = makeVerificationRemovesKey(message.data.fid, message.data.verificationRemoveBody.address);
@@ -37,7 +37,7 @@ describe("uniqueVerifications migration", () => {
     const ethSignerKey = (await ethSigner.getSignerKey())._unsafeUnwrap();
     const verificationAdd1 = await Factories.VerificationAddEthAddressMessage.create(
       {
-        data: { fid, verificationAddEthAddressBody: { address: ethSignerKey } },
+        data: { fid, verificationAddAddressBody: { address: ethSignerKey } },
       },
       { transient: { ethSigner } },
     );
