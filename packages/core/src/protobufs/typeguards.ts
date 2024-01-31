@@ -81,18 +81,36 @@ export const isVerificationAddEthAddressData = (
   data: protobufs.MessageData,
 ): data is types.VerificationAddEthAddressData => {
   return (
-    data.type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
-    typeof data.verificationAddEthAddressBody !== "undefined"
+    data.type === protobufs.MessageType.VERIFICATION_ADD_ADDRESS &&
+    typeof data.verificationAddAddressBody !== "undefined"
   );
 };
 
-export const isVerificationAddEthAddressMessage = (
+export const isVerificationAddAddressMessage = (
   message: protobufs.Message,
-): message is types.VerificationAddEthAddressMessage => {
+): message is types.VerificationAddAddressMessage => {
   return (
     message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
     typeof message.data !== "undefined" &&
     isVerificationAddEthAddressData(message.data)
+  );
+};
+export const isVerificationAddSolAddressData = (
+  data: protobufs.MessageData,
+): data is types.VerificationAddSolAddressData => {
+  return (
+    data.type === protobufs.MessageType.VERIFICATION_ADD_SOL_ADDRESS &&
+    typeof data.verificationAddAddressBody !== "undefined"
+  );
+};
+
+export const isVerificationAddSolAddressMessage = (
+  message: protobufs.Message,
+): message is types.VerificationAddSolAddressMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== "undefined" &&
+    isVerificationAddSolAddressData(message.data)
   );
 };
 

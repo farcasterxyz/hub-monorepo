@@ -9,7 +9,7 @@ import {
   Message,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-  VerificationAddEthAddressMessage,
+  VerificationAddAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -27,7 +27,7 @@ const fid = Factories.Fid.build();
 
 let ethSigner: Eip712Signer;
 let ethSignerKey: Uint8Array;
-let verificationAdd: VerificationAddEthAddressMessage;
+let verificationAdd: VerificationAddAddressMessage;
 let verificationRemove: VerificationRemoveMessage;
 
 beforeAll(async () => {
@@ -127,19 +127,17 @@ describe("merge", () => {
     eventHandler.off("mergeMessage", mergeMessageHandler);
   });
 
-  const assertVerificationExists = async (message: VerificationAddEthAddressMessage | VerificationRemoveMessage) => {
+  const assertVerificationExists = async (message: VerificationAddAddressMessage | VerificationRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, message.data.fid, UserPostfix.VerificationMessage, tsHash)).resolves.toEqual(message);
   };
 
-  const assertVerificationDoesNotExist = async (
-    message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
-  ) => {
+  const assertVerificationDoesNotExist = async (message: VerificationAddAddressMessage | VerificationRemoveMessage) => {
     const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
     await expect(getMessage(db, message.data.fid, UserPostfix.VerificationMessage, tsHash)).rejects.toThrow(HubError);
   };
 
-  const assertVerificationAddWins = async (message: VerificationAddEthAddressMessage) => {
+  const assertVerificationAddWins = async (message: VerificationAddAddressMessage) => {
     await assertVerificationExists(message);
     await expect(set.getVerificationAdd(fid, ethSignerKey)).resolves.toEqual(message);
     await expect(set.getVerificationRemove(fid, ethSignerKey)).rejects.toThrow(HubError);
@@ -173,7 +171,7 @@ describe("merge", () => {
     });
 
     describe("with a conflicting VerificationAddEthAddress with different timestamps", () => {
-      let verificationAddLater: VerificationAddEthAddressMessage;
+      let verificationAddLater: VerificationAddAddressMessage;
 
       beforeAll(async () => {
         verificationAddLater = await Factories.VerificationAddEthAddressMessage.create({
@@ -204,7 +202,7 @@ describe("merge", () => {
     });
 
     describe("with a conflicting VerificationAddEthAddress with identical timestamps", () => {
-      let verificationAddLater: VerificationAddEthAddressMessage;
+      let verificationAddLater: VerificationAddAddressMessage;
 
       beforeAll(async () => {
         verificationAddLater = await Factories.VerificationAddEthAddressMessage.create({
@@ -546,12 +544,12 @@ describe("pruneMessages", () => {
     eventHandler.off("pruneMessage", pruneMessageListener);
   });
 
-  let add1: VerificationAddEthAddressMessage;
-  let add2: VerificationAddEthAddressMessage;
-  let add3: VerificationAddEthAddressMessage;
-  let add4: VerificationAddEthAddressMessage;
-  let add5: VerificationAddEthAddressMessage;
-  let addOld1: VerificationAddEthAddressMessage;
+  let add1: VerificationAddAddressMessage;
+  let add2: VerificationAddAddressMessage;
+  let add3: VerificationAddAddressMessage;
+  let add4: VerificationAddAddressMessage;
+  let add5: VerificationAddAddressMessage;
+  let addOld1: VerificationAddAddressMessage;
 
   let remove1: VerificationRemoveMessage;
   let remove2: VerificationRemoveMessage;
@@ -559,10 +557,7 @@ describe("pruneMessages", () => {
   let remove4: VerificationRemoveMessage;
   let remove5: VerificationRemoveMessage;
 
-  const generateAddWithTimestamp = async (
-    fid: number,
-    timestamp: number,
-  ): Promise<VerificationAddEthAddressMessage> => {
+  const generateAddWithTimestamp = async (fid: number, timestamp: number): Promise<VerificationAddAddressMessage> => {
     return Factories.VerificationAddEthAddressMessage.create({ data: { fid, timestamp } });
   };
 
@@ -612,7 +607,7 @@ describe("pruneMessages", () => {
 
       expect(prunedMessages).toEqual([add1, add2]);
 
-      for (const message of prunedMessages as VerificationAddEthAddressMessage[]) {
+      for (const message of prunedMessages as VerificationAddAddressMessage[]) {
         const getAdd = () =>
           sizePrunedStore.getVerificationAdd(fid, message.data.verificationAddEthAddressBody.address);
         await expect(getAdd()).rejects.toThrow(HubError);

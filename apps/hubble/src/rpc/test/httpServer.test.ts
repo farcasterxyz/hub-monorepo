@@ -20,7 +20,7 @@ import {
   UserNameType,
   utf8StringToBytes,
   ValidationResponse,
-  VerificationAddEthAddressMessage,
+  VerificationAddAddressMessage,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -664,7 +664,7 @@ describe("httpServer", () => {
   });
 
   describe("verification APIs", () => {
-    let verificationAdd: VerificationAddEthAddressMessage;
+    let verificationAdd: VerificationAddAddressMessage;
 
     beforeAll(async () => {
       verificationAdd = await Factories.VerificationAddEthAddressMessage.create(

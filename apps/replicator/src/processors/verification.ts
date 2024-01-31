@@ -1,20 +1,20 @@
-import { MessageType, VerificationAddEthAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
+import { MessageType, VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
 import { Selectable, sql } from "kysely";
 import { buildAddRemoveMessageProcessor } from "../messageProcessor.js";
 import { VerificationRow, executeTakeFirst, executeTakeFirstOrThrow } from "../db.js";
 import { bytesToHex, farcasterTimeToDate } from "../util.js";
 
-const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
-  VerificationAddEthAddressMessage,
+const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageProcessor<
+  VerificationAddAddressMessage,
   VerificationRemoveMessage,
   Selectable<VerificationRow>
 >({
   conflictRule: "last-write-wins",
-  addMessageType: MessageType.VERIFICATION_ADD_ETH_ADDRESS,
+  addMessageType: MessageType.VERIFICATION_ADD_ADDRESS,
   removeMessageType: MessageType.VERIFICATION_REMOVE,
   withConflictId(message) {
     const ethAddress =
-      message.data.type === MessageType.VERIFICATION_ADD_ETH_ADDRESS
+      message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
         ? message.data.verificationAddEthAddressBody.address
         : message.data.verificationRemoveBody.address;
 
@@ -24,7 +24,7 @@ const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
   },
   async getDerivedRow(message, trx) {
     const ethAddress =
-      message.data.type === MessageType.VERIFICATION_ADD_ETH_ADDRESS
+      message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
         ? message.data.verificationAddEthAddressBody.address
         : message.data.verificationRemoveBody.address;
 
@@ -92,4 +92,5 @@ const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
   },
 });
 
-export { processAdd as processVerificationAddEthAddress, processRemove as processVerificationRemove };
+// TODO: implement processAdd support for Solana in separate PR
+export { processAddEthereum as processVerificationAddEthAddress, processRemove as processVerificationRemove };

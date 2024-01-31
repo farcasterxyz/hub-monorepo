@@ -197,14 +197,14 @@ describe("validateEthAddress", () => {
   test("fails with longer address", () => {
     const longAddress = Factories.Bytes.build({}, { transient: { length: 21 } });
     expect(validations.validateEthAddress(longAddress)).toEqual(
-      err(new HubError("bad_request.validation_failure", "address must be 20 bytes")),
+      err(new HubError("bad_request.validation_failure", "Ethereum address must be 20 bytes")),
     );
   });
 
   test("fails with shorter address", () => {
     const shortAddress = ethSignerKey.subarray(0, -1);
     expect(validations.validateEthAddress(shortAddress)).toEqual(
-      err(new HubError("bad_request.validation_failure", "address must be 20 bytes")),
+      err(new HubError("bad_request.validation_failure", "Ethereum address must be 20 bytes")),
     );
   });
 });
@@ -636,14 +636,14 @@ describe("validateVerificationAddEthAddressBody", () => {
 
     test("with missing eth address", async () => {
       body = Factories.VerificationAddEthAddressBody.build({ address: undefined });
-      hubErrorMessage = "address is missing";
+      hubErrorMessage = "Ethereum address is missing";
     });
 
     test("with eth address larger than 20 bytes", async () => {
       body = Factories.VerificationAddEthAddressBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = "address must be 20 bytes";
+      hubErrorMessage = "Ethereum address must be 20 bytes";
     });
 
     test("with missing block hash", async () => {
@@ -788,14 +788,14 @@ describe("validateVerificationRemoveBody", () => {
       body = Factories.VerificationRemoveBody.build({
         address: undefined,
       });
-      hubErrorMessage = "address is missing";
+      hubErrorMessage = "Ethereum address is missing";
     });
 
     test("with invalid address", async () => {
       body = Factories.VerificationRemoveBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = "address must be 20 bytes";
+      hubErrorMessage = "Ethereum address must be 20 bytes";
     });
   });
 });

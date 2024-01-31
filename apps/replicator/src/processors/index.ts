@@ -25,7 +25,8 @@ import {
   isRevokeMessageHubEvent,
   isUserDataAddMessage,
   isUsernameProofMessage,
-  isVerificationAddEthAddressMessage,
+  isVerificationAddAddressMessage,
+  isVerificationAddSolAddressMessage,
   isVerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import { Redis } from "ioredis";
@@ -155,8 +156,8 @@ export async function processMessage(
         log.debug(`Processing LinkRemoveMessage ${hash} (fid ${fid})`, { fid, hash });
         await processLinkRemove(message, operation, trx);
         break;
-      case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
-        if (!isVerificationAddEthAddressMessage(message))
+      case MessageType.VERIFICATION_ADD_ADDRESS:
+        if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
         await processVerificationAddEthAddress(message, operation, trx);
@@ -179,6 +180,12 @@ export async function processMessage(
         break;
       case MessageType.FRAME_ACTION:
         throw new AssertionError("Unexpected FRAME_ACTION message type");
+      case MessageType.VERIFICATION_ADD_SOL_ADDRESS:
+        if (!isVerificationAddSolAddressMessage(message))
+          throw new AssertionError(`Invalid VerificationAddSolAddressMessage: ${message}`);
+        log.debug(`Processing VerificationAddSolAddressMessage ${hash} (fid ${fid})`, { fid, hash });
+        // await processVerificationAddSolAddress(message, operation, trx);
+        break;
       case MessageType.NONE:
         throw new AssertionError("Message contained no type");
       default:

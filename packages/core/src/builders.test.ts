@@ -1,12 +1,13 @@
 import { faker } from "@faker-js/faker";
 import * as protobufs from "./protobufs";
+import { Protocol } from "./protobufs";
 import { err, ok } from "neverthrow";
 import * as builders from "./builders";
 import { bytesToHexString, hexStringToBytes, utf8StringToBytes } from "./bytes";
 import { HubError } from "./errors";
 import { Factories } from "./factories";
 import * as validations from "./validations";
-import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from "./verifications";
+import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from "./verifications";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeUserNameProofClaim } from "./userNameProof";
 
@@ -161,7 +162,13 @@ describe("makeVerificationAddEthAddressData", () => {
 
 describe("makeVerificationRemoveData", () => {
   test("succeeds", async () => {
-    const data = await builders.makeVerificationRemoveData({ address: ethSignerKey }, { fid, network });
+    const data = await builders.makeVerificationRemoveData(
+      {
+        address: ethSignerKey,
+        protocol: Protocol.ETHEREUM,
+      },
+      { fid, network },
+    );
     expect(data.isOk()).toBeTruthy();
     const isValid = await validations.validateMessageData(data._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();

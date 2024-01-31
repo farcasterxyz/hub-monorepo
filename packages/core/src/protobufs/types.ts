@@ -67,12 +67,22 @@ export type ReactionRemoveMessage = protobufs.Message & {
 };
 
 export type VerificationAddEthAddressData = protobufs.MessageData & {
-  type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS;
-  verificationAddEthAddressBody: protobufs.VerificationAddEthAddressBody;
+  type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS;
+  verificationAddEthAddressBody: protobufs.VerificationAddAddressBody;
 };
 
-export type VerificationAddEthAddressMessage = protobufs.Message & {
+export type VerificationAddAddressMessage = protobufs.Message & {
   data: VerificationAddEthAddressData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
+export type VerificationAddSolAddressData = protobufs.MessageData & {
+  type: protobufs.MessageType.VERIFICATION_ADD_SOL_ADDRESS;
+  verificationAddSolAddressBody: protobufs.VerificationAddAddressBody;
+};
+
+export type VerificationAddSolAddressMessage = protobufs.Message & {
+  data: VerificationAddSolAddressData;
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 

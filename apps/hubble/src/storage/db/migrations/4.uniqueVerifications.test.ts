@@ -1,12 +1,12 @@
 import { performDbMigrations } from "./migrations.js";
-import { Factories, isVerificationAddEthAddressMessage } from "@farcaster/hub-nodejs";
+import { Factories, isVerificationAddAddressMessage } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../jestUtils.js";
 import StoreEventHandler from "../../stores/storeEventHandler.js";
 import VerificationStore, {
   makeVerificationAddsKey,
   makeVerificationRemovesKey,
 } from "../../stores/verificationStore.js";
-import { VerificationAddEthAddressMessage, VerificationRemoveMessage } from "@farcaster/core";
+import { VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/core";
 import RocksDB from "../rocksdb.js";
 import { makeTsHash, putMessageTransaction } from "../message.js";
 import OnChainEventStore from "../../stores/onChainEventStore.js";
@@ -16,12 +16,12 @@ const db = jestRocksDB("uniqueverifications.migration.test");
 describe("uniqueVerifications migration", () => {
   const putVerificationMessage = async (
     db: RocksDB,
-    message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
+    message: VerificationAddAddressMessage | VerificationRemoveMessage,
   ) => {
     const txn = db.transaction();
     const tsHash = makeTsHash(message.data?.timestamp, message.hash)._unsafeUnwrap();
     putMessageTransaction(txn, message);
-    if (isVerificationAddEthAddressMessage(message)) {
+    if (isVerificationAddAddressMessage(message)) {
       const addKey = makeVerificationAddsKey(message.data.fid, message.data.verificationAddEthAddressBody.address);
       txn.put(addKey, Buffer.from(tsHash));
     } else {

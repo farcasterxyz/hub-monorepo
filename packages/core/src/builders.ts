@@ -20,7 +20,7 @@ type MessageBodyOptions = Pick<
   | "castAddBody"
   | "castRemoveBody"
   | "reactionBody"
-  | "verificationAddEthAddressBody"
+  | "verificationAddAddressBody"
   | "verificationRemoveBody"
   | "userDataBody"
   | "linkBody"
@@ -231,11 +231,11 @@ export const makeReactionRemoveData = (
 /* -------------------------------------------------------------------------- */
 
 export const makeVerificationAddEthAddress = async (
-  body: protobufs.VerificationAddEthAddressBody,
+  body: protobufs.VerificationAddAddressBody,
   dataOptions: MessageDataOptions,
   signer: Signer,
   publicClients: PublicClients = defaultPublicClients,
-): HubAsyncResult<protobufs.VerificationAddEthAddressMessage> => {
+): HubAsyncResult<protobufs.VerificationAddAddressMessage> => {
   const data = await makeVerificationAddEthAddressData(body, dataOptions, publicClients);
   if (data.isErr()) {
     return err(data.error);
@@ -256,13 +256,27 @@ export const makeVerificationRemove = async (
 };
 
 export const makeVerificationAddEthAddressData = (
-  body: protobufs.VerificationAddEthAddressBody,
+  body: protobufs.VerificationAddAddressBody,
   dataOptions: MessageDataOptions,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<protobufs.VerificationAddEthAddressData> => {
   return makeMessageData(
-    { verificationAddEthAddressBody: body },
-    protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
+    { verificationAddAddressBody: body },
+    protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    dataOptions,
+    publicClients,
+  );
+};
+
+// TODO: Add Solana public clients
+export const makeVerificationAddSolAddressData = (
+  body: protobufs.VerificationAddAddressBody,
+  dataOptions: MessageDataOptions,
+  publicClients: PublicClients = defaultPublicClients,
+): HubAsyncResult<protobufs.VerificationAddSolAddressData> => {
+  return makeMessageData(
+    { verificationAddAddressBody: body },
+    protobufs.MessageType.VERIFICATION_ADD_SOL_ADDRESS,
     dataOptions,
     publicClients,
   );

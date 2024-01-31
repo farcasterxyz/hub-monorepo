@@ -27,7 +27,7 @@ import {
   UserNameProof,
   UserNameType,
   utf8StringToBytes,
-  VerificationAddEthAddressMessage,
+  VerificationAddAddressMessage,
 } from "@farcaster/hub-nodejs";
 import { err, Ok, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -60,7 +60,7 @@ let signerRemoveEvent: OnChainEvent;
 let castAdd: CastAddMessage;
 let reactionAdd: ReactionAddMessage;
 let linkAdd: LinkAddMessage;
-let verificationAdd: VerificationAddEthAddressMessage;
+let verificationAdd: VerificationAddAddressMessage;
 let userDataAdd: UserDataAddMessage;
 
 beforeAll(async () => {
@@ -209,7 +209,7 @@ describe("mergeMessage", () => {
 
       describe("validateOrRevokeMessage", () => {
         let mergedMessage: Message;
-        let verifications: VerificationAddEthAddressMessage[] = [];
+        let verifications: VerificationAddAddressMessage[] = [];
 
         const getVerifications = async () => {
           const verificationsResult = await engine.getVerificationsByFid(fid);
