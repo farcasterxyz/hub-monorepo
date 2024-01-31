@@ -7,7 +7,7 @@ import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationAddressClaim } from "./verifications";
-import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
+import { Protocol, UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
 import { jest } from "@jest/globals";
 
@@ -618,7 +618,10 @@ describe("validateVerificationAddEthAddressBody", () => {
   const network = Factories.FarcasterNetwork.build();
 
   test("succeeds", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressBody(body, fid, network);
     expect(result).toEqual(ok(body));
   });
@@ -664,7 +667,10 @@ describe("validateVerificationAddEthAddressSignature", () => {
   const network = Factories.FarcasterNetwork.build();
 
   test("succeeds for eoas", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result.isOk()).toBeTruthy();
   });
@@ -727,7 +733,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
         chainId,
         verificationType: 1,
       },
-      { transient: { fid, network, contractSignature: true } },
+      { transient: { fid, network, contractSignature: true, protocol: Protocol.ETHEREUM } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
     expect(result.isOk()).toBeTruthy();
@@ -746,7 +752,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
         chainId,
         verificationType: 1,
       },
-      { transient: { fid, network, contractSignature: true } },
+      { transient: { fid, network, contractSignature: true, protocol: Protocol.ETHEREUM } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
     expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid claimSignature")));
@@ -768,8 +774,8 @@ describe("validateVerificationAddEthAddressSignature", () => {
 });
 
 describe("validateVerificationRemoveBody", () => {
-  test("succeeds", () => {
-    const body = Factories.VerificationRemoveBody.build();
+  test("ethereum-succeeds", () => {
+    const body = Factories.VerificationRemoveBody.build({ protocol: Protocol.ETHEREUM });
     expect(validations.validateVerificationRemoveBody(body)).toEqual(ok(body));
   });
 
@@ -786,6 +792,7 @@ describe("validateVerificationRemoveBody", () => {
     test("when address is missing", async () => {
       body = Factories.VerificationRemoveBody.build({
         address: undefined,
+        protocol: Protocol.ETHEREUM,
       });
       hubErrorMessage = "Ethereum address is missing";
     });
@@ -793,6 +800,7 @@ describe("validateVerificationRemoveBody", () => {
     test("with invalid address", async () => {
       body = Factories.VerificationRemoveBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
+        protocol: Protocol.ETHEREUM,
       });
       hubErrorMessage = "Ethereum address must be 20 bytes";
     });
