@@ -7,7 +7,7 @@ import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationAddressClaim } from "./verifications";
-import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
+import { Protocol, UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
 import { optimism } from "viem/chains";
 import { jest } from "@jest/globals";
@@ -619,7 +619,10 @@ describe("validateVerificationAddEthAddressBody", () => {
   const network = Factories.FarcasterNetwork.build();
 
   test("succeeds", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressBody(body, fid, network);
     expect(result).toEqual(ok(body));
   });
@@ -665,54 +668,74 @@ describe("validateVerificationAddEthAddressSignature", () => {
   const network = Factories.FarcasterNetwork.build();
 
   test("succeeds for eoas", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({}, { transient: { fid, network } });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result.isOk()).toBeTruthy();
   });
 
   test("fails with invalid eth signature", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
-    });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      },
+      { transient: { protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result).toEqual(err(new HubError("unknown", "Cannot convert 0x to a BigInt")));
   });
 
   test("fails with invalid verificationType", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
-      verificationType: 2,
-    });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+        verificationType: 2,
+      },
+      { transient: { protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid verification type")));
   });
 
   test("fails with invalid chainId", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
-      chainId: 7,
-      verificationType: 1,
-    });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+        chainId: 7,
+        verificationType: 1,
+      },
+      { transient: { protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "Invalid chain ID")));
   });
 
   test("fails if client not provided for chainId", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
-      chainId: 1,
-      verificationType: 1,
-    });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+        chainId: 1,
+        verificationType: 1,
+      },
+      { transient: { protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "RPC client not provided for chainId 1")));
   });
 
   test("fails if ethSignature is > 256 bytes", async () => {
-    const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 257 } }),
-    });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        addressVerificationSignature: Factories.Bytes.build({}, { transient: { length: 257 } }),
+      },
+      { transient: { protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "protocolSignature > 256 bytes")));
+    expect(result).toEqual(
+      err(new HubError("bad_request.validation_failure", "addressVerificationSignature > 256 bytes")),
+    );
   });
 
   test("succeeds for contract signatures", async () => {
@@ -728,7 +751,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
         chainId,
         verificationType: 1,
       },
-      { transient: { fid, network, contractSignature: true } },
+      { transient: { fid, network, contractSignature: true, protocol: Protocol.ETHEREUM } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
     expect(result.isOk()).toBeTruthy();
@@ -747,10 +770,10 @@ describe("validateVerificationAddEthAddressSignature", () => {
         chainId,
         verificationType: 1,
       },
-      { transient: { fid, network, contractSignature: true } },
+      { transient: { fid, network, contractSignature: true, protocol: Protocol.ETHEREUM } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid protocolSignature")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid addressVerificationSignature")));
   });
 
   test("fails with eth signature from different address", async () => {
@@ -758,19 +781,22 @@ describe("validateVerificationAddEthAddressSignature", () => {
     const claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
     const ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(ethSignature).toBeTruthy();
-    const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: ethSignature,
-      blockHash,
-      address: Factories.EthAddress.build(),
-    });
+    const body = await Factories.VerificationAddEthAddressBody.create(
+      {
+        addressVerificationSignature: ethSignature,
+        blockHash,
+        address: Factories.EthAddress.build(),
+      },
+      { transient: { protocol: Protocol.ETHEREUM } },
+    );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid protocolSignature")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid addressVerificationSignature")));
   });
 });
 
 describe("validateVerificationRemoveBody", () => {
-  test("succeeds", () => {
-    const body = Factories.VerificationRemoveBody.build();
+  test("ethereum-succeeds", () => {
+    const body = Factories.VerificationRemoveBody.build({ protocol: Protocol.ETHEREUM });
     expect(validations.validateVerificationRemoveBody(body)).toEqual(ok(body));
   });
 
@@ -787,6 +813,7 @@ describe("validateVerificationRemoveBody", () => {
     test("when address is missing", async () => {
       body = Factories.VerificationRemoveBody.build({
         address: undefined,
+        protocol: Protocol.ETHEREUM,
       });
       hubErrorMessage = "Ethereum address is missing";
     });
@@ -794,6 +821,7 @@ describe("validateVerificationRemoveBody", () => {
     test("with invalid address", async () => {
       body = Factories.VerificationRemoveBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
+        protocol: Protocol.ETHEREUM,
       });
       hubErrorMessage = "Ethereum address must be 20 bytes";
     });

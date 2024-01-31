@@ -151,7 +151,12 @@ describe("makeVerificationAddEthAddressData", () => {
 
   test("succeeds", async () => {
     const data = await builders.makeVerificationAddEthAddressData(
-      { address: ethSignerKey, blockHash: blockHash, protocolSignature: ethSignature, protocol: Protocol.ETHEREUM },
+      {
+        address: ethSignerKey,
+        blockHash: blockHash,
+        addressVerificationSignature: ethSignature,
+        protocol: Protocol.ETHEREUM,
+      },
       { fid, network },
     );
     expect(data.isOk()).toBeTruthy();
@@ -189,7 +194,12 @@ describe("makeVerificationAddEthAddress", () => {
 
   test("succeeds", async () => {
     const message = await builders.makeVerificationAddEthAddress(
-      { address: ethSignerKey, blockHash: blockHash, protocolSignature: ethSignature, protocol: Protocol.ETHEREUM },
+      {
+        address: ethSignerKey,
+        blockHash: blockHash,
+        addressVerificationSignature: ethSignature,
+        protocol: Protocol.ETHEREUM,
+      },
       { fid, network },
       ed25519Signer,
     );

@@ -10,6 +10,7 @@ import {
   IdRegisterEventType,
   IdRegisterOnChainEvent,
   OnChainEventType,
+  Protocol,
   SignerEventBody,
   SignerEventType,
   SignerMigratedEventBody,
@@ -24,6 +25,7 @@ import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip71
 import { FARCASTER_EPOCH, getFarcasterTime, toFarcasterTime } from "./time";
 import { VerificationAddressClaim } from "./verifications";
 import { LocalAccount } from "viem";
+import { err } from "neverthrow";
 
 /** Scalars */
 
@@ -384,37 +386,45 @@ const VerificationEthAddressClaimFactory = Factory.define<VerificationAddressCla
   };
 });
 
-const VerificationAddEthAddressBodyFactory = Factory.define<
+const VerificationAddAddressBodyFactory = Factory.define<
   protobufs.VerificationAddAddressBody,
   {
     fid?: number;
     network?: protobufs.FarcasterNetwork;
     signer?: Eip712Signer | undefined;
     contractSignature?: boolean;
+    protocol: Protocol;
   },
   protobufs.VerificationAddAddressBody
 >(({ onCreate, transientParams }) => {
   onCreate(async (body) => {
-    const ethSigner = transientParams.signer ?? Eip712SignerFactory.build();
-    if (!transientParams.contractSignature) {
-      body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
-    }
+    switch (transientParams.protocol) {
+      case Protocol.ETHEREUM: {
+        const ethSigner = transientParams.signer ?? Eip712SignerFactory.build();
+        if (!transientParams.contractSignature) {
+          body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
+        }
 
-    if (body.protocolSignature.length === 0) {
-      // Generate address and signature
-      const fid = transientParams.fid ?? FidFactory.build();
-      const network = transientParams.network ?? FarcasterNetworkFactory.build();
-      const blockHash = bytesToHexString(body.blockHash);
-      const claim = VerificationEthAddressClaimFactory.build({
-        fid: BigInt(fid),
-        network,
-        blockHash: blockHash.isOk() ? blockHash.value : "0x",
-        address: bytesToHexString(body.address)._unsafeUnwrap(),
-      });
-      body.protocolSignature = (await ethSigner.signVerificationEthAddressClaim(claim, body.chainId))._unsafeUnwrap();
+        if (body.addressVerificationSignature.length === 0) {
+          // Generate address and signature
+          const fid = transientParams.fid ?? FidFactory.build();
+          const network = transientParams.network ?? FarcasterNetworkFactory.build();
+          const blockHash = bytesToHexString(body.blockHash);
+          const claim = VerificationEthAddressClaimFactory.build({
+            fid: BigInt(fid),
+            network,
+            blockHash: blockHash.isOk() ? blockHash.value : "0x",
+            address: bytesToHexString(body.address)._unsafeUnwrap(),
+          });
+          body.addressVerificationSignature = (
+            await ethSigner.signVerificationEthAddressClaim(claim, body.chainId)
+          )._unsafeUnwrap();
+        }
+        return body;
+      }
+      default:
+        throw new Error(`Unsupported protocol [found: ${transientParams.protocol}]`);
     }
-
-    return body;
   });
 
   return protobufs.VerificationAddAddressBody.create({
@@ -429,18 +439,22 @@ const VerificationAddEthAddressDataFactory = Factory.define<
 >(({ onCreate, transientParams }) => {
   onCreate(async (data) => {
     const body = data.verificationAddAddressBody;
-    if (body.protocolSignature.length === 0) {
-      const signedBody = await VerificationAddEthAddressBodyFactory.create(body, {
-        transient: { fid: data.fid, network: data.network, signer: transientParams.signer },
+    if (body.addressVerificationSignature.length === 0) {
+      data.verificationAddAddressBody = await VerificationAddAddressBodyFactory.create(body, {
+        transient: {
+          fid: data.fid,
+          network: data.network,
+          signer: transientParams.signer,
+          protocol: Protocol.ETHEREUM,
+        },
       });
-      data.verificationAddAddressBody = signedBody;
     }
     return data;
   });
 
   return MessageDataFactory.build({
     // verificationAddEthAddressBody will not be valid until onCreate
-    verificationAddAddressBody: VerificationAddEthAddressBodyFactory.build({}),
+    verificationAddAddressBody: VerificationAddAddressBodyFactory.build({ protocol: Protocol.ETHEREUM }),
     type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
   }) as protobufs.VerificationAddAddressData;
 });
@@ -470,14 +484,20 @@ const VerificationAddEthAddressMessageFactory = Factory.define<
   ) as protobufs.VerificationAddAddressMessage;
 });
 
-const VerificationRemoveBodyFactory = Factory.define<protobufs.VerificationRemoveBody>(() => {
-  return protobufs.VerificationRemoveBody.create({
-    address: EthAddressFactory.build(),
-  });
+const VerificationRemoveBodyFactory = Factory.define<protobufs.VerificationRemoveBody>(({ params }) => {
+  switch (params.protocol) {
+    case Protocol.ETHEREUM:
+      return protobufs.VerificationRemoveBody.create({
+        address: EthAddressFactory.build(),
+        protocol: protobufs.Protocol.ETHEREUM,
+      });
+    default:
+      throw new Error(`Unsupported protocol [found: ${params.protocol}]`);
+  }
 });
 
 const VerificationRemoveDataFactory = MessageDataFactory.params({
-  verificationRemoveBody: VerificationRemoveBodyFactory.build(),
+  verificationRemoveBody: VerificationRemoveBodyFactory.build({ protocol: Protocol.ETHEREUM }),
   type: protobufs.MessageType.VERIFICATION_REMOVE,
 }) as Factory<protobufs.VerificationRemoveData>;
 
@@ -701,7 +721,7 @@ export const Factories = {
   ReactionRemoveData: ReactionRemoveDataFactory,
   ReactionRemoveMessage: ReactionRemoveMessageFactory,
   VerificationEthAddressClaim: VerificationEthAddressClaimFactory,
-  VerificationAddEthAddressBody: VerificationAddEthAddressBodyFactory,
+  VerificationAddEthAddressBody: VerificationAddAddressBodyFactory,
   VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,
   VerificationAddEthAddressMessage: VerificationAddEthAddressMessageFactory,
   VerificationRemoveBody: VerificationRemoveBodyFactory,

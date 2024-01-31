@@ -204,7 +204,7 @@ export type ReactionBodyJson = ReactionBodyCastJson | ReactionBodyUrlJson;
 
 export type VerificationAddEthAddressBodyJson = {
   address: Hex;
-  protocolSignature: Hex;
+  addressVerificationSignature: Hex;
   blockHash: Hex;
 };
 

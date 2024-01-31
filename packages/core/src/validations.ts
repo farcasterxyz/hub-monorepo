@@ -327,8 +327,8 @@ export const validateVerificationAddEthAddressSignature = async (
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
-  if (body.protocolSignature.length > 256) {
-    return err(new HubError("bad_request.validation_failure", "protocolSignature > 256 bytes"));
+  if (body.addressVerificationSignature.length > 256) {
+    return err(new HubError("bad_request.validation_failure", "addressVerificationSignature > 256 bytes"));
   }
 
   const reconstructedClaim = makeVerificationAddressClaim(fid, body.address, network, body.blockHash);
@@ -338,7 +338,7 @@ export const validateVerificationAddEthAddressSignature = async (
 
   const verificationResult = await eip712.verifyVerificationEthAddressClaimSignature(
     reconstructedClaim.value,
-    body.protocolSignature,
+    body.addressVerificationSignature,
     body.address,
     body.verificationType,
     body.chainId,
@@ -350,10 +350,10 @@ export const validateVerificationAddEthAddressSignature = async (
   }
 
   if (!verificationResult.value) {
-    return err(new HubError("bad_request.validation_failure", "invalid protocolSignature"));
+    return err(new HubError("bad_request.validation_failure", "invalid addressVerificationSignature"));
   }
 
-  return ok(body.protocolSignature);
+  return ok(body.addressVerificationSignature);
 };
 
 export const validateUrl = (url: string): HubResult<string> => {

@@ -62,7 +62,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
       hash: message.hash,
       signerAddress: verificationAddBody.address,
       blockHash: verificationAddBody.blockHash,
-      signature: verificationAddBody.protocolSignature,
+      signature: verificationAddBody.addressVerificationSignature,
     };
 
     // Upsert the verification, if it's shadowed by a remove, mark it as deleted
