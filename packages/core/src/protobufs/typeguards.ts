@@ -95,25 +95,6 @@ export const isVerificationAddAddressMessage = (
     isVerificationAddEthAddressData(message.data)
   );
 };
-export const isVerificationAddSolAddressData = (
-  data: protobufs.MessageData,
-): data is types.VerificationAddSolAddressData => {
-  return (
-    data.type === protobufs.MessageType.VERIFICATION_ADD_SOL_ADDRESS &&
-    typeof data.verificationAddAddressBody !== "undefined"
-  );
-};
-
-export const isVerificationAddSolAddressMessage = (
-  message: protobufs.Message,
-): message is types.VerificationAddSolAddressMessage => {
-  return (
-    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
-    typeof message.data !== "undefined" &&
-    isVerificationAddSolAddressData(message.data)
-  );
-};
-
 export const isVerificationRemoveData = (data: protobufs.MessageData): data is types.VerificationRemoveData => {
   return data.type === protobufs.MessageType.VERIFICATION_REMOVE && typeof data.verificationRemoveBody !== "undefined";
 };

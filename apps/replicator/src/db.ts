@@ -208,12 +208,6 @@ export type VerificationAddEthAddressBodyJson = {
   blockHash: Hex;
 };
 
-export type VerificationAddSolAddressBodyJson = {
-  address: Hex;
-  claimSignature: Hex;
-  blockHash: Hex;
-};
-
 export type VerificationRemoveBodyJson = {
   address: Hex;
   protocol: Protocol;
@@ -246,7 +240,6 @@ export type MessageBodyJson =
   | ReactionBodyJson
   | LinkBodyJson
   | VerificationAddEthAddressBodyJson
-  | VerificationAddSolAddressBodyJson
   | VerificationRemoveBodyJson
   | UserDataBodyJson
   | UsernameProofBodyJson;

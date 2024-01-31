@@ -7,7 +7,7 @@ import { bytesToHexString, hexStringToBytes, utf8StringToBytes } from "./bytes";
 import { HubError } from "./errors";
 import { Factories } from "./factories";
 import * as validations from "./validations";
-import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from "./verifications";
+import { makeVerificationAddressClaim, VerificationAddressClaim } from "./verifications";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeUserNameProofClaim } from "./userNameProof";
 
@@ -140,10 +140,10 @@ describe("makeReactionRemove", () => {
 describe("makeVerificationAddEthAddressData", () => {
   const blockHash = Factories.BlockHash.build();
   let ethSignature: Uint8Array;
-  let claim: VerificationEthAddressClaim;
+  let claim: VerificationAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
     const signature = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signature).toBeTruthy();
     ethSignature = signature;
@@ -178,10 +178,10 @@ describe("makeVerificationRemoveData", () => {
 describe("makeVerificationAddEthAddress", () => {
   const blockHash = Factories.BlockHash.build();
   let ethSignature: Uint8Array;
-  let claim: VerificationEthAddressClaim;
+  let claim: VerificationAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
     const signatureHex = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signatureHex).toBeTruthy();
     ethSignature = signatureHex;
