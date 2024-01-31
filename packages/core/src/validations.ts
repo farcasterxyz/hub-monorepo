@@ -1,4 +1,5 @@
 import * as protobufs from "./protobufs";
+import { Protocol, UserNameType } from "./protobufs";
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
@@ -6,7 +7,6 @@ import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationAddressClaim } from "./verifications";
-import { UserNameType } from "./protobufs";
 import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
 
@@ -340,7 +340,13 @@ export const validateVerificationAddEthAddressSignature = async (
     return err(new HubError("bad_request.validation_failure", "claimSignature > 256 bytes"));
   }
 
-  const reconstructedClaim = makeVerificationAddressClaim(fid, body.address, network, body.blockHash);
+  const reconstructedClaim = makeVerificationAddressClaim(
+    fid,
+    body.address,
+    network,
+    body.blockHash,
+    Protocol.ETHEREUM,
+  );
   if (reconstructedClaim.isErr()) {
     return err(reconstructedClaim.error);
   }

@@ -47,7 +47,7 @@ let custodyEvent: OnChainEvent;
 let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 
-let verificationAdd: VerificationAddAddressMessage;
+let ethVerificationAdd: VerificationAddAddressMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -56,7 +56,7 @@ beforeAll(async () => {
   signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
 
-  verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+  ethVerificationAdd = await Factories.VerificationAddEthAddressMessage.create(
     { data: { fid, network } },
     { transient: { signer } },
   );
@@ -70,23 +70,23 @@ describe("getVerification", () => {
   });
 
   test("succeeds", async () => {
-    const r = await engine.mergeMessage(verificationAdd);
+    const r = await engine.mergeMessage(ethVerificationAdd);
     expect(r.isOk()).toBeTruthy();
 
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
-        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
+        address: ethVerificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
-    expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(verificationAdd));
+    expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(ethVerificationAdd));
   });
 
   test("fails if verification is missing", async () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
-        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
+        address: ethVerificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
@@ -107,7 +107,7 @@ describe("getVerification", () => {
   test("fails without fid", async () => {
     const result = await client.getVerification(
       VerificationRequest.create({
-        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
+        address: ethVerificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
@@ -122,12 +122,12 @@ describe("getVerificationsByFid", () => {
   });
 
   test("succeeds", async () => {
-    const result = await engine.mergeMessage(verificationAdd);
+    const result = await engine.mergeMessage(ethVerificationAdd);
     expect(result.isOk()).toBeTruthy();
 
     const verifications = await client.getVerificationsByFid(FidRequest.create({ fid }));
     expect(verifications._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
-      [verificationAdd].map((m) => Message.toJSON(m)),
+      [ethVerificationAdd].map((m) => Message.toJSON(m)),
     );
   });
 
