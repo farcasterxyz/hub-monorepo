@@ -156,8 +156,7 @@ message VerificationAddAddressBody {
   bytes block_hash = 3; // Hash of the latest Ethereum block when the signature was produced
   uint32 verification_type = 4; // Type of verification. 0 = EOA, 1 = contract
   uint32 chain_id = 5; // 0 for EOA verifications, 1 or 10 for contract verifications
-
-  Protocol protocol = 7; // Protocol of the Verification
+  Protocol protocol = 6; // Protocol of the Verification
 }
 
 /** Removes a Verification of a given protocol */
