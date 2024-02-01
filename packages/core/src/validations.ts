@@ -668,12 +668,11 @@ export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubRes
     return err(new HubError("bad_request.validation_failure", "invalid button index"));
   }
 
-  if (body.url !== undefined) {
-    if (body.url.length === 0 || body.url.length > 256) {
-      return err(new HubError("bad_request.validation_failure", "invalid url"));
-    }
-  } else {
-    return err(new HubError("bad_request.validation_failure", "url provided"));
+  if (validateBytesAsString(body.url, 256, true).isErr()) {
+    return err(new HubError("bad_request.validation_failure", "invalid url"));
+  }
+  if (validateBytesAsString(body.inputText, 256).isErr()) {
+    return err(new HubError("bad_request.validation_failure", "invalid input text"));
   }
 
   if (body.castId !== undefined) {
@@ -684,6 +683,16 @@ export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubRes
   }
 
   return ok(body);
+};
+
+const validateBytesAsString = (byteArray: Uint8Array, maxLength: number, required = false) => {
+  if (required && byteArray.length === 0) {
+    return err(new HubError("bad_request.validation_failure", "value is required"));
+  }
+  if (byteArray.length > maxLength) {
+    return err(new HubError("bad_request.validation_failure", "value is too long"));
+  }
+  return ok(byteArray);
 };
 
 export const validateUserDataType = (type: number): HubResult<protobufs.UserDataType> => {
