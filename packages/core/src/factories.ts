@@ -458,7 +458,7 @@ const VerificationAddAddressBodyFactory = Factory.define<
           const blockHash = body.blockHash;
           const claim = VerificationSolAddressClaimFactory.build({
             fid: toBigInt(fid),
-            network,
+            network: network,
             blockHash: bs58.encode(blockHash),
             address: bs58.encode(body.address),
             protocol: Protocol.SOLANA,

@@ -10,6 +10,8 @@ import { makeVerificationAddressClaim } from "./verifications";
 import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
 import { verify } from "noble-ed25519";
+import { toBigInt } from "ethers";
+import bs58 from "bs58";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -639,16 +641,21 @@ export const validateVerificationAddAddressBody = async (
         return err(response.error);
       }
       const message = {
-        fid: fid.toString(),
-        address: body.address,
+        fid: toBigInt(fid),
         network: network,
-        blockHash: body.blockHash,
+        blockHash: bs58.encode(body.blockHash),
+        address: bs58.encode(body.address),
         protocol: body.protocol,
       };
-      const encodedMessage = new TextEncoder().encode(JSON.stringify(message));
-      const signerKey = Buffer.from(body.address).toString("hex");
-      const signature = Buffer.from(body.addressVerificationSignature).toString("hex");
-      const isVerified = await verify(signature, encodedMessage, signerKey);
+      const encodedMessage = new TextEncoder().encode(
+        JSON.parse(
+          JSON.stringify(
+            message,
+            (_key, value) => (typeof value === "bigint" ? value.toString() : value), // return everything else unchanged
+          ),
+        ),
+      );
+      const isVerified = await verify(body.addressVerificationSignature, encodedMessage, body.address);
       if (!isVerified) {
         return err(new HubError("bad_request.validation_failure", "invalid signature"));
       }
