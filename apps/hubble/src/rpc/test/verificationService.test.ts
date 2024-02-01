@@ -77,7 +77,6 @@ describe("getVerification", () => {
 
   test("solana-succeeds", async () => {
     const r = await engine.mergeMessage(solVerificationAdd);
-    console.log(r.isErr(), r._unsafeUnwrapErr());
     expect(r.isOk()).toBeTruthy();
 
     const result = await client.getVerification(
@@ -130,7 +129,7 @@ describe("getVerification", () => {
       }),
     );
     expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError("bad_request.validation_failure", "Ethereum address is missing"),
+      new HubError("bad_request.validation_failure", "Ethereum or Solana address is incorrect"),
     );
   });
 
@@ -151,7 +150,17 @@ describe("getVerificationsByFid", () => {
     await engine.mergeOnChainEvent(storageEvent);
   });
 
-  test("succeeds", async () => {
+  test("solana succeeds", async () => {
+    const result = await engine.mergeMessage(solVerificationAdd);
+    expect(result.isOk()).toBeTruthy();
+
+    const verifications = await client.getVerificationsByFid(FidRequest.create({ fid }));
+    expect(verifications._unsafeUnwrap().messages.map((m) => Message.toJSON(m))).toEqual(
+      [solVerificationAdd].map((m) => Message.toJSON(m)),
+    );
+  });
+
+  test("ethereum succeeds", async () => {
     const result = await engine.mergeMessage(ethVerificationAdd);
     expect(result.isOk()).toBeTruthy();
 
