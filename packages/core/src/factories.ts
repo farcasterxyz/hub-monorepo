@@ -5,6 +5,7 @@ import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "@noble/hashes/utils";
 import * as protobufs from "./protobufs";
+import bs58 from "bs58";
 import {
   IdRegisterEventBody,
   IdRegisterEventType,
@@ -25,6 +26,9 @@ import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip71
 import { FARCASTER_EPOCH, getFarcasterTime, toFarcasterTime } from "./time";
 import { VerificationAddressClaim } from "./verifications";
 import { LocalAccount } from "viem";
+import { sha1 } from "@noble/hashes/sha1";
+import { err } from "neverthrow";
+import { toBigInt } from "ethers";
 
 /** Scalars */
 
@@ -377,6 +381,19 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
   },
 );
 
+const VerificationSolAddressClaimFactory = Factory.define<VerificationAddressClaim>(() => {
+  const address = bs58.encode(SolAddressFactory.build());
+  const blockHash = bs58.encode(BlockHashFactory.build());
+
+  return {
+    fid: BigInt(FidFactory.build()),
+    address,
+    network: FarcasterNetworkFactory.build(),
+    blockHash,
+    protocol: Protocol.SOLANA,
+  };
+});
+
 const VerificationEthAddressClaimFactory = Factory.define<VerificationAddressClaim>(() => {
   const address = bytesToHexString(EthAddressFactory.build())._unsafeUnwrap();
   const blockHash = bytesToHexString(BlockHashFactory.build())._unsafeUnwrap();
@@ -418,6 +435,7 @@ const VerificationAddAddressBodyFactory = Factory.define<
             network,
             blockHash: blockHash.isOk() ? blockHash.value : "0x",
             address: bytesToHexString(body.address)._unsafeUnwrap(),
+            protocol: Protocol.ETHEREUM,
           });
           body.claimSignature = (
             await (ethSigner as Eip712Signer).signVerificationEthAddressClaim(claim, body.chainId)
@@ -427,9 +445,34 @@ const VerificationAddAddressBodyFactory = Factory.define<
       }
       case Protocol.SOLANA: {
         const solSigner = transientParams.signer ?? Ed25519SignerFactory.build();
-        if (body.claimSignature.length === 0) {
-          body.claimSignature = (await solSigner.signMessageHash(body.address))._unsafeUnwrap();
+        const publicKey = await solSigner.getSignerKey();
+        if (publicKey.isErr()) {
+          return body;
         }
+
+        body.address = publicKey.value;
+        if (body.claimSignature.length === 0) {
+          const fid = transientParams.fid ?? FidFactory.build();
+          const network = transientParams.network ?? FarcasterNetworkFactory.build();
+          const blockHash = body.blockHash;
+          const claim = VerificationSolAddressClaimFactory.build({
+            fid: toBigInt(fid),
+            network,
+            blockHash: bs58.encode(blockHash),
+            address: bs58.encode(body.address),
+            protocol: Protocol.SOLANA,
+          });
+          const claimBytes = new TextEncoder().encode(
+            JSON.parse(
+              JSON.stringify(
+                claim,
+                (_key, value) => (typeof value === "bigint" ? value.toString() : value), // return everything else unchanged
+              ),
+            ),
+          );
+          body.claimSignature = (await solSigner.signMessageHash(claimBytes))._unsafeUnwrap();
+        }
+
         return body;
       }
       default:

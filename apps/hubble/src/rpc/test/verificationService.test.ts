@@ -77,6 +77,7 @@ describe("getVerification", () => {
 
   test("solana-succeeds", async () => {
     const r = await engine.mergeMessage(solVerificationAdd);
+    console.log(r.isErr(), r._unsafeUnwrapErr());
     expect(r.isOk()).toBeTruthy();
 
     const result = await client.getVerification(
