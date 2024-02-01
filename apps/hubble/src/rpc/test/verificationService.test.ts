@@ -75,30 +75,28 @@ describe("getVerification", () => {
     await engine.mergeOnChainEvent(storageEvent);
   });
 
-  test.only("solana-succeeds", async () => {
-    const r = await engine.mergeMessage(solVerificationAdd);
-    expect(r.isOk()).toBeTruthy();
+  test.only("succeeds", async () => {
+    const solanaMerge = await engine.mergeMessage(solVerificationAdd);
+    expect(solanaMerge.isOk()).toBeTruthy();
 
-    const result = await client.getVerification(
+    const solanaResult = await client.getVerification(
       VerificationRequest.create({
         fid,
         address: solVerificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
-    expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(solVerificationAdd));
-  });
+    expect(Message.toJSON(solanaResult._unsafeUnwrap())).toEqual(Message.toJSON(solVerificationAdd));
 
-  test("ethereum-succeeds", async () => {
-    const r = await engine.mergeMessage(ethVerificationAdd);
-    expect(r.isOk()).toBeTruthy();
+    const ethereumMerge = await engine.mergeMessage(ethVerificationAdd);
+    expect(ethereumMerge.isOk()).toBeTruthy();
 
-    const result = await client.getVerification(
+    const ethereumResult = await client.getVerification(
       VerificationRequest.create({
         fid,
         address: ethVerificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
       }),
     );
-    expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(ethVerificationAdd));
+    expect(Message.toJSON(ethereumResult._unsafeUnwrap())).toEqual(Message.toJSON(ethVerificationAdd));
   });
 
   test("solana fails if verification is missing", async () => {
