@@ -9,7 +9,7 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationAddressClaim } from "./verifications";
 import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
-import nacl from "tweetnacl";
+import { verify } from "noble-ed25519";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -655,8 +655,9 @@ export const validateVerificationAddAddressBody = async (
         protocol: body.protocol,
       };
       const encodedMessage = new TextEncoder().encode(JSON.stringify(message));
-      const signerKey = body.address;
-      const isVerified = nacl.sign.detached.verify(encodedMessage, body.claimSignature, signerKey);
+      const signerKey = Buffer.from(body.address).toString("hex");
+      const signature = Buffer.from(body.claimSignature).toString("hex");
+      const isVerified = await verify(signature, encodedMessage, signerKey);
       if (!isVerified) {
         return err(new HubError("bad_request.validation_failure", "invalid signature"));
       }
