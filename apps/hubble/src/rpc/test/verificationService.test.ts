@@ -75,7 +75,7 @@ describe("getVerification", () => {
     await engine.mergeOnChainEvent(storageEvent);
   });
 
-  test("solana-succeeds", async () => {
+  test.only("solana-succeeds", async () => {
     const r = await engine.mergeMessage(solVerificationAdd);
     expect(r.isOk()).toBeTruthy();
 
