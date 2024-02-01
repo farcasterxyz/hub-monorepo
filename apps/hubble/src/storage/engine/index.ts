@@ -599,12 +599,6 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(new HubError("not_found", "Ethereum or Solana address is incorrect"));
     }
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
-    // const validatedAddress = validations.validateEthAddress(address);
-    // if (validatedAddress.isErr()) {
-    //   return err(validatedAddress.error);
-    // }
-
-    // return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
   }
 
   async getVerificationsByFid(
