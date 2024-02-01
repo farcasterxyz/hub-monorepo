@@ -9,6 +9,7 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationAddressClaim } from "./verifications";
 import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
+import nacl from "tweetnacl";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -632,8 +633,26 @@ export const validateVerificationAddAddressBody = async (
   switch (body.protocol) {
     case protobufs.Protocol.ETHEREUM:
       return await validateVerificationAddEthAddressBody(body, fid, network, publicClients);
-    case protobufs.Protocol.SOLANA:
-      return validateVerificationAddSolAddressBody(body);
+    case protobufs.Protocol.SOLANA: {
+      const response = validateVerificationAddSolAddressBody(body);
+      if (response.isErr()) {
+        return err(response.error);
+      }
+      const message = {
+        fid: fid.toString(),
+        address: body.address,
+        network: network,
+        blockHash: body.blockHash,
+        protocol: body.protocol,
+      };
+      const encodedMessage = new TextEncoder().encode(JSON.stringify(message));
+      const signerKey = body.address;
+      const isVerified = nacl.sign.detached.verify(encodedMessage, body.addressVerificationSignature, signerKey);
+      if (!isVerified) {
+        return err(new HubError("bad_request.validation_failure", "invalid signature"));
+      }
+      return ok(body);
+    }
     default:
       return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
   }
