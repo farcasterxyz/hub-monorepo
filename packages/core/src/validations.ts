@@ -9,7 +9,6 @@ import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeVerificationAddressClaim } from "./verifications";
 import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
-import { verify } from "noble-ed25519";
 import { toBigInt } from "ethers";
 import bs58 from "bs58";
 
@@ -636,30 +635,7 @@ export const validateVerificationAddAddressBody = async (
     case protobufs.Protocol.ETHEREUM:
       return await validateVerificationAddEthAddressBody(body, fid, network, publicClients);
     case protobufs.Protocol.SOLANA: {
-      const response = validateVerificationAddSolAddressBody(body);
-      if (response.isErr()) {
-        return err(response.error);
-      }
-      const message = {
-        fid: toBigInt(fid),
-        network: network,
-        blockHash: bs58.encode(body.blockHash),
-        address: bs58.encode(body.address),
-        protocol: body.protocol,
-      };
-      const encodedMessage = new TextEncoder().encode(
-        JSON.parse(
-          JSON.stringify(
-            message,
-            (_key, value) => (typeof value === "bigint" ? value.toString() : value), // return everything else unchanged
-          ),
-        ),
-      );
-      const isVerified = await verify(body.addressVerificationSignature, encodedMessage, body.address);
-      if (!isVerified) {
-        return err(new HubError("bad_request.validation_failure", "invalid signature"));
-      }
-      return ok(body);
+      return validateVerificationAddSolAddressBody(body, fid, network);
     }
     default:
       return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
@@ -694,9 +670,11 @@ export const validateVerificationAddEthAddressBody = async (
   return ok(body);
 };
 
-export const validateVerificationAddSolAddressBody = (
+export const validateVerificationAddSolAddressBody = async (
   body: protobufs.VerificationAddAddressBody,
-): HubResult<protobufs.VerificationAddAddressBody> => {
+  fid: number,
+  network: protobufs.FarcasterNetwork,
+): HubAsyncResult<protobufs.VerificationAddAddressBody> => {
   if (body.protocol !== protobufs.Protocol.SOLANA) {
     return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
   }
@@ -711,6 +689,31 @@ export const validateVerificationAddSolAddressBody = (
 
   if (body.addressVerificationSignature.length !== 64) {
     return err(new HubError("bad_request.validation_failure", "addressVerificationSignature != 64 bytes"));
+  }
+
+  const message = {
+    fid: toBigInt(fid),
+    network: network,
+    blockHash: bs58.encode(body.blockHash),
+    address: bs58.encode(body.address),
+    protocol: body.protocol,
+  };
+  const encodedMessage = new TextEncoder().encode(
+    JSON.parse(
+      JSON.stringify(
+        message,
+        (_key, value) => (typeof value === "bigint" ? value.toString() : value), // return everything else unchanged
+      ),
+    ),
+  );
+  // These messages are pretty rare, so it's fine performance wise to use the pure JS implementation
+  const isVerified = pureJSValidationMethods.ed25519_verify(
+    body.addressVerificationSignature,
+    encodedMessage,
+    body.address,
+  );
+  if (!isVerified) {
+    return err(new HubError("bad_request.validation_failure", "invalid signature"));
   }
 
   return ok(body);
