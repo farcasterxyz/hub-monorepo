@@ -24,11 +24,12 @@ import {
 import { bytesToHexString, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip712Signer } from "./signers";
 import { FARCASTER_EPOCH, getFarcasterTime, toFarcasterTime } from "./time";
-import { VerificationAddressClaim } from "./verifications";
+import { VerificationAddressClaim, VerificationAddressClaimSolana } from "./verifications";
 import { LocalAccount } from "viem";
 import { sha1 } from "@noble/hashes/sha1";
 import { err } from "neverthrow";
 import { toBigInt } from "ethers";
+import { SolanaRecreateMessage } from "./validations";
 
 /** Scalars */
 
@@ -462,15 +463,8 @@ const VerificationAddAddressBodyFactory = Factory.define<
             address: bs58.encode(body.address),
             protocol: Protocol.SOLANA,
           });
-          const claimBytes = new TextEncoder().encode(
-            JSON.parse(
-              JSON.stringify(
-                claim,
-                (_key, value) => (typeof value === "bigint" ? value.toString() : value), // return everything else unchanged
-              ),
-            ),
-          );
-          body.claimSignature = (await solSigner.signMessageHash(claimBytes))._unsafeUnwrap();
+          const fullMessage = SolanaRecreateMessage(claim as VerificationAddressClaimSolana, body.address);
+          body.claimSignature = (await solSigner.signMessageHash(fullMessage))._unsafeUnwrap();
         }
 
         return body;

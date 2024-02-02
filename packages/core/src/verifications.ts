@@ -71,8 +71,8 @@ export const makeVerificationAddressClaim = (
 
       return ok({
         fid: BigInt(fid),
-        address: solAddress.value,
         network: network,
+        address: solAddress.value,
         blockHash: blockHashSol.value,
         protocol: Protocol.SOLANA,
       });
