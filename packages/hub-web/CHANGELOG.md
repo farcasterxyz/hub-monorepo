@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.7.4
+
+### Patch Changes
+
+- fd9f9ff8: Rename verification message
+- 362f580b: feat: add text input frame field
+- Updated dependencies [fd9f9ff8]
+- Updated dependencies [362f580b]
+  - @farcaster/core@0.13.6
+
 ## 0.7.3
 
 ### Patch Changes

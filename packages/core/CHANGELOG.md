@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.13.6
+
+### Patch Changes
+
+- fd9f9ff8: Rename verification message
+- 362f580b: feat: add text input frame field
+
 ## 0.13.5
 
 ### Patch Changes

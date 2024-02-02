@@ -1,5 +1,14 @@
 # @farcaster/replicator
 
+## 0.2.8
+
+### Patch Changes
+
+- fd9f9ff8: Rename verification message
+- Updated dependencies [fd9f9ff8]
+- Updated dependencies [362f580b]
+  - @farcaster/hub-nodejs@0.10.22
+
 ## 0.2.7
 
 ### Patch Changes
