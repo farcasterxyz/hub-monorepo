@@ -1,21 +1,21 @@
-import { MessageType, VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
+import { MessageType, VerificationAddEthAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
 import { Selectable, sql } from "kysely";
 import { buildAddRemoveMessageProcessor } from "../messageProcessor.js";
 import { VerificationRow, executeTakeFirst, executeTakeFirstOrThrow } from "../db.js";
 import { bytesToHex, farcasterTimeToDate } from "../util.js";
 
-const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageProcessor<
-  VerificationAddAddressMessage,
+const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
+  VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
   Selectable<VerificationRow>
 >({
   conflictRule: "last-write-wins",
-  addMessageType: MessageType.VERIFICATION_ADD_ADDRESS,
+  addMessageType: MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   removeMessageType: MessageType.VERIFICATION_REMOVE,
   withConflictId(message) {
     const ethAddress =
-      message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
-        ? message.data.verificationAddAddressBody.address
+      message.data.type === MessageType.VERIFICATION_ADD_ETH_ADDRESS
+        ? message.data.verificationAddEthAddressBody.address
         : message.data.verificationRemoveBody.address;
 
     return ({ eb, and }) => {
@@ -24,8 +24,8 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   },
   async getDerivedRow(message, trx) {
     const ethAddress =
-      message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
-        ? message.data.verificationAddAddressBody.address
+      message.data.type === MessageType.VERIFICATION_ADD_ETH_ADDRESS
+        ? message.data.verificationAddEthAddressBody.address
         : message.data.verificationRemoveBody.address;
 
     return await executeTakeFirst(
@@ -52,7 +52,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   },
   async mergeDerivedRow(message, deleted, trx) {
     const {
-      data: { fid, verificationAddAddressBody: verificationAddBody },
+      data: { fid, verificationAddEthAddressBody: verificationAddBody },
     } = message;
 
     const timestamp = farcasterTimeToDate(message.data.timestamp);
@@ -62,7 +62,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
       hash: message.hash,
       signerAddress: verificationAddBody.address,
       blockHash: verificationAddBody.blockHash,
-      signature: verificationAddBody.protocolSignature,
+      signature: verificationAddBody.ethSignature,
     };
 
     // Upsert the verification, if it's shadowed by a remove, mark it as deleted
@@ -92,5 +92,4 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   },
 });
 
-// TODO: implement processAdd support for Solana in separate PR
-export { processAddEthereum as processVerificationAddEthAddress, processRemove as processVerificationRemove };
+export { processAdd as processVerificationAddEthAddress, processRemove as processVerificationRemove };

@@ -4,19 +4,19 @@ import { bytesToHexString } from "./bytes";
 import { HubResult } from "./errors";
 import { validateEthAddress, validateEthBlockHash } from "./validations";
 
-export type VerificationAddressClaim = {
+export type VerificationEthAddressClaim = {
   fid: bigint;
   address: `0x${string}`;
   network: FarcasterNetwork;
   blockHash: `0x${string}`;
 };
 
-export const makeVerificationAddressClaim = (
+export const makeVerificationEthAddressClaim = (
   fid: number,
   ethAddress: Uint8Array,
   network: FarcasterNetwork,
   blockHash: Uint8Array,
-): HubResult<VerificationAddressClaim> => {
+): HubResult<VerificationEthAddressClaim> => {
   const ethAddressHex = validateEthAddress(ethAddress).andThen((validatedEthAddress) =>
     bytesToHexString(validatedEthAddress),
   );

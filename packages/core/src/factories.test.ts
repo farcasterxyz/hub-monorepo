@@ -61,7 +61,7 @@ describe("LinkRemoveMessageFactory", () => {
 describe("VerificationAddEthAddressMessageFactory", () => {
   test("generates a valid VerificationAddEthAddress", async () => {
     const message = await Factories.VerificationAddEthAddressMessage.create();
-    expect(protobufs.isVerificationAddAddressMessage(message)).toBeTruthy();
+    expect(protobufs.isVerificationAddEthAddressMessage(message)).toBeTruthy();
     await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
   });
 });

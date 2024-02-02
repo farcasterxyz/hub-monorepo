@@ -7,7 +7,7 @@ import type {
 import { HubAsyncResult, HubError } from "../errors";
 import { eip712 } from "../crypto";
 import { bytesToHexString, hexStringToBytes } from "../bytes";
-import { VerificationAddressClaim } from "../verifications";
+import { VerificationEthAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import {
   ID_GATEWAY_EIP_712_DOMAIN,
@@ -66,7 +66,7 @@ export class EthersV5Eip712Signer extends Eip712Signer {
   }
 
   public async signVerificationEthAddressClaim(
-    claim: VerificationAddressClaim,
+    claim: VerificationEthAddressClaim,
     chainId = 0,
   ): HubAsyncResult<Uint8Array> {
     const domain = chainId === 0 ? eip712.EIP_712_FARCASTER_DOMAIN : { ...eip712.EIP_712_FARCASTER_DOMAIN, chainId };

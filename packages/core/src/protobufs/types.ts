@@ -66,13 +66,13 @@ export type ReactionRemoveMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
-export type VerificationAddAddressData = protobufs.MessageData & {
-  type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS;
-  verificationAddAddressBody: protobufs.VerificationAddAddressBody;
+export type VerificationAddEthAddressData = protobufs.MessageData & {
+  type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS;
+  verificationAddEthAddressBody: protobufs.VerificationAddEthAddressBody;
 };
 
-export type VerificationAddAddressMessage = protobufs.Message & {
-  data: VerificationAddAddressData;
+export type VerificationAddEthAddressMessage = protobufs.Message & {
+  data: VerificationAddEthAddressData;
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 

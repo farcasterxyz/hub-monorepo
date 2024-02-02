@@ -39,7 +39,7 @@ import {
   UserNameType,
   utf8StringToBytes,
   validations,
-  VerificationAddAddressMessage,
+  VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import { err, ok, ResultAsync } from "neverthrow";
@@ -585,7 +585,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   /*                          Verification Store Methods                        */
   /* -------------------------------------------------------------------------- */
 
-  async getVerification(fid: number, address: Uint8Array): HubAsyncResult<VerificationAddAddressMessage> {
+  async getVerification(fid: number, address: Uint8Array): HubAsyncResult<VerificationAddEthAddressMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -602,7 +602,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   async getVerificationsByFid(
     fid: number,
     pageOptions: PageOptions = {},
-  ): HubAsyncResult<MessagesPage<VerificationAddAddressMessage>> {
+  ): HubAsyncResult<MessagesPage<VerificationAddEthAddressMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
@@ -617,7 +617,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   async getAllVerificationMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
-  ): HubAsyncResult<MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>> {
+  ): HubAsyncResult<MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);

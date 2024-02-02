@@ -2,12 +2,12 @@ import {
   getDefaultStoreLimit,
   HubAsyncResult,
   HubError,
-  isVerificationAddAddressMessage,
+  isVerificationAddEthAddressMessage,
   isVerificationRemoveMessage,
   Message,
   MessageType,
   StoreType,
-  VerificationAddAddressMessage,
+  VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
@@ -85,24 +85,24 @@ export const makeVerificationByAddressKey = (address: Uint8Array): Buffer => {
  * 2. fid:set:address -> fid:tsHash (Set Index)
  */
 
-class VerificationStore extends Store<VerificationAddAddressMessage, VerificationRemoveMessage> {
+class VerificationStore extends Store<VerificationAddEthAddressMessage, VerificationRemoveMessage> {
   override _postfix: UserMessagePostfix = UserPostfix.VerificationMessage;
 
-  override makeAddKey(msg: VerificationAddAddressMessage) {
+  override makeAddKey(msg: VerificationAddEthAddressMessage) {
     return makeVerificationAddsKey(
       msg.data.fid,
-      (msg.data.verificationAddAddressBody || msg.data.verificationRemoveBody).address,
+      (msg.data.verificationAddEthAddressBody || msg.data.verificationRemoveBody).address,
     ) as Buffer;
   }
 
   override makeRemoveKey(msg: VerificationRemoveMessage) {
     return makeVerificationRemovesKey(
       msg.data.fid,
-      (msg.data.verificationAddAddressBody || msg.data.verificationRemoveBody).address,
+      (msg.data.verificationAddEthAddressBody || msg.data.verificationRemoveBody).address,
     );
   }
 
-  override async findMergeAddConflicts(_message: VerificationAddAddressMessage): HubAsyncResult<void> {
+  override async findMergeAddConflicts(_message: VerificationAddEthAddressMessage): HubAsyncResult<void> {
     return ok(undefined);
   }
 
@@ -110,9 +110,9 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     return ok(undefined);
   }
 
-  override _isAddType = isVerificationAddAddressMessage;
+  override _isAddType = isVerificationAddEthAddressMessage;
   override _isRemoveType = isVerificationRemoveMessage;
-  override _addMessageType = MessageType.VERIFICATION_ADD_ADDRESS;
+  override _addMessageType = MessageType.VERIFICATION_ADD_ETH_ADDRESS;
   override _removeMessageType = MessageType.VERIFICATION_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
@@ -127,9 +127,9 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
    *
    * @returns the VerificationAddEthAddressModel if it exists, throws HubError otherwise
    */
-  async getVerificationAdd(fid: number, address: Uint8Array): Promise<VerificationAddAddressMessage> {
+  async getVerificationAdd(fid: number, address: Uint8Array): Promise<VerificationAddEthAddressMessage> {
     return await this.getAdd({
-      data: { fid, verificationAddAddressBody: { address } },
+      data: { fid, verificationAddEthAddressBody: { address } },
     });
   }
 
@@ -155,7 +155,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
   async getVerificationAddsByFid(
     fid: number,
     pageOptions: PageOptions = {},
-  ): Promise<MessagesPage<VerificationAddAddressMessage>> {
+  ): Promise<MessagesPage<VerificationAddEthAddressMessage>> {
     return await this.getAddsByFid({ data: { fid } }, pageOptions);
   }
 
@@ -172,14 +172,17 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     return await this.getRemovesByFid({ data: { fid } }, pageOptions);
   }
 
-  override async buildSecondaryIndices(txn: Transaction, message: VerificationAddAddressMessage): HubAsyncResult<void> {
+  override async buildSecondaryIndices(
+    txn: Transaction,
+    message: VerificationAddEthAddressMessage,
+  ): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
     if (tsHash.isErr()) {
       return err(tsHash.error);
     }
 
-    const address = message.data.verificationAddAddressBody.address;
+    const address = message.data.verificationAddEthAddressBody.address;
 
     if (address.length === 0) {
       return err(new HubError("bad_request.invalid_param", "address empty"));
@@ -193,9 +196,9 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
   }
   override async deleteSecondaryIndices(
     txn: Transaction,
-    message: VerificationAddAddressMessage,
+    message: VerificationAddEthAddressMessage,
   ): HubAsyncResult<void> {
-    const address = message.data.verificationAddAddressBody.address;
+    const address = message.data.verificationAddEthAddressBody.address;
 
     if (address.length === 0) {
       return err(new HubError("bad_request.invalid_param", "address empty"));
@@ -209,8 +212,8 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
   }
 
   override async getMergeConflicts(
-    message: VerificationAddAddressMessage | VerificationRemoveMessage,
-  ): HubAsyncResult<(VerificationAddAddressMessage | VerificationRemoveMessage)[]> {
+    message: VerificationAddEthAddressMessage | VerificationRemoveMessage,
+  ): HubAsyncResult<(VerificationAddEthAddressMessage | VerificationRemoveMessage)[]> {
     const res = await super.getMergeConflicts(message);
     if (res.isErr()) {
       return res;
@@ -223,7 +226,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     // For adds, we also need to check for conflicts across all fids (by eth address)
     const conflicts = res.value;
 
-    const byAddressKey = makeVerificationByAddressKey(message.data.verificationAddAddressBody.address);
+    const byAddressKey = makeVerificationByAddressKey(message.data.verificationAddEthAddressBody.address);
     const fidResult = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
     if (fidResult.isOk()) {
       const fid = readFidKey(fidResult.value);
@@ -232,8 +235,8 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
         const existingMessage = await this.getAdd({
           data: {
             fid,
-            verificationAddAddressBody: {
-              address: message.data.verificationAddAddressBody.address,
+            verificationAddEthAddressBody: {
+              address: message.data.verificationAddEthAddressBody.address,
             },
           },
         });
@@ -265,7 +268,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
   async getAllVerificationMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
-  ): Promise<MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>> {
+  ): Promise<MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }
 
@@ -294,16 +297,16 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
         }
 
         const fid = message.value.data.fid;
-        const verificationAdd = message.value.data.verificationAddAddressBody;
+        const verificationAdd = message.value.data.verificationAddEthAddressBody;
         const txn = this._db.transaction();
-        const byAddressKey = makeVerificationByAddressKey(message.value.data.verificationAddAddressBody.address);
+        const byAddressKey = makeVerificationByAddressKey(message.value.data.verificationAddEthAddressBody.address);
         const existingFidRes = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
         if (existingFidRes.isOk()) {
           const existingFid = readFidKey(existingFidRes.value);
           const existingMessage = await this.getAdd({
             data: {
               fid: existingFid,
-              verificationAddAddressBody: {
+              verificationAddEthAddressBody: {
                 address: verificationAdd.address,
               },
             },

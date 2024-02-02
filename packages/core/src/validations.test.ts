@@ -6,7 +6,7 @@ import { HubError } from "./errors";
 import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
-import { makeVerificationAddressClaim } from "./verifications";
+import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
 import { jest } from "@jest/globals";
@@ -196,14 +196,14 @@ describe("validateEthAddress", () => {
   test("fails with longer address", () => {
     const longAddress = Factories.Bytes.build({}, { transient: { length: 21 } });
     expect(validations.validateEthAddress(longAddress)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Ethereum address must be 20 bytes")),
+      err(new HubError("bad_request.validation_failure", "address must be 20 bytes")),
     );
   });
 
   test("fails with shorter address", () => {
     const shortAddress = ethSignerKey.subarray(0, -1);
     expect(validations.validateEthAddress(shortAddress)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Ethereum address must be 20 bytes")),
+      err(new HubError("bad_request.validation_failure", "address must be 20 bytes")),
     );
   });
 });
@@ -635,14 +635,14 @@ describe("validateVerificationAddEthAddressBody", () => {
 
     test("with missing eth address", async () => {
       body = Factories.VerificationAddEthAddressBody.build({ address: undefined });
-      hubErrorMessage = "Ethereum address is missing";
+      hubErrorMessage = "address is missing";
     });
 
     test("with eth address larger than 20 bytes", async () => {
       body = Factories.VerificationAddEthAddressBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = "Ethereum address must be 20 bytes";
+      hubErrorMessage = "address must be 20 bytes";
     });
 
     test("with missing block hash", async () => {
@@ -671,7 +671,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
   test("fails with invalid eth signature", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
     });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
     expect(result).toEqual(err(new HubError("unknown", "Cannot convert 0x to a BigInt")));
@@ -679,7 +679,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
   test("fails with invalid verificationType", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
       verificationType: 2,
     });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
@@ -688,7 +688,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
   test("fails with invalid chainId", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
       chainId: 7,
       verificationType: 1,
     });
@@ -698,7 +698,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
   test("fails if client not provided for chainId", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
       chainId: 1,
       verificationType: 1,
     });
@@ -708,10 +708,10 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
   test("fails if ethSignature is > 256 bytes", async () => {
     const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: Factories.Bytes.build({}, { transient: { length: 257 } }),
+      ethSignature: Factories.Bytes.build({}, { transient: { length: 257 } }),
     });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "protocolSignature > 256 bytes")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "ethSignature > 256 bytes")));
   });
 
   test("succeeds for contract signatures", async () => {
@@ -749,21 +749,21 @@ describe("validateVerificationAddEthAddressSignature", () => {
       { transient: { fid, network, contractSignature: true } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid protocolSignature")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid ethSignature")));
   });
 
   test("fails with eth signature from different address", async () => {
     const blockHash = Factories.BlockHash.build();
-    const claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    const claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
     const ethSignature = (await ethSigner.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(ethSignature).toBeTruthy();
     const body = await Factories.VerificationAddEthAddressBody.create({
-      protocolSignature: ethSignature,
+      ethSignature,
       blockHash,
       address: Factories.EthAddress.build(),
     });
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid protocolSignature")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid ethSignature")));
   });
 });
 
@@ -787,14 +787,14 @@ describe("validateVerificationRemoveBody", () => {
       body = Factories.VerificationRemoveBody.build({
         address: undefined,
       });
-      hubErrorMessage = "Ethereum address is missing";
+      hubErrorMessage = "address is missing";
     });
 
     test("with invalid address", async () => {
       body = Factories.VerificationRemoveBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
       });
-      hubErrorMessage = "Ethereum address must be 20 bytes";
+      hubErrorMessage = "address must be 20 bytes";
     });
   });
 });

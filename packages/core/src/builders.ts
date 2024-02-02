@@ -20,7 +20,7 @@ type MessageBodyOptions = Pick<
   | "castAddBody"
   | "castRemoveBody"
   | "reactionBody"
-  | "verificationAddAddressBody"
+  | "verificationAddEthAddressBody"
   | "verificationRemoveBody"
   | "userDataBody"
   | "linkBody"
@@ -231,11 +231,11 @@ export const makeReactionRemoveData = (
 /* -------------------------------------------------------------------------- */
 
 export const makeVerificationAddEthAddress = async (
-  body: protobufs.VerificationAddAddressBody,
+  body: protobufs.VerificationAddEthAddressBody,
   dataOptions: MessageDataOptions,
   signer: Signer,
   publicClients: PublicClients = defaultPublicClients,
-): HubAsyncResult<protobufs.VerificationAddAddressMessage> => {
+): HubAsyncResult<protobufs.VerificationAddEthAddressMessage> => {
   const data = await makeVerificationAddEthAddressData(body, dataOptions, publicClients);
   if (data.isErr()) {
     return err(data.error);
@@ -256,13 +256,13 @@ export const makeVerificationRemove = async (
 };
 
 export const makeVerificationAddEthAddressData = (
-  body: protobufs.VerificationAddAddressBody,
+  body: protobufs.VerificationAddEthAddressBody,
   dataOptions: MessageDataOptions,
   publicClients: PublicClients = defaultPublicClients,
-): HubAsyncResult<protobufs.VerificationAddAddressData> => {
+): HubAsyncResult<protobufs.VerificationAddEthAddressData> => {
   return makeMessageData(
-    { verificationAddAddressBody: body },
-    protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    { verificationAddEthAddressBody: body },
+    protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
     dataOptions,
     publicClients,
   );

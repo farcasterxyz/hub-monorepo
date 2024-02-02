@@ -11,7 +11,7 @@ import {
   ReactionRemoveMessage,
   UserDataAddMessage,
   UsernameProofMessage,
-  VerificationAddAddressMessage,
+  VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
   fromFarcasterTime,
   isIdRegisterOnChainEvent,
@@ -118,7 +118,7 @@ export function convertProtobufMessageBodyToJson(message: CastRemoveMessage): Ca
 export function convertProtobufMessageBodyToJson(message: ReactionAddMessage | ReactionRemoveMessage): ReactionBodyJson;
 export function convertProtobufMessageBodyToJson(message: LinkAddMessage | LinkRemoveMessage): LinkBodyJson;
 export function convertProtobufMessageBodyToJson(
-  message: VerificationAddAddressMessage,
+  message: VerificationAddEthAddressMessage,
 ): VerificationAddEthAddressBodyJson;
 export function convertProtobufMessageBodyToJson(message: VerificationRemoveMessage): VerificationRemoveBodyJson;
 export function convertProtobufMessageBodyToJson(message: UserDataAddMessage): UserDataBodyJson;
@@ -189,24 +189,21 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       }
       return body;
     }
-    case MessageType.VERIFICATION_ADD_ADDRESS: {
-      if (!message.data.verificationAddAddressBody) {
+    case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {
+      if (!message.data.verificationAddEthAddressBody) {
         throw new Error("Missing verificationAddEthAddressBody");
       }
-      const { address, protocolSignature, blockHash } = message.data.verificationAddAddressBody;
+      const { address, ethSignature, blockHash } = message.data.verificationAddEthAddressBody;
       return {
         address: bytesToHex(address),
-        protocolSignature: bytesToHex(protocolSignature),
+        ethSignature: bytesToHex(ethSignature),
         blockHash: bytesToHex(blockHash),
       } satisfies VerificationAddEthAddressBodyJson;
     }
     case MessageType.VERIFICATION_REMOVE: {
       if (!message.data.verificationRemoveBody) throw new Error("Missing verificationRemoveBody");
-      const { address, protocol } = message.data.verificationRemoveBody;
-      return {
-        address: bytesToHex(address),
-        protocol: protocol,
-      } satisfies VerificationRemoveBodyJson;
+      const { address } = message.data.verificationRemoveBody;
+      return { address: bytesToHex(address) } satisfies VerificationRemoveBodyJson;
     }
     case MessageType.USER_DATA_ADD: {
       if (!message.data.userDataBody) throw new Error("Missing userDataBody");
