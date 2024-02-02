@@ -25,7 +25,7 @@ import {
   isRevokeMessageHubEvent,
   isUserDataAddMessage,
   isUsernameProofMessage,
-  isVerificationAddAddressMessage,
+  isVerificationAddEthAddressMessage,
   isVerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import { Redis } from "ioredis";
@@ -155,8 +155,8 @@ export async function processMessage(
         log.debug(`Processing LinkRemoveMessage ${hash} (fid ${fid})`, { fid, hash });
         await processLinkRemove(message, operation, trx);
         break;
-      case MessageType.VERIFICATION_ADD_ADDRESS:
-        if (!isVerificationAddAddressMessage(message))
+      case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
+        if (!isVerificationAddEthAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
         await processVerificationAddEthAddress(message, operation, trx);

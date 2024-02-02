@@ -36,7 +36,7 @@ import {
   ReactionAddMessage,
   ReactionRemoveMessage,
   UserDataAddMessage,
-  VerificationAddAddressMessage,
+  VerificationAddEthAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/core";
 import { logger } from "../../utils/logger.js";
@@ -61,7 +61,7 @@ type PrunableMessage =
   | ReactionAddMessage
   | ReactionRemoveMessage
   | UserDataAddMessage
-  | VerificationAddAddressMessage
+  | VerificationAddEthAddressMessage
   | VerificationRemoveMessage
   | LinkAddMessage
   | LinkRemoveMessage;

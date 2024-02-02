@@ -1,5 +1,5 @@
 import { Factories } from "./factories";
-import { makeVerificationAddressClaim } from "./verifications";
+import { makeVerificationEthAddressClaim } from "./verifications";
 
 describe("makeVerificationEthAddressClaim", () => {
   test("succeeds", () => {
@@ -7,7 +7,7 @@ describe("makeVerificationEthAddressClaim", () => {
     const ethAddress = Factories.EthAddress.build();
     const network = Factories.FarcasterNetwork.build();
     const blockHash = Factories.BlockHash.build();
-    const claim = makeVerificationAddressClaim(fid, ethAddress, network, blockHash);
+    const claim = makeVerificationEthAddressClaim(fid, ethAddress, network, blockHash);
     expect(claim.isOk()).toBeTruthy();
   });
 });

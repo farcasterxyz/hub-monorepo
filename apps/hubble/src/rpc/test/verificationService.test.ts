@@ -5,7 +5,7 @@ import {
   HubRpcClient,
   Message,
   FarcasterNetwork,
-  VerificationAddAddressMessage,
+  VerificationAddEthAddressMessage,
   VerificationRequest,
   FidRequest,
   OnChainEvent,
@@ -47,7 +47,7 @@ let custodyEvent: OnChainEvent;
 let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 
-let verificationAdd: VerificationAddAddressMessage;
+let verificationAdd: VerificationAddEthAddressMessage;
 
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
@@ -76,7 +76,7 @@ describe("getVerification", () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
-        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
+        address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(verificationAdd));
@@ -86,7 +86,7 @@ describe("getVerification", () => {
     const result = await client.getVerification(
       VerificationRequest.create({
         fid,
-        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
+        address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
@@ -99,15 +99,13 @@ describe("getVerification", () => {
         address: new Uint8Array(),
       }),
     );
-    expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError("bad_request.validation_failure", "Ethereum address is missing"),
-    );
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "address is missing"));
   });
 
   test("fails without fid", async () => {
     const result = await client.getVerification(
       VerificationRequest.create({
-        address: verificationAdd.data.verificationAddAddressBody.address ?? new Uint8Array(),
+        address: verificationAdd.data.verificationAddEthAddressBody.address ?? new Uint8Array(),
       }),
     );
     expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
