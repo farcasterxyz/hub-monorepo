@@ -1,5 +1,13 @@
 # @farcaster/replicator
 
+## 0.2.9
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+- Updated dependencies [f8c5f280]
+  - @farcaster/hub-nodejs@0.10.23
+
 ## 0.2.8
 
 ### Patch Changes

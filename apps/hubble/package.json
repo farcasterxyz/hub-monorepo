@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hubble",
-  "version": "1.9.4",
+  "version": "1.9.5",
   "description": "Farcaster Hub",
   "author": "",
   "license": "",
@@ -69,7 +69,7 @@
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
     "@faker-js/faker": "~7.6.0",
-    "@farcaster/hub-nodejs": "^0.10.22",
+    "@farcaster/hub-nodejs": "^0.10.23",
     "@farcaster/rocksdb": "^5.5.0",
     "@fastify/cors": "^8.4.0",
     "@grpc/grpc-js": "~1.8.21",

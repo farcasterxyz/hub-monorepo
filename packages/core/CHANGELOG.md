@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.13.7
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+
 ## 0.13.6
 
 ### Patch Changes

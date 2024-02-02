@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.7.5
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+- Updated dependencies [f8c5f280]
+  - @farcaster/core@0.13.7
+
 ## 0.7.4
 
 ### Patch Changes

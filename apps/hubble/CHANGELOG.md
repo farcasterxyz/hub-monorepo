@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.9.5
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+- Updated dependencies [f8c5f280]
+  - @farcaster/hub-nodejs@0.10.23
+
 ## 1.9.4
 
 ### Patch Changes
