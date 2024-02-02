@@ -417,7 +417,7 @@ export class LibP2PNode {
     this.gossip?.reportMessageValidationResult(
       messageId,
       propagationSource,
-      isValid ? TopicValidatorResult.Accept : TopicValidatorResult.Reject,
+      isValid ? TopicValidatorResult.Accept : TopicValidatorResult.Ignore,
     );
   }
 
