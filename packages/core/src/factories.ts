@@ -400,7 +400,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
       body.address = (await ethSigner.getSignerKey())._unsafeUnwrap();
     }
 
-    if (body.protocolSignature.length === 0) {
+    if (body.claimSignature.length === 0) {
       // Generate address and signature
       const fid = transientParams.fid ?? FidFactory.build();
       const network = transientParams.network ?? FarcasterNetworkFactory.build();
@@ -411,7 +411,7 @@ const VerificationAddEthAddressBodyFactory = Factory.define<
         blockHash: blockHash.isOk() ? blockHash.value : "0x",
         address: bytesToHexString(body.address)._unsafeUnwrap(),
       });
-      body.protocolSignature = (await ethSigner.signVerificationEthAddressClaim(claim, body.chainId))._unsafeUnwrap();
+      body.claimSignature = (await ethSigner.signVerificationEthAddressClaim(claim, body.chainId))._unsafeUnwrap();
     }
 
     return body;
@@ -429,7 +429,7 @@ const VerificationAddEthAddressDataFactory = Factory.define<
 >(({ onCreate, transientParams }) => {
   onCreate(async (data) => {
     const body = data.verificationAddAddressBody;
-    if (body.protocolSignature.length === 0) {
+    if (body.claimSignature.length === 0) {
       const signedBody = await VerificationAddEthAddressBodyFactory.create(body, {
         transient: { fid: data.fid, network: data.network, signer: transientParams.signer },
       });

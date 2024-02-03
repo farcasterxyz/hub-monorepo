@@ -209,7 +209,7 @@ describe("mergeMessage", () => {
               verificationAddAddressBody: {
                 address: address,
                 blockHash: blockHash,
-                protocolSignature: claimSignature,
+                claimSignature: claimSignature,
               },
             },
           },
@@ -217,7 +217,7 @@ describe("mergeMessage", () => {
         );
         const result = await engine.mergeMessage(testnetVerificationAdd);
         // Signature will not match because we're attempting to recover the address based on the wrong network
-        expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid protocolSignature")));
+        expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid claimSignature")));
       });
 
       describe("validateOrRevokeMessage", () => {
