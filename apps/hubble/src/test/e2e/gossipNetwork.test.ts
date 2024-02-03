@@ -105,7 +105,11 @@ describe("gossip network tests", () => {
       let numCastAddMessages = 0;
 
       nonSenderNodes.map((n) => {
-        const topics = messageStore.get(n.peerId()?.toString() ?? "");
+        const peerId = n.peerId();
+        if (!peerId) {
+          throw new Error(`peerId is undefined for node: ${n}`);
+        }
+        const topics = messageStore.get(peerId.toString());
         expect(topics).toBeDefined();
         expect(topics?.has(primaryTopic)).toBeTruthy();
         const topicMessages = topics?.get(primaryTopic) ?? [];
