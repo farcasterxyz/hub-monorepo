@@ -1180,13 +1180,15 @@ export class Hub implements HubInterface {
     // Check if we already have this client
     const result = this.syncEngine.addContactInfoForPeerId(peerId, message);
     if (result.isOk()) {
-      const syncResult = await ResultAsync.fromPromise(
-        this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
-        (e) => e,
-      );
-      if (syncResult.isErr()) {
-        log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
-      }
+      // Temporarily disable sync with new peers
+      log.debug({ peerInfo: message }, "New peer but skipping sync");
+      // const syncResult = await ResultAsync.fromPromise(
+      //   this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
+      //   (e) => e,
+      // );
+      // if (syncResult.isErr()) {
+      //   log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
+      // }
     } else {
       log.debug({ peerInfo: message }, "Already have this peer, skipping sync");
     }
