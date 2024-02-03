@@ -79,23 +79,22 @@ export const isReactionRemoveMessage = (message: protobufs.Message): message is 
 
 export const isVerificationAddEthAddressData = (
   data: protobufs.MessageData,
-): data is types.VerificationAddEthAddressData => {
+): data is types.VerificationAddAddressData => {
   return (
-    data.type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
-    typeof data.verificationAddEthAddressBody !== "undefined"
+    data.type === protobufs.MessageType.VERIFICATION_ADD_ADDRESS &&
+    typeof data.verificationAddAddressBody !== "undefined"
   );
 };
 
-export const isVerificationAddEthAddressMessage = (
+export const isVerificationAddAddressMessage = (
   message: protobufs.Message,
-): message is types.VerificationAddEthAddressMessage => {
+): message is types.VerificationAddAddressMessage => {
   return (
     message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
     typeof message.data !== "undefined" &&
     isVerificationAddEthAddressData(message.data)
   );
 };
-
 export const isVerificationRemoveData = (data: protobufs.MessageData): data is types.VerificationRemoveData => {
   return data.type === protobufs.MessageType.VERIFICATION_REMOVE && typeof data.verificationRemoveBody !== "undefined";
 };

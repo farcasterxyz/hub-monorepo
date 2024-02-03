@@ -14,7 +14,7 @@ import {
   ReactionRemoveMessage,
   UserDataAddMessage,
   UserDataType,
-  VerificationAddEthAddressMessage,
+  VerificationAddAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/hub-nodejs";
 import SyncEngine from "../../network/sync/syncEngine.js";
@@ -131,7 +131,7 @@ describe("getAllReactionMessagesByFid", () => {
 });
 
 describe("getAllVerificationMessagesByFid", () => {
-  let verificationAdd: VerificationAddEthAddressMessage;
+  let verificationAdd: VerificationAddAddressMessage;
   let verificationRemove: VerificationRemoveMessage;
 
   beforeAll(async () => {

@@ -1,7 +1,7 @@
 import { ResultAsync, err } from "neverthrow";
 import type { Signer } from "ethers";
 import { HubAsyncResult, HubError } from "../errors";
-import { VerificationEthAddressClaim } from "../verifications";
+import { VerificationAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
 import { bytesToHexString, hexStringToBytes } from "../bytes";
@@ -70,7 +70,7 @@ export class EthersEip712Signer extends Eip712Signer {
   }
 
   public async signVerificationEthAddressClaim(
-    claim: VerificationEthAddressClaim,
+    claim: VerificationAddressClaim,
     chainId = 0,
   ): HubAsyncResult<Uint8Array> {
     const domain = chainId === 0 ? EIP_712_FARCASTER_DOMAIN : { ...EIP_712_FARCASTER_DOMAIN, chainId };

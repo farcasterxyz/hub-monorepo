@@ -1,6 +1,6 @@
 import { SignatureScheme } from "../protobufs";
 import { HubAsyncResult } from "../errors";
-import { VerificationEthAddressClaim } from "../verifications";
+import { VerificationAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import { Signer } from "./signer";
 import { KeyGatewayAddMessage } from "../eth/contracts/keyGateway";
@@ -26,7 +26,7 @@ export abstract class Eip712Signer implements Signer {
   public abstract getSignerKey(): HubAsyncResult<Uint8Array>;
   public abstract signMessageHash(hash: Uint8Array): HubAsyncResult<Uint8Array>;
   public abstract signVerificationEthAddressClaim(
-    claim: VerificationEthAddressClaim,
+    claim: VerificationAddressClaim,
     chainId?: number,
   ): HubAsyncResult<Uint8Array>;
   public abstract signUserNameProofClaim(claim: UserNameProofClaim): HubAsyncResult<Uint8Array>;
