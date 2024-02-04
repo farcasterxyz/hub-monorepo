@@ -147,10 +147,9 @@ export class StorageCache {
       // Recheck the count in case it was set by another thread (i.e. no race conditions)
       if (this._counts.get(key) === undefined) {
         this._counts.set(key, total);
-        log.info(
-          { fid, set, total, prepopulateComplete: this.prepopulateComplete },
-          `storage cache miss for fid: ${fid}`,
-        );
+        if (this.prepopulateComplete) {
+          log.info({ fid, set, total }, `storage cache miss for fid: ${fid}`);
+        }
       }
     }
 
