@@ -309,6 +309,7 @@ export class Hub implements HubInterface {
   private allowlistedImmunePeers: string[] | undefined;
   private strictContactInfoValidation: boolean;
   private strictNoSign: boolean;
+  private performedFirstSync = false;
 
   private s3_snapshot_bucket: string;
 
@@ -1179,16 +1180,18 @@ export class Hub implements HubInterface {
 
     // Check if we already have this client
     const result = this.syncEngine.addContactInfoForPeerId(peerId, message);
-    if (result.isOk()) {
-      // Temporarily disable sync with new peers
-      log.debug({ peerInfo: message }, "New peer but skipping sync");
-      // const syncResult = await ResultAsync.fromPromise(
-      //   this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
-      //   (e) => e,
-      // );
-      // if (syncResult.isErr()) {
-      //   log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
-      // }
+    if (result.isOk() && !this.performedFirstSync) {
+      // Should only sync last ~day worth of messages with new peers. For now, only sync with the first peer so we are upto
+      // date on startup.
+      log.debug({ peerInfo: message }, "New peer but only performing first sync");
+      const syncResult = await ResultAsync.fromPromise(
+        this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
+        (e) => e,
+      );
+      if (syncResult.isErr()) {
+        log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
+      }
+      this.performedFirstSync = true;
     } else {
       log.debug({ peerInfo: message }, "Already have this peer, skipping sync");
     }

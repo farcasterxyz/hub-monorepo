@@ -5,7 +5,7 @@ import Engine from "../engine/index.js";
 import { logger } from "../../utils/logger.js";
 import { statsd } from "../../utils/statsd.js";
 
-export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = "0 * * * *"; // Every hour at :00
+export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = "0 */2 * * *"; // Every two hours
 
 const log = logger.child({
   component: "PruneMessagesJob",
