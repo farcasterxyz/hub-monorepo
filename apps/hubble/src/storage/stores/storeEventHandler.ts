@@ -42,7 +42,7 @@ import {
 import { logger } from "../../utils/logger.js";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
-const DEFAULT_LOCK_MAX_PENDING = 1_000;
+const DEFAULT_LOCK_MAX_PENDING = 2_500;
 const DEFAULT_LOCK_TIMEOUT = 500; // in ms
 
 // @ts-ignore

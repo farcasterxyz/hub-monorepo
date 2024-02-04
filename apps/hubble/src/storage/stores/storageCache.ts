@@ -37,6 +37,7 @@ export class StorageCache {
   private _counts: Map<string, number>;
   private _earliestTsHashes: Map<string, Uint8Array>;
   private _activeStorageSlots: Map<number, StorageSlot>;
+  private prepopulateComplete = false;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
@@ -97,6 +98,7 @@ export class StorageCache {
   async prepopulateMessageCounts(): Promise<void> {
     let prevFid = 0;
     let prevPostfix = 0;
+    let totalFids = 0;
 
     const start = Date.now();
     log.info("starting storage cache prepopulation");
@@ -113,6 +115,7 @@ export class StorageCache {
             await this.getMessageCount(fid, postfix);
 
             if (prevFid !== fid) {
+              totalFids += 1;
               // Sleep to allow other threads to run between each fid
               await sleep(1);
             }
@@ -125,7 +128,8 @@ export class StorageCache {
       { values: false },
       1 * 60 * 60 * 1000, // 1 hour
     );
-    log.info({ timeTakenMs: Date.now() - start }, "storage cache prepopulation finished");
+    this.prepopulateComplete = true;
+    log.info({ timeTakenMs: Date.now() - start, totalFids }, "storage cache prepopulation finished");
   }
 
   async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
@@ -143,6 +147,10 @@ export class StorageCache {
       // Recheck the count in case it was set by another thread (i.e. no race conditions)
       if (this._counts.get(key) === undefined) {
         this._counts.set(key, total);
+        log.info(
+          { fid, set, total, prepopulateComplete: this.prepopulateComplete },
+          `storage cache miss for fid: ${fid}`,
+        );
       }
     }
 
