@@ -170,7 +170,7 @@ write_env_file() {
     fi
 
     if ! key_exists "CONCURRENCY"; then
-        echo "# Set this higher the further the hub is from the replicator"
+        echo "# Set this higher the further the hub is from the replicator" >> .env
         echo "CONCURRENCY=$(expr 4 \* $(portable_nproc))" >> .env
     fi
 
