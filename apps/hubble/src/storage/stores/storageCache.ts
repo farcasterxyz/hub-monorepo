@@ -148,7 +148,7 @@ export class StorageCache {
       if (this._counts.get(key) === undefined) {
         this._counts.set(key, total);
         if (this.prepopulateComplete) {
-          log.info({ fid, set, total }, `storage cache miss for fid: ${fid}`);
+          log.debug({ fid, set, total }, `storage cache miss for fid: ${fid}`);
         }
       }
     }
