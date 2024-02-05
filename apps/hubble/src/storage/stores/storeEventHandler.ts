@@ -237,8 +237,8 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     });
   }
 
-  async getCacheMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
-    return this._storageCache.getMessageCount(fid, set);
+  async getCacheMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
+    return this._storageCache.getMessageCount(fid, set, forceFetch);
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {

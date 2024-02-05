@@ -242,7 +242,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const commits: number[] = [];
 
-    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix, false);
     const units = await this._eventHandler.getCurrentStorageUnitsForFid(fid);
 
     if (units.isErr()) {
