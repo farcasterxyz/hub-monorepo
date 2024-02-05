@@ -72,7 +72,7 @@ const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 // A quick sync will only sync messages that are newer than 2 weeks.
 const QUICK_SYNC_PROBABILITY = 0.7; // 70% of the time, we'll do a quick sync
-const QUICK_SYNC_TS_CUTOFF = 2 * 7 * 24 * 60 * 60; // 2 weeks, in seconds
+export const QUICK_SYNC_TS_CUTOFF = 2 * 7 * 24 * 60 * 60; // 2 weeks, in seconds
 
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
@@ -1085,7 +1085,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     prefix: Uint8Array,
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
-    tsCutoff = -1,
+    quickSyncTsCutoff = -1,
   ): Promise<number> {
     // Check if we should interrupt the sync
     if (this._currentSyncStatus.interruptSync) {
@@ -1094,11 +1094,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     // If the prefix is before the cutoff, then we won't recurse into this node.
-    if (tsCutoff >= 0) {
+    if (quickSyncTsCutoff >= 0) {
+      // We won't recurse into nodes if they are older than the cutoff. To do this, we'll compare the prefix
+      // with a max timestamp prefix. If the prefix is older than the cutoff, we'll skip it.
       const tsPrefix = Buffer.from(prefix.slice(0, 10)).toString("ascii");
-      const maxTs = parseInt(tsPrefix.padEnd(TIMESTAMP_LENGTH, "9"), 10);
-      if (maxTs < tsCutoff) {
-        log.debug({ prefix, maxTs, tsCutoff }, "Skipping prefix before cutoff");
+      const maxTs = parseInt(tsPrefix.padEnd(TIMESTAMP_LENGTH, "9"), 10); // pad with 9s to get the max timestamp
+      if (maxTs < quickSyncTsCutoff) {
+        log.debug({ prefix, maxTs, tsCutoff: quickSyncTsCutoff }, "Skipping prefix before cutoff");
         return 0;
       }
     }
@@ -1130,7 +1132,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         ourNode,
         rpcClient,
         onMissingHashes,
-        tsCutoff,
+        quickSyncTsCutoff,
       );
       return 1;
     }
@@ -1141,7 +1143,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     ourNode: NodeMetadata | undefined,
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
-    tsCutoff: number,
+    quickSyncTsCutoff: number,
   ): Promise<void> {
     if (this._currentSyncStatus.interruptSync) {
       log.info("Interrupting sync");
@@ -1211,7 +1213,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       for (const [theirChildChar, theirChild] of reversedEntries) {
         // recursively fetch hashes for every node where the hashes don't match
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-          const r = this.compareNodeAtPrefix(theirChild.prefix, rpcClient, onMissingHashes, tsCutoff);
+          const r = this.compareNodeAtPrefix(theirChild.prefix, rpcClient, onMissingHashes, quickSyncTsCutoff);
           numChildrenFetched += 1;
 
           // If we're fetching more than HASHES_PER_FETCH, we'll wait for the first batch to finish before starting
