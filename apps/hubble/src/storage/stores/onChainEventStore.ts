@@ -224,6 +224,11 @@ class OnChainEventStore {
       }
     }
 
+    if (event.signerEventBody.eventType === SignerEventType.REMOVE) {
+      // Remove the signer from the cache
+      this._activeSignerCache.delete(this.getActiveSignerCacheKey(event.fid, event.signerEventBody.key));
+    }
+
     if (event.signerEventBody.eventType === SignerEventType.ADMIN_RESET) {
       const signerEvents = await this.getOnChainEvents<SignerOnChainEvent>(
         OnChainEventType.EVENT_TYPE_SIGNER,
