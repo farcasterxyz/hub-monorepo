@@ -22,7 +22,6 @@ import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { EMPTY_HASH } from "./trieNode.js";
 import { ensureMessageData } from "../../storage/db/message.js";
-import { bytesCompare } from "@farcaster/core";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -278,6 +277,64 @@ describe("Multi peer sync engine", () => {
       expect(peerScoreAfter?.score).toBeGreaterThan(peerScoreBefore?.score ?? Infinity);
     },
     TEST_TIMEOUT_LONG,
+  );
+
+  test(
+    "sync should respect 2-week cutoff",
+    async () => {
+      // Add signer custody event to engine 1
+      await expect(engine1.mergeOnChainEvent(custodyEvent)).resolves.toBeDefined();
+      await expect(engine1.mergeOnChainEvent(signerEvent)).resolves.toBeDefined();
+      await expect(engine1.mergeOnChainEvent(storageEvent)).resolves.toBeDefined();
+      await expect(engine1.mergeUserNameProof(fname)).resolves.toBeDefined();
+
+      // Sync engine 2 with engine 1, this should get all the onchain events and fnames
+      await syncEngine2.performSync("engine1", (await syncEngine1.getSnapshot())._unsafeUnwrap(), clientForServer1);
+      await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+      // Make sure root hash matches
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+      // Add messages to engine 1. The first message is 4 weeks old, the second is new.
+      const nowFsTime = getFarcasterTime()._unsafeUnwrap();
+      const oldFsTime = nowFsTime - 60 * 60 * 24 * 7 * 4;
+
+      const oldCast = await Factories.CastAddMessage.create(
+        { data: { fid, network, timestamp: oldFsTime } },
+        { transient: { signer } },
+      );
+      const newCast = await Factories.CastAddMessage.create(
+        { data: { fid, network, timestamp: nowFsTime } },
+        { transient: { signer } },
+      );
+
+      // Merge the casts in
+      let result = await engine1.mergeMessage(oldCast);
+      expect(result.isOk()).toBeTruthy();
+      result = await engine1.mergeMessage(newCast);
+      expect(result.isOk()).toBeTruthy();
+
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+      // Engine 2 should sync with engine1 (inlcuding onchain events and fnames)
+      expect(
+        (await syncEngine2.syncStatus("engine2", (await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
+          .shouldSync,
+      ).toBeTruthy();
+
+      // Sync engine 2 with engine 1
+      await syncEngine2.performSync(
+        "engine1",
+        (await syncEngine1.getSnapshot())._unsafeUnwrap(),
+        clientForServer1,
+        false,
+        nowFsTime - 1,
+      );
+
+      // Expect the new cast to be in the sync trie, but not the old one
+      expect(await syncEngine2.trie.exists(SyncId.fromMessage(newCast))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromMessage(oldCast))).toBeFalsy();
+    },
+    30 * 60 * 1000,
   );
 
   test("cast remove should remove from trie", async () => {
