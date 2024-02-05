@@ -132,9 +132,9 @@ export class StorageCache {
     log.info({ timeTakenMs: Date.now() - start, totalFids }, "storage cache prepopulation finished");
   }
 
-  async getMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
+  async getMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
     const key = makeKey(fid, set);
-    if (this._counts.get(key) === undefined) {
+    if (this._counts.get(key) === undefined && forceFetch) {
       let total = 0;
       await this._db.forEachIteratorByPrefix(
         makeMessagePrimaryKey(fid, set),
