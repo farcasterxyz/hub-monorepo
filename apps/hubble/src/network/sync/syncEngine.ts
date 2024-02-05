@@ -737,7 +737,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
             result.addResult(fnameResult);
 
             // And finally messages
-            const messagesResult = await this.fetchAndMergeMessages(missingMessageIds, rpcClient);
+            const messagesResult = await this.fetchAndMergeMessages(missingMessageIds, rpcClient, quickSyncCutoff);
             result.addResult(messagesResult);
 
             fullSyncResult.addResult(result);
@@ -937,18 +937,35 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return new MergeResult(syncIds.length, promises.length, 0, syncIds.length - promises.length);
   }
 
-  public async fetchAndMergeMessages(syncIds: SyncId[], rpcClient: HubRpcClient): Promise<MergeResult> {
+  public async fetchAndMergeMessages(
+    syncIds: SyncId[],
+    rpcClient: HubRpcClient,
+    quickSyncCutoff: number,
+  ): Promise<MergeResult> {
     if (syncIds.length === 0) {
       return new MergeResult(); // empty merge result
     }
 
+    let filteredSyncIds = syncIds;
+    if (quickSyncCutoff > 0) {
+      const startSyncIDs = syncIds.length;
+      const exists = await Promise.all(syncIds.map((s) => this.trie.exists(s)));
+      filteredSyncIds = syncIds.filter((_, i) => !exists[i]);
+      log.info(
+        { startSyncIDs, filteredSyncIds: filteredSyncIds.length, peer: this._currentSyncStatus.peerId },
+        "Fetching messages for sync",
+      );
+    }
+
     let result = new MergeResult();
     const start = Date.now();
+
     const messagesResult = await rpcClient.getAllMessagesBySyncIds(
-      SyncIds.create({ syncIds: syncIds.map((s) => s.syncId()) }),
+      SyncIds.create({ syncIds: filteredSyncIds.map((s) => s.syncId()) }),
       new Metadata(),
       rpcDeadline(),
     );
+
     statsd().timing("syncengine.peer.get_all_messages_by_syncids_ms", Date.now() - start);
 
     await messagesResult.match(
