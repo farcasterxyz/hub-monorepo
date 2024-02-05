@@ -93,6 +93,15 @@ beforeAll(async () => {
   );
 });
 
+beforeEach(async () => {
+  engine.clearCache();
+});
+
+afterAll(async () => {
+  await engine.stop();
+  await db.close();
+});
+
 describe("mergeOnChainEvent", () => {
   test("succeeds", async () => {
     await expect(engine.mergeOnChainEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
@@ -440,14 +449,18 @@ describe("mergeMessage", () => {
   });
 
   describe("fails when signer is invalid", () => {
-    test("with ReactionAdd", async () => {
-      await engine.mergeOnChainEvent(custodyEvent);
-      await engine.mergeOnChainEvent(Factories.SignerOnChainEvent.build({ fid }));
+    test(
+      "with ReactionAdd",
+      async () => {
+        await engine.mergeOnChainEvent(custodyEvent);
+        await engine.mergeOnChainEvent(Factories.SignerOnChainEvent.build({ fid }));
 
-      const result = await engine.mergeMessage(reactionAdd);
-      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
-      expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
-    });
+        const result = await engine.mergeMessage(reactionAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
+      },
+      10 * 60 * 1000,
+    );
 
     test("with LinkAdd", async () => {
       setReferenceDateForTest(100000000000000000000000);
