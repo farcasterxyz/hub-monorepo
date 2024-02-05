@@ -72,6 +72,7 @@ import {
   performDbMigrations,
 } from "./storage/db/migrations/migrations.js";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
@@ -1545,11 +1546,17 @@ export class Hub implements HubInterface {
       log.error(`S3 File Error: ${err}`);
     });
 
-    const targzParams = {
-      Bucket: this.s3_snapshot_bucket,
-      Key: key,
-      Body: fileStream,
-    };
+    // The targz should be uploaded via multipart upload to S3
+    const targzParams = new Upload({
+      client: s3,
+      params: {
+        Bucket: this.s3_snapshot_bucket,
+        Key: key,
+        Body: fileStream,
+      },
+      queueSize: 4, // 4 concurrent uploads
+      partSize: 1000 * 1024 * 1024, // 1 GB
+    });
 
     const latestJsonParams = {
       Bucket: this.s3_snapshot_bucket,
@@ -1561,8 +1568,12 @@ export class Hub implements HubInterface {
       }),
     };
 
+    targzParams.on("httpUploadProgress", (progress) => {
+      log.info({ progress }, "Uploading snapshot to S3");
+    });
+
     try {
-      await s3.send(new PutObjectCommand(targzParams));
+      await targzParams.done();
       await s3.send(new PutObjectCommand(latestJsonParams));
       log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
       return ok(key);
