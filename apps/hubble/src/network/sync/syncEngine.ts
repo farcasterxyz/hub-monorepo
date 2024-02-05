@@ -72,7 +72,7 @@ const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 // A quick sync will only sync messages that are newer than 2 weeks.
 const QUICK_SYNC_PROBABILITY = 0.7; // 70% of the time, we'll do a quick sync
-export const QUICK_SYNC_TS_CUTOFF = 2 * 7 * 24 * 60 * 60; // 2 weeks, in seconds
+export const QUICK_SYNC_TS_CUTOFF = 2 * 24 * 60 * 60; // 2 days, in seconds
 
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
