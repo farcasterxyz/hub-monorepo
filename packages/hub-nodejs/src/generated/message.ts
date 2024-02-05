@@ -445,6 +445,8 @@ export interface VerificationAddEthAddressBody {
   verificationType: number;
   /** 0 for EOA verifications, 1 or 10 for contract verifications */
   chainId: number;
+  /** Whether this verification is a "primary" */
+  isPrimary: boolean;
 }
 
 /** Removes a Verification of any type */
@@ -1448,6 +1450,7 @@ function createBaseVerificationAddEthAddressBody(): VerificationAddEthAddressBod
     blockHash: new Uint8Array(),
     verificationType: 0,
     chainId: 0,
+    isPrimary: false,
   };
 }
 
@@ -1467,6 +1470,9 @@ export const VerificationAddEthAddressBody = {
     }
     if (message.chainId !== 0) {
       writer.uint32(40).uint32(message.chainId);
+    }
+    if (message.isPrimary === true) {
+      writer.uint32(48).bool(message.isPrimary);
     }
     return writer;
   },
@@ -1513,6 +1519,13 @@ export const VerificationAddEthAddressBody = {
 
           message.chainId = reader.uint32();
           continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.isPrimary = reader.bool();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1529,6 +1542,7 @@ export const VerificationAddEthAddressBody = {
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
       verificationType: isSet(object.verificationType) ? Number(object.verificationType) : 0,
       chainId: isSet(object.chainId) ? Number(object.chainId) : 0,
+      isPrimary: isSet(object.isPrimary) ? Boolean(object.isPrimary) : false,
     };
   },
 
@@ -1544,6 +1558,7 @@ export const VerificationAddEthAddressBody = {
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
     message.verificationType !== undefined && (obj.verificationType = Math.round(message.verificationType));
     message.chainId !== undefined && (obj.chainId = Math.round(message.chainId));
+    message.isPrimary !== undefined && (obj.isPrimary = message.isPrimary);
     return obj;
   },
 
@@ -1560,6 +1575,7 @@ export const VerificationAddEthAddressBody = {
     message.blockHash = object.blockHash ?? new Uint8Array();
     message.verificationType = object.verificationType ?? 0;
     message.chainId = object.chainId ?? 0;
+    message.isPrimary = object.isPrimary ?? false;
     return message;
   },
 };
