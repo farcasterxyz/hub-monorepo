@@ -20,7 +20,7 @@ import SyncEngine from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
-import { sleep, sleepWhile } from "../../utils/crypto.js";
+import { sleepWhile } from "../../utils/crypto.js";
 import { NetworkFactories } from "../../network/utils/factories.js";
 import { HubInterface } from "../../hubble.js";
 import { MockHub } from "../../test/mocks.js";
