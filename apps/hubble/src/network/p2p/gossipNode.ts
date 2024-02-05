@@ -30,7 +30,7 @@ import { PeerScore } from "network/sync/peerScore.js";
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
-export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
+export const GOSSIP_SEEN_TTL = 1000 * 60 * 10;
 
 const log = logger.child({ component: "GossipNode" });
 const workerLog = logger.child({ component: "GossipNodeWorker" });
