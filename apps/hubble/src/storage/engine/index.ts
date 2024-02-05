@@ -206,6 +206,10 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._db;
   }
 
+  clearCache() {
+    this._onchainEventsStore.clearActiveSignerCache();
+  }
+
   async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }

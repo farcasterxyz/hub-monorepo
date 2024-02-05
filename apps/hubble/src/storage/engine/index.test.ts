@@ -93,6 +93,15 @@ beforeAll(async () => {
   );
 });
 
+beforeEach(async () => {
+  engine.clearCache();
+});
+
+afterAll(async () => {
+  await engine.stop();
+  await db.close();
+});
+
 describe("mergeOnChainEvent", () => {
   test("succeeds", async () => {
     await expect(engine.mergeOnChainEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
