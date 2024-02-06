@@ -116,9 +116,9 @@ describe("httpServer", () => {
     });
   });
 
-  describe("peerList", () => {
-    test("getPeerList", async () => {
-      const url = getFullUrl("/v1/peerList");
+  describe("currentPeers", () => {
+    test("currentPeers", async () => {
+      const url = getFullUrl("/v1/currentPeers");
 
       const response = await axiosGet(url);
 

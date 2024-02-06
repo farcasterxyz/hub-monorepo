@@ -403,7 +403,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public getCurrentHubPeerContacts() {
-    return this.currentHubPeerContacts;
+    return this.currentHubPeerContacts.values();
   }
 
   public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContentBody) {

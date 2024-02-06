@@ -5,4 +5,4 @@
 "@farcaster/hubble": minor
 ---
 
-Add peerList RPC endpoint
+Add currentPeers RPC endpoint

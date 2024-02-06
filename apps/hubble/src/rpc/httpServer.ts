@@ -224,9 +224,9 @@ export class HttpAPIServer {
       this.grpcImpl.getInfo(call, handleResponse(reply, HubInfoResponse));
     });
 
-    //================peerList================
-    // @doc-tag: /peerList
-    this.app.get("/v1/peerList", (request, reply) => {
+    //================currentPeers================
+    // @doc-tag: /currentPeers
+    this.app.get("/v1/currentPeers", (request, reply) => {
       const call = getCallObject("getCurrentPeers", {}, request);
       this.grpcImpl.getCurrentPeers(call, handleResponse(reply, ContactInfoResponse));
     });
