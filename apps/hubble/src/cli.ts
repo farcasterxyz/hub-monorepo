@@ -406,11 +406,16 @@ app
       throw ipMultiAddrResult.error;
     }
 
-    const bootstrapAddrs = (
-      (cliOptions.bootstrap ??
-        hubConfig.bootstrap ??
-        (network === FarcasterNetwork.MAINNET ? MAINNET_BOOTSTRAP_PEERS : [])) as string[]
-    )
+    let bootstrapList = (cliOptions.bootstrap ?? hubConfig.bootstrap ?? []) as string[];
+    if (network === FarcasterNetwork.MAINNET) {
+      // Add in all the mainnet bootstrap peers
+      bootstrapList.push(...MAINNET_BOOTSTRAP_PEERS);
+
+      // deduplicate
+      bootstrapList = Array.from(new Set(bootstrapList));
+    }
+
+    const bootstrapAddrs = bootstrapList
       .map((a) => parseAddress(a))
       .map((a) => {
         if (a.isErr()) {
