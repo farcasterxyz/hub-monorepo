@@ -379,7 +379,7 @@ export class Hub implements HubInterface {
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
       lockMaxPending: options.commitLockMaxPending,
-      lockTimeout: options.commitLockTimeout,
+      lockExecutionTimeout: options.commitLockTimeout,
     });
 
     const opMainnetRpcUrls = options.l2RpcUrl.split(",");
