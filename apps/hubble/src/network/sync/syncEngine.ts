@@ -28,7 +28,14 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
-import { formatPrefix, prefixToTimestamp, SyncId, SyncIdType, timestampToPaddedTimestampPrefix } from "./syncId.js";
+import {
+  formatPrefix,
+  prefixToTimestamp,
+  SyncId,
+  SyncIdType,
+  TIMESTAMP_LENGTH,
+  timestampToPaddedTimestampPrefix,
+} from "./syncId.js";
 import { TrieSnapshot } from "./trieNode.js";
 import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -36,7 +43,13 @@ import { sleepWhile } from "../../utils/crypto.js";
 import { statsd } from "../../utils/statsd.js";
 import { logger, messageToLog } from "../../utils/logger.js";
 import { OnChainEventPostfix, RootPrefix } from "../../storage/db/types.js";
-import { bytesCompare, bytesStartsWith, fromFarcasterTime, isIdRegisterOnChainEvent } from "@farcaster/core";
+import {
+  bytesCompare,
+  bytesStartsWith,
+  fromFarcasterTime,
+  isIdRegisterOnChainEvent,
+  toFarcasterTime,
+} from "@farcaster/core";
 import { L2EventsProvider } from "../../eth/l2EventsProvider.js";
 import { SyncEngineProfiler } from "./syncEngineProfiler.js";
 import os from "os";
@@ -46,7 +59,7 @@ import { SemVer } from "semver";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
 import { PeerScore, PeerScorer } from "./peerScore.js";
 import { getOnChainEvent } from "../../storage/db/onChainEvent.js";
-import { getFNameProofByFid, getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
+import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -56,6 +69,10 @@ const SYNC_MAX_DURATION = 30 * 60 * 1000; // 30 minutes
 // 4x the number of CPUs, clamped between 2 and 16
 const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length * 4, 16), 2);
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
+
+// A quick sync will only sync messages that are newer than 2 weeks.
+const QUICK_SYNC_PROBABILITY = 0.7; // 70% of the time, we'll do a quick sync
+export const QUICK_SYNC_TS_CUTOFF = 2 * 7 * 24 * 60 * 60; // 2 weeks, in seconds
 
 const COMPACTION_THRESHOLD = 100_000; // Sync
 const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may need to be adjusted as network grows
@@ -564,10 +581,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this._peerSyncSnapshot.set(updatedPeerIdString, syncStatus.theirSnapshot);
 
       if (syncStatus.shouldSync === true) {
-        log.info({ peerId }, "Diffsync: Starting Sync with peer");
         const start = Date.now();
 
-        const result = await this.performSync(updatedPeerIdString, peerState, rpcClient, true);
+        // Do a quick sync with a 70% chance. A quick sync will only sync messages that are newer than 2 weeks.
+        const isQuickSync = Math.random() < QUICK_SYNC_PROBABILITY;
+        const quickSyncCutoff = isQuickSync
+          ? toFarcasterTime(Date.now() - QUICK_SYNC_TS_CUTOFF * 1000).unwrapOr(-1)
+          : -1;
+
+        log.info({ peerId, isQuickSync, quickSyncCutoff }, "Diffsync: Starting Sync with peer");
+        const result = await this.performSync(updatedPeerIdString, peerState, rpcClient, true, quickSyncCutoff);
 
         log.info({ peerId, result, timeTakenMs: Date.now() - start }, "Diffsync: complete");
         this.emit("syncComplete", true);
@@ -646,6 +669,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     otherSnapshot: TrieSnapshot,
     rpcClient: HubRpcClient,
     doAudit = false,
+    quickSyncCutoff = -1,
   ): Promise<MergeResult> {
     log.info({ peerId }, "Perform sync: Start");
 
@@ -698,38 +722,43 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           auditPeerPromise = Promise.resolve();
         }
 
-        await this.compareNodeAtPrefix(divergencePrefix, rpcClient, async (missingIds: Uint8Array[]) => {
-          const missingSyncIds = missingIds.map((id) => SyncId.fromBytes(id));
-          const missingMessageIds = missingSyncIds.filter((id) => id.type() === SyncIdType.Message);
+        await this.compareNodeAtPrefix(
+          divergencePrefix,
+          rpcClient,
+          async (missingIds: Uint8Array[]) => {
+            const missingSyncIds = missingIds.map((id) => SyncId.fromBytes(id));
+            const missingMessageIds = missingSyncIds.filter((id) => id.type() === SyncIdType.Message);
 
-          // Merge on chain events first
-          const result = await this.validateAndMergeOnChainEvents(
-            missingSyncIds.filter((id) => id.type() === SyncIdType.OnChainEvent),
-          );
+            // Merge on chain events first
+            const result = await this.validateAndMergeOnChainEvents(
+              missingSyncIds.filter((id) => id.type() === SyncIdType.OnChainEvent),
+            );
 
-          // Then Fnames
-          const fnameResult = await this.validateAndMergeFnames(
-            missingSyncIds.filter((id) => id.type() === SyncIdType.FName),
-          );
-          result.addResult(fnameResult);
+            // Then Fnames
+            const fnameResult = await this.validateAndMergeFnames(
+              missingSyncIds.filter((id) => id.type() === SyncIdType.FName),
+            );
+            result.addResult(fnameResult);
 
-          // And finally messages
-          const messagesResult = await this.fetchAndMergeMessages(missingMessageIds, rpcClient);
-          result.addResult(messagesResult);
+            // And finally messages
+            const messagesResult = await this.fetchAndMergeMessages(missingMessageIds, rpcClient);
+            result.addResult(messagesResult);
 
-          fullSyncResult.addResult(result);
-          progressBar?.increment(result.total);
+            fullSyncResult.addResult(result);
+            progressBar?.increment(result.total);
 
-          const avgPeerNumMessages = this.avgPeerNumMessages();
-          statsd().gauge(
-            "syncengine.sync_percent",
-            avgPeerNumMessages > 0 ? Math.min(1, (await this.trie.items()) / avgPeerNumMessages) : 0,
-          );
+            const avgPeerNumMessages = this.avgPeerNumMessages();
+            statsd().gauge(
+              "syncengine.sync_percent",
+              avgPeerNumMessages > 0 ? Math.min(1, (await this.trie.items()) / avgPeerNumMessages) : 0,
+            );
 
-          statsd().increment("syncengine.sync_messages.success", result.successCount);
-          statsd().increment("syncengine.sync_messages.error", result.errCount);
-          statsd().increment("syncengine.sync_messages.deferred", result.deferredCount);
-        });
+            statsd().increment("syncengine.sync_messages.success", result.successCount);
+            statsd().increment("syncengine.sync_messages.error", result.errCount);
+            statsd().increment("syncengine.sync_messages.deferred", result.deferredCount);
+          },
+          quickSyncCutoff,
+        );
 
         await auditPeerPromise; // Wait for audit to complete
 
@@ -1060,11 +1089,24 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     prefix: Uint8Array,
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
+    quickSyncTsCutoff = -1,
   ): Promise<number> {
     // Check if we should interrupt the sync
     if (this._currentSyncStatus.interruptSync) {
       log.info("Interrupting sync");
       return -1;
+    }
+
+    // If the prefix is before the cutoff, then we won't recurse into this node.
+    if (quickSyncTsCutoff >= 0) {
+      // We won't recurse into nodes if they are older than the cutoff. To do this, we'll compare the prefix
+      // with a max timestamp prefix. If the prefix is older than the cutoff, we'll skip it.
+      const tsPrefix = Buffer.from(prefix.slice(0, 10)).toString("ascii");
+      const maxTs = parseInt(tsPrefix.padEnd(TIMESTAMP_LENGTH, "9"), 10); // pad with 9s to get the max timestamp
+      if (maxTs < quickSyncTsCutoff) {
+        log.debug({ prefix, maxTs, tsCutoff: quickSyncTsCutoff }, "Skipping prefix before cutoff");
+        return 0;
+      }
     }
 
     const ourNode = await this._trie.getTrieNodeMetadata(prefix);
@@ -1094,6 +1136,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         ourNode,
         rpcClient,
         onMissingHashes,
+        quickSyncTsCutoff,
       );
       return 1;
     }
@@ -1104,6 +1147,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     ourNode: NodeMetadata | undefined,
     rpcClient: HubRpcClient,
     onMissingHashes: (missingHashes: Uint8Array[]) => Promise<void>,
+    quickSyncTsCutoff: number,
   ): Promise<void> {
     if (this._currentSyncStatus.interruptSync) {
       log.info("Interrupting sync");
@@ -1173,7 +1217,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       for (const [theirChildChar, theirChild] of reversedEntries) {
         // recursively fetch hashes for every node where the hashes don't match
         if (ourNode?.children?.get(theirChildChar)?.hash !== theirChild.hash) {
-          const r = this.compareNodeAtPrefix(theirChild.prefix, rpcClient, onMissingHashes);
+          const r = this.compareNodeAtPrefix(theirChild.prefix, rpcClient, onMissingHashes, quickSyncTsCutoff);
           numChildrenFetched += 1;
 
           // If we're fetching more than HASHES_PER_FETCH, we'll wait for the first batch to finish before starting

@@ -13,8 +13,8 @@ import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import { StatsDInitParams, initializeStatsd, statsd } from "../../utils/statsd.js";
 
 // The number of messages to process before unloading the trie from memory
-// Approx 25k * 10 nodes * 65 bytes per node = approx 16MB of cached data
-const TRIE_UNLOAD_THRESHOLD = 25_000;
+// Approx 100k * 10 nodes * 65 bytes per node = approx 64MB of cached data
+const TRIE_UNLOAD_THRESHOLD = 100_000;
 
 // We use a proxy to log messages to the main thread
 const log = new Proxy<Logger>({} as Logger, {

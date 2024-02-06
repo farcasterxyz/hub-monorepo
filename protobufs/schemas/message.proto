@@ -35,6 +35,7 @@ message MessageData {
     // SignerRemoveBody signer_remove_body = 13; // Deprecated
     LinkBody link_body = 14;
     UserNameProof username_proof_body = 15;
+    FrameActionBody frame_action_body = 16;
   } // Properties specific to the MessageType
 }
 
@@ -67,6 +68,7 @@ enum MessageType {
 //  MESSAGE_TYPE_SIGNER_REMOVE = 10; // Remove an Ed25519 key pair that signs messages for a user
   MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
   MESSAGE_TYPE_USERNAME_PROOF = 12; // Add or replace a username proof
+  MESSAGE_TYPE_FRAME_ACTION = 13; // A Farcaster Frame action
 }
 
 /** Farcaster network the message is intended for */
@@ -161,4 +163,12 @@ message LinkBody {
   oneof target {
     uint64 target_fid = 3;  // The fid the link relates to
   }
+}
+
+/** A Farcaster Frame action */
+message FrameActionBody {
+  bytes url = 1; // URL of the Frame triggering the action
+  uint32 button_index = 2; // The index of the button pressed (1-4)
+  CastId cast_id = 3; // The cast which contained the frame url
+  bytes input_text = 4; // Text input from the user, if present
 }

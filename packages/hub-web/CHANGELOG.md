@@ -1,5 +1,31 @@
 # @farcaster/hub-web
 
+## 0.7.5
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+- Updated dependencies [f8c5f280]
+  - @farcaster/core@0.13.7
+
+## 0.7.4
+
+### Patch Changes
+
+- fd9f9ff8: Rename verification message
+- 362f580b: feat: add text input frame field
+- Updated dependencies [fd9f9ff8]
+- Updated dependencies [362f580b]
+  - @farcaster/core@0.13.6
+
+## 0.7.3
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+- Updated dependencies [229ea166]
+  - @farcaster/core@0.13.5
+
 ## 0.7.2
 
 ### Patch Changes

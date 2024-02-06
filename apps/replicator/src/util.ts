@@ -222,6 +222,8 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         type,
       } satisfies UsernameProofBodyJson;
     }
+    case MessageType.FRAME_ACTION:
+      throw new AssertionError("Unexpected FRAME_ACTION message type");
     case MessageType.NONE:
       throw new AssertionError("Message has no type");
     default:

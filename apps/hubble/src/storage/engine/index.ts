@@ -20,6 +20,7 @@ import {
   MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
   Message,
+  MessageType,
   OnChainEvent,
   OnChainEventResponse,
   OnChainEventType,
@@ -205,6 +206,10 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._db;
   }
 
+  clearCache() {
+    this._onchainEventsStore.clearActiveSignerCache();
+  }
+
   async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
     return Promise.all(messages.map((message) => this.mergeMessage(message)));
   }
@@ -242,6 +247,11 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   async mergeMessageToStore(message: Message): HubAsyncResult<number> {
+    // Frame actions cannot be stored
+    if (message.data?.type === MessageType.FRAME_ACTION) {
+      return err(new HubError("bad_request.validation_failure", "invalid message type"));
+    }
+
     // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     const setPostfix = typeToSetPostfix(message.data!.type);
 

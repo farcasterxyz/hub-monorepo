@@ -396,3 +396,19 @@ describe("username proof", () => {
     });
   });
 });
+
+describe("makeFrameAction", () => {
+  test("succeeds", async () => {
+    const message = await builders.makeFrameAction(
+      protobufs.FrameActionBody.create({
+        buttonIndex: 1,
+        url: Buffer.from("https://example.com"),
+        castId: { fid, hash: Factories.MessageHash.build() },
+      }),
+      { fid, network },
+      ed25519Signer,
+    );
+    const isValid = await validations.validateMessage(message._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
+  });
+});

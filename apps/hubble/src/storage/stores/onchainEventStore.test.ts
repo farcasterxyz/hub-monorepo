@@ -210,9 +210,12 @@ describe("OnChainEventStore", () => {
         }),
       });
 
+      // Add the signer, make sure we can fetch it
       await set.mergeOnChainEvent(signer);
-      await set.mergeOnChainEvent(signerRemoved);
+      await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).resolves.toEqual(signer);
 
+      // Remove the signer, make sure we can't fetch it
+      await set.mergeOnChainEvent(signerRemoved);
       await expect(set.getActiveSigner(signer.fid, signer.signerEventBody.key)).rejects.toThrow("active signer");
     });
 

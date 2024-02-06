@@ -110,6 +110,7 @@ export interface HubInterface {
   identity: string;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
+  validateMessage(message: Message): HubAsyncResult<Message>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
   getHubState(): HubAsyncResult<HubState>;
@@ -308,6 +309,7 @@ export class Hub implements HubInterface {
   private allowlistedImmunePeers: string[] | undefined;
   private strictContactInfoValidation: boolean;
   private strictNoSign: boolean;
+  private performedFirstSync = false;
 
   private s3_snapshot_bucket: string;
 
@@ -1025,13 +1027,6 @@ export class Hub implements HubInterface {
       const result = await this.submitMessage(message, "gossip");
       if (result.isOk()) {
         this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
-        const currentTime = getFarcasterTime().unwrapOr(0);
-        const messageCreatedTime = message.data?.timestamp ?? 0;
-        // The message time is user provided, so, while not ideal, it's still good enough to use most of the time
-        if (currentTime > 0 && messageCreatedTime > 0 && currentTime > messageCreatedTime) {
-          const diff = currentTime - messageCreatedTime;
-          statsd().timing("gossip.message_delay", diff);
-        }
       } else {
         log.info(
           {
@@ -1045,6 +1040,17 @@ export class Hub implements HubInterface {
         );
         this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
       }
+
+      const currentTime = getFarcasterTime().unwrapOr(0);
+      const messageCreatedTime = message.data?.timestamp ?? 0;
+      // The message time is user provided, so, while not ideal, it's still good enough to use most of the time
+      if (currentTime > 0 && messageCreatedTime > 0 && currentTime > messageCreatedTime) {
+        const diff = currentTime - messageCreatedTime;
+        statsd().timing("gossip.message_delay", diff);
+        const mergeResult = result.isOk() ? "success" : "failure";
+        statsd().timing(`gossip.message_delay.${mergeResult}`, diff);
+      }
+
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
@@ -1174,7 +1180,10 @@ export class Hub implements HubInterface {
 
     // Check if we already have this client
     const result = this.syncEngine.addContactInfoForPeerId(peerId, message);
-    if (result.isOk()) {
+    if (result.isOk() && !this.performedFirstSync) {
+      // Should only sync last ~day worth of messages with new peers. For now, only sync with the first peer so we are upto
+      // date on startup.
+      log.debug({ peerInfo: message }, "New peer but only performing first sync");
       const syncResult = await ResultAsync.fromPromise(
         this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
         (e) => e,
@@ -1182,6 +1191,7 @@ export class Hub implements HubInterface {
       if (syncResult.isErr()) {
         log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
       }
+      this.performedFirstSync = true;
     } else {
       log.debug({ peerInfo: message }, "Already have this peer, skipping sync");
     }
@@ -1335,6 +1345,7 @@ export class Hub implements HubInterface {
     const start = Date.now();
 
     const message = ensureMessageData(submittedMessage);
+    const type = messageTypeToName(message.data?.type);
     const mergeResult = await this.engine.mergeMessage(message);
 
     mergeResult.match(
@@ -1342,7 +1353,7 @@ export class Hub implements HubInterface {
         const logData = {
           eventId,
           fid: message.data?.fid,
-          type: messageTypeToName(message.data?.type),
+          type: type,
           submittedMessage: messageToLog(submittedMessage),
           source,
         };
@@ -1365,9 +1376,15 @@ export class Hub implements HubInterface {
       void this.gossipNode.gossipMessage(message);
     }
 
-    statsd().timing("hub.merge_message", Date.now() - start);
+    const now = Date.now();
+    statsd().timing("hub.merge_message", now - start);
+    statsd().timing(`hub.merge_message.${type}`, now - start);
 
     return mergeResult;
+  }
+
+  async validateMessage(message: Message): HubAsyncResult<Message> {
+    return this.engine.validateMessage(message);
   }
 
   async submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number> {

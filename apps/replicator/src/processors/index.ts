@@ -177,6 +177,8 @@ export async function processMessage(
         log.debug(`Processing UsernameProofMessage ${hash} (fid ${fid})`, { fid, hash });
         await processUserNameProofMessage(message, operation, trx);
         break;
+      case MessageType.FRAME_ACTION:
+        throw new AssertionError("Unexpected FRAME_ACTION message type");
       case MessageType.NONE:
         throw new AssertionError("Message contained no type");
       default:

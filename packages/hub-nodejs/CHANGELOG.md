@@ -1,5 +1,31 @@
 # @farcaster/hub-nodejs
 
+## 0.10.23
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+- Updated dependencies [f8c5f280]
+  - @farcaster/core@0.13.7
+
+## 0.10.22
+
+### Patch Changes
+
+- fd9f9ff8: Rename verification message
+- 362f580b: feat: add text input frame field
+- Updated dependencies [fd9f9ff8]
+- Updated dependencies [362f580b]
+  - @farcaster/core@0.13.6
+
+## 0.10.21
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+- Updated dependencies [229ea166]
+  - @farcaster/core@0.13.5
+
 ## 0.10.20
 
 ### Patch Changes

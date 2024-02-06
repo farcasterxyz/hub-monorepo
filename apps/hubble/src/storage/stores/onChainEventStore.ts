@@ -36,6 +36,13 @@ import { bytesCompare } from "@farcaster/core";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
 
+const LRU_CACHE_SIZE = 1000;
+
+type LRUCacheItem = {
+  _event: SignerOnChainEvent;
+  _lastUsed: number;
+};
+
 /**
  * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
  * to guarantee eventual consistency.
@@ -46,6 +53,9 @@ const SUPPORTED_SIGNER_SCHEMES = [1];
 class OnChainEventStore {
   protected _db: RocksDB;
   protected _eventHandler: StoreEventHandler;
+
+  // Store the last 1000 active signers in memory to avoid hitting the database
+  protected _activeSignerCache = new Map<string, LRUCacheItem>();
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
@@ -70,13 +80,44 @@ class OnChainEventStore {
     return getManyOnChainEvents(this._db, keys);
   }
 
+  getActiveSignerCacheKey = (fid: number, signer: Uint8Array): string => {
+    return `${fid}:${Buffer.from(signer).toString("hex")}`;
+  };
+
+  clearActiveSignerCache() {
+    this._activeSignerCache.clear();
+  }
+
   async getActiveSigner(fid: number, signer: Uint8Array): Promise<SignerOnChainEvent> {
+    // See if we have this in the cache
+    const cacheKey = this.getActiveSignerCacheKey(fid, signer);
+    const cacheItem = this._activeSignerCache.get(cacheKey);
+    if (cacheItem) {
+      cacheItem._lastUsed = Date.now();
+      return cacheItem._event;
+    }
+
+    // Otherwise, look it up in the database
     const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
     const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
     if (
       event.signerEventBody.eventType === SignerEventType.ADD &&
       SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
     ) {
+      // Add to the cache
+      if (this._activeSignerCache.size >= LRU_CACHE_SIZE) {
+        // Evict the least 10% recently used
+        const sortedCache = [...this._activeSignerCache.entries()].sort((a, b) => a[1]._lastUsed - b[1]._lastUsed);
+        const evictCount = Math.ceil(LRU_CACHE_SIZE * 0.1);
+        for (let i = 0; i < evictCount; i++) {
+          const key = sortedCache[i]?.[0] || "";
+          this._activeSignerCache.delete(key);
+        }
+
+        logger.info(`Evicted ${evictCount} items from the active signer cache`);
+      }
+      this._activeSignerCache.set(cacheKey, { _event: event, _lastUsed: Date.now() });
+
       return event;
     } else {
       throw new HubError("not_found", "no such active signer");
@@ -181,6 +222,11 @@ class OnChainEventStore {
       ) {
         throw new HubError("bad_request.conflict", "attempting to re-add removed key");
       }
+    }
+
+    if (event.signerEventBody.eventType === SignerEventType.REMOVE) {
+      // Remove the signer from the cache
+      this._activeSignerCache.delete(this.getActiveSignerCacheKey(event.fid, event.signerEventBody.key));
     }
 
     if (event.signerEventBody.eventType === SignerEventType.ADMIN_RESET) {

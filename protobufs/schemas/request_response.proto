@@ -244,3 +244,8 @@ message IdRegistryEventByAddressRequest {
 message ContactInfoResponse {
   repeated ContactInfoContentBody contacts = 1;
 }
+
+message ValidationResponse {
+  bool valid = 1;
+  Message message = 2;
+}

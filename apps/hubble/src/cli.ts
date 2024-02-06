@@ -235,22 +235,20 @@ app
     // try to load the config file
     // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
     let hubConfig: any = DefaultConfig;
-    if (cliOptions.config) {
-      if (!cliOptions.config.endsWith(".js")) {
+    const hubConfigFile = cliOptions.config || process.env["HUB_CONFIG"];
+    if (hubConfigFile) {
+      if (!hubConfigFile.endsWith(".js")) {
         startupCheck.printStartupCheckStatus(StartupCheckStatus.ERROR, "Config file must be a .js file");
-        throw new Error(`Config file ${cliOptions.config} must be a .js file`);
+        throw new Error(`Config file ${hubConfigFile} must be a .js file`);
       }
 
-      if (!fs.existsSync(resolve(cliOptions.config))) {
-        startupCheck.printStartupCheckStatus(
-          StartupCheckStatus.ERROR,
-          `Config file ${cliOptions.config} does not exist`,
-        );
-        throw new Error(`Config file ${cliOptions.config} does not exist`);
+      if (!fs.existsSync(resolve(hubConfigFile))) {
+        startupCheck.printStartupCheckStatus(StartupCheckStatus.ERROR, `Config file ${hubConfigFile} does not exist`);
+        throw new Error(`Config file ${hubConfigFile} does not exist`);
       }
 
-      startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Loading config file ${cliOptions.config}`);
-      hubConfig = (await import(resolve(cliOptions.config))).Config;
+      startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Loading config file ${hubConfigFile}`);
+      hubConfig = (await import(resolve(hubConfigFile))).Config;
     }
 
     const disableConsoleStatus = cliOptions.disableConsoleStatus ?? hubConfig.disableConsoleStatus ?? false;

@@ -9,7 +9,6 @@ import * as validations from "./validations";
 import { makeVerificationEthAddressClaim } from "./verifications";
 import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
-import { optimism } from "viem/chains";
 import { jest } from "@jest/globals";
 
 const signer = Factories.Ed25519Signer.build();
@@ -1041,5 +1040,39 @@ describe("validateMessageData", () => {
       const result = await validations.validateMessageData(data);
       expect(result).toEqual(ok(data));
     });
+  });
+});
+
+describe("validateFrameActionBody", () => {
+  test("succeeds", async () => {
+    const body = Factories.FrameActionBody.build({
+      buttonIndex: 1,
+      url: Buffer.from("https://example.com"),
+      castId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
+    });
+    const result = validations.validateFrameActionBody(body);
+    expect(result.isOk()).toBeTruthy();
+  });
+
+  test("fails when url is missing", async () => {
+    const body = Factories.FrameActionBody.build({
+      url: Buffer.from(""),
+    });
+    const result = validations.validateFrameActionBody(body);
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid url");
+  });
+  test("fails when url is too long", async () => {
+    const body = Factories.FrameActionBody.build({
+      url: Buffer.from(faker.datatype.string(257)),
+    });
+    const result = validations.validateFrameActionBody(body);
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid url");
+  });
+  test("fails when text input is too long", async () => {
+    const body = Factories.FrameActionBody.build({
+      inputText: Buffer.from(faker.datatype.string(257)),
+    });
+    const result = validations.validateFrameActionBody(body);
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid input text");
   });
 });

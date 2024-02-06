@@ -25,6 +25,7 @@ type MessageBodyOptions = Pick<
   | "userDataBody"
   | "linkBody"
   | "usernameProofBody"
+  | "frameActionBody"
 >;
 
 /** Generic Methods */
@@ -314,4 +315,23 @@ export const makeUsernameProofData = (
   dataOptions: MessageDataOptions,
 ): HubAsyncResult<protobufs.UsernameProofData> => {
   return makeMessageData({ usernameProofBody: body }, protobufs.MessageType.USERNAME_PROOF, dataOptions);
+};
+
+export const makeFrameAction = async (
+  body: protobufs.FrameActionBody,
+  dataOptions: MessageDataOptions,
+  signer: Signer,
+): HubAsyncResult<protobufs.FrameActionMessage> => {
+  const data = await makeFrameActionData(body, dataOptions);
+  if (data.isErr()) {
+    return err(data.error);
+  }
+  return makeMessage(data.value, signer);
+};
+
+export const makeFrameActionData = (
+  body: protobufs.FrameActionBody,
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.FrameActionData> => {
+  return makeMessageData({ frameActionBody: body }, protobufs.MessageType.FRAME_ACTION, dataOptions);
 };

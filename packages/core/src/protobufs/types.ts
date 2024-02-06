@@ -106,6 +106,16 @@ export type UsernameProofMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type FrameActionData = protobufs.MessageData & {
+  type: protobufs.MessageType.FRAME_ACTION;
+  frameActionBody: protobufs.FrameActionBody;
+};
+
+export type FrameActionMessage = protobufs.Message & {
+  data: FrameActionData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
 export type SignerOnChainEvent = onchainEventProtobufs.OnChainEvent & {
   type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER;
   signerEventBody: onchainEventProtobufs.SignerEventBody;

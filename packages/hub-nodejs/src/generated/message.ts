@@ -99,6 +99,8 @@ export enum MessageType {
   USER_DATA_ADD = 11,
   /** USERNAME_PROOF - Add or replace a username proof */
   USERNAME_PROOF = 12,
+  /** FRAME_ACTION - A Farcaster Frame action */
+  FRAME_ACTION = 13,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -136,6 +138,9 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 12:
     case "MESSAGE_TYPE_USERNAME_PROOF":
       return MessageType.USERNAME_PROOF;
+    case 13:
+    case "MESSAGE_TYPE_FRAME_ACTION":
+      return MessageType.FRAME_ACTION;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -165,6 +170,8 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_USER_DATA_ADD";
     case MessageType.USERNAME_PROOF:
       return "MESSAGE_TYPE_USERNAME_PROOF";
+    case MessageType.FRAME_ACTION:
+      return "MESSAGE_TYPE_FRAME_ACTION";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -362,6 +369,7 @@ export interface MessageData {
   /** SignerRemoveBody signer_remove_body = 13; // Deprecated */
   linkBody?: LinkBody | undefined;
   usernameProofBody?: UserNameProof | undefined;
+  frameActionBody?: FrameActionBody | undefined;
 }
 
 /** Adds metadata about a user */
@@ -455,6 +463,20 @@ export interface LinkBody {
     | undefined;
   /** The fid the link relates to */
   targetFid?: number | undefined;
+}
+
+/** A Farcaster Frame action */
+export interface FrameActionBody {
+  /** URL of the Frame triggering the action */
+  url: Uint8Array;
+  /** The index of the button pressed (1-4) */
+  buttonIndex: number;
+  /** The cast which contained the frame url */
+  castId:
+    | CastId
+    | undefined;
+  /** Text input from the user, if present */
+  inputText: Uint8Array;
 }
 
 function createBaseMessage(): Message {
@@ -621,6 +643,7 @@ function createBaseMessageData(): MessageData {
     userDataBody: undefined,
     linkBody: undefined,
     usernameProofBody: undefined,
+    frameActionBody: undefined,
   };
 }
 
@@ -661,6 +684,9 @@ export const MessageData = {
     }
     if (message.usernameProofBody !== undefined) {
       UserNameProof.encode(message.usernameProofBody, writer.uint32(122).fork()).ldelim();
+    }
+    if (message.frameActionBody !== undefined) {
+      FrameActionBody.encode(message.frameActionBody, writer.uint32(130).fork()).ldelim();
     }
     return writer;
   },
@@ -756,6 +782,13 @@ export const MessageData = {
 
           message.usernameProofBody = UserNameProof.decode(reader, reader.uint32());
           continue;
+        case 16:
+          if (tag != 130) {
+            break;
+          }
+
+          message.frameActionBody = FrameActionBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -783,6 +816,7 @@ export const MessageData = {
       userDataBody: isSet(object.userDataBody) ? UserDataBody.fromJSON(object.userDataBody) : undefined,
       linkBody: isSet(object.linkBody) ? LinkBody.fromJSON(object.linkBody) : undefined,
       usernameProofBody: isSet(object.usernameProofBody) ? UserNameProof.fromJSON(object.usernameProofBody) : undefined,
+      frameActionBody: isSet(object.frameActionBody) ? FrameActionBody.fromJSON(object.frameActionBody) : undefined,
     };
   },
 
@@ -810,6 +844,8 @@ export const MessageData = {
     message.linkBody !== undefined && (obj.linkBody = message.linkBody ? LinkBody.toJSON(message.linkBody) : undefined);
     message.usernameProofBody !== undefined &&
       (obj.usernameProofBody = message.usernameProofBody ? UserNameProof.toJSON(message.usernameProofBody) : undefined);
+    message.frameActionBody !== undefined &&
+      (obj.frameActionBody = message.frameActionBody ? FrameActionBody.toJSON(message.frameActionBody) : undefined);
     return obj;
   },
 
@@ -848,6 +884,9 @@ export const MessageData = {
       : undefined;
     message.usernameProofBody = (object.usernameProofBody !== undefined && object.usernameProofBody !== null)
       ? UserNameProof.fromPartial(object.usernameProofBody)
+      : undefined;
+    message.frameActionBody = (object.frameActionBody !== undefined && object.frameActionBody !== null)
+      ? FrameActionBody.fromPartial(object.frameActionBody)
       : undefined;
     return message;
   },
@@ -1662,6 +1701,107 @@ export const LinkBody = {
     message.type = object.type ?? "";
     message.displayTimestamp = object.displayTimestamp ?? undefined;
     message.targetFid = object.targetFid ?? undefined;
+    return message;
+  },
+};
+
+function createBaseFrameActionBody(): FrameActionBody {
+  return { url: new Uint8Array(), buttonIndex: 0, castId: undefined, inputText: new Uint8Array() };
+}
+
+export const FrameActionBody = {
+  encode(message: FrameActionBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.url.length !== 0) {
+      writer.uint32(10).bytes(message.url);
+    }
+    if (message.buttonIndex !== 0) {
+      writer.uint32(16).uint32(message.buttonIndex);
+    }
+    if (message.castId !== undefined) {
+      CastId.encode(message.castId, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.inputText.length !== 0) {
+      writer.uint32(34).bytes(message.inputText);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): FrameActionBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFrameActionBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.url = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.buttonIndex = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.castId = CastId.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.inputText = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FrameActionBody {
+    return {
+      url: isSet(object.url) ? bytesFromBase64(object.url) : new Uint8Array(),
+      buttonIndex: isSet(object.buttonIndex) ? Number(object.buttonIndex) : 0,
+      castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
+      inputText: isSet(object.inputText) ? bytesFromBase64(object.inputText) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: FrameActionBody): unknown {
+    const obj: any = {};
+    message.url !== undefined &&
+      (obj.url = base64FromBytes(message.url !== undefined ? message.url : new Uint8Array()));
+    message.buttonIndex !== undefined && (obj.buttonIndex = Math.round(message.buttonIndex));
+    message.castId !== undefined && (obj.castId = message.castId ? CastId.toJSON(message.castId) : undefined);
+    message.inputText !== undefined &&
+      (obj.inputText = base64FromBytes(message.inputText !== undefined ? message.inputText : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<FrameActionBody>, I>>(base?: I): FrameActionBody {
+    return FrameActionBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<FrameActionBody>, I>>(object: I): FrameActionBody {
+    const message = createBaseFrameActionBody();
+    message.url = object.url ?? new Uint8Array();
+    message.buttonIndex = object.buttonIndex ?? 0;
+    message.castId = (object.castId !== undefined && object.castId !== null)
+      ? CastId.fromPartial(object.castId)
+      : undefined;
+    message.inputText = object.inputText ?? new Uint8Array();
     return message;
   },
 };

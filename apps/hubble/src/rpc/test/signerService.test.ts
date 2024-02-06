@@ -37,6 +37,10 @@ beforeAll(async () => {
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
 });
 
+beforeEach(async () => {
+  engine.clearCache();
+});
+
 afterAll(async () => {
   client.close();
   await syncEngine.stop();

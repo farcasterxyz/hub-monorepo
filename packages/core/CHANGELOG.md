@@ -1,5 +1,24 @@
 # @farcaster/core
 
+## 0.13.7
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+
+## 0.13.6
+
+### Patch Changes
+
+- fd9f9ff8: Rename verification message
+- 362f580b: feat: add text input frame field
+
+## 0.13.5
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+
 ## 0.13.4
 
 ### Patch Changes

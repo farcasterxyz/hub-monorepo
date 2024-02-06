@@ -93,6 +93,15 @@ beforeAll(async () => {
   );
 });
 
+beforeEach(async () => {
+  engine.clearCache();
+});
+
+afterAll(async () => {
+  await engine.stop();
+  await db.close();
+});
+
 describe("mergeOnChainEvent", () => {
   test("succeeds", async () => {
     await expect(engine.mergeOnChainEvent(custodyEvent)).resolves.toBeInstanceOf(Ok);
@@ -492,6 +501,39 @@ describe("mergeMessage", () => {
       ),
     );
     await mainnetEngine.stop();
+  });
+
+  describe("FrameAction messages", () => {
+    // These messages types are not intended to be persisted to the hub
+    test("even valid frame action messages cannot be merged", async () => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerAddEvent);
+      await engine.mergeOnChainEvent(storageEvent);
+
+      const frameAction = await Factories.FrameActionMessage.create(
+        { data: { fid, network } },
+        { transient: { signer } },
+      );
+      const validationResult = await engine.validateMessage(frameAction);
+      expect(validationResult.isOk()).toBeTruthy();
+      const result = await engine.mergeMessage(frameAction);
+      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+      expect(result._unsafeUnwrapErr().message).toMatch("invalid message type");
+    });
+
+    test("validation fails correctly for invalid users", async () => {
+      const frameAction = await Factories.FrameActionMessage.create(
+        { data: { fid, network } },
+        { transient: { signer } },
+      );
+      let result = await engine.validateMessage(frameAction);
+      expect(result._unsafeUnwrapErr().message).toMatch("unknown fid");
+
+      await engine.mergeOnChainEvent(custodyEvent);
+
+      result = await engine.validateMessage(frameAction);
+      expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
+    });
   });
 
   describe("UsernameProof messages", () => {

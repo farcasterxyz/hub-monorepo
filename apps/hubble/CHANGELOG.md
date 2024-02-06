@@ -1,5 +1,45 @@
 # @farcaster/hubble
 
+## 1.9.7
+
+### Patch Changes
+
+- 618e6fad: feat: Add quicksync
+- 05ce5fe8: fix: Increase the sync trie cache to 64MB
+- fb011fc5: fix: Minor performance tweaks and logging
+
+## 1.9.6
+
+### Patch Changes
+
+- 577d698d: fix: Remove score penalty for duplicate gossip messages
+- 57ce2c66: fix: reduce sync freqency to help reduce hub load
+
+## 1.9.5
+
+### Patch Changes
+
+- f8c5f280: fix: Revert verification renames which break http backwards compatibility
+- Updated dependencies [f8c5f280]
+  - @farcaster/hub-nodejs@0.10.23
+
+## 1.9.4
+
+### Patch Changes
+
+- fd9f9ff8: Rename verification message
+- Updated dependencies [fd9f9ff8]
+- Updated dependencies [362f580b]
+  - @farcaster/hub-nodejs@0.10.22
+
+## 1.9.3
+
+### Patch Changes
+
+- 229ea166: feat: Add support for FrameAction and validateMessage
+- Updated dependencies [229ea166]
+  - @farcaster/hub-nodejs@0.10.21
+
 ## 1.9.2
 
 ### Patch Changes
