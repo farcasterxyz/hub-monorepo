@@ -11,6 +11,9 @@ import { Logger } from "../../utils/logger.js";
 import ReadWriteLock from "rwlock";
 import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import { StatsDInitParams, initializeStatsd, statsd } from "../../utils/statsd.js";
+import RocksDB from "../../storage/db/rocksdb.js";
+import path from "path";
+import { ResultAsync } from "neverthrow";
 
 // The number of messages to process before unloading the trie from memory
 // Approx 100k * 10 nodes * 65 bytes per node = approx 64MB of cached data
@@ -43,39 +46,77 @@ class MerkleTrieImpl {
   private _lock: ReadWriteLock;
   private _pendingDbUpdates = new Map<Buffer, Buffer>();
 
+  private _trieDb: RocksDB | undefined;
+
   private _dbCallId = 0;
   _dbGetCallMap = new Map<number, { resolve: (value: Buffer | undefined) => void }>();
   _dbPutMap = new Map<number, { resolve: () => void }>();
 
   private _callsSinceLastUnload = 0;
 
-  constructor(statsdInitialization?: StatsDInitParams) {
+  constructor(statsdInitialization?: StatsDInitParams, dbPath?: string) {
     this._lock = new ReadWriteLock();
     this._root = new TrieNode();
 
     if (statsdInitialization) {
       initializeStatsd(statsdInitialization.host, statsdInitialization.port);
     }
+
+    // Don't open a separate DB for the trie during tests
+    if (dbPath && process.env["NODE_ENV"] !== "test") {
+      log.info({ dbPath }, "MerkleTrieImpl: initializing");
+      this._trieDb = new RocksDB(`${path.basename(dbPath)}/trieDb`);
+      log.info({ triePath: this._trieDb.location }, "MerkleTrieImpl: created DB");
+    } else {
+      log.debug("MerkleTrieImpl: using main in-memory DB for tests");
+      this._trieDb = undefined;
+    }
   }
 
   // Get a DB value from the main thread
   private async _dbGet(key: Buffer): Promise<Buffer | undefined> {
-    return new Promise((resolve) => {
-      this._dbCallId++;
-      this._dbGetCallMap.set(this._dbCallId, { resolve });
+    // We'll attempt to get it from the trieDb first
+    const value = this._trieDb
+      ? await ResultAsync.fromPromise(this._trieDb.get(Buffer.from(key)), (e) => e as Error)
+      : undefined;
 
-      parentPort?.postMessage({ dbGetCallId: this._dbCallId, key: Uint8Array.from(key) });
-    });
+    if (value?.isOk()) {
+      statsd().increment("rocksdb.trie.get.hit");
+      return value.value;
+    } else {
+      // Else, we'll get it from the main thread
+      statsd().increment("rocksdb.trie.get.miss");
+      return new Promise((resolve) => {
+        this._dbCallId++;
+        this._dbGetCallMap.set(this._dbCallId, { resolve });
+
+        parentPort?.postMessage({ dbGetCallId: this._dbCallId, key: Uint8Array.from(key) });
+      });
+    }
   }
 
   // Write DB values to the DB via the main thread
   private async _dbPut(dbKeyValues: MerkleTrieKV[]): Promise<void> {
-    return new Promise((resolve) => {
-      this._dbCallId++;
-      this._dbPutMap.set(this._dbCallId, { resolve });
+    if (this._trieDb) {
+      // We'll only write to the trieDb.
+      const txn = this._trieDb.transaction();
+      for (const { key, value } of dbKeyValues) {
+        if (value && value.length > 0) {
+          txn.put(Buffer.from(key), Buffer.from(value));
+        } else {
+          txn.del(Buffer.from(key));
+        }
+      }
 
-      parentPort?.postMessage({ dbKeyValuesCallId: this._dbCallId, dbKeyValues });
-    });
+      await this._trieDb.commit(txn);
+    } else {
+      return new Promise((resolve) => {
+        this._dbCallId++;
+        this._dbPutMap.set(this._dbCallId, { resolve });
+
+        parentPort?.postMessage({ dbKeyValuesCallId: this._dbCallId, dbKeyValues });
+      });
+    }
   }
 
   private _dbGetter(): DBGetter {
@@ -99,6 +140,8 @@ class MerkleTrieImpl {
         this._pendingDbUpdates.clear();
         this._callsSinceLastUnload = 0;
 
+        await this._trieDb?.clear();
+
         resolve();
         release();
       });
@@ -108,6 +151,17 @@ class MerkleTrieImpl {
   async initialize(): Promise<void> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
+        // Initialize the trie DB first
+        if (this._trieDb) {
+          const dbResult = await ResultAsync.fromPromise(this._trieDb.open(), (e) => e as Error);
+          if (dbResult.isErr()) {
+            log.error({ err: dbResult.error }, "Error opening trie DB");
+            throw dbResult.error;
+          }
+
+          log.info({ triePath: this._trieDb.location }, "MerkleTrieImpl: opened DB");
+        }
+
         const rootBytes = await this._dbGet(TrieNode.makePrimaryKey(new Uint8Array()));
         if (rootBytes && rootBytes.length > 0) {
           this._root = TrieNode.deserialize(rootBytes);
@@ -125,6 +179,19 @@ class MerkleTrieImpl {
       });
     });
   }
+
+  async stop(): Promise<void> {
+    return new Promise((resolve) => {
+      this._lock.writeLock(async (release) => {
+        await this._unloadFromMemory(true, true);
+        await this._trieDb?.close();
+
+        resolve();
+        release();
+      });
+    });
+  }
+
   /**
    * Check if we need to unload the trie from memory. This is not protected by a lock, since it is only called
    * from within a lock.
@@ -162,6 +229,7 @@ class MerkleTrieImpl {
       this._root.unloadChildren();
 
       log.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
+      statsd().gauge("rocksdb.trie.approximate_size", (await this._trieDb?.approximateSize()) || 0);
     };
 
     if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
@@ -355,7 +423,10 @@ class MerkleTrieImpl {
   }
 }
 
-const merkleTrie = new MerkleTrieImpl(workerData.statsdInitialization as StatsDInitParams | undefined);
+const merkleTrie = new MerkleTrieImpl(
+  workerData.statsdInitialization as StatsDInitParams | undefined,
+  workerData.dbPath as string,
+);
 
 // This function is a no-op at runtime, but exists to typecheck the return values
 // the worker thread sends back to the main thread. Getting this wrong will cause
@@ -486,6 +557,12 @@ parentPort?.on(
         const node = await merkleTrie.getNode(prefix);
         node?.unloadChildren();
         parentPort?.postMessage({ methodCallId, result: makeResult<"unloadChildrenAtPrefix">(undefined) });
+        break;
+      }
+      case "stop": {
+        log.info("MerkleTrieImpl: stopping");
+        await merkleTrie.stop();
+        parentPort?.postMessage({ methodCallId, result: makeResult<"stop">(undefined) });
         break;
       }
     }
