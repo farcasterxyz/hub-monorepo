@@ -46,10 +46,10 @@ class MerkleTrieImpl {
   private _lock: ReadWriteLock;
   private _pendingDbUpdates = new Map<Buffer, Buffer>();
 
-  private _trieDb: RocksDB | undefined;
+  _trieDb: RocksDB | undefined;
 
   private _dbCallId = 0;
-  _dbGetCallMap = new Map<number, { resolve: (value: Buffer | undefined) => void }>();
+  _dbGetCallMap = new Map<number, { resolve: (value: Buffer | undefined) => void; key: Buffer }>();
   _dbPutMap = new Map<number, { resolve: () => void }>();
 
   constructor(statsdInitialization?: StatsDInitParams, dbPath?: string) {
@@ -72,7 +72,7 @@ class MerkleTrieImpl {
   }
 
   // Get a DB value from the main thread
-  private async _dbGet(key: Buffer): Promise<Buffer | undefined> {
+  async _dbGet(key: Buffer): Promise<Buffer | undefined> {
     // We'll attempt to get it from the trieDb first
     const value = this._trieDb
       ? await ResultAsync.fromPromise(this._trieDb.get(Buffer.from(key)), (e) => e as Error)
@@ -86,15 +86,15 @@ class MerkleTrieImpl {
       statsd().increment("rocksdb.trie.get.miss");
       return new Promise((resolve) => {
         this._dbCallId++;
-        this._dbGetCallMap.set(this._dbCallId, { resolve });
+        this._dbGetCallMap.set(this._dbCallId, { resolve, key });
 
-        parentPort?.postMessage({ dbGetCallId: this._dbCallId, key: Uint8Array.from(key) });
+        parentPort?.postMessage({ dbGetCallId: this._dbCallId, key });
       });
     }
   }
 
   // Write DB values to the DB via the main thread
-  private async _dbPut(dbKeyValues: MerkleTrieKV[]): Promise<void> {
+  async _dbPut(dbKeyValues: MerkleTrieKV[]): Promise<void> {
     if (this._trieDb) {
       // We'll only write to the trieDb.
       const txn = this._trieDb.transaction();
@@ -451,9 +451,17 @@ parentPort?.on(
       const dbGetCall = merkleTrie._dbGetCallMap.get(dbGetCallId);
       if (!dbGetCall) {
         log.error({ value }, `Received response for unknown DB get call ID ${dbGetCallId}`);
+        return;
       }
       merkleTrie._dbGetCallMap.delete(dbGetCallId);
-      dbGetCall?.resolve(value ? Buffer.from(value) : undefined);
+      dbGetCall.resolve(value ? Buffer.from(value) : undefined);
+
+      // Also save the value to the trie DB
+      if (value && merkleTrie._trieDb) {
+        const key = Uint8Array.from(dbGetCall.key);
+        const dbKeyValues = [{ key, value }];
+        merkleTrie._dbPut(dbKeyValues);
+      }
 
       return;
     }
