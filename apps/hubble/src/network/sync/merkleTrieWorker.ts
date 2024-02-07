@@ -47,8 +47,6 @@ class MerkleTrieImpl {
   _dbGetCallMap = new Map<number, { resolve: (value: Buffer | undefined) => void }>();
   _dbPutMap = new Map<number, { resolve: () => void }>();
 
-  private _callsSinceLastUnload = 0;
-
   constructor(statsdInitialization?: StatsDInitParams) {
     this._lock = new ReadWriteLock();
     this._root = new TrieNode();
@@ -97,7 +95,6 @@ class MerkleTrieImpl {
       this._lock.writeLock(async (release) => {
         this._root = new TrieNode();
         this._pendingDbUpdates.clear();
-        this._callsSinceLastUnload = 0;
 
         resolve();
         release();
@@ -138,8 +135,6 @@ class MerkleTrieImpl {
 
     // Fn that does the actual unloading
     const doUnload = async () => {
-      this._callsSinceLastUnload = 0;
-
       if (this._pendingDbUpdates.size === 0) {
         // Trie has no pending DB updates, skipping unload
         return;
@@ -157,14 +152,13 @@ class MerkleTrieImpl {
       }
 
       await this._dbPut(dbKeyValues);
+      log.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
 
       this._pendingDbUpdates.clear();
       this._root.unloadChildren();
-
-      log.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
     };
 
-    if (force || this._callsSinceLastUnload >= TRIE_UNLOAD_THRESHOLD) {
+    if (force || this._pendingDbUpdates.size >= TRIE_UNLOAD_THRESHOLD) {
       // If we are only read locked, we need to upgrade to a write lock
       if (!writeLocked) {
         this._lock.writeLock(async (release) => {
@@ -178,8 +172,6 @@ class MerkleTrieImpl {
         // We're already write locked, so we can just do the unload
         await doUnload();
       }
-    } else {
-      this._callsSinceLastUnload++;
     }
   }
 
