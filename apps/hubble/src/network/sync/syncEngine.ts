@@ -486,9 +486,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // Prefer hubs that have more messages than us, if no such hub is available, pick a random one
       const snapshotResult = await this.getSnapshot();
       if (snapshotResult.isOk()) {
-        peers = Array.from(this.currentHubPeerContacts.values()).filter(
-          (p) => p.contactInfo.count > snapshotResult.value.numMessages,
-        );
+        // Use a buffer of 5% of our messages so the peer with the highest message count does not get picked
+        // disproportionately
+        const messageThreshold = snapshotResult.value.numMessages * 0.95;
+        peers = Array.from(this.currentHubPeerContacts.values()).filter((p) => p.contactInfo.count > messageThreshold);
       }
 
       if (peers.length === 0) {
