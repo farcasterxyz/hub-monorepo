@@ -700,6 +700,11 @@ export class L2EventsProvider {
       await this.processStorageEvents(await storageLogsPromise);
       await this.processIdRegistryV2Events(await idV2LogsPromise);
       await this.processKeyRegistryEventsV2(await keyV2LogsPromise);
+
+      // If there are more batches, write out all the cached blocks first
+      if (i < numOfRuns - 1) {
+        this.writeCachedBlocks(nextToBlock);
+      }
     }
 
     progressBar?.update(totalBlocks);
@@ -760,6 +765,28 @@ export class L2EventsProvider {
     }
   }
 
+  private async writeCachedBlocks(latestBlockNumber: number) {
+    // Get all blocks that have been confirmed into a single array and sort.
+    const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);
+    const cachedBlocks = Array.from(cachedBlocksSet);
+    cachedBlocks.sort();
+
+    for (const cachedBlock of cachedBlocks) {
+      if (cachedBlock + L2EventsProvider.numConfirmations <= latestBlockNumber) {
+        const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
+        this._onChainEventsByBlock.delete(cachedBlock);
+
+        if (onChainEvents) {
+          for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
+            await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
+          }
+        }
+
+        this._retryDedupMap.delete(cachedBlock);
+      }
+    }
+  }
+
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
     // Don't let multiple blocks be handled at once
@@ -771,40 +798,7 @@ export class L2EventsProvider {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
     statsd().increment("l2events.blocks");
 
-    // Get all blocks that have been confirmed into a single array and sort.
-    const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);
-    const cachedBlocks = Array.from(cachedBlocksSet);
-    cachedBlocks.sort();
-
-    let progressBar;
-    let firstBlock = 0;
-    let totalBlocks = 0;
-    if (cachedBlocks.length > 100) {
-      // Lots of blocks, so show a progress bar
-      const lastBlock = cachedBlocks[cachedBlocks.length - 1] ?? 0;
-      firstBlock = cachedBlocks[0] ?? 0;
-      totalBlocks = lastBlock - firstBlock;
-      progressBar = addProgressBar("Processing Farcaster L2 Contract Events", totalBlocks);
-    }
-
-    for (const cachedBlock of cachedBlocks) {
-      if (cachedBlock + L2EventsProvider.numConfirmations <= blockNumber) {
-        const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
-        this._onChainEventsByBlock.delete(cachedBlock);
-        if (onChainEvents) {
-          for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
-            await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
-          }
-        }
-
-        this._retryDedupMap.delete(cachedBlock);
-      }
-
-      progressBar?.update(cachedBlock - firstBlock);
-    }
-
-    progressBar?.update(totalBlocks);
-    progressBar?.stop();
+    this.writeCachedBlocks(blockNumber);
 
     // Update the last synced block if all the historical events have been synced
     if (this._isHistoricalSyncDone) {
