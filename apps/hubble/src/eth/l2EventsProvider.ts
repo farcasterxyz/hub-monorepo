@@ -798,7 +798,7 @@ export class L2EventsProvider {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
     statsd().increment("l2events.blocks");
 
-    this.writeCachedBlocks(blockNumber);
+    await this.writeCachedBlocks(blockNumber);
 
     // Update the last synced block if all the historical events have been synced
     if (this._isHistoricalSyncDone) {
