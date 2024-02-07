@@ -81,7 +81,7 @@ export const isVerificationAddEthAddressData = (
   data: protobufs.MessageData,
 ): data is types.VerificationAddAddressData => {
   return (
-    data.type === protobufs.MessageType.VERIFICATION_ADD_ADDRESS &&
+    data.type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
     typeof data.verificationAddAddressBody !== "undefined"
   );
 };

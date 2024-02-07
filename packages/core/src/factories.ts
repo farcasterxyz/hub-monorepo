@@ -157,7 +157,7 @@ const MessageTypeFactory = Factory.define<protobufs.MessageType>(() => {
     protobufs.MessageType.REACTION_ADD,
     protobufs.MessageType.REACTION_REMOVE,
     protobufs.MessageType.USER_DATA_ADD,
-    protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
     protobufs.MessageType.VERIFICATION_REMOVE,
   ]);
 });
@@ -441,7 +441,7 @@ const VerificationAddEthAddressDataFactory = Factory.define<
   return MessageDataFactory.build({
     // verificationAddEthAddressBody will not be valid until onCreate
     verificationAddAddressBody: VerificationAddEthAddressBodyFactory.build({}),
-    type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   }) as protobufs.VerificationAddAddressData;
 });
 
