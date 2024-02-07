@@ -65,15 +65,12 @@ describe("SyncEngine", () => {
 
   beforeEach(async () => {
     engine = new Engine(testDb, FarcasterNetwork.TESTNET, undefined, publicClient);
-    await engine.start();
     hub = new MockHub(testDb, engine);
     syncEngine = new SyncEngine(hub, testDb);
-    await syncEngine.start();
   }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {
     await syncEngine.stop();
-
     await engine.stop();
   }, TEST_TIMEOUT_SHORT);
 
