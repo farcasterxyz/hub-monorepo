@@ -703,7 +703,7 @@ export class L2EventsProvider {
 
       // If there are more batches, write out all the cached blocks first
       if (i < numOfRuns - 1) {
-        this.writeCachedBlocks(nextToBlock);
+        await this.writeCachedBlocks(nextToBlock);
       }
     }
 
