@@ -262,7 +262,7 @@ export const makeVerificationAddEthAddressData = (
 ): HubAsyncResult<protobufs.VerificationAddAddressData> => {
   return makeMessageData(
     { verificationAddAddressBody: body },
-    protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
     dataOptions,
     publicClients,
   );

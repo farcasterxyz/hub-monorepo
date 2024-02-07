@@ -155,7 +155,7 @@ export async function processMessage(
         log.debug(`Processing LinkRemoveMessage ${hash} (fid ${fid})`, { fid, hash });
         await processLinkRemove(message, operation, trx);
         break;
-      case MessageType.VERIFICATION_ADD_ADDRESS:
+      case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
         if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });

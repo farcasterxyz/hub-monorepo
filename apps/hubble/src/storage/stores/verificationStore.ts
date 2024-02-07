@@ -112,7 +112,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
 
   override _isAddType = isVerificationAddAddressMessage;
   override _isRemoveType = isVerificationRemoveMessage;
-  override _addMessageType = MessageType.VERIFICATION_ADD_ADDRESS;
+  override _addMessageType = MessageType.VERIFICATION_ADD_ETH_ADDRESS;
   override _removeMessageType = MessageType.VERIFICATION_REMOVE;
 
   protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
