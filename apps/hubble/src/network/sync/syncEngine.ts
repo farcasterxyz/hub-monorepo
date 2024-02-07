@@ -357,10 +357,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.info({ rootHash }, "Sync engine initialized");
   }
 
-  public async clear() {
-    await this._trie.clear();
-  }
-
   /** Rebuild the entire Sync Trie */
   public async rebuildSyncTrie() {
     log.info("Rebuilding sync trie...");
