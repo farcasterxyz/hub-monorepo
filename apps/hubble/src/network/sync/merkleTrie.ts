@@ -53,6 +53,7 @@ export interface MerkleTrieInterface {
   rootHash(): Promise<string>;
   commitToDb(): Promise<void>;
   unloadChildrenAtPrefix(prefix: Uint8Array): Promise<void>;
+  stop(): Promise<void>;
 }
 
 // Typescript types to make sending messages to the worker thread type-safe
@@ -112,7 +113,7 @@ class MerkleTrie {
     } else {
       const workerPath = new URL("../../../build/network/sync/merkleTrieWorker.js", import.meta.url);
       this._worker = new Worker(workerPath, {
-        workerData: { statsdInitialization: getStatusdInitialization() },
+        workerData: { statsdInitialization: getStatusdInitialization(), dbPath: this._db.location },
       });
     }
 
@@ -196,6 +197,7 @@ class MerkleTrie {
   }
 
   public async stop(): Promise<void> {
+    await this.callMethod("stop");
     this._worker.removeAllListeners("message");
 
     if (this._terminateWorkerOnStop) {
@@ -210,6 +212,10 @@ class MerkleTrie {
 
   public async initialize(): Promise<void> {
     return this.callMethod("initialize");
+  }
+
+  public async clear(): Promise<void> {
+    return this.callMethod("clear");
   }
 
   public async rebuild(): Promise<void> {
