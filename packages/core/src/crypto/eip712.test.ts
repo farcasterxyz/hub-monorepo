@@ -5,7 +5,7 @@ import { hexStringToBytes } from "../bytes";
 import * as eip712 from "./eip712";
 import { ViemLocalEip712Signer } from "../signers";
 import { makeUserNameProofClaim } from "../userNameProof";
-import { makeVerificationEthAddressClaim } from "../verifications";
+import { makeVerificationAddressClaim } from "../verifications";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
@@ -49,7 +49,7 @@ describe("verifyUserNameProofClaim", () => {
 
 describe("verifyVerificationEthAddressClaimSignature", () => {
   test("succeeds with a generated claim", async () => {
-    const claimRes = makeVerificationEthAddressClaim(
+    const claimRes = makeVerificationAddressClaim(
       Factories.Fid.build(),
       (await signer.getSignerKey())._unsafeUnwrap(),
       Factories.FarcasterNetwork.build(),

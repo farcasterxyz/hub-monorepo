@@ -45,6 +45,7 @@ describe("hubble startup tests", () => {
       rocksDBName,
       announceIp: "127.0.0.1",
       disableSnapshotSync: true,
+      connectToDbPeers: false,
     };
   });
 

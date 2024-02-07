@@ -19,6 +19,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { sleepWhile } from "../../utils/crypto.js";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 import { LibP2PNode } from "./gossipNodeWorker.js";
+import { ResultAsync } from "neverthrow";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const db = jestRocksDB("network.p2p.gossipNode.test");

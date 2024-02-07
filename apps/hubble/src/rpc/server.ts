@@ -30,7 +30,7 @@ import {
   TrieNodeMetadataResponse,
   TrieNodeSnapshotResponse,
   UserDataAddMessage,
-  VerificationAddEthAddressMessage,
+  VerificationAddAddressMessage,
   VerificationRemoveMessage,
   ValidationResponse,
   UserNameProof,
@@ -836,7 +836,7 @@ export default class Server {
 
         const verificationResult = await this.engine?.getVerification(request.fid, request.address);
         verificationResult?.match(
-          (verification: VerificationAddEthAddressMessage) => {
+          (verification: VerificationAddAddressMessage) => {
             callback(null, verification);
           },
           (err: HubError) => {
@@ -856,7 +856,7 @@ export default class Server {
           reverse,
         });
         verificationsResult?.match(
-          (page: MessagesPage<VerificationAddEthAddressMessage>) => {
+          (page: MessagesPage<VerificationAddAddressMessage>) => {
             callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
@@ -1076,7 +1076,7 @@ export default class Server {
           reverse,
         });
         result?.match(
-          (page: MessagesPage<VerificationAddEthAddressMessage | VerificationRemoveMessage>) => {
+          (page: MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {

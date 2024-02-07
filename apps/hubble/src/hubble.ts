@@ -72,6 +72,7 @@ import {
   performDbMigrations,
 } from "./storage/db/migrations/migrations.js";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
@@ -283,6 +284,9 @@ export interface HubOptions {
 
   /** If set, requires gossip messages to utilize StrictNoSign */
   strictNoSign?: boolean;
+
+  /** Should we connect to DB peers on startup */
+  connectToDbPeers?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -372,13 +376,13 @@ export class Hub implements HubInterface {
     }
 
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.options.network);
+    this.gossipNode = new GossipNode(this.rocksDB, this.options.network);
 
     this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
       lockMaxPending: options.commitLockMaxPending,
-      lockTimeout: options.commitLockTimeout,
+      lockExecutionTimeout: options.commitLockTimeout,
     });
 
     const opMainnetRpcUrls = options.l2RpcUrl.split(",");
@@ -684,6 +688,7 @@ export class Hub implements HubInterface {
       allowlistedImmunePeers: this.options.allowlistedImmunePeers,
       applicationScoreCap: this.options.applicationScoreCap,
       strictNoSign: this.strictNoSign,
+      connectToDbPeers: this.options.connectToDbPeers,
     });
 
     await this.registerEventHandlers();
@@ -1545,11 +1550,17 @@ export class Hub implements HubInterface {
       log.error(`S3 File Error: ${err}`);
     });
 
-    const targzParams = {
-      Bucket: this.s3_snapshot_bucket,
-      Key: key,
-      Body: fileStream,
-    };
+    // The targz should be uploaded via multipart upload to S3
+    const targzParams = new Upload({
+      client: s3,
+      params: {
+        Bucket: this.s3_snapshot_bucket,
+        Key: key,
+        Body: fileStream,
+      },
+      queueSize: 4, // 4 concurrent uploads
+      partSize: 1000 * 1024 * 1024, // 1 GB
+    });
 
     const latestJsonParams = {
       Bucket: this.s3_snapshot_bucket,
@@ -1561,8 +1572,12 @@ export class Hub implements HubInterface {
       }),
     };
 
+    targzParams.on("httpUploadProgress", (progress) => {
+      log.info({ progress }, "Uploading snapshot to S3");
+    });
+
     try {
-      await s3.send(new PutObjectCommand(targzParams));
+      await targzParams.done();
       await s3.send(new PutObjectCommand(latestJsonParams));
       log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
       return ok(key);

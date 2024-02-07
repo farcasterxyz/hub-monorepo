@@ -87,8 +87,8 @@ export enum MessageType {
   LINK_ADD = 5,
   /** LINK_REMOVE - Remove an existing Link */
   LINK_REMOVE = 6,
-  /** VERIFICATION_ADD_ETH_ADDRESS - Add a Verification of an Ethereum Address */
-  VERIFICATION_ADD_ETH_ADDRESS = 7,
+  /** VERIFICATION_ADD_ADDRESS - Add a Verification of an Ethereum Address */
+  VERIFICATION_ADD_ADDRESS = 7,
   /** VERIFICATION_REMOVE - Remove a Verification */
   VERIFICATION_REMOVE = 8,
   /**
@@ -127,8 +127,8 @@ export function messageTypeFromJSON(object: any): MessageType {
     case "MESSAGE_TYPE_LINK_REMOVE":
       return MessageType.LINK_REMOVE;
     case 7:
-    case "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS":
-      return MessageType.VERIFICATION_ADD_ETH_ADDRESS;
+    case "MESSAGE_TYPE_VERIFICATION_ADD_ADDRESS":
+      return MessageType.VERIFICATION_ADD_ADDRESS;
     case 8:
     case "MESSAGE_TYPE_VERIFICATION_REMOVE":
       return MessageType.VERIFICATION_REMOVE;
@@ -162,8 +162,8 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_LINK_ADD";
     case MessageType.LINK_REMOVE:
       return "MESSAGE_TYPE_LINK_REMOVE";
-    case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
-      return "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS";
+    case MessageType.VERIFICATION_ADD_ADDRESS:
+      return "MESSAGE_TYPE_VERIFICATION_ADD_ADDRESS";
     case MessageType.VERIFICATION_REMOVE:
       return "MESSAGE_TYPE_VERIFICATION_REMOVE";
     case MessageType.USER_DATA_ADD:
@@ -319,6 +319,36 @@ export function reactionTypeToJSON(object: ReactionType): string {
   }
 }
 
+/** Type of Protocol to disambiguate verification addresses */
+export enum Protocol {
+  ETHEREUM = 0,
+  SOLANA = 1,
+}
+
+export function protocolFromJSON(object: any): Protocol {
+  switch (object) {
+    case 0:
+    case "PROTOCOL_ETHEREUM":
+      return Protocol.ETHEREUM;
+    case 1:
+    case "PROTOCOL_SOLANA":
+      return Protocol.SOLANA;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum Protocol");
+  }
+}
+
+export function protocolToJSON(object: Protocol): string {
+  switch (object) {
+    case Protocol.ETHEREUM:
+      return "PROTOCOL_ETHEREUM";
+    case Protocol.SOLANA:
+      return "PROTOCOL_SOLANA";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum Protocol");
+  }
+}
+
 /**
  * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope
  * that wraps a MessageData object and contains a hash and signature which can verify its authenticity.
@@ -358,7 +388,7 @@ export interface MessageData {
   castAddBody?: CastAddBody | undefined;
   castRemoveBody?: CastRemoveBody | undefined;
   reactionBody?: ReactionBody | undefined;
-  verificationAddEthAddressBody?: VerificationAddEthAddressBody | undefined;
+  verificationAddAddressBody?: VerificationAddAddressBody | undefined;
   verificationRemoveBody?:
     | VerificationRemoveBody
     | undefined;
@@ -433,24 +463,28 @@ export interface ReactionBody {
   targetUrl?: string | undefined;
 }
 
-/** Adds a Verification of ownership of an Ethereum Address */
-export interface VerificationAddEthAddressBody {
-  /** Ethereum address being verified */
+/** Adds a Verification of ownership of an Address based on Protocol */
+export interface VerificationAddAddressBody {
+  /** Address being verified for a given Protocol */
   address: Uint8Array;
-  /** Signature produced by the user's Ethereum address */
-  ethSignature: Uint8Array;
+  /** Signature produced by the user's address for a given Protocol */
+  claimSignature: Uint8Array;
   /** Hash of the latest Ethereum block when the signature was produced */
   blockHash: Uint8Array;
   /** Type of verification. 0 = EOA, 1 = contract */
   verificationType: number;
   /** 0 for EOA verifications, 1 or 10 for contract verifications */
   chainId: number;
+  /** Protocol of the Verification */
+  protocol: Protocol;
 }
 
-/** Removes a Verification of any type */
+/** Removes a Verification of a given protocol */
 export interface VerificationRemoveBody {
   /** Address of the Verification to remove */
   address: Uint8Array;
+  /** Protocol of the Verification to remove */
+  protocol: Protocol;
 }
 
 /** Adds or removes a Link */
@@ -638,7 +672,7 @@ function createBaseMessageData(): MessageData {
     castAddBody: undefined,
     castRemoveBody: undefined,
     reactionBody: undefined,
-    verificationAddEthAddressBody: undefined,
+    verificationAddAddressBody: undefined,
     verificationRemoveBody: undefined,
     userDataBody: undefined,
     linkBody: undefined,
@@ -670,8 +704,8 @@ export const MessageData = {
     if (message.reactionBody !== undefined) {
       ReactionBody.encode(message.reactionBody, writer.uint32(58).fork()).ldelim();
     }
-    if (message.verificationAddEthAddressBody !== undefined) {
-      VerificationAddEthAddressBody.encode(message.verificationAddEthAddressBody, writer.uint32(74).fork()).ldelim();
+    if (message.verificationAddAddressBody !== undefined) {
+      VerificationAddAddressBody.encode(message.verificationAddAddressBody, writer.uint32(74).fork()).ldelim();
     }
     if (message.verificationRemoveBody !== undefined) {
       VerificationRemoveBody.encode(message.verificationRemoveBody, writer.uint32(82).fork()).ldelim();
@@ -752,7 +786,7 @@ export const MessageData = {
             break;
           }
 
-          message.verificationAddEthAddressBody = VerificationAddEthAddressBody.decode(reader, reader.uint32());
+          message.verificationAddAddressBody = VerificationAddAddressBody.decode(reader, reader.uint32());
           continue;
         case 10:
           if (tag != 82) {
@@ -807,8 +841,8 @@ export const MessageData = {
       castAddBody: isSet(object.castAddBody) ? CastAddBody.fromJSON(object.castAddBody) : undefined,
       castRemoveBody: isSet(object.castRemoveBody) ? CastRemoveBody.fromJSON(object.castRemoveBody) : undefined,
       reactionBody: isSet(object.reactionBody) ? ReactionBody.fromJSON(object.reactionBody) : undefined,
-      verificationAddEthAddressBody: isSet(object.verificationAddEthAddressBody)
-        ? VerificationAddEthAddressBody.fromJSON(object.verificationAddEthAddressBody)
+      verificationAddAddressBody: isSet(object.verificationAddAddressBody)
+        ? VerificationAddAddressBody.fromJSON(object.verificationAddAddressBody)
         : undefined,
       verificationRemoveBody: isSet(object.verificationRemoveBody)
         ? VerificationRemoveBody.fromJSON(object.verificationRemoveBody)
@@ -832,9 +866,9 @@ export const MessageData = {
       (obj.castRemoveBody = message.castRemoveBody ? CastRemoveBody.toJSON(message.castRemoveBody) : undefined);
     message.reactionBody !== undefined &&
       (obj.reactionBody = message.reactionBody ? ReactionBody.toJSON(message.reactionBody) : undefined);
-    message.verificationAddEthAddressBody !== undefined &&
-      (obj.verificationAddEthAddressBody = message.verificationAddEthAddressBody
-        ? VerificationAddEthAddressBody.toJSON(message.verificationAddEthAddressBody)
+    message.verificationAddAddressBody !== undefined &&
+      (obj.verificationAddAddressBody = message.verificationAddAddressBody
+        ? VerificationAddAddressBody.toJSON(message.verificationAddAddressBody)
         : undefined);
     message.verificationRemoveBody !== undefined && (obj.verificationRemoveBody = message.verificationRemoveBody
       ? VerificationRemoveBody.toJSON(message.verificationRemoveBody)
@@ -868,9 +902,9 @@ export const MessageData = {
     message.reactionBody = (object.reactionBody !== undefined && object.reactionBody !== null)
       ? ReactionBody.fromPartial(object.reactionBody)
       : undefined;
-    message.verificationAddEthAddressBody =
-      (object.verificationAddEthAddressBody !== undefined && object.verificationAddEthAddressBody !== null)
-        ? VerificationAddEthAddressBody.fromPartial(object.verificationAddEthAddressBody)
+    message.verificationAddAddressBody =
+      (object.verificationAddAddressBody !== undefined && object.verificationAddAddressBody !== null)
+        ? VerificationAddAddressBody.fromPartial(object.verificationAddAddressBody)
         : undefined;
     message.verificationRemoveBody =
       (object.verificationRemoveBody !== undefined && object.verificationRemoveBody !== null)
@@ -1441,23 +1475,24 @@ export const ReactionBody = {
   },
 };
 
-function createBaseVerificationAddEthAddressBody(): VerificationAddEthAddressBody {
+function createBaseVerificationAddAddressBody(): VerificationAddAddressBody {
   return {
     address: new Uint8Array(),
-    ethSignature: new Uint8Array(),
+    claimSignature: new Uint8Array(),
     blockHash: new Uint8Array(),
     verificationType: 0,
     chainId: 0,
+    protocol: 0,
   };
 }
 
-export const VerificationAddEthAddressBody = {
-  encode(message: VerificationAddEthAddressBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const VerificationAddAddressBody = {
+  encode(message: VerificationAddAddressBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.address.length !== 0) {
       writer.uint32(10).bytes(message.address);
     }
-    if (message.ethSignature.length !== 0) {
-      writer.uint32(18).bytes(message.ethSignature);
+    if (message.claimSignature.length !== 0) {
+      writer.uint32(18).bytes(message.claimSignature);
     }
     if (message.blockHash.length !== 0) {
       writer.uint32(26).bytes(message.blockHash);
@@ -1468,13 +1503,16 @@ export const VerificationAddEthAddressBody = {
     if (message.chainId !== 0) {
       writer.uint32(40).uint32(message.chainId);
     }
+    if (message.protocol !== 0) {
+      writer.uint32(56).int32(message.protocol);
+    }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): VerificationAddEthAddressBody {
+  decode(input: _m0.Reader | Uint8Array, length?: number): VerificationAddAddressBody {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseVerificationAddEthAddressBody();
+    const message = createBaseVerificationAddAddressBody();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1490,7 +1528,7 @@ export const VerificationAddEthAddressBody = {
             break;
           }
 
-          message.ethSignature = reader.bytes();
+          message.claimSignature = reader.bytes();
           continue;
         case 3:
           if (tag != 26) {
@@ -1513,6 +1551,13 @@ export const VerificationAddEthAddressBody = {
 
           message.chainId = reader.uint32();
           continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.protocol = reader.int32() as any;
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1522,56 +1567,60 @@ export const VerificationAddEthAddressBody = {
     return message;
   },
 
-  fromJSON(object: any): VerificationAddEthAddressBody {
+  fromJSON(object: any): VerificationAddAddressBody {
     return {
       address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
-      ethSignature: isSet(object.ethSignature) ? bytesFromBase64(object.ethSignature) : new Uint8Array(),
+      claimSignature: isSet(object.claimSignature) ? bytesFromBase64(object.claimSignature) : new Uint8Array(),
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
       verificationType: isSet(object.verificationType) ? Number(object.verificationType) : 0,
       chainId: isSet(object.chainId) ? Number(object.chainId) : 0,
+      protocol: isSet(object.protocol) ? protocolFromJSON(object.protocol) : 0,
     };
   },
 
-  toJSON(message: VerificationAddEthAddressBody): unknown {
+  toJSON(message: VerificationAddAddressBody): unknown {
     const obj: any = {};
     message.address !== undefined &&
       (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
-    message.ethSignature !== undefined &&
-      (obj.ethSignature = base64FromBytes(
-        message.ethSignature !== undefined ? message.ethSignature : new Uint8Array(),
+    message.claimSignature !== undefined &&
+      (obj.claimSignature = base64FromBytes(
+        message.claimSignature !== undefined ? message.claimSignature : new Uint8Array(),
       ));
     message.blockHash !== undefined &&
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
     message.verificationType !== undefined && (obj.verificationType = Math.round(message.verificationType));
     message.chainId !== undefined && (obj.chainId = Math.round(message.chainId));
+    message.protocol !== undefined && (obj.protocol = protocolToJSON(message.protocol));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<VerificationAddEthAddressBody>, I>>(base?: I): VerificationAddEthAddressBody {
-    return VerificationAddEthAddressBody.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<VerificationAddAddressBody>, I>>(base?: I): VerificationAddAddressBody {
+    return VerificationAddAddressBody.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<VerificationAddEthAddressBody>, I>>(
-    object: I,
-  ): VerificationAddEthAddressBody {
-    const message = createBaseVerificationAddEthAddressBody();
+  fromPartial<I extends Exact<DeepPartial<VerificationAddAddressBody>, I>>(object: I): VerificationAddAddressBody {
+    const message = createBaseVerificationAddAddressBody();
     message.address = object.address ?? new Uint8Array();
-    message.ethSignature = object.ethSignature ?? new Uint8Array();
+    message.claimSignature = object.claimSignature ?? new Uint8Array();
     message.blockHash = object.blockHash ?? new Uint8Array();
     message.verificationType = object.verificationType ?? 0;
     message.chainId = object.chainId ?? 0;
+    message.protocol = object.protocol ?? 0;
     return message;
   },
 };
 
 function createBaseVerificationRemoveBody(): VerificationRemoveBody {
-  return { address: new Uint8Array() };
+  return { address: new Uint8Array(), protocol: 0 };
 }
 
 export const VerificationRemoveBody = {
   encode(message: VerificationRemoveBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.address.length !== 0) {
       writer.uint32(10).bytes(message.address);
+    }
+    if (message.protocol !== 0) {
+      writer.uint32(16).int32(message.protocol);
     }
     return writer;
   },
@@ -1590,6 +1639,13 @@ export const VerificationRemoveBody = {
 
           message.address = reader.bytes();
           continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.protocol = reader.int32() as any;
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1600,13 +1656,17 @@ export const VerificationRemoveBody = {
   },
 
   fromJSON(object: any): VerificationRemoveBody {
-    return { address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array() };
+    return {
+      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
+      protocol: isSet(object.protocol) ? protocolFromJSON(object.protocol) : 0,
+    };
   },
 
   toJSON(message: VerificationRemoveBody): unknown {
     const obj: any = {};
     message.address !== undefined &&
       (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
+    message.protocol !== undefined && (obj.protocol = protocolToJSON(message.protocol));
     return obj;
   },
 
@@ -1617,6 +1677,7 @@ export const VerificationRemoveBody = {
   fromPartial<I extends Exact<DeepPartial<VerificationRemoveBody>, I>>(object: I): VerificationRemoveBody {
     const message = createBaseVerificationRemoveBody();
     message.address = object.address ?? new Uint8Array();
+    message.protocol = object.protocol ?? 0;
     return message;
   },
 };

@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.9.8
+
+### Patch Changes
+
+- acf985c2: feat: Add neynar hubs to bootstrap list
+- 0a6a7b70: fix: Multipart upload the snapshot to S3
+- 6ec1b4dd: feat: Add a LRU cache to the active signers
+- d29dfe51: fix: Check sync trie before fetching messages
+- 06160b96: perf: Use execution timeout so we don't drop all messages in the lock queue
+- 8bff4de6: fix: Bump gossip TTL to 10 mins
+
 ## 1.9.7
 
 ### Patch Changes

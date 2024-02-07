@@ -111,7 +111,7 @@ class GossipTestNode {
   sentMessages = 0;
   recievedMessages = new Map(); // Id -> timestamp
   constructor() {
-    this.gossipNode = new GossipNode({});
+    this.gossipNode = new GossipNode();
   }
   async start() {
     await this.gossipNode.start([]);

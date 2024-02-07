@@ -68,4 +68,5 @@ export const Config = {
   // enableSnapshotToS3: false,
   /** S3 bucket name */
   // s3BucketName: '',
+  connectToDbPeers: true,
 };

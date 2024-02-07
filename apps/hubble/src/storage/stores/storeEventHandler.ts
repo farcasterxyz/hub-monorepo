@@ -36,14 +36,14 @@ import {
   ReactionAddMessage,
   ReactionRemoveMessage,
   UserDataAddMessage,
-  VerificationAddEthAddressMessage,
+  VerificationAddAddressMessage,
   VerificationRemoveMessage,
 } from "@farcaster/core";
 import { logger } from "../../utils/logger.js";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
-const DEFAULT_LOCK_MAX_PENDING = 2_500;
-const DEFAULT_LOCK_TIMEOUT = 500; // in ms
+const DEFAULT_LOCK_MAX_PENDING = 5_000;
+const DEFAULT_EXECUTION_TIMEOUT = 1000; // in ms
 
 // @ts-ignore
 const STORE_TO_SET: Record<StoreType, UserMessagePostfix> = {
@@ -61,7 +61,7 @@ type PrunableMessage =
   | ReactionAddMessage
   | ReactionRemoveMessage
   | UserDataAddMessage
-  | VerificationAddEthAddressMessage
+  | VerificationAddAddressMessage
   | VerificationRemoveMessage
   | LinkAddMessage
   | LinkRemoveMessage;
@@ -174,7 +174,7 @@ const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => 
 
 export type StoreEventHandlerOptions = {
   lockMaxPending?: number | undefined;
-  lockTimeout?: number | undefined;
+  lockExecutionTimeout?: number | undefined;
 };
 
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
@@ -190,7 +190,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
     this._lock = new AsyncLock({
       maxPending: options.lockMaxPending ?? DEFAULT_LOCK_MAX_PENDING,
-      timeout: options.lockTimeout ?? DEFAULT_LOCK_TIMEOUT,
+      maxExecutionTime: options.lockExecutionTimeout ?? DEFAULT_EXECUTION_TIMEOUT,
     });
 
     this._storageCache = new StorageCache(this._db);
