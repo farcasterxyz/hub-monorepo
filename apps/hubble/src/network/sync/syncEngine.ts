@@ -481,14 +481,32 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // If we don't have a peer contact, get a random one from the current list
     if (!peerContact) {
-      // Pick a random key
-      const randomPeer = Array.from(this.currentHubPeerContacts.keys())[
-        Math.floor(Math.random() * this.currentHubPeerContacts.size)
-      ] as string;
+      let peers: PeerContact[] = [];
 
-      const c = this.currentHubPeerContacts.get(randomPeer);
-      peerContact = c?.contactInfo;
-      peerId = c?.peerId;
+      // Prefer hubs that have more messages than us, if no such hub is available, pick a random one
+      const snapshotResult = await this.getSnapshot();
+      if (snapshotResult.isOk()) {
+        // Use a buffer of 5% of our messages so the peer with the highest message count does not get picked
+        // disproportionately
+        const messageThreshold = snapshotResult.value.numMessages * 0.95;
+        peers = Array.from(this.currentHubPeerContacts.values()).filter((p) => p.contactInfo.count > messageThreshold);
+      }
+
+      if (peers.length === 0) {
+        peers = Array.from(this.currentHubPeerContacts.values());
+        log.info(
+          { peersCount: this.currentHubPeerContacts.size, eligiblePeers: peers.length },
+          `Diffsync: Choosing random peer among ${peers.length} peers with fewer messages`,
+        );
+      } else {
+        log.info(
+          { peersCount: this.currentHubPeerContacts.size, eligiblePeers: peers.length },
+          `Diffsync: Choosing random peer among ${peers.length} peers with more messages`,
+        );
+      }
+      const randomPeer = peers[Math.floor(Math.random() * peers.length)];
+      peerContact = randomPeer?.contactInfo;
+      peerId = randomPeer?.peerId;
     }
 
     // If we still don't have a peer, skip the sync
