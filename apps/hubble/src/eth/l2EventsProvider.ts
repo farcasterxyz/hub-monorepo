@@ -177,12 +177,15 @@ export class L2EventsProvider {
 
   public async start() {
     // Connect to L2 RPC
-    await this.connectAndSyncHistoricalEvents();
 
-    this._watchBlockNumber?.start();
+    // Start the contract watchers first, so we cache events while we sync historical events
     this._watchStorageContractEvents?.start();
     this._watchIdRegistryV2ContractEvents?.start();
     this._watchKeyRegistryV2ContractEvents?.start();
+
+    await this.connectAndSyncHistoricalEvents();
+
+    this._watchBlockNumber?.start();
   }
 
   public async stop() {
@@ -496,21 +499,21 @@ export class L2EventsProvider {
     }
   }
 
-  /** Connect to Ethereum RPC */
-  private async connectAndSyncHistoricalEvents() {
+  /** Connect to OP RPC and sync events. Returns the highest block that was synced */
+  private async connectAndSyncHistoricalEvents(): Promise<number> {
     const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error(
         { err: latestBlockResult.error },
         "failed to connect to optimism node. Check your eth RPC URL (e.g. --l2-rpc-url)",
       );
-      return;
+      return 0;
     }
     const latestBlock = Number(latestBlockResult.value);
 
     if (!latestBlock) {
       log.error("failed to get the latest block from the RPC provider");
-      return;
+      return 0;
     }
 
     log.info({ latestBlock: latestBlock }, "connected to optimism node");
@@ -544,6 +547,7 @@ export class L2EventsProvider {
     }
 
     this._isHistoricalSyncDone = true;
+    return latestBlock;
   }
 
   /**
@@ -701,10 +705,8 @@ export class L2EventsProvider {
       await this.processIdRegistryV2Events(await idV2LogsPromise);
       await this.processKeyRegistryEventsV2(await keyV2LogsPromise);
 
-      // If there are more batches, write out all the cached blocks first
-      if (i < numOfRuns - 1) {
-        await this.writeCachedBlocks(nextToBlock);
-      }
+      // Write out all the cached blocks first
+      await this.writeCachedBlocks(toBlock);
     }
 
     progressBar?.update(totalBlocks);
