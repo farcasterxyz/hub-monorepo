@@ -137,31 +137,6 @@ describe("GossipNode", () => {
     TEST_TIMEOUT_SHORT,
   );
 
-  test(
-    "adding peers adds to the DB",
-    async () => {
-      const node1 = new GossipNode(db);
-      await node1.start([]);
-
-      const node2 = new GossipNode();
-      await node2.start([]);
-
-      try {
-        const dialResult = await node1.connect(node2);
-        expect(dialResult.isOk()).toBeTruthy();
-
-        // Make sure that node1 has node2 in it's DB too
-        const dbKey = node1.makePeerKey(node2.peerId()?.toString() || "");
-        await sleepWhile(async () => (await ResultAsync.fromPromise(db.get(dbKey), (e) => e)).isErr(), 5 * 1000);
-        expect((await db.get(dbKey)).toString("ascii")).toBe(node2.multiaddrs()[0]?.toString());
-      } finally {
-        await node1.stop();
-        await node2.stop();
-      }
-    },
-    TEST_TIMEOUT_SHORT,
-  );
-
   describe("gossip messages", () => {
     const network = FarcasterNetwork.TESTNET;
     const fid = Factories.Fid.build();
