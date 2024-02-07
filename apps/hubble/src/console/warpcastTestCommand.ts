@@ -386,7 +386,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
           data: {
             fid,
             network,
-            verificationRemoveBody: { address: verificationAdd.data.verificationAddEthAddressBody.address },
+            verificationRemoveBody: { address: verificationAdd.data.verificationAddAddressBody.address },
           },
         },
         { transient: { signer } },

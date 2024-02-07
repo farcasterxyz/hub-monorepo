@@ -28,7 +28,7 @@ message MessageData {
     CastAddBody cast_add_body = 5;
     CastRemoveBody cast_remove_body = 6;
     ReactionBody reaction_body = 7;
-    VerificationAddEthAddressBody verification_add_eth_address_body = 9;
+    VerificationAddAddressBody verification_add_address_body = 9;
     VerificationRemoveBody verification_remove_body = 10;
     // SignerAddBody signer_add_body = 11; // Deprecated
     UserDataBody user_data_body = 12;
@@ -61,7 +61,7 @@ enum MessageType {
   MESSAGE_TYPE_REACTION_REMOVE = 4; // Remove a Reaction from a Cast
   MESSAGE_TYPE_LINK_ADD = 5; // Add a new Link
   MESSAGE_TYPE_LINK_REMOVE = 6; // Remove an existing Link
-  MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7; // Add a Verification of an Ethereum Address
+  MESSAGE_TYPE_VERIFICATION_ADD_ADDRESS = 7; // Add a Verification of an Ethereum Address
   MESSAGE_TYPE_VERIFICATION_REMOVE = 8; // Remove a Verification
 //  Deprecated
 //  MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
@@ -142,18 +142,27 @@ enum ReactionType {
   REACTION_TYPE_RECAST = 2; // Share target cast to the user's audience
 }
 
-/** Adds a Verification of ownership of an Ethereum Address */
-message VerificationAddEthAddressBody {
-  bytes address = 1; // Ethereum address being verified
-  bytes eth_signature = 2; // Signature produced by the user's Ethereum address
+/** Type of Protocol to disambiguate verification addresses */
+enum Protocol {
+  PROTOCOL_ETHEREUM = 0;
+  PROTOCOL_SOLANA = 1;
+}
+
+/** Adds a Verification of ownership of an Address based on Protocol */
+message VerificationAddAddressBody {
+  bytes address = 1; // Address being verified for a given Protocol
+  bytes claim_signature = 2; // Signature produced by the user's address for a given Protocol
   bytes block_hash = 3; // Hash of the latest Ethereum block when the signature was produced
   uint32 verification_type = 4; // Type of verification. 0 = EOA, 1 = contract
   uint32 chain_id = 5; // 0 for EOA verifications, 1 or 10 for contract verifications
+
+  Protocol protocol = 7; // Protocol of the Verification
 }
 
-/** Removes a Verification of any type */
+/** Removes a Verification of a given protocol */
 message VerificationRemoveBody {
   bytes address = 1; // Address of the Verification to remove
+  Protocol protocol = 2; // Protocol of the Verification to remove
 }
 
 /** Adds or removes a Link */

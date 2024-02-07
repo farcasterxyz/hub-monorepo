@@ -1,7 +1,7 @@
 import { bytesToHex, verifyTypedData } from "viem";
 import { ResultAsync } from "neverthrow";
 import { HubAsyncResult, HubError } from "../errors";
-import { VerificationEthAddressClaim } from "../verifications";
+import { VerificationAddressClaim } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
 import { PublicClients, defaultPublicClients } from "../eth/clients";
 import { CHAIN_IDS } from "../eth/chains";
@@ -65,7 +65,7 @@ export const MESSAGE_DATA_EIP_712_TYPES = {
 } as const;
 
 export const verifyVerificationClaimEOASignature = async (
-  claim: VerificationEthAddressClaim,
+  claim: VerificationAddressClaim,
   signature: Uint8Array,
   address: Uint8Array,
   chainId: number,
@@ -91,7 +91,7 @@ export const verifyVerificationClaimEOASignature = async (
 };
 
 export const verifyVerificationClaimContractSignature = async (
-  claim: VerificationEthAddressClaim,
+  claim: VerificationAddressClaim,
   signature: Uint8Array,
   address: Uint8Array,
   chainId: number,
@@ -119,7 +119,7 @@ export const verifyVerificationClaimContractSignature = async (
 };
 
 export const verifyVerificationEthAddressClaimSignature = async (
-  claim: VerificationEthAddressClaim,
+  claim: VerificationAddressClaim,
   signature: Uint8Array,
   address: Uint8Array,
   verificationType = 0,

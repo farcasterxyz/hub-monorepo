@@ -1,12 +1,13 @@
 import { faker } from "@faker-js/faker";
 import * as protobufs from "./protobufs";
+import { Protocol } from "./protobufs";
 import { err, ok } from "neverthrow";
 import * as builders from "./builders";
 import { bytesToHexString, hexStringToBytes, utf8StringToBytes } from "./bytes";
 import { HubError } from "./errors";
 import { Factories } from "./factories";
 import * as validations from "./validations";
-import { VerificationEthAddressClaim, makeVerificationEthAddressClaim } from "./verifications";
+import { makeVerificationAddressClaim, VerificationAddressClaim } from "./verifications";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import { makeUserNameProofClaim } from "./userNameProof";
 
@@ -139,10 +140,10 @@ describe("makeReactionRemove", () => {
 describe("makeVerificationAddEthAddressData", () => {
   const blockHash = Factories.BlockHash.build();
   let ethSignature: Uint8Array;
-  let claim: VerificationEthAddressClaim;
+  let claim: VerificationAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
     const signature = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signature).toBeTruthy();
     ethSignature = signature;
@@ -150,7 +151,7 @@ describe("makeVerificationAddEthAddressData", () => {
 
   test("succeeds", async () => {
     const data = await builders.makeVerificationAddEthAddressData(
-      { address: ethSignerKey, blockHash, ethSignature },
+      { address: ethSignerKey, blockHash: blockHash, claimSignature: ethSignature, protocol: Protocol.ETHEREUM },
       { fid, network },
     );
     expect(data.isOk()).toBeTruthy();
@@ -161,7 +162,13 @@ describe("makeVerificationAddEthAddressData", () => {
 
 describe("makeVerificationRemoveData", () => {
   test("succeeds", async () => {
-    const data = await builders.makeVerificationRemoveData({ address: ethSignerKey }, { fid, network });
+    const data = await builders.makeVerificationRemoveData(
+      {
+        address: ethSignerKey,
+        protocol: Protocol.ETHEREUM,
+      },
+      { fid, network },
+    );
     expect(data.isOk()).toBeTruthy();
     const isValid = await validations.validateMessageData(data._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
@@ -171,10 +178,10 @@ describe("makeVerificationRemoveData", () => {
 describe("makeVerificationAddEthAddress", () => {
   const blockHash = Factories.BlockHash.build();
   let ethSignature: Uint8Array;
-  let claim: VerificationEthAddressClaim;
+  let claim: VerificationAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationEthAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
     const signatureHex = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signatureHex).toBeTruthy();
     ethSignature = signatureHex;
@@ -182,7 +189,7 @@ describe("makeVerificationAddEthAddress", () => {
 
   test("succeeds", async () => {
     const message = await builders.makeVerificationAddEthAddress(
-      { address: ethSignerKey, blockHash, ethSignature },
+      { address: ethSignerKey, blockHash: blockHash, claimSignature: ethSignature, protocol: Protocol.ETHEREUM },
       { fid, network },
       ed25519Signer,
     );
@@ -193,7 +200,11 @@ describe("makeVerificationAddEthAddress", () => {
 
 describe("makeVerificationRemove", () => {
   test("succeeds", async () => {
-    const message = await builders.makeVerificationRemove({ address: ethSignerKey }, { fid, network }, ed25519Signer);
+    const message = await builders.makeVerificationRemove(
+      { address: ethSignerKey, protocol: Protocol.ETHEREUM },
+      { fid, network },
+      ed25519Signer,
+    );
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });

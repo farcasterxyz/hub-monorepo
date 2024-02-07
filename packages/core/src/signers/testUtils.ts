@@ -4,7 +4,7 @@ import { bytesToHexString, hexStringToBytes } from "../bytes";
 import { eip712 } from "../crypto";
 import { Factories } from "../factories";
 import { FarcasterNetwork } from "../protobufs";
-import { makeVerificationEthAddressClaim, VerificationEthAddressClaim } from "../verifications";
+import { makeVerificationAddressClaim, VerificationAddressClaim } from "../verifications";
 import { makeUserNameProofClaim, UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
 import { bytesToHex, decodeAbiParameters } from "viem";
@@ -39,11 +39,11 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
   });
 
   describe("signVerificationEthAddressClaim", () => {
-    let claim: VerificationEthAddressClaim;
+    let claim: VerificationAddressClaim;
     let signature: Uint8Array;
 
     beforeAll(async () => {
-      claim = makeVerificationEthAddressClaim(
+      claim = makeVerificationAddressClaim(
         Factories.Fid.build(),
         signerKey,
         FarcasterNetwork.TESTNET,
@@ -60,7 +60,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     });
 
     test("succeeds when encoding twice", async () => {
-      const claim2: VerificationEthAddressClaim = { ...claim };
+      const claim2: VerificationAddressClaim = { ...claim };
       const signature2 = await signer.signVerificationEthAddressClaim(claim2);
       expect(signature2).toEqual(ok(signature));
       expect(bytesToHexString(signature2._unsafeUnwrap())).toEqual(bytesToHexString(signature));

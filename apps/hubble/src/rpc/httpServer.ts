@@ -100,6 +100,14 @@ function convertB64ToHex(str: string): string {
   }
 }
 
+// Map of current key names to old key names that we want to preserve for backwards compatibility reasons
+// If you are renaming a protobuf field, add the current name as the key, and the old name as the value, and we
+// will copy the contents of the current field to the old field
+const BACKWARDS_COMPATIBILITY_MAP: Record<string, string> = {
+  verificationAddAddressBody: "verificationAddEthAddressBody",
+  claimSignature: "ethSignature",
+};
+
 /**
  * The protobuf format specifies encoding bytes as base64 strings, but we want to return hex strings
  * to be consistent with the rest of the API, so we need to convert the base64 strings to hex strings
@@ -137,6 +145,11 @@ function transformHash(obj: any): any {
         obj[key] = Buffer.from(obj[key], "base64").toString("utf-8");
       } else if (typeof obj[key] === "object") {
         transformHash(obj[key]);
+      }
+
+      const backwardsCompatibleName = BACKWARDS_COMPATIBILITY_MAP[key];
+      if (backwardsCompatibleName) {
+        obj[backwardsCompatibleName] = obj[key];
       }
     }
   }

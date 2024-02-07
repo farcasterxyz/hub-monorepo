@@ -366,7 +366,7 @@ if (claimResult.isOk()) {
   // Construct a Verification Add Message with the claim signature
   const verificationBody = {
     address: addressBytes,
-    ethSignature,
+    claimSignature: ethSignature,
     blockHash: blockHashBytes,
   };
 

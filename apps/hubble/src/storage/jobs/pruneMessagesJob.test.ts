@@ -138,7 +138,7 @@ describe("doJobs", () => {
       }
 
       expect(prunedMessages.length).toEqual(2); // 1 verification for each of the 2 fids
-      expect(prunedMessages.filter((m) => m.data?.type !== MessageType.VERIFICATION_ADD_ETH_ADDRESS)).toEqual([]);
+      expect(prunedMessages.filter((m) => m.data?.type !== MessageType.VERIFICATION_ADD_ADDRESS)).toEqual([]);
     },
     15 * 1000,
   );
