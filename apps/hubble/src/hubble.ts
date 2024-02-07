@@ -284,6 +284,9 @@ export interface HubOptions {
 
   /** If set, requires gossip messages to utilize StrictNoSign */
   strictNoSign?: boolean;
+
+  /** Should we connect to DB peers on startup */
+  connectToDbPeers?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -373,7 +376,7 @@ export class Hub implements HubInterface {
     }
 
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.options.network);
+    this.gossipNode = new GossipNode(this.rocksDB, this.options.network);
 
     this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
@@ -685,6 +688,7 @@ export class Hub implements HubInterface {
       allowlistedImmunePeers: this.options.allowlistedImmunePeers,
       applicationScoreCap: this.options.applicationScoreCap,
       strictNoSign: this.strictNoSign,
+      connectToDbPeers: this.options.connectToDbPeers,
     });
 
     await this.registerEventHandlers();
