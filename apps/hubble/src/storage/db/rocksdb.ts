@@ -296,7 +296,7 @@ class RocksDB {
   }
 
   /**
-   * forEach iterator, but with a prefix. See @forEachITerator for more details
+   * forEach iterator, but with a prefix. See @forEachIterator for more details
    */
   async forEachIteratorByPrefix<T>(
     prefix: Buffer,

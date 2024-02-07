@@ -75,6 +75,9 @@ export enum RootPrefix {
 
   /* Used to index verifications by address */
   VerificationByAddress = 25,
+
+  /* Store the connected peers */
+  ConnectedPeers = 26,
 }
 
 /**

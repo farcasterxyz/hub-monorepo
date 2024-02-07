@@ -521,6 +521,7 @@ app
       enableSnapshotToS3,
       s3SnapshotBucket: cliOptions.s3SnapshotBucket ?? hubConfig.s3SnapshotBucket,
       hubOperatorFid: parseInt(cliOptions.hubOperatorFid ?? hubConfig.hubOperatorFid),
+      connectToDbPeers: hubConfig.connectToDbPeers ?? true,
     };
 
     // Startup check for Hub Operator FID

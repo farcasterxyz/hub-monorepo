@@ -267,7 +267,7 @@ export class LibP2PNode {
       const conn = await this._node?.dial(address);
 
       if (conn) {
-        log.info({ identity: this.identity, address }, `Connected to peer at address: ${address}`);
+        log.info({ identity: this.identity, address: address.toString() }, `Connected to peer at address: ${address}`);
         return ok(undefined);
       }
       // biome-ignore lint/suspicious/noExplicitAny: error catching
