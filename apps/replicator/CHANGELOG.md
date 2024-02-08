@@ -1,5 +1,13 @@
 # @farcaster/replicator
 
+## 0.2.10
+
+### Patch Changes
+
+- 763d3154: feat: rename some verification message fields to support more protocols
+- Updated dependencies [763d3154]
+  - @farcaster/hub-nodejs@0.10.24
+
 ## 0.2.9
 
 ### Patch Changes

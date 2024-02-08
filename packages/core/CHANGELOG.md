@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.13.8
+
+### Patch Changes
+
+- 763d3154: feat: rename some verification message fields to support more protocols
+
 ## 0.13.7
 
 ### Patch Changes

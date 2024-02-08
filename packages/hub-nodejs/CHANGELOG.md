@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.10.24
+
+### Patch Changes
+
+- 763d3154: feat: rename some verification message fields to support more protocols
+- Updated dependencies [763d3154]
+  - @farcaster/core@0.13.8
+
 ## 0.10.23
 
 ### Patch Changes
