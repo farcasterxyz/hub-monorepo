@@ -153,6 +153,7 @@ describe("Multi peer sync engine", () => {
     engine2 = new Engine(testDb2, network);
     hub2 = new MockHub(testDb2, engine2);
     syncEngine2 = new SyncEngine(hub2, testDb2, l2EventsProvider, fnameEventsProvider, undefined, 0);
+    await syncEngine2.start();
   }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {

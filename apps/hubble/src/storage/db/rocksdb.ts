@@ -337,7 +337,7 @@ class RocksDB {
     const stacktrace = new Error().stack || "<no stacktrace>";
     const timeoutId = setTimeout(async () => {
       await iterator.end();
-      log.warn({ ...options, stack: stacktrace }, "forEachIterator timed out. Was force closed");
+      log.warn({ ...options, stacktrace }, "forEachIterator timed out. Was force closed");
     }, timeoutMs);
 
     let returnValue: T | undefined | void;

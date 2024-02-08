@@ -219,6 +219,8 @@ class MerkleTrie {
   }
 
   public async rebuild(): Promise<void> {
+    await this.initialize();
+
     // First, delete the root node
     const dbStatus = await ResultAsync.fromPromise(
       this._db.del(TrieNode.makePrimaryKey(new Uint8Array())),
