@@ -167,7 +167,7 @@ const MessageTypeFactory = Factory.define<protobufs.MessageType>(() => {
     protobufs.MessageType.REACTION_ADD,
     protobufs.MessageType.REACTION_REMOVE,
     protobufs.MessageType.USER_DATA_ADD,
-    protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
     protobufs.MessageType.VERIFICATION_REMOVE,
   ]);
 });
@@ -505,7 +505,7 @@ const VerificationAddSolAddressDataFactory = Factory.define<
       { protocol: Protocol.SOLANA },
       { transient: { protocol: Protocol.SOLANA } },
     ),
-    type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   }) as protobufs.VerificationAddAddressData;
 });
 
@@ -556,7 +556,7 @@ const VerificationAddEthAddressDataFactory = Factory.define<
   return MessageDataFactory.build({
     // verificationAddEthAddressBody will not be valid until onCreate
     verificationAddAddressBody: VerificationAddAddressBodyFactory.build({ protocol: Protocol.ETHEREUM }),
-    type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS,
+    type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   }) as protobufs.VerificationAddAddressData;
 });
 

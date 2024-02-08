@@ -219,8 +219,8 @@ class MerkleTrieImpl {
       }
 
       await this._dbPut(dbKeyValues);
-
       log.info({ numDbUpdates: this._pendingDbUpdates.size, force }, "Trie committed pending DB updates");
+
       this._pendingDbUpdates.clear();
       this._root.unloadChildren();
 

@@ -87,8 +87,8 @@ export enum MessageType {
   LINK_ADD = 5,
   /** LINK_REMOVE - Remove an existing Link */
   LINK_REMOVE = 6,
-  /** VERIFICATION_ADD_ADDRESS - Add a Verification of an Ethereum Address */
-  VERIFICATION_ADD_ADDRESS = 7,
+  /** VERIFICATION_ADD_ETH_ADDRESS - Add a Verification of an Ethereum Address */
+  VERIFICATION_ADD_ETH_ADDRESS = 7,
   /** VERIFICATION_REMOVE - Remove a Verification */
   VERIFICATION_REMOVE = 8,
   /**
@@ -127,8 +127,8 @@ export function messageTypeFromJSON(object: any): MessageType {
     case "MESSAGE_TYPE_LINK_REMOVE":
       return MessageType.LINK_REMOVE;
     case 7:
-    case "MESSAGE_TYPE_VERIFICATION_ADD_ADDRESS":
-      return MessageType.VERIFICATION_ADD_ADDRESS;
+    case "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS":
+      return MessageType.VERIFICATION_ADD_ETH_ADDRESS;
     case 8:
     case "MESSAGE_TYPE_VERIFICATION_REMOVE":
       return MessageType.VERIFICATION_REMOVE;
@@ -162,8 +162,8 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_LINK_ADD";
     case MessageType.LINK_REMOVE:
       return "MESSAGE_TYPE_LINK_REMOVE";
-    case MessageType.VERIFICATION_ADD_ADDRESS:
-      return "MESSAGE_TYPE_VERIFICATION_ADD_ADDRESS";
+    case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
+      return "MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS";
     case MessageType.VERIFICATION_REMOVE:
       return "MESSAGE_TYPE_VERIFICATION_REMOVE";
     case MessageType.USER_DATA_ADD:

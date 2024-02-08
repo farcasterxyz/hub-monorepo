@@ -26,7 +26,7 @@
     "lint": "yarn lint:customjs && biome format src/ --write && biome check src/ --apply",
     "lint:ci": "yarn lint:customjs && biome ci src/",
     "lint:customjs": "node scripts/linter.cjs",
-    "start": "node --no-warnings build/cli.js start",
+    "start": "node --max-old-space-size=8192 --no-warnings build/cli.js start",
     "identity": "node --no-warnings build/cli.js identity",
     "dbreset": "node build/cli.js dbreset",
     "events-reset": "node build/cli.js events-reset",

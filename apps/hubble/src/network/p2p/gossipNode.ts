@@ -20,12 +20,14 @@ import { TypedEmitter } from "tiny-typed-emitter";
 import { logger } from "../../utils/logger.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
-import { AddrInfo, MsgIdStr } from "@chainsafe/libp2p-gossipsub/types";
+import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
-import { PeerScore } from "network/sync/peerScore.js";
+import RocksDB from "../../storage/db/rocksdb.js";
+import { RootPrefix } from "../../storage/db/types.js";
+import { sleep } from "../../utils/crypto.js";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
@@ -69,6 +71,8 @@ export interface NodeOptions {
   applicationScoreCap?: number | undefined;
   /** Determines whether messages are required to be strictly unsigned */
   strictNoSign?: boolean | undefined;
+  /** Whether to connect to peers that were remembered in the DB */
+  connectToDbPeers?: boolean | undefined;
 }
 
 // A common return type for several methods on the libp2p node.
@@ -146,6 +150,7 @@ export type LibP2PNodeMethodGenericMessage = {
 export class GossipNode extends TypedEmitter<NodeEvents> {
   private _periodicPeerCheckJob?: PeriodicPeerCheckScheduler;
   private _network: FarcasterNetwork;
+  private _db: RocksDB | undefined;
 
   private _nodeWorker: Worker;
   private _nodeMethodCallId = 0;
@@ -157,8 +162,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _multiaddrs?: Multiaddr[];
   private _isStarted = false;
 
-  constructor(network?: FarcasterNetwork) {
+  constructor(db?: RocksDB, network?: FarcasterNetwork) {
     super();
+
+    this._db = db;
     this._network = network ?? FarcasterNetwork.NONE;
 
     // Create a worker thread to run the libp2p node. The path is relative to the current file
@@ -218,6 +225,58 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     while (!this._isStarted && reattempt < reattempts) {
       await new Promise((resolve) => setTimeout(resolve, 200));
       reattempt++;
+    }
+  }
+
+  makePeerKey(peerIdStr: string): Buffer {
+    return Buffer.concat([Buffer.from([RootPrefix.ConnectedPeers]), Buffer.from(peerIdStr)]);
+  }
+
+  async putPeerAddrToDB(peerIdStr: string, addr: string) {
+    if (this._db) {
+      await this._db.put(this.makePeerKey(peerIdStr), Buffer.from(addr));
+      log.info({ peerId: peerIdStr, addr }, "Added peer to DB");
+    }
+  }
+
+  async connectToDbPeers() {
+    if (!this._db) {
+      log.warn("No DB available to connect to peers from");
+      return;
+    }
+
+    // Collect all the known peers in the DB
+    const peerAddresses = new Map<string, string>();
+    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.ConnectedPeers]), async (key, value) => {
+      if (key && value) {
+        peerAddresses.set(key.toString("ascii").slice(1), value.toString("ascii"));
+      }
+
+      if (peerAddresses.size > 100) {
+        return true; // Stop iterating after 100 peers
+      }
+      return false;
+    });
+
+    log.info({ count: peerAddresses.size }, "Found peers in DB, will attempt to connect to them...");
+
+    // Connect to each of the known peers one at a time
+    for (const [peerIdStr, addr] of peerAddresses) {
+      // We'll delete this peer from the DB. If the connection succeeds, it will get added
+      // back to the DB, this way, older peers that are no longer reachable will be removed
+      // from the DB
+      await this._db.del(this.makePeerKey(peerIdStr));
+
+      const peerAddr = multiaddr(addr);
+      const result = await this.connectAddress(peerAddr);
+      if (result.isOk()) {
+        log.info({ peerIdStr, addr }, "Connected to peer from DB");
+      } else {
+        log.error({ peerIdStr, addr, error: result.error }, "Failed to connect to peer from DB");
+      }
+
+      // Sleep for a bit to avoid overwhelming the network
+      await sleep(1000);
     }
   }
 
@@ -289,6 +348,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
     // Wait for a few seconds for everything to initialize before connecting to bootstrap nodes
     setTimeout(() => this.bootstrap(bootstrapAddrs), 1 * 1000);
+
+    // Also attempt to connect to all the peers that we have in the DB
+    if (options?.connectToDbPeers) {
+      setTimeout(() => this.connectToDbPeers(), 2 * 1000);
+    }
 
     // Also start the periodic job to make sure we have peers
     this._periodicPeerCheckJob = new PeriodicPeerCheckScheduler(this, bootstrapAddrs);
@@ -409,6 +473,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       );
       this.emit("peerConnect", detail);
       this.updateStatsdPeerGauges();
+
+      // When we successfully connect to a peer, we store it in the DB, so we can connect to it again
+      // if we restart
+      this.putPeerAddrToDB(detail.remotePeer.toString(), detail.remoteAddr.toString());
     });
     this._nodeEvents?.addListener("peer:disconnect", (detail) => {
       log.info({ peer: detail.remotePeer }, "P2P Connection disconnected");

@@ -328,7 +328,10 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
     bodyResult = validateLinkBody(data.linkBody);
   } else if (validType.value === protobufs.MessageType.USER_DATA_ADD && !!data.userDataBody) {
     bodyResult = validateUserDataAddBody(data.userDataBody);
-  } else if (validType.value === protobufs.MessageType.VERIFICATION_ADD_ADDRESS && !!data.verificationAddAddressBody) {
+  } else if (
+    validType.value === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
+    !!data.verificationAddAddressBody
+  ) {
     switch (data.verificationAddAddressBody.protocol) {
       case protobufs.Protocol.ETHEREUM:
         bodyResult = await validateVerificationAddEthAddressBody(

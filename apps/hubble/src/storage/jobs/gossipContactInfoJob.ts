@@ -19,7 +19,8 @@ export class GossipContactInfoJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    const defaultSchedule = "10 */4 * * *"; // Every 4 hours at :10
+    const randomMinute = Math.floor(Math.random() * 60);
+    const defaultSchedule = `${randomMinute} */2 * * *`; // Every 2 hours at a random minute
     this._cronTask = cron.schedule(cronSchedule ?? defaultSchedule, () => this.doJobs());
   }
 

@@ -191,7 +191,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       }
       return body;
     }
-    case MessageType.VERIFICATION_ADD_ADDRESS: {
+    case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {
       if (!message.data.verificationAddAddressBody) {
         throw new Error("Missing verificationAddEthAddressBody");
       }
