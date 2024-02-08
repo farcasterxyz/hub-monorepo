@@ -177,12 +177,15 @@ export class L2EventsProvider {
 
   public async start() {
     // Connect to L2 RPC
-    await this.connectAndSyncHistoricalEvents();
 
-    this._watchBlockNumber?.start();
+    // Start the contract watchers first, so we cache events while we sync historical events
     this._watchStorageContractEvents?.start();
     this._watchIdRegistryV2ContractEvents?.start();
     this._watchKeyRegistryV2ContractEvents?.start();
+
+    await this.connectAndSyncHistoricalEvents();
+
+    this._watchBlockNumber?.start();
   }
 
   public async stop() {
@@ -496,21 +499,21 @@ export class L2EventsProvider {
     }
   }
 
-  /** Connect to Ethereum RPC */
-  private async connectAndSyncHistoricalEvents() {
+  /** Connect to OP RPC and sync events. Returns the highest block that was synced */
+  private async connectAndSyncHistoricalEvents(): Promise<number> {
     const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
       log.error(
         { err: latestBlockResult.error },
         "failed to connect to optimism node. Check your eth RPC URL (e.g. --l2-rpc-url)",
       );
-      return;
+      return 0;
     }
     const latestBlock = Number(latestBlockResult.value);
 
     if (!latestBlock) {
       log.error("failed to get the latest block from the RPC provider");
-      return;
+      return 0;
     }
 
     log.info({ latestBlock: latestBlock }, "connected to optimism node");
@@ -544,6 +547,7 @@ export class L2EventsProvider {
     }
 
     this._isHistoricalSyncDone = true;
+    return latestBlock;
   }
 
   /**
@@ -700,6 +704,9 @@ export class L2EventsProvider {
       await this.processStorageEvents(await storageLogsPromise);
       await this.processIdRegistryV2Events(await idV2LogsPromise);
       await this.processKeyRegistryEventsV2(await keyV2LogsPromise);
+
+      // Write out all the cached blocks first
+      await this.writeCachedBlocks(toBlock);
     }
 
     progressBar?.update(totalBlocks);
@@ -760,6 +767,43 @@ export class L2EventsProvider {
     }
   }
 
+  private async writeCachedBlocks(latestBlockNumber: number) {
+    // Get all blocks that have been confirmed into a single array and sort.
+    const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);
+    const cachedBlocks = Array.from(cachedBlocksSet);
+    cachedBlocks.sort();
+
+    let highestBlockWritten = 0;
+    for (const cachedBlock of cachedBlocks) {
+      if (cachedBlock + L2EventsProvider.numConfirmations <= latestBlockNumber) {
+        const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
+        this._onChainEventsByBlock.delete(cachedBlock);
+        highestBlockWritten = cachedBlock;
+
+        if (onChainEvents) {
+          for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
+            await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
+          }
+        }
+
+        this._retryDedupMap.delete(cachedBlock);
+      }
+    }
+
+    // Write to hub state if we have written a new block
+    if (highestBlockWritten > 0) {
+      const hubState = await this._hub.getHubState();
+      if (hubState.isOk()) {
+        if (highestBlockWritten > hubState.value.lastL2Block) {
+          hubState.value.lastL2Block = highestBlockWritten;
+          await this._hub.putHubState(hubState.value);
+        }
+      } else {
+        log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
+      }
+    }
+  }
+
   /** Handle a new block. Processes all events in the cache that have now been confirmed */
   private async handleNewBlock(blockNumber: number) {
     // Don't let multiple blocks be handled at once
@@ -771,51 +815,7 @@ export class L2EventsProvider {
     log.info({ blockNumber }, `new block: ${blockNumber}`);
     statsd().increment("l2events.blocks");
 
-    // Get all blocks that have been confirmed into a single array and sort.
-    const cachedBlocksSet = new Set([...this._onChainEventsByBlock.keys()]);
-    const cachedBlocks = Array.from(cachedBlocksSet);
-    cachedBlocks.sort();
-
-    let progressBar;
-    let firstBlock = 0;
-    let totalBlocks = 0;
-    if (cachedBlocks.length > 100) {
-      // Lots of blocks, so show a progress bar
-      const lastBlock = cachedBlocks[cachedBlocks.length - 1] ?? 0;
-      firstBlock = cachedBlocks[0] ?? 0;
-      totalBlocks = lastBlock - firstBlock;
-      progressBar = addProgressBar("Processing Farcaster L2 Contract Events", totalBlocks);
-    }
-
-    for (const cachedBlock of cachedBlocks) {
-      if (cachedBlock + L2EventsProvider.numConfirmations <= blockNumber) {
-        const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
-        this._onChainEventsByBlock.delete(cachedBlock);
-        if (onChainEvents) {
-          for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
-            await this._hub.submitOnChainEvent(onChainEvent, "l2-provider");
-          }
-        }
-
-        this._retryDedupMap.delete(cachedBlock);
-      }
-
-      progressBar?.update(cachedBlock - firstBlock);
-    }
-
-    progressBar?.update(totalBlocks);
-    progressBar?.stop();
-
-    // Update the last synced block if all the historical events have been synced
-    if (this._isHistoricalSyncDone) {
-      const hubState = await this._hub.getHubState();
-      if (hubState.isOk()) {
-        hubState.value.lastL2Block = blockNumber;
-        await this._hub.putHubState(hubState.value);
-      } else {
-        log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
-      }
-    }
+    await this.writeCachedBlocks(blockNumber);
 
     this._blockTimestampsCache.clear(); // Clear the cache periodically to avoid unbounded growth
     this._isHandlingBlock = false;
