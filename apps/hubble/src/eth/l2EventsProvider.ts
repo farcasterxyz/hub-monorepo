@@ -773,10 +773,12 @@ export class L2EventsProvider {
     const cachedBlocks = Array.from(cachedBlocksSet);
     cachedBlocks.sort();
 
+    let highestBlockWritten = 0;
     for (const cachedBlock of cachedBlocks) {
       if (cachedBlock + L2EventsProvider.numConfirmations <= latestBlockNumber) {
         const onChainEvents = this._onChainEventsByBlock.get(cachedBlock);
         this._onChainEventsByBlock.delete(cachedBlock);
+        highestBlockWritten = cachedBlock;
 
         if (onChainEvents) {
           for (const onChainEvent of onChainEvents.sort(onChainEventSorter)) {
@@ -785,6 +787,19 @@ export class L2EventsProvider {
         }
 
         this._retryDedupMap.delete(cachedBlock);
+      }
+    }
+
+    // Write to hub state if we have written a new block
+    if (highestBlockWritten > 0) {
+      const hubState = await this._hub.getHubState();
+      if (hubState.isOk()) {
+        if (highestBlockWritten > hubState.value.lastL2Block) {
+          hubState.value.lastL2Block = highestBlockWritten;
+          await this._hub.putHubState(hubState.value);
+        }
+      } else {
+        log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
       }
     }
   }
@@ -801,17 +816,6 @@ export class L2EventsProvider {
     statsd().increment("l2events.blocks");
 
     await this.writeCachedBlocks(blockNumber);
-
-    // Update the last synced block if all the historical events have been synced
-    if (this._isHistoricalSyncDone) {
-      const hubState = await this._hub.getHubState();
-      if (hubState.isOk()) {
-        hubState.value.lastL2Block = blockNumber;
-        await this._hub.putHubState(hubState.value);
-      } else {
-        log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
-      }
-    }
 
     this._blockTimestampsCache.clear(); // Clear the cache periodically to avoid unbounded growth
     this._isHandlingBlock = false;

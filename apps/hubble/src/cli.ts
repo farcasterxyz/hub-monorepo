@@ -221,7 +221,10 @@ app
 
         const readProcessNum = parseInt(data.trim());
         if (!isNaN(readProcessNum) && readProcessNum !== processNum) {
-          logger.error(`Another hub process is running with processNum ${readProcessNum}, exiting`);
+          logger.error(
+            { readProcessNum, processNum },
+            `Another hub process started up with processNum ${readProcessNum}, exiting with SIGTERM`,
+          );
           handleShutdownSignal("SIGTERM");
         }
       });
