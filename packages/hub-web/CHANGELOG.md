@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.7.6
+
+### Patch Changes
+
+- 763d3154: feat: rename some verification message fields to support more protocols
+- Updated dependencies [763d3154]
+  - @farcaster/core@0.13.8
+
 ## 0.7.5
 
 ### Patch Changes
