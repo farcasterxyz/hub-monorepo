@@ -81,7 +81,7 @@ import { HttpAPIServer } from "./rpc/httpServer.js";
 import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
-import { ensureMessageData } from "./storage/db/message.js";
+import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
@@ -1336,6 +1336,12 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
+    // If this is a dup, don't bother processing it
+    if (await isMessageInDB(this.rocksDB, submittedMessage)) {
+      log.debug({ source }, "submitMessage rejected: Message already exists");
+      return err(new HubError("bad_request.duplicate", "message has already been merged"));
+    }
+
     // message is a reserved key in some logging systems, so we use submittedMessage instead
     const logMessage = log.child({
       submittedMessage: messageToLog(submittedMessage),

@@ -106,6 +106,11 @@ describe("hubble gossip and sync tests", () => {
         // Submit the message to hub1 via rpc, so it is gossip'd to hub2
         expect(await hub1.submitMessage(castAdd, "rpc")).toBeTruthy();
 
+        // Submitting it again should return false, as it is already in the db
+        const errResult = await hub1.submitMessage(castAdd, "rpc");
+        expect(errResult.isErr()).toBeTruthy();
+        expect(errResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+
         // This should trigger a gossip message to hub2, where it should be merged
         await sleepWhile(async () => (await (hub2 as Hub).engine.getCast(fid, castAdd.hash)).isErr(), 2000);
 
