@@ -65,7 +65,7 @@ import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 const HASHES_PER_FETCH = 128;
-const SYNC_MAX_DURATION = 30 * 60 * 1000; // 30 minutes
+const SYNC_MAX_DURATION = 60 * 60 * 1000; // 60 minutes
 // 4x the number of CPUs, clamped between 2 and 16
 const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length * 4, 16), 2);
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
