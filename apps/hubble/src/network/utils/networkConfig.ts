@@ -26,6 +26,7 @@ export type NetworkConfig = {
   strictNoSign: boolean | undefined;
   keyRegistryV2Address: `0x${string}` | undefined;
   idRegistryV2Address: `0x${string}` | undefined;
+  solanaVerificationsEnabled: boolean | undefined;
 };
 
 export type NetworkConfigResult = {
@@ -35,6 +36,7 @@ export type NetworkConfigResult = {
   strictContactInfoValidation: boolean | undefined;
   strictNoSign: boolean | undefined;
   shouldExit: boolean;
+  solanaVerificationsEnabled: boolean | undefined;
 };
 
 export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
@@ -92,6 +94,7 @@ export function applyNetworkConfig(
   allowlistedImmunePeers: string[] | undefined,
   strictContactInfoValidation: boolean | undefined,
   strictNoSign: boolean | undefined,
+  solanaVerificationsEnabled: boolean | undefined,
 ): NetworkConfigResult {
   if (networkConfig.network !== currentNetwork) {
     log.error({ networkConfig, network: currentNetwork }, "network config mismatch");
@@ -102,6 +105,7 @@ export function applyNetworkConfig(
       strictContactInfoValidation,
       strictNoSign,
       shouldExit: false,
+      solanaVerificationsEnabled,
     };
   }
 
@@ -119,6 +123,7 @@ export function applyNetworkConfig(
         strictContactInfoValidation,
         strictNoSign,
         shouldExit: true,
+        solanaVerificationsEnabled,
       };
     }
   } else {
@@ -157,5 +162,6 @@ export function applyNetworkConfig(
     strictContactInfoValidation: strictContactInfoValidation || !!networkConfig.strictContactInfoValidation,
     strictNoSign: strictNoSign || !!networkConfig.strictNoSign,
     shouldExit: false,
+    solanaVerificationsEnabled: solanaVerificationsEnabled || networkConfig.solanaVerificationsEnabled,
   };
 }
