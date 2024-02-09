@@ -2,21 +2,17 @@ import * as protobufs from "./protobufs";
 import { Protocol, UserNameType } from "./protobufs";
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
-import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
+import { bytesCompare, bytesToBase58, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { getFarcasterTime, toFarcasterTime } from "./time";
 import {
   makeVerificationAddressClaim,
-  VerificationAddressClaim,
+  recreateSolanaClaimMessage,
   VerificationAddressClaimSolana,
 } from "./verifications";
 import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
-import { toBigInt } from "ethers";
-import bs58 from "bs58";
-import { EIP_712_FARCASTER_DOMAIN } from "./crypto/eip712";
-import { createHash } from "crypto";
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -332,22 +328,12 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
     validType.value === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
     !!data.verificationAddAddressBody
   ) {
-    switch (data.verificationAddAddressBody.protocol) {
-      case protobufs.Protocol.ETHEREUM:
-        bodyResult = await validateVerificationAddEthAddressBody(
-          data.verificationAddAddressBody,
-          validFid.value,
-          validNetwork.value,
-          publicClients,
-        );
-        break;
-      case protobufs.Protocol.SOLANA:
-        bodyResult = ok(data.verificationAddAddressBody);
-        break;
-      default:
-        return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
-    }
-    // Special check for verification claim
+    bodyResult = await validateVerificationAddAddressBody(
+      data.verificationAddAddressBody,
+      validFid.value,
+      validNetwork.value,
+      publicClients,
+    );
   } else if (validType.value === protobufs.MessageType.VERIFICATION_REMOVE && !!data.verificationRemoveBody) {
     bodyResult = validateVerificationRemoveBody(data.verificationRemoveBody);
   } else if (validType.value === protobufs.MessageType.USERNAME_PROOF && !!data.usernameProofBody) {
@@ -365,96 +351,13 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
   return ok(data);
 };
 
-export const SolanaRecreateMessage = (claim: VerificationAddressClaimSolana, pubkey: Uint8Array): Buffer => {
-  // TODO: this has a lot of Solana logic and functions that should be exported to SDK
-
-  // Function to check if a string contains only restricted ASCII characters
-  const isAscii = (str: string) => {
-    // eslint-disable-next-line no-control-regex
-    return /^[\x00-\x7F]*$/.test(str);
-  };
-
-  // Function to determine the message format based on content
-  // Reference: https://github.com/solana-labs/solana/blob/master/docs/src/proposals/off-chain-message-signing.md
-  // Message Format
-  // Version 0 headers specify three message formats allowing for trade-offs between compatibility and composition of messages.
-  //
-  //  ID	Encoding          Maximum Length	Hardware Wallet Support
-  //  0	  Restricted ASCII  1232	          Yes
-  //  1	  UTF-8	            1232            Blind sign only
-  //  2	  UTF-8	            65535           No
-  const determineMessageFormat = (messageContent: string) => {
-    if (isAscii(messageContent)) {
-      return 0; // Restricted ASCII
-    } else if (Buffer.byteLength(messageContent, "utf-8") <= 1232) {
-      return 1; // UTF-8 with length <= 1232
-    } else {
-      return 2; // UTF-8 with length > 1232
-    }
-  };
-
-  // Function to hash the EIP-712 Farcaster Domain into a 32-byte array
-  const hashFarcasterDomain = (domain: Record<string, unknown>): Buffer => {
-    const domainString = JSON.stringify(domain);
-    const hash = createHash("sha256");
-    hash.update(domainString);
-    return Buffer.from(hash.digest("hex"), "hex");
-  };
-
-  // Utility to convert a number to a little-endian buffer
-  const toLittleEndianBuffer = (num: number, bytes: number) => {
-    const buffer = Buffer.alloc(bytes);
-    buffer.writeUIntLE(num, 0, bytes);
-    return buffer;
-  };
-
-  const SIGNING_DOMAIN = Buffer.from([0xff, ...Buffer.from("solana offchain")]);
-  const HEADER_VERSION = 0; // 8-bit unsigned integer
-  const applicationDomain = hashFarcasterDomain(EIP_712_FARCASTER_DOMAIN); // Hash the domain to a 32-byte array
-
-  const messageContent = JSON.parse(
-    JSON.stringify(
-      claim,
-      (_key, value) => (typeof value === "bigint" ? value.toString() : value), // return everything else unchanged
-    ),
-  );
-
-  const messageFormat = determineMessageFormat(messageContent);
-
-  // Encode the message content
-  const textEncoder = new TextEncoder();
-  const encodedMessageContent = textEncoder.encode(messageContent);
-  const messageLength = encodedMessageContent.length;
-
-  const signers = [Buffer.from(pubkey)];
-
-  // Constructing the message preamble
-  const preamble = Buffer.alloc(53 + signers.length * 32);
-  let offset = 0;
-  SIGNING_DOMAIN.copy(preamble, offset);
-  offset += SIGNING_DOMAIN.length;
-  preamble.writeUInt8(HEADER_VERSION, offset++);
-  applicationDomain.copy(preamble, offset);
-  offset += applicationDomain.length;
-  preamble.writeUInt8(messageFormat, offset++);
-  preamble.writeUInt8(signers.length, offset++);
-  signers.forEach((signer) => {
-    signer.copy(preamble, offset);
-    offset += signer.length;
-  });
-  toLittleEndianBuffer(messageLength, 2).copy(preamble, offset);
-  offset += 2;
-
-  return Buffer.concat([preamble, Buffer.from(encodedMessageContent)]);
-};
-
 export const validateVerificationAddSolAddressSignature = async (
   body: protobufs.VerificationAddAddressBody,
   fid: number,
   network: protobufs.FarcasterNetwork,
 ): HubAsyncResult<Uint8Array> => {
   if (body.claimSignature.length !== 64) {
-    return err(new HubError("bad_request.validation_failure", "addressVerificationSignature != 64 bytes"));
+    return err(new HubError("bad_request.validation_failure", "claimSignature != 64 bytes"));
   }
 
   const reconstructedClaim = makeVerificationAddressClaim(fid, body.address, network, body.blockHash, body.protocol);
@@ -463,7 +366,10 @@ export const validateVerificationAddSolAddressSignature = async (
     return err(reconstructedClaim.error);
   }
 
-  const fullMessage = SolanaRecreateMessage(reconstructedClaim.value as VerificationAddressClaimSolana, body.address);
+  const fullMessage = recreateSolanaClaimMessage(
+    reconstructedClaim.value as VerificationAddressClaimSolana,
+    body.address,
+  );
 
   const verificationResult = await pureJSValidationMethods.ed25519_verify(
     body.claimSignature,
@@ -471,7 +377,7 @@ export const validateVerificationAddSolAddressSignature = async (
     body.address,
   );
   if (!verificationResult) {
-    return err(new HubError("bad_request.validation_failure", "invalid addressVerificationSignature"));
+    return err(new HubError("bad_request.validation_failure", "invalid claimSignature"));
   }
 
   return ok(body.claimSignature);

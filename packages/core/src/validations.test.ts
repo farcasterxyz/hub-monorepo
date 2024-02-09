@@ -614,6 +614,90 @@ describe("validateReactionBody", () => {
   });
 });
 
+describe("validateVerificationAddSolAddressBody", () => {
+  const fid = Factories.Fid.build();
+  const network = Factories.FarcasterNetwork.build();
+
+  test("succeeds", async () => {
+    const body = await Factories.VerificationAddAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.SOLANA } },
+    );
+    const result = await validations.validateVerificationAddSolAddressBody(body, fid, network);
+    expect(result).toEqual(ok(body));
+  });
+
+  describe("fails", () => {
+    let body: protobufs.VerificationAddAddressBody;
+    let hubErrorMessage: string;
+    const solAddress = Factories.SolAddress.build();
+
+    afterEach(async () => {
+      const result = await validations.validateVerificationAddSolAddressBody(body, fid, network);
+      expect(result).toEqual(err(new HubError("bad_request.validation_failure", hubErrorMessage)));
+    });
+
+    test("with missing address", async () => {
+      body = Factories.VerificationAddAddressBody.build({
+        address: undefined,
+        protocol: Protocol.SOLANA,
+      });
+      hubErrorMessage = "solana address must be 32 bytes";
+    });
+
+    test("with address larger than 32 bytes", async () => {
+      body = Factories.VerificationAddAddressBody.build({
+        address: Factories.Bytes.build({}, { transient: { length: 33 } }),
+        protocol: Protocol.SOLANA,
+      });
+      hubErrorMessage = "solana address must be 32 bytes";
+    });
+
+    test("with missing block hash", async () => {
+      body = Factories.VerificationAddAddressBody.build({
+        blockHash: undefined,
+        address: solAddress,
+        protocol: Protocol.SOLANA,
+      });
+      hubErrorMessage = "blockHash must be 32 bytes";
+    });
+
+    test("with block hash larger than 32 bytes", async () => {
+      body = Factories.VerificationAddAddressBody.build({
+        blockHash: Factories.Bytes.build({}, { transient: { length: 33 } }),
+        address: solAddress,
+        protocol: Protocol.SOLANA,
+      });
+      hubErrorMessage = "blockHash must be 32 bytes";
+    });
+  });
+});
+
+describe("validateVerificationAddSolAddressSignature", () => {
+  const fid = Factories.Fid.build();
+  const network = Factories.FarcasterNetwork.build();
+
+  test("succeeds", async () => {
+    const body = await Factories.VerificationAddAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.SOLANA } },
+    );
+    const result = await validations.validateVerificationAddSolAddressSignature(body, fid, network);
+    expect(result.isOk()).toBeTruthy();
+  });
+
+  test("fails with invalid signature", async () => {
+    const body = await Factories.VerificationAddAddressBody.create(
+      {
+        claimSignature: Factories.Bytes.build({}, { transient: { length: 1 } }),
+      },
+      { transient: { protocol: Protocol.SOLANA } },
+    );
+    const result = await validations.validateVerificationAddSolAddressSignature(body, fid, network);
+    expect(result).toEqual(err(new HubError("unknown", "claimSignature != 64 bytes")));
+  });
+});
+
 describe("validateVerificationAddEthAddressBody", () => {
   const fid = Factories.Fid.build();
   const network = Factories.FarcasterNetwork.build();

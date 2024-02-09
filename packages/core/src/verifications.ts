@@ -1,6 +1,6 @@
 import { FarcasterNetwork, Protocol } from "./protobufs";
 import { err, ok } from "neverthrow";
-import { bytesToHexString } from "./bytes";
+import { bytesToBase58, bytesToHexString, utf8StringToBytes } from "./bytes";
 import { HubError, HubResult } from "./errors";
 import { validateEthAddress, validateEthBlockHash, validateSolAddress, validateSolBlockHash } from "./validations";
 
@@ -55,7 +55,7 @@ export const makeVerificationAddressClaim = (
     }
     case Protocol.SOLANA: {
       const solAddress = validateSolAddress(address).andThen((validatedSolAddress) =>
-        ok(new TextDecoder().decode(validatedSolAddress)),
+        bytesToBase58(validatedSolAddress),
       );
 
       if (solAddress.isErr()) {
@@ -63,7 +63,7 @@ export const makeVerificationAddressClaim = (
       }
 
       const blockHashSol = validateSolBlockHash(blockHash).andThen((validatedBlockHash) =>
-        ok(new TextDecoder().decode(validatedBlockHash)),
+        bytesToBase58(validatedBlockHash),
       );
       if (blockHashSol.isErr()) {
         return err(blockHashSol.error);
@@ -80,4 +80,10 @@ export const makeVerificationAddressClaim = (
     default:
       return err(new HubError("bad_request.invalid_param", `Invalid protocol: ${protocol}`));
   }
+};
+
+export const recreateSolanaClaimMessage = (claim: VerificationAddressClaimSolana, pubkey: Uint8Array): Buffer => {
+  // We're using a simple ascii string instead of the full off-chain signing spec because this provides better compatibility with wallet libraries
+  const messageContent = `fid: ${claim.fid} address: ${claim.address} network: ${claim.network} blockHash: ${claim.blockHash} protocol: ${claim.protocol}`;
+  return Buffer.from(utf8StringToBytes(messageContent)._unsafeUnwrap());
 };

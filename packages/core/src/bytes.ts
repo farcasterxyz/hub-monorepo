@@ -1,6 +1,7 @@
 import { err, ok, Result } from "neverthrow";
 import { bytesToHex, hexToBytes } from "viem";
 import { HubError, HubResult } from "./errors";
+import base58 from "bs58";
 
 export const bytesCompare = (a: Uint8Array, b: Uint8Array): number => {
   const len = Math.min(a.length, b.length);
@@ -83,6 +84,20 @@ export const bytesToUtf8String = (bytes: Uint8Array): HubResult<string> => {
 const encoder = new TextEncoder();
 export const utf8StringToBytes = (utf8: string): HubResult<Uint8Array> => {
   return ok(encoder.encode(utf8));
+};
+
+export const base58ToBytes = (bs58: string): HubResult<Uint8Array> => {
+  return Result.fromThrowable(
+    (str: string) => base58.decode(str),
+    (e) => new HubError("unknown", e as Error),
+  )(bs58);
+};
+
+export const bytesToBase58 = (bytes: Uint8Array): HubResult<string> => {
+  return Result.fromThrowable(
+    (b: Uint8Array) => base58.encode(b),
+    (e) => new HubError("unknown", e as Error),
+  )(bytes);
 };
 
 export const bigIntToBytes = (value: bigint): HubResult<Uint8Array> => {

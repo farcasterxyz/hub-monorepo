@@ -28,7 +28,9 @@ import {
   UserNameProof,
   UserNameType,
   utf8StringToBytes,
+  base58ToBytes,
   VerificationAddAddressMessage,
+  recreateSolanaClaimMessage,
 } from "@farcaster/hub-nodejs";
 import { err, Ok, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -183,8 +185,8 @@ describe("mergeMessage", () => {
       });
     });
 
-    describe("VerificationAddEthAddress", () => {
-      test("succeeds", async () => {
+    describe("VerificationAddAddress", () => {
+      test("succeeds for eth", async () => {
         await expect(engine.mergeMessage(verificationAdd)).resolves.toBeInstanceOf(Ok);
         await expect(
           engine.getVerification(fid, verificationAdd.data.verificationAddAddressBody.address),
@@ -220,6 +222,89 @@ describe("mergeMessage", () => {
         const result = await engine.mergeMessage(testnetVerificationAdd);
         // Signature will not match because we're attempting to recover the address based on the wrong network
         expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid claimSignature")));
+      });
+
+      test("succeeds for sol", async () => {
+        const verificationAdd = await Factories.VerificationAddSolAddressMessage.create(
+          { data: { fid, network } },
+          { transient: { signer } },
+        );
+
+        await expect(engine.mergeMessage(verificationAdd)).resolves.toBeInstanceOf(Ok);
+        await expect(
+          engine.getVerification(fid, verificationAdd.data.verificationAddAddressBody.address),
+        ).resolves.toEqual(ok(verificationAdd));
+        expect(mergedMessages).toEqual([verificationAdd]);
+      });
+
+      test("fails when sol signature does not match fid", async () => {
+        const solAddress = Factories.SolAddress.build();
+        const solanaSigner = Factories.Ed25519Signer.build();
+        const blockHash = Factories.BlockHash.build();
+        const claim = Factories.VerificationSolAddressClaim.build({
+          fid: BigInt(fid + 1),
+          network: FarcasterNetwork.MAINNET,
+          blockHash: Buffer.from(blockHash).toString("utf-8"),
+          address: Buffer.from(solAddress).toString("utf-8"),
+          protocol: Protocol.SOLANA,
+        });
+        const claimSignature = (
+          await solanaSigner.signMessageHash(recreateSolanaClaimMessage(claim, solAddress))
+        )._unsafeUnwrap();
+
+        const badVerificationAdd = await Factories.VerificationAddSolAddressMessage.create(
+          {
+            data: {
+              fid,
+              network,
+              verificationAddAddressBody: {
+                address: solAddress,
+                blockHash,
+                claimSignature,
+                protocol: Protocol.SOLANA,
+              },
+            },
+          },
+          { transient: { signer } },
+        );
+
+        const result = await engine.mergeMessage(badVerificationAdd);
+        // Signature will not match because we're attempting to recover the address based on the wrong fid
+        expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid claimSignature")));
+      });
+
+      test("with a valid externally generated solana claim signature", async () => {
+        const solanaSignerFid = 123;
+        const solanaFidCustodyEvent = Factories.IdRegistryOnChainEvent.build({ fid: solanaSignerFid });
+        const solanaFidsignerAddEvent = Factories.SignerOnChainEvent.build(
+          { fid: solanaSignerFid },
+          { transient: { signer: signerKey } },
+        );
+        const solanaFidStorageEvent = Factories.StorageRentOnChainEvent.build({ fid: solanaSignerFid });
+        await engine.mergeOnChainEvent(solanaFidCustodyEvent);
+        await engine.mergeOnChainEvent(solanaFidsignerAddEvent);
+        await engine.mergeOnChainEvent(solanaFidStorageEvent);
+
+        const verificationAdd = await Factories.VerificationAddSolAddressMessage.create(
+          {
+            data: {
+              fid: solanaSignerFid,
+              network,
+              verificationAddAddressBody: {
+                address: base58ToBytes("8WoeDTF9535N6tnmjyyMukwcAM1exHZr6tUsmbWefgYz")._unsafeUnwrap(),
+                protocol: Protocol.SOLANA,
+                claimSignature: hexStringToBytes(
+                  "d1ffa68a4f4a6d1046ed827760e530eff85e76c6bfcb63ccedc45d293f00425658f2825670bbfaf8304c3d715d456f521616705463039983713f8e4f9574be03",
+                )._unsafeUnwrap(),
+                blockHash: base58ToBytes("7hAHBEYX84W4jzQ8P6UJioymYu6Rnhp1CLsBW5B7zpzU")._unsafeUnwrap(),
+              },
+            },
+          },
+          { transient: { signer } },
+        );
+
+        const result = await engine.mergeMessage(verificationAdd);
+        expect(result).toBeInstanceOf(Ok);
       });
 
       describe("validateOrRevokeMessage", () => {

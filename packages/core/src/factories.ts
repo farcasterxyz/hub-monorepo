@@ -5,7 +5,6 @@ import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "@noble/hashes/utils";
 import * as protobufs from "./protobufs";
-import bs58 from "bs58";
 import {
   IdRegisterEventBody,
   IdRegisterEventType,
@@ -21,15 +20,16 @@ import {
   StorageRentOnChainEvent,
   UserNameType,
 } from "./protobufs";
-import { bytesToHexString, utf8StringToBytes } from "./bytes";
+import { base58ToBytes, bytesToBase58, bytesToHexString, utf8StringToBytes } from "./bytes";
 import { Ed25519Signer, Eip712Signer, NobleEd25519Signer, Signer, ViemLocalEip712Signer } from "./signers";
 import { FARCASTER_EPOCH, getFarcasterTime, toFarcasterTime } from "./time";
-import { VerificationAddressClaim, VerificationAddressClaimSolana } from "./verifications";
+import {
+  recreateSolanaClaimMessage,
+  VerificationAddressClaimEthereum,
+  VerificationAddressClaimSolana,
+} from "./verifications";
 import { LocalAccount } from "viem";
-import { sha1 } from "@noble/hashes/sha1";
-import { err } from "neverthrow";
 import { toBigInt } from "ethers";
-import { SolanaRecreateMessage } from "./validations";
 
 /** Scalars */
 
@@ -382,9 +382,12 @@ const ReactionRemoveMessageFactory = Factory.define<protobufs.ReactionRemoveMess
   },
 );
 
-const VerificationSolAddressClaimFactory = Factory.define<VerificationAddressClaim>(() => {
-  const address = bs58.encode(SolAddressFactory.build());
-  const blockHash = bs58.encode(BlockHashFactory.build());
+const VerificationSolAddressClaimFactory = Factory.define<VerificationAddressClaimSolana>(() => {
+  const address = bytesToBase58(SolAddressFactory.build())._unsafeUnwrap();
+  const blockHash = bytesToBase58(BlockHashFactory.build())._unsafeUnwrap();
+  if (base58ToBytes(address)._unsafeUnwrap().length !== 32) {
+    throw new Error(`Bad address: ${address}`);
+  }
 
   return {
     fid: BigInt(FidFactory.build()),
@@ -395,7 +398,7 @@ const VerificationSolAddressClaimFactory = Factory.define<VerificationAddressCla
   };
 });
 
-const VerificationEthAddressClaimFactory = Factory.define<VerificationAddressClaim>(() => {
+const VerificationEthAddressClaimFactory = Factory.define<VerificationAddressClaimEthereum>(() => {
   const address = bytesToHexString(EthAddressFactory.build())._unsafeUnwrap();
   const blockHash = bytesToHexString(BlockHashFactory.build())._unsafeUnwrap();
 
@@ -442,16 +445,12 @@ const VerificationAddAddressBodyFactory = Factory.define<
             await (ethSigner as Eip712Signer).signVerificationEthAddressClaim(claim, body.chainId)
           )._unsafeUnwrap();
         }
+        body.protocol = Protocol.ETHEREUM;
         return body;
       }
       case Protocol.SOLANA: {
         const solSigner = transientParams.signer ?? Ed25519SignerFactory.build();
-        const publicKey = await solSigner.getSignerKey();
-        if (publicKey.isErr()) {
-          return body;
-        }
-
-        body.address = publicKey.value;
+        body.address = (await solSigner.getSignerKey())._unsafeUnwrap();
         if (body.claimSignature.length === 0) {
           const fid = transientParams.fid ?? FidFactory.build();
           const network = transientParams.network ?? FarcasterNetworkFactory.build();
@@ -459,14 +458,14 @@ const VerificationAddAddressBodyFactory = Factory.define<
           const claim = VerificationSolAddressClaimFactory.build({
             fid: toBigInt(fid),
             network: network,
-            blockHash: bs58.encode(blockHash),
-            address: bs58.encode(body.address),
+            blockHash: bytesToBase58(blockHash)._unsafeUnwrap(),
+            address: bytesToBase58(body.address)._unsafeUnwrap(),
             protocol: Protocol.SOLANA,
           });
-          const fullMessage = SolanaRecreateMessage(claim as VerificationAddressClaimSolana, body.address);
+          const fullMessage = recreateSolanaClaimMessage(claim as VerificationAddressClaimSolana, body.address);
           body.claimSignature = (await solSigner.signMessageHash(fullMessage))._unsafeUnwrap();
         }
-
+        body.protocol = Protocol.SOLANA;
         return body;
       }
       default:
@@ -826,6 +825,7 @@ export const Factories = {
   VerificationAddAddressBody: VerificationAddAddressBodyFactory,
   VerificationAddEthAddressData: VerificationAddEthAddressDataFactory,
   VerificationAddEthAddressMessage: VerificationAddEthAddressMessageFactory,
+  VerificationSolAddressClaim: VerificationSolAddressClaimFactory,
   VerificationAddSolAddressData: VerificationAddSolAddressDataFactory,
   VerificationAddSolAddressMessage: VerificationAddSolAddressMessageFactory,
   VerificationRemoveBody: VerificationRemoveBodyFactory,
