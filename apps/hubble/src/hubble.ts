@@ -1006,6 +1006,18 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId, msgId: string): HubAsyncResult<void> {
+    let reportedAsInvalid = false;
+    if (gossipMessage.timestamp) {
+      // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
+      // propogate across the network
+      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL;
+
+      if (gossipMessage.timestamp < cutOffTime) {
+        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        reportedAsInvalid = true;
+      }
+    }
+
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError("bad_request.parse_failure", error as Error),
@@ -1016,13 +1028,6 @@ export class Hub implements HubInterface {
 
     if (gossipMessage.message) {
       const message = gossipMessage.message;
-
-      // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
-      // propogate across the network
-      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL;
-      if (message.data?.timestamp && message.data.timestamp < cutOffTime) {
-        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
-      }
 
       if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
@@ -1040,7 +1045,9 @@ export class Hub implements HubInterface {
       // Merge the message
       const result = await this.submitMessage(message, "gossip");
       if (result.isOk()) {
-        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+        if (!reportedAsInvalid) {
+          this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+        }
       } else {
         log.info(
           {
@@ -1052,7 +1059,9 @@ export class Hub implements HubInterface {
           },
           "Received bad gossip message from peer",
         );
-        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        if (!reportedAsInvalid) {
+          this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        }
       }
 
       const currentTime = getFarcasterTime().unwrapOr(0);

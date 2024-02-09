@@ -70,4 +70,5 @@ message GossipMessage {
   repeated string topics = 4;
   bytes peer_id = 5;
   GossipVersion version = 6;
+  uint32 timestamp = 8; // Farcaster epoch timestamp in seconds when this message was first created
 }

@@ -20,6 +20,7 @@ import {
   HubError,
   HubResult,
   Message,
+  toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
 import { createLibp2p, Libp2p } from "libp2p";
@@ -360,6 +361,7 @@ export class LibP2PNode {
       topics: [GossipNode.primaryTopicForNetwork(this._network)],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
       version: GOSSIP_PROTOCOL_VERSION,
+      timestamp: toFarcasterTime(Date.now()).unwrapOr(0),
     });
     return this.publish(gossipMessage);
   }
@@ -371,6 +373,7 @@ export class LibP2PNode {
       topics: [GossipNode.contactInfoTopicForNetwork(this._network)],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
       version: GOSSIP_PROTOCOL_VERSION,
+      timestamp: toFarcasterTime(Date.now()).unwrapOr(0),
     });
     return this.publish(gossipMessage);
   }
