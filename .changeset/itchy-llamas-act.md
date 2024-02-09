@@ -1,9 +1,9 @@
 ---
-"@farcaster/hub-nodejs": patch
-"@farcaster/hub-web": patch
-"@farcaster/replicator": patch
-"@farcaster/core": patch
-"@farcaster/hubble": patch
+"@farcaster/hub-nodejs": minor
+"@farcaster/hub-web": minor
+"@farcaster/replicator": minor
+"@farcaster/core": minor
+"@farcaster/hubble": minor
 ---
 
 Add Solana verification support

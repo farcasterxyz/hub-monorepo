@@ -1504,7 +1504,7 @@ export const VerificationAddAddressBody = {
       writer.uint32(40).uint32(message.chainId);
     }
     if (message.protocol !== 0) {
-      writer.uint32(48).int32(message.protocol);
+      writer.uint32(56).int32(message.protocol);
     }
     return writer;
   },
@@ -1551,8 +1551,8 @@ export const VerificationAddAddressBody = {
 
           message.chainId = reader.uint32();
           continue;
-        case 6:
-          if (tag != 48) {
+        case 7:
+          if (tag != 56) {
             break;
           }
 
