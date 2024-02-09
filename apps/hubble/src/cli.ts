@@ -20,7 +20,7 @@ import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
 import { initializeStatsd } from "./utils/statsd.js";
-import OnChainEventStore from "./storage/stores/onChainEventStore.js";
+import os from "os";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
@@ -187,6 +187,20 @@ app
       StartupCheckStatus.OK,
       `Farcaster: ${FARCASTER_VERSION} Hubble: ${APP_VERSION}`,
     );
+
+    // First, we'll check if we have >16G of RAM. If you have 16GB installed, it
+    // detects it as slightly under that depending on OS, so we'll only error if
+    // it's less than 15GB.
+    const totalMemory = Math.floor(os.totalmem() / 1024 / 1024 / 1024);
+    if (totalMemory < 15) {
+      startupCheck.printStartupCheckStatus(
+        StartupCheckStatus.ERROR,
+        `Hubble requires at least 16GB of RAM to run. Detected ${totalMemory}GB`,
+      );
+      process.exit(1);
+    } else {
+      startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Detected ${totalMemory}GB of RAM`);
+    }
 
     // We'll write our process number to a file so that we can detect if another hub process has taken over.
     const processFileDir = `${DB_DIRECTORY}/process/`;
