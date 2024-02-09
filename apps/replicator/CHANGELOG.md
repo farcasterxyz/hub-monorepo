@@ -1,5 +1,16 @@
 # @farcaster/replicator
 
+## 0.3.0
+
+### Minor Changes
+
+- ae91b73a: Add Solana verification support
+
+### Patch Changes
+
+- Updated dependencies [ae91b73a]
+  - @farcaster/hub-nodejs@0.11.0
+
 ## 0.2.10
 
 ### Patch Changes

@@ -92,7 +92,7 @@ export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 export const SNAPSHOT_S3_DEFAULT_BUCKET = "download.farcaster.xyz";
 export const S3_REGION = "us-east-1";
 
-export const FARCASTER_VERSION = "2023.12.27";
+export const FARCASTER_VERSION = "2024.2.7";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
@@ -102,6 +102,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.10.4", expiresAt: 1701216000000 }, // expires at 11/28/23 00:00 UTC
   { version: "2023.11.15", expiresAt: 1704844800000 }, // expires at 1/10/24 00:00 UTC
   { version: "2023.12.27", expiresAt: 1708473600000 }, // expires at 2/21/24 00:00 UTC
+  { version: "2024.2.7", expiresAt: 1712102400000 }, // expires at 4/3/24 00:00 UTC
 ];
 
 const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
