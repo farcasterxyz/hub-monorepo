@@ -728,6 +728,7 @@ export class Hub implements HubInterface {
       strictContactInfoValidation,
       strictNoSign,
       shouldExit,
+      solanaVerificationsEnabled,
     } = applyNetworkConfig(
       networkConfig,
       this.allowedPeerIds,
@@ -736,6 +737,7 @@ export class Hub implements HubInterface {
       this.options.allowlistedImmunePeers,
       this.options.strictContactInfoValidation,
       this.options.strictNoSign,
+      this.engine.solanaVerficationsEnabled,
     );
 
     if (shouldExit) {
@@ -751,6 +753,10 @@ export class Hub implements HubInterface {
       this.strictContactInfoValidation = !!strictContactInfoValidation;
       const shouldRestart = this.strictNoSign !== !!strictNoSign;
       this.strictNoSign = !!strictNoSign;
+
+      if (solanaVerificationsEnabled) {
+        this.engine.setSolanaVerifications(true);
+      }
 
       log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 

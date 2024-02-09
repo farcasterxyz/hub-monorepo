@@ -98,6 +98,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   engine.clearCache();
+  engine.setSolanaVerifications(false);
 });
 
 afterAll(async () => {
@@ -224,7 +225,20 @@ describe("mergeMessage", () => {
         expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid claimSignature")));
       });
 
-      test("succeeds for sol", async () => {
+      test("fails for solana verifications by default", async () => {
+        const verificationAdd = await Factories.VerificationAddSolAddressMessage.create(
+          { data: { fid, network } },
+          { transient: { signer } },
+        );
+
+        const result = await engine.mergeMessage(verificationAdd);
+        expect(result).toEqual(
+          err(new HubError("bad_request.validation_failure", "solana verifications are not enabled")),
+        );
+      });
+
+      test("succeeds for solana verifications when enabled", async () => {
+        engine.setSolanaVerifications(true);
         const verificationAdd = await Factories.VerificationAddSolAddressMessage.create(
           { data: { fid, network } },
           { transient: { signer } },
@@ -238,6 +252,7 @@ describe("mergeMessage", () => {
       });
 
       test("fails when sol signature does not match fid", async () => {
+        engine.setSolanaVerifications(true);
         const solAddress = Factories.SolAddress.build();
         const solanaSigner = Factories.Ed25519Signer.build();
         const blockHash = Factories.BlockHash.build();
@@ -274,6 +289,7 @@ describe("mergeMessage", () => {
       });
 
       test("with a valid externally generated solana claim signature", async () => {
+        engine.setSolanaVerifications(true);
         const solanaSignerFid = 123;
         const solanaFidCustodyEvent = Factories.IdRegistryOnChainEvent.build({ fid: solanaSignerFid });
         const solanaFidsignerAddEvent = Factories.SignerOnChainEvent.build(

@@ -30,6 +30,7 @@ beforeAll(async () => {
   server = new Server(hub, engine, syncEngine);
   const port = await server.start();
   client = getInsecureHubRpcClient(`127.0.0.1:${port}`);
+  engine.setSolanaVerifications(true);
 });
 
 afterAll(async () => {
