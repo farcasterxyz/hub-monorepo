@@ -11,7 +11,7 @@ services:
     pull_policy: always
     restart: on-failure:5
     command: [
-      "node", "--no-warnings",  "build/cli.js", "start",
+      "node", "--no-warnings", "--max-old-space-size=8192",  "build/cli.js", "start",
       "--ip", "0.0.0.0",
       "--gossip-port", "${GOSSIP_PORT:-2282}",
       "--rpc-port", "${RPC_PORT:-2283}",   
