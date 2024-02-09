@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.11.0
+
+### Minor Changes
+
+- ae91b73a: Add Solana verification support
+
+### Patch Changes
+
+- Updated dependencies [ae91b73a]
+  - @farcaster/core@0.14.0
+
 ## 0.10.24
 
 ### Patch Changes

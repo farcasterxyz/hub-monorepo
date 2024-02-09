@@ -1,5 +1,20 @@
 # @farcaster/hubble
 
+## 1.10.0
+
+### Minor Changes
+
+- ae91b73a: Add Solana verification support
+
+### Patch Changes
+
+- 97a42165: fix: Don't broadcast old messages on gossip
+- d90fb0b5: fix: Increase sync max duration
+- be07bc86: fix: Properly init the merkle trie so we don't miss l2events
+- a9105e20: fix: Add 8G heap to docker commands
+- Updated dependencies [ae91b73a]
+  - @farcaster/hub-nodejs@0.11.0
+
 ## 1.9.9
 
 ### Patch Changes

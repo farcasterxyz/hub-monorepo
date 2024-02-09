@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.0
+
+### Minor Changes
+
+- ae91b73a: Add Solana verification support
+
 ## 0.13.8
 
 ### Patch Changes

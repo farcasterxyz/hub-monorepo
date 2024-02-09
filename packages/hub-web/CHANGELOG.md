@@ -1,5 +1,16 @@
 # @farcaster/hub-web
 
+## 0.8.0
+
+### Minor Changes
+
+- ae91b73a: Add Solana verification support
+
+### Patch Changes
+
+- Updated dependencies [ae91b73a]
+  - @farcaster/core@0.14.0
+
 ## 0.7.6
 
 ### Patch Changes
