@@ -594,8 +594,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this.callMethod("updateApplicationPeerScore", peerId, score);
   }
 
-  reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean) {
-    this.callMethod("reportValid", messageId, propagationSource, isValid);
+  async reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean): Promise<void> {
+    return await this.callMethod("reportValid", messageId, propagationSource, isValid);
   }
 
   /* -------------------------------------------------------------------------- */

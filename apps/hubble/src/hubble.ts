@@ -1013,7 +1013,7 @@ export class Hub implements HubInterface {
       const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL;
 
       if (gossipMessage.timestamp < cutOffTime) {
-        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
         reportedAsInvalid = true;
       }
     }
@@ -1046,7 +1046,7 @@ export class Hub implements HubInterface {
       const result = await this.submitMessage(message, "gossip");
       if (result.isOk()) {
         if (!reportedAsInvalid) {
-          this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+          await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
         }
       } else {
         log.info(
@@ -1060,7 +1060,7 @@ export class Hub implements HubInterface {
           "Received bad gossip message from peer",
         );
         if (!reportedAsInvalid) {
-          this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+          await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
         }
       }
 
