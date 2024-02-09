@@ -279,6 +279,7 @@ describe("SyncEngine", () => {
     const engine2 = new Engine(testDb2, FarcasterNetwork.TESTNET);
     const hub2 = new MockHub(testDb2, engine2);
     const syncEngine2 = new SyncEngine(hub2, testDb2);
+    await syncEngine2.start();
     await engine2.mergeOnChainEvent(custodyEvent);
     await engine2.mergeOnChainEvent(signerEvent);
     await engine2.mergeOnChainEvent(storageEvent);

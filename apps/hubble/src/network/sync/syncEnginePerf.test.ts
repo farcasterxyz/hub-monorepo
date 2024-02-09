@@ -46,8 +46,11 @@ describe("SyncEnginePerfTest", () => {
 
       const hub1 = new MockHub(testDb);
       const syncEngine1 = new SyncEngine(hub1, testDb);
+      await syncEngine1.start();
+
       const hub2 = new MockHub(testDb2);
       const syncEngine2 = new SyncEngine(hub2, testDb2);
+      await syncEngine2.start();
 
       try {
         await hub1.submitOnChainEvent(custodyEvent);

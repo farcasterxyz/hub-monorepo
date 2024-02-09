@@ -653,7 +653,12 @@ export class Hub implements HubInterface {
         }
       }
     }
+
+    // Start the CRDT engine
     await this.engine.start();
+
+    // Start the sync engine
+    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
@@ -668,9 +673,6 @@ export class Hub implements HubInterface {
 
     await this.l2RegistryProvider.start();
     await this.fNameRegistryEventsProvider.start();
-
-    // Start the sync engine
-    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 

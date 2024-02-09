@@ -12,6 +12,7 @@ const db = jestRocksDB("fnameSyncIds.migration.test");
 describe("fnameSyncIds migration", () => {
   test("should delete unpaddded fname syncIds", async () => {
     const syncTrie = new MerkleTrie(db);
+    await syncTrie.initialize();
 
     const proof1 = Factories.UserNameProof.build({ name: Buffer.from("test") });
     const proof2 = Factories.UserNameProof.build({ name: Buffer.from("somename") });

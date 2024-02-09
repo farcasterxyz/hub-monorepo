@@ -42,6 +42,8 @@ export type DBGetter = (key: Buffer) => Promise<Buffer | undefined>;
 //
 // Logging is also done on the main thread, since we don't want to have to deal the log caching
 class MerkleTrieImpl {
+  private _initialized = false;
+
   private _root: TrieNode;
   private _lock: ReadWriteLock;
   private _pendingDbUpdates = new Map<Buffer, Buffer>();
@@ -171,6 +173,7 @@ class MerkleTrieImpl {
           this._root = new TrieNode();
         }
 
+        this._initialized = true;
         resolve();
         release();
       });
@@ -246,6 +249,11 @@ class MerkleTrieImpl {
   }
 
   public async insert(id: Uint8Array): Promise<boolean> {
+    if (!this._initialized) {
+      log.error({ id }, "Trie not yet initialized while trying to insert");
+      return false;
+    }
+
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
         try {
@@ -333,18 +341,16 @@ class MerkleTrieImpl {
       this._lock.readLock(async (release) => {
         const node = await this._root.getNode(prefix, this._dbGetter());
 
-        await this._unloadFromMemory(false);
-
         if (node === undefined) {
           resolve(undefined);
         } else {
           const md = await node.getNodeMetadata(prefix, this._dbGetter());
 
-          await this._unloadFromMemory(false);
           resolve(md);
         }
 
         release();
+        await this._unloadFromMemory(false);
       });
     });
   }
