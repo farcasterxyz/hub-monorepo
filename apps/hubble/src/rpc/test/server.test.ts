@@ -3,7 +3,9 @@ import {
   Factories,
   FarcasterNetwork,
   FidRequest,
+  getDefaultStoreLimit,
   getInsecureHubRpcClient,
+  getResidualStoreLimit,
   HubResult,
   HubRpcClient,
   OnChainEvent,
@@ -13,7 +15,6 @@ import {
   StorageLimit,
   StorageLimitsResponse,
   StoreType,
-  getDefaultStoreLimit,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -107,8 +108,69 @@ describe("server rpc tests", () => {
     test("succeeds for user with no storage", async () => {
       const result = await client.getCurrentStorageLimitsByFid(FidRequest.create({ fid: fid - 1 }));
       // zero storage
-      expect(result._unsafeUnwrap().units).toEqual(0);
-      expect(result._unsafeUnwrap().limits.map((l) => l.limit)).toEqual([0, 0, 0, 0, 0, 0]);
+      const response = result._unsafeUnwrap();
+      expect(response.units).toEqual(0);
+      const storageLimits = response.limits;
+      expect(storageLimits).toContainEqual(
+        StorageLimit.create({
+          limit: getResidualStoreLimit(StoreType.CASTS),
+          storeType: StoreType.CASTS,
+          name: "CASTS",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
+        }),
+      );
+      expect(storageLimits).toContainEqual(
+        StorageLimit.create({
+          limit: getResidualStoreLimit(StoreType.REACTIONS),
+          storeType: StoreType.REACTIONS,
+          name: "REACTIONS",
+          used: 0,
+          earliestTimestamp: 0,
+          earliestHash: new Uint8Array(),
+        }),
+      );
+      expect(storageLimits).toContainEqual(
+        StorageLimit.create({
+          limit: getResidualStoreLimit(StoreType.LINKS),
+          storeType: StoreType.LINKS,
+          name: "LINKS",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
+        }),
+      );
+      expect(storageLimits).toContainEqual(
+        StorageLimit.create({
+          limit: getResidualStoreLimit(StoreType.USER_DATA),
+          storeType: StoreType.USER_DATA,
+          name: "USER_DATA",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
+        }),
+      );
+      expect(storageLimits).toContainEqual(
+        StorageLimit.create({
+          limit: getResidualStoreLimit(StoreType.VERIFICATIONS),
+          storeType: StoreType.VERIFICATIONS,
+          name: "VERIFICATIONS",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
+        }),
+      );
+      expect(storageLimits).toContainEqual(
+        StorageLimit.create({
+          limit: getResidualStoreLimit(StoreType.USERNAME_PROOFS),
+          storeType: StoreType.USERNAME_PROOFS,
+          name: "USERNAME_PROOFS",
+          used: 0,
+          earliestHash: new Uint8Array(),
+          earliestTimestamp: 0,
+        }),
+      );
     });
 
     test("succeeds for user with storage", async () => {

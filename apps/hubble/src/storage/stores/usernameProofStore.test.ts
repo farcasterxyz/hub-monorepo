@@ -187,7 +187,7 @@ describe("usernameProofStore", () => {
       const sizePrunedStore = new UsernameProofStore(db, eventHandler, { pruneSizeLimit: 2 });
 
       test("defaults size limit", async () => {
-        expect(set.pruneSizeLimit).toEqual(getDefaultStoreLimit(StoreType.USERNAME_PROOFS));
+        expect(set.pruneSizeLimit(1)).toEqual(getDefaultStoreLimit(StoreType.USERNAME_PROOFS));
         expect(set.pruneTimeLimit).toBeUndefined();
       });
 

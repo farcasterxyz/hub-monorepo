@@ -330,18 +330,12 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       }
     }
 
-    const units = await this.getCurrentStorageUnitsForFid(message.data.fid);
-
-    if (units.isErr()) {
-      return err(units.error);
-    }
-
     const messageCount = await this.getCacheMessageCount(message.data.fid, set);
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }
 
-    if (messageCount.value < sizeLimit * units.value) {
+    if (messageCount.value < sizeLimit) {
       return ok(false);
     }
 

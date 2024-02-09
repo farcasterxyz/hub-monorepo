@@ -60,6 +60,7 @@ const makeUserDataAddsKey = (fid: number, dataType?: UserDataType): Buffer => {
  */
 class UserDataStore extends Store<UserDataAddMessage, never> {
   override _postfix: UserMessagePostfix = UserPostfix.UserDataMessage;
+  override _storeType: StoreType = StoreType.USER_DATA;
 
   override makeAddKey(msg: UserDataAddMessage) {
     return makeUserDataAddsKey(msg.data.fid, msg.data.userDataBody.type) as Buffer;
@@ -81,10 +82,6 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
   override _isRemoveType = undefined;
   override _addMessageType = MessageType.USER_DATA_ADD;
   override _removeMessageType = undefined;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return getDefaultStoreLimit(StoreType.USER_DATA);
-  }
 
   /**
    * Finds a UserDataAdd Message by checking the adds set index

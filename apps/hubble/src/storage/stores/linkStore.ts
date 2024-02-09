@@ -129,6 +129,7 @@ const makeLinksByTargetKey = (target: number, fid?: number, tsHash?: Uint8Array)
  */
 class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   override _postfix: UserMessagePostfix = UserPostfix.LinkMessage;
+  override _storeType: StoreType = StoreType.LINKS;
 
   override makeAddKey(msg: LinkAddMessage) {
     return makeLinkAddsKey(msg.data.fid, msg.data.linkBody.type, msg.data.linkBody.targetFid) as Buffer;
@@ -150,10 +151,6 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   override _isRemoveType = isLinkRemoveMessage;
   override _addMessageType = MessageType.LINK_ADD;
   override _removeMessageType = MessageType.LINK_REMOVE;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return getDefaultStoreLimit(StoreType.LINKS);
-  }
 
   override async buildSecondaryIndices(txn: Transaction, message: LinkAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
