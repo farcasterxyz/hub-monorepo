@@ -100,6 +100,8 @@ export interface GossipMessage {
   topics: string[];
   peerId: Uint8Array;
   version: GossipVersion;
+  /** Farcaster epoch timestamp in seconds when this message was first created */
+  timestamp: number;
 }
 
 function createBaseGossipAddressInfo(): GossipAddressInfo {
@@ -858,6 +860,7 @@ function createBaseGossipMessage(): GossipMessage {
     topics: [],
     peerId: new Uint8Array(),
     version: 0,
+    timestamp: 0,
   };
 }
 
@@ -880,6 +883,9 @@ export const GossipMessage = {
     }
     if (message.version !== 0) {
       writer.uint32(48).int32(message.version);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(64).uint32(message.timestamp);
     }
     return writer;
   },
@@ -933,6 +939,13 @@ export const GossipMessage = {
 
           message.version = reader.int32() as any;
           continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.timestamp = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -954,6 +967,7 @@ export const GossipMessage = {
       topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => String(e)) : [],
       peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
       version: isSet(object.version) ? gossipVersionFromJSON(object.version) : 0,
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
     };
   },
 
@@ -974,6 +988,7 @@ export const GossipMessage = {
     message.peerId !== undefined &&
       (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
     message.version !== undefined && (obj.version = gossipVersionToJSON(message.version));
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
     return obj;
   },
 
@@ -996,6 +1011,7 @@ export const GossipMessage = {
     message.topics = object.topics?.map((e) => e) || [];
     message.peerId = object.peerId ?? new Uint8Array();
     message.version = object.version ?? 0;
+    message.timestamp = object.timestamp ?? 0;
     return message;
   },
 };
