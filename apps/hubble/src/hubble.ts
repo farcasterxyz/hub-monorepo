@@ -1017,6 +1017,13 @@ export class Hub implements HubInterface {
     if (gossipMessage.message) {
       const message = gossipMessage.message;
 
+      // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
+      // propogate across the network
+      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL;
+      if (message.data?.timestamp && message.data.timestamp < cutOffTime) {
+        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+      }
+
       if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
         // will eventually re-fetch and merge this message in anyway.

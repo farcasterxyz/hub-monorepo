@@ -29,12 +29,11 @@ import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
 import { noise } from "@chainsafe/libp2p-noise";
-import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign, msgIdFnStrictSign } from "./protocol.js";
+import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign } from "./protocol.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
 import { statsd } from "../../utils/statsd.js";
-import { PeerScore } from "network/sync/peerScore.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
