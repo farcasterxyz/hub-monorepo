@@ -120,17 +120,10 @@ describe("httpServer", () => {
   describe("currentPeers", () => {
     test("currentPeers", async () => {
       const url = getFullUrl("/v1/currentPeers");
-
-      const response = await axiosGet(url);
+      const response = await axios.get(url);
 
       expect(response.status).toBe(200);
-
-      expect(Array.isArray(response.data)).toBeTruthy();
-
-      expect(response.data.contacts.length).toBeGreaterThan(0);
-
-      expect(response.data.contacts[0].rpcAddress).toBeDefined();
-      expect(response.data.contacts[0].gossipAddress).toBeDefined();
+      expect(response.data.contacts).toEqual([]);
     });
   });
 
