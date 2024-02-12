@@ -1049,6 +1049,10 @@ export class Hub implements HubInterface {
         return err(new HubError("unavailable", "Sync queue is full"));
       }
 
+      const currentTime = getFarcasterTime().unwrapOr(0);
+      const messageFirstGossipedTime = gossipMessage.timestamp ?? 0;
+      const gossipMessageDelay = currentTime - messageFirstGossipedTime;
+
       // Merge the message
       const result = await this.submitMessage(message, "gossip");
       if (result.isOk()) {
@@ -1062,6 +1066,7 @@ export class Hub implements HubInterface {
             peerId: source.toString(),
             origin: peerIdResult.value,
             hash: bytesToHexString(message.hash).unwrapOr(""),
+            gossipDelay: gossipMessageDelay,
             msgId,
           },
           "Received bad gossip message from peer",
@@ -1071,15 +1076,9 @@ export class Hub implements HubInterface {
         }
       }
 
-      const currentTime = getFarcasterTime().unwrapOr(0);
-      const messageCreatedTime = message.data?.timestamp ?? 0;
-      // The message time is user provided, so, while not ideal, it's still good enough to use most of the time
-      if (currentTime > 0 && messageCreatedTime > 0 && currentTime > messageCreatedTime) {
-        const diff = currentTime - messageCreatedTime;
-        statsd().timing("gossip.message_delay", diff);
-        const mergeResult = result.isOk() ? "success" : "failure";
-        statsd().timing(`gossip.message_delay.${mergeResult}`, diff);
-      }
+      statsd().timing("gossip.message_delay", gossipMessageDelay);
+      const mergeResult = result.isOk() ? "success" : "failure";
+      statsd().timing(`gossip.message_delay.${mergeResult}`, gossipMessageDelay);
 
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
