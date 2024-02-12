@@ -118,7 +118,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
     hubState = await getHubState(this._db);
     hubState.validateOrRevokeState = {
       lastFid: 0,
-      lastJobTimestamp: toFarcasterTime(Date.now()).unwrapOr(0),
+      lastJobTimestamp: toFarcasterTime(start).unwrapOr(0),
     };
     await putHubState(this._db, hubState);
 
