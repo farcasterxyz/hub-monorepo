@@ -32,9 +32,7 @@ export const makeOnChainEventPrimaryKey = (
   logIndex: number,
 ): Buffer => {
   return Buffer.concat([
-    Buffer.from([RootPrefix.OnChainEvent]),
-    Buffer.from([OnChainEventPostfix.OnChainEvents]),
-    Buffer.from([type]),
+    Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.OnChainEvents, type]),
     makeFidKey(fid),
     makeBlockNumberKey(blockNumber),
     makeLogIndexKey(logIndex),
@@ -43,35 +41,25 @@ export const makeOnChainEventPrimaryKey = (
 
 export const makeSignerOnChainEventBySignerKey = (fid: number, signer: Uint8Array): Buffer => {
   return Buffer.concat([
-    Buffer.from([RootPrefix.OnChainEvent]),
-    Buffer.from([OnChainEventPostfix.SignerByFid]),
+    Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.SignerByFid]),
     makeFidKey(fid),
     Buffer.from(signer),
   ]);
 };
 
 export const makeIdRegisterEventByFidKey = (fid: number): Buffer => {
-  return Buffer.concat([
-    Buffer.from([RootPrefix.OnChainEvent]),
-    Buffer.from([OnChainEventPostfix.IdRegisterByFid]),
-    makeFidKey(fid),
-  ]);
+  return Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid]), makeFidKey(fid)]);
 };
 
 export const makeIdRegisterEventByCustodyKey = (custodyAddress: Uint8Array): Buffer => {
   return Buffer.concat([
-    Buffer.from([RootPrefix.OnChainEvent]),
-    Buffer.from([OnChainEventPostfix.IdRegisterByCustodyAddress]),
+    Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByCustodyAddress]),
     Buffer.from(custodyAddress),
   ]);
 };
 
 export const makeOnChainEventIteratorPrefix = (type: OnChainEventType, fid?: number): Buffer => {
-  let prefix = Buffer.concat([
-    Buffer.from([RootPrefix.OnChainEvent]),
-    Buffer.from([OnChainEventPostfix.OnChainEvents]),
-    Buffer.from([type]),
-  ]);
+  let prefix = Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.OnChainEvents, type])]);
   if (fid) {
     prefix = Buffer.concat([prefix, makeFidKey(fid)]);
   }

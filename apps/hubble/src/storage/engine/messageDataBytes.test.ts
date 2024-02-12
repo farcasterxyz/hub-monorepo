@@ -83,7 +83,7 @@ describe("messageDataBytes", () => {
     });
 
     test("merges with dataBytes", async () => {
-      const castAddClone = Message.decode(Message.encode(castAdd).finish());
+      const castAddClone = cloneMessage(castAdd);
       castAddClone.data = undefined;
       castAddClone.dataBytes = MessageData.encode(castAdd.data).finish();
 
