@@ -20,7 +20,6 @@ const db = jestRocksDB("jobs.ValidateOrRevokeMessagesJob.test");
 
 const network = FarcasterNetwork.TESTNET;
 const fid = Factories.Fid.build();
-const fname = Factories.Fname.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
@@ -40,18 +39,6 @@ beforeAll(async () => {
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
-  addFname = await Factories.UserDataAddMessage.create(
-    {
-      data: {
-        fid,
-        userDataBody: {
-          type: UserDataType.USERNAME,
-          value: bytesToUtf8String(fname)._unsafeUnwrap(),
-        },
-      },
-    },
-    { transient: { signer } },
-  );
   const custodySignerAddress = bytesToHexString(custodySignerKey)._unsafeUnwrap();
 
   jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
@@ -136,11 +123,19 @@ describe("ValidateOrRevokeMessagesJob", () => {
 
     await engine.mergeMessage(castAdd);
 
-    await putHubState(db, HubState.create({ validateOrRevokeState: { lastFid: fid - 1, lastJobTimestamp: 0 } }));
+    // If the lastFid is past, it should skip the FID and check nothing.
+    await putHubState(db, HubState.create({ validateOrRevokeState: { lastFid: fid + 1, lastJobTimestamp: 0 } }));
 
     const result = await job.doJobs();
     expect(result.isOk()).toBe(true);
-    expect(result._unsafeUnwrap()).toBe(1);
+    expect(result._unsafeUnwrap()).toBe(0);
+
+    // If the lastFid is before, it should check the FID.
+    await putHubState(db, HubState.create({ validateOrRevokeState: { lastFid: fid - 1, lastJobTimestamp: 0 } }));
+
+    const result1 = await job.doJobs();
+    expect(result1.isOk()).toBe(true);
+    expect(result1._unsafeUnwrap()).toBe(1);
 
     // Get the hub state to make sure it was written correctly
     const hubState = await getHubState(db);
@@ -154,7 +149,6 @@ describe("ValidateOrRevokeMessagesJob", () => {
 
     // Merge the ENS name proof
     const result3 = await engine.mergeMessage(ensNameProof);
-    console.log(result3);
     expect(result3.isOk()).toBe(true);
 
     // Running it again checks the ENS name proof
