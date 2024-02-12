@@ -10,11 +10,11 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   Selectable<VerificationRow>
 >({
   conflictRule: "last-write-wins",
-  addMessageType: MessageType.VERIFICATION_ADD_ADDRESS,
+  addMessageType: MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   removeMessageType: MessageType.VERIFICATION_REMOVE,
   withConflictId(message) {
     const ethAddress =
-      message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
+      message.data.type === MessageType.VERIFICATION_ADD_ETH_ADDRESS
         ? message.data.verificationAddAddressBody.address
         : message.data.verificationRemoveBody.address;
 
@@ -24,7 +24,7 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   },
   async getDerivedRow(message, trx) {
     const ethAddress =
-      message.data.type === MessageType.VERIFICATION_ADD_ADDRESS
+      message.data.type === MessageType.VERIFICATION_ADD_ETH_ADDRESS
         ? message.data.verificationAddAddressBody.address
         : message.data.verificationRemoveBody.address;
 

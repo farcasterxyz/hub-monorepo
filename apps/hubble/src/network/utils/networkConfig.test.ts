@@ -21,9 +21,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -42,9 +43,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
@@ -66,12 +68,14 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: true,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
+    expect(result.solanaVerificationsEnabled).toEqual(true);
   });
 
   test("add peerIDs", () => {
@@ -90,9 +94,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4", "5"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -113,9 +118,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual(["4", "5"]);
     expect(result.shouldExit).toEqual(false);
@@ -137,9 +143,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -158,9 +165,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
@@ -182,9 +190,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -203,9 +212,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result = applyNetworkConfig(networkConfig, [], [], network, [], undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, [], [], network, [], undefined, undefined, undefined);
     expect(result.shouldExit).toEqual(true);
 
     const prevVer = `${semver.major(APP_VERSION)}.${semver.minor(APP_VERSION)}.${semver.patch(APP_VERSION) - 1}`;
@@ -222,9 +232,10 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result2 = applyNetworkConfig(networkConfig2, [], [], network, [], undefined, undefined);
+    const result2 = applyNetworkConfig(networkConfig2, [], [], network, [], undefined, undefined, undefined);
     expect(result2.shouldExit).toEqual(false);
   });
 
@@ -244,10 +255,20 @@ describe("networkConfig", () => {
       strictNoSign: undefined,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result1 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
-    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], false, undefined);
+    const result1 = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+    );
+    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], false, undefined, undefined);
     expect(result1.strictContactInfoValidation).toEqual(true);
     expect(result2.strictContactInfoValidation).toEqual(true);
     expect(result1.shouldExit).toEqual(false);
@@ -270,10 +291,20 @@ describe("networkConfig", () => {
       strictNoSign: true,
       keyRegistryV2Address: undefined,
       idRegistryV2Address: undefined,
+      solanaVerificationsEnabled: undefined,
     };
 
-    const result1 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined);
-    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, false);
+    const result1 = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+    );
+    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, false, undefined);
     expect(result1.strictNoSign).toEqual(true);
     expect(result2.strictNoSign).toEqual(true);
     expect(result1.shouldExit).toEqual(false);

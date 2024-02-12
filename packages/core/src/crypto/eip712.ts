@@ -1,9 +1,9 @@
 import { bytesToHex, verifyTypedData } from "viem";
 import { ResultAsync } from "neverthrow";
 import { HubAsyncResult, HubError } from "../errors";
-import { VerificationAddressClaim } from "../verifications";
+import { VerificationAddressClaim, VerificationAddressClaimEthereum } from "../verifications";
 import { UserNameProofClaim } from "../userNameProof";
-import { PublicClients, defaultPublicClients } from "../eth/clients";
+import { defaultPublicClients, PublicClients } from "../eth/clients";
 import { CHAIN_IDS } from "../eth/chains";
 
 export const EIP_712_FARCASTER_DOMAIN = {
@@ -76,18 +76,17 @@ export const verifyVerificationClaimEOASignature = async (
       () => new HubError("bad_request.invalid_param", "Invalid chain ID"),
     );
   }
-  const valid = await ResultAsync.fromPromise(
+  return ResultAsync.fromPromise(
     verifyTypedData({
       address: bytesToHex(address),
       domain: EIP_712_FARCASTER_DOMAIN,
       types: { VerificationClaim: EIP_712_FARCASTER_VERIFICATION_CLAIM },
       primaryType: "VerificationClaim",
-      message: claim,
+      message: claim as VerificationAddressClaimEthereum,
       signature,
     }),
     (e) => new HubError("unknown", e as Error),
   );
-  return valid;
 };
 
 export const verifyVerificationClaimContractSignature = async (

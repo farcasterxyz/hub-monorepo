@@ -143,7 +143,7 @@ describe("makeVerificationAddEthAddressData", () => {
   let claim: VerificationAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash, Protocol.ETHEREUM)._unsafeUnwrap();
     const signature = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signature).toBeTruthy();
     ethSignature = signature;
@@ -151,7 +151,12 @@ describe("makeVerificationAddEthAddressData", () => {
 
   test("succeeds", async () => {
     const data = await builders.makeVerificationAddEthAddressData(
-      { address: ethSignerKey, blockHash: blockHash, claimSignature: ethSignature, protocol: Protocol.ETHEREUM },
+      {
+        address: ethSignerKey,
+        blockHash: blockHash,
+        claimSignature: ethSignature,
+        protocol: Protocol.ETHEREUM,
+      },
       { fid, network },
     );
     expect(data.isOk()).toBeTruthy();
@@ -181,7 +186,7 @@ describe("makeVerificationAddEthAddress", () => {
   let claim: VerificationAddressClaim;
 
   beforeAll(async () => {
-    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash)._unsafeUnwrap();
+    claim = makeVerificationAddressClaim(fid, ethSignerKey, network, blockHash, Protocol.ETHEREUM)._unsafeUnwrap();
     const signatureHex = (await eip712Signer.signVerificationEthAddressClaim(claim))._unsafeUnwrap();
     expect(signatureHex).toBeTruthy();
     ethSignature = signatureHex;
@@ -189,7 +194,12 @@ describe("makeVerificationAddEthAddress", () => {
 
   test("succeeds", async () => {
     const message = await builders.makeVerificationAddEthAddress(
-      { address: ethSignerKey, blockHash: blockHash, claimSignature: ethSignature, protocol: Protocol.ETHEREUM },
+      {
+        address: ethSignerKey,
+        blockHash: blockHash,
+        claimSignature: ethSignature,
+        protocol: Protocol.ETHEREUM,
+      },
       { fid, network },
       ed25519Signer,
     );

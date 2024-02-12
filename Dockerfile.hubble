@@ -92,4 +92,4 @@ EXPOSE 2282
 EXPOSE 2283
 WORKDIR /home/node/app/apps/hubble
 
-CMD ["node", "build/cli.js", "start", "--network", "1"]
+CMD ["node", "--max-old-space-size=8192", "build/cli.js", "start", "--network", "1"]

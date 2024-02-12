@@ -66,6 +66,14 @@ describe("VerificationAddEthAddressMessageFactory", () => {
   });
 });
 
+describe("VerificationAddSolAddressMessageFactory", () => {
+  test("generates a valid VerificationAddSolAddress", async () => {
+    const message = await Factories.VerificationAddSolAddressMessage.create();
+    expect(protobufs.isVerificationAddAddressMessage(message)).toBeTruthy();
+    await expect(validations.validateMessage(message)).resolves.toEqual(ok(message));
+  });
+});
+
 describe("VerificationRemoveMessageFactory", () => {
   test("generates a valid VerificationRemove", async () => {
     const message = await Factories.VerificationRemoveMessage.create();

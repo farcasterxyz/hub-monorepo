@@ -1,5 +1,36 @@
 # @farcaster/hubble
 
+## 1.10.0
+
+### Minor Changes
+
+- ae91b73a: Add Solana verification support
+
+### Patch Changes
+
+- 97a42165: fix: Don't broadcast old messages on gossip
+- d90fb0b5: fix: Increase sync max duration
+- be07bc86: fix: Properly init the merkle trie so we don't miss l2events
+- a9105e20: fix: Add 8G heap to docker commands
+- Updated dependencies [ae91b73a]
+  - @farcaster/hub-nodejs@0.11.0
+
+## 1.9.9
+
+### Patch Changes
+
+- 763d3154: feat: rename some verification message fields to support more protocols
+- 97317971: fix: prefer peers with more messages to sync with
+- c0551bfb: fix: Increase sync timeout
+- 52102c21: fix: Early detect duplicate messages
+- 81f453ab: fix: Process L2 blocks in batches
+- 5a70330b: fix: Reduce Gossip TTL to 5 mins
+- c0e17a49: feat: Add a new DB for trie data
+- 41735d62: feat: Save connected peers in DB
+- f49e9fe4: fix: Use the pendingDbUpdates to decide when to write updates to merkle trie
+- Updated dependencies [763d3154]
+  - @farcaster/hub-nodejs@0.10.24
+
 ## 1.9.8
 
 ### Patch Changes

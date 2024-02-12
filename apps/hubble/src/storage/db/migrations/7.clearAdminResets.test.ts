@@ -31,6 +31,7 @@ describe("clearAdminResets migration", () => {
 
   test("should delete admin reset signer events", async () => {
     const syncTrie = new MerkleTrie(db);
+    await syncTrie.initialize();
     const store = new OnChainEventStore(db, new StoreEventHandler(db));
 
     const idRegistryEvent = Factories.IdRegistryOnChainEvent.build();

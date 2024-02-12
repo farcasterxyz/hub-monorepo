@@ -1,44 +1,46 @@
 import {
   CastAddMessage,
   CastRemoveMessage,
+  fromFarcasterTime,
+  isIdRegisterOnChainEvent,
+  isSignerMigratedOnChainEvent,
+  isSignerOnChainEvent,
+  isStorageRentOnChainEvent,
   LinkAddMessage,
   LinkRemoveMessage,
   Message,
   MessageType,
   OnChainEvent,
   OnChainEventType,
+  Protocol,
   ReactionAddMessage,
   ReactionRemoveMessage,
   UserDataAddMessage,
   UsernameProofMessage,
   VerificationAddAddressMessage,
   VerificationRemoveMessage,
-  fromFarcasterTime,
-  isIdRegisterOnChainEvent,
-  isSignerMigratedOnChainEvent,
-  isSignerOnChainEvent,
-  isStorageRentOnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { DeleteQueryBuilder, InsertQueryBuilder, SelectQueryBuilder, UpdateQueryBuilder } from "kysely";
 import { format as formatSql } from "sql-formatter";
 import { decodeAbiParameters } from "viem";
 import {
-  MessageBodyJson,
   CastAddBodyJson,
-  UsernameProofBodyJson,
-  UserDataBodyJson,
-  VerificationRemoveBodyJson,
-  VerificationAddEthAddressBodyJson,
-  LinkBodyJson,
-  ReactionBodyJson,
-  CastRemoveBodyJson,
-  Hex,
   CastEmbedJson,
+  CastRemoveBodyJson,
+  ChainEventBodyJson,
+  Hex,
+  IdRegisterEventBodyJson,
+  LinkBodyJson,
+  MessageBodyJson,
+  ReactionBodyJson,
   SignerEventBodyJson,
   SignerMigratedEventBodyJson,
-  IdRegisterEventBodyJson,
   StorageRentEventBodyJson,
-  ChainEventBodyJson,
+  UserDataBodyJson,
+  UsernameProofBodyJson,
+  VerificationAddEthAddressBodyJson,
+  VerificationAddSolAddressBodyJson,
+  VerificationRemoveBodyJson,
 } from "./db.js";
 import { AssertionError } from "./error.js";
 import { Logger } from "./log.js";
@@ -189,16 +191,29 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       }
       return body;
     }
-    case MessageType.VERIFICATION_ADD_ADDRESS: {
+    case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {
       if (!message.data.verificationAddAddressBody) {
         throw new Error("Missing verificationAddEthAddressBody");
       }
-      const { address, claimSignature, blockHash } = message.data.verificationAddAddressBody;
-      return {
-        address: bytesToHex(address),
-        claimSignature: bytesToHex(claimSignature),
-        blockHash: bytesToHex(blockHash),
-      } satisfies VerificationAddEthAddressBodyJson;
+      const { address, claimSignature, blockHash, protocol } = message.data.verificationAddAddressBody;
+      switch (protocol) {
+        case Protocol.ETHEREUM:
+          return {
+            address: bytesToHex(address),
+            claimSignature: bytesToHex(claimSignature),
+            blockHash: bytesToHex(blockHash),
+            protocol: Protocol.ETHEREUM,
+          } satisfies VerificationAddEthAddressBodyJson;
+        case Protocol.SOLANA:
+          return {
+            address: new TextDecoder().decode(address),
+            claimSignature: new TextDecoder().decode(claimSignature),
+            blockHash: new TextDecoder().decode(blockHash),
+            protocol: Protocol.SOLANA,
+          } satisfies VerificationAddSolAddressBodyJson;
+        default:
+          throw new AssertionError(`Unsupported protocol ${protocol}`);
+      }
     }
     case MessageType.VERIFICATION_REMOVE: {
       if (!message.data.verificationRemoveBody) throw new Error("Missing verificationRemoveBody");

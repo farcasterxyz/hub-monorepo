@@ -15,6 +15,7 @@ import {
   isSignerOnChainEvent,
   isUserDataAddMessage,
   isUsernameProofMessage,
+  isVerificationAddAddressMessage,
   LinkAddMessage,
   LinkRemoveMessage,
   MergeOnChainEventHubEvent,
@@ -24,6 +25,7 @@ import {
   OnChainEvent,
   OnChainEventResponse,
   OnChainEventType,
+  Protocol,
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
@@ -102,6 +104,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _revokeSignerWorker: RevokeMessagesBySignerJobWorker;
 
   private _totalPruneSize: number;
+
+  private _solanaVerficationsEnabled = false;
 
   constructor(
     db: RocksDB,
@@ -208,6 +212,17 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   clearCache() {
     this._onchainEventsStore.clearActiveSignerCache();
+  }
+
+  get solanaVerficationsEnabled(): boolean {
+    return this._solanaVerficationsEnabled;
+  }
+
+  setSolanaVerifications(enabled: boolean) {
+    if (this._solanaVerficationsEnabled !== enabled) {
+      this._solanaVerficationsEnabled = enabled;
+      logger.info(`Solana verifications toggled to: ${enabled}`);
+    }
   }
 
   async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
@@ -595,11 +610,9 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    const validatedAddress = validations.validateEthAddress(address);
-    if (validatedAddress.isErr()) {
-      return err(validatedAddress.error);
+    if (validations.validateEthAddress(address).isErr() && validations.validateSolAddress(address).isErr()) {
+      return err(new HubError("not_found", "Ethereum or Solana address is incorrect"));
     }
-
     return ResultAsync.fromPromise(this._verificationStore.getVerificationAdd(fid, address), (e) => e as HubError);
   }
 
@@ -1006,6 +1019,15 @@ class Engine extends TypedEmitter<EngineEvents> {
       const result = await this.validateEnsUsernameProof(message.data.usernameProofBody, custodyAddress);
       if (result.isErr()) {
         return err(result.error);
+      }
+    }
+
+    if (
+      isVerificationAddAddressMessage(message) &&
+      message.data.verificationAddAddressBody.protocol === Protocol.SOLANA
+    ) {
+      if (!this._solanaVerficationsEnabled) {
+        return err(new HubError("bad_request.validation_failure", "solana verifications are not enabled"));
       }
     }
 

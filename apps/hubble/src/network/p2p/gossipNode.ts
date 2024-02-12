@@ -32,7 +32,7 @@ import { sleep } from "../../utils/crypto.js";
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
-export const GOSSIP_SEEN_TTL = 1000 * 60 * 10;
+export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
 
 const log = logger.child({ component: "GossipNode" });
 const workerLog = logger.child({ component: "GossipNodeWorker" });
@@ -594,8 +594,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this.callMethod("updateApplicationPeerScore", peerId, score);
   }
 
-  reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean) {
-    this.callMethod("reportValid", messageId, propagationSource, isValid);
+  async reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean): Promise<void> {
+    return await this.callMethod("reportValid", messageId, propagationSource, isValid);
   }
 
   /* -------------------------------------------------------------------------- */

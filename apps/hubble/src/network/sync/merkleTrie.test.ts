@@ -28,6 +28,7 @@ describe("MerkleTrie", () => {
       }),
     );
     const trie = new MerkleTrie(db);
+    await trie.initialize();
     await Promise.all(syncIds.map((id) => trie.insert(id)));
     await trie.commitToDb();
     return trie;
@@ -87,10 +88,12 @@ describe("MerkleTrie", () => {
       const syncId2 = await NetworkFactories.SyncId.create();
 
       const firstTrie = new MerkleTrie(db);
+      await firstTrie.initialize();
       await firstTrie.insert(syncId1);
       await firstTrie.insert(syncId2);
 
       const secondTrie = new MerkleTrie(db2);
+      await secondTrie.initialize();
       await secondTrie.insert(syncId2);
       await secondTrie.insert(syncId1);
 
@@ -117,7 +120,9 @@ describe("MerkleTrie", () => {
         const syncIds = await NetworkFactories.SyncId.createList(25);
 
         const firstTrie = new MerkleTrie(db);
+        await firstTrie.initialize();
         const secondTrie = new MerkleTrie(db2);
+        await secondTrie.initialize();
 
         await Promise.all(syncIds.map(async (syncId) => firstTrie.insert(syncId)));
         const shuffledIds = syncIds.sort(() => 0.5 - Math.random());
@@ -174,6 +179,7 @@ describe("MerkleTrie", () => {
         const syncIds = await NetworkFactories.SyncId.createList(500);
 
         const trie = new MerkleTrie(db);
+        await trie.initialize();
         const insertPromise = Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
         // Multiple parallel commitToDb calls should not cause a conflict
         const commitPromise = Promise.all([1, 2, 3, 4, 5].map(async () => trie.commitToDb()));
@@ -338,12 +344,14 @@ describe("MerkleTrie", () => {
       const syncId2 = await NetworkFactories.SyncId.create();
 
       const firstTrie = new MerkleTrie(db);
+      await firstTrie.initialize();
       await firstTrie.insert(syncId1);
       await firstTrie.insert(syncId2);
 
       await firstTrie.deleteBySyncId(syncId1);
 
       const secondTrie = new MerkleTrie(db2);
+      await secondTrie.initialize();
       await secondTrie.insert(syncId2);
 
       expect(await firstTrie.rootHash()).toEqual(await secondTrie.rootHash());

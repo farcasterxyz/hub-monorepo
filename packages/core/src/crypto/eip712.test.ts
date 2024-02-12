@@ -6,6 +6,7 @@ import * as eip712 from "./eip712";
 import { ViemLocalEip712Signer } from "../signers";
 import { makeUserNameProofClaim } from "../userNameProof";
 import { makeVerificationAddressClaim } from "../verifications";
+import { Protocol } from "../protobufs";
 
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
@@ -54,6 +55,7 @@ describe("verifyVerificationEthAddressClaimSignature", () => {
       (await signer.getSignerKey())._unsafeUnwrap(),
       Factories.FarcasterNetwork.build(),
       Factories.BlockHash.build(),
+      Protocol.ETHEREUM,
     );
     const claim = claimRes._unsafeUnwrap();
     const signature = await signer.signVerificationEthAddressClaim(claim);

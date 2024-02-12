@@ -81,7 +81,7 @@ import { HttpAPIServer } from "./rpc/httpServer.js";
 import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
-import { ensureMessageData } from "./storage/db/message.js";
+import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
@@ -92,7 +92,7 @@ export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 export const SNAPSHOT_S3_DEFAULT_BUCKET = "download.farcaster.xyz";
 export const S3_REGION = "us-east-1";
 
-export const FARCASTER_VERSION = "2023.12.27";
+export const FARCASTER_VERSION = "2024.2.7";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
@@ -102,6 +102,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.10.4", expiresAt: 1701216000000 }, // expires at 11/28/23 00:00 UTC
   { version: "2023.11.15", expiresAt: 1704844800000 }, // expires at 1/10/24 00:00 UTC
   { version: "2023.12.27", expiresAt: 1708473600000 }, // expires at 2/21/24 00:00 UTC
+  { version: "2024.2.7", expiresAt: 1712102400000 }, // expires at 4/3/24 00:00 UTC
 ];
 
 const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
@@ -653,7 +654,12 @@ export class Hub implements HubInterface {
         }
       }
     }
+
+    // Start the CRDT engine
     await this.engine.start();
+
+    // Start the sync engine
+    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
@@ -668,9 +674,6 @@ export class Hub implements HubInterface {
 
     await this.l2RegistryProvider.start();
     await this.fNameRegistryEventsProvider.start();
-
-    // Start the sync engine
-    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
@@ -728,6 +731,7 @@ export class Hub implements HubInterface {
       strictContactInfoValidation,
       strictNoSign,
       shouldExit,
+      solanaVerificationsEnabled,
     } = applyNetworkConfig(
       networkConfig,
       this.allowedPeerIds,
@@ -736,6 +740,7 @@ export class Hub implements HubInterface {
       this.options.allowlistedImmunePeers,
       this.options.strictContactInfoValidation,
       this.options.strictNoSign,
+      this.engine.solanaVerficationsEnabled,
     );
 
     if (shouldExit) {
@@ -751,6 +756,10 @@ export class Hub implements HubInterface {
       this.strictContactInfoValidation = !!strictContactInfoValidation;
       const shouldRestart = this.strictNoSign !== !!strictNoSign;
       this.strictNoSign = !!strictNoSign;
+
+      if (solanaVerificationsEnabled) {
+        this.engine.setSolanaVerifications(true);
+      }
 
       log.info({ allowedPeerIds, deniedPeerIds, allowlistedImmunePeers }, "Network config applied");
 
@@ -1004,6 +1013,18 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId, msgId: string): HubAsyncResult<void> {
+    let reportedAsInvalid = false;
+    if (gossipMessage.timestamp) {
+      // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
+      // propogate across the network
+      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL;
+
+      if (gossipMessage.timestamp < cutOffTime) {
+        await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        reportedAsInvalid = true;
+      }
+    }
+
     const peerIdResult = Result.fromThrowable(
       () => peerIdFromBytes(gossipMessage.peerId ?? new Uint8Array([])),
       (error) => new HubError("bad_request.parse_failure", error as Error),
@@ -1031,7 +1052,9 @@ export class Hub implements HubInterface {
       // Merge the message
       const result = await this.submitMessage(message, "gossip");
       if (result.isOk()) {
-        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+        if (!reportedAsInvalid) {
+          await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+        }
       } else {
         log.info(
           {
@@ -1043,7 +1066,9 @@ export class Hub implements HubInterface {
           },
           "Received bad gossip message from peer",
         );
-        this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        if (!reportedAsInvalid) {
+          await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        }
       }
 
       const currentTime = getFarcasterTime().unwrapOr(0);
@@ -1336,6 +1361,12 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
+    // If this is a dup, don't bother processing it
+    if (await isMessageInDB(this.rocksDB, submittedMessage)) {
+      log.debug({ source }, "submitMessage rejected: Message already exists");
+      return err(new HubError("bad_request.duplicate", "message has already been merged"));
+    }
+
     // message is a reserved key in some logging systems, so we use submittedMessage instead
     const logMessage = log.child({
       submittedMessage: messageToLog(submittedMessage),

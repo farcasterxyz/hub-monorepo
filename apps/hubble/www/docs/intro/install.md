@@ -6,9 +6,9 @@ We recommend running Hubble on an always-on server that has [Docker](https://doc
 
 Hubble can be installed in 30 minutes, and a full sync can take 1-2 hours to complete. You'll need a machine that has: 
 
-- 8 GB of RAM
-- 2 CPU cores or vCPUs
-- 20 GB of free storage
+- 16 GB of RAM
+- 4 CPU cores or vCPUs
+- 40 GB of free storage
 - A public IP address with ports 2282 - 2285 exposed
 
 See [tutorials](./tutorials.html) for instructions on how to set up cloud providers to run Hubble.

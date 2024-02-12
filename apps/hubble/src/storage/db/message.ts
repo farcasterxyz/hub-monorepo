@@ -100,7 +100,7 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.ReactionMessage;
   }
 
-  if (type === MessageType.VERIFICATION_ADD_ADDRESS || type === MessageType.VERIFICATION_REMOVE) {
+  if (type === MessageType.VERIFICATION_ADD_ETH_ADDRESS || type === MessageType.VERIFICATION_REMOVE) {
     return UserPostfix.VerificationMessage;
   }
 
@@ -132,6 +132,11 @@ export const getMessage = async <T extends Message>(
 ): Promise<T> => {
   const buffer = await db.get(makeMessagePrimaryKey(fid, set, tsHash));
   return messageDecode(new Uint8Array(buffer)) as T;
+};
+
+export const isMessageInDB = async (db: RocksDB, message: Message): Promise<boolean> => {
+  const exists = await ResultAsync.fromPromise(db.get(makeMessagePrimaryKeyFromMessage(message)), (e) => e);
+  return exists.isOk() && exists.value.length > 0;
 };
 
 export const deleteMessage = (db: RocksDB, message: Message): Promise<void> => {

@@ -1,6 +1,7 @@
 import * as hubEventProtobufs from "./generated/hub_event";
 import * as onChainEventProtobufs from "./generated/onchain_event";
 import * as protobufs from "./generated/message";
+import { Protocol } from "./generated/message";
 import * as types from "./types";
 
 /** Message typeguards */
@@ -77,12 +78,12 @@ export const isReactionRemoveMessage = (message: protobufs.Message): message is 
   );
 };
 
-export const isVerificationAddEthAddressData = (
-  data: protobufs.MessageData,
-): data is types.VerificationAddAddressData => {
+export const isVerificationAddAddressData = (data: protobufs.MessageData): data is types.VerificationAddAddressData => {
   return (
-    data.type === protobufs.MessageType.VERIFICATION_ADD_ADDRESS &&
-    typeof data.verificationAddAddressBody !== "undefined"
+    data.type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
+    typeof data.verificationAddAddressBody !== "undefined" &&
+    (data.verificationAddAddressBody.protocol === Protocol.ETHEREUM ||
+      data.verificationAddAddressBody.protocol === Protocol.SOLANA)
   );
 };
 
@@ -92,11 +93,16 @@ export const isVerificationAddAddressMessage = (
   return (
     message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
     typeof message.data !== "undefined" &&
-    isVerificationAddEthAddressData(message.data)
+    isVerificationAddAddressData(message.data)
   );
 };
 export const isVerificationRemoveData = (data: protobufs.MessageData): data is types.VerificationRemoveData => {
-  return data.type === protobufs.MessageType.VERIFICATION_REMOVE && typeof data.verificationRemoveBody !== "undefined";
+  return (
+    data.type === protobufs.MessageType.VERIFICATION_REMOVE &&
+    typeof data.verificationRemoveBody !== "undefined" &&
+    (data.verificationRemoveBody.protocol === Protocol.ETHEREUM ||
+      data.verificationRemoveBody.protocol === Protocol.SOLANA)
+  );
 };
 
 export const isVerificationRemoveMessage = (message: protobufs.Message): message is types.VerificationRemoveMessage => {

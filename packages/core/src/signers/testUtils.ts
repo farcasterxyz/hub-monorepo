@@ -3,7 +3,7 @@ import { ok } from "neverthrow";
 import { bytesToHexString, hexStringToBytes } from "../bytes";
 import { eip712 } from "../crypto";
 import { Factories } from "../factories";
-import { FarcasterNetwork } from "../protobufs";
+import { FarcasterNetwork, Protocol } from "../protobufs";
 import { makeVerificationAddressClaim, VerificationAddressClaim } from "../verifications";
 import { makeUserNameProofClaim, UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
@@ -48,6 +48,7 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
         signerKey,
         FarcasterNetwork.TESTNET,
         Factories.BlockHash.build(),
+        Protocol.ETHEREUM,
       )._unsafeUnwrap();
       const signatureResult = await signer.signVerificationEthAddressClaim(claim);
       expect(signatureResult.isOk()).toBeTruthy();

@@ -67,7 +67,7 @@ export type ReactionRemoveMessage = protobufs.Message & {
 };
 
 export type VerificationAddAddressData = protobufs.MessageData & {
-  type: protobufs.MessageType.VERIFICATION_ADD_ADDRESS;
+  type: protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS;
   verificationAddAddressBody: protobufs.VerificationAddAddressBody;
 };
 
