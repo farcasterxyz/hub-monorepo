@@ -68,30 +68,22 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   abstract findMergeAddConflicts(message: TAdd): HubAsyncResult<void>;
   abstract findMergeRemoveConflicts(message: TRemove): HubAsyncResult<void>;
 
-  async validateAdd(add: TAdd): HubAsyncResult<void> {
+  async validateAdd(add: TAdd): HubAsyncResult<Uint8Array> {
     if (!add.data) {
       return err(new HubError("bad_request.invalid_param", "data null"));
     }
 
     const tsHash = makeTsHash(add.data.timestamp, add.hash);
-    if (tsHash.isErr()) {
-      return err(tsHash.error);
-    }
-
-    return ok(undefined);
+    return tsHash;
   }
 
-  async validateRemove(remove: TRemove): HubAsyncResult<void> {
+  async validateRemove(remove: TRemove): HubAsyncResult<Uint8Array> {
     if (!remove.data) {
       return err(new HubError("bad_request.invalid_param", "data null"));
     }
 
     const tsHash = makeTsHash(remove.data.timestamp, remove.hash);
-    if (tsHash.isErr()) {
-      return err(tsHash.error);
-    }
-
-    return ok(undefined);
+    return tsHash;
   }
 
   async buildSecondaryIndices(_txn: Transaction, _add: TAdd): HubAsyncResult<void> {
@@ -106,7 +98,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
-    this._mergeLock = new AsyncLock();
+    this._mergeLock = new AsyncLock({ timeout: MERGE_TIMEOUT_DEFAULT });
   }
 
   /** Looks up TAdd message by tsHash */
@@ -189,32 +181,28 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     return (
       this._mergeLock
-        .acquire(
-          message.data.fid.toString(),
-          async () => {
-            const prunableResult = await this._eventHandler.isPrunable(
-              // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-              message as any,
-              this._postfix,
-              this.pruneSizeLimit,
-              this.pruneTimeLimit,
-            );
-            if (prunableResult.isErr()) {
-              throw prunableResult.error;
-            } else if (prunableResult.value) {
-              throw new HubError("bad_request.prunable", "message would be pruned");
-            }
+        .acquire(message.data.fid.toString(), async () => {
+          const prunableResult = await this._eventHandler.isPrunable(
+            // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+            message as any,
+            this._postfix,
+            this.pruneSizeLimit,
+            this.pruneTimeLimit,
+          );
+          if (prunableResult.isErr()) {
+            throw prunableResult.error;
+          } else if (prunableResult.value) {
+            throw new HubError("bad_request.prunable", "message would be pruned");
+          }
 
-            if (this._isAddType(message)) {
-              return this.mergeAdd(message);
-            } else if (this._isRemoveType?.(message)) {
-              return this.mergeRemove(message);
-            } else {
-              throw new HubError("bad_request.validation_failure", "invalid message type");
-            }
-          },
-          { timeout: MERGE_TIMEOUT_DEFAULT },
-        )
+          if (this._isAddType(message)) {
+            return this.mergeAdd(message);
+          } else if (this._isRemoveType?.(message)) {
+            return this.mergeRemove(message);
+          } else {
+            throw new HubError("bad_request.validation_failure", "invalid message type");
+          }
+        })
         // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
         .catch((e: any) => {
           throw isHubError(e) ? e : new HubError("unavailable.storage_failure", "merge timed out");
@@ -487,6 +475,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     if (validateResult.isErr()) {
       return err(validateResult.error);
     }
+    const tsHash = validateResult.value;
 
     const checkResult = await (this._isAddType(message)
       ? this.findMergeAddConflicts(message)
@@ -494,13 +483,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
     if (checkResult.isErr()) {
       return err(checkResult.error);
-    }
-
-    // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-    const tsHash = makeTsHash(message.data!.timestamp, message.hash);
-
-    if (tsHash.isErr()) {
-      throw tsHash.error;
     }
 
     const conflicts: (TAdd | TRemove)[] = [];
@@ -518,7 +500,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
           new Uint8Array(removeTsHash.value),
           // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
           message.data!.type,
-          tsHash.value,
+          tsHash,
         );
         if (removeCompare > 0) {
           return err(new HubError("bad_request.conflict", "message conflicts with a more recent remove"));
@@ -549,7 +531,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         new Uint8Array(addTsHash.value),
         // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
         message.data!.type,
-        tsHash.value,
+        tsHash,
       );
       if (addCompare > 0) {
         return err(new HubError("bad_request.conflict", "message conflicts with a more recent add"));

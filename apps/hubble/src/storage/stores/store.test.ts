@@ -13,6 +13,7 @@ import { Transaction } from "../db/rocksdb.js";
 import { Factories } from "@farcaster/hub-nodejs";
 import { getFarcasterTime } from "@farcaster/hub-nodejs";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
+import { makeTsHash } from "../db/message.js";
 
 const db = jestRocksDB("protobufs.generalStore.test");
 const eventHandler = new StoreEventHandler(db);
@@ -49,7 +50,7 @@ class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
   override async findMergeRemoveConflicts(_message: CastRemoveMessage): HubAsyncResult<void> {
     throw new Error("Method not implemented");
   }
-  override async validateAdd(message: CastAddMessage): HubAsyncResult<void> {
+  override async validateAdd(message: CastAddMessage): HubAsyncResult<Uint8Array> {
     // Look up the add tsHash for this cast
     const castAddTsHash = await ResultAsync.fromPromise(this._db.get(this.makeAddKey(message)), () => undefined);
 
@@ -58,9 +59,9 @@ class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
       throw new HubError("bad_request.duplicate", "message has already been merged");
     }
 
-    return ok(undefined);
+    return ok(makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap());
   }
-  override validateRemove(_remove: CastRemoveMessage): HubAsyncResult<void> {
+  override validateRemove(_remove: CastRemoveMessage): HubAsyncResult<Uint8Array> {
     throw new Error("Method not implemented.");
   }
   override async buildSecondaryIndices(_txn: Transaction, _add: CastAddMessage): HubAsyncResult<void> {
