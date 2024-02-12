@@ -4,10 +4,10 @@
 
 Get a list of the Hub's current sync peers
 
-+**Query Parameters**
-+| Parameter | Description | Example |
-+| --------- | ----------- | ------- |
-+| | This endpoint accepts no parameters | |
+**Query Parameters**
+| Parameter | Description | Example |
+| --------- | ----------- | ------- |
+| | This endpoint accepts no parameters | |
 
 - **Example**
 
