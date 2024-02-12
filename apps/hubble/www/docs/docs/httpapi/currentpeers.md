@@ -4,7 +4,12 @@
 
 Get a list of the Hub's current sync peers
 
-**Example**
++**Query Parameters**
++| Parameter | Description | Example |
++| --------- | ----------- | ------- |
++| | This endpoint accepts no parameters | |
+
+- **Example**
 
 ```bash
 curl http://127.0.0.1:2281/v1/currentPeers
