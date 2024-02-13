@@ -48,33 +48,6 @@ export class ValidateOrRevokeMessagesJobScheduler {
       return ok(0);
     }
 
-    log.info({}, "starting ValidateOrRevokeMessagesJob");
-    this._running = true;
-
-    const start = Date.now();
-
-    const allFids = [];
-    let finished = false;
-    let pageToken: Uint8Array | undefined;
-    do {
-      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 100 });
-      if (fidsPage.isErr()) {
-        return err(fidsPage.error);
-      }
-      const { fids, nextPageToken } = fidsPage.value;
-      if (!nextPageToken) {
-        finished = true;
-      } else {
-        pageToken = nextPageToken;
-      }
-      allFids.push(...fids);
-    } while (!finished);
-
-    let totalMessagesChecked = 0;
-
-    const numFids = allFids.length;
-    log.info({ numFids }, "ValidateOrRevokeMessagesJob: got FIDs");
-
     const hubStateResult = await ResultAsync.fromPromise(getHubState(this._db), (e) => e as HubError);
     if (hubStateResult.isErr()) {
       log.error({ errCode: hubStateResult.error.errCode }, `error getting hub state: ${hubStateResult.error.message}`);
@@ -85,36 +58,59 @@ export class ValidateOrRevokeMessagesJobScheduler {
     const lastJobTimestamp = hubState.validateOrRevokeState?.lastJobTimestamp ?? 0;
     const lastFid = hubState.validateOrRevokeState?.lastFid ?? 0;
 
-    log.info({ lastJobTimestamp, lastFid, numFids }, "ValidateOrRevokeMessagesJob: starting");
+    log.info({ lastJobTimestamp, lastFid }, "ValidateOrRevokeMessagesJob: starting");
 
-    for (let i = 0; i < numFids; i++) {
-      const fid = allFids[i] as number;
+    this._running = true;
+    let totalMessagesChecked = 0;
+    let totalFidsChecked = 0;
 
-      if (lastFid > 0 && fid < lastFid) {
-        continue;
+    const start = Date.now();
+
+    let finished = false;
+    let pageToken: Uint8Array | undefined;
+    do {
+      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 100 });
+      if (fidsPage.isErr()) {
+        return err(fidsPage.error);
       }
-      const numChecked = await this.doJobForFid(lastJobTimestamp, fid);
-      // We'll alwats check for username proof messages
-      const numUsernamesChecked = await this.doUsernamesJobForFid(fid);
 
-      totalMessagesChecked += numChecked.unwrapOr(0) + numUsernamesChecked.unwrapOr(0);
-
-      if (i % 1000 === 0) {
-        log.info({ fid, totalMessagesChecked }, "ValidateOrRevokeMessagesJob: progress");
-
-        // Also write the hub state to the database every 1000 FIDs, so that we can recover from
-        // unfinished job
-        const hubState = await getHubState(this._db);
-        hubState.validateOrRevokeState = {
-          lastFid: fid,
-          lastJobTimestamp,
-        };
-        await putHubState(this._db, hubState);
+      const { fids, nextPageToken } = fidsPage.value;
+      if (!nextPageToken) {
+        finished = true;
+      } else {
+        pageToken = nextPageToken;
       }
-    }
+
+      for (let i = 0; i < fids.length; i++) {
+        const fid = fids[i] as number;
+
+        if (lastFid > 0 && fid < lastFid) {
+          continue;
+        }
+
+        const numChecked = await this.doJobForFid(lastJobTimestamp, fid);
+        const numUsernamesChecked = await this.doUsernamesJobForFid(fid);
+
+        totalMessagesChecked += numChecked.unwrapOr(0) + numUsernamesChecked.unwrapOr(0);
+        totalFidsChecked += 1;
+
+        if (totalFidsChecked % 5000 === 0) {
+          log.info({ fid, totalMessagesChecked, totalFidsChecked }, "ValidateOrRevokeMessagesJob: progress");
+
+          // Also write the hub state to the database every 1000 FIDs, so that we can recover from
+          // unfinished job
+          const hubState = await getHubState(this._db);
+          hubState.validateOrRevokeState = {
+            lastFid: fid,
+            lastJobTimestamp,
+          };
+          await putHubState(this._db, hubState);
+        }
+      }
+    } while (!finished);
 
     const timeTakenMs = Date.now() - start;
-    log.info({ timeTakenMs, numFids, totalMessagesChecked }, "finished ValidateOrRevokeMessagesJob");
+    log.info({ timeTakenMs, totalFidsChecked, totalMessagesChecked }, "finished ValidateOrRevokeMessagesJob");
     hubState = await getHubState(this._db);
     hubState.validateOrRevokeState = {
       lastFid: 0,
@@ -170,7 +166,6 @@ export class ValidateOrRevokeMessagesJobScheduler {
     ).unwrapOr(0);
 
     if (latestSignerEventTs < lastJobTimestamp) {
-      log.debug({ fid, latestSignerEventTs, lastJobTimestamp }, "skipping FID, no new signers");
       return ok(0);
     }
 
