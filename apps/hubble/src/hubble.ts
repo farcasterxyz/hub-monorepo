@@ -1063,10 +1063,14 @@ export class Hub implements HubInterface {
         log.info(
           {
             errCode: result.error.errCode,
+            errMsg: result.error.message,
             peerId: source.toString(),
             origin: peerIdResult.value,
             hash: bytesToHexString(message.hash).unwrapOr(""),
+            fid: message.data?.fid,
+            type: message.data?.type,
             gossipDelay: gossipMessageDelay,
+            valid: !reportedAsInvalid,
             msgId,
           },
           "Received bad gossip message from peer",
@@ -1083,7 +1087,7 @@ export class Hub implements HubInterface {
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
-      this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
+      await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
