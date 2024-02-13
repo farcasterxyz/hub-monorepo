@@ -1017,7 +1017,7 @@ export class Hub implements HubInterface {
     if (gossipMessage.timestamp) {
       // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
       // propogate across the network
-      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL;
+      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL / 1000;
 
       if (gossipMessage.timestamp < cutOffTime) {
         await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);

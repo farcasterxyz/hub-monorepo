@@ -12,8 +12,8 @@ import {
 } from "@farcaster/hub-nodejs";
 import { Result } from "neverthrow";
 
-const DEFAULT_POLL_TIMEOUT_IN_MS = 30_000;
-const DEFAULT_READ_TIMEOUT_IN_MS = 10_000;
+const DEFAULT_POLL_TIMEOUT_IN_MS = 5_000;
+const DEFAULT_READ_TIMEOUT_IN_MS = 2_500;
 
 const log = logger.child({
   component: "FNameRegistryEventsProvider",
