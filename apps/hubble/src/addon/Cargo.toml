@@ -4,6 +4,7 @@ version = "0.1.0"
 license = "ISC"
 edition = "2018"
 exclude = ["index.node"]
+build = "build.rs"
 
 [lib]
 crate-type = ["cdylib"]
@@ -13,6 +14,12 @@ crate-type = ["cdylib"]
 [dependencies]
 blake3 = "1.4.1"
 ed25519-dalek = "2.0.0"
+prost = "0.12.3"
+bytes = "1.1"
+
+[build-dependencies]
+prost-build = "0.12.3"
+glob = "0.3.1"
 
 [dependencies.neon]
 version = "0.10"

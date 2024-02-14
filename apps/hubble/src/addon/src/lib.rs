@@ -1,33 +1,55 @@
 use std::convert::TryInto;
 
-use ed25519_dalek::{Signature, Signer, SigningKey, EXPANDED_SECRET_KEY_LENGTH, VerifyingKey};
+use crate::store::ReactionStore;
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
+use prost::Message;
+
+mod store;
+
+mod protos {
+    include!(concat!("./", "/proto/protobufs.rs"));
+}
+
+fn build_fidr() {
+    let a = protos::FidRequest::default();
+    let mut buf = Vec::new();
+    a.encode(&mut buf);
+
+    let reactionStore = ReactionStore::new();
+}
 
 fn ed25519_sign_message_hash(mut cx: FunctionContext) -> JsResult<JsBuffer> {
-  let hash_arg = cx.argument::<JsBuffer>(0)?;
-  let signing_key_arg = cx.argument::<JsBuffer>(1)?;
+    let hash_arg = cx.argument::<JsBuffer>(0)?;
+    let signing_key_arg = cx.argument::<JsBuffer>(1)?;
 
-  let signing_key_bytes: [u8; EXPANDED_SECRET_KEY_LENGTH] = match signing_key_arg.as_slice(&cx).try_into() {
-      Ok(bytes) => bytes,
-      Err(_) => return cx.throw_error("could not decode signing key"),
-  };
+    let signing_key_bytes: [u8; EXPANDED_SECRET_KEY_LENGTH] =
+        match signing_key_arg.as_slice(&cx).try_into() {
+            Ok(bytes) => bytes,
+            Err(_) => return cx.throw_error("could not decode signing key"),
+        };
 
-  let signer = match SigningKey::from_keypair_bytes(&signing_key_bytes) {
-    Ok(signer) => signer,
-    Err(_) => return cx.throw_error("could not construct signing key"),
-  };
+    let signer = match SigningKey::from_keypair_bytes(&signing_key_bytes) {
+        Ok(signer) => signer,
+        Err(_) => return cx.throw_error("could not construct signing key"),
+    };
 
-  let signature = signer.sign(&hash_arg.as_slice(&cx)).to_bytes();
-  let mut buffer = cx.buffer(signature.len())?;
-  let target = buffer.as_mut_slice(&mut cx);
-  target.copy_from_slice(&signature);
-  Ok(buffer)
+    let signature = signer.sign(&hash_arg.as_slice(&cx)).to_bytes();
+    let mut buffer = cx.buffer(signature.len())?;
+    let target = buffer.as_mut_slice(&mut cx);
+    target.copy_from_slice(&signature);
+    Ok(buffer)
 }
 
 fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let signature_arg = cx.argument::<JsBuffer>(0)?;
     let hash_arg = cx.argument::<JsBuffer>(1)?;
     let signer_arg = cx.argument::<JsBuffer>(2)?;
+
+    let callback = cx.argument::<JsFunction>(3)?;
+    let kvBuffer = cx.buffer(3)?;
+    // fill kvBuffer with the key-value pair
+    let r: Handle<JsBoolean> = callback.call_with(&mut cx).arg(kvBuffer).apply(&mut cx)?;
 
     // Convert to the types expected by ed25519_dalek 2.0
     let sig_bytes: [u8; 64] = match signature_arg.as_slice(&cx).try_into() {
