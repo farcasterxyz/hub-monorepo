@@ -1233,7 +1233,8 @@ export class Hub implements HubInterface {
     // TODO remove this once all peers are updated past 1.6.4
     if (message.timestamp === 0) return false;
 
-    return true;
+    // Return if peer contact was newer than existing contact (prevents old gossip messages from being forwarded)
+    return result.isOk();
   }
 
   /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,
