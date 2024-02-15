@@ -4,6 +4,7 @@ use crate::store::ReactionStore;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
 use prost::Message;
+use store::Store;
 
 mod store;
 
@@ -11,12 +12,20 @@ mod protos {
     include!(concat!("./", "/proto/protobufs.rs"));
 }
 
-fn build_fidr() {
-    let a = protos::FidRequest::default();
-    let mut buf = Vec::new();
-    a.encode(&mut buf);
+fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Store<ReactionStore>>> {
+    Ok(cx.boxed(ReactionStore::new()))
+}
 
-    let reactionStore = ReactionStore::new();
+fn merge(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    let store = cx.argument::<JsBox<Store<ReactionStore>>>(0)?;
+    let message = cx.argument::<JsBuffer>(1)?;
+
+    let message = match protos::Message::decode(message.as_slice(&cx)) {
+        Ok(message) => message,
+        Err(_) => return Ok(cx.number(-1)),
+    };
+
+    Ok(cx.number(store.merge(message).map(|r| r as f64).unwrap_or(-1.0)))
 }
 
 fn ed25519_sign_message_hash(mut cx: FunctionContext) -> JsResult<JsBuffer> {
@@ -93,5 +102,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_signMessageHash", ed25519_sign_message_hash)?;
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", blake3_20)?;
+
+    cx.export_function("createReactionStore", create_reaction_store)?;
+    cx.export_function("merge", merge)?;
     Ok(())
 }

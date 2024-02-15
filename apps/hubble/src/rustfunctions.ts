@@ -38,3 +38,12 @@ export const nativeValidationMethods: validations.ValidationMethods = {
   ed25519_signMessageHash: async (m: Uint8Array, s: Uint8Array) => nativeEd25519SignMessageHash(m, s),
   blake3_20: (message: Uint8Array) => nativeBlake3Hash20(message),
 };
+
+/** Create a reaction Store */
+export const createReactionStore = () => {
+  const store = lib.createReactionStore();
+  console.log("store is ", store);
+  console.log("merge is ", lib.merge);
+  console.log("merge result1", lib.merge(store, Buffer.from([1, 2, 3])));
+  console.log("merge result2", lib.merge(store, Buffer.from([1, 2, 3])));
+};
