@@ -1,3 +1,10 @@
+use std::{borrow::Borrow, sync::Arc};
+
+use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
+use prost::Message as _;
+
+use neon::{prelude::*, types::buffer::TypedArray};
+
 use crate::{
     db::RocksDbTransaction,
     protos::{self, reaction_body::Target, Message, MessageType},
@@ -171,5 +178,35 @@ impl ReactionStore {
         }
 
         key
+    }
+}
+
+impl ReactionStore {
+    pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store<ReactionStore>>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let channel = cx.channel();
+        let message_bytes = cx.argument::<JsBuffer>(0);
+        let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
+
+        let (deferred, promise) = cx.promise();
+
+        let pool = store.pool.clone();
+        pool.lock().unwrap().execute(move || {
+            let result = if message.is_err() {
+                -2
+            } else {
+                let m = message.unwrap();
+                store.merge(&m).map(|r| r as i64).unwrap_or(-1)
+            };
+
+            deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
+        });
+
+        Ok(promise)
     }
 }

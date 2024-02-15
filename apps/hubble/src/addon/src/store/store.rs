@@ -1,6 +1,10 @@
-use std::convert::TryInto;
+use std::{
+    convert::TryInto,
+    sync::{Arc, Mutex},
+};
 
 use neon::types::Finalize;
+use threadpool::ThreadPool;
 
 use crate::{
     db::{RocksDB, RocksDbTransaction},
@@ -55,6 +59,7 @@ pub trait StoreDef {
 pub struct Store<T: StoreDef> {
     store_def: T,
     db: RocksDB,
+    pub pool: Arc<Mutex<threadpool::ThreadPool>>,
 }
 
 impl<T: StoreDef> Finalize for Store<T> {}
@@ -65,6 +70,7 @@ impl<T: StoreDef> Store<T> {
             store_def,
             // TODO: This is a bad idea. RocksDB should be shared across all stores.
             db: RocksDB::new("/tmp/tmprocksdb").unwrap(),
+            pool: Arc::new(Mutex::new(ThreadPool::new(4))),
         }
     }
 

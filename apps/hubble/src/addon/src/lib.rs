@@ -1,9 +1,8 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, sync::Arc};
 
 use crate::store::ReactionStore;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
-use prost::Message;
 use store::Store;
 
 mod db;
@@ -13,35 +12,8 @@ mod protos {
     include!(concat!("./", "/proto/protobufs.rs"));
 }
 
-fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Store<ReactionStore>>> {
-    Ok(cx.boxed(ReactionStore::new()))
-}
-
-fn merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
-    let store = cx.argument::<JsBox<Store<ReactionStore>>>(0)?;
-    let message = cx.argument::<JsBuffer>(1)?;
-
-    let (deferred, promise) = cx.promise();
-    let channel = cx.channel();
-
-    match protos::Message::decode(message.as_slice(&cx)) {
-        Ok(message) => {
-            let result = store.merge(&message);
-            match result {
-                Ok(_) => {
-                    deferred.settle_with(&channel, move |mut cx| Ok(cx.number(1)));
-                }
-                Err(_) => {
-                    deferred.settle_with(&channel, move |mut cx| Ok(cx.number(-1)));
-                }
-            }
-        }
-        Err(_) => {
-            deferred.settle_with(&channel, move |mut cx| Ok(cx.number(-2)));
-        }
-    };
-
-    Ok(promise)
+fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store<ReactionStore>>>> {
+    Ok(cx.boxed(Arc::new(ReactionStore::new())))
 }
 
 fn ed25519_sign_message_hash(mut cx: FunctionContext) -> JsResult<JsBuffer> {
@@ -70,11 +42,6 @@ fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let signature_arg = cx.argument::<JsBuffer>(0)?;
     let hash_arg = cx.argument::<JsBuffer>(1)?;
     let signer_arg = cx.argument::<JsBuffer>(2)?;
-
-    let callback = cx.argument::<JsFunction>(3)?;
-    let kvBuffer = cx.buffer(3)?;
-    // fill kvBuffer with the key-value pair
-    let r: Handle<JsBoolean> = callback.call_with(&mut cx).arg(kvBuffer).apply(&mut cx)?;
 
     // Convert to the types expected by ed25519_dalek 2.0
     let sig_bytes: [u8; 64] = match signature_arg.as_slice(&cx).try_into() {
@@ -120,6 +87,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("blake3_20", blake3_20)?;
 
     cx.export_function("createReactionStore", create_reaction_store)?;
-    cx.export_function("merge", merge)?;
+    cx.export_function("merge", ReactionStore::js_merge)?;
     Ok(())
 }

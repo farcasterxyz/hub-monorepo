@@ -17,6 +17,7 @@ ed25519-dalek = "2.0.0"
 prost = "0.12.3"
 bytes = "1.1"
 rocksdb = {version ="0.22.0"}
+threadpool = "1.8.1"
 
 [build-dependencies]
 prost-build = "0.12.3"
