@@ -1,6 +1,6 @@
 pub use self::message::*;
-pub use self::reaction_store::ReactionStore;
-pub use self::store::Store;
+pub use self::reaction_store::*;
+pub use self::store::*;
 
 mod message;
 mod reaction_store;

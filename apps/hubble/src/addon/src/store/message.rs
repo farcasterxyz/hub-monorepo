@@ -1,9 +1,16 @@
-use crate::protos::{reaction_body::Target, CastId};
+use prost::Message;
+
+use crate::{
+    db::{RocksDB, RocksDbTransaction},
+    protos::{CastId, Message as MessageProto},
+};
 
 use super::store::HubError;
 
 const TS_HASH_LENGTH: usize = 24;
 const HASH_LENGTH: usize = 20;
+
+const TRUE_VALUE: u8 = 1;
 
 pub enum RootPrefix {
     /* Used for multiple purposes, starts with a 4-byte fid */
@@ -109,7 +116,7 @@ pub enum UserPostfix {
     UserNameProofAdds = 99,
 }
 
-pub fn make_ts_hash(timestamp: u32, hash: Vec<u8>) -> Result<[u8; TS_HASH_LENGTH], HubError> {
+pub fn make_ts_hash(timestamp: u32, hash: &Vec<u8>) -> Result<[u8; TS_HASH_LENGTH], HubError> {
     // No need to check if timestamp > 2^32 because it's already a u32
 
     let mut ts_hash = [0u8; 24];
@@ -145,10 +152,120 @@ pub fn make_user_key(fid: u32) -> Vec<u8> {
     key
 }
 
-pub fn make_cast_id_key(cast_id: CastId) -> Vec<u8> {
+pub fn make_message_primary_key(fid: u32, set: u8, ts_hash: [u8; TS_HASH_LENGTH]) -> Vec<u8> {
+    let mut key = Vec::with_capacity(1 + 4 + 1 + TS_HASH_LENGTH);
+    key.extend_from_slice(&make_user_key(fid));
+    key.push(set);
+    key.extend_from_slice(&ts_hash);
+
+    key
+}
+
+fn make_message_by_signer_key(fid: u32, signer: Vec<u8>, r#type: u8, ts_hash: [u8; 24]) -> Vec<u8> {
+    let mut key = Vec::with_capacity(1 + 4 + 1 + 32 + 1 + 24);
+    key.extend_from_slice(&make_user_key(fid));
+    key.push(UserPostfix::BySigner as u8);
+    key.extend_from_slice(&signer);
+    if r#type > 0 {
+        key.push(r#type as u8);
+    }
+    key.extend_from_slice(&ts_hash);
+
+    key
+}
+
+pub fn make_cast_id_key(cast_id: &CastId) -> Vec<u8> {
     let mut key = Vec::with_capacity(4 + HASH_LENGTH);
     key.extend_from_slice(&make_fid_key(cast_id.fid as u32));
     key.extend_from_slice(&cast_id.hash);
 
     key
+}
+
+pub fn get_message(
+    db: &RocksDB,
+    fid: u32,
+    set: u8,
+    ts_hash: [u8; TS_HASH_LENGTH],
+) -> Result<Option<MessageProto>, HubError> {
+    let key = make_message_primary_key(fid, set, ts_hash);
+
+    match db.get(&key)? {
+        Some(bytes) => match MessageProto::decode(bytes.as_slice()) {
+            Ok(message) => Ok(Some(message)),
+            Err(_) => Err(HubError {
+                code: "db.internal_error".to_string(),
+                message: "could not decode message".to_string(),
+            }),
+        },
+        None => Ok(None),
+    }
+}
+
+pub fn put_message_transaction(
+    txn: &RocksDbTransaction<'_>,
+    message: &MessageProto,
+) -> Result<(), HubError> {
+    let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+
+    let primary_key = make_message_primary_key(
+        message.data.as_ref().unwrap().fid as u32,
+        message.data.as_ref().unwrap().r#type as u8,
+        ts_hash,
+    );
+    txn.put(&primary_key, &message.encode_to_vec())?;
+
+    let by_signer_key = make_message_by_signer_key(
+        message.data.as_ref().unwrap().fid as u32,
+        message.signer.clone(),
+        message.data.as_ref().unwrap().r#type as u8,
+        ts_hash,
+    );
+
+    txn.put(&by_signer_key, [TRUE_VALUE])?;
+
+    Ok(())
+}
+
+pub fn delete_message_transaction(
+    txn: &RocksDbTransaction<'_>,
+    message: &MessageProto,
+) -> Result<(), HubError> {
+    let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+
+    let primary_key = make_message_primary_key(
+        message.data.as_ref().unwrap().fid as u32,
+        message.data.as_ref().unwrap().r#type as u8,
+        ts_hash,
+    );
+    txn.delete(&primary_key)?;
+
+    let by_signer_key = make_message_by_signer_key(
+        message.data.as_ref().unwrap().fid as u32,
+        message.signer.clone(),
+        message.data.as_ref().unwrap().r#type as u8,
+        ts_hash,
+    );
+    txn.delete(&by_signer_key)?;
+
+    Ok(())
+}
+
+pub fn bytes_compare(a: Vec<u8>, b: Vec<u8>) -> i8 {
+    let len = a.len().min(b.len());
+    for i in 0..len {
+        if a[i] < b[i] {
+            return -1;
+        }
+        if a[i] > b[i] {
+            return 1;
+        }
+    }
+    if a.len() < b.len() {
+        -1
+    } else if a.len() > b.len() {
+        1
+    } else {
+        0
+    }
 }

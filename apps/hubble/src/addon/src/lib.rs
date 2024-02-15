@@ -6,6 +6,7 @@ use neon::{prelude::*, types::buffer::TypedArray};
 use prost::Message;
 use store::Store;
 
+mod db;
 mod store;
 
 mod protos {
@@ -25,7 +26,7 @@ fn merge(mut cx: FunctionContext) -> JsResult<JsNumber> {
         Err(_) => return Ok(cx.number(-1)),
     };
 
-    Ok(cx.number(store.merge(message).map(|r| r as f64).unwrap_or(-1.0)))
+    Ok(cx.number(store.merge(&message).map(|r| r as f64).unwrap_or(-1.0)))
 }
 
 fn ed25519_sign_message_hash(mut cx: FunctionContext) -> JsResult<JsBuffer> {
