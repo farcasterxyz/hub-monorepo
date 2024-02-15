@@ -20,7 +20,7 @@
     "build:rust": "cargo-cp-artifact -ac addon src/addon/index.node -- cargo build --manifest-path ./src/addon/Cargo.toml --message-format=json-render-diagnostics --release",
     "build:ts": "tsc --project ./tsconfig.json",
     "build:all": "yarn build:rust && yarn build:ts && yarn copy:rust",
-    "build": "yarn clean && yarn build:all",
+    "build": "yarn build:all",
     "clean": "rimraf ./build && cargo clean --manifest-path ./src/addon/Cargo.toml",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "yarn lint:customjs && biome format src/ --write && biome check src/ --apply",

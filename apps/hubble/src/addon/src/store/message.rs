@@ -7,8 +7,8 @@ use crate::{
 
 use super::store::HubError;
 
-const TS_HASH_LENGTH: usize = 24;
-const HASH_LENGTH: usize = 20;
+pub const TS_HASH_LENGTH: usize = 24;
+pub const HASH_LENGTH: usize = 20;
 
 const TRUE_VALUE: u8 = 1;
 
@@ -118,6 +118,13 @@ pub enum UserPostfix {
 
 pub fn make_ts_hash(timestamp: u32, hash: &Vec<u8>) -> Result<[u8; TS_HASH_LENGTH], HubError> {
     // No need to check if timestamp > 2^32 because it's already a u32
+
+    if hash.len() != HASH_LENGTH {
+        return Err(HubError {
+            code: "internal_error".to_string(),
+            message: "hash length is not 20".to_string(),
+        });
+    }
 
     let mut ts_hash = [0u8; 24];
     // Store the timestamp as big-endian in the first 4 bytes

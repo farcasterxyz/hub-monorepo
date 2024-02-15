@@ -12,7 +12,7 @@ use crate::{
     store::make_ts_hash,
 };
 
-use super::{bytes_compare, get_message, put_message_transaction};
+use super::{bytes_compare, get_message, put_message_transaction, TS_HASH_LENGTH};
 use rocksdb;
 
 #[derive(Debug)]
@@ -77,10 +77,9 @@ impl<T: StoreDef> Store<T> {
     fn put_add_transaction(
         &self,
         txn: &RocksDbTransaction<'_>,
+        ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
-        let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
-
         put_message_transaction(txn, &message)?;
 
         let adds_key = self.store_def.make_add_key(message);
@@ -98,7 +97,6 @@ impl<T: StoreDef> Store<T> {
         txn: &RocksDbTransaction<'_>,
         message: &Message,
     ) -> Result<(), HubError> {
-        let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
         self.store_def.delete_secondary_indicies(txn, message)?;
 
         let add_key = self.store_def.make_add_key(message);
@@ -112,8 +110,6 @@ impl<T: StoreDef> Store<T> {
         txn: &RocksDbTransaction<'_>,
         message: &Message,
     ) -> Result<(), HubError> {
-        let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
-
         let remove_key = self.store_def.make_remove_key(message);
         txn.delete(&remove_key)?;
 
@@ -137,10 +133,13 @@ impl<T: StoreDef> Store<T> {
         Ok(())
     }
 
-    fn get_merge_conflicts(&self, message: &Message) -> Result<Vec<Message>, HubError> {
+    fn get_merge_conflicts(
+        &self,
+        message: &Message,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+    ) -> Result<Vec<Message>, HubError> {
         // The JS code does validateAdd()/validateRemove() here, but that's not needed because we
         // already validated that the message has a data field and a body field in the is_add_type()
-        let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
 
         if self.store_def.is_add_type(message) {
             self.store_def.find_merge_add_conflicts(message)?;
@@ -188,7 +187,7 @@ impl<T: StoreDef> Store<T> {
                     .try_into()
                     .map_err(|e: Vec<u8>| HubError {
                         code: "bad_request.internal_error".to_string(),
-                        message: "add_ts_hash is not 24 bytes".to_string(),
+                        message: format!("add_ts_hash is not 24 bytes: {:x?}", e),
                     })?, // Convert Vec<u8> to [u8; 24]
             )?
             .ok_or_else(|| HubError {
@@ -209,18 +208,24 @@ impl<T: StoreDef> Store<T> {
             });
         }
 
+        let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+
         // TODO: We're skipping the prune check.
 
         if self.store_def.is_add_type(message) {
-            self.merge_add(message)
+            self.merge_add(&ts_hash, message)
         } else {
-            self.merge_remove(message)
+            self.merge_remove(&ts_hash, message)
         }
     }
 
-    pub fn merge_add(&self, message: &Message) -> Result<u64, HubError> {
+    pub fn merge_add(
+        &self,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+        message: &Message,
+    ) -> Result<u64, HubError> {
         // Get the merge conflicts first
-        let merge_conflicts = self.get_merge_conflicts(message)?;
+        let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
 
         // start a transaction
         let txn = self.db.txn();
@@ -228,7 +233,7 @@ impl<T: StoreDef> Store<T> {
         self.delete_many_transaction(&txn, merge_conflicts)?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
-        self.put_add_transaction(&txn, message)?;
+        self.put_add_transaction(&txn, &ts_hash, message)?;
 
         // Commit the transaction
         txn.commit()?;
@@ -238,7 +243,11 @@ impl<T: StoreDef> Store<T> {
         Ok(0)
     }
 
-    pub fn merge_remove(&self, message: &Message) -> Result<u64, HubError> {
+    pub fn merge_remove(
+        &self,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+        message: &Message,
+    ) -> Result<u64, HubError> {
         todo!("merge_remove")
     }
 
