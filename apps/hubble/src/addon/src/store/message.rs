@@ -251,7 +251,7 @@ pub fn delete_message_transaction(
     Ok(())
 }
 
-pub fn bytes_compare(a: Vec<u8>, b: Vec<u8>) -> i8 {
+pub fn bytes_compare(a: &[u8], b: &[u8]) -> i8 {
     let len = a.len().min(b.len());
     for i in 0..len {
         if a[i] < b[i] {

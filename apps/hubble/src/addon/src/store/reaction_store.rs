@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    make_cast_id_key, make_ts_hash, make_user_key,
+    make_cast_id_key, make_user_key,
     store::{Store, StoreDef},
     HubError, UserPostfix,
 };

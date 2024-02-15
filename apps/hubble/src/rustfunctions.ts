@@ -40,10 +40,10 @@ export const nativeValidationMethods: validations.ValidationMethods = {
 };
 
 /** Create a reaction Store */
-export const createReactionStore = () => {
+export const createReactionStore = async () => {
   const store = lib.createReactionStore();
   console.log("store is ", store);
   console.log("merge is ", lib.merge);
-  console.log("merge result1", lib.merge(store, Buffer.from([1, 2, 3])));
-  console.log("merge result2", lib.merge(store, Buffer.from([1, 2, 3])));
+  console.log("merge result1", await lib.merge(store, Buffer.from([1, 2, 3])));
+  console.log("merge result2", await lib.merge(store, Buffer.from([1, 2, 3])));
 };

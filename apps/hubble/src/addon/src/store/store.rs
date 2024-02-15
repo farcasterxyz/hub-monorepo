@@ -96,7 +96,7 @@ impl<T: StoreDef> Store<T> {
         self.store_def.delete_secondary_indicies(txn, message)?;
 
         let add_key = self.store_def.make_add_key(message);
-        txn.delete(&add_key);
+        txn.delete(&add_key)?;
 
         Ok(())
     }
@@ -109,7 +109,7 @@ impl<T: StoreDef> Store<T> {
         let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
 
         let remove_key = self.store_def.make_remove_key(message);
-        txn.delete(&remove_key);
+        txn.delete(&remove_key)?;
 
         Ok(())
     }
@@ -244,7 +244,7 @@ impl<T: StoreDef> Store<T> {
         b_ts_hash: &Vec<u8>,
     ) -> i8 {
         // Compare timestamps (first 4 bytes of ts_hash)
-        let ts_compare = bytes_compare(a_ts_hash[0..4].to_vec(), b_ts_hash[0..4].to_vec());
+        let ts_compare = bytes_compare(&a_ts_hash[0..4], &b_ts_hash[0..4]);
         if ts_compare != 0 {
             return ts_compare;
         }
@@ -257,6 +257,6 @@ impl<T: StoreDef> Store<T> {
         }
 
         // Compare the rest of the ts_hash to break ties
-        bytes_compare(a_ts_hash[4..24].to_vec(), b_ts_hash[4..24].to_vec())
+        bytes_compare(&a_ts_hash[4..24], &b_ts_hash[4..24])
     }
 }

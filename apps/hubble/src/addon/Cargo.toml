@@ -25,4 +25,4 @@ glob = "0.3.1"
 [dependencies.neon]
 version = "0.10.1"
 default-features = false
-features = ["napi-6"]
+features = ["napi-6", "promise-api", "channel-api"]

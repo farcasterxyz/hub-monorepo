@@ -17,16 +17,31 @@ fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Store<Reacti
     Ok(cx.boxed(ReactionStore::new()))
 }
 
-fn merge(mut cx: FunctionContext) -> JsResult<JsNumber> {
+fn merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let store = cx.argument::<JsBox<Store<ReactionStore>>>(0)?;
     let message = cx.argument::<JsBuffer>(1)?;
 
-    let message = match protos::Message::decode(message.as_slice(&cx)) {
-        Ok(message) => message,
-        Err(_) => return Ok(cx.number(-1)),
+    let (deferred, promise) = cx.promise();
+    let channel = cx.channel();
+
+    match protos::Message::decode(message.as_slice(&cx)) {
+        Ok(message) => {
+            let result = store.merge(&message);
+            match result {
+                Ok(_) => {
+                    deferred.settle_with(&channel, move |mut cx| Ok(cx.number(1)));
+                }
+                Err(_) => {
+                    deferred.settle_with(&channel, move |mut cx| Ok(cx.number(-1)));
+                }
+            }
+        }
+        Err(_) => {
+            deferred.settle_with(&channel, move |mut cx| Ok(cx.number(-2)));
+        }
     };
 
-    Ok(cx.number(store.merge(&message).map(|r| r as f64).unwrap_or(-1.0)))
+    Ok(promise)
 }
 
 fn ed25519_sign_message_hash(mut cx: FunctionContext) -> JsResult<JsBuffer> {
