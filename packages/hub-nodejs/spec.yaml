@@ -965,6 +965,13 @@ components:
         - text
         - mentionsPositions
         - embeds
+    CastEmbed:
+      type: object
+      properties:
+        castId:
+          $ref: '#/components/schemas/CastId'
+      required:
+        - castId
     CastRemove:
       allOf:
         - $ref: '#/components/schemas/MessageCommon'
@@ -1025,15 +1032,9 @@ components:
           type: integer
           format: uint64
     Embed:
-      type: object
-      properties:
-        url:
-          type: string
-          format: uri
-        castId:
-          $ref: '#/components/schemas/CastId'
-      required:
-        - url
+      oneOf:
+        - $ref: '#/components/schemas/CastEmbed'
+        - $ref: '#/components/schemas/UrlEmbed'
     ErrorResponse:
       required:
         - code
@@ -1789,6 +1790,14 @@ components:
         - STORE_TYPE_USER_DATA
         - STORE_TYPE_VERIFICATIONS
         - STORE_TYPE_USERNAME_PROOFS
+    UrlEmbed:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
     UserDataAdd:
       allOf:
         - $ref: '#/components/schemas/MessageCommon'
