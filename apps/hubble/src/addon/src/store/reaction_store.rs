@@ -221,17 +221,18 @@ impl ReactionStore {
 
         let (deferred, promise) = cx.promise();
 
-        let pool = store.pool.clone();
-        pool.lock().unwrap().execute(move || {
-            let result = if message.is_err() {
-                -2
-            } else {
-                let m = message.unwrap();
-                store.merge(&m).map(|r| r as i64).unwrap_or(-1)
-            };
+        // TODO: Using the pool is so much slower
+        // let pool = store.pool.clone();
+        // pool.lock().unwrap().execute(move || {
+        let result = if message.is_err() {
+            -2
+        } else {
+            let m = message.unwrap();
+            store.merge(&m).map(|r| r as i64).unwrap_or(-1)
+        };
 
-            deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
-        });
+        deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
+        // });
 
         Ok(promise)
     }

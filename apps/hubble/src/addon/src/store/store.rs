@@ -10,11 +10,13 @@ use threadpool::ThreadPool;
 
 use crate::{
     db::{RocksDB, RocksDbTransaction},
-    protos::Message,
+    protos::{hub_event, HubEvent, HubEventType, MergeMessageBody, Message},
     store::make_ts_hash,
 };
 
-use super::{bytes_compare, get_message, put_message_transaction, TS_HASH_LENGTH};
+use super::{
+    bytes_compare, get_message, put_message_transaction, StoreEventHandler, TS_HASH_LENGTH,
+};
 use rocksdb;
 
 #[derive(Debug)]
@@ -62,6 +64,7 @@ pub trait StoreDef {
 
 pub struct Store<T: StoreDef> {
     store_def: T,
+    store_event_handler: Arc<StoreEventHandler>,
     db: RocksDB,                                  // TODO: Move this out
     pub pool: Arc<Mutex<threadpool::ThreadPool>>, // TODO: Move this out
 }
@@ -74,6 +77,7 @@ impl<T: StoreDef> Store<T> {
     pub fn new_with_store_def(store_def: T) -> Store<T> {
         Store::<T> {
             store_def,
+            store_event_handler: Arc::new(StoreEventHandler::new()),
             // TODO: This is a bad idea. RocksDB should be shared across all stores.
             db: RocksDB::new("/tmp/tmprocksdb").unwrap(),
             pool: Arc::new(Mutex::new(ThreadPool::new(4))),
@@ -99,7 +103,7 @@ impl<T: StoreDef> Store<T> {
             "put_add_transaction: {:x?}-{:x?}\n",
             adds_key, ts_hash
         ));
-        txn.put(&adds_key, b"hello")?;
+        txn.put(&adds_key, ts_hash)?;
 
         self.store_def
             .build_secondary_indicies(txn, ts_hash, message)?;
@@ -252,26 +256,20 @@ impl<T: StoreDef> Store<T> {
         // start a transaction
         let txn = self.db.txn();
         // Delete all the merge conflicts
-        self.delete_many_transaction(&txn, merge_conflicts)?;
+        self.delete_many_transaction(&txn, merge_conflicts.clone())?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
         self.put_add_transaction(&txn, &ts_hash, message)?;
 
+        // Event handler
+        let id = self
+            .store_event_handler
+            .commit_transaction(&txn, self.merge_event_args(message, merge_conflicts))?;
+
         // Commit the transaction
         txn.commit()?;
 
-        // TEMP
-        let adds_key = self.store_def.make_add_key(message);
-        // read from DB the same key
-        let add_ts_hash = self.db.get(&adds_key)?;
-        self.log(&format!(
-            "merge_add_reread: {:x?} {:x?}\n",
-            adds_key, add_ts_hash
-        ));
-
-        // TODO: Trigger the event handler
-
-        Ok(0)
+        Ok(id)
     }
 
     pub fn merge_remove(
@@ -280,6 +278,17 @@ impl<T: StoreDef> Store<T> {
         message: &Message,
     ) -> Result<u64, HubError> {
         todo!("merge_remove")
+    }
+
+    fn merge_event_args(&self, message: &Message, merge_conflicts: Vec<Message>) -> HubEvent {
+        HubEvent {
+            r#type: HubEventType::MergeMessage as i32,
+            body: Some(hub_event::Body::MergeMessageBody(MergeMessageBody {
+                message: Some(message.clone()),
+                deleted_messages: merge_conflicts,
+            })),
+            id: 0,
+        }
     }
 
     fn message_compare(
