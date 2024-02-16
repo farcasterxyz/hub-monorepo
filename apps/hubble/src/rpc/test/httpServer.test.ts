@@ -1,6 +1,7 @@
 import { HttpAPIServer, protoToJSON } from "../httpServer.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import {
+  bytesToBase58,
   bytesToHexString,
   CastAddMessage,
   Factories,
@@ -664,27 +665,53 @@ describe("httpServer", () => {
   });
 
   describe("verification APIs", () => {
-    let verificationAdd: VerificationAddAddressMessage;
+    let verificationETHAdd: VerificationAddAddressMessage;
+    let verificationSolAdd: VerificationAddAddressMessage;
 
     beforeAll(async () => {
-      verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
+      verificationETHAdd = await Factories.VerificationAddEthAddressMessage.create(
+        { data: { fid, network } },
+        { transient: { signer } },
+      );
+      verificationSolAdd = await Factories.VerificationAddSolAddressMessage.create(
         { data: { fid, network } },
         { transient: { signer } },
       );
     });
 
     test("getVerification", async () => {
-      expect((await engine.mergeMessage(verificationAdd)).isOk()).toBeTruthy();
+      await engine.setSolanaVerifications(true);
+      expect((await engine.mergeMessage(verificationETHAdd)).isOk()).toBeTruthy();
+      expect((await engine.mergeMessage(verificationSolAdd)).isOk()).toBeTruthy();
 
-      const address = verificationAdd.data.verificationAddAddressBody.address;
-      const url = getFullUrl(`/v1/verificationsByFid?fid=${fid}&address=${bytesToHexString(address)._unsafeUnwrap()}`);
-      const response = await axiosGet(url);
+      const ethAddress = verificationETHAdd.data.verificationAddAddressBody.address;
+      const ethUrl = getFullUrl(
+        `/v1/verificationsByFid?fid=${fid}&address=${bytesToHexString(ethAddress)._unsafeUnwrap()}`,
+      );
+      const ethResponse = await axiosGet(ethUrl);
 
-      expect(response.status).toBe(200);
-      expect(response.data).toEqual(protoToJSON(verificationAdd, Message));
-      expect(response.data.data.verificationAddAddressBody.address).toEqual(bytesToHexString(address)._unsafeUnwrap());
-      expect(response.data.data.verificationAddAddressBody.blockHash).toEqual(
-        bytesToHexString(verificationAdd.data.verificationAddAddressBody.blockHash)._unsafeUnwrap(),
+      expect(ethResponse.status).toBe(200);
+      expect(ethResponse.data).toEqual(protoToJSON(verificationETHAdd, Message));
+      expect(ethResponse.data.data.verificationAddAddressBody.address).toEqual(
+        bytesToHexString(ethAddress)._unsafeUnwrap(),
+      );
+      expect(ethResponse.data.data.verificationAddAddressBody.blockHash).toEqual(
+        bytesToHexString(verificationETHAdd.data.verificationAddAddressBody.blockHash)._unsafeUnwrap(),
+      );
+
+      const solAddress = verificationSolAdd.data.verificationAddAddressBody.address;
+      const solUrl = getFullUrl(
+        `/v1/verificationsByFid?fid=${fid}&address=${bytesToBase58(solAddress)._unsafeUnwrap()}`,
+      );
+      const solResponse = await axiosGet(solUrl);
+
+      expect(solResponse.status).toBe(200);
+      expect(solResponse.data).toEqual(protoToJSON(verificationSolAdd, Message));
+      expect(solResponse.data.data.verificationAddAddressBody.address).toEqual(
+        bytesToBase58(solAddress)._unsafeUnwrap(),
+      );
+      expect(solResponse.data.data.verificationAddAddressBody.blockHash).toEqual(
+        bytesToBase58(verificationSolAdd.data.verificationAddAddressBody.blockHash)._unsafeUnwrap(),
       );
 
       // Get via fid
@@ -692,13 +719,15 @@ describe("httpServer", () => {
       const response2 = await axiosGet(url2);
 
       expect(response2.status).toBe(200);
-      expect(response2.data.messages).toEqual([protoToJSON(verificationAdd, Message)]);
+      expect(response2.data.messages).toHaveLength(2);
+      expect(response2.data.messages).toContainEqual(protoToJSON(verificationETHAdd, Message));
+      expect(response2.data.messages).toContainEqual(protoToJSON(verificationSolAdd, Message));
     });
 
     test("verification messages are backwards compatible", async () => {
-      expect((await engine.mergeMessage(verificationAdd)).isOk()).toBeTruthy();
+      expect((await engine.mergeMessage(verificationETHAdd)).isOk()).toBeTruthy();
 
-      const address = verificationAdd.data.verificationAddAddressBody.address;
+      const address = verificationETHAdd.data.verificationAddAddressBody.address;
       const url = getFullUrl(`/v1/verificationsByFid?fid=${fid}&address=${bytesToHexString(address)._unsafeUnwrap()}`);
       const response = await axiosGet(url);
 

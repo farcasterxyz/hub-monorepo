@@ -20,6 +20,8 @@ import {
   userDataTypeFromJSON,
   utf8StringToBytes,
   ValidationResponse,
+  base58ToBytes,
+  bytesToBase58,
 } from "@farcaster/hub-nodejs";
 import { Metadata, ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
@@ -100,6 +102,19 @@ function convertB64ToHex(str: string): string {
   }
 }
 
+function convertB64ToB58(str: string): string {
+  try {
+    const bytesBuf = Buffer.from(str, "base64");
+
+    // Check if the decoded base64 string can be converted back to the original base64 string
+    // If it can, return the base58 string, otherwise return the original string
+    return bytesBuf.toString("base64") === str ? bytesToBase58(bytesBuf).unwrapOr("") : str;
+  } catch {
+    // If an error occurs, return the original string
+    return str;
+  }
+}
+
 // Map of current key names to old key names that we want to preserve for backwards compatibility reasons
 // If you are renaming a protobuf field, add the current name as the key, and the old name as the value, and we
 // will copy the contents of the current field to the old field
@@ -120,21 +135,12 @@ function transformHash(obj: any): any {
   }
 
   // These are the target keys that are base64 encoded, which should be converted to hex
-  const toHexKeys = [
-    "hash",
-    "address",
-    "signer",
-    "blockHash",
-    "transactionHash",
-    "key",
-    "owner",
-    "to",
-    "from",
-    "recoveryAddress",
-  ];
+  const toHexKeys = ["hash", "signer", "transactionHash", "key", "owner", "to", "from", "recoveryAddress"];
 
   // Convert these target keys to strings
   const toStringKeys = ["name"];
+
+  const toHexOrBase58Keys = ["address", "blockHash"];
 
   for (const key in obj) {
     // biome-ignore lint/suspicious/noPrototypeBuiltins: <explanation>
@@ -143,6 +149,13 @@ function transformHash(obj: any): any {
         obj[key] = convertB64ToHex(obj[key]);
       } else if (toStringKeys.includes(key) && typeof obj[key] === "string") {
         obj[key] = Buffer.from(obj[key], "base64").toString("utf-8");
+      } else if (toHexOrBase58Keys.includes(key) && typeof obj[key] === "string") {
+        // We need to convert solana related bytes to base58
+        if (obj["protocol"] === "PROTOCOL_SOLANA") {
+          obj[key] = convertB64ToB58(obj[key]);
+        } else {
+          obj[key] = convertB64ToHex(obj[key]);
+        }
       } else if (typeof obj[key] === "object") {
         transformHash(obj[key]);
       }
@@ -488,9 +501,11 @@ export class HttpAPIServer {
       const { fid, address } = request.query;
 
       if (address) {
+        // Eth addresses are hex encoded and sol addresses are base58 encoded, determine which by checking length
+        const addressBytes = address.length === 42 ? hexStringToBytes(address) : base58ToBytes(address);
         const call = getCallObject(
           "getVerification",
-          { fid: parseInt(fid), address: hexStringToBytes(address).unwrapOr(new Uint8Array()) },
+          { fid: parseInt(fid), address: addressBytes.unwrapOr(new Uint8Array()) },
           request,
         );
         this.grpcImpl.getVerification(call, handleResponse(reply, Message));
