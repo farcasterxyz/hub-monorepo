@@ -888,6 +888,11 @@ describe("validateVerificationRemoveBody", () => {
     expect(validations.validateVerificationRemoveBody(body)).toEqual(ok(body));
   });
 
+  test("solana-succeeds", () => {
+    const body = Factories.VerificationRemoveBody.build({ protocol: Protocol.SOLANA });
+    expect(validations.validateVerificationRemoveBody(body)).toEqual(ok(body));
+  });
+
   describe("fails", () => {
     let body: protobufs.VerificationRemoveBody;
     let hubErrorMessage: string;
@@ -906,12 +911,20 @@ describe("validateVerificationRemoveBody", () => {
       hubErrorMessage = "Ethereum address is missing";
     });
 
-    test("with invalid address", async () => {
+    test("with invalid eth address", async () => {
       body = Factories.VerificationRemoveBody.build({
         address: Factories.Bytes.build({}, { transient: { length: 21 } }),
         protocol: Protocol.ETHEREUM,
       });
       hubErrorMessage = "Ethereum address must be 20 bytes";
+    });
+
+    test("with invalid solana address", async () => {
+      body = Factories.VerificationRemoveBody.build({
+        address: Factories.Bytes.build({}, { transient: { length: 33 } }),
+        protocol: Protocol.SOLANA,
+      });
+      hubErrorMessage = "solana address must be 32 bytes";
     });
   });
 });
