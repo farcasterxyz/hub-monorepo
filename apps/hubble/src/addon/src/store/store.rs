@@ -35,6 +35,8 @@ impl From<rocksdb::Error> for HubError {
     }
 }
 
+pub const FID_LOCKS_COUNT: usize = 4;
+
 pub trait StoreDef {
     fn postfix() -> u8;
     fn add_message_type() -> u8;
@@ -66,6 +68,7 @@ pub trait StoreDef {
 pub struct Store<T: StoreDef> {
     store_def: T,
     store_event_handler: Arc<StoreEventHandler>,
+    fid_locks: Arc<[Mutex<()>; 4]>,
     db: RocksDB,                                  // TODO: Move this out
     pub pool: Arc<Mutex<threadpool::ThreadPool>>, // TODO: Move this out
 }
@@ -79,6 +82,12 @@ impl<T: StoreDef> Store<T> {
         Store::<T> {
             store_def,
             store_event_handler: Arc::new(StoreEventHandler::new()),
+            fid_locks: Arc::new([
+                Mutex::new(()),
+                Mutex::new(()),
+                Mutex::new(()),
+                Mutex::new(()),
+            ]),
             // TODO: This is a bad idea. RocksDB should be shared across all stores.
             db: RocksDB::new("/tmp/tmprocksdb").unwrap(),
             pool: Arc::new(Mutex::new(ThreadPool::new(4))),
@@ -227,6 +236,14 @@ impl<T: StoreDef> Store<T> {
     }
 
     pub fn merge(&self, message: &Message) -> Result<u64, HubError> {
+        // Grab a merge lock. The typescript code does this by individual fid, but we don't have a
+        // good way of doing that efficiently here. We'll just use an array of locks, with each fid
+        // deterministically mapped to a lock.
+        let _fid_lock = &self.fid_locks
+            [message.data.as_ref().unwrap().fid as usize % FID_LOCKS_COUNT]
+            .lock()
+            .unwrap();
+
         if !self.store_def.is_add_type(message) && !self.store_def.is_remove_type(message) {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
