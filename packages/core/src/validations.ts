@@ -733,6 +733,8 @@ export const validateVerificationRemoveBody = (
   switch (body.protocol) {
     case protobufs.Protocol.ETHEREUM:
       return validateEthAddress(body.address).map(() => body);
+    case protobufs.Protocol.SOLANA:
+      return validateSolAddress(body.address).map(() => body);
     default:
       return err(new HubError("bad_request.validation_failure", "invalid verification protocol"));
   }
