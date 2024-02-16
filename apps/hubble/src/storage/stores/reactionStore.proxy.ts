@@ -1,5 +1,5 @@
 import { Message } from "@farcaster/hub-nodejs";
-import { createReactionStore, getAllMessagesByFid, mergeReactionStore } from "../../rustfunctions.js";
+import { createReactionStore, getAllMessagesByFid, merge } from "../../rustfunctions.js";
 
 export class ReactionStoreProxy {
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -12,7 +12,7 @@ export class ReactionStoreProxy {
   async merge(message: Message): Promise<number> {
     // Encode the message to bytes
     const messageBytes = Message.encode(message).finish();
-    const result = await mergeReactionStore(this.rustReactionStore, messageBytes);
+    const result = await merge(this.rustReactionStore, messageBytes);
     return result;
   }
 

@@ -1,10 +1,3 @@
-use std::{borrow::Borrow, sync::Arc};
-
-use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
-use prost::Message as _;
-
-use neon::{prelude::*, types::buffer::TypedArray};
-
 use crate::{
     db::RocksDbTransaction,
     protos::{self, reaction_body::Target, Message, MessageType},
@@ -20,15 +13,15 @@ use crate::protos::message_data;
 pub struct ReactionStore {}
 
 impl StoreDef for ReactionStore {
-    fn postfix() -> u8 {
+    fn postfix(&self) -> u8 {
         UserPostfix::ReactionMessage as u8
     }
 
-    fn add_message_type() -> u8 {
+    fn add_message_type(&self) -> u8 {
         MessageType::ReactionAdd as u8
     }
 
-    fn remove_message_type() -> u8 {
+    fn remove_message_type(&self) -> u8 {
         MessageType::ReactionRemove as u8
     }
 
@@ -116,8 +109,8 @@ impl StoreDef for ReactionStore {
 }
 
 impl ReactionStore {
-    pub fn new() -> Store<ReactionStore> {
-        Store::<ReactionStore>::new_with_store_def(ReactionStore {})
+    pub fn new() -> Store {
+        Store::new_with_store_def(Box::new(ReactionStore {}))
     }
 
     fn secondary_index_key(
@@ -206,66 +199,4 @@ impl ReactionStore {
     }
 }
 
-impl ReactionStore {
-    pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        // println!("js_merge");
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store<ReactionStore>>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
-
-        let channel = cx.channel();
-        let message_bytes = cx.argument::<JsBuffer>(0);
-        let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
-
-        let (deferred, promise) = cx.promise();
-
-        // TODO: Using the pool is so much slower
-        // let pool = store.pool.clone();
-        // pool.lock().unwrap().execute(move || {
-        let result = if message.is_err() {
-            -2
-        } else {
-            let m = message.unwrap();
-            store.merge(&m).map(|r| r as i64).unwrap_or(-1)
-        };
-
-        deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
-        // });
-
-        Ok(promise)
-    }
-
-    pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store<ReactionStore>>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
-
-        let channel = cx.channel();
-        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-
-        let (deferred, promise) = cx.promise();
-
-        let messages = store.get_all_messages_by_fid(fid);
-
-        deferred.settle_with(&channel, move |mut cx| {
-            let messages = messages.unwrap();
-            let js_messages = JsArray::new(&mut cx, messages.len() as u32);
-            for (i, message) in messages.iter().enumerate() {
-                let message_bytes = message.encode_to_vec();
-                let mut js_buffer = cx.buffer(message_bytes.len())?;
-                js_buffer
-                    .as_mut_slice(&mut cx)
-                    .copy_from_slice(&message_bytes);
-
-                js_messages.set(&mut cx, i as u32, js_buffer).unwrap();
-            }
-            Ok(js_messages)
-        });
-
-        Ok(promise)
-    }
-}
+impl ReactionStore {}

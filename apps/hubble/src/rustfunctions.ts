@@ -48,11 +48,13 @@ export const createReactionStore = () => {
   return store;
 };
 
+/** This is dynamically dispatched to any Store that you pass in */
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const mergeReactionStore = async (store: any, messageBytes: Uint8Array) => {
+export const merge = async (store: any, messageBytes: Uint8Array) => {
   return await lib.merge.call(store, messageBytes);
 };
 
+/** This is dynamically dispatched to any Store, and the messages will be returned from that store */
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export const getAllMessagesByFid = async (store: any, fid: number) => {
   return await lib.getAllMessagesByFid.call(store, fid);

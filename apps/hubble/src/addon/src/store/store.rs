@@ -1,18 +1,20 @@
-use std::{
-    convert::TryInto,
-    fs::File,
-    io::Write,
-    sync::{Arc, Mutex},
-};
-
-use neon::types::Finalize;
-use threadpool::ThreadPool;
-
 use crate::{
     db::{RocksDB, RocksDbTransaction},
-    protos::{hub_event, HubEvent, HubEventType, MergeMessageBody, Message},
+    protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message},
     store::make_ts_hash,
 };
+use neon::context::Context;
+use neon::object::Object;
+use neon::types::buffer::TypedArray;
+use neon::types::{Finalize, JsArray, JsBox, JsBuffer, JsNumber};
+use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
+use prost::Message as _;
+use std::borrow::Borrow;
+use std::{
+    convert::TryInto,
+    sync::{Arc, Mutex},
+};
+use threadpool::ThreadPool;
 
 use super::{
     bytes_compare, get_message, make_message_primary_key, message, put_message_transaction,
@@ -37,10 +39,10 @@ impl From<rocksdb::Error> for HubError {
 
 pub const FID_LOCKS_COUNT: usize = 4;
 
-pub trait StoreDef {
-    fn postfix() -> u8;
-    fn add_message_type() -> u8;
-    fn remove_message_type() -> u8;
+pub trait StoreDef: Send + Sync {
+    fn postfix(&self) -> u8;
+    fn add_message_type(&self) -> u8;
+    fn remove_message_type(&self) -> u8;
 
     fn is_add_type(&self, message: &Message) -> bool;
     fn is_remove_type(&self, message: &Message) -> bool;
@@ -65,21 +67,21 @@ pub trait StoreDef {
     fn make_remove_key(&self, message: &Message) -> Vec<u8>;
 }
 
-pub struct Store<T: StoreDef> {
-    store_def: T,
+pub struct Store {
+    store_def: Box<dyn StoreDef>,
     store_event_handler: Arc<StoreEventHandler>,
     fid_locks: Arc<[Mutex<()>; 4]>,
     db: RocksDB,                                  // TODO: Move this out
     pub pool: Arc<Mutex<threadpool::ThreadPool>>, // TODO: Move this out
 }
 
-impl<T: StoreDef> Finalize for Store<T> {
+impl Finalize for Store {
     fn finalize<'a, C: neon::context::Context<'a>>(self, _cx: &mut C) {}
 }
 
-impl<T: StoreDef> Store<T> {
-    pub fn new_with_store_def(store_def: T) -> Store<T> {
-        Store::<T> {
+impl Store {
+    pub fn new_with_store_def(store_def: Box<dyn StoreDef>) -> Store {
+        Store {
             store_def,
             store_event_handler: Arc::new(StoreEventHandler::new()),
             fid_locks: Arc::new([
@@ -109,10 +111,7 @@ impl<T: StoreDef> Store<T> {
         let adds_key = self.store_def.make_add_key(message);
 
         // TODO: Test check for the postfix
-        self.log(&format!(
-            "put_add_transaction: {:x?}-{:x?}\n",
-            adds_key, ts_hash
-        ));
+
         txn.put(&adds_key, ts_hash)?;
 
         self.store_def
@@ -187,11 +186,9 @@ impl<T: StoreDef> Store<T> {
         let add_key = self.store_def.make_add_key(message);
         let add_ts_hash = self.db.get(&add_key)?;
 
-        self.log(&format!("get_add_key: {:x?} {:x?}\n", add_key, add_ts_hash));
-
         if add_ts_hash.is_some() {
             let add_compare = self.message_compare(
-                T::add_message_type(),
+                self.store_def.add_message_type(),
                 &add_ts_hash.clone().unwrap(),
                 message.data.as_ref().unwrap().r#type as u8,
                 &ts_hash.to_vec(),
@@ -215,7 +212,7 @@ impl<T: StoreDef> Store<T> {
             let existing_add = get_message(
                 &self.db,
                 message.data.as_ref().unwrap().fid as u32,
-                T::postfix(),
+                self.store_def.postfix(),
                 &add_ts_hash
                     .clone()
                     .unwrap()
@@ -310,7 +307,7 @@ impl<T: StoreDef> Store<T> {
     }
 
     pub fn get_all_messages_by_fid(&self, fid: u32) -> Result<Vec<Message>, HubError> {
-        let prefix = make_message_primary_key(fid, T::postfix(), None);
+        let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages = message::get_messages_page_by_prefix(&self.db, &prefix, 100, |message| {
             self.store_def.is_add_type(&message) || self.store_def.is_remove_type(&message)
         })?;
@@ -336,14 +333,82 @@ impl<T: StoreDef> Store<T> {
             return ts_compare;
         }
 
-        if a_type == T::remove_message_type() && b_type == T::add_message_type() {
+        if a_type == self.store_def.remove_message_type()
+            && b_type == self.store_def.add_message_type()
+        {
             return 1;
         }
-        if a_type == T::add_message_type() && b_type == T::remove_message_type() {
+        if a_type == self.store_def.add_message_type()
+            && b_type == self.store_def.remove_message_type()
+        {
             return -1;
         }
 
         // Compare the rest of the ts_hash to break ties
         bytes_compare(&a_ts_hash[4..24], &b_ts_hash[4..24])
+    }
+}
+
+impl Store {
+    pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        // println!("js_merge");
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let channel = cx.channel();
+        let message_bytes = cx.argument::<JsBuffer>(0);
+        let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
+
+        let (deferred, promise) = cx.promise();
+
+        // TODO: Using the pool is so much slower
+        // let pool = store.pool.clone();
+        // pool.lock().unwrap().execute(move || {
+        let result = if message.is_err() {
+            -2
+        } else {
+            let m = message.unwrap();
+            store.merge(&m).map(|r| r as i64).unwrap_or(-1)
+        };
+
+        deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
+        // });
+
+        Ok(promise)
+    }
+
+    pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let channel = cx.channel();
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+
+        let (deferred, promise) = cx.promise();
+
+        let messages = store.get_all_messages_by_fid(fid);
+
+        deferred.settle_with(&channel, move |mut cx| {
+            let messages = messages.unwrap();
+            let js_messages = JsArray::new(&mut cx, messages.len() as u32);
+            for (i, message) in messages.iter().enumerate() {
+                let message_bytes = message.encode_to_vec();
+                let mut js_buffer = cx.buffer(message_bytes.len())?;
+                js_buffer
+                    .as_mut_slice(&mut cx)
+                    .copy_from_slice(&message_bytes);
+
+                js_messages.set(&mut cx, i as u32, js_buffer).unwrap();
+            }
+            Ok(js_messages)
+        });
+
+        Ok(promise)
     }
 }

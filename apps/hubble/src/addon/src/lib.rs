@@ -12,7 +12,7 @@ mod protos {
     include!(concat!("./", "/proto/protobufs.rs"));
 }
 
-fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store<ReactionStore>>>> {
+fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
     Ok(cx.boxed(Arc::new(ReactionStore::new())))
 }
 
@@ -87,11 +87,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("blake3_20", blake3_20)?;
 
     cx.export_function("createReactionStore", create_reaction_store)?;
-    cx.export_function("merge", ReactionStore::js_merge)?;
-    cx.export_function(
-        "getAllMessagesByFid",
-        ReactionStore::js_get_all_messages_by_fid,
-    )?;
+    cx.export_function("merge", Store::js_merge)?;
+    cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
 
     Ok(())
 }
