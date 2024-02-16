@@ -236,4 +236,36 @@ impl ReactionStore {
 
         Ok(promise)
     }
+
+    pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store<ReactionStore>>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let channel = cx.channel();
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+
+        let (deferred, promise) = cx.promise();
+
+        let messages = store.get_all_messages_by_fid(fid);
+
+        deferred.settle_with(&channel, move |mut cx| {
+            let messages = messages.unwrap();
+            let js_messages = JsArray::new(&mut cx, messages.len() as u32);
+            for (i, message) in messages.iter().enumerate() {
+                let message_bytes = message.encode_to_vec();
+                let mut js_buffer = cx.buffer(message_bytes.len())?;
+                js_buffer
+                    .as_mut_slice(&mut cx)
+                    .copy_from_slice(&message_bytes);
+
+                js_messages.set(&mut cx, i as u32, js_buffer).unwrap();
+            }
+            Ok(js_messages)
+        });
+
+        Ok(promise)
+    }
 }

@@ -52,3 +52,8 @@ export const createReactionStore = () => {
 export const mergeReactionStore = async (store: any, messageBytes: Uint8Array) => {
   return await lib.merge.call(store, messageBytes);
 };
+
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+export const getAllMessagesByFid = async (store: any, fid: number) => {
+  return await lib.getAllMessagesByFid.call(store, fid);
+};

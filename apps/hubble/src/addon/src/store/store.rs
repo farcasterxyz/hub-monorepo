@@ -15,7 +15,8 @@ use crate::{
 };
 
 use super::{
-    bytes_compare, get_message, put_message_transaction, StoreEventHandler, TS_HASH_LENGTH,
+    bytes_compare, get_message, make_message_primary_key, message, put_message_transaction,
+    StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
 
@@ -206,7 +207,7 @@ impl<T: StoreDef> Store<T> {
                 &self.db,
                 message.data.as_ref().unwrap().fid as u32,
                 T::postfix(),
-                add_ts_hash
+                &add_ts_hash
                     .clone()
                     .unwrap()
                     .try_into()
@@ -289,6 +290,15 @@ impl<T: StoreDef> Store<T> {
             })),
             id: 0,
         }
+    }
+
+    pub fn get_all_messages_by_fid(&self, fid: u32) -> Result<Vec<Message>, HubError> {
+        let prefix = make_message_primary_key(fid, T::postfix(), None);
+        let messages = message::get_messages_page_by_prefix(&self.db, &prefix, 100, |message| {
+            self.store_def.is_add_type(&message) || self.store_def.is_remove_type(&message)
+        })?;
+
+        Ok(messages)
     }
 
     fn message_compare(

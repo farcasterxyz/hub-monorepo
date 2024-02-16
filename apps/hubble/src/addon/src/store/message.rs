@@ -6,6 +6,7 @@ use crate::{
 };
 
 use super::store::HubError;
+use std::ops::Deref;
 
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;
@@ -159,11 +160,17 @@ pub fn make_user_key(fid: u32) -> Vec<u8> {
     key
 }
 
-pub fn make_message_primary_key(fid: u32, set: u8, ts_hash: [u8; TS_HASH_LENGTH]) -> Vec<u8> {
+pub fn make_message_primary_key(
+    fid: u32,
+    set: u8,
+    ts_hash: Option<&[u8; TS_HASH_LENGTH]>,
+) -> Vec<u8> {
     let mut key = Vec::with_capacity(1 + 4 + 1 + TS_HASH_LENGTH);
     key.extend_from_slice(&make_user_key(fid));
     key.push(set);
-    key.extend_from_slice(&ts_hash);
+    if ts_hash.is_some() {
+        key.extend_from_slice(ts_hash.unwrap());
+    }
 
     key
 }
@@ -193,9 +200,9 @@ pub fn get_message(
     db: &RocksDB,
     fid: u32,
     set: u8,
-    ts_hash: [u8; TS_HASH_LENGTH],
+    ts_hash: &[u8; TS_HASH_LENGTH],
 ) -> Result<Option<MessageProto>, HubError> {
-    let key = make_message_primary_key(fid, set, ts_hash);
+    let key = make_message_primary_key(fid, set, Some(ts_hash));
 
     match db.get(&key)? {
         Some(bytes) => match MessageProto::decode(bytes.as_slice()) {
@@ -209,6 +216,45 @@ pub fn get_message(
     }
 }
 
+pub fn get_messages_page_by_prefix<F>(
+    db: &RocksDB,
+    prefix: &[u8],
+    limit: u32,
+    filter: F,
+) -> Result<Vec<MessageProto>, HubError>
+where
+    F: Fn(&MessageProto) -> bool,
+{
+    let mut messages = Vec::new();
+    let mut iter = db.db.prefix_iterator(prefix);
+
+    for _ in 0..limit {
+        if let Some(Ok((key, value))) = iter.next() {
+            if key.starts_with(prefix) {
+                match MessageProto::decode(value.deref()) {
+                    Ok(message) => {
+                        if filter(&message) {
+                            messages.push(message);
+                        }
+                    }
+                    Err(_) => {
+                        return Err(HubError {
+                            code: "db.internal_error".to_string(),
+                            message: "could not decode message".to_string(),
+                        })
+                    }
+                }
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    Ok(messages)
+}
+
 pub fn put_message_transaction(
     txn: &RocksDbTransaction<'_>,
     message: &MessageProto,
@@ -218,7 +264,7 @@ pub fn put_message_transaction(
     let primary_key = make_message_primary_key(
         message.data.as_ref().unwrap().fid as u32,
         message.data.as_ref().unwrap().r#type as u8,
-        ts_hash,
+        Some(&ts_hash),
     );
     txn.put(&primary_key, &message.encode_to_vec())?;
 
@@ -243,7 +289,7 @@ pub fn delete_message_transaction(
     let primary_key = make_message_primary_key(
         message.data.as_ref().unwrap().fid as u32,
         message.data.as_ref().unwrap().r#type as u8,
-        ts_hash,
+        Some(&ts_hash),
     );
     txn.delete(&primary_key)?;
 

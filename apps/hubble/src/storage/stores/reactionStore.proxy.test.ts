@@ -84,6 +84,19 @@ describe("ReactionStoreProxy", () => {
         expect(r.isErr()).toBeTruthy();
       }
       console.log("nodejs: ", size, " duplicates in ", Date.now() - start, "ms");
+
+      // Get 100 messages
+      start = Date.now();
+      for (let i = 0; i < size; i++) {
+        const messages = await reactionStoreProxy.getAllMessagesByFid(fid);
+      }
+      console.log("rust: ", size, " reads in ", Date.now() - start, "ms");
+
+      start = Date.now();
+      for (let i = 0; i < size; i++) {
+        const messages2 = await set.getAllMessagesByFid(fid);
+      }
+      console.log("nodejs: ", size, " reads in ", Date.now() - start, "ms");
     },
     5 * 60 * 1000,
   );

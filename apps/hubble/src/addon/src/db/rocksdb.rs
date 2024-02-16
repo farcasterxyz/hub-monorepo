@@ -2,7 +2,7 @@ use crate::store::HubError;
 use rocksdb::Options;
 
 pub struct RocksDB {
-    db: rocksdb::TransactionDB,
+    pub db: rocksdb::TransactionDB,
     path: String,
 }
 
