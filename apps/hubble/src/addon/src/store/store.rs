@@ -1,5 +1,7 @@
 use std::{
     convert::TryInto,
+    fs::File,
+    io::Write,
     sync::{Arc, Mutex},
 };
 
@@ -41,11 +43,13 @@ pub trait StoreDef {
     fn build_secondary_indicies(
         &self,
         txn: &RocksDbTransaction<'_>,
+        ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError>;
     fn delete_secondary_indicies(
         &self,
         txn: &RocksDbTransaction<'_>,
+        ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError>;
 
@@ -58,11 +62,13 @@ pub trait StoreDef {
 
 pub struct Store<T: StoreDef> {
     store_def: T,
-    db: RocksDB,
-    pub pool: Arc<Mutex<threadpool::ThreadPool>>,
+    db: RocksDB,                                  // TODO: Move this out
+    pub pool: Arc<Mutex<threadpool::ThreadPool>>, // TODO: Move this out
 }
 
-impl<T: StoreDef> Finalize for Store<T> {}
+impl<T: StoreDef> Finalize for Store<T> {
+    fn finalize<'a, C: neon::context::Context<'a>>(self, _cx: &mut C) {}
+}
 
 impl<T: StoreDef> Store<T> {
     pub fn new_with_store_def(store_def: T) -> Store<T> {
@@ -72,6 +78,10 @@ impl<T: StoreDef> Store<T> {
             db: RocksDB::new("/tmp/tmprocksdb").unwrap(),
             pool: Arc::new(Mutex::new(ThreadPool::new(4))),
         }
+    }
+
+    fn log(&self, message: &str) {
+        // println!("{}", message);
     }
 
     fn put_add_transaction(
@@ -85,9 +95,14 @@ impl<T: StoreDef> Store<T> {
         let adds_key = self.store_def.make_add_key(message);
 
         // TODO: Test check for the postfix
-        txn.put(&adds_key, ts_hash)?;
+        self.log(&format!(
+            "put_add_transaction: {:x?}-{:x?}\n",
+            adds_key, ts_hash
+        ));
+        txn.put(&adds_key, b"hello")?;
 
-        self.store_def.build_secondary_indicies(txn, message)?;
+        self.store_def
+            .build_secondary_indicies(txn, ts_hash, message)?;
 
         Ok(())
     }
@@ -95,9 +110,11 @@ impl<T: StoreDef> Store<T> {
     fn delete_add_transaction(
         &self,
         txn: &RocksDbTransaction<'_>,
+        ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
-        self.store_def.delete_secondary_indicies(txn, message)?;
+        self.store_def
+            .delete_secondary_indicies(txn, ts_hash, message)?;
 
         let add_key = self.store_def.make_add_key(message);
         txn.delete(&add_key)?;
@@ -123,7 +140,9 @@ impl<T: StoreDef> Store<T> {
     ) -> Result<(), HubError> {
         for message in &messages {
             if self.store_def.is_add_type(message) {
-                self.delete_add_transaction(txn, message)?;
+                let ts_hash =
+                    make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+                self.delete_add_transaction(txn, &ts_hash, message)?;
             }
             if self.store_def.is_remove_type(message) {
                 self.delete_remove_transaction(txn, message)?;
@@ -153,6 +172,8 @@ impl<T: StoreDef> Store<T> {
         // Check if there is an add timestamp hash for this
         let add_key = self.store_def.make_add_key(message);
         let add_ts_hash = self.db.get(&add_key)?;
+
+        self.log(&format!("get_add_key: {:x?} {:x?}\n", add_key, add_ts_hash));
 
         if add_ts_hash.is_some() {
             let add_compare = self.message_compare(
@@ -209,6 +230,7 @@ impl<T: StoreDef> Store<T> {
         }
 
         let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+        self.log(&format!("merge: {:x?}\n", ts_hash));
 
         // TODO: We're skipping the prune check.
 
@@ -238,6 +260,15 @@ impl<T: StoreDef> Store<T> {
         // Commit the transaction
         txn.commit()?;
 
+        // TEMP
+        let adds_key = self.store_def.make_add_key(message);
+        // read from DB the same key
+        let add_ts_hash = self.db.get(&adds_key)?;
+        self.log(&format!(
+            "merge_add_reread: {:x?} {:x?}\n",
+            adds_key, add_ts_hash
+        ));
+
         // TODO: Trigger the event handler
 
         Ok(0)
@@ -258,6 +289,11 @@ impl<T: StoreDef> Store<T> {
         b_type: u8,
         b_ts_hash: &Vec<u8>,
     ) -> i8 {
+        self.log(&format!(
+            "message_compare: {:x?} {:x?} {:x?} {:x?}\n",
+            a_type, a_ts_hash, b_type, b_ts_hash
+        ));
+
         // Compare timestamps (first 4 bytes of ts_hash)
         let ts_compare = bytes_compare(&a_ts_hash[0..4], &b_ts_hash[0..4]);
         if ts_compare != 0 {

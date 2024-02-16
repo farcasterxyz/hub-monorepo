@@ -40,10 +40,15 @@ export const nativeValidationMethods: validations.ValidationMethods = {
 };
 
 /** Create a reaction Store */
-export const createReactionStore = async () => {
+export const createReactionStore = () => {
   const store = lib.createReactionStore();
-  console.log("store is ", store);
-  console.log("merge is ", lib.merge);
-  console.log("merge result1", await lib.merge.call(store, Buffer.from([1, 2, 3])));
-  console.log("merge result2", await lib.merge.call(store, Buffer.from([1, 2, 3])));
+  // console.log("store is ", store);
+  // console.log("merge is ", lib.merge);
+
+  return store;
+};
+
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+export const mergeReactionStore = async (store: any, messageBytes: Uint8Array) => {
+  return await lib.merge.call(store, messageBytes);
 };

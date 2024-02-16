@@ -3,6 +3,7 @@ use rocksdb::Options;
 
 pub struct RocksDB {
     db: rocksdb::TransactionDB,
+    path: String,
 }
 
 pub type RocksDbTransaction<'a> = rocksdb::Transaction<'a, rocksdb::TransactionDB>;
@@ -18,7 +19,10 @@ impl RocksDB {
 
         // Open the database with multi-threaded support
         let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, path).unwrap();
-        Ok(RocksDB { db })
+        Ok(RocksDB {
+            db,
+            path: path.to_string(),
+        })
     }
 
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {

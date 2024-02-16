@@ -88,5 +88,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
     cx.export_function("createReactionStore", create_reaction_store)?;
     cx.export_function("merge", ReactionStore::js_merge)?;
+
     Ok(())
 }

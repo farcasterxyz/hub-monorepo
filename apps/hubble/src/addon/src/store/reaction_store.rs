@@ -11,9 +11,9 @@ use crate::{
 };
 
 use super::{
-    make_cast_id_key, make_user_key,
+    make_cast_id_key, make_fid_key, make_user_key,
     store::{Store, StoreDef},
-    HubError, UserPostfix,
+    HubError, RootPrefix, UserPostfix, TS_HASH_LENGTH,
 };
 use crate::protos::message_data;
 
@@ -65,9 +65,10 @@ impl StoreDef for ReactionStore {
     fn build_secondary_indicies(
         &self,
         txn: &RocksDbTransaction<'_>,
+        ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
-        let (by_target_key, rtype) = self.secondary_index_key(message)?;
+        let (by_target_key, rtype) = self.secondary_index_key(ts_hash, message)?;
 
         txn.put(&by_target_key, vec![rtype])?;
 
@@ -77,9 +78,10 @@ impl StoreDef for ReactionStore {
     fn delete_secondary_indicies(
         &self,
         txn: &RocksDbTransaction<'_>,
+        ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
-        let (by_target_key, _) = self.secondary_index_key(message)?;
+        let (by_target_key, _) = self.secondary_index_key(ts_hash, message)?;
 
         txn.delete(&by_target_key)?;
 
@@ -118,7 +120,11 @@ impl ReactionStore {
         Store::<ReactionStore>::new_with_store_def(ReactionStore {})
     }
 
-    fn secondary_index_key(&self, message: &protos::Message) -> Result<(Vec<u8>, u8), HubError> {
+    fn secondary_index_key(
+        &self,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+        message: &protos::Message,
+    ) -> Result<(Vec<u8>, u8), HubError> {
         // Make sure at least one of targetCastId or targetUrl is set
         let reaction_body = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::ReactionBody(reaction_body) => reaction_body,
@@ -132,13 +138,32 @@ impl ReactionStore {
             message: "Invalid reaction body".to_string(),
         })?;
 
-        let by_target_key = ReactionStore::make_reaction_adds_key(
+        let by_target_key = ReactionStore::make_reactions_by_target_key(
+            target,
             message.data.as_ref().unwrap().fid as u32,
-            reaction_body.r#type,
-            Some(&target),
+            ts_hash,
         );
 
         Ok((by_target_key, reaction_body.r#type as u8))
+    }
+
+    pub fn make_reactions_by_target_key(
+        target: &Target,
+        fid: u32,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+    ) -> Vec<u8> {
+        let mut key = Vec::with_capacity(1 + 28 + 24 + 4);
+
+        key.push(RootPrefix::ReactionsByTarget as u8); // ReactionsByTarget prefix, 1 byte
+        key.extend_from_slice(&Self::make_target_key(target));
+        if ts_hash.len() == TS_HASH_LENGTH {
+            key.extend_from_slice(ts_hash);
+        }
+        if fid > 0 {
+            key.extend_from_slice(&make_fid_key(fid));
+        }
+
+        key
     }
 
     pub fn make_target_key(target: &Target) -> Vec<u8> {
@@ -157,8 +182,8 @@ impl ReactionStore {
             key.push(r#type as u8); // type, 1 byte
         }
         if target.is_some() {
-            key.extend_from_slice(&Self::make_target_key(target.unwrap()));
             // target, 28 bytes
+            key.extend_from_slice(&Self::make_target_key(target.unwrap()));
         }
 
         key
@@ -183,6 +208,7 @@ impl ReactionStore {
 
 impl ReactionStore {
     pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        // println!("js_merge");
         let store_js_box = cx
             .this()
             .downcast_or_throw::<JsBox<Arc<Store<ReactionStore>>>, _>(&mut cx)
