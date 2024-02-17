@@ -1109,6 +1109,14 @@ export class Hub implements HubInterface {
           appVersion: content.appVersion,
           timestamp: content.timestamp,
         });
+
+    // Don't process messages that are too old
+    if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
+      log.debug({ message }, "contact info message is too old");
+      return false;
+    }
+
+    // Validate the signature if present
     if (content.signature && content.signer && peerId.publicKey && content.body) {
       let bytes: Uint8Array;
       if (content.dataBytes) {
@@ -1150,12 +1158,6 @@ export class Hub implements HubInterface {
       }
     } else if (this.strictContactInfoValidation) {
       log.warn({ message: content, peerId }, "provided contact info does not have a signature");
-      return false;
-    }
-
-    // Don't process messages that are too old
-    if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
-      log.debug({ message }, "contact info message is too old");
       return false;
     }
 
