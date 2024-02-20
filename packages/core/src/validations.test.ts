@@ -1205,4 +1205,11 @@ describe("validateFrameActionBody", () => {
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid input text");
   });
+  test("fails when state is too long", async () => {
+    const body = Factories.FrameActionBody.build({
+      state: Buffer.from(faker.datatype.string(4097)),
+    });
+    const result = validations.validateFrameActionBody(body);
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid state");
+  });
 });
