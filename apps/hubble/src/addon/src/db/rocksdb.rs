@@ -1,5 +1,5 @@
 use crate::store::HubError;
-use rocksdb::Options;
+use rocksdb::{Options, WriteBatchWithTransaction};
 
 pub struct RocksDB {
     pub db: rocksdb::TransactionDB,
@@ -41,5 +41,35 @@ impl RocksDB {
 
     pub fn txn(&self) -> rocksdb::Transaction<'_, rocksdb::TransactionDB> {
         self.db.transaction()
+    }
+
+    pub fn clear(&self) -> Result<u32, HubError> {
+        let mut deleted;
+
+        loop {
+            // reset deleted count
+            deleted = 0;
+
+            // Iterate over all keys and delete them
+            let txn = self.txn();
+
+            for item in self.db.iterator(rocksdb::IteratorMode::Start) {
+                if let Ok((key, _)) = item {
+                    txn.delete(key).unwrap();
+                    deleted += 1;
+                }
+            }
+            txn.commit().map_err(|e| HubError {
+                code: "db.internal_error".to_string(),
+                message: e.to_string(),
+            })?;
+
+            // Check if we deleted anything
+            if deleted == 0 {
+                break;
+            }
+        }
+
+        Ok(deleted)
     }
 }

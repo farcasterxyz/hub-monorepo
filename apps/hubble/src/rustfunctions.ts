@@ -49,6 +49,11 @@ export const createReactionStore = () => {
   return store;
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+export const db_clear = async (store: any) => {
+  return await lib.db_clear.call(store);
+};
+
 /** This is dynamically dispatched to any Store that you pass in */
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export const merge = async (store: any, messageBytes: Uint8Array) => {

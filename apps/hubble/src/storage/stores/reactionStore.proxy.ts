@@ -1,5 +1,5 @@
 import { HubError, Message, StoreType, getDefaultStoreLimit } from "@farcaster/hub-nodejs";
-import { createReactionStore, getAllMessagesByFid, merge } from "../../rustfunctions.js";
+import { createReactionStore, db_clear, getAllMessagesByFid, merge } from "../../rustfunctions.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import { PageOptions, StorePruneOptions } from "./types.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
@@ -41,6 +41,10 @@ export class ReactionStoreProxy {
   get pruneTimeLimit(): number | undefined {
     // No more time based pruning after the migration
     return undefined;
+  }
+
+  async db_clear(): Promise<void> {
+    await db_clear(this.rustReactionStore);
   }
 
   async merge(message: Message): Promise<number> {

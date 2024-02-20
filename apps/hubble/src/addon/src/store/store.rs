@@ -112,9 +112,9 @@ impl Store {
         }
     }
 
-    fn log(&self, message: &str) {
-        // println!("{}", message);
-    }
+    // fn log(&self, message: &str) {
+    //     // println!("{}", message);
+    // }
 
     fn put_add_transaction(
         &self,
@@ -151,11 +151,38 @@ impl Store {
         Ok(())
     }
 
+    fn put_remove_transaction(
+        &self,
+        txn: &RocksDbTransaction<'_>,
+        message: &Message,
+    ) -> Result<(), HubError> {
+        if !self.store_def.remove_type_supported() {
+            return Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: "remove type not supported".to_string(),
+            });
+        }
+
+        put_message_transaction(txn, &message)?;
+
+        let removes_key = self.store_def.make_remove_key(message);
+        txn.put(&removes_key, &message.hash)?;
+
+        Ok(())
+    }
+
     fn delete_remove_transaction(
         &self,
         txn: &RocksDbTransaction<'_>,
         message: &Message,
     ) -> Result<(), HubError> {
+        if !self.store_def.remove_type_supported() {
+            return Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: "remove type not supported".to_string(),
+            });
+        }
+
         let remove_key = self.store_def.make_remove_key(message);
         txn.delete(&remove_key)?;
 
@@ -196,7 +223,57 @@ impl Store {
         }
 
         let mut conflicts = vec![];
-        // TODO: Remove
+
+        if self.store_def.is_remove_type(message) {
+            let remove_key = self.store_def.make_remove_key(message);
+            let remove_ts_hash = self.db.get(&remove_key)?;
+
+            if remove_ts_hash.is_some() {
+                let remove_compare = self.message_compare(
+                    self.store_def.remove_message_type(),
+                    &remove_ts_hash.clone().unwrap(),
+                    message.data.as_ref().unwrap().r#type as u8,
+                    &ts_hash.to_vec(),
+                );
+
+                if remove_compare > 0 {
+                    return Err(HubError {
+                        code: "bad_request.conflict".to_string(),
+                        message: "message conflicts with a more recent remove".to_string(),
+                    });
+                }
+                if remove_compare == 0 {
+                    return Err(HubError {
+                        code: "bad_request.duplicate".to_string(),
+                        message: "message has already been merged".to_string(),
+                    });
+                }
+
+                // If the existing remove has a lower order than the new message, retrieve the full
+                // Remove message and delete it as part of the RocksDB transaction
+                let existing_remove = get_message(
+                    &self.db,
+                    message.data.as_ref().unwrap().fid as u32,
+                    self.store_def.postfix(),
+                    &remove_ts_hash
+                        .clone()
+                        .unwrap()
+                        .try_into()
+                        .map_err(|e: Vec<u8>| HubError {
+                            code: "bad_request.internal_error".to_string(),
+                            message: format!("remove_ts_hash is not 24 bytes: {:x?}", e),
+                        })?, // Convert Vec<u8> to [u8; 24]
+                )?
+                .ok_or_else(|| HubError {
+                    code: "bad_request.internal_error".to_string(),
+                    message: format!(
+                        "The message for the {:x?} not found",
+                        remove_ts_hash.unwrap()
+                    ),
+                })?;
+                conflicts.push(existing_remove);
+            }
+        }
 
         // Check if there is an add timestamp hash for this
         let add_key = self.store_def.make_add_key(message);
@@ -267,7 +344,6 @@ impl Store {
         }
 
         let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
-        self.log(&format!("merge: {:x?}\n", ts_hash));
 
         // TODO: We're skipping the prune check.
 
@@ -310,7 +386,26 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<u64, HubError> {
-        todo!("merge_remove")
+        // Get the merge conflicts first
+        let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
+
+        // start a transaction
+        let txn = self.db.txn();
+        // Delete all the merge conflicts
+        self.delete_many_transaction(&txn, merge_conflicts.clone())?;
+
+        // Add ops to store the message by messageKey and index the the messageKey by set and by target
+        self.put_remove_transaction(&txn, message)?;
+
+        // Event handler
+        let id = self
+            .store_event_handler
+            .commit_transaction(&txn, self.merge_event_args(message, merge_conflicts))?;
+
+        // Commit the transaction
+        txn.commit()?;
+
+        Ok(id)
     }
 
     fn merge_event_args(&self, message: &Message, merge_conflicts: Vec<Message>) -> HubEvent {
@@ -352,11 +447,6 @@ impl Store {
         b_type: u8,
         b_ts_hash: &Vec<u8>,
     ) -> i8 {
-        self.log(&format!(
-            "message_compare: {:x?} {:x?} {:x?} {:x?}\n",
-            a_type, a_ts_hash, b_type, b_ts_hash
-        ));
-
         // Compare timestamps (first 4 bytes of ts_hash)
         let ts_compare = bytes_compare(&a_ts_hash[0..4], &b_ts_hash[0..4]);
         if ts_compare != 0 {
@@ -384,6 +474,27 @@ impl Store {
 // This means the NodeJS code can pass in any store, and the Rust code will call the correct method
 // for that store
 impl Store {
+    pub fn js_db_clear(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        // let pool = store.pool.clone();
+        // pool.lock().unwrap().execute(move || {
+        let result = store.db.clear();
+        deferred.settle_with(&channel, move |mut cx| {
+            Ok(cx.number(result.unwrap_or_default() as f64))
+        });
+        // });
+
+        Ok(promise)
+    }
+
     pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
         // println!("js_merge");
         let store_js_box = cx

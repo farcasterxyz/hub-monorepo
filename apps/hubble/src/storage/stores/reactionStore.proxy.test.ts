@@ -1,5 +1,5 @@
 import { ReactionStoreProxy } from "./reactionStore.proxy.js";
-import { Factories, ReactionAddMessage, ReactionType } from "@farcaster/hub-nodejs";
+import { Factories, ReactionAddMessage, ReactionRemoveMessage, ReactionType } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import ReactionStore from "./reactionStore.js";
@@ -16,6 +16,7 @@ describe("ReactionStoreProxy", () => {
   const castId = Factories.CastId.build();
 
   let reactionAdd: ReactionAddMessage;
+  let reactionRemove: ReactionRemoveMessage;
 
   beforeAll(async () => {
     const likeBody = Factories.ReactionBody.build({
@@ -26,22 +27,43 @@ describe("ReactionStoreProxy", () => {
     reactionAdd = await Factories.ReactionAddMessage.create({
       data: { fid, reactionBody: likeBody },
     });
+    reactionRemove = await Factories.ReactionRemoveMessage.create({
+      data: { fid, reactionBody: likeBody, timestamp: reactionAdd.data.timestamp + 1 },
+    });
 
     reactionStoreProxy = new ReactionStoreProxy(eventHandler);
   });
 
   beforeEach(async () => {
     await eventHandler.syncCache();
+    await reactionStoreProxy.db_clear();
+  });
+
+  test("merges basic reaction message", async () => {
+    // Merge the reaction
+    const r: number = await reactionStoreProxy.merge(reactionAdd);
+    expect(r).toBeGreaterThan(0);
+    let reactionsForFid = await reactionStoreProxy.getAllMessagesByFid(fid, {});
+    expect(reactionsForFid.length).toBe(1);
+
+    // Merge the same reaction again, should be duplicate
+    const r2: number = await reactionStoreProxy.merge(reactionAdd);
+    expect(r2).toBe(-1); // Dup
+    reactionsForFid = await reactionStoreProxy.getAllMessagesByFid(fid, {});
+    expect(reactionsForFid.length).toBe(1);
+
+    // Merge the remove reaction, it should disappear.
+    const rr: number = await reactionStoreProxy.merge(reactionRemove);
+    expect(rr).toBeGreaterThan(0);
+    reactionsForFid = await reactionStoreProxy.getAllMessagesByFid(fid, {});
+    expect(reactionsForFid.length).toBe(1);
   });
 
   test(
-    "merges basic reaction message",
+    "merges 10000 reactions",
     async () => {
       const r: number = await reactionStoreProxy.merge(reactionAdd);
       expect(r).toBeGreaterThan(0);
-
-      const r2: number = await reactionStoreProxy.merge(reactionAdd);
-      expect(r2).toBe(-1); // Dup
 
       let timestamp = reactionAdd.data.timestamp;
 
@@ -58,6 +80,17 @@ describe("ReactionStoreProxy", () => {
         reactionAdds.push(
           await Factories.ReactionAddMessage.create({
             data: { fid, reactionBody: likeBody, timestamp },
+          }),
+        );
+      }
+
+      const reactionRemoves = [];
+      for (let i = 0; i < size; i++) {
+        const reactionAdd = reactionAdds[i] as ReactionAddMessage;
+
+        reactionRemoves.push(
+          await Factories.ReactionRemoveMessage.create({
+            data: { fid, reactionBody: reactionAdd.data.reactionBody, timestamp: reactionAdd.data.timestamp + 1 },
           }),
         );
       }
@@ -112,6 +145,21 @@ describe("ReactionStoreProxy", () => {
         expect(messages2.messages.length).toBe(pageSize);
       }
       console.log("nodejs: ", size, " reads in ", Date.now() - start, "ms");
+
+      // Remove the reactions
+      start = Date.now();
+      for (let i = 0; i < reactionRemoves.length; i++) {
+        const r: number = await reactionStoreProxy.merge(reactionRemoves[i] as ReactionRemoveMessage);
+        expect(r).toBeGreaterThan(0);
+      }
+      console.log("rust: ", size, " removes in ", Date.now() - start, "ms");
+
+      start = Date.now();
+      for (let i = 0; i < reactionRemoves.length; i++) {
+        const r: number = await set.merge(reactionRemoves[i] as ReactionRemoveMessage);
+        expect(r).toBeGreaterThan(0);
+      }
+      console.log("nodejs: ", size, " removes in ", Date.now() - start, "ms");
     },
     5 * 60 * 1000,
   );
