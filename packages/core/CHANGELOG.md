@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.14.1
+
+### Patch Changes
+
+- bf37ec76: feat: Run validateOrRevoke only if signer is updated
+- 1a52b869: fix: Handle solana verification removes
+
 ## 0.14.0
 
 ### Minor Changes
