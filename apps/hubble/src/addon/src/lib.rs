@@ -87,6 +87,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("blake3_20", blake3_20)?;
 
     cx.export_function("createReactionStore", create_reaction_store)?;
+
+    // Generic methods that can accept any store
     cx.export_function("merge", Store::js_merge)?;
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
 

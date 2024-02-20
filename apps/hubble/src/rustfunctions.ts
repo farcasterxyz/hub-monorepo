@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
 import { validations } from "@farcaster/hub-nodejs";
+import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 
 // Use this function in TypeScript to call the rust code.
 export function nativeBlake3Hash20(data: Uint8Array): Uint8Array {
@@ -56,6 +57,12 @@ export const merge = async (store: any, messageBytes: Uint8Array) => {
 
 /** This is dynamically dispatched to any Store, and the messages will be returned from that store */
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const getAllMessagesByFid = async (store: any, fid: number) => {
-  return await lib.getAllMessagesByFid.call(store, fid);
+export const getAllMessagesByFid = async (store: any, fid: number, pageOptions: PageOptions) => {
+  return await lib.getAllMessagesByFid.call(
+    store,
+    fid,
+    pageOptions.pageSize ?? PAGE_SIZE_MAX,
+    pageOptions.pageToken ?? new Uint8Array(0),
+    pageOptions.reverse ?? false,
+  );
 };

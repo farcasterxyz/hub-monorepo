@@ -27,7 +27,7 @@ describe("ReactionStoreProxy", () => {
       data: { fid, reactionBody: likeBody },
     });
 
-    reactionStoreProxy = new ReactionStoreProxy();
+    reactionStoreProxy = new ReactionStoreProxy(eventHandler);
   });
 
   beforeEach(async () => {
@@ -43,14 +43,29 @@ describe("ReactionStoreProxy", () => {
       const r2: number = await reactionStoreProxy.merge(reactionAdd);
       expect(r2).toBe(-1); // Dup
 
-      // Create 1000 reactions
+      let timestamp = reactionAdd.data.timestamp;
+
+      // Create 10000 reactions
       const size = 10000;
+      const reactionAdds = [];
+      for (let i = 0; i < size; i++) {
+        timestamp += 1; // Add 1 to each timestamp so it doesn't get pruned
+        const castId = Factories.CastId.build();
+        const likeBody = Factories.ReactionBody.build({
+          type: ReactionType.LIKE,
+          targetCastId: castId,
+        });
+        reactionAdds.push(
+          await Factories.ReactionAddMessage.create({
+            data: { fid, reactionBody: likeBody, timestamp },
+          }),
+        );
+      }
 
       let start = Date.now();
-      for (let i = 0; i < size; i++) {
-        reactionAdd.data.reactionBody.targetCastId = Factories.CastId.build();
-        const r: number = await reactionStoreProxy.merge(reactionAdd);
-        // expect(r).toBeGreaterThan(0);
+      for (let i = 0; i < reactionAdds.length; i++) {
+        const r: number = await reactionStoreProxy.merge(reactionAdds[i] as ReactionAddMessage);
+        expect(r).toBeGreaterThan(0);
       }
       console.log("rust: ", size, " reactions in ", Date.now() - start, "ms");
 
@@ -59,17 +74,14 @@ describe("ReactionStoreProxy", () => {
       expect(r3).toBeGreaterThan(0);
 
       start = Date.now();
-      for (let i = 0; i < size; i++) {
-        reactionAdd.data.reactionBody.targetCastId = Factories.CastId.build();
-        const r: number = await set.merge(reactionAdd);
-        // expect(r).toBeGreaterThan(0);
+      for (let i = 0; i < reactionAdds.length; i++) {
+        const r: number = await set.merge(reactionAdds[i] as ReactionAddMessage);
+        expect(r).toBeGreaterThan(0);
       }
       console.log("nodejs: ", size, " reactions in ", Date.now() - start, "ms");
 
       // Duplicate checks
       // First merge the message
-      const r4 = await reactionStoreProxy.merge(reactionAdd);
-      expect(r4).toBeGreaterThan(0);
       start = Date.now();
       for (let i = 0; i < size; i++) {
         const r: number = await reactionStoreProxy.merge(reactionAdd);
@@ -85,16 +97,19 @@ describe("ReactionStoreProxy", () => {
       }
       console.log("nodejs: ", size, " duplicates in ", Date.now() - start, "ms");
 
-      // Get 100 messages
+      // Get all messages
       start = Date.now();
+      const pageSize = 10;
       for (let i = 0; i < size; i++) {
-        const messages = await reactionStoreProxy.getAllMessagesByFid(fid);
+        const messages = await reactionStoreProxy.getAllMessagesByFid(fid, { pageSize });
+        expect(messages.length).toBe(pageSize);
       }
       console.log("rust: ", size, " reads in ", Date.now() - start, "ms");
 
       start = Date.now();
       for (let i = 0; i < size; i++) {
-        const messages2 = await set.getAllMessagesByFid(fid);
+        const messages2 = await set.getAllMessagesByFid(fid, { pageSize });
+        expect(messages2.messages.length).toBe(pageSize);
       }
       console.log("nodejs: ", size, " reads in ", Date.now() - start, "ms");
     },

@@ -1,13 +1,13 @@
 use crate::{
     db::{RocksDB, RocksDbTransaction},
-    protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message},
+    protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message, MessageType},
     store::make_ts_hash,
 };
 use neon::context::Context;
-use neon::object::Object;
 use neon::types::buffer::TypedArray;
 use neon::types::{Finalize, JsArray, JsBox, JsBuffer, JsNumber};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
+use neon::{object::Object, types::JsBoolean};
 use prost::Message as _;
 use std::borrow::Borrow;
 use std::{
@@ -38,7 +38,18 @@ impl From<rocksdb::Error> for HubError {
 }
 
 pub const FID_LOCKS_COUNT: usize = 4;
+pub const PAGE_SIZE_MAX: usize = 10_000;
 
+pub struct PageOptions {
+    pub page_size: Option<usize>,
+    pub page_token: Option<Vec<u8>>,
+    pub reverse: bool,
+}
+
+/// The `Send` trait indicates that a type can be safely transferred between threads.
+/// The `Sync` trait indicates that a type can be safely shared between threads.
+/// The `StoreDef` trait is implemented for types that are both `Send` and `Sync`,
+/// allowing them to be used as trait objects in the `Store` struct.
 pub trait StoreDef: Send + Sync {
     fn postfix(&self) -> u8;
     fn add_message_type(&self) -> u8;
@@ -46,6 +57,11 @@ pub trait StoreDef: Send + Sync {
 
     fn is_add_type(&self, message: &Message) -> bool;
     fn is_remove_type(&self, message: &Message) -> bool;
+
+    // If the store supports remove messages, this should return true
+    fn remove_type_supported(&self) -> bool {
+        self.remove_message_type() != MessageType::None as u8
+    }
 
     fn build_secondary_indicies(
         &self,
@@ -157,7 +173,7 @@ impl Store {
                     make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
                 self.delete_add_transaction(txn, &ts_hash, message)?;
             }
-            if self.store_def.is_remove_type(message) {
+            if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
                 self.delete_remove_transaction(txn, message)?;
             }
         }
@@ -241,7 +257,9 @@ impl Store {
             .lock()
             .unwrap();
 
-        if !self.store_def.is_add_type(message) && !self.store_def.is_remove_type(message) {
+        if !self.store_def.is_add_type(message)
+            && (!self.store_def.remove_type_supported() || !self.store_def.is_remove_type(message))
+        {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
                 message: "invalid message type".to_string(),
@@ -306,11 +324,23 @@ impl Store {
         }
     }
 
-    pub fn get_all_messages_by_fid(&self, fid: u32) -> Result<Vec<Message>, HubError> {
+    pub fn get_all_messages_by_fid(
+        &self,
+        fid: u32,
+        page_options: PageOptions,
+    ) -> Result<Vec<Message>, HubError> {
+        // TODO: The page_token's pageToken and reverse are not handled yet
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
-        let messages = message::get_messages_page_by_prefix(&self.db, &prefix, 100, |message| {
-            self.store_def.is_add_type(&message) || self.store_def.is_remove_type(&message)
-        })?;
+        let messages = message::get_messages_page_by_prefix(
+            &self.db,
+            &prefix,
+            page_options.page_size.unwrap_or(PAGE_SIZE_MAX),
+            |message| {
+                self.store_def.is_add_type(&message)
+                    || (self.store_def.remove_type_supported()
+                        && self.store_def.is_remove_type(&message))
+            },
+        )?;
 
         Ok(messages)
     }
@@ -349,6 +379,10 @@ impl Store {
     }
 }
 
+// Neon bindings
+// Note about dispatch - The methods are dispatched to the Store struct, which is a Box<dyn StoreDef>.
+// This means the NodeJS code can pass in any store, and the Rust code will call the correct method
+// for that store
 impl Store {
     pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
         // println!("js_merge");
@@ -387,12 +421,26 @@ impl Store {
             .unwrap();
         let store = (**store_js_box.borrow()).clone();
 
-        let channel = cx.channel();
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let page_size = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as usize;
+
+        let page_token_arg = cx.argument::<JsBuffer>(2)?;
+        let reverse_arg = cx.argument::<JsBoolean>(3)?;
+
+        let page_token = page_token_arg.as_slice(&cx).to_vec();
+        let reverse = reverse_arg.value(&mut cx);
+
+        let channel = cx.channel();
 
         let (deferred, promise) = cx.promise();
 
-        let messages = store.get_all_messages_by_fid(fid);
+        let messages = store.get_all_messages_by_fid(fid, {
+            PageOptions {
+                page_size: Some(page_size),
+                page_token: Some(page_token.to_vec()),
+                reverse,
+            }
+        });
 
         deferred.settle_with(&channel, move |mut cx| {
             let messages = messages.unwrap();

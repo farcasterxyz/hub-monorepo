@@ -219,7 +219,7 @@ pub fn get_message(
 pub fn get_messages_page_by_prefix<F>(
     db: &RocksDB,
     prefix: &[u8],
-    limit: u32,
+    limit: usize,
     filter: F,
 ) -> Result<Vec<MessageProto>, HubError>
 where
