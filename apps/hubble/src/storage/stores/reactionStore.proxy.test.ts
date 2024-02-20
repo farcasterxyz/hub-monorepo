@@ -1,9 +1,9 @@
 import { ReactionStoreProxy } from "./reactionStore.proxy.js";
-import { Factories, ReactionAddMessage, ReactionRemoveMessage, ReactionType } from "@farcaster/hub-nodejs";
+import { Factories, HubError, ReactionAddMessage, ReactionRemoveMessage, ReactionType } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import ReactionStore from "./reactionStore.js";
-import { ResultAsync } from "neverthrow";
+import { Result, ResultAsync } from "neverthrow";
 
 describe("ReactionStoreProxy", () => {
   let reactionStoreProxy: ReactionStoreProxy;
@@ -47,8 +47,13 @@ describe("ReactionStoreProxy", () => {
     expect(reactionsForFid.length).toBe(1);
 
     // Merge the same reaction again, should be duplicate
-    const r2: number = await reactionStoreProxy.merge(reactionAdd);
-    expect(r2).toBe(-1); // Dup
+    const r2 = (await ResultAsync.fromPromise(reactionStoreProxy.merge(reactionAdd), (e) => e)) as Result<
+      number,
+      HubError
+    >;
+    expect(r2.isErr()).toBeTruthy();
+    expect(r2._unsafeUnwrapErr().errCode).toBe("bad_request.duplicate");
+
     reactionsForFid = await reactionStoreProxy.getAllMessagesByFid(fid, {});
     expect(reactionsForFid.length).toBe(1);
 
@@ -117,8 +122,8 @@ describe("ReactionStoreProxy", () => {
       // First merge the message
       start = Date.now();
       for (let i = 0; i < size; i++) {
-        const r: number = await reactionStoreProxy.merge(reactionAdd);
-        expect(r).toBe(-1);
+        const r = await ResultAsync.fromPromise(reactionStoreProxy.merge(reactionAdd), (e) => e);
+        expect(r.isErr()).toBeTruthy();
       }
       console.log("rust: ", size, " duplicates in ", Date.now() - start, "ms");
 

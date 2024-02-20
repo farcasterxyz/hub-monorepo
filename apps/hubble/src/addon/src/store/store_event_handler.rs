@@ -84,17 +84,16 @@ impl StoreEventHandler {
     pub fn commit_transaction(
         &self,
         txn: &RocksDbTransaction<'_>,
-        raw_event: HubEvent,
+        raw_event: &mut HubEvent,
     ) -> Result<u64, HubError> {
         // Acquire the lock so we don't generate multiple IDs. This also serves as the commmit lock
         let mut generator = self.generator.lock().unwrap();
 
         // Generate the event ID
         let event_id = generator.generate_id(None)?;
-        let mut event = raw_event;
-        event.id = event_id;
+        raw_event.id = event_id;
 
-        self.put_event_transaction(txn, &event)?;
+        self.put_event_transaction(txn, &raw_event)?;
 
         // this._storageCache.processEvent(event);
         // this.broadcastEvent(event);

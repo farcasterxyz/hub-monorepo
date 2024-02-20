@@ -56,7 +56,7 @@ export const db_clear = async (store: any) => {
 
 /** This is dynamically dispatched to any Store that you pass in */
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const merge = async (store: any, messageBytes: Uint8Array) => {
+export const merge = async (store: any, messageBytes: Uint8Array): Promise<Buffer> => {
   return await lib.merge.call(store, messageBytes);
 };
 

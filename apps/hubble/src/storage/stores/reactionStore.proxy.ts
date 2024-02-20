@@ -1,8 +1,9 @@
-import { HubError, Message, StoreType, getDefaultStoreLimit } from "@farcaster/hub-nodejs";
+import { HubError, HubErrorCode, HubEvent, Message, StoreType, getDefaultStoreLimit } from "@farcaster/hub-nodejs";
 import { createReactionStore, db_clear, getAllMessagesByFid, merge } from "../../rustfunctions.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import { PageOptions, StorePruneOptions } from "./types.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { ResultAsync } from "neverthrow";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
@@ -63,8 +64,22 @@ export class ReactionStoreProxy {
 
     // Encode the message to bytes
     const messageBytes = Message.encode(message).finish();
-    const result = await merge(this.rustReactionStore, messageBytes);
-    return result;
+    const result = await ResultAsync.fromPromise(merge(this.rustReactionStore, messageBytes), (e) => {
+      // Split the error string by "/", the first part is the error code, the second part is the error message
+      const [errCode, errMsg] = (e as Error).message.split("/");
+      return new HubError(errCode as HubErrorCode, errMsg ?? "");
+    });
+
+    if (result.isErr()) {
+      throw result.error;
+    } else {
+      // Read the result bytes as a HubEvent
+      const resultBytes = result.value;
+      const hubEvent = HubEvent.decode(resultBytes);
+
+      void this._eventHandler.processRustCommitedTransaction(hubEvent);
+      return hubEvent.id;
+    }
   }
 
   async getAllMessagesByFid(fid: number, pageOptions: PageOptions = {}): Promise<Message[]> {

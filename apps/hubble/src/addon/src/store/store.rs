@@ -325,7 +325,7 @@ impl Store {
         Ok(conflicts)
     }
 
-    pub fn merge(&self, message: &Message) -> Result<u64, HubError> {
+    pub fn merge(&self, message: &Message) -> Result<Vec<u8>, HubError> {
         // Grab a merge lock. The typescript code does this by individual fid, but we don't have a
         // good way of doing that efficiently here. We'll just use an array of locks, with each fid
         // deterministically mapped to a lock.
@@ -358,7 +358,7 @@ impl Store {
         &self,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
-    ) -> Result<u64, HubError> {
+    ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
         let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
 
@@ -371,21 +371,27 @@ impl Store {
         self.put_add_transaction(&txn, &ts_hash, message)?;
 
         // Event handler
+        let mut hub_event = self.merge_event_args(message, merge_conflicts);
+
         let id = self
             .store_event_handler
-            .commit_transaction(&txn, self.merge_event_args(message, merge_conflicts))?;
+            .commit_transaction(&txn, &mut hub_event)?;
 
         // Commit the transaction
         txn.commit()?;
 
-        Ok(id)
+        hub_event.id = id;
+        // Serialize the hub_event
+        let hub_event_bytes = hub_event.encode_to_vec();
+
+        Ok(hub_event_bytes)
     }
 
     pub fn merge_remove(
         &self,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
-    ) -> Result<u64, HubError> {
+    ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
         let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
 
@@ -398,14 +404,20 @@ impl Store {
         self.put_remove_transaction(&txn, message)?;
 
         // Event handler
+        let mut hub_event = self.merge_event_args(message, merge_conflicts);
+
         let id = self
             .store_event_handler
-            .commit_transaction(&txn, self.merge_event_args(message, merge_conflicts))?;
+            .commit_transaction(&txn, &mut hub_event)?;
 
         // Commit the transaction
         txn.commit()?;
 
-        Ok(id)
+        hub_event.id = id;
+        // Serialize the hub_event
+        let hub_event_bytes = hub_event.encode_to_vec();
+
+        Ok(hub_event_bytes)
     }
 
     fn merge_event_args(&self, message: &Message, merge_conflicts: Vec<Message>) -> HubEvent {
@@ -513,13 +525,27 @@ impl Store {
         // let pool = store.pool.clone();
         // pool.lock().unwrap().execute(move || {
         let result = if message.is_err() {
-            -2
+            let e = message.unwrap_err();
+            Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: e.to_string(),
+            })
         } else {
             let m = message.unwrap();
-            store.merge(&m).map(|r| r as i64).unwrap_or(-1)
+            store.merge(&m)
         };
 
-        deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
+        // deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
+        deferred.settle_with(&channel, move |mut cx| match result {
+            Ok(hub_event_bytes) => {
+                let mut js_buffer = cx.buffer(hub_event_bytes.len())?;
+                js_buffer
+                    .as_mut_slice(&mut cx)
+                    .copy_from_slice(&hub_event_bytes);
+                Ok(js_buffer)
+            }
+            Err(e) => cx.throw_error(format!("{}/{}", e.code, e.message)),
+        });
         // });
 
         Ok(promise)

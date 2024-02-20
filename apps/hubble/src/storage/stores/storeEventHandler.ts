@@ -387,6 +387,12 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       });
   }
 
+  async processRustCommitedTransaction(event: HubEvent): HubAsyncResult<void> {
+    void this._storageCache.processEvent(event);
+    void this.broadcastEvent(event);
+    return ok(undefined);
+  }
+
   async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
     const toId = makeEventId(Date.now() - FARCASTER_EPOCH - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
 
