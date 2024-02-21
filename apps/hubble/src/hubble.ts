@@ -692,6 +692,7 @@ export class Hub implements HubInterface {
       applicationScoreCap: this.options.applicationScoreCap,
       strictNoSign: this.strictNoSign,
       connectToDbPeers: this.options.connectToDbPeers,
+      db: this.rocksDB,
     });
 
     await this.registerEventHandlers();

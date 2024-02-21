@@ -73,6 +73,8 @@ export interface NodeOptions {
   strictNoSign?: boolean | undefined;
   /** Whether to connect to peers that were remembered in the DB */
   connectToDbPeers?: boolean | undefined;
+  /** Message DB */
+  db?: RocksDB | undefined;
 }
 
 // A common return type for several methods on the libp2p node.

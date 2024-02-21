@@ -36,6 +36,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
 import { statsd } from "../../utils/statsd.js";
+import { HubMessageCache } from "../hubMessageCache.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -82,7 +83,7 @@ export class LibP2PNode {
   /** Returns the GossipSub instance used by the Node */
   get gossip() {
     const pubsub = this._node?.pubsub;
-    return pubsub ? (pubsub as GossipSub) : undefined;
+    return pubsub ? (pubsub as unknown as GossipSub) : undefined;
   }
 
   subscribe(topic: string) {
@@ -118,15 +119,18 @@ export class LibP2PNode {
       ? parseInt(process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"])
       : 3 * 1000;
 
+    const hmc = new HubMessageCache<void>(10, 7, options.db);
     const gossip = gossipsub({
-      emitSelf: false,
-      gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       allowPublishToZeroPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
+      canRelayMessage: true,
+      directPeers: options.directPeers || [],
+      emitSelf: false,
+      gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
-      directPeers: options.directPeers || [],
-      canRelayMessage: true,
+      seenCache: hmc,
+      messageCache: hmc,
       seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
       scoreParams: {
