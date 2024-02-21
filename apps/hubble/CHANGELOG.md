@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.10.2
+
+### Patch Changes
+
+- 915c6adb: fix: Fix hub crash from bad message data submit
+
 ## 1.10.1
 
 ### Patch Changes
