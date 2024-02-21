@@ -5,9 +5,8 @@ use crate::{
 };
 use neon::context::Context;
 use neon::types::buffer::TypedArray;
-use neon::types::{Finalize, JsArray, JsBox, JsBuffer, JsNumber};
+use neon::types::{Finalize, JsBox, JsBuffer, JsNumber};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
-use neon::{object::Object, types::JsBoolean};
 use prost::Message as _;
 use std::borrow::Borrow;
 use std::sync::{Arc, Mutex};
@@ -15,7 +14,7 @@ use threadpool::ThreadPool;
 
 use super::{
     bytes_compare, get_message, make_message_primary_key, message, put_message_transaction,
-    utils::{self, encode_messages_to_js_array},
+    utils::{self, encode_messages_to_js_array, get_page_options},
     StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
@@ -30,6 +29,15 @@ impl From<rocksdb::Error> for HubError {
     fn from(e: rocksdb::Error) -> HubError {
         HubError {
             code: "db.internal_error".to_string(),
+            message: e.to_string(),
+        }
+    }
+}
+
+impl From<neon::result::Throw> for HubError {
+    fn from(e: neon::result::Throw) -> HubError {
+        HubError {
+            code: "bad_request.validation_failure".to_string(),
             message: e.to_string(),
         }
     }
@@ -659,23 +667,17 @@ impl Store {
         let store = (**store_js_box.borrow()).clone();
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-        let page_size = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as usize;
 
-        let page_token_arg = cx.argument::<JsBuffer>(2)?;
-        let page_token = page_token_arg.as_slice(&cx).to_vec();
-        let reverse = cx.argument::<JsBoolean>(3)?.value(&mut cx);
+        let page_options = match get_page_options(&mut cx, 2) {
+            Ok(page_options) => page_options,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
 
         let channel = cx.channel();
 
         let (deferred, promise) = cx.promise();
 
-        let messages = match store.get_all_messages_by_fid(fid, {
-            &PageOptions {
-                page_size: Some(page_size),
-                page_token: Some(page_token.to_vec()),
-                reverse,
-            }
-        }) {
+        let messages = match store.get_all_messages_by_fid(fid, &page_options) {
             Ok(messages) => messages,
             Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
         };

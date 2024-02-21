@@ -8,7 +8,9 @@ const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
 import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
-import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
+import { PageOptions } from "./storage/stores/types.js";
+
+export class RustDynStore {}
 
 // Use this function in TypeScript to call the rust code.
 export function nativeBlake3Hash20(data: Uint8Array): Uint8Array {
@@ -47,40 +49,32 @@ export const rustErrorToHubError = (e: unknown) => {
 };
 
 /** Create a reaction Store */
-export const createReactionStore = () => {
+export const createReactionStore = (): RustDynStore => {
   const store = lib.createReactionStore();
   // console.log("store is ", store);
   // console.log("merge is ", lib.merge);
 
-  return store;
+  return store as RustDynStore;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const db_clear = async (store: any) => {
+export const db_clear = async (store: RustDynStore) => {
   return await lib.db_clear.call(store);
 };
 
 /** This is dynamically dispatched to any Store that you pass in */
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const merge = async (store: any, messageBytes: Uint8Array): Promise<Buffer> => {
+
+export const merge = async (store: RustDynStore, messageBytes: Uint8Array): Promise<Buffer> => {
   return await lib.merge.call(store, messageBytes);
 };
 
 /** This is dynamically dispatched to any Store, and the messages will be returned from that store */
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export const getAllMessagesByFid = async (store: any, fid: number, pageOptions: PageOptions): Promise<Buffer[]> => {
-  return await lib.getAllMessagesByFid.call(
-    store,
-    fid,
-    pageOptions.pageSize ?? PAGE_SIZE_MAX,
-    pageOptions.pageToken ?? new Uint8Array(0),
-    pageOptions.reverse ?? false,
-  );
+  return await lib.getAllMessagesByFid.call(store, fid, pageOptions);
 };
 
 export const getReactionAdd = async (
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  store: any,
+  store: RustDynStore,
   fid: number,
   type: number,
   targetCastIdBytes: Buffer,
@@ -90,8 +84,7 @@ export const getReactionAdd = async (
 };
 
 export const getReactionRemove = async (
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  store: any,
+  store: RustDynStore,
   fid: number,
   type: number,
   targetCastIdBytes: Buffer,
@@ -101,35 +94,19 @@ export const getReactionRemove = async (
 };
 
 export const getReactionAddsByFid = async (
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  store: any,
+  store: RustDynStore,
   fid: number,
   type: number,
   pageOptions: PageOptions,
 ): Promise<Buffer[]> => {
-  return await lib.getReactionAddsByFid.call(
-    store,
-    fid,
-    type,
-    pageOptions.pageSize ?? PAGE_SIZE_MAX,
-    pageOptions.pageToken ?? new Uint8Array(0),
-    pageOptions.reverse ?? false,
-  );
+  return await lib.getReactionAddsByFid.call(store, fid, type, pageOptions);
 };
 
 export const getReactionRemovesByFid = async (
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  store: any,
+  store: RustDynStore,
   fid: number,
   type: number,
   pageOptions: PageOptions,
 ): Promise<Buffer[]> => {
-  return await lib.getReactionRemovesByFid.call(
-    store,
-    fid,
-    type,
-    pageOptions.pageSize ?? PAGE_SIZE_MAX,
-    pageOptions.pageToken ?? new Uint8Array(0),
-    pageOptions.reverse ?? false,
-  );
+  return await lib.getReactionRemovesByFid.call(store, fid, type, pageOptions);
 };

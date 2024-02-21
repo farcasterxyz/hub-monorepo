@@ -11,6 +11,7 @@ import {
   getDefaultStoreLimit,
 } from "@farcaster/hub-nodejs";
 import {
+  RustDynStore,
   createReactionStore,
   db_clear,
   getAllMessagesByFid,
@@ -29,9 +30,7 @@ import { ResultAsync } from "neverthrow";
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
 export class ReactionStoreProxy {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  private rustReactionStore: any; // TODO: Add type
-
+  private rustReactionStore: RustDynStore;
   protected _eventHandler: StoreEventHandler;
 
   private _postfix: UserMessagePostfix;
