@@ -36,7 +36,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
 import { statsd } from "../../utils/statsd.js";
-import { HubMessageCache } from "../hubMessageCache.js";
+import { HubMessageCache } from "./hubMessageCache.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
