@@ -2,11 +2,11 @@ use prost::Message;
 
 use crate::{
     db::{RocksDB, RocksDbTransaction},
-    protos::{CastId, Message as MessageProto},
+    protos::{CastId, Message as MessageProto, MessageType},
 };
 
 use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
-use std::ops::Deref;
+use std::{convert::TryFrom, ops::Deref};
 
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;
@@ -117,6 +117,36 @@ pub enum UserPostfix {
     UserNameProofAdds = 99,
 }
 
+pub fn type_to_set_postfix(message_type: MessageType) -> UserPostfix {
+    if message_type == MessageType::CastAdd || message_type == MessageType::CastRemove {
+        return UserPostfix::CastMessage;
+    }
+
+    if message_type == MessageType::ReactionAdd || message_type == MessageType::ReactionRemove {
+        return UserPostfix::ReactionMessage;
+    }
+
+    if message_type == MessageType::VerificationAddEthAddress
+        || message_type == MessageType::VerificationRemove
+    {
+        return UserPostfix::VerificationMessage;
+    }
+
+    if message_type == MessageType::UserDataAdd {
+        return UserPostfix::UserDataMessage;
+    }
+
+    if message_type == MessageType::LinkAdd || message_type == MessageType::LinkRemove {
+        return UserPostfix::LinkMessage;
+    }
+
+    if message_type == MessageType::UsernameProof {
+        return UserPostfix::UsernameProofMessage;
+    }
+
+    panic!("invalid type");
+}
+
 pub fn make_ts_hash(timestamp: u32, hash: &Vec<u8>) -> Result<[u8; TS_HASH_LENGTH], HubError> {
     // No need to check if timestamp > 2^32 because it's already a u32
 
@@ -203,6 +233,7 @@ pub fn get_message(
     ts_hash: &[u8; TS_HASH_LENGTH],
 ) -> Result<Option<MessageProto>, HubError> {
     let key = make_message_primary_key(fid, set, Some(ts_hash));
+    // println!("get_message key: {:?}", key);
 
     match db.get(&key)? {
         Some(bytes) => match MessageProto::decode(bytes.as_slice()) {
@@ -293,10 +324,12 @@ pub fn put_message_transaction(
 
     let primary_key = make_message_primary_key(
         message.data.as_ref().unwrap().fid as u32,
-        message.data.as_ref().unwrap().r#type as u8,
+        type_to_set_postfix(MessageType::try_from(message.data.as_ref().unwrap().r#type).unwrap())
+            as u8,
         Some(&ts_hash),
     );
     txn.put(&primary_key, &message.encode_to_vec())?;
+    // println!("put_message_transaction primary_key: {:?}", primary_key);
 
     let by_signer_key = make_message_by_signer_key(
         message.data.as_ref().unwrap().fid as u32,
@@ -318,7 +351,8 @@ pub fn delete_message_transaction(
 
     let primary_key = make_message_primary_key(
         message.data.as_ref().unwrap().fid as u32,
-        message.data.as_ref().unwrap().r#type as u8,
+        type_to_set_postfix(MessageType::try_from(message.data.as_ref().unwrap().r#type).unwrap())
+            as u8,
         Some(&ts_hash),
     );
     txn.delete(&primary_key)?;

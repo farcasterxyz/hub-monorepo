@@ -93,5 +93,17 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("merge", Store::js_merge)?;
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
 
+    // ReactionStore methods
+    cx.export_function("getReactionAdd", ReactionStore::js_get_reaction_add)?;
+    cx.export_function("getReactionRemove", ReactionStore::js_get_reaction_remove)?;
+    cx.export_function(
+        "getReactionAddsByFid",
+        ReactionStore::js_get_reaction_adds_by_fid,
+    )?;
+    cx.export_function(
+        "getReactionRemovesByFid",
+        ReactionStore::js_get_reaction_removes_by_fid,
+    )?;
+
     Ok(())
 }

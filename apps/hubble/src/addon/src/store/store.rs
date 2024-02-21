@@ -14,7 +14,8 @@ use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
 use super::{
-    bytes_compare, get_message, make_message_primary_key, message, put_message_transaction, utils,
+    bytes_compare, get_message, make_message_primary_key, message, put_message_transaction,
+    utils::{self, encode_messages_to_js_array},
     StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
@@ -168,11 +169,16 @@ impl Store {
         }
 
         let removes_key = self.store_def.make_remove_key(partial_message);
+        // println!("trying to get removes key {:?}", removes_key);
         let message_ts_hash = self.db.get(&removes_key)?;
+        // println!("got removes key ts_hash: {:?}", message_ts_hash);
 
         if message_ts_hash.is_none() {
+            // println!("get_remove() message_ts_hash is none");
             return Ok(None);
         }
+
+        // println!("get_remove() message_ts_hash: {:?}", message_ts_hash);
 
         get_message(
             &self.db,
@@ -265,6 +271,7 @@ impl Store {
     fn put_remove_transaction(
         &self,
         txn: &RocksDbTransaction<'_>,
+        ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
         if !self.store_def.remove_type_supported() {
@@ -277,7 +284,7 @@ impl Store {
         put_message_transaction(txn, &message)?;
 
         let removes_key = self.store_def.make_remove_key(message);
-        txn.put(&removes_key, &message.hash)?;
+        txn.put(&removes_key, ts_hash)?;
 
         Ok(())
     }
@@ -498,7 +505,7 @@ impl Store {
         self.delete_many_transaction(&txn, merge_conflicts.clone())?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
-        self.put_remove_transaction(&txn, message)?;
+        self.put_remove_transaction(&txn, ts_hash, message)?;
 
         // Event handler
         let mut hub_event = self.merge_event_args(message, merge_conflicts);
@@ -655,36 +662,26 @@ impl Store {
         let page_size = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as usize;
 
         let page_token_arg = cx.argument::<JsBuffer>(2)?;
-        let reverse_arg = cx.argument::<JsBoolean>(3)?;
-
         let page_token = page_token_arg.as_slice(&cx).to_vec();
-        let reverse = reverse_arg.value(&mut cx);
+        let reverse = cx.argument::<JsBoolean>(3)?.value(&mut cx);
 
         let channel = cx.channel();
 
         let (deferred, promise) = cx.promise();
 
-        let messages = store.get_all_messages_by_fid(fid, {
+        let messages = match store.get_all_messages_by_fid(fid, {
             &PageOptions {
                 page_size: Some(page_size),
                 page_token: Some(page_token.to_vec()),
                 reverse,
             }
-        });
+        }) {
+            Ok(messages) => messages,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
 
         deferred.settle_with(&channel, move |mut cx| {
-            let messages = messages.unwrap();
-            let js_messages = JsArray::new(&mut cx, messages.len() as u32);
-            for (i, message) in messages.iter().enumerate() {
-                let message_bytes = message.encode_to_vec();
-                let mut js_buffer = cx.buffer(message_bytes.len())?;
-                js_buffer
-                    .as_mut_slice(&mut cx)
-                    .copy_from_slice(&message_bytes);
-
-                js_messages.set(&mut cx, i as u32, js_buffer).unwrap();
-            }
-            Ok(js_messages)
+            encode_messages_to_js_array(&mut cx, messages)
         });
 
         Ok(promise)

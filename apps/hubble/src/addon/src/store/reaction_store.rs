@@ -1,4 +1,14 @@
-use std::convert::TryInto;
+use std::{borrow::Borrow, convert::TryInto, sync::Arc};
+
+use neon::{
+    context::{Context, FunctionContext},
+    object::Object,
+    result::JsResult,
+    types::{
+        buffer::TypedArray, JsArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsPromise, JsString,
+    },
+};
+use prost::Message as _;
 
 use crate::{
     db::RocksDbTransaction,
@@ -8,6 +18,7 @@ use crate::{
 use super::{
     make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
+    utils::encode_messages_to_js_array,
     HubError, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
 };
 use crate::protos::message_data;
@@ -226,10 +237,65 @@ impl ReactionStore {
         store.get_add(&partial_message)
     }
 
+    pub fn js_get_reaction_add(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let channel = cx.channel();
+
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
+
+        let target_cast_id_buffer = cx.argument::<JsBuffer>(2)?;
+        let target_cast_id_bytes = target_cast_id_buffer.as_slice(&cx);
+        let target_cast_id = if target_cast_id_bytes.len() > 0 {
+            match protos::CastId::decode(target_cast_id_bytes) {
+                Ok(cast_id) => Some(cast_id),
+                Err(e) => return cx.throw_error(e.to_string()),
+            }
+        } else {
+            None
+        };
+
+        let target_url = cx.argument::<JsString>(3).map(|s| s.value(&mut cx))?;
+
+        // We need at least one of target_cast_id or target_url
+        if target_cast_id.is_none() && target_url.is_empty() {
+            return cx.throw_error("target_cast_id or target_url is required");
+        }
+
+        let target = if target_cast_id.is_some() {
+            Some(Target::TargetCastId(target_cast_id.unwrap()))
+        } else {
+            Some(Target::TargetUrl(target_url))
+        };
+
+        let result = match ReactionStore::get_reaction_add(&store, fid, reaction_type, target) {
+            Ok(Some(message)) => message.encode_to_vec(),
+            Ok(None) => cx.throw_error(format!(
+                "{}/{} for {}",
+                "not_found", "reactionAddMessage not found", fid
+            ))?,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
+
+        let (deferred, promise) = cx.promise();
+        deferred.settle_with(&channel, move |mut cx| {
+            let mut js_buffer = cx.buffer(result.len())?;
+            js_buffer.as_mut_slice(&mut cx).copy_from_slice(&result);
+            Ok(js_buffer)
+        });
+
+        Ok(promise)
+    }
+
     pub fn get_reaction_remove(
         store: &Store,
         fid: u32,
-        reaction_type: ReactionType,
+        r#type: i32,
         target: Option<Target>,
     ) -> Result<Option<protos::Message>, HubError> {
         let partial_message = protos::Message {
@@ -237,7 +303,7 @@ impl ReactionStore {
                 fid: fid as u64,
                 r#type: MessageType::ReactionRemove.into(),
                 body: Some(protos::message_data::Body::ReactionBody(ReactionBody {
-                    r#type: reaction_type as i32,
+                    r#type,
                     target: target.clone(),
                 })),
                 ..Default::default()
@@ -245,13 +311,71 @@ impl ReactionStore {
             ..Default::default()
         };
 
-        store.get_remove(&partial_message)
+        let r = store.get_remove(&partial_message);
+        // println!("got reaction remove: {:?}", r);
+
+        r
+    }
+
+    pub fn js_get_reaction_remove(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let channel = cx.channel();
+
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
+
+        let target_cast_id_buffer = cx.argument::<JsBuffer>(2)?;
+        let target_cast_id_bytes = target_cast_id_buffer.as_slice(&cx);
+        let target_cast_id = if target_cast_id_bytes.len() > 0 {
+            match protos::CastId::decode(target_cast_id_bytes) {
+                Ok(cast_id) => Some(cast_id),
+                Err(e) => return cx.throw_error(e.to_string()),
+            }
+        } else {
+            None
+        };
+
+        let target_url = cx.argument::<JsString>(3).map(|s| s.value(&mut cx))?;
+
+        // We need at least one of target_cast_id or target_url
+        if target_cast_id.is_none() && target_url.is_empty() {
+            return cx.throw_error("target_cast_id or target_url is required");
+        }
+
+        let target = if target_cast_id.is_some() {
+            Some(Target::TargetCastId(target_cast_id.unwrap()))
+        } else {
+            Some(Target::TargetUrl(target_url))
+        };
+
+        let result = match ReactionStore::get_reaction_remove(&store, fid, reaction_type, target) {
+            Ok(Some(message)) => message.encode_to_vec(),
+            Ok(None) => cx.throw_error(format!(
+                "{}/{} for {}",
+                "not_found", "reactionRemoveMessage not found", fid
+            ))?,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
+
+        let (deferred, promise) = cx.promise();
+        deferred.settle_with(&channel, move |mut cx| {
+            let mut js_buffer = cx.buffer(result.len())?;
+            js_buffer.as_mut_slice(&mut cx).copy_from_slice(&result);
+            Ok(js_buffer)
+        });
+
+        Ok(promise)
     }
 
     pub fn get_reaction_adds_by_fid(
         store: &Store,
         fid: u32,
-        reaction_type: ReactionType,
+        reaction_type: i32,
         page_options: &PageOptions,
     ) -> Result<Vec<protos::Message>, HubError> {
         store.get_adds_by_fid(
@@ -260,7 +384,7 @@ impl ReactionStore {
             Some(|message: &Message| {
                 if let Some(reaction_body) = &message.data.as_ref().unwrap().body {
                     if let protos::message_data::Body::ReactionBody(reaction_body) = reaction_body {
-                        if reaction_body.r#type == reaction_type as i32 {
+                        if reaction_type == 0 || reaction_body.r#type == reaction_type {
                             return true;
                         }
                     }
@@ -271,10 +395,55 @@ impl ReactionStore {
         )
     }
 
+    pub fn js_get_reaction_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let channel = cx.channel();
+
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
+
+        let page_size = cx.argument::<JsNumber>(2).unwrap().value(&mut cx) as usize;
+        let page_token_arg = cx.argument::<JsBuffer>(3)?;
+        let page_token = page_token_arg.as_slice(&cx).to_vec();
+        let reverse = cx.argument::<JsBoolean>(4).unwrap().value(&mut cx);
+
+        let page_options = PageOptions {
+            page_size: Some(page_size),
+            page_token: if page_token.len() > 0 {
+                Some(page_token)
+            } else {
+                None
+            },
+            reverse,
+        };
+
+        let messages = match ReactionStore::get_reaction_adds_by_fid(
+            &store,
+            fid,
+            reaction_type,
+            &page_options,
+        ) {
+            Ok(messages) => messages,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
+
+        let (deferred, promise) = cx.promise();
+        deferred.settle_with(&channel, move |mut cx| {
+            encode_messages_to_js_array(&mut cx, messages)
+        });
+
+        Ok(promise)
+    }
+
     pub fn get_reaction_removes_by_fid(
         store: &Store,
         fid: u32,
-        reaction_type: ReactionType,
+        reaction_type: i32,
         page_options: &PageOptions,
     ) -> Result<Vec<protos::Message>, HubError> {
         store.get_removes_by_fid(
@@ -283,7 +452,7 @@ impl ReactionStore {
             Some(|message: &Message| {
                 if let Some(reaction_body) = &message.data.as_ref().unwrap().body {
                     if let protos::message_data::Body::ReactionBody(reaction_body) = reaction_body {
-                        if reaction_body.r#type == reaction_type as i32 {
+                        if reaction_type == 0 || reaction_body.r#type == reaction_type {
                             return true;
                         }
                     }
@@ -292,6 +461,51 @@ impl ReactionStore {
                 false
             }),
         )
+    }
+
+    pub fn js_get_reaction_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let channel = cx.channel();
+
+        let store_js_box = cx
+            .this()
+            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
+            .unwrap();
+        let store = (**store_js_box.borrow()).clone();
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
+
+        let page_size = cx.argument::<JsNumber>(2).unwrap().value(&mut cx) as usize;
+        let page_token_arg = cx.argument::<JsBuffer>(3)?;
+        let page_token = page_token_arg.as_slice(&cx).to_vec();
+        let reverse = cx.argument::<JsBoolean>(4).unwrap().value(&mut cx);
+
+        let page_options = PageOptions {
+            page_size: Some(page_size),
+            page_token: if page_token.len() > 0 {
+                Some(page_token)
+            } else {
+                None
+            },
+            reverse,
+        };
+
+        let messages = match ReactionStore::get_reaction_removes_by_fid(
+            &store,
+            fid,
+            reaction_type,
+            &page_options,
+        ) {
+            Ok(messages) => messages,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
+
+        let (deferred, promise) = cx.promise();
+        deferred.settle_with(&channel, move |mut cx| {
+            encode_messages_to_js_array(&mut cx, messages)
+        });
+
+        Ok(promise)
     }
 
     pub fn get_all_reaction_messages_by_fid(

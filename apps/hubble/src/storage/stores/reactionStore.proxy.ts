@@ -1,7 +1,28 @@
-import { HubError, HubErrorCode, HubEvent, Message, StoreType, getDefaultStoreLimit } from "@farcaster/hub-nodejs";
-import { createReactionStore, db_clear, getAllMessagesByFid, merge } from "../../rustfunctions.js";
+import {
+  CastId,
+  HubError,
+  HubErrorCode,
+  HubEvent,
+  Message,
+  ReactionAddMessage,
+  ReactionRemoveMessage,
+  ReactionType,
+  StoreType,
+  getDefaultStoreLimit,
+} from "@farcaster/hub-nodejs";
+import {
+  createReactionStore,
+  db_clear,
+  getAllMessagesByFid,
+  getReactionAdd,
+  getReactionAddsByFid,
+  getReactionRemove,
+  getReactionRemovesByFid,
+  merge,
+  rustErrorToHubError,
+} from "../../rustfunctions.js";
 import StoreEventHandler from "./storeEventHandler.js";
-import { PageOptions, StorePruneOptions } from "./types.js";
+import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { ResultAsync } from "neverthrow";
 
@@ -64,17 +85,13 @@ export class ReactionStoreProxy {
 
     // Encode the message to bytes
     const messageBytes = Message.encode(message).finish();
-    const result = await ResultAsync.fromPromise(merge(this.rustReactionStore, messageBytes), (e) => {
-      // Split the error string by "/", the first part is the error code, the second part is the error message
-      const [errCode, errMsg] = (e as Error).message.split("/");
-      return new HubError(errCode as HubErrorCode, errMsg ?? "");
-    });
+    const result = await ResultAsync.fromPromise(merge(this.rustReactionStore, messageBytes), rustErrorToHubError);
 
     if (result.isErr()) {
       throw result.error;
     } else {
       // Read the result bytes as a HubEvent
-      const resultBytes = result.value;
+      const resultBytes = new Uint8Array(result.value);
       const hubEvent = HubEvent.decode(resultBytes);
 
       void this._eventHandler.processRustCommitedTransaction(hubEvent);
@@ -86,9 +103,82 @@ export class ReactionStoreProxy {
     const message_bytes_array: Uint8Array[] = await getAllMessagesByFid(this.rustReactionStore, fid, pageOptions);
 
     const messages: Message[] = message_bytes_array.map((message_bytes) => {
-      return Message.decode(message_bytes);
+      return Message.decode(new Uint8Array(message_bytes));
     });
 
     return messages;
+  }
+
+  async getReactionAdd(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionAddMessage> {
+    let targetCastId = Buffer.from([]);
+    let targetUrl = "";
+
+    if (typeof target === "string") {
+      targetUrl = target;
+    } else {
+      targetCastId = Buffer.from(CastId.encode(target).finish());
+    }
+
+    const result = await ResultAsync.fromPromise(
+      getReactionAdd(this.rustReactionStore, fid, type, targetCastId, targetUrl),
+      rustErrorToHubError,
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return Message.decode(new Uint8Array(result.value)) as ReactionAddMessage;
+  }
+
+  async getReactionRemove(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionRemoveMessage> {
+    let targetCastId = Buffer.from([]);
+    let targetUrl = "";
+
+    if (typeof target === "string") {
+      targetUrl = target;
+    } else {
+      targetCastId = Buffer.from(CastId.encode(target).finish());
+    }
+
+    const result = await ResultAsync.fromPromise(
+      getReactionRemove(this.rustReactionStore, fid, type, targetCastId, targetUrl),
+      rustErrorToHubError,
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return Message.decode(new Uint8Array(result.value)) as ReactionRemoveMessage;
+  }
+
+  async getReactionAddsByFid(
+    fid: number,
+    type?: ReactionType,
+    pageOptions?: PageOptions,
+  ): Promise<MessagesPage<ReactionAddMessage>> {
+    const message_bytes_array = await getReactionAddsByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
+
+    const messages = message_bytes_array.map((message_bytes) => {
+      return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
+    });
+
+    return { messages };
+  }
+
+  async getReactionRemovesByFid(
+    fid: number,
+    type?: ReactionType,
+    pageOptions?: PageOptions,
+  ): Promise<MessagesPage<ReactionRemoveMessage>> {
+    const message_bytes_array = await getReactionRemovesByFid(
+      this.rustReactionStore,
+      fid,
+      type ?? 0,
+      pageOptions ?? {},
+    );
+
+    const messages = message_bytes_array.map((message_bytes) => {
+      return Message.decode(new Uint8Array(message_bytes)) as ReactionRemoveMessage;
+    });
+
+    return { messages };
   }
 }
