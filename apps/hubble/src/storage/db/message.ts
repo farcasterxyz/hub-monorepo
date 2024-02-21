@@ -135,7 +135,12 @@ export const getMessage = async <T extends Message>(
 };
 
 export const isMessageInDB = async (db: RocksDB, message: Message): Promise<boolean> => {
-  const exists = await ResultAsync.fromPromise(db.get(makeMessagePrimaryKeyFromMessage(message)), (e) => e);
+  const exists = await ResultAsync.fromPromise(
+    (async () => {
+      return db.get(makeMessagePrimaryKeyFromMessage(message));
+    })(),
+    (e) => e,
+  );
   return exists.isOk() && exists.value.length > 0;
 };
 

@@ -1365,8 +1365,9 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
-    // If this is a dup, don't bother processing it
-    if (await isMessageInDB(this.rocksDB, submittedMessage)) {
+    // If this is a dup, don't bother processing it. Only do this for gossip messages since rpc messages
+    // haven't been validated yet
+    if (source === "gossip" && (await isMessageInDB(this.rocksDB, submittedMessage))) {
       log.debug({ source }, "submitMessage rejected: Message already exists");
       return err(new HubError("bad_request.duplicate", "message has already been merged"));
     }
