@@ -43,6 +43,30 @@ impl RocksDB {
         self.db.transaction()
     }
 
+    pub fn for_each_iterator_by_prefix<F>(&self, prefix: &[u8], mut f: F) -> Result<(), HubError>
+    where
+        F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
+    {
+        let mut iter = self.db.iterator(rocksdb::IteratorMode::From(
+            prefix,
+            rocksdb::Direction::Forward,
+        ));
+        for item in iter {
+            let (key, value) = item.map_err(|e| HubError {
+                code: "db.internal_error".to_string(),
+                message: e.to_string(),
+            })?;
+            if key.starts_with(prefix) {
+                if !f(&key, &value)? {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
     pub fn clear(&self) -> Result<u32, HubError> {
         let mut deleted;
 

@@ -5,7 +5,7 @@ use crate::{
     protos::{CastId, Message as MessageProto},
 };
 
-use super::store::HubError;
+use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
 use std::ops::Deref;
 
 pub const TS_HASH_LENGTH: usize = 24;
@@ -216,10 +216,40 @@ pub fn get_message(
     }
 }
 
+pub fn get_many_messages(
+    db: &RocksDB,
+    primary_keys: Vec<Vec<u8>>,
+) -> Result<Vec<MessageProto>, HubError> {
+    let mut messages = Vec::new();
+
+    for key in primary_keys {
+        if let Ok(Some(value)) = db.get(&key) {
+            match MessageProto::decode(value.as_slice()) {
+                Ok(message) => {
+                    messages.push(message);
+                }
+                Err(_) => {
+                    return Err(HubError {
+                        code: "db.internal_error".to_string(),
+                        message: "could not decode message".to_string(),
+                    })
+                }
+            }
+        } else {
+            return Err(HubError {
+                code: "db.internal_error".to_string(),
+                message: format!("could not get message with key: {:?}", key),
+            });
+        }
+    }
+
+    Ok(messages)
+}
+
 pub fn get_messages_page_by_prefix<F>(
     db: &RocksDB,
     prefix: &[u8],
-    limit: usize,
+    page_options: &PageOptions,
     filter: F,
 ) -> Result<Vec<MessageProto>, HubError>
 where
@@ -228,7 +258,7 @@ where
     let mut messages = Vec::new();
     let mut iter = db.db.prefix_iterator(prefix);
 
-    for _ in 0..limit {
+    for _ in 0..page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
         if let Some(Ok((key, value))) = iter.next() {
             if key.starts_with(prefix) {
                 match MessageProto::decode(value.deref()) {

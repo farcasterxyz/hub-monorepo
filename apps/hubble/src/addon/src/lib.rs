@@ -1,9 +1,8 @@
 use std::{convert::TryInto, sync::Arc};
 
-use crate::store::ReactionStore;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
-use store::Store;
+use store::{ReactionStore, Store};
 
 mod db;
 mod store;

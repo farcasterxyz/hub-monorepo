@@ -10,14 +10,11 @@ use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use neon::{object::Object, types::JsBoolean};
 use prost::Message as _;
 use std::borrow::Borrow;
-use std::{
-    convert::TryInto,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
 use super::{
-    bytes_compare, get_message, make_message_primary_key, message, put_message_transaction,
+    bytes_compare, get_message, make_message_primary_key, message, put_message_transaction, utils,
     StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
@@ -115,6 +112,120 @@ impl Store {
     // fn log(&self, message: &str) {
     //     // println!("{}", message);
     // }
+
+    pub fn db(&self) -> &RocksDB {
+        &self.db
+    }
+
+    pub fn postfix(&self) -> u8 {
+        self.store_def.postfix()
+    }
+
+    pub fn get_add(
+        &self,
+        partial_message: &protos::Message,
+    ) -> Result<Option<protos::Message>, HubError> {
+        // First check the fid
+        if partial_message.data.is_none() || partial_message.data.as_ref().unwrap().fid == 0 {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "fid is required".to_string(),
+            });
+        }
+
+        let adds_key = self.store_def.make_add_key(partial_message);
+        let message_ts_hash = self.db.get(&adds_key)?;
+
+        if message_ts_hash.is_none() {
+            return Ok(None);
+        }
+
+        get_message(
+            &self.db,
+            partial_message.data.as_ref().unwrap().fid as u32,
+            self.store_def.postfix(),
+            &utils::vec_to_u8_24(&message_ts_hash)?,
+        )
+    }
+
+    pub fn get_remove(
+        &self,
+        partial_message: &protos::Message,
+    ) -> Result<Option<protos::Message>, HubError> {
+        if !self.store_def.remove_type_supported() {
+            return Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: "remove type not supported".to_string(),
+            });
+        }
+
+        // First check the fid
+        if partial_message.data.is_none() || partial_message.data.as_ref().unwrap().fid == 0 {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "fid is required".to_string(),
+            });
+        }
+
+        let removes_key = self.store_def.make_remove_key(partial_message);
+        let message_ts_hash = self.db.get(&removes_key)?;
+
+        if message_ts_hash.is_none() {
+            return Ok(None);
+        }
+
+        get_message(
+            &self.db,
+            partial_message.data.as_ref().unwrap().fid as u32,
+            self.store_def.postfix(),
+            &utils::vec_to_u8_24(&message_ts_hash)?,
+        )
+    }
+
+    pub fn get_adds_by_fid<F>(
+        &self,
+        fid: u32,
+        page_options: &PageOptions,
+        filter: Option<F>,
+    ) -> Result<Vec<protos::Message>, HubError>
+    where
+        F: Fn(&protos::Message) -> bool,
+    {
+        let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
+        let messages =
+            message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
+                self.store_def.is_add_type(&message)
+                    && filter.as_ref().map(|f| f(&message)).unwrap_or(true)
+            })?;
+
+        Ok(messages)
+    }
+
+    pub fn get_removes_by_fid<F>(
+        &self,
+        fid: u32,
+        page_options: &PageOptions,
+        filter: Option<F>,
+    ) -> Result<Vec<protos::Message>, HubError>
+    where
+        F: Fn(&protos::Message) -> bool,
+    {
+        if !self.store_def.remove_type_supported() {
+            return Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: "remove type not supported".to_string(),
+            });
+        }
+
+        let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
+        let messages =
+            message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
+                self.store_def.is_remove_type(&message)
+                    && filter.as_ref().map(|f| f(&message)).unwrap_or(true)
+            })?;
+
+        Ok(messages)
+    }
 
     fn put_add_transaction(
         &self,
@@ -255,14 +366,7 @@ impl Store {
                     &self.db,
                     message.data.as_ref().unwrap().fid as u32,
                     self.store_def.postfix(),
-                    &remove_ts_hash
-                        .clone()
-                        .unwrap()
-                        .try_into()
-                        .map_err(|e: Vec<u8>| HubError {
-                            code: "bad_request.internal_error".to_string(),
-                            message: format!("remove_ts_hash is not 24 bytes: {:x?}", e),
-                        })?, // Convert Vec<u8> to [u8; 24]
+                    &utils::vec_to_u8_24(&remove_ts_hash)?,
                 )?
                 .ok_or_else(|| HubError {
                     code: "bad_request.internal_error".to_string(),
@@ -306,14 +410,7 @@ impl Store {
                 &self.db,
                 message.data.as_ref().unwrap().fid as u32,
                 self.store_def.postfix(),
-                &add_ts_hash
-                    .clone()
-                    .unwrap()
-                    .try_into()
-                    .map_err(|e: Vec<u8>| HubError {
-                        code: "bad_request.internal_error".to_string(),
-                        message: format!("add_ts_hash is not 24 bytes: {:x?}", e),
-                    })?, // Convert Vec<u8> to [u8; 24]
+                &utils::vec_to_u8_24(&add_ts_hash)?,
             )?
             .ok_or_else(|| HubError {
                 code: "bad_request.internal_error".to_string(),
@@ -434,20 +531,16 @@ impl Store {
     pub fn get_all_messages_by_fid(
         &self,
         fid: u32,
-        page_options: PageOptions,
+        page_options: &PageOptions,
     ) -> Result<Vec<Message>, HubError> {
         // TODO: The page_token's pageToken and reverse are not handled yet
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
-        let messages = message::get_messages_page_by_prefix(
-            &self.db,
-            &prefix,
-            page_options.page_size.unwrap_or(PAGE_SIZE_MAX),
-            |message| {
+        let messages =
+            message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
                 self.store_def.is_add_type(&message)
                     || (self.store_def.remove_type_supported()
                         && self.store_def.is_remove_type(&message))
-            },
-        )?;
+            })?;
 
         Ok(messages)
     }
@@ -572,7 +665,7 @@ impl Store {
         let (deferred, promise) = cx.promise();
 
         let messages = store.get_all_messages_by_fid(fid, {
-            PageOptions {
+            &PageOptions {
                 page_size: Some(page_size),
                 page_token: Some(page_token.to_vec()),
                 reverse,

@@ -1,18 +1,20 @@
+use std::convert::TryInto;
+
 use crate::{
     db::RocksDbTransaction,
-    protos::{self, reaction_body::Target, Message, MessageType},
+    protos::{self, reaction_body::Target, Message, MessageType, ReactionBody, ReactionType},
 };
 
 use super::{
-    make_cast_id_key, make_fid_key, make_user_key,
+    make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
-    HubError, RootPrefix, UserPostfix, TS_HASH_LENGTH,
+    HubError, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
 };
 use crate::protos::message_data;
 
-pub struct ReactionStore {}
+pub struct ReactionStoreDef {}
 
-impl StoreDef for ReactionStore {
+impl StoreDef for ReactionStoreDef {
     fn postfix(&self) -> u8 {
         UserPostfix::ReactionMessage as u8
     }
@@ -87,7 +89,7 @@ impl StoreDef for ReactionStore {
             _ => panic!("Invalid reaction body"),
         };
 
-        ReactionStore::make_reaction_adds_key(
+        ReactionStoreDef::make_reaction_adds_key(
             message.data.as_ref().unwrap().fid as u32,
             reaction_body.r#type,
             reaction_body.target.as_ref(),
@@ -100,7 +102,7 @@ impl StoreDef for ReactionStore {
             _ => panic!("Invalid reaction body"),
         };
 
-        ReactionStore::make_reaction_removes_key(
+        ReactionStoreDef::make_reaction_removes_key(
             message.data.as_ref().unwrap().fid as u32,
             reaction_body.r#type,
             reaction_body.target.as_ref(),
@@ -108,11 +110,7 @@ impl StoreDef for ReactionStore {
     }
 }
 
-impl ReactionStore {
-    pub fn new() -> Store {
-        Store::new_with_store_def(Box::new(ReactionStore {}))
-    }
-
+impl ReactionStoreDef {
     fn secondary_index_key(
         &self,
         ts_hash: &[u8; TS_HASH_LENGTH],
@@ -131,10 +129,10 @@ impl ReactionStore {
             message: "Invalid reaction body".to_string(),
         })?;
 
-        let by_target_key = ReactionStore::make_reactions_by_target_key(
+        let by_target_key = ReactionStoreDef::make_reactions_by_target_key(
             target,
             message.data.as_ref().unwrap().fid as u32,
-            ts_hash,
+            Some(ts_hash),
         );
 
         Ok((by_target_key, reaction_body.r#type as u8))
@@ -143,14 +141,14 @@ impl ReactionStore {
     pub fn make_reactions_by_target_key(
         target: &Target,
         fid: u32,
-        ts_hash: &[u8; TS_HASH_LENGTH],
+        ts_hash: Option<&[u8; TS_HASH_LENGTH]>,
     ) -> Vec<u8> {
         let mut key = Vec::with_capacity(1 + 28 + 24 + 4);
 
         key.push(RootPrefix::ReactionsByTarget as u8); // ReactionsByTarget prefix, 1 byte
         key.extend_from_slice(&Self::make_target_key(target));
-        if ts_hash.len() == TS_HASH_LENGTH {
-            key.extend_from_slice(ts_hash);
+        if ts_hash.is_some() && ts_hash.unwrap().len() == TS_HASH_LENGTH {
+            key.extend_from_slice(ts_hash.unwrap());
         }
         if fid > 0 {
             key.extend_from_slice(&make_fid_key(fid));
@@ -199,4 +197,156 @@ impl ReactionStore {
     }
 }
 
-impl ReactionStore {}
+pub struct ReactionStore {}
+
+impl ReactionStore {
+    pub fn new() -> Store {
+        Store::new_with_store_def(Box::new(ReactionStoreDef {}))
+    }
+
+    pub fn get_reaction_add(
+        store: &Store,
+        fid: u32,
+        r#type: i32,
+        target: Option<Target>,
+    ) -> Result<Option<protos::Message>, HubError> {
+        let partial_message = protos::Message {
+            data: Some(protos::MessageData {
+                fid: fid as u64,
+                r#type: MessageType::ReactionAdd.into(),
+                body: Some(protos::message_data::Body::ReactionBody(ReactionBody {
+                    r#type,
+                    target: target.clone(),
+                })),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        store.get_add(&partial_message)
+    }
+
+    pub fn get_reaction_remove(
+        store: &Store,
+        fid: u32,
+        reaction_type: ReactionType,
+        target: Option<Target>,
+    ) -> Result<Option<protos::Message>, HubError> {
+        let partial_message = protos::Message {
+            data: Some(protos::MessageData {
+                fid: fid as u64,
+                r#type: MessageType::ReactionRemove.into(),
+                body: Some(protos::message_data::Body::ReactionBody(ReactionBody {
+                    r#type: reaction_type as i32,
+                    target: target.clone(),
+                })),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        store.get_remove(&partial_message)
+    }
+
+    pub fn get_reaction_adds_by_fid(
+        store: &Store,
+        fid: u32,
+        reaction_type: ReactionType,
+        page_options: &PageOptions,
+    ) -> Result<Vec<protos::Message>, HubError> {
+        store.get_adds_by_fid(
+            fid,
+            page_options,
+            Some(|message: &Message| {
+                if let Some(reaction_body) = &message.data.as_ref().unwrap().body {
+                    if let protos::message_data::Body::ReactionBody(reaction_body) = reaction_body {
+                        if reaction_body.r#type == reaction_type as i32 {
+                            return true;
+                        }
+                    }
+                }
+
+                false
+            }),
+        )
+    }
+
+    pub fn get_reaction_removes_by_fid(
+        store: &Store,
+        fid: u32,
+        reaction_type: ReactionType,
+        page_options: &PageOptions,
+    ) -> Result<Vec<protos::Message>, HubError> {
+        store.get_removes_by_fid(
+            fid,
+            page_options,
+            Some(|message: &Message| {
+                if let Some(reaction_body) = &message.data.as_ref().unwrap().body {
+                    if let protos::message_data::Body::ReactionBody(reaction_body) = reaction_body {
+                        if reaction_body.r#type == reaction_type as i32 {
+                            return true;
+                        }
+                    }
+                }
+
+                false
+            }),
+        )
+    }
+
+    pub fn get_all_reaction_messages_by_fid(
+        fid: u32,
+        page_options: &PageOptions,
+    ) -> Result<Vec<protos::Message>, HubError> {
+        let store = ReactionStore::new();
+        store.get_all_messages_by_fid(fid, page_options)
+    }
+
+    pub fn get_reactions_by_target(
+        store: &Store,
+        target: &Target,
+        reaction_type: Option<ReactionType>,
+        page_options: &PageOptions,
+    ) -> Result<Vec<protos::Message>, HubError> {
+        let prefix = ReactionStoreDef::make_reactions_by_target_key(target, 0, None);
+
+        let mut message_keys = vec![];
+
+        store
+            .db()
+            .for_each_iterator_by_prefix(&prefix, |key, value| {
+                if message_keys.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
+                    return Ok(false);
+                }
+
+                if reaction_type.is_none()
+                    || (value.len() == 1 && value[0] == reaction_type.unwrap() as u8)
+                {
+                    let ts_hash_offset = prefix.len();
+                    let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
+
+                    let fid =
+                        u32::from_be_bytes(key[fid_offset..fid_offset + 4].try_into().unwrap());
+                    let ts_hash = key[ts_hash_offset..ts_hash_offset + TS_HASH_LENGTH]
+                        .try_into()
+                        .unwrap();
+                    let message_primary_key = crate::store::message::make_message_primary_key(
+                        fid,
+                        store.postfix(),
+                        Some(&ts_hash),
+                    );
+
+                    message_keys.push(message_primary_key.to_vec());
+
+                    Ok(true)
+                } else {
+                    Ok(true)
+                }
+            })?;
+
+        // TODO: Return Page options
+        let messages = message::get_many_messages(store.db(), message_keys)?;
+
+        Ok(messages)
+    }
+}
