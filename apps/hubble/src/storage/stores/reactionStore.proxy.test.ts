@@ -44,7 +44,7 @@ describe("ReactionStoreProxy", () => {
     const r: number = await reactionStoreProxy.merge(reactionAdd);
     expect(r).toBeGreaterThan(0);
     let reactionsForFid = await reactionStoreProxy.getAllMessagesByFid(fid, {});
-    expect(reactionsForFid.length).toBe(1);
+    expect(reactionsForFid.messages.length).toBe(1);
 
     // Merge the same reaction again, should be duplicate
     const r2 = (await ResultAsync.fromPromise(reactionStoreProxy.merge(reactionAdd), (e) => e)) as Result<
@@ -55,13 +55,13 @@ describe("ReactionStoreProxy", () => {
     expect(r2._unsafeUnwrapErr().errCode).toBe("bad_request.duplicate");
 
     reactionsForFid = await reactionStoreProxy.getAllMessagesByFid(fid, {});
-    expect(reactionsForFid.length).toBe(1);
+    expect(reactionsForFid.messages.length).toBe(1);
 
     // Merge the remove reaction, it should disappear.
     const rr: number = await reactionStoreProxy.merge(reactionRemove);
     expect(rr).toBeGreaterThan(0);
     reactionsForFid = await reactionStoreProxy.getAllMessagesByFid(fid, {});
-    expect(reactionsForFid.length).toBe(1);
+    expect(reactionsForFid.messages.length).toBe(1);
   });
 
   test(
@@ -139,8 +139,8 @@ describe("ReactionStoreProxy", () => {
       start = Date.now();
       const pageSize = 10;
       for (let i = 0; i < size; i++) {
-        const messages = await reactionStoreProxy.getAllMessagesByFid(fid, { pageSize });
-        expect(messages.length).toBe(pageSize);
+        const allMessages = await reactionStoreProxy.getAllMessagesByFid(fid, { pageSize });
+        expect(allMessages.messages.length).toBe(pageSize);
       }
       console.log("rust: ", size, " reads in ", Date.now() - start, "ms");
 

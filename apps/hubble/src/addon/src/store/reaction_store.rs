@@ -1,11 +1,9 @@
-use std::{borrow::Borrow, convert::TryInto, sync::Arc};
+use std::convert::TryInto;
 
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
-    types::{
-        buffer::TypedArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsObject, JsPromise, JsString,
-    },
+    types::{buffer::TypedArray, JsBuffer, JsNumber, JsPromise, JsString},
 };
 use prost::Message as _;
 
@@ -462,33 +460,27 @@ impl ReactionStore {
         Ok(promise)
     }
 
-    pub fn get_all_reaction_messages_by_fid(
-        fid: u32,
-        page_options: &PageOptions,
-    ) -> Result<Vec<protos::Message>, HubError> {
-        let store = ReactionStore::new();
-        store.get_all_messages_by_fid(fid, page_options)
-    }
-
     pub fn get_reactions_by_target(
         store: &Store,
         target: &Target,
-        reaction_type: Option<ReactionType>,
+        reaction_type: i32,
         page_options: &PageOptions,
     ) -> Result<Vec<protos::Message>, HubError> {
         let prefix = ReactionStoreDef::make_reactions_by_target_key(target, 0, None);
+        println!("prefix: {:?}", prefix);
 
         let mut message_keys = vec![];
 
         store
             .db()
             .for_each_iterator_by_prefix(&prefix, |key, value| {
+                println!("key: {:x?}, value: {:x?}", key, value);
                 if message_keys.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
                     return Ok(false);
                 }
 
-                if reaction_type.is_none()
-                    || (value.len() == 1 && value[0] == reaction_type.unwrap() as u8)
+                if reaction_type == ReactionType::None as i32
+                    || (value.len() == 1 && value[0] == reaction_type as u8)
                 {
                     let ts_hash_offset = prefix.len();
                     let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
@@ -516,5 +508,60 @@ impl ReactionStore {
         let messages = message::get_many_messages(store.db(), message_keys)?;
 
         Ok(messages)
+    }
+
+    pub fn js_get_reactions_by_target(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store = get_store(&mut cx)?;
+
+        let target_cast_id_buffer = cx.argument::<JsBuffer>(0)?;
+        let target_cast_id_bytes = target_cast_id_buffer.as_slice(&cx);
+        let target_cast_id = if target_cast_id_bytes.len() > 0 {
+            match protos::CastId::decode(target_cast_id_bytes) {
+                Ok(cast_id) => Some(cast_id),
+                Err(e) => return cx.throw_error(e.to_string()),
+            }
+        } else {
+            None
+        };
+
+        let target_url = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
+
+        // We need at least one of target_cast_id or target_url
+        if target_cast_id.is_none() && target_url.is_empty() {
+            return cx.throw_error("target_cast_id or target_url is required");
+        }
+
+        let target = if target_cast_id.is_some() {
+            Target::TargetCastId(target_cast_id.unwrap())
+        } else {
+            Target::TargetUrl(target_url)
+        };
+        println!("target: {:?}", target);
+
+        let reaction_type = cx
+            .argument::<JsNumber>(2)
+            .map(|n| n.value(&mut cx) as i32)?;
+        println!("reaction_type: {:?}", reaction_type);
+
+        let page_options = get_page_options(&mut cx, 3)?;
+        println!("page_options: {:?}", page_options);
+
+        let messages = match ReactionStore::get_reactions_by_target(
+            &store,
+            &target,
+            reaction_type,
+            &page_options,
+        ) {
+            Ok(messages) => messages,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+        deferred.settle_with(&channel, move |mut cx| {
+            encode_messages_to_js_array(&mut cx, messages)
+        });
+
+        Ok(promise)
     }
 }

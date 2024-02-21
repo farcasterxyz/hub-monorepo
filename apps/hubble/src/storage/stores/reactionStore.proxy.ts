@@ -15,10 +15,12 @@ import {
   createReactionStore,
   db_clear,
   getAllMessagesByFid,
+  getMessage,
   getReactionAdd,
   getReactionAddsByFid,
   getReactionRemove,
   getReactionRemovesByFid,
+  getReactionsByTarget,
   merge,
   rustErrorToHubError,
 } from "../../rustfunctions.js";
@@ -85,27 +87,41 @@ export class ReactionStoreProxy {
     // Encode the message to bytes
     const messageBytes = Message.encode(message).finish();
     const result = await ResultAsync.fromPromise(merge(this.rustReactionStore, messageBytes), rustErrorToHubError);
-
     if (result.isErr()) {
       throw result.error;
-    } else {
-      // Read the result bytes as a HubEvent
-      const resultBytes = new Uint8Array(result.value);
-      const hubEvent = HubEvent.decode(resultBytes);
-
-      void this._eventHandler.processRustCommitedTransaction(hubEvent);
-      return hubEvent.id;
     }
+
+    // Read the result bytes as a HubEvent
+    const resultBytes = new Uint8Array(result.value);
+    const hubEvent = HubEvent.decode(resultBytes);
+
+    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    return hubEvent.id;
   }
 
-  async getAllMessagesByFid(fid: number, pageOptions: PageOptions = {}): Promise<Message[]> {
+  async getMessage(fid: number, set: UserMessagePostfix, tsHash: Uint8Array): Promise<Message> {
+    const message_bytes = await ResultAsync.fromPromise(
+      getMessage(this.rustReactionStore, fid, set, tsHash),
+      rustErrorToHubError,
+    );
+    if (message_bytes.isErr()) {
+      throw message_bytes.error;
+    }
+
+    return Message.decode(new Uint8Array(message_bytes.value));
+  }
+
+  async getAllMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
     const message_bytes_array: Uint8Array[] = await getAllMessagesByFid(this.rustReactionStore, fid, pageOptions);
 
-    const messages: Message[] = message_bytes_array.map((message_bytes) => {
-      return Message.decode(new Uint8Array(message_bytes));
+    const messages = message_bytes_array.map((message_bytes) => {
+      return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage | ReactionRemoveMessage;
     });
 
-    return messages;
+    return { messages };
   }
 
   async getReactionAdd(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionAddMessage> {
@@ -176,6 +192,42 @@ export class ReactionStoreProxy {
 
     const messages = message_bytes_array.map((message_bytes) => {
       return Message.decode(new Uint8Array(message_bytes)) as ReactionRemoveMessage;
+    });
+
+    return { messages };
+  }
+
+  async getAllReactionMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
+    return await this.getAllMessagesByFid(fid, pageOptions);
+  }
+
+  async getReactionsByTarget(
+    target: CastId | string,
+    type?: ReactionType,
+    pageOptions: PageOptions = {},
+  ): Promise<MessagesPage<ReactionAddMessage>> {
+    let targetCastId = Buffer.from([]);
+    let targetUrl = "";
+
+    if (typeof target === "string") {
+      targetUrl = target;
+    } else {
+      targetCastId = Buffer.from(CastId.encode(target).finish());
+    }
+
+    const message_bytes_array = await getReactionsByTarget(
+      this.rustReactionStore,
+      targetCastId,
+      targetUrl,
+      type ?? ReactionType.NONE,
+      pageOptions,
+    );
+
+    const messages = message_bytes_array.map((message_bytes) => {
+      return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
     });
 
     return { messages };

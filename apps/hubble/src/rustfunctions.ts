@@ -9,6 +9,7 @@ const lib = require("./addon/index.node");
 
 import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
 import { PageOptions } from "./storage/stores/types.js";
+import { UserMessagePostfix } from "storage/db/types.js";
 
 export class RustDynStore {}
 
@@ -61,6 +62,15 @@ export const db_clear = async (store: RustDynStore) => {
   return await lib.db_clear.call(store);
 };
 
+export const getMessage = async (
+  store: RustDynStore,
+  fid: number,
+  set: UserMessagePostfix,
+  tsHash: Uint8Array,
+): Promise<Buffer> => {
+  return await lib.getMessage.call(store, fid, set, tsHash);
+};
+
 /** This is dynamically dispatched to any Store that you pass in */
 
 export const merge = async (store: RustDynStore, messageBytes: Uint8Array): Promise<Buffer> => {
@@ -68,8 +78,12 @@ export const merge = async (store: RustDynStore, messageBytes: Uint8Array): Prom
 };
 
 /** This is dynamically dispatched to any Store, and the messages will be returned from that store */
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const getAllMessagesByFid = async (store: any, fid: number, pageOptions: PageOptions): Promise<Buffer[]> => {
+
+export const getAllMessagesByFid = async (
+  store: RustDynStore,
+  fid: number,
+  pageOptions: PageOptions,
+): Promise<Buffer[]> => {
   return await lib.getAllMessagesByFid.call(store, fid, pageOptions);
 };
 
@@ -109,4 +123,14 @@ export const getReactionRemovesByFid = async (
   pageOptions: PageOptions,
 ): Promise<Buffer[]> => {
   return await lib.getReactionRemovesByFid.call(store, fid, type, pageOptions);
+};
+
+export const getReactionsByTarget = async (
+  store: RustDynStore,
+  targetCastIdBytes: Buffer,
+  targetUrl: string,
+  type: number,
+  pageOptions: PageOptions,
+): Promise<Buffer[]> => {
+  return await lib.getReactionsByTarget.call(store, targetCastIdBytes, targetUrl, type, pageOptions);
 };

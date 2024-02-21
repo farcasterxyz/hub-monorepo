@@ -12,8 +12,9 @@ use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
 use super::{
-    bytes_compare, get_message, make_message_primary_key, message, put_message_transaction,
-    utils::{self, encode_messages_to_js_array, get_page_options, get_store},
+    bytes_compare, delete_message_transaction, get_message, make_message_primary_key, message,
+    put_message_transaction,
+    utils::{self, encode_messages_to_js_array, get_page_options, get_store, vec_to_u8_24},
     StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
@@ -45,6 +46,7 @@ impl From<neon::result::Throw> for HubError {
 pub const FID_LOCKS_COUNT: usize = 4;
 pub const PAGE_SIZE_MAX: usize = 10_000;
 
+#[derive(Debug)]
 pub struct PageOptions {
     pub page_size: Option<usize>,
     pub page_token: Option<Vec<u8>>,
@@ -272,7 +274,7 @@ impl Store {
         let add_key = self.store_def.make_add_key(message);
         txn.delete(&add_key)?;
 
-        Ok(())
+        delete_message_transaction(txn, message)
     }
 
     fn put_remove_transaction(
@@ -311,7 +313,7 @@ impl Store {
         let remove_key = self.store_def.make_remove_key(message);
         txn.delete(&remove_key)?;
 
-        Ok(())
+        delete_message_transaction(txn, message)
     }
 
     fn delete_many_transaction(
@@ -320,9 +322,11 @@ impl Store {
         messages: Vec<Message>,
     ) -> Result<(), HubError> {
         for message in &messages {
+            println!("trying to deleting message: {:?}", message);
             if self.store_def.is_add_type(message) {
                 let ts_hash =
                     make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+                println!("deleting add: {:?}", ts_hash);
                 self.delete_add_transaction(txn, &ts_hash, message)?;
             }
             if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
@@ -404,6 +408,7 @@ impl Store {
                 message.data.as_ref().unwrap().r#type as u8,
                 &ts_hash.to_vec(),
             );
+            println!("add_compare: {}", add_compare);
 
             if add_compare > 0 {
                 return Err(HubError {
@@ -430,9 +435,11 @@ impl Store {
                 code: "bad_request.internal_error".to_string(),
                 message: format!("The message for the {:x?} not found", add_ts_hash.unwrap()),
             })?;
+            println!("existing_add: {:?}", existing_add);
             conflicts.push(existing_add);
         }
 
+        println!("conflicts: {:?}", conflicts);
         Ok(conflicts)
     }
 
@@ -472,6 +479,7 @@ impl Store {
     ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
         let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
+        println!("merge_conflicts: {:?}", merge_conflicts);
 
         // start a transaction
         let txn = self.db.txn();
@@ -490,6 +498,8 @@ impl Store {
 
         // Commit the transaction
         txn.commit()?;
+        println!("Commiting transaction ");
+        println!("hub_event: {:?}", hub_event);
 
         hub_event.id = id;
         // Serialize the hub_event
@@ -647,11 +657,47 @@ impl Store {
         Ok(promise)
     }
 
-    pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    pub fn js_get_message(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-        let page_options = get_page_options(&mut cx, 2)?;
+        let set = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as u8;
+        let ts_hash = match vec_to_u8_24(&Some(
+            cx.argument::<JsBuffer>(2).unwrap().as_slice(&cx).to_vec(),
+        )) {
+            Ok(ts_hash) => ts_hash,
+            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+        };
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        deferred.settle_with(&channel, move |mut cx| {
+            let message = match get_message(&store.db, fid, set, &ts_hash) {
+                Ok(Some(message)) => message,
+                Ok(None) => {
+                    return cx.throw_error(format!("{}/{}", "not_found", "message not found"))
+                }
+                Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            };
+
+            let message_bytes = message.encode_to_vec();
+            let mut js_buffer = cx.buffer(message_bytes.len())?;
+            js_buffer
+                .as_mut_slice(&mut cx)
+                .copy_from_slice(&message_bytes);
+            Ok(js_buffer)
+        });
+
+        Ok(promise)
+    }
+
+    pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        println!("js_get_all_messages_by_fid");
+        let store = get_store(&mut cx)?;
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let page_options = get_page_options(&mut cx, 1)?;
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();

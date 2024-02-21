@@ -89,6 +89,9 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
     cx.export_function("createReactionStore", create_reaction_store)?;
 
+    // TODO: This probably should not be on the store but directly on the DB?
+    cx.export_function("getMessage", Store::js_get_message)?;
+
     // Generic methods that can accept any store
     cx.export_function("merge", Store::js_merge)?;
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
@@ -103,6 +106,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function(
         "getReactionRemovesByFid",
         ReactionStore::js_get_reaction_removes_by_fid,
+    )?;
+    cx.export_function(
+        "getReactionsByTarget",
+        ReactionStore::js_get_reactions_by_target,
     )?;
 
     Ok(())
