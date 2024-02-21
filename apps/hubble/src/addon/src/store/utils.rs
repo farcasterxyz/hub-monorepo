@@ -1,14 +1,16 @@
+use std::{borrow::Borrow, sync::Arc};
+
 use neon::{
     context::{Context, FunctionContext, TaskContext},
     object::Object,
-    result::JsResult,
-    types::{buffer::TypedArray, JsArray, JsBoolean, JsBuffer, JsNumber, JsObject},
+    result::{JsResult, Throw},
+    types::{buffer::TypedArray, JsArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsObject},
 };
 use prost::Message as _;
 
 use crate::{protos, store::PAGE_SIZE_MAX};
 
-use super::{HubError, PageOptions};
+use super::{HubError, PageOptions, Store};
 
 /**
  * Helper function to cast a vec into a [u8; 24] for TsHash
@@ -59,11 +61,8 @@ pub fn encode_messages_to_js_array<'a>(
 * Extract the page options from a JavaScript object at the given index. Fills in default values
 * if they are not provided.
 */
-pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions, HubError> {
-    let js_object = cx.argument::<JsObject>(at).map_err(|_| HubError {
-        code: "bad_request.invalid_param".to_string(),
-        message: "page_options is not an object".to_string(),
-    })?;
+pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions, Throw> {
+    let js_object = cx.argument::<JsObject>(at)?;
     println!("js_object: {:?}", js_object);
 
     let page_size = js_object
@@ -87,4 +86,10 @@ pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions
         },
         reverse,
     })
+}
+
+/** Get the store object from the context */
+pub fn get_store(cx: &mut FunctionContext) -> Result<Arc<Store>, Throw> {
+    let store_js_box = cx.this().downcast_or_throw::<JsBox<Arc<Store>>, _>(cx)?;
+    Ok((**store_js_box.borrow()).clone())
 }

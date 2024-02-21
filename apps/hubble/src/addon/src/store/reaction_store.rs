@@ -17,7 +17,7 @@ use crate::{
 use super::{
     make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
-    utils::{encode_messages_to_js_array, get_page_options},
+    utils::{encode_messages_to_js_array, get_page_options, get_store},
     HubError, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
 };
 use crate::protos::message_data;
@@ -239,11 +239,7 @@ impl ReactionStore {
     pub fn js_get_reaction_add(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let channel = cx.channel();
 
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
+        let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
@@ -317,13 +313,7 @@ impl ReactionStore {
     }
 
     pub fn js_get_reaction_remove(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let channel = cx.channel();
-
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
+        let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
@@ -361,6 +351,7 @@ impl ReactionStore {
             Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
         };
 
+        let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
             let mut js_buffer = cx.buffer(result.len())?;
@@ -395,22 +386,12 @@ impl ReactionStore {
     }
 
     pub fn js_get_reaction_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let channel = cx.channel();
-        let (deferred, promise) = cx.promise();
-
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
+        let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
 
-        let page_options = match get_page_options(&mut cx, 2) {
-            Ok(page_options) => page_options,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
-        };
+        let page_options = get_page_options(&mut cx, 2)?;
 
         let messages = match ReactionStore::get_reaction_adds_by_fid(
             &store,
@@ -421,6 +402,9 @@ impl ReactionStore {
             Ok(messages) => messages,
             Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
         };
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
             encode_messages_to_js_array(&mut cx, messages)
         });
@@ -452,20 +436,12 @@ impl ReactionStore {
     }
 
     pub fn js_get_reaction_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let channel = cx.channel();
-
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)?;
-        let store = (**store_js_box.borrow()).clone();
+        let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
 
-        let page_options = match get_page_options(&mut cx, 2) {
-            Ok(page_options) => page_options,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
-        };
+        let page_options = get_page_options(&mut cx, 2)?;
 
         let messages = match ReactionStore::get_reaction_removes_by_fid(
             &store,
@@ -477,6 +453,7 @@ impl ReactionStore {
             Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
         };
 
+        let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
             encode_messages_to_js_array(&mut cx, messages)

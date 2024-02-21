@@ -5,16 +5,15 @@ use crate::{
 };
 use neon::context::Context;
 use neon::types::buffer::TypedArray;
-use neon::types::{Finalize, JsBox, JsBuffer, JsNumber};
+use neon::types::{Finalize, JsBuffer, JsNumber};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use prost::Message as _;
-use std::borrow::Borrow;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
 use super::{
     bytes_compare, get_message, make_message_primary_key, message, put_message_transaction,
-    utils::{self, encode_messages_to_js_array, get_page_options},
+    utils::{self, encode_messages_to_js_array, get_page_options, get_store},
     StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
@@ -595,18 +594,14 @@ impl Store {
 // for that store
 impl Store {
     pub fn js_db_clear(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
-
-        let channel = cx.channel();
-        let (deferred, promise) = cx.promise();
+        let store = get_store(&mut cx)?;
 
         // let pool = store.pool.clone();
         // pool.lock().unwrap().execute(move || {
         let result = store.db.clear();
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
             Ok(cx.number(result.unwrap_or_default() as f64))
         });
@@ -616,18 +611,10 @@ impl Store {
     }
 
     pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        // println!("js_merge");
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
+        let store = get_store(&mut cx)?;
 
-        let channel = cx.channel();
         let message_bytes = cx.argument::<JsBuffer>(0);
         let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
-
-        let (deferred, promise) = cx.promise();
 
         // TODO: Using the pool is so much slower
         // let pool = store.pool.clone();
@@ -643,7 +630,8 @@ impl Store {
             store.merge(&m)
         };
 
-        // deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| match result {
             Ok(hub_event_bytes) => {
                 let mut js_buffer = cx.buffer(hub_event_bytes.len())?;
@@ -660,30 +648,21 @@ impl Store {
     }
 
     pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let store_js_box = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<Store>>, _>(&mut cx)
-            .unwrap();
-        let store = (**store_js_box.borrow()).clone();
+        let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-
-        let page_options = match get_page_options(&mut cx, 2) {
-            Ok(page_options) => page_options,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
-        };
+        let page_options = get_page_options(&mut cx, 2)?;
 
         let channel = cx.channel();
-
         let (deferred, promise) = cx.promise();
 
-        let messages = match store.get_all_messages_by_fid(fid, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
-        };
+        deferred.settle_with(&channel, move |mut tcx| {
+            let messages = match store.get_all_messages_by_fid(fid, &page_options) {
+                Ok(messages) => messages,
+                Err(e) => return tcx.throw_error(format!("{}/{}", e.code, e.message)),
+            };
 
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_array(&mut cx, messages)
+            encode_messages_to_js_array(&mut tcx, messages)
         });
 
         Ok(promise)
