@@ -39,12 +39,12 @@ describe("MerkleTrie", () => {
     callback?: (i: number, key: Buffer, value: Buffer) => Promise<void>,
   ): Promise<number> => {
     let count = 0;
-    for await (const [key, value] of db.iteratorByPrefix(Buffer.from([RootPrefix.SyncMerkleTrieNode]))) {
+    await db.forEachIteratorByPrefix(Buffer.from([RootPrefix.SyncMerkleTrieNode]), async (key, value) => {
       if (callback) {
         await callback(count, key as Buffer, value as Buffer);
       }
       count++;
-    }
+    });
 
     return count;
   };

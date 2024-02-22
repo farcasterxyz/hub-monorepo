@@ -10,6 +10,7 @@ import {
   UserMessagePostfixMax,
   UserPostfix,
 } from "./types.js";
+import AbstractRocksDB from "@farcaster/rocksdb";
 import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
 
 export const makeFidKey = (fid: number): Buffer => {
@@ -184,7 +185,11 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<Mes
   return messages;
 };
 
-export const getPageIteratorByPrefix = (db: RocksDB, prefix: Buffer, pageOptions: PageOptions = {}): Iterator => {
+export const getPageIteratorOptsByPrefix = (
+  db: RocksDB,
+  prefix: Buffer,
+  pageOptions: PageOptions = {},
+): AbstractRocksDB.IteratorOptions => {
   const prefixEnd = bytesIncrement(Uint8Array.from(prefix));
   if (prefixEnd.isErr()) {
     throw prefixEnd.error;
@@ -203,14 +208,12 @@ export const getPageIteratorByPrefix = (db: RocksDB, prefix: Buffer, pageOptions
     throw new HubError("bad_request.invalid_param", `pageSize > ${PAGE_SIZE_MAX}`);
   }
 
-  return db.iterator(
-    pageOptions.reverse === true
-      ? { lt: startKey, gt: prefix, reverse: true }
-      : {
-          gt: startKey,
-          lt: Buffer.from(prefixEnd.value),
-        },
-  );
+  return pageOptions.reverse === true
+    ? { lt: startKey, gt: prefix, reverse: true }
+    : {
+        gt: startKey,
+        lt: Buffer.from(prefixEnd.value),
+      };
 };
 
 export const getMessagesPageByPrefix = async <T extends Message>(
@@ -219,7 +222,7 @@ export const getMessagesPageByPrefix = async <T extends Message>(
   filter: (message: Message) => message is T,
   pageOptions: PageOptions = {},
 ): Promise<MessagesPage<T>> => {
-  const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
+  const iteratorOpts = getPageIteratorOptsByPrefix(db, prefix, pageOptions);
 
   const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
@@ -230,23 +233,29 @@ export const getMessagesPageByPrefix = async <T extends Message>(
     return [key as Buffer, messageDecode(new Uint8Array(value as Buffer))];
   };
 
-  let iteratorFinished = false;
+  let iteratorFinished = true;
   let lastPageToken: Uint8Array | undefined;
-  do {
-    const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
-    if (result.isErr()) {
-      iteratorFinished = true;
-      break;
+
+  await db.forEachIteratorByOpts(iteratorOpts, (key, value) => {
+    if (!key || !value) {
+      return false; // skip
     }
 
-    const [key, message] = result.value;
+    const message = messageDecode(new Uint8Array(value as Buffer));
+
     lastPageToken = Uint8Array.from(key.subarray(prefix.length));
     if (filter(message)) {
       messages.push(message);
-    }
-  } while (messages.length < limit);
 
-  await iterator.end();
+      if (messages.length >= limit) {
+        iteratorFinished = false;
+        return true;
+      }
+    }
+
+    return false; // continue
+  });
+
   if (!iteratorFinished) {
     return { messages, nextPageToken: lastPageToken };
   } else {
@@ -254,14 +263,8 @@ export const getMessagesPageByPrefix = async <T extends Message>(
   }
 };
 
-export const getMessagesBySignerIterator = (
-  db: RocksDB,
-  fid: number,
-  signer: Uint8Array,
-  type?: MessageType,
-): Iterator => {
-  const prefix = makeMessageBySignerKey(fid, signer, type);
-  return db.iteratorByPrefix(prefix, { values: false });
+export const getMessagesBySignerPrefix = (db: RocksDB, fid: number, signer: Uint8Array, type?: MessageType): Buffer => {
+  return makeMessageBySignerKey(fid, signer, type);
 };
 
 /** Get an array of messages for a given fid and signer */

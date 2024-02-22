@@ -706,15 +706,17 @@ describe("revoke", () => {
   test("deletes all keys relating to the link", async () => {
     await set.merge(linkAdd);
     const linkKeys: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator((key) => {
       linkKeys.push(key as Buffer);
-    }
+    });
+
     expect(linkKeys.length).toBeGreaterThan(0);
     await set.revoke(linkAdd);
     const linkKeysAfterRevoke: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator((key) => {
       linkKeysAfterRevoke.push(key as Buffer);
-    }
+    });
+
     // Two hub events left behind (one merge, one revoke)
     expect(linkKeysAfterRevoke.length).toEqual(2);
   });
