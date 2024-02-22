@@ -65,7 +65,7 @@ import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
 import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
-import { statsd } from "./utils/statsd.js";
+import { statsd, getStatusdInitialization } from "./utils/statsd.js";
 import {
   getDbSchemaVersion,
   LATEST_DB_SCHEMA_VERSION,
@@ -692,7 +692,7 @@ export class Hub implements HubInterface {
       applicationScoreCap: this.options.applicationScoreCap,
       strictNoSign: this.strictNoSign,
       connectToDbPeers: this.options.connectToDbPeers,
-      db: this.rocksDB,
+      statsdParams: getStatusdInitialization(),
     });
 
     await this.registerEventHandlers();

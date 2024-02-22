@@ -22,7 +22,7 @@ import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
-import { statsd } from "../../utils/statsd.js";
+import { statsd, StatsDInitParams } from "../../utils/statsd.js";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -73,8 +73,8 @@ export interface NodeOptions {
   strictNoSign?: boolean | undefined;
   /** Whether to connect to peers that were remembered in the DB */
   connectToDbPeers?: boolean | undefined;
-  /** Message DB */
-  db?: RocksDB | undefined;
+  /** StatsD parameters */
+  statsdParams?: StatsDInitParams | undefined;
 }
 
 // A common return type for several methods on the libp2p node.

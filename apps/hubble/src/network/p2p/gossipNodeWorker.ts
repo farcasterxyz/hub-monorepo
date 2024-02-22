@@ -58,6 +58,7 @@ const log = new Proxy<Logger>({} as Logger, {
  */
 export class LibP2PNode {
   _node?: Libp2p;
+  _hmc?: HubMessageCache<unknown>;
   private _connectionGater?: ConnectionFilter;
   private _network: FarcasterNetwork;
   private _peerScores: Map<string, number>;
@@ -119,7 +120,9 @@ export class LibP2PNode {
       ? parseInt(process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"])
       : 3 * 1000;
 
-    const hmc = new HubMessageCache<void>(10, 7, options.db);
+    this._hmc = new HubMessageCache<void>(10, 7, options.statsdParams);
+    this._hmc.startMetrics(1000);
+
     const gossip = gossipsub({
       allowPublishToZeroPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
@@ -129,8 +132,8 @@ export class LibP2PNode {
       gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
-      seenCache: hmc,
-      messageCache: hmc,
+      seenCache: this._hmc,
+      messageCache: this._hmc,
       seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
       scoreParams: {
@@ -213,6 +216,7 @@ export class LibP2PNode {
 
   async stop() {
     await this._node?.stop();
+    this._hmc?.stopMetrics();
   }
 
   /** Return if we have any inbound P2P connections */

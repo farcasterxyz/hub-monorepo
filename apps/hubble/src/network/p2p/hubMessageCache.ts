@@ -16,17 +16,23 @@ import { toString as uint8ArrayToString } from "uint8arrays/to-string";
 // Importing 'bloom-filters' as a whole due to ES6 import compatibility issues with CommonJS modules,
 // then extracting 'ScalableBloomFilter'.
 import bloom from "bloom-filters";
+import { statsd, initializeStatsd, StatsDInitParams } from "../../utils/statsd.js";
+import { StatsD } from "hot-shots";
 const { ScalableBloomFilter } = bloom;
 
 export class HubMessageCache<T> implements SeenCache, IMessageCache {
-  db: Rocksdb | undefined;
   seenCache: SimpleTimeCache<T>;
   messageCache: MessageCache;
   bloomFilter: bloom.ScalableBloomFilter;
+  statsd?: StatsD;
+  private metricsIntervalId?: NodeJS.Timer;
 
-  // NOTE: Rocksdb is not used at the moment but may be in the future for secondary indices
-  constructor(gossip: number, historyCapacity: number, db?: Rocksdb) {
-    this.db = db;
+  constructor(gossip: number, historyCapacity: number, statsdParams?: StatsDInitParams) {
+    if (statsdParams) {
+      initializeStatsd(statsdParams.host, statsdParams.port);
+      this.statsd = statsd();
+    }
+
     this.seenCache = new SimpleTimeCache<T>({ validityMs: GOSSIP_SEEN_TTL });
     // gossip parameter corresponds to constants.GossipsubHistoryGossip in js-libp2p-gossipsub
     // historyCapacity parameter corresponds to constants.GossipsubHistoryLength in js-libp2p-gossipsub
@@ -36,6 +42,22 @@ export class HubMessageCache<T> implements SeenCache, IMessageCache {
 
     const [initialSize, errorRate] = [262144, 0.001];
     this.bloomFilter = new ScalableBloomFilter(initialSize, errorRate);
+  }
+
+  startMetrics(intervalMs = 1000): void {
+    this.metricsIntervalId = setInterval(() => {
+      console.log(`[seen: ${this.seenCache.size}, message: ${this.messageCache.size}] [statsd: ${typeof this.statsd}]`);
+      statsd().gauge("hmc.seen_cache_size", this.seenCache.size);
+      statsd().gauge("hmc.message_cache_size", this.messageCache.size);
+    }, intervalMs);
+  }
+
+  stopMetrics(): void {
+    if (!this.statsd) {
+      return;
+    }
+
+    clearInterval(this.metricsIntervalId);
   }
 
   get notValidatedCount(): number {
@@ -96,6 +118,7 @@ export class HubMessageCache<T> implements SeenCache, IMessageCache {
   put(messageId: MessageId, msg: RPC.IMessage, validated: boolean): boolean;
   put(key: string | number | MessageId, value: T | RPC.IMessage, validated?: boolean): boolean {
     if (typeof key === "string" || typeof key === "number") {
+      this.statsd?.increment("hmc.bloom_filter_adds");
       this.bloomFilter.add(key.toString());
       return this.seenCache.put(key, value as T);
     } else {
