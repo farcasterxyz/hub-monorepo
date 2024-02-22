@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.14.2
+
+### Patch Changes
+
+- 5703d339: feat: add state field to frame message
+- 136ef6b4: fix: Remove old dependencies
+
 ## 0.14.1
 
 ### Patch Changes
