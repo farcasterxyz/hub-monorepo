@@ -5,9 +5,7 @@
 ############## Stage 1: Create pruned version of monorepo #####################
 ###############################################################################
 
-FROM node:20.2-alpine AS prune
-
-RUN apk add --no-cache libc6-compat
+FROM node:21.6-slim AS prune
 
 USER node
 RUN mkdir /home/node/app
@@ -23,10 +21,10 @@ RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 ############## Stage 2: Build the code using a full node image ################
 ###############################################################################
 
-FROM node:20.2-alpine AS build
+FROM node:21.6-slim AS build
 
 # Needed for compilation step
-RUN apk add --no-cache libc6-compat python3 make g++ linux-headers curl
+RUN apt-get update && apt-get install -y python3 make g++ linux-headers-generic curl
 
 USER node
 RUN mkdir /home/node/app
@@ -60,10 +58,7 @@ RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-o
 ########## Stage 3: Copy over the built code to a leaner alpine image #########
 ###############################################################################
 
-FROM node:20.2-alpine as app
-
-# Requirement for runtime metrics integrations
-RUN apk add libc6-compat
+FROM node:21.6-slim as app
 
 # Set non-root user and expose ports
 USER node
