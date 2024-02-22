@@ -19,7 +19,6 @@ module.exports = {
       args: process.env.HUBBLE_ARGS,
       watch: false,
       log_type: "json",
-      out_file: "/dev/stdout",
       err_file: "/dev/stderr",
     },
   ],
