@@ -14,8 +14,8 @@ use threadpool::ThreadPool;
 use super::{
     bytes_compare, delete_message_transaction, get_message, make_message_primary_key, message,
     put_message_transaction,
-    utils::{self, encode_messages_to_js_array, get_page_options, get_store, vec_to_u8_24},
-    StoreEventHandler, TS_HASH_LENGTH,
+    utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
+    MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
 
@@ -202,18 +202,18 @@ impl Store {
         fid: u32,
         page_options: &PageOptions,
         filter: Option<F>,
-    ) -> Result<Vec<protos::Message>, HubError>
+    ) -> Result<MessagesPage, HubError>
     where
         F: Fn(&protos::Message) -> bool,
     {
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
-        let messages =
+        let messages_page =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
                 self.store_def.is_add_type(&message)
                     && filter.as_ref().map(|f| f(&message)).unwrap_or(true)
             })?;
 
-        Ok(messages)
+        Ok(messages_page)
     }
 
     pub fn get_removes_by_fid<F>(
@@ -221,7 +221,7 @@ impl Store {
         fid: u32,
         page_options: &PageOptions,
         filter: Option<F>,
-    ) -> Result<Vec<protos::Message>, HubError>
+    ) -> Result<MessagesPage, HubError>
     where
         F: Fn(&protos::Message) -> bool,
     {
@@ -322,11 +322,11 @@ impl Store {
         messages: Vec<Message>,
     ) -> Result<(), HubError> {
         for message in &messages {
-            println!("trying to deleting message: {:?}", message);
+            // println!("trying to deleting message: {:?}", message);
             if self.store_def.is_add_type(message) {
                 let ts_hash =
                     make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
-                println!("deleting add: {:?}", ts_hash);
+                // println!("deleting add: {:?}", ts_hash);
                 self.delete_add_transaction(txn, &ts_hash, message)?;
             }
             if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
@@ -408,7 +408,7 @@ impl Store {
                 message.data.as_ref().unwrap().r#type as u8,
                 &ts_hash.to_vec(),
             );
-            println!("add_compare: {}", add_compare);
+            // println!("add_compare: {}", add_compare);
 
             if add_compare > 0 {
                 return Err(HubError {
@@ -435,11 +435,11 @@ impl Store {
                 code: "bad_request.internal_error".to_string(),
                 message: format!("The message for the {:x?} not found", add_ts_hash.unwrap()),
             })?;
-            println!("existing_add: {:?}", existing_add);
+            // println!("existing_add: {:?}", existing_add);
             conflicts.push(existing_add);
         }
 
-        println!("conflicts: {:?}", conflicts);
+        // println!("conflicts: {:?}", conflicts);
         Ok(conflicts)
     }
 
@@ -479,7 +479,7 @@ impl Store {
     ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
         let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
-        println!("merge_conflicts: {:?}", merge_conflicts);
+        // println!("merge_conflicts: {:?}", merge_conflicts);
 
         // start a transaction
         let txn = self.db.txn();
@@ -498,8 +498,8 @@ impl Store {
 
         // Commit the transaction
         txn.commit()?;
-        println!("Commiting transaction ");
-        println!("hub_event: {:?}", hub_event);
+        // println!("Commiting transaction ");
+        // println!("hub_event: {:?}", hub_event);
 
         hub_event.id = id;
         // Serialize the hub_event
@@ -556,7 +556,7 @@ impl Store {
         &self,
         fid: u32,
         page_options: &PageOptions,
-    ) -> Result<Vec<Message>, HubError> {
+    ) -> Result<MessagesPage, HubError> {
         // TODO: The page_token's pageToken and reverse are not handled yet
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages =
@@ -693,7 +693,7 @@ impl Store {
     }
 
     pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        println!("js_get_all_messages_by_fid");
+        // println!("js_get_all_messages_by_fid");
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
@@ -708,7 +708,7 @@ impl Store {
                 Err(e) => return tcx.throw_error(format!("{}/{}", e.code, e.message)),
             };
 
-            encode_messages_to_js_array(&mut tcx, messages)
+            encode_messages_to_js_object(&mut tcx, messages)
         });
 
         Ok(promise)

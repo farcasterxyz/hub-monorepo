@@ -13,6 +13,12 @@ import { UserMessagePostfix } from "storage/db/types.js";
 
 export class RustDynStore {}
 
+// Type returned from Rust which is equivalent to the TypeScript type `MessagesPage`
+export class RustMessagesPage {
+  messageBytes?: Buffer[];
+  nextPageToken?: Buffer;
+}
+
 // Use this function in TypeScript to call the rust code.
 export function nativeBlake3Hash20(data: Uint8Array): Uint8Array {
   const dataBuf = Buffer.from(data);
@@ -83,7 +89,7 @@ export const getAllMessagesByFid = async (
   store: RustDynStore,
   fid: number,
   pageOptions: PageOptions,
-): Promise<Buffer[]> => {
+): Promise<RustMessagesPage> => {
   return await lib.getAllMessagesByFid.call(store, fid, pageOptions);
 };
 
@@ -112,7 +118,7 @@ export const getReactionAddsByFid = async (
   fid: number,
   type: number,
   pageOptions: PageOptions,
-): Promise<Buffer[]> => {
+): Promise<RustMessagesPage> => {
   return await lib.getReactionAddsByFid.call(store, fid, type, pageOptions);
 };
 
@@ -121,7 +127,7 @@ export const getReactionRemovesByFid = async (
   fid: number,
   type: number,
   pageOptions: PageOptions,
-): Promise<Buffer[]> => {
+): Promise<RustMessagesPage> => {
   return await lib.getReactionRemovesByFid.call(store, fid, type, pageOptions);
 };
 
@@ -131,6 +137,6 @@ export const getReactionsByTarget = async (
   targetUrl: string,
   type: number,
   pageOptions: PageOptions,
-): Promise<Buffer[]> => {
+): Promise<RustMessagesPage> => {
   return await lib.getReactionsByTarget.call(store, targetCastIdBytes, targetUrl, type, pageOptions);
 };

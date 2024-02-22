@@ -15,8 +15,8 @@ use crate::{
 use super::{
     make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
-    utils::{encode_messages_to_js_array, get_page_options, get_store},
-    HubError, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
+    utils::{encode_messages_to_js_object, get_page_options, get_store},
+    HubError, MessagesPage, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
 };
 use crate::protos::message_data;
 
@@ -365,7 +365,7 @@ impl ReactionStore {
         fid: u32,
         reaction_type: i32,
         page_options: &PageOptions,
-    ) -> Result<Vec<protos::Message>, HubError> {
+    ) -> Result<MessagesPage, HubError> {
         store.get_adds_by_fid(
             fid,
             page_options,
@@ -390,6 +390,7 @@ impl ReactionStore {
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
 
         let page_options = get_page_options(&mut cx, 2)?;
+        println!("page_options: {:?}", page_options);
 
         let messages = match ReactionStore::get_reaction_adds_by_fid(
             &store,
@@ -400,11 +401,12 @@ impl ReactionStore {
             Ok(messages) => messages,
             Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
         };
+        println!("Reaction adds: {:?}", messages.messages.len());
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_array(&mut cx, messages)
+            encode_messages_to_js_object(&mut cx, messages)
         });
 
         Ok(promise)
@@ -415,7 +417,7 @@ impl ReactionStore {
         fid: u32,
         reaction_type: i32,
         page_options: &PageOptions,
-    ) -> Result<Vec<protos::Message>, HubError> {
+    ) -> Result<MessagesPage, HubError> {
         store.get_removes_by_fid(
             fid,
             page_options,
@@ -454,7 +456,7 @@ impl ReactionStore {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_array(&mut cx, messages)
+            encode_messages_to_js_object(&mut cx, messages)
         });
 
         Ok(promise)
@@ -465,19 +467,17 @@ impl ReactionStore {
         target: &Target,
         reaction_type: i32,
         page_options: &PageOptions,
-    ) -> Result<Vec<protos::Message>, HubError> {
+    ) -> Result<MessagesPage, HubError> {
         let prefix = ReactionStoreDef::make_reactions_by_target_key(target, 0, None);
-        println!("prefix: {:?}", prefix);
+        // println!("prefix: {:?}", prefix);
 
         let mut message_keys = vec![];
+        let mut last_key = vec![];
 
         store
             .db()
-            .for_each_iterator_by_prefix(&prefix, |key, value| {
-                println!("key: {:x?}, value: {:x?}", key, value);
-                if message_keys.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
-                    return Ok(false);
-                }
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, value| {
+                // println!("key: {:x?}, value: {:x?}", key, value);
 
                 if reaction_type == ReactionType::None as i32
                     || (value.len() == 1 && value[0] == reaction_type as u8)
@@ -497,6 +497,10 @@ impl ReactionStore {
                     );
 
                     message_keys.push(message_primary_key.to_vec());
+                    if message_keys.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
+                        last_key = key.to_vec();
+                        return Ok(false);
+                    }
 
                     Ok(true)
                 } else {
@@ -504,10 +508,17 @@ impl ReactionStore {
                 }
             })?;
 
-        // TODO: Return Page options
         let messages = message::get_many_messages(store.db(), message_keys)?;
+        let next_page_token = if last_key.len() > 0 {
+            Some(last_key[prefix.len()..].to_vec())
+        } else {
+            None
+        };
 
-        Ok(messages)
+        Ok(MessagesPage {
+            messages,
+            next_page_token,
+        })
     }
 
     pub fn js_get_reactions_by_target(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -559,7 +570,7 @@ impl ReactionStore {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_array(&mut cx, messages)
+            encode_messages_to_js_object(&mut cx, messages)
         });
 
         Ok(promise)

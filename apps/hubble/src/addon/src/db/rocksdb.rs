@@ -1,9 +1,14 @@
-use crate::store::HubError;
-use rocksdb::{Options, WriteBatchWithTransaction};
+use crate::store::{increment_vec_u8, HubError, PageOptions};
+use rocksdb::{IteratorMode, Options, WriteBatchWithTransaction};
 
 pub struct RocksDB {
     pub db: rocksdb::TransactionDB,
     path: String,
+}
+
+pub struct IteratorOptions {
+    pub opts: rocksdb::ReadOptions,
+    pub reverse: bool,
 }
 
 pub type RocksDbTransaction<'a> = rocksdb::Transaction<'a, rocksdb::TransactionDB>;
@@ -43,27 +48,78 @@ impl RocksDB {
         self.db.transaction()
     }
 
-    pub fn for_each_iterator_by_prefix<F>(&self, prefix: &[u8], mut f: F) -> Result<(), HubError>
+    fn get_iterator_options(prefix: &[u8], page_options: &PageOptions) -> IteratorOptions {
+        let mut lower_prefix;
+        let mut upper_prefix;
+
+        if page_options.reverse {
+            lower_prefix = prefix.to_vec();
+            if let Some(token) = &page_options.page_token {
+                upper_prefix = prefix.to_vec();
+                upper_prefix.extend_from_slice(token);
+            } else {
+                upper_prefix = increment_vec_u8(&prefix.to_vec());
+            }
+        } else {
+            if let Some(token) = &page_options.page_token {
+                lower_prefix = prefix.to_vec();
+                lower_prefix.extend_from_slice(token);
+
+                // move to the next key, since the page_token is the key of the last seen item
+                lower_prefix = increment_vec_u8(&lower_prefix);
+            } else {
+                lower_prefix = prefix.to_vec();
+            }
+
+            let prefix_end = increment_vec_u8(&prefix.to_vec());
+            upper_prefix = prefix_end.to_vec();
+        }
+
+        println!("lower_prefix: {:?}", lower_prefix);
+        println!("upper_prefix: {:?}", upper_prefix);
+
+        let mut opts = rocksdb::ReadOptions::default();
+        opts.set_iterate_lower_bound(lower_prefix);
+        opts.set_iterate_upper_bound(upper_prefix);
+
+        IteratorOptions {
+            opts,
+            reverse: page_options.reverse,
+        }
+    }
+
+    pub fn for_each_iterator_by_prefix<F>(
+        &self,
+        prefix: &[u8],
+        page_options: &PageOptions,
+        mut f: F,
+    ) -> Result<(), HubError>
     where
         F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     {
-        let mut iter = self.db.iterator(rocksdb::IteratorMode::From(
-            prefix,
-            rocksdb::Direction::Forward,
-        ));
-        for item in iter {
-            let (key, value) = item.map_err(|e| HubError {
-                code: "db.internal_error".to_string(),
-                message: e.to_string(),
-            })?;
-            if key.starts_with(prefix) {
+        let iter_opts = RocksDB::get_iterator_options(prefix, page_options);
+        let mut iter = self.db.raw_iterator_opt(iter_opts.opts);
+
+        if iter_opts.reverse {
+            iter.seek_to_last();
+        } else {
+            iter.seek_to_first();
+        }
+
+        while iter.valid() {
+            if let Some((key, value)) = iter.item() {
                 if !f(&key, &value)? {
                     break;
                 }
+            }
+
+            if iter_opts.reverse {
+                iter.prev();
             } else {
-                break;
+                iter.next();
             }
         }
+
         Ok(())
     }
 

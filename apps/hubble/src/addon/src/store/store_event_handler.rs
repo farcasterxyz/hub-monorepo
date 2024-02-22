@@ -1,9 +1,8 @@
 use std::sync::{Arc, Mutex};
 
-use prost::Message;
+use prost::Message as _;
 
 use crate::{db::RocksDbTransaction, protos::HubEvent};
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{HubError, RootPrefix};

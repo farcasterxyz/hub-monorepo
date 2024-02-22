@@ -115,13 +115,14 @@ export class ReactionStoreProxy {
     fid: number,
     pageOptions: PageOptions = {},
   ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
-    const message_bytes_array: Uint8Array[] = await getAllMessagesByFid(this.rustReactionStore, fid, pageOptions);
+    const messages_page = await getAllMessagesByFid(this.rustReactionStore, fid, pageOptions);
 
-    const messages = message_bytes_array.map((message_bytes) => {
-      return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage | ReactionRemoveMessage;
-    });
+    const messages =
+      messages_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage | ReactionRemoveMessage;
+      }) ?? [];
 
-    return { messages };
+    return { messages, nextPageToken: messages_page.nextPageToken };
   }
 
   async getReactionAdd(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionAddMessage> {
@@ -169,13 +170,14 @@ export class ReactionStoreProxy {
     type?: ReactionType,
     pageOptions?: PageOptions,
   ): Promise<MessagesPage<ReactionAddMessage>> {
-    const message_bytes_array = await getReactionAddsByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
+    const messages_page = await getReactionAddsByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
 
-    const messages = message_bytes_array.map((message_bytes) => {
-      return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
-    });
+    const messages =
+      messages_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
+      }) ?? [];
 
-    return { messages };
+    return { messages, nextPageToken: messages_page.nextPageToken };
   }
 
   async getReactionRemovesByFid(
@@ -183,18 +185,14 @@ export class ReactionStoreProxy {
     type?: ReactionType,
     pageOptions?: PageOptions,
   ): Promise<MessagesPage<ReactionRemoveMessage>> {
-    const message_bytes_array = await getReactionRemovesByFid(
-      this.rustReactionStore,
-      fid,
-      type ?? 0,
-      pageOptions ?? {},
-    );
+    const message_page = await getReactionRemovesByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
 
-    const messages = message_bytes_array.map((message_bytes) => {
-      return Message.decode(new Uint8Array(message_bytes)) as ReactionRemoveMessage;
-    });
+    const messages =
+      message_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionRemoveMessage;
+      }) ?? [];
 
-    return { messages };
+    return { messages, nextPageToken: message_page.nextPageToken };
   }
 
   async getAllReactionMessagesByFid(
@@ -218,7 +216,7 @@ export class ReactionStoreProxy {
       targetCastId = Buffer.from(CastId.encode(target).finish());
     }
 
-    const message_bytes_array = await getReactionsByTarget(
+    const message_page = await getReactionsByTarget(
       this.rustReactionStore,
       targetCastId,
       targetUrl,
@@ -226,10 +224,11 @@ export class ReactionStoreProxy {
       pageOptions,
     );
 
-    const messages = message_bytes_array.map((message_bytes) => {
-      return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
-    });
+    const messages =
+      message_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
+      }) ?? [];
 
-    return { messages };
+    return { messages, nextPageToken: message_page.nextPageToken };
   }
 }

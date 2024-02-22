@@ -1,11 +1,11 @@
-use prost::Message;
+use prost::Message as _;
 
 use crate::{
-    db::{RocksDB, RocksDbTransaction},
-    protos::{CastId, Message as MessageProto, MessageType},
+    db::{IteratorOptions, RocksDB, RocksDbTransaction},
+    protos::{self, CastId, Message as MessageProto, MessageType},
 };
 
-use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
+use super::{store::HubError, utils::increment_vec_u8, PageOptions, PAGE_SIZE_MAX};
 use std::{convert::TryFrom, ops::Deref};
 
 pub const TS_HASH_LENGTH: usize = 24;
@@ -115,6 +115,11 @@ pub enum UserPostfix {
 
     /* UserNameProof add set */
     UserNameProofAdds = 99,
+}
+
+pub struct MessagesPage {
+    pub messages: Vec<MessageProto>,
+    pub next_page_token: Option<Vec<u8>>,
 }
 
 pub fn type_to_set_postfix(message_type: MessageType) -> UserPostfix {
@@ -250,7 +255,7 @@ pub fn get_message(
 pub fn get_many_messages(
     db: &RocksDB,
     primary_keys: Vec<Vec<u8>>,
-) -> Result<Vec<MessageProto>, HubError> {
+) -> Result<Vec<protos::Message>, HubError> {
     let mut messages = Vec::new();
 
     for key in primary_keys {
@@ -282,38 +287,51 @@ pub fn get_messages_page_by_prefix<F>(
     prefix: &[u8],
     page_options: &PageOptions,
     filter: F,
-) -> Result<Vec<MessageProto>, HubError>
+) -> Result<MessagesPage, HubError>
 where
     F: Fn(&MessageProto) -> bool,
 {
     let mut messages = Vec::new();
-    let mut iter = db.db.prefix_iterator(prefix);
+    let mut last_key = vec![];
 
-    for _ in 0..page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
-        if let Some(Ok((key, value))) = iter.next() {
-            if key.starts_with(prefix) {
-                match MessageProto::decode(value.deref()) {
-                    Ok(message) => {
-                        if filter(&message) {
-                            messages.push(message);
-                        }
-                    }
-                    Err(_) => {
-                        return Err(HubError {
-                            code: "db.internal_error".to_string(),
-                            message: "could not decode message".to_string(),
-                        })
+    println!(
+        "get_messages_page_by_prefix prefix: {:?}. Page = {:?}",
+        prefix, page_options
+    );
+
+    db.for_each_iterator_by_prefix(
+        prefix,
+        page_options,
+        |key, value| match MessageProto::decode(value.deref()) {
+            Ok(message) => {
+                if filter(&message) {
+                    messages.push(message);
+
+                    if messages.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
+                        last_key = key.to_vec();
+                        return Ok(false);
                     }
                 }
-            } else {
-                break;
-            }
-        } else {
-            break;
-        }
-    }
 
-    Ok(messages)
+                Ok(true) // Continue iterating
+            }
+            Err(e) => Err(HubError {
+                code: "db.internal_error".to_string(),
+                message: format!("could not decode message: {}", e),
+            }),
+        },
+    )?;
+
+    let next_page_token = if last_key.len() > 0 {
+        Some(last_key[prefix.len()..].to_vec())
+    } else {
+        None
+    };
+
+    Ok(MessagesPage {
+        messages,
+        next_page_token,
+    })
 }
 
 pub fn put_message_transaction(
