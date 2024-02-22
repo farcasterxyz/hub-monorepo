@@ -2,6 +2,11 @@
 #
 # See https://www.thehubble.xyz/intro/install.html#installing-hubble for full
 # instructions.
+#
+# WARNING: Running `docker compose up` from the latest commit on the main
+# branch may not work. Make sure to check out the latest tagged release first:
+#
+#   git fetch --tags --force && git checkout @latest && docker compose up
 
 version: '3.9'
 
@@ -69,4 +74,3 @@ services:
 
 networks:
   my-network:
-
