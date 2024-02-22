@@ -121,7 +121,6 @@ export class LibP2PNode {
       : 3 * 1000;
 
     this._hmc = new HubMessageCache<void>(10, 7, options.statsdParams);
-    this._hmc.startMetrics(1000);
 
     const gossip = gossipsub({
       allowPublishToZeroPeers: true,
@@ -216,7 +215,6 @@ export class LibP2PNode {
 
   async stop() {
     await this._node?.stop();
-    this._hmc?.stopMetrics();
   }
 
   /** Return if we have any inbound P2P connections */

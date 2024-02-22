@@ -1061,6 +1061,7 @@ export class Hub implements HubInterface {
           await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
         }
       } else {
+        statsd().increment(`gossip.message_failure.${result.error.message}.${source.toString()}`);
         log.info(
           {
             errCode: result.error.errCode,

@@ -24,13 +24,10 @@ export class HubMessageCache<T> implements SeenCache, IMessageCache {
   seenCache: SimpleTimeCache<T>;
   messageCache: MessageCache;
   bloomFilter: bloom.ScalableBloomFilter;
-  statsd?: StatsD;
-  private metricsIntervalId?: NodeJS.Timer;
 
   constructor(gossip: number, historyCapacity: number, statsdParams?: StatsDInitParams) {
     if (statsdParams) {
       initializeStatsd(statsdParams.host, statsdParams.port);
-      this.statsd = statsd();
     }
 
     this.seenCache = new SimpleTimeCache<T>({ validityMs: GOSSIP_SEEN_TTL });
@@ -42,22 +39,6 @@ export class HubMessageCache<T> implements SeenCache, IMessageCache {
 
     const [initialSize, errorRate] = [262144, 0.001];
     this.bloomFilter = new ScalableBloomFilter(initialSize, errorRate);
-  }
-
-  startMetrics(intervalMs = 1000): void {
-    this.metricsIntervalId = setInterval(() => {
-      console.log(`[seen: ${this.seenCache.size}, message: ${this.messageCache.size}] [statsd: ${typeof this.statsd}]`);
-      statsd().gauge("hmc.seen_cache_size", this.seenCache.size);
-      statsd().gauge("hmc.message_cache_size", this.messageCache.size);
-    }, intervalMs);
-  }
-
-  stopMetrics(): void {
-    if (!this.statsd) {
-      return;
-    }
-
-    clearInterval(this.metricsIntervalId);
   }
 
   get notValidatedCount(): number {
@@ -118,7 +99,7 @@ export class HubMessageCache<T> implements SeenCache, IMessageCache {
   put(messageId: MessageId, msg: RPC.IMessage, validated: boolean): boolean;
   put(key: string | number | MessageId, value: T | RPC.IMessage, validated?: boolean): boolean {
     if (typeof key === "string" || typeof key === "number") {
-      this.statsd?.increment("hmc.bloom_filter_adds");
+      statsd().increment("gossip.cache.bloom_filter_adds");
       this.bloomFilter.add(key.toString());
       return this.seenCache.put(key, value as T);
     } else {
