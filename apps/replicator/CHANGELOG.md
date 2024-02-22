@@ -1,5 +1,11 @@
 # @farcaster/replicator
 
+## 0.3.2
+
+### Patch Changes
+
+- addf097c: chore: update @farcaster/hub-nodejs
+
 ## 0.3.1
 
 ### Patch Changes

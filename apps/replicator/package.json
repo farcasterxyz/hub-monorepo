@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/replicator",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Replicate Farcaster hub data into Postgres",
   "author": "",
   "license": "",
