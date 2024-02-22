@@ -353,7 +353,7 @@ impl Store {
 
         let mut conflicts = vec![];
 
-        if self.store_def.is_remove_type(message) {
+        if self.store_def.remove_type_supported() {
             let remove_key = self.store_def.make_remove_key(message);
             let remove_ts_hash = self.db.get(&remove_key)?;
 
