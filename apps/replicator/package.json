@@ -34,7 +34,7 @@
     "dotenv": "^16.3.1",
     "fastify": "^4.23.2",
     "fastq": "^1.15.0",
-    "hot-shots": "^10.0.0",
+    "@figma/hot-shots": "^9.0.0-figma.1",
     "humanize-duration": "^3.30.0",
     "ioredis": "^5.3.2",
     "kysely": "^0.26.3",
