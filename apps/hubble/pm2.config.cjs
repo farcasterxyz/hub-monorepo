@@ -11,9 +11,12 @@ module.exports = {
   apps: [
     {
       name: "hubble",
-      // First arg is implicitly `node`
-      args: "--max-old-space-size=8192 ./build/cli.js start --network 1",
-      instances: 1, // Only one hub process can access RocksDB at a time
+      script: "./build/cli.js",
+      instances: 1,
+      exec_mode: "cluster",
+      // HACK: Allows us to pass arguments in a way recognized by the CLI flag processing library we use
+      // This is only necessary when running via PM2.
+      args: process.env.HUBBLE_ARGS,
       watch: false,
       log_type: "json",
       out_file: "/dev/stdout",
