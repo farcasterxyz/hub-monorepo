@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.3
+
+### Patch Changes
+
+- 1fd0f686: fix: add bs58 dependency
+
 ## 0.14.2
 
 ### Patch Changes
