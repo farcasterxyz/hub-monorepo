@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.10.3
+
+### Patch Changes
+
+- 9bcaa9c1: Run via pm2 process supervisor
+- a8b7dfcb: fix: Replace hot-shots with @figma/hot-shots
+- Updated dependencies [5703d339]
+  - @farcaster/hub-nodejs@0.11.2
+
 ## 1.10.2
 
 ### Patch Changes

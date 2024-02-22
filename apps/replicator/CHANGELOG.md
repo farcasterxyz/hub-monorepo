@@ -1,5 +1,13 @@
 # @farcaster/replicator
 
+## 0.3.1
+
+### Patch Changes
+
+- a8b7dfcb: fix: Replace hot-shots with @figma/hot-shots
+- Updated dependencies [5703d339]
+  - @farcaster/hub-nodejs@0.11.2
+
 ## 0.3.0
 
 ### Minor Changes
