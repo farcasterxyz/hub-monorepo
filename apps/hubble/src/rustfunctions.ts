@@ -78,9 +78,13 @@ export const getMessage = async (
 };
 
 /** This is dynamically dispatched to any Store that you pass in */
-
 export const merge = async (store: RustDynStore, messageBytes: Uint8Array): Promise<Buffer> => {
   return await lib.merge.call(store, messageBytes);
+};
+
+/** Revoke a message from the store */
+export const revoke = async (store: RustDynStore, messageBytes: Uint8Array): Promise<Buffer> => {
+  return await lib.revoke.call(store, messageBytes);
 };
 
 /** This is dynamically dispatched to any Store, and the messages will be returned from that store */

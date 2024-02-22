@@ -94,6 +94,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
     // Generic methods that can accept any store
     cx.export_function("merge", Store::js_merge)?;
+    cx.export_function("revoke", Store::js_revoke)?;
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
 
     // ReactionStore methods

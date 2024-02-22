@@ -1,5 +1,6 @@
 import {
   CastId,
+  HubAsyncResult,
   HubError,
   HubErrorCode,
   HubEvent,
@@ -22,12 +23,13 @@ import {
   getReactionRemovesByFid,
   getReactionsByTarget,
   merge,
+  revoke,
   rustErrorToHubError,
 } from "../../rustfunctions.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { ResultAsync } from "neverthrow";
+import { ResultAsync, err, ok } from "neverthrow";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
@@ -97,6 +99,20 @@ export class ReactionStoreProxy {
 
     void this._eventHandler.processRustCommitedTransaction(hubEvent);
     return hubEvent.id;
+  }
+
+  async revoke(message: Message): HubAsyncResult<number> {
+    const messageBytes = Message.encode(message).finish();
+    const result = await ResultAsync.fromPromise(revoke(this.rustReactionStore, messageBytes), rustErrorToHubError);
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    const resultBytes = new Uint8Array(result.value);
+    const hubEvent = HubEvent.decode(resultBytes);
+
+    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    return ok(hubEvent.id);
   }
 
   async getMessage(fid: number, set: UserMessagePostfix, tsHash: Uint8Array): Promise<Message> {

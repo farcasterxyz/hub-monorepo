@@ -472,6 +472,41 @@ impl Store {
         }
     }
 
+    pub fn revoke(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        // Start a transaction
+        let txn = self.db.txn();
+
+        // Get the message ts_hash
+        let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+
+        if self.store_def.is_add_type(message) {
+            self.delete_add_transaction(&txn, &ts_hash, message)?;
+        } else if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
+            self.delete_remove_transaction(&txn, message)?;
+        } else {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "invalid message type".to_string(),
+            });
+        }
+
+        let mut hub_event = self.revoke_event_args(message);
+
+        let id = self
+            .store_event_handler
+            .commit_transaction(&txn, &mut hub_event)?;
+
+        // Commit the transaction
+        txn.commit()?;
+
+        hub_event.id = id;
+
+        // Serialize the hub_event
+        let hub_event_bytes = hub_event.encode_to_vec();
+
+        Ok(hub_event_bytes)
+    }
+
     pub fn merge_add(
         &self,
         ts_hash: &[u8; TS_HASH_LENGTH],
@@ -539,6 +574,18 @@ impl Store {
         let hub_event_bytes = hub_event.encode_to_vec();
 
         Ok(hub_event_bytes)
+    }
+
+    fn revoke_event_args(&self, message: &Message) -> HubEvent {
+        HubEvent {
+            r#type: HubEventType::RevokeMessage as i32,
+            body: Some(hub_event::Body::RevokeMessageBody(
+                protos::RevokeMessageBody {
+                    message: Some(message.clone()),
+                },
+            )),
+            id: 0,
+        }
     }
 
     fn merge_event_args(&self, message: &Message, merge_conflicts: Vec<Message>) -> HubEvent {
@@ -653,6 +700,39 @@ impl Store {
             Err(e) => cx.throw_error(format!("{}/{}", e.code, e.message)),
         });
         // });
+
+        Ok(promise)
+    }
+
+    pub fn js_revoke(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store = get_store(&mut cx)?;
+
+        let message_bytes = cx.argument::<JsBuffer>(0);
+        let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
+
+        let result = if message.is_err() {
+            let e = message.unwrap_err();
+            Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: e.to_string(),
+            })
+        } else {
+            let m = message.unwrap();
+            store.revoke(&m)
+        };
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+        deferred.settle_with(&channel, move |mut cx| match result {
+            Ok(hub_event_bytes) => {
+                let mut js_buffer = cx.buffer(hub_event_bytes.len())?;
+                js_buffer
+                    .as_mut_slice(&mut cx)
+                    .copy_from_slice(&hub_event_bytes);
+                Ok(js_buffer)
+            }
+            Err(e) => cx.throw_error(format!("{}/{}", e.code, e.message)),
+        });
 
         Ok(promise)
     }

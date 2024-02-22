@@ -701,103 +701,104 @@ describe("merge", () => {
   });
 });
 
-// describe("revoke", () => {
-//   let revokedMessages: Message[] = [];
+describe("revoke", () => {
+  let revokedMessages: Message[] = [];
 
-//   const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
-//     revokedMessages.push(event.revokeMessageBody.message);
-//   };
+  const revokeMessageHandler = (event: RevokeMessageHubEvent) => {
+    revokedMessages.push(event.revokeMessageBody.message);
+  };
 
-//   beforeAll(() => {
-//     eventHandler.on("revokeMessage", revokeMessageHandler);
-//   });
+  beforeAll(() => {
+    eventHandler.on("revokeMessage", revokeMessageHandler);
+  });
 
-//   beforeEach(() => {
-//     revokedMessages = [];
-//   });
+  beforeEach(() => {
+    revokedMessages = [];
+  });
 
-//   afterAll(() => {
-//     eventHandler.off("revokeMessage", revokeMessageHandler);
-//   });
+  afterAll(() => {
+    eventHandler.off("revokeMessage", revokeMessageHandler);
+  });
 
-//   test("fails with invalid message type", async () => {
-//     const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
-//     const result = await set.revoke(castAdd);
-//     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "invalid message type")));
-//     expect(revokedMessages).toEqual([]);
-//   });
+  test("fails with invalid message type", async () => {
+    const castAdd = await Factories.CastAddMessage.create({ data: { fid } });
+    const result = await set.revoke(castAdd);
+    expect(result).toEqual(err(new HubError("bad_request.invalid_param", "invalid message type")));
+    expect(revokedMessages).toEqual([]);
+  });
 
-//   test("deletes all keys relating to the reaction", async () => {
-//     await set.merge(reactionAdd);
-//     const reactionKeys: Buffer[] = [];
-//     for await (const [key] of db.iterator()) {
-//       reactionKeys.push(key as Buffer);
-//     }
-//     expect(reactionKeys.length).toBeGreaterThan(0);
-//     await set.revoke(reactionAdd);
-//     const reactionKeysAfterRevoke: Buffer[] = [];
-//     for await (const [key] of db.iterator()) {
-//       reactionKeysAfterRevoke.push(key as Buffer);
-//     }
-//     // Two hub events left behind (one merge, one revoke)
-//     expect(reactionKeysAfterRevoke.length).toEqual(2);
-//   });
+  test("deletes all keys relating to the reaction", async () => {
+    await set.merge(reactionAdd);
+    const reactionKeys: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeys.push(key as Buffer);
+    }
+    expect(reactionKeys.length).toBeGreaterThan(0);
+    await set.revoke(reactionAdd);
+    const reactionKeysAfterRevoke: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeysAfterRevoke.push(key as Buffer);
+    }
+    // Two hub events left behind (one merge, one revoke)
+    expect(reactionKeysAfterRevoke.length).toEqual(2);
+  });
 
-//   test("deletes all keys relating to the cast with parent url", async () => {
-//     const reaction = await Factories.ReactionAddMessage.create({
-//       data: { reactionBody: { targetCastId: undefined, targetUrl: faker.internet.url() } },
-//     });
-//     await set.merge(reaction);
-//     const reactionKeys: Buffer[] = [];
-//     for await (const [key] of db.iterator()) {
-//       reactionKeys.push(key as Buffer);
-//     }
-//     expect(reactionKeys.length).toBeGreaterThan(0);
-//     await set.revoke(reaction);
-//     const reactionKeysAfterRevoke: Buffer[] = [];
-//     for await (const [key] of db.iterator()) {
-//       reactionKeysAfterRevoke.push(key as Buffer);
-//     }
-//     // Two hub events left behind (one merge, one revoke)
-//     expect(reactionKeysAfterRevoke.length).toEqual(2);
-//   });
+  test("deletes all keys relating to the cast with parent url", async () => {
+    const reaction = await Factories.ReactionAddMessage.create({
+      data: { reactionBody: { targetCastId: undefined, targetUrl: faker.internet.url() } },
+    });
+    await set.merge(reaction);
+    const reactionKeys: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeys.push(key as Buffer);
+    }
+    expect(reactionKeys.length).toBeGreaterThan(0);
+    await set.revoke(reaction);
+    const reactionKeysAfterRevoke: Buffer[] = [];
+    for await (const [key] of db.iterator()) {
+      reactionKeysAfterRevoke.push(key as Buffer);
+    }
+    // Two hub events left behind (one merge, one revoke)
+    expect(reactionKeysAfterRevoke.length).toEqual(2);
+  });
 
-//   test("succeeds with ReactionAdd", async () => {
-//     await expect(set.merge(reactionAdd)).resolves.toBeGreaterThan(0);
-//     const result = await set.revoke(reactionAdd);
-//     expect(result.isOk()).toBeTruthy();
-//     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
-//     await expect(
-//       set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, reactionAdd.data.reactionBody.targetCastId as CastId),
-//     ).rejects.toThrow();
-//     expect(revokedMessages).toEqual([reactionAdd]);
-//   });
+  test("succeeds with ReactionAdd", async () => {
+    await expect(set.merge(reactionAdd)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(reactionAdd);
+    console.log(result);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, reactionAdd.data.reactionBody.targetCastId as CastId),
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([reactionAdd]);
+  });
 
-//   test("succeeds with ReactionRemove", async () => {
-//     await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
-//     const result = await set.revoke(reactionRemove);
-//     expect(result.isOk()).toBeTruthy();
-//     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
-//     await expect(
-//       set.getReactionRemove(
-//         fid,
-//         reactionRemove.data.reactionBody.type,
-//         reactionRemove.data.reactionBody.targetCastId as CastId,
-//       ),
-//     ).rejects.toThrow();
-//     expect(revokedMessages).toEqual([reactionRemove]);
-//   });
+  test("succeeds with ReactionRemove", async () => {
+    await expect(set.merge(reactionRemove)).resolves.toBeGreaterThan(0);
+    const result = await set.revoke(reactionRemove);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getReactionRemove(
+        fid,
+        reactionRemove.data.reactionBody.type,
+        reactionRemove.data.reactionBody.targetCastId as CastId,
+      ),
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([reactionRemove]);
+  });
 
-//   test("succeeds with unmerged message", async () => {
-//     const result = await set.revoke(reactionAdd);
-//     expect(result.isOk()).toBeTruthy();
-//     expect(result._unsafeUnwrap()).toBeGreaterThan(0);
-//     await expect(
-//       set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, reactionAdd.data.reactionBody.targetCastId as CastId),
-//     ).rejects.toThrow();
-//     expect(revokedMessages).toEqual([reactionAdd]);
-//   });
-// });
+  test("succeeds with unmerged message", async () => {
+    const result = await set.revoke(reactionAdd);
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+    await expect(
+      set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, reactionAdd.data.reactionBody.targetCastId as CastId),
+    ).rejects.toThrow();
+    expect(revokedMessages).toEqual([reactionAdd]);
+  });
+});
 
 // describe("pruneMessages", () => {
 //   let prunedMessages: Message[];
