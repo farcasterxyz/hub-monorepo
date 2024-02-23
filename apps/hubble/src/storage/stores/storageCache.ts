@@ -206,9 +206,12 @@ export class StorageCache {
     const value = this._earliestTsHashes.get(key);
     if (value === undefined) {
       const prefix = makeMessagePrimaryKey(fid, set);
-      const iterator = this._db.iteratorByPrefix(prefix, { values: false });
-      const [firstKey] = await iterator.next();
-      await iterator.end();
+
+      let firstKey: Buffer | undefined;
+      await this._db.forEachIteratorByPrefix(prefix, (key) => {
+        firstKey = key as Buffer;
+        return true; // Finish the iteration after the first key-value pair
+      });
 
       if (firstKey === undefined) {
         return ok(undefined);

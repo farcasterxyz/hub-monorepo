@@ -245,7 +245,7 @@ class RocksDB {
     });
   }
 
-  iterator(options?: AbstractRocksDB.IteratorOptions, timeoutMs = MAX_DB_ITERATOR_OPEN_MILLISECONDS): Iterator {
+  private iterator(options?: AbstractRocksDB.IteratorOptions, timeoutMs = MAX_DB_ITERATOR_OPEN_MILLISECONDS): Iterator {
     const stackTrace = new Error().stack || "<no stacktrace>";
 
     const iterator = new Iterator(this._db.iterator({ ...options, valueAsBuffer: true, keyAsBuffer: true }));
@@ -277,25 +277,6 @@ class RocksDB {
   }
 
   /**
-   * Return an iterator for all key/values that start with the given prefix. RocksDB stores keys in lexicographical
-   * order, so this iterator will continue serving keys in order until it receives one that has a lexicographic order
-   * greater than the prefix.
-   */
-  iteratorByPrefix(prefix: Buffer, options: AbstractRocksDB.IteratorOptions = {}): Iterator {
-    const prefixOptions: AbstractRocksDB.IteratorOptions = {
-      gte: prefix,
-    };
-    const nextPrefix = bytesIncrement(new Uint8Array(prefix));
-    if (nextPrefix.isErr()) {
-      throw nextPrefix.error;
-    }
-    if (nextPrefix.value.length === prefix.length) {
-      prefixOptions.lt = Buffer.from(nextPrefix.value);
-    }
-    return this.iterator({ ...options, ...prefixOptions });
-  }
-
-  /**
    * forEach iterator, but with a prefix. See @forEachIterator for more details
    */
   async forEachIteratorByPrefix<T>(
@@ -316,6 +297,18 @@ class RocksDB {
     }
 
     return this.forEachIterator(callback, { ...options, ...prefixOptions }, timeout);
+  }
+
+  /**
+   *
+   * forEach iterator using iterator opts
+   */
+  async forEachIteratorByOpts<T>(
+    options: AbstractRocksDB.IteratorOptions,
+    callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<T> | T,
+    timeout = MAX_DB_ITERATOR_OPEN_MILLISECONDS,
+  ): Promise<T | undefined> {
+    return this.forEachIterator(callback, options, timeout);
   }
 
   /**

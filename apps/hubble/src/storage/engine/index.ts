@@ -47,7 +47,7 @@ import {
 import { err, ok, ResultAsync } from "neverthrow";
 import fs from "fs";
 import { Worker } from "worker_threads";
-import { getMessage, getMessagesBySignerIterator, typeToSetPostfix } from "../db/message.js";
+import { getMessage, getMessagesBySignerPrefix, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
 import { TSHASH_LENGTH, UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
@@ -335,7 +335,7 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     let revokedCount = 0;
 
-    const iterator = getMessagesBySignerIterator(this._db, fid, signer);
+    const prefix = getMessagesBySignerPrefix(this._db, fid, signer);
 
     const revokeMessageByKey = async (key: Buffer): HubAsyncResult<number | undefined> => {
       const length = key.length;
@@ -375,7 +375,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     };
 
-    for await (const [key] of iterator) {
+    await this._db.forEachIteratorByPrefix(prefix, async (key) => {
       const revokeResult = await revokeMessageByKey(key as Buffer);
       revokeResult.match(
         () => {
@@ -388,7 +388,7 @@ class Engine extends TypedEmitter<EngineEvents> {
           );
         },
       );
-    }
+    });
 
     if (revokedCount > 0) {
       log.info(`revoked ${revokedCount} messages from ${signerHex.value} and fid ${fid}`);

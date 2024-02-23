@@ -730,15 +730,17 @@ describe("revoke", () => {
   test("deletes all keys relating to the reaction", async () => {
     await set.merge(reactionAdd);
     const reactionKeys: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator((key) => {
       reactionKeys.push(key as Buffer);
-    }
+    });
+
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reactionAdd);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator((key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
-    }
+    });
+
     // Two hub events left behind (one merge, one revoke)
     expect(reactionKeysAfterRevoke.length).toEqual(2);
   });
@@ -749,15 +751,17 @@ describe("revoke", () => {
     });
     await set.merge(reaction);
     const reactionKeys: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator((key) => {
       reactionKeys.push(key as Buffer);
-    }
+    });
+
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reaction);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator((key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
-    }
+    });
+
     // Two hub events left behind (one merge, one revoke)
     expect(reactionKeysAfterRevoke.length).toEqual(2);
   });

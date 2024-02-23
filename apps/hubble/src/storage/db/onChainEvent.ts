@@ -1,7 +1,7 @@
 import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
 import { HubError, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
 import { OnChainEventPostfix, RootPrefix } from "./types.js";
-import { getPageIteratorByPrefix, makeFidKey } from "./message.js";
+import { getPageIteratorOptsByPrefix, makeFidKey } from "./message.js";
 import { PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
 import { ResultAsync } from "neverthrow";
 
@@ -141,36 +141,34 @@ export const getOnChainEventsPageByPrefix = async <T extends OnChainEvent>(
   events: T[];
   nextPageToken: Uint8Array | undefined;
 }> => {
-  const iterator = getPageIteratorByPrefix(db, prefix, pageOptions);
+  const iteratorOpts = getPageIteratorOptsByPrefix(db, prefix, pageOptions);
 
   const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
   const eventsPrimaryKeys: Buffer[] = [];
 
-  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-    const [key, value] = await iterator.next();
-    return [key as Buffer, value as Buffer];
-  };
-
-  let iteratorFinished = false;
+  let iteratorFinished = true;
   let lastPageToken: Uint8Array | undefined;
-  do {
-    const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
-    if (result.isErr()) {
-      iteratorFinished = true;
-      break;
-    }
 
-    const [key, value] = result.value;
+  await db.forEachIteratorByOpts(iteratorOpts, async (key, value) => {
+    if (!key) {
+      return false; // skip
+    }
     lastPageToken = Uint8Array.from(key.subarray(prefix.length));
     if (value) {
       eventsPrimaryKeys.push(value);
+
+      if (eventsPrimaryKeys.length >= limit) {
+        iteratorFinished = false;
+        return true; // stop
+      }
     }
-  } while (eventsPrimaryKeys.length < limit);
+
+    return false;
+  });
 
   const events = (await getManyOnChainEvents<T>(db, eventsPrimaryKeys)).filter(filter);
 
-  await iterator.end();
   if (!iteratorFinished) {
     return { events: events, nextPageToken: lastPageToken };
   } else {

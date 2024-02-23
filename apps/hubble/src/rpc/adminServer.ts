@@ -128,9 +128,7 @@ export default class AdminServer {
           ];
           for (const prefix of prefixes) {
             const prefixBuffer = Buffer.from([prefix]);
-            const iterator = this.db.iteratorByPrefix(prefixBuffer);
-
-            for await (const [key] of iterator) {
+            await this.db.forEachIteratorByPrefix(prefixBuffer, async (key) => {
               const result = await ResultAsync.fromPromise(this.db.del(key as Buffer), (e) => e as HubError);
               result.match(
                 () => {
@@ -140,7 +138,7 @@ export default class AdminServer {
                   log.error({ errCode: e.errCode }, "Failed to delete key: ${e.message}");
                 },
               );
-            }
+            });
           }
           log.info(`Deleted ${deletedCount} keys from db`);
 
