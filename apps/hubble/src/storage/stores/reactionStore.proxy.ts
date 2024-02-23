@@ -2,7 +2,6 @@ import {
   CastId,
   HubAsyncResult,
   HubError,
-  HubErrorCode,
   HubEvent,
   Message,
   ReactionAddMessage,
@@ -12,9 +11,10 @@ import {
   getDefaultStoreLimit,
 } from "@farcaster/hub-nodejs";
 import {
+  RustDb,
   RustDynStore,
   createReactionStore,
-  db_clear,
+  dbClear,
   getAllMessagesByFid,
   getMessage,
   getReactionAdd,
@@ -41,8 +41,8 @@ export class ReactionStoreProxy {
   private _pruneSizeLimit: number;
   protected _pruneTimeLimit: number | undefined;
 
-  constructor(eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    this.rustReactionStore = createReactionStore();
+  constructor(rustDb: RustDb, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+    this.rustReactionStore = createReactionStore(rustDb);
 
     this._postfix = UserPostfix.ReactionMessage;
     this._eventHandler = eventHandler;
@@ -66,10 +66,6 @@ export class ReactionStoreProxy {
   get pruneTimeLimit(): number | undefined {
     // No more time based pruning after the migration
     return undefined;
-  }
-
-  async db_clear(): Promise<void> {
-    await db_clear(this.rustReactionStore);
   }
 
   async merge(message: Message): Promise<number> {

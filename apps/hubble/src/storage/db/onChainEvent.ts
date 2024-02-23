@@ -1,4 +1,4 @@
-import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
+import RocksDB, { Transaction } from "./rocksdb.js";
 import { HubError, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
 import { OnChainEventPostfix, RootPrefix } from "./types.js";
 import { getPageIteratorOptsByPrefix, makeFidKey } from "./message.js";
@@ -141,7 +141,7 @@ export const getOnChainEventsPageByPrefix = async <T extends OnChainEvent>(
   events: T[];
   nextPageToken: Uint8Array | undefined;
 }> => {
-  const iteratorOpts = getPageIteratorOptsByPrefix(db, prefix, pageOptions);
+  const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
 
   const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 

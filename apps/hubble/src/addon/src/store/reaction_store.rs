@@ -1,19 +1,19 @@
-use std::{borrow::Borrow, convert::TryInto};
+use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
-    types::{buffer::TypedArray, JsBuffer, JsNumber, JsPromise, JsString},
+    types::{buffer::TypedArray, JsBox, JsBuffer, JsNumber, JsPromise, JsString},
 };
 use prost::Message as _;
 
 use crate::{
-    db::RocksDbTransaction,
+    db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, reaction_body::Target, Message, MessageType, ReactionBody, ReactionType},
 };
 
 use super::{
-    hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
+    get_db, hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
     utils::{encode_messages_to_js_object, get_page_options, get_store},
     HubError, MessagesPage, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
@@ -67,26 +67,26 @@ impl StoreDef for ReactionStoreDef {
 
     fn build_secondary_indicies(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
         let (by_target_key, rtype) = self.secondary_index_key(ts_hash, message)?;
 
-        txn.put(&by_target_key, vec![rtype])?;
+        txn.put(by_target_key, vec![rtype]);
 
         Ok(())
     }
 
     fn delete_secondary_indicies(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
         let (by_target_key, _) = self.secondary_index_key(ts_hash, message)?;
 
-        txn.delete(&by_target_key)?;
+        txn.delete(by_target_key);
 
         Ok(())
     }
@@ -208,8 +208,8 @@ impl ReactionStoreDef {
 pub struct ReactionStore {}
 
 impl ReactionStore {
-    pub fn new() -> Store {
-        Store::new_with_store_def(Box::new(ReactionStoreDef {}))
+    pub fn new(db: Arc<RocksDB>) -> Store {
+        Store::new_with_store_def(db, Box::new(ReactionStoreDef {}))
     }
 
     pub fn get_reaction_add(
@@ -381,6 +381,13 @@ impl ReactionStore {
                 false
             }),
         )
+    }
+
+    pub fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
+        let db_js_box = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
+        let db = (**db_js_box.borrow()).clone();
+
+        Ok(cx.boxed(Arc::new(ReactionStore::new(db))))
     }
 
     pub fn js_get_reaction_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {

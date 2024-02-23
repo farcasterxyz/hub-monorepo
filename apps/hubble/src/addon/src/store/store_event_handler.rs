@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use prost::Message as _;
 
-use crate::{db::RocksDbTransaction, protos::HubEvent};
+use crate::{db::RocksDbTransactionBatch, protos::HubEvent};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{HubError, RootPrefix};
@@ -82,7 +82,7 @@ impl StoreEventHandler {
 
     pub fn commit_transaction(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         raw_event: &mut HubEvent,
     ) -> Result<u64, HubError> {
         // Acquire the lock so we don't generate multiple IDs. This also serves as the commmit lock
@@ -111,13 +111,13 @@ impl StoreEventHandler {
 
     fn put_event_transaction(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         event: &HubEvent,
     ) -> Result<(), HubError> {
         let key = self.make_event_key(event.id);
         let value = event.encode_to_vec();
 
-        txn.put(&key, &value)?;
+        txn.put(key, value);
 
         Ok(())
     }

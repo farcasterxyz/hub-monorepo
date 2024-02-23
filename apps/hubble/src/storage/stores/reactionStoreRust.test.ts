@@ -21,11 +21,13 @@ import { UserPostfix } from "../db/types.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 import { ReactionStoreProxy } from "./reactionStore.proxy.js";
-import { getMessage } from "../../rustfunctions.js";
+import { createDb, dbClear, dbDestroy } from "../../rustfunctions.js";
 
 const db = jestRocksDB("protobufs.reactionStore.test");
+const rustDb = createDb("/tmp/rust_db_for_test.Rusttest");
+
 const eventHandler = new StoreEventHandler(db);
-const set = new ReactionStoreProxy(eventHandler);
+const set = new ReactionStoreProxy(rustDb, eventHandler);
 const fid = Factories.Fid.build();
 const castId = Factories.CastId.build();
 
@@ -64,9 +66,13 @@ beforeAll(async () => {
   await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
+afterAll(async () => {
+  await dbDestroy(db);
+});
+
 beforeEach(async () => {
   await eventHandler.syncCache();
-  await set.db_clear();
+  await dbClear(rustDb);
 });
 
 describe("getReactionAdd", () => {
@@ -730,15 +736,17 @@ describe("revoke", () => {
   test("deletes all keys relating to the reaction", async () => {
     await set.merge(reactionAdd);
     const reactionKeys: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator(async (key) => {
       reactionKeys.push(key as Buffer);
-    }
+    });
+
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reactionAdd);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator(async (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
-    }
+    });
+
     // Two hub events left behind (one merge, one revoke)
     expect(reactionKeysAfterRevoke.length).toEqual(2);
   });
@@ -749,15 +757,17 @@ describe("revoke", () => {
     });
     await set.merge(reaction);
     const reactionKeys: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator(async (key) => {
       reactionKeys.push(key as Buffer);
-    }
+    });
+
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reaction);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    for await (const [key] of db.iterator()) {
+    await db.forEachIterator(async (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
-    }
+    });
+
     // Two hub events left behind (one merge, one revoke)
     expect(reactionKeysAfterRevoke.length).toEqual(2);
   });

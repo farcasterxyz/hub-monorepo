@@ -255,7 +255,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   ): Promise<MessagesPage<LinkAddMessage>> {
     const prefix = makeLinksByTargetKey(target);
 
-    const iteratorOpts = getPageIteratorOptsByPrefix(this._db, prefix, pageOptions);
+    const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
 
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 

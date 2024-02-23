@@ -168,7 +168,7 @@ pub fn get_store(cx: &mut FunctionContext) -> Result<Arc<Store>, Throw> {
 }
 
 pub fn get_db(cx: &mut FunctionContext) -> Result<Arc<RocksDB>, Throw> {
-    let db_js_box = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
+    let db_js_box = cx.this().downcast_or_throw::<JsBox<Arc<RocksDB>>, _>(cx)?;
     Ok((**db_js_box.borrow()).clone())
 }
 

@@ -12,6 +12,7 @@ import { PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "storage/db/types.js";
 
 export class RustDynStore {}
+export class RustDb {}
 
 // Type returned from Rust which is equivalent to the TypeScript type `MessagesPage`
 export class RustMessagesPage {
@@ -55,17 +56,28 @@ export const rustErrorToHubError = (e: unknown) => {
   return new HubError(errCode as HubErrorCode, errMsg ?? "");
 };
 
+/** Create or Open a DB at a give path */
+export const createDb = (path: string): RustDb => {
+  const db = lib.createDb(path);
+
+  return db as RustDb;
+};
+
+export const dbClear = async (db: RustDb) => {
+  return await lib.dbClear.call(db);
+};
+
+export const dbDestroy = async (db: RustDb) => {
+  return await lib.dbDestroy.call(db);
+};
+
 /** Create a reaction Store */
-export const createReactionStore = (): RustDynStore => {
-  const store = lib.createReactionStore();
+export const createReactionStore = (db: RustDb): RustDynStore => {
+  const store = lib.createReactionStore(db);
   // console.log("store is ", store);
   // console.log("merge is ", lib.merge);
 
   return store as RustDynStore;
-};
-
-export const db_clear = async (store: RustDynStore) => {
-  return await lib.dbClear.call(store);
 };
 
 export const getMessage = async (

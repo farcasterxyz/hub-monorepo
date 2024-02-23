@@ -12,10 +12,6 @@ mod protos {
     include!(concat!("./", "/proto/protobufs.rs"));
 }
 
-fn create_reaction_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
-    Ok(cx.boxed(Arc::new(ReactionStore::new())))
-}
-
 fn ed25519_sign_message_hash(mut cx: FunctionContext) -> JsResult<JsBuffer> {
     let hash_arg = cx.argument::<JsBuffer>(0)?;
     let signing_key_arg = cx.argument::<JsBuffer>(1)?;
@@ -86,8 +82,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", blake3_20)?;
 
-    cx.export_function("createDB", RocksDB::js_create_db)?;
+    cx.export_function("createDb", RocksDB::js_create_db)?;
     cx.export_function("dbClear", RocksDB::js_clear)?;
+    cx.export_function("dbClose", RocksDB::js_close)?;
+    cx.export_function("dbDestroy", RocksDB::js_destroy)?;
     cx.export_function("dbGet", RocksDB::js_get)?;
     cx.export_function("dbGetMany", RocksDB::js_get_many)?;
     cx.export_function("dbPut", RocksDB::js_put)?;
@@ -103,8 +101,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         RocksDB::js_for_each_iterator_by_js_opts,
     )?;
 
-    cx.export_function("createReactionStore", create_reaction_store)?;
-
     // TODO: This probably should not be on the store but directly on the DB?
     cx.export_function("getMessage", Store::js_get_message)?;
 
@@ -114,6 +110,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
 
     // ReactionStore methods
+    cx.export_function("createReactionStore", ReactionStore::create_reaction_store)?;
     cx.export_function("getReactionAdd", ReactionStore::js_get_reaction_add)?;
     cx.export_function("getReactionRemove", ReactionStore::js_get_reaction_remove)?;
     cx.export_function(

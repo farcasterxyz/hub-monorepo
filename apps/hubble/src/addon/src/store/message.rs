@@ -1,7 +1,7 @@
 use prost::Message as _;
 
 use crate::{
-    db::{IteratorOptions, RocksDB, RocksDbTransaction},
+    db::{IteratorOptions, RocksDB, RocksDbTransactionBatch},
     protos::{self, CastId, Message as MessageProto, MessageType},
 };
 
@@ -335,7 +335,7 @@ where
 }
 
 pub fn put_message_transaction(
-    txn: &RocksDbTransaction<'_>,
+    txn: &mut RocksDbTransactionBatch,
     message: &MessageProto,
 ) -> Result<(), HubError> {
     let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
@@ -346,7 +346,7 @@ pub fn put_message_transaction(
             as u8,
         Some(&ts_hash),
     );
-    txn.put(&primary_key, &message.encode_to_vec())?;
+    txn.put(primary_key, message.encode_to_vec());
     // println!("put_message_transaction primary_key: {:?}", primary_key);
 
     let by_signer_key = make_message_by_signer_key(
@@ -356,13 +356,13 @@ pub fn put_message_transaction(
         ts_hash,
     );
 
-    txn.put(&by_signer_key, [TRUE_VALUE])?;
+    txn.put(by_signer_key, [TRUE_VALUE].to_vec());
 
     Ok(())
 }
 
 pub fn delete_message_transaction(
-    txn: &RocksDbTransaction<'_>,
+    txn: &mut RocksDbTransactionBatch,
     message: &MessageProto,
 ) -> Result<(), HubError> {
     let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
@@ -373,7 +373,7 @@ pub fn delete_message_transaction(
             as u8,
         Some(&ts_hash),
     );
-    txn.delete(&primary_key)?;
+    txn.delete(primary_key);
 
     let by_signer_key = make_message_by_signer_key(
         message.data.as_ref().unwrap().fid as u32,
@@ -381,7 +381,7 @@ pub fn delete_message_transaction(
         message.data.as_ref().unwrap().r#type as u8,
         ts_hash,
     );
-    txn.delete(&by_signer_key)?;
+    txn.delete(by_signer_key);
 
     Ok(())
 }

@@ -8,7 +8,7 @@ import {
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import RocksDB, { Iterator } from "../db/rocksdb.js";
+import RocksDB from "../db/rocksdb.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../db/types.js";
 import Engine from "../engine/index.js";

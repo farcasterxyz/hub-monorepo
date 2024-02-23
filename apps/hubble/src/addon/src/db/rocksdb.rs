@@ -1,6 +1,3 @@
-use std::fs;
-use std::sync::Arc;
-
 use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -10,10 +7,13 @@ use neon::object::Object;
 use neon::result::JsResult;
 use neon::types::buffer::TypedArray;
 use neon::types::{
-    Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsObject, JsPromise, JsString, Value,
+    Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
+    JsString,
 };
-use rocksdb::Options;
+use rocksdb::{Options, TransactionDB};
+use std::fs;
 use std::fs::File;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 use tar::Builder;
 
 pub struct RocksDbTransactionBatch {
@@ -46,16 +46,14 @@ pub struct JsIteratorOptions {
     pub lt: Vec<u8>,
 }
 
-pub type RocksDbTransaction<'a> = rocksdb::Transaction<'a, rocksdb::TransactionDB>;
-
 pub struct RocksDB {
-    pub db: rocksdb::TransactionDB,
+    pub db: RwLock<Option<rocksdb::TransactionDB>>,
 }
 
 impl Finalize for RocksDB {}
 
 impl RocksDB {
-    pub fn new(path: &str) -> Result<RocksDB, String> {
+    pub fn new(path: &str) -> Result<RocksDB, HubError> {
         // Create RocksDB options
         let mut opts = Options::default();
         opts.create_if_missing(true); // Creates a database if it does not exist
@@ -65,63 +63,104 @@ impl RocksDB {
 
         // Open the database with multi-threaded support
         let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, path).unwrap();
-        Ok(RocksDB { db })
+        Ok(RocksDB {
+            db: RwLock::new(Some(db)),
+        })
     }
 
     pub fn location(&self) -> String {
-        self.db.path().to_str().unwrap().to_string()
+        self.db()
+            .as_ref()
+            .unwrap()
+            .path()
+            .to_str()
+            .unwrap()
+            .to_string()
     }
 
-    pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
-        self.db.get(key).map_err(|e| HubError {
+    pub fn close(&self) -> Result<String, HubError> {
+        let mut db_lock = self.db.write().unwrap();
+        let db = db_lock.take().unwrap();
+        let path = db.path().to_str().unwrap().to_string();
+        drop(db);
+
+        Ok(path)
+    }
+
+    pub fn destroy(&self) -> Result<(), HubError> {
+        let path = self.close()?;
+
+        rocksdb::DB::destroy(&rocksdb::Options::default(), path).map_err(|e| HubError {
             code: "db.internal_error".to_string(),
             message: e.to_string(),
         })
     }
 
-    pub fn get_many(&self, keys: &Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, HubError> {
-        let mut results = Vec::new();
+    pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
+        self.db().as_ref().unwrap().get(key).map_err(|e| HubError {
+            code: "db.internal_error".to_string(),
+            message: e.to_string(),
+        })
+    }
 
-        for key in keys {
-            let maybe_value = self.get(key)?;
-            if maybe_value.is_none() {
-                return Err(HubError {
-                    code: "db.not_found".to_string(),
-                    message: format!("key not found: {:?}", key),
-                });
-            }
-            results.push(maybe_value.unwrap());
+    pub fn db(&self) -> RwLockReadGuard<'_, Option<TransactionDB>> {
+        self.db.read().unwrap()
+    }
+
+    pub fn get_many(&self, keys: &Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, HubError> {
+        let results = self.db().as_ref().unwrap().multi_get(keys);
+
+        // If any of the results are Errors, return an error
+        let results = results.into_iter().collect::<Result<Vec<_>, _>>()?;
+
+        // If any of the results are None, return a not found error
+        if results.iter().any(|r| r.is_none()) {
+            return Err(HubError {
+                code: "db.not_found".to_string(),
+                message: "key not found".to_string(),
+            });
         }
+
+        let results = results.into_iter().map(|r| r.unwrap()).collect::<Vec<_>>();
 
         Ok(results)
     }
 
     pub fn put(&self, key: &[u8], value: &[u8]) -> Result<(), HubError> {
-        self.db.put(key, value).map_err(|e| HubError {
-            code: "db.internal_error".to_string(),
-            message: e.to_string(),
-        })
+        self.db()
+            .as_ref()
+            .unwrap()
+            .put(key, value)
+            .map_err(|e| HubError {
+                code: "db.internal_error".to_string(),
+                message: e.to_string(),
+            })
     }
 
     pub fn del(&self, key: &[u8]) -> Result<(), HubError> {
-        self.db.delete(key).map_err(|e| HubError {
-            code: "db.internal_error".to_string(),
-            message: e.to_string(),
-        })
+        self.db()
+            .as_ref()
+            .unwrap()
+            .delete(key)
+            .map_err(|e| HubError {
+                code: "db.internal_error".to_string(),
+                message: e.to_string(),
+            })
     }
 
-    pub fn txn(&self) -> rocksdb::Transaction<'_, rocksdb::TransactionDB> {
-        self.db.transaction()
+    pub fn txn(&self) -> RocksDbTransactionBatch {
+        RocksDbTransactionBatch::new()
     }
 
     pub fn commit(&self, batch: RocksDbTransactionBatch) -> Result<(), HubError> {
-        let txn = self.txn();
+        let db = self.db();
+        let txn = db.as_ref().unwrap().transaction();
 
         for (key, value) in batch.batch {
             if value.is_none() {
                 txn.delete(key)?;
             } else {
-                txn.put(&key, &value.unwrap())?;
+                txn.put(key, value.unwrap())?;
             }
         }
 
@@ -181,7 +220,8 @@ impl RocksDB {
         F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     {
         let iter_opts = RocksDB::get_iterator_options(prefix, page_options);
-        let mut iter = self.db.raw_iterator_opt(iter_opts.opts);
+        let db = self.db();
+        let mut iter = db.as_ref().unwrap().raw_iterator_opt(iter_opts.opts);
 
         if iter_opts.reverse {
             iter.seek_to_last();
@@ -239,7 +279,8 @@ impl RocksDB {
         opts.set_iterate_lower_bound(lower_bound.clone());
         opts.set_iterate_upper_bound(upper_bound);
 
-        let mut iter = self.db.raw_iterator_opt(opts);
+        let db = self.db();
+        let mut iter = db.as_ref().unwrap().raw_iterator_opt(opts);
 
         if reverse {
             iter.seek_to_last();
@@ -281,18 +322,17 @@ impl RocksDB {
             deleted = 0;
 
             // Iterate over all keys and delete them
-            let txn = self.txn();
+            let mut txn = self.txn();
+            let db = self.db();
 
-            for item in self.db.iterator(rocksdb::IteratorMode::Start) {
+            for item in db.as_ref().unwrap().iterator(rocksdb::IteratorMode::Start) {
                 if let Ok((key, _)) = item {
-                    txn.delete(key).unwrap();
+                    txn.delete(key.to_vec());
                     deleted += 1;
                 }
             }
-            txn.commit().map_err(|e| HubError {
-                code: "db.internal_error".to_string(),
-                message: e.to_string(),
-            })?;
+
+            self.commit(txn)?;
 
             // Check if we deleted anything
             if deleted == 0 {
@@ -348,24 +388,38 @@ impl RocksDB {
 
         let db = RocksDB::new(&path);
         if db.is_err() {
-            return cx.throw_error(db.err().unwrap().to_string());
+            return hub_error_to_js_throw(&mut cx, db.err().unwrap());
         }
 
         Ok(cx.boxed(Arc::new(db.unwrap())))
     }
 
-    pub fn js_clear(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    pub fn js_clear(mut cx: FunctionContext) -> JsResult<JsNumber> {
         let db = get_db(&mut cx)?;
         let result = match db.clear() {
             Ok(result) => result,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
-        let channel = cx.channel();
-        let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| Ok(cx.number(result as f64)));
+        Ok(cx.number(result))
+    }
 
-        Ok(promise)
+    pub fn js_close(mut cx: FunctionContext) -> JsResult<JsString> {
+        let db = get_db(&mut cx)?;
+        let result = match db.close() {
+            Ok(result) => result,
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
+        };
+
+        Ok(cx.string(result))
+    }
+
+    pub fn js_destroy(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+        let db = get_db(&mut cx)?;
+        if let Err(e) = db.destroy() {
+            return hub_error_to_js_throw(&mut cx, e);
+        }
+        Ok(cx.boolean(true))
     }
 
     pub fn js_location(mut cx: FunctionContext) -> JsResult<JsString> {
@@ -380,7 +434,7 @@ impl RocksDB {
         let key = cx.argument::<JsBuffer>(0)?.as_slice(&cx).to_vec();
         let value = cx.argument::<JsBuffer>(1)?.as_slice(&cx).to_vec();
 
-        let result = match db.put(&key, &value) {
+        match db.put(&key, &value) {
             Ok(_) => (),
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
@@ -399,7 +453,13 @@ impl RocksDB {
         let value = match db.get(&key) {
             Ok(Some(value)) => value,
             Ok(None) => {
-                return cx.throw_error(format!("{}/{}:{:?}", "not_found", "key not found", key))
+                return hub_error_to_js_throw(
+                    &mut cx,
+                    HubError {
+                        code: "db.not_found".to_string(),
+                        message: format!("key not found: {:?}", key),
+                    },
+                )
             }
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };

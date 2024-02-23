@@ -1,21 +1,21 @@
 use crate::{
-    db::{RocksDB, RocksDbTransaction},
+    db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message, MessageType},
     store::make_ts_hash,
 };
-use neon::context::Context;
 use neon::types::buffer::TypedArray;
 use neon::types::{Finalize, JsBuffer, JsNumber};
+use neon::{context::Context, types::JsBox};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use prost::Message as _;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
 use super::{
-    bytes_compare, delete_message_transaction, get_message, hub_error_to_js_throw,
+    bytes_compare, delete_message_transaction, get_db, get_message, hub_error_to_js_throw,
     make_message_primary_key, message, put_message_transaction,
     utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
-    MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
+    MessagesPage, ReactionStore, StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
 
@@ -84,13 +84,13 @@ pub trait StoreDef: Send + Sync {
 
     fn build_secondary_indicies(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError>;
     fn delete_secondary_indicies(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError>;
@@ -115,7 +115,7 @@ impl Finalize for Store {
 }
 
 impl Store {
-    pub fn new_with_store_def(store_def: Box<dyn StoreDef>) -> Store {
+    pub fn new_with_store_def(db: Arc<RocksDB>, store_def: Box<dyn StoreDef>) -> Store {
         Store {
             store_def,
             store_event_handler: Arc::new(StoreEventHandler::new()),
@@ -125,8 +125,7 @@ impl Store {
                 Mutex::new(()),
                 Mutex::new(()),
             ]),
-            // TODO: This is a bad idea. RocksDB should be shared across all stores.
-            db: Arc::new(RocksDB::new("/tmp/tmprocksdb").unwrap()),
+            db,
             pool: Arc::new(Mutex::new(ThreadPool::new(4))),
         }
     }
@@ -256,7 +255,7 @@ impl Store {
 
     fn put_add_transaction(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
@@ -266,7 +265,7 @@ impl Store {
 
         // TODO: Test check for the postfix
 
-        txn.put(&adds_key, ts_hash)?;
+        txn.put(adds_key, ts_hash.to_vec());
 
         self.store_def
             .build_secondary_indicies(txn, ts_hash, message)?;
@@ -276,7 +275,7 @@ impl Store {
 
     fn delete_add_transaction(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
@@ -284,14 +283,14 @@ impl Store {
             .delete_secondary_indicies(txn, ts_hash, message)?;
 
         let add_key = self.store_def.make_add_key(message);
-        txn.delete(&add_key)?;
+        txn.delete(add_key);
 
         delete_message_transaction(txn, message)
     }
 
     fn put_remove_transaction(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
@@ -305,14 +304,14 @@ impl Store {
         put_message_transaction(txn, &message)?;
 
         let removes_key = self.store_def.make_remove_key(message);
-        txn.put(&removes_key, ts_hash)?;
+        txn.put(removes_key, ts_hash.to_vec());
 
         Ok(())
     }
 
     fn delete_remove_transaction(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         message: &Message,
     ) -> Result<(), HubError> {
         if !self.store_def.remove_type_supported() {
@@ -323,14 +322,14 @@ impl Store {
         }
 
         let remove_key = self.store_def.make_remove_key(message);
-        txn.delete(&remove_key)?;
+        txn.delete(remove_key);
 
         delete_message_transaction(txn, message)
     }
 
     fn delete_many_transaction(
         &self,
-        txn: &RocksDbTransaction<'_>,
+        txn: &mut RocksDbTransactionBatch,
         messages: Vec<Message>,
     ) -> Result<(), HubError> {
         for message in &messages {
@@ -486,15 +485,15 @@ impl Store {
 
     pub fn revoke(&self, message: &Message) -> Result<Vec<u8>, HubError> {
         // Start a transaction
-        let txn = self.db.txn();
+        let mut txn = self.db.txn();
 
         // Get the message ts_hash
         let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
 
         if self.store_def.is_add_type(message) {
-            self.delete_add_transaction(&txn, &ts_hash, message)?;
+            self.delete_add_transaction(&mut txn, &ts_hash, message)?;
         } else if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
-            self.delete_remove_transaction(&txn, message)?;
+            self.delete_remove_transaction(&mut txn, message)?;
         } else {
             return Err(HubError {
                 code: "bad_request.invalid_param".to_string(),
@@ -506,10 +505,10 @@ impl Store {
 
         let id = self
             .store_event_handler
-            .commit_transaction(&txn, &mut hub_event)?;
+            .commit_transaction(&mut txn, &mut hub_event)?;
 
         // Commit the transaction
-        txn.commit()?;
+        self.db.commit(txn)?;
 
         hub_event.id = id;
 
@@ -529,22 +528,23 @@ impl Store {
         // println!("merge_conflicts: {:?}", merge_conflicts);
 
         // start a transaction
-        let txn = self.db.txn();
+        let mut txn = self.db.txn();
         // Delete all the merge conflicts
-        self.delete_many_transaction(&txn, merge_conflicts.clone())?;
+        self.delete_many_transaction(&mut txn, merge_conflicts.clone())?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
-        self.put_add_transaction(&txn, &ts_hash, message)?;
+        self.put_add_transaction(&mut txn, &ts_hash, message)?;
 
         // Event handler
         let mut hub_event = self.merge_event_args(message, merge_conflicts);
 
         let id = self
             .store_event_handler
-            .commit_transaction(&txn, &mut hub_event)?;
+            .commit_transaction(&mut txn, &mut hub_event)?;
 
         // Commit the transaction
-        txn.commit()?;
+        self.db.commit(txn)?;
+
         // println!("Commiting transaction ");
         // println!("hub_event: {:?}", hub_event);
 
@@ -564,22 +564,23 @@ impl Store {
         let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
 
         // start a transaction
-        let txn = self.db.txn();
+        let mut txn = self.db.txn();
+
         // Delete all the merge conflicts
-        self.delete_many_transaction(&txn, merge_conflicts.clone())?;
+        self.delete_many_transaction(&mut txn, merge_conflicts.clone())?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
-        self.put_remove_transaction(&txn, ts_hash, message)?;
+        self.put_remove_transaction(&mut txn, ts_hash, message)?;
 
         // Event handler
         let mut hub_event = self.merge_event_args(message, merge_conflicts);
 
         let id = self
             .store_event_handler
-            .commit_transaction(&txn, &mut hub_event)?;
+            .commit_transaction(&mut txn, &mut hub_event)?;
 
         // Commit the transaction
-        txn.commit()?;
+        self.db.commit(txn)?;
 
         hub_event.id = id;
         // Serialize the hub_event

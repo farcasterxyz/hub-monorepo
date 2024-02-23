@@ -336,7 +336,7 @@ export class Hub implements HubInterface {
     this.options = options;
 
     console.log("----------");
-    createReactionStore();
+    // createReactionStore();
 
     if (!options.ethMainnetRpcUrl) {
       log.warn("No ETH mainnet RPC URL provided, unable to validate ens names");

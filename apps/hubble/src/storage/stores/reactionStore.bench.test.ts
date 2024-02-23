@@ -1,14 +1,17 @@
 import { ReactionStoreProxy } from "./reactionStore.proxy.js";
 import { Factories, HubError, ReactionAddMessage, ReactionRemoveMessage, ReactionType } from "@farcaster/hub-nodejs";
 import StoreEventHandler from "./storeEventHandler.js";
-import { jestRocksDB } from "../../storage/db/jestUtils.js";
+import { jestRocksDB } from "../db/jestUtils.js";
 import ReactionStore from "./reactionStore.js";
 import { Result, ResultAsync } from "neverthrow";
+import { createDb, dbClear } from "../../rustfunctions.js";
 
 describe("ReactionStoreProxy", () => {
   let reactionStoreProxy: ReactionStoreProxy;
 
   const db = jestRocksDB("reactionStoreProxy.test");
+  const rustDb = createDb("/tmp/rust_db_for_test.bench.test");
+
   const eventHandler = new StoreEventHandler(db);
   const set = new ReactionStore(db, eventHandler);
 
@@ -31,12 +34,12 @@ describe("ReactionStoreProxy", () => {
       data: { fid, reactionBody: likeBody, timestamp: reactionAdd.data.timestamp + 1 },
     });
 
-    reactionStoreProxy = new ReactionStoreProxy(eventHandler);
+    reactionStoreProxy = new ReactionStoreProxy(rustDb, eventHandler);
   });
 
   beforeEach(async () => {
     await eventHandler.syncCache();
-    await reactionStoreProxy.db_clear();
+    await dbClear(rustDb);
   });
 
   test("merges basic reaction message", async () => {
