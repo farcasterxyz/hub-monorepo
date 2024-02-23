@@ -1,5 +1,29 @@
 # @farcaster/hub-nodejs
 
+## 0.11.3
+
+### Patch Changes
+
+- Updated dependencies [1fd0f686]
+  - @farcaster/core@0.14.3
+
+## 0.11.2
+
+### Patch Changes
+
+- 5703d339: feat: add state field to frame message
+- Updated dependencies [5703d339]
+- Updated dependencies [136ef6b4]
+  - @farcaster/core@0.14.2
+
+## 0.11.1
+
+### Patch Changes
+
+- Updated dependencies [bf37ec76]
+- Updated dependencies [1a52b869]
+  - @farcaster/core@0.14.1
+
 ## 0.11.0
 
 ### Minor Changes

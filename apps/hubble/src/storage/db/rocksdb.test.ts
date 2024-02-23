@@ -159,16 +159,13 @@ describe("with db", () => {
       await db.put(Buffer.from("foo"), Buffer.from("bar"));
       await db.put(Buffer.from([1, 2]), Buffer.from([255]));
 
-      const keys = [];
-      const values = [];
+      const keys: Buffer[] = [];
+      const values: Buffer[] = [];
 
-      const iterator = db.iterator({ keyAsBuffer: true, valueAsBuffer: true });
-      expect(iterator.isOpen).toEqual(true);
-      for await (const [key, value] of iterator) {
-        keys.push(key);
-        values.push(value);
-      }
-      expect(iterator.isOpen).toEqual(false);
+      await db.forEachIterator(async (key, value) => {
+        keys.push(key as Buffer);
+        values.push(value as Buffer);
+      });
 
       expect(keys).toEqual([Buffer.from([1, 2]), Buffer.from("foo")]);
       expect(values).toEqual([Buffer.from([255]), Buffer.from("bar")]);
@@ -182,10 +179,12 @@ describe("with db", () => {
       await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
       await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
       await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
-      const output = [];
-      for await (const [key, value] of db.iteratorByPrefix(Buffer.from("aliceprefix!"))) {
-        output.push([key, value]);
-      }
+
+      const output: [Buffer, Buffer][] = [];
+      await db.forEachIteratorByPrefix(Buffer.from("aliceprefix!"), (key, value) => {
+        output.push([key as Buffer, value as Buffer]);
+      });
+
       expect(output).toEqual([
         [Buffer.from("aliceprefix!a"), Buffer.from("bar")],
         [Buffer.from("aliceprefix!b"), Buffer.from("foo")],
@@ -203,10 +202,11 @@ describe("with db", () => {
 
       await db.commit(tsx);
 
-      const values = [];
-      for await (const [, value] of db.iteratorByPrefix(Buffer.from([1, 255]), { keys: false })) {
-        values.push(value);
-      }
+      const values: Buffer[] = [];
+      await db.forEachIteratorByPrefix(Buffer.from([1, 255]), (key, value) => {
+        values.push(value as Buffer);
+      });
+
       expect(values).toEqual([Buffer.from("a"), Buffer.from("b")]);
     });
 
@@ -221,10 +221,10 @@ describe("with db", () => {
 
       await db.commit(tsx);
 
-      const values = [];
-      for await (const [, value] of db.iteratorByPrefix(Buffer.from([255]), { keys: false })) {
-        values.push(value);
-      }
+      const values: Buffer[] = [];
+      await db.forEachIteratorByPrefix(Buffer.from([255]), (key, value) => {
+        values.push(value as Buffer);
+      });
       expect(values).toEqual([Buffer.from("a"), Buffer.from("b")]);
     });
   });
@@ -373,45 +373,5 @@ describe("with db", () => {
       await expect(db.compact()).resolves.toEqual(undefined);
       await expect(db.get(Buffer.from("foo"))).resolves.toEqual(Buffer.from("bar"));
     });
-  });
-});
-
-describe("open iterator check", () => {
-  let db: RocksDB;
-
-  beforeAll(async () => {
-    jest.useFakeTimers();
-    // Creating a separate db here so that jest.useFakeTimers takes effect
-    // when setInterval is called in the RocksDB constructor
-    db = new RocksDB(randomDbName());
-    await expect(db.open()).resolves.toEqual(undefined);
-  });
-
-  afterAll(async () => {
-    expect(db.status).toEqual("open");
-    await db.destroy();
-    jest.useRealTimers();
-  });
-
-  test("warns on open iterators", async () => {
-    Date.now = jest.fn(() => 0);
-    const closedIterator = db.iterator();
-    await closedIterator.end();
-
-    // Create hanging iterator at specified time
-    const hangingIterator = db.iterator();
-
-    expect([...db.openIterators].filter((x) => x.iterator === closedIterator).length).toEqual(1);
-    expect([...db.openIterators].filter((x) => x.iterator === hangingIterator).length).toEqual(1);
-    expect(closedIterator.isOpen).toEqual(false);
-    expect(hangingIterator.isOpen).toEqual(true);
-
-    // Move time forward to expire hangingIterator
-    Date.now = jest.fn(() => MAX_DB_ITERATOR_OPEN_MILLISECONDS);
-
-    // Hanging iterator should be left beind in list
-    jest.advanceTimersByTime(MAX_DB_ITERATOR_OPEN_MILLISECONDS);
-    expect([...db.openIterators].filter((x) => x.iterator === closedIterator).length).toEqual(0);
-    expect([...db.openIterators].filter((x) => x.iterator === hangingIterator).length).toEqual(1);
   });
 });

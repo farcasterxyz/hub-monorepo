@@ -26,6 +26,7 @@ import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } f
 import { createLibp2p, Libp2p } from "libp2p";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
+
 import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
@@ -112,8 +113,14 @@ export class LibP2PNode {
       return err(new HubError("unavailable", checkResult.error));
     }
 
+    // default in gossipsub of 3s is not enough since hubs may experience I/O lag
+    const gossipsubIWantFollowupMs = process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"]
+      ? parseInt(process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"])
+      : 3 * 1000;
+
     const gossip = gossipsub({
       emitSelf: false,
+      gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       allowPublishToZeroPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
       globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",

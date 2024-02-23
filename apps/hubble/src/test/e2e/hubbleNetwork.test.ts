@@ -106,8 +106,8 @@ describe("hubble gossip and sync tests", () => {
         // Submit the message to hub1 via rpc, so it is gossip'd to hub2
         expect(await hub1.submitMessage(castAdd, "rpc")).toBeTruthy();
 
-        // Submitting it again should return false, as it is already in the db
-        const errResult = await hub1.submitMessage(castAdd, "rpc");
+        // Submitting it again (via gossip) should return false, as it is already in the db
+        const errResult = await hub1.submitMessage(castAdd, "gossip");
         expect(errResult.isErr()).toBeTruthy();
         expect(errResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
 

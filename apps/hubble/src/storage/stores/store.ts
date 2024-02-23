@@ -13,7 +13,7 @@ import {
   getManyMessages,
   getMessage,
   getMessagesPageByPrefix,
-  getPageIteratorByPrefix,
+  getPageIteratorOptsByPrefix,
   makeMessagePrimaryKey,
   makeTsHash,
   messageDecode,
@@ -351,38 +351,36 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   protected async getBySecondaryIndex(prefix: Buffer, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {
-    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
+    const iteratorOpts = getPageIteratorOptsByPrefix(this._db, prefix, pageOptions);
 
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
     const messageKeys: Buffer[] = [];
 
-    // Custom method to retrieve message key from key
-    const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Buffer]> => {
-      const [key] = await iterator.next();
+    let iteratorFinished = true;
+    let lastPageToken: Uint8Array | undefined;
+
+    await this._db.forEachIteratorByOpts(iteratorOpts, (key) => {
+      if (!key) {
+        return false; // continue
+      }
       const fid = Number((key as Buffer).readUint32BE(prefix.length + TSHASH_LENGTH));
       const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length, prefix.length + TSHASH_LENGTH);
-      const messagePrimaryKey = makeMessagePrimaryKey(fid, this._postfix, tsHash);
-      return [key as Buffer, messagePrimaryKey];
-    };
+      const messageKey = makeMessagePrimaryKey(fid, this._postfix, tsHash);
 
-    let iteratorFinished = false;
-    let lastPageToken: Uint8Array | undefined;
-    do {
-      const result = await ResultAsync.fromPromise(getNextIteratorRecord(iterator), (e) => e as HubError);
-      if (result.isErr()) {
-        iteratorFinished = true;
-        break;
-      }
-
-      const [key, messageKey] = result.value;
       lastPageToken = Uint8Array.from(key.subarray(prefix.length));
       messageKeys.push(messageKey);
-    } while (messageKeys.length < limit);
+
+      if (messageKeys.length >= limit) {
+        iteratorFinished = false;
+        return true; // stop
+      }
+
+      return false; // continue
+    });
 
     const messages = await getManyMessages<TAdd>(this._db, messageKeys);
 
-    await iterator.end(); // clear iterator if it has not finished
     if (!iteratorFinished) {
       return { messages, nextPageToken: lastPageToken };
     } else {

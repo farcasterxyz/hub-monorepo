@@ -340,31 +340,6 @@ app
       rpcRateLimit = hubConfig.rpcRateLimit;
     }
 
-    // Check if the DB_RESET_TOKEN env variable is set. If it is, we might need to reset the DB.
-    let resetDB = false;
-    const dbResetToken = process.env["DB_RESET_TOKEN"];
-    if (dbResetToken) {
-      // Read the contents of the "db_reset_token.txt" file, and if the number is
-      // different from the DB_RESET_TOKEN env variable, then we should reset the DB
-      const dbResetTokenFile = `${processFileDir}/db_reset_token.txt`;
-      let dbResetTokenFileContents = "";
-      try {
-        dbResetTokenFileContents = fs.readFileSync(dbResetTokenFile, "utf8").trim();
-      } catch (err) {
-        // Ignore error
-      }
-
-      if (dbResetTokenFileContents !== dbResetToken) {
-        // Write the new token to the file
-        fs.mkdirSync(processFileDir, { recursive: true });
-        fs.writeFileSync(dbResetTokenFile, dbResetToken);
-
-        // Reset the DB
-        logger.warn({ dbResetTokenFileContents, dbResetToken }, "Resetting DB since DB_RESET_TOKEN was set");
-        resetDB = true;
-      }
-    }
-
     // Metrics
     const statsDServer = cliOptions.statsdMetricsServer ?? hubConfig.statsdMetricsServer;
     if (statsDServer) {
@@ -523,7 +498,7 @@ app
       rpcRateLimit,
       rpcSubscribePerIpLimit: cliOptions.rpcSubscribePerIpLimit ?? hubConfig.rpcSubscribePerIpLimit,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
-      resetDB,
+      resetDB: false,
       rebuildSyncTrie,
       profileSync,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,

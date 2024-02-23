@@ -251,6 +251,34 @@ describe("mergeMessage", () => {
         expect(mergedMessages).toEqual([verificationAdd]);
       });
 
+      test("succeeds for solana verifications removes when enabled", async () => {
+        engine.setSolanaVerifications(true);
+        const verificationAdd = await Factories.VerificationAddSolAddressMessage.create(
+          { data: { fid, network } },
+          { transient: { signer } },
+        );
+        const verificationRemove = await Factories.VerificationRemoveMessage.create(
+          {
+            data: {
+              fid,
+              network,
+              timestamp: verificationAdd.data.timestamp + 1,
+              verificationRemoveBody: {
+                address: verificationAdd.data.verificationAddAddressBody.address,
+                protocol: Protocol.SOLANA,
+              },
+            },
+          },
+          { transient: { signer } },
+        );
+
+        await expect(engine.mergeMessage(verificationAdd)).resolves.toBeInstanceOf(Ok);
+        await expect(engine.mergeMessage(verificationRemove)).resolves.toBeInstanceOf(Ok);
+        const removeResult = await engine.getVerification(fid, verificationAdd.data.verificationAddAddressBody.address);
+        await expect(removeResult).toEqual(err(new HubError("not_found", "NotFound: ")));
+        expect(mergedMessages).toEqual([verificationAdd, verificationRemove]);
+      });
+
       test("fails when sol signature does not match fid", async () => {
         engine.setSolanaVerifications(true);
         const solAddress = Factories.SolAddress.build();

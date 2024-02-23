@@ -1017,7 +1017,7 @@ export class Hub implements HubInterface {
     if (gossipMessage.timestamp) {
       // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
       // propogate across the network
-      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL;
+      const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL / 1000;
 
       if (gossipMessage.timestamp < cutOffTime) {
         await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
@@ -1063,10 +1063,14 @@ export class Hub implements HubInterface {
         log.info(
           {
             errCode: result.error.errCode,
+            errMsg: result.error.message,
             peerId: source.toString(),
             origin: peerIdResult.value,
             hash: bytesToHexString(message.hash).unwrapOr(""),
+            fid: message.data?.fid,
+            type: message.data?.type,
             gossipDelay: gossipMessageDelay,
+            valid: !reportedAsInvalid,
             msgId,
           },
           "Received bad gossip message from peer",
@@ -1083,7 +1087,7 @@ export class Hub implements HubInterface {
       return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
-      this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
+      await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -1229,7 +1233,8 @@ export class Hub implements HubInterface {
     // TODO remove this once all peers are updated past 1.6.4
     if (message.timestamp === 0) return false;
 
-    return true;
+    // Return if peer contact was newer than existing contact (prevents old gossip messages from being forwarded)
+    return result.isOk();
   }
 
   /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,
@@ -1360,8 +1365,9 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
-    // If this is a dup, don't bother processing it
-    if (await isMessageInDB(this.rocksDB, submittedMessage)) {
+    // If this is a dup, don't bother processing it. Only do this for gossip messages since rpc messages
+    // haven't been validated yet
+    if (source === "gossip" && (await isMessageInDB(this.rocksDB, submittedMessage))) {
       log.debug({ source }, "submitMessage rejected: Message already exists");
       return err(new HubError("bad_request.duplicate", "message has already been merged"));
     }

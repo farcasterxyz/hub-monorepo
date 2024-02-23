@@ -1,4 +1,4 @@
-import { StatsD } from "hot-shots";
+import { StatsD } from "@figma/hot-shots";
 import { logger } from "./logger.js";
 
 const log = logger.child({ module: "statsd" });
