@@ -19,7 +19,7 @@ import {
   messageDecode,
   putMessageTransaction,
 } from "../db/message.js";
-import RocksDB, { Iterator, Transaction } from "../db/rocksdb.js";
+import RocksDB, { Transaction } from "../db/rocksdb.js";
 import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
 import AsyncLock from "async-lock";
@@ -351,7 +351,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   protected async getBySecondaryIndex(prefix: Buffer, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd>> {
-    const iteratorOpts = getPageIteratorOptsByPrefix(this._db, prefix, pageOptions);
+    const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
 
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 

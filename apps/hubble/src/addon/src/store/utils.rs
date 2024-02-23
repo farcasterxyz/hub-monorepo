@@ -10,7 +10,7 @@ use neon::{
 };
 use prost::Message as _;
 
-use crate::store::PAGE_SIZE_MAX;
+use crate::{db::RocksDB, store::PAGE_SIZE_MAX};
 
 use super::{HubError, MessagesPage, PageOptions, Store};
 
@@ -127,10 +127,6 @@ pub fn encode_messages_to_js_object<'a>(
 
     println!("js_object: {:?}", js_object);
 
-    println!("finished");
-    println!("finished");
-    println!("finished");
-    println!("finished");
     Ok(js_object)
 }
 
@@ -169,4 +165,13 @@ pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions
 pub fn get_store(cx: &mut FunctionContext) -> Result<Arc<Store>, Throw> {
     let store_js_box = cx.this().downcast_or_throw::<JsBox<Arc<Store>>, _>(cx)?;
     Ok((**store_js_box.borrow()).clone())
+}
+
+pub fn get_db(cx: &mut FunctionContext) -> Result<Arc<RocksDB>, Throw> {
+    let db_js_box = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
+    Ok((**db_js_box.borrow()).clone())
+}
+
+pub fn hub_error_to_js_throw<'a, T, U: Context<'a>>(cx: &mut U, e: HubError) -> Result<T, Throw> {
+    cx.throw_error::<String, T>(format!("{}/{}", e.code, e.message))
 }

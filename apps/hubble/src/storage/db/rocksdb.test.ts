@@ -2,8 +2,7 @@ import { faker } from "@faker-js/faker";
 import { HubError } from "@farcaster/hub-nodejs";
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
-import RocksDB, { MAX_DB_ITERATOR_OPEN_MILLISECONDS } from "./rocksdb.js";
-import { jest } from "@jest/globals";
+import RocksDB from "./rocksdb.js";
 import { ResultAsync } from "neverthrow";
 import { sleep } from "../../utils/crypto.js";
 

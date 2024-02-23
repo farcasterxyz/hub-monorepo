@@ -97,7 +97,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         if (totalFidsChecked % 5000 === 0) {
           log.info({ fid, totalMessagesChecked, totalFidsChecked }, "ValidateOrRevokeMessagesJob: progress");
 
-          // Also write the hub state to the database every 1000 FIDs, so that we can recover from
+          // Also write the hub state to the database every 5000 FIDs, so that we can recover from
           // unfinished job
           const hubState = await getHubState(this._db);
           hubState.validateOrRevokeState = {

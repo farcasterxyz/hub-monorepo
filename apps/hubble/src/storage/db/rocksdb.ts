@@ -25,7 +25,7 @@ const parseError = (e: Error): HubError => {
   return new HubError("unavailable.storage_failure", e);
 };
 
-export class Iterator {
+class Iterator {
   protected _iterator: AbstractIterator<AbstractRocksDB.Bytes, AbstractRocksDB.Bytes>;
   private _isOpen: boolean;
 

@@ -65,7 +65,7 @@ export const createReactionStore = (): RustDynStore => {
 };
 
 export const db_clear = async (store: RustDynStore) => {
-  return await lib.db_clear.call(store);
+  return await lib.dbClear.call(store);
 };
 
 export const getMessage = async (

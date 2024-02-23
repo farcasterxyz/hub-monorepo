@@ -12,8 +12,8 @@ use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
 use super::{
-    bytes_compare, delete_message_transaction, get_message, make_message_primary_key, message,
-    put_message_transaction,
+    bytes_compare, delete_message_transaction, get_message, hub_error_to_js_throw,
+    make_message_primary_key, message, put_message_transaction,
     utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
     MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
 };
@@ -25,6 +25,7 @@ pub struct HubError {
     pub message: String,
 }
 
+/** Convert RocksDB errors  */
 impl From<rocksdb::Error> for HubError {
     fn from(e: rocksdb::Error) -> HubError {
         HubError {
@@ -34,10 +35,21 @@ impl From<rocksdb::Error> for HubError {
     }
 }
 
+/** Convert Neon errors */
 impl From<neon::result::Throw> for HubError {
     fn from(e: neon::result::Throw) -> HubError {
         HubError {
             code: "bad_request.validation_failure".to_string(),
+            message: e.to_string(),
+        }
+    }
+}
+
+/** Convert io::Result error type to HubError */
+impl From<std::io::Error> for HubError {
+    fn from(e: std::io::Error) -> HubError {
+        HubError {
+            code: "bad_request.io_error".to_string(),
             message: e.to_string(),
         }
     }
@@ -94,7 +106,7 @@ pub struct Store {
     store_def: Box<dyn StoreDef>,
     store_event_handler: Arc<StoreEventHandler>,
     fid_locks: Arc<[Mutex<()>; 4]>,
-    db: RocksDB,                                  // TODO: Move this out
+    db: Arc<RocksDB>,
     pub pool: Arc<Mutex<threadpool::ThreadPool>>, // TODO: Move this out
 }
 
@@ -114,7 +126,7 @@ impl Store {
                 Mutex::new(()),
             ]),
             // TODO: This is a bad idea. RocksDB should be shared across all stores.
-            db: RocksDB::new("/tmp/tmprocksdb").unwrap(),
+            db: Arc::new(RocksDB::new("/tmp/tmprocksdb").unwrap()),
             pool: Arc::new(Mutex::new(ThreadPool::new(4))),
         }
     }
@@ -123,8 +135,8 @@ impl Store {
     //     // println!("{}", message);
     // }
 
-    pub fn db(&self) -> &RocksDB {
-        &self.db
+    pub fn db(&self) -> Arc<RocksDB> {
+        self.db.clone()
     }
 
     pub fn postfix(&self) -> u8 {
@@ -650,23 +662,6 @@ impl Store {
 // This means the NodeJS code can pass in any store, and the Rust code will call the correct method
 // for that store
 impl Store {
-    pub fn js_db_clear(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let store = get_store(&mut cx)?;
-
-        // let pool = store.pool.clone();
-        // pool.lock().unwrap().execute(move || {
-        let result = store.db.clear();
-
-        let channel = cx.channel();
-        let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            Ok(cx.number(result.unwrap_or_default() as f64))
-        });
-        // });
-
-        Ok(promise)
-    }
-
     pub fn js_merge(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let store = get_store(&mut cx)?;
 
@@ -742,11 +737,10 @@ impl Store {
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let set = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as u8;
-        let ts_hash = match vec_to_u8_24(&Some(
-            cx.argument::<JsBuffer>(2).unwrap().as_slice(&cx).to_vec(),
-        )) {
+        let ts_hash = match vec_to_u8_24(&Some(cx.argument::<JsBuffer>(2)?.as_slice(&cx).to_vec()))
+        {
             Ok(ts_hash) => ts_hash,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
         let channel = cx.channel();
@@ -758,7 +752,7 @@ impl Store {
                 Ok(None) => {
                     return cx.throw_error(format!("{}/{}", "not_found", "message not found"))
                 }
-                Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+                Err(e) => return hub_error_to_js_throw(&mut cx, e),
             };
 
             let message_bytes = message.encode_to_vec();

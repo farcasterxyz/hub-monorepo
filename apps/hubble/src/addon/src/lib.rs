@@ -1,5 +1,6 @@
 use std::{convert::TryInto, sync::Arc};
 
+use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
 use store::{ReactionStore, Store};
@@ -85,7 +86,22 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", blake3_20)?;
 
-    cx.export_function("db_clear", Store::js_db_clear)?;
+    cx.export_function("createDB", RocksDB::js_create_db)?;
+    cx.export_function("dbClear", RocksDB::js_clear)?;
+    cx.export_function("dbGet", RocksDB::js_get)?;
+    cx.export_function("dbGetMany", RocksDB::js_get_many)?;
+    cx.export_function("dbPut", RocksDB::js_put)?;
+    cx.export_function("dbDel", RocksDB::js_del)?;
+    cx.export_function("commitTransaction", RocksDB::js_commit_transaction)?;
+
+    cx.export_function(
+        "forEachIteratorByPrefix",
+        RocksDB::js_for_each_iterator_by_prefix,
+    )?;
+    cx.export_function(
+        "forEachIteratorByOpts",
+        RocksDB::js_for_each_iterator_by_js_opts,
+    )?;
 
     cx.export_function("createReactionStore", create_reaction_store)?;
 

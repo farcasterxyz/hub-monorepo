@@ -1,6 +1,6 @@
 import { bytesIncrement, CastId, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
-import RocksDB, { Iterator, Transaction } from "./rocksdb.js";
+import RocksDB, { Transaction } from "./rocksdb.js";
 import {
   FID_BYTES,
   RootPrefix,
@@ -186,7 +186,6 @@ export const getAllMessagesByFid = async (db: RocksDB, fid: number): Promise<Mes
 };
 
 export const getPageIteratorOptsByPrefix = (
-  db: RocksDB,
   prefix: Buffer,
   pageOptions: PageOptions = {},
 ): AbstractRocksDB.IteratorOptions => {
@@ -222,16 +221,11 @@ export const getMessagesPageByPrefix = async <T extends Message>(
   filter: (message: Message) => message is T,
   pageOptions: PageOptions = {},
 ): Promise<MessagesPage<T>> => {
-  const iteratorOpts = getPageIteratorOptsByPrefix(db, prefix, pageOptions);
+  const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
 
   const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
   const messages: T[] = [];
-
-  const getNextIteratorRecord = async (iterator: Iterator): Promise<[Buffer, Message]> => {
-    const [key, value] = await iterator.next();
-    return [key as Buffer, messageDecode(new Uint8Array(value as Buffer))];
-  };
 
   let iteratorFinished = true;
   let lastPageToken: Uint8Array | undefined;

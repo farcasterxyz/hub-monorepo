@@ -381,6 +381,9 @@ pub struct FrameActionBody {
     /// Text input from the user, if present
     #[prost(bytes = "vec", tag = "4")]
     pub input_text: ::prost::alloc::vec::Vec<u8>,
+    /// Serialized frame state value
+    #[prost(bytes = "vec", tag = "5")]
+    pub state: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for FrameActionBody {
     const NAME: &'static str = "FrameActionBody";

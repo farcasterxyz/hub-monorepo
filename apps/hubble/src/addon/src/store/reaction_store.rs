@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{borrow::Borrow, convert::TryInto};
 
 use neon::{
     context::{Context, FunctionContext},
@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::{
-    make_cast_id_key, make_fid_key, make_user_key, message,
+    hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
     utils::{encode_messages_to_js_object, get_page_options, get_store},
     HubError, MessagesPage, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
@@ -272,7 +272,7 @@ impl ReactionStore {
                 "{}/{} for {}",
                 "not_found", "reactionAddMessage not found", fid
             ))?,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
         let (deferred, promise) = cx.promise();
@@ -346,7 +346,7 @@ impl ReactionStore {
                 "{}/{} for {}",
                 "not_found", "reactionRemoveMessage not found", fid
             ))?,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
         let channel = cx.channel();
@@ -399,7 +399,7 @@ impl ReactionStore {
             &page_options,
         ) {
             Ok(messages) => messages,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
         println!("Reaction adds: {:?}", messages.messages.len());
 
@@ -450,7 +450,7 @@ impl ReactionStore {
             &page_options,
         ) {
             Ok(messages) => messages,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
         let channel = cx.channel();
@@ -508,7 +508,7 @@ impl ReactionStore {
                 }
             })?;
 
-        let messages = message::get_many_messages(store.db(), message_keys)?;
+        let messages = message::get_many_messages(store.db().borrow(), message_keys)?;
         let next_page_token = if last_key.len() > 0 {
             Some(last_key[prefix.len()..].to_vec())
         } else {
@@ -564,7 +564,7 @@ impl ReactionStore {
             &page_options,
         ) {
             Ok(messages) => messages,
-            Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
         let channel = cx.channel();

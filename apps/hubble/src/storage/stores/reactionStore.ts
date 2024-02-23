@@ -271,7 +271,7 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
   ): Promise<MessagesPage<ReactionAddMessage>> {
     const prefix = makeReactionsByTargetKey(target);
 
-    const iteratorOpts = getPageIteratorOptsByPrefix(this._db, prefix, pageOptions);
+    const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
 
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
