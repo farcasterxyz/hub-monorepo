@@ -21,6 +21,7 @@ module.exports = {
       log_type: "json",
       out_file: "/dev/null",
       err_file: "/dev/stderr",
+      restart_delay: 35_000, // Time between restarts is just longer than 30s timeout in hubs
       min_uptime: 60_000, // Min uptime before the app can be considered started
       listen_timeout: 30_000, // Time before forcing a reload if app not listening
       kill_timeout: 60_000, // Time before sending a final SIGKILL after attempting graceful stop
