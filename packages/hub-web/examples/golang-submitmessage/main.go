@@ -61,7 +61,7 @@ func main() {
 		log.Fatalf("Invalid hex string: %v", err)
 	}
 	privateKey := ed25519.NewKeyFromSeed(privateKeyBytes)
-	signature := ed25519.Sign(privateKey, msgDataBytes)
+	signature := ed25519.Sign(privateKey, hash)
 
 	// Continue constructing the message
 	msg.Signature = signature
