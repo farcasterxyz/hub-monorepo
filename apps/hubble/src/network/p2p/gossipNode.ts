@@ -504,6 +504,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
+          const t = Date.now();
+          console.log(
+            JSON.stringify({ time: t, msgId: detail.msgId, topic: detail.msg.topic, msg: "Received gossip" }),
+          );
+
           this.emit(
             "message",
             detail.msg.topic,

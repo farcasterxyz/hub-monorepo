@@ -596,24 +596,6 @@ app
       console.log("Please wait... This may take several minutes");
     }
 
-    const hub = hubResult.value;
-    const startResult = await ResultAsync.fromPromise(
-      hub.start(),
-      (e) => new Error("Failed to start hub", { cause: e }),
-    );
-    if (startResult.isErr()) {
-      logger.fatal(startResult.error);
-      logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
-      try {
-        await hub.teardown();
-      } finally {
-        logger.flush();
-        process.exit(1);
-      }
-    }
-
-    process.stdin.resume();
-
     process.on("SIGINT", () => {
       handleShutdownSignal("SIGINT");
     });
@@ -637,6 +619,24 @@ app
 
       handleShutdownSignal("unhandledRejection");
     });
+
+    const hub = hubResult.value;
+    const startResult = await ResultAsync.fromPromise(
+      hub.start(),
+      (e) => new Error("Failed to start hub", { cause: e }),
+    );
+    if (startResult.isErr()) {
+      logger.fatal(startResult.error);
+      logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
+      try {
+        await hub.teardown();
+      } finally {
+        logger.flush();
+        process.exit(1);
+      }
+    }
+
+    process.stdin.resume();
   });
 
 /*//////////////////////////////////////////////////////////////

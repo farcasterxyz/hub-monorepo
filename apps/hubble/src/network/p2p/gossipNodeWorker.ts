@@ -35,7 +35,7 @@ import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign } from "./protocol.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
-import { statsd } from "../../utils/statsd.js";
+import { initializeStatsd, statsd } from "../../utils/statsd.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -271,7 +271,12 @@ export class LibP2PNode {
   async connectAddress(address: MultiAddr.Multiaddr): Promise<HubResult<void>> {
     log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
     try {
-      const conn = await this._node?.dial(address);
+      const controller = new AbortController();
+      const timeout = process.env["LIBP2P_CONNECT_TIMEOUT"] ? parseInt(process.env["LIBP2P_CONNECT_TIMEOUT"]) : 500;
+      // Set timeout to abort the dial operation in 500 ms
+      setTimeout(() => controller.abort(), timeout);
+
+      const conn = await this._node?.dial(address, { signal: controller.signal });
 
       if (conn) {
         log.info({ identity: this.identity, address: address.toString() }, `Connected to peer at address: ${address}`);
@@ -423,6 +428,9 @@ export class LibP2PNode {
       ? statsd().increment("gossip.async_validation.accept")
       : statsd().increment("gossip.async_validation.reject");
 
+    const t = Date.now();
+    console.log(JSON.stringify({ time: t, msgId: messageId, msg: `Reporting as valid: ${isValid}` }));
+
     this.gossip?.reportMessageValidationResult(
       messageId,
       propagationSource,
@@ -468,6 +476,8 @@ export class LibP2PNode {
   }
 }
 
+initializeStatsd("127.0.0.1", 8125);
+
 const libp2pNode = new LibP2PNode(workerData?.network as FarcasterNetwork);
 
 // This function is a no-op at runtime, but exists to typecheck the return values
@@ -484,6 +494,7 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
   // console.log("Received message from parent thread", msg);
   const { method, methodCallId } = msg;
 
+  const start = Date.now();
   switch (method) {
     case "makeNode": {
       const specificMsg = msg as LibP2PNodeMessage<"makeNode">;
@@ -697,4 +708,5 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       break;
     }
   }
+  statsd().histogram(`gossip.worker.${method}.latency_ms`, Date.now() - start);
 });
