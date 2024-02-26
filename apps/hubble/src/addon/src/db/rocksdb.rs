@@ -1,6 +1,4 @@
 use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
-use flate2::write::GzEncoder;
-use flate2::Compression;
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
@@ -14,7 +12,6 @@ use rocksdb::{Options, TransactionDB};
 use std::fs;
 use std::fs::File;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
-use tar::Builder;
 
 pub struct RocksDbTransactionBatch {
     pub batch: Vec<(Vec<u8>, Option<Vec<u8>>)>,
@@ -349,37 +346,37 @@ impl RocksDB {
     }
 }
 
-pub fn create_tar_backup(input_dir: &str) -> Result<String, HubError> {
-    let output_file_path = format!(
-        "{}-{}.tar.gz",
-        input_dir,
-        chrono::Local::now().format("%Y-%m-%d-%s")
-    );
+// pub fn create_tar_backup(input_dir: &str) -> Result<String, HubError> {
+//     let output_file_path = format!(
+//         "{}-{}.tar.gz",
+//         input_dir,
+//         chrono::Local::now().format("%Y-%m-%d-%s")
+//     );
 
-    let start = std::time::SystemTime::now();
-    // info!("Creating tarball for directory: {}", input_dir);
+//     let start = std::time::SystemTime::now();
+//     // info!("Creating tarball for directory: {}", input_dir);
 
-    let tar_gz = File::create(&output_file_path)?;
-    let enc = GzEncoder::new(tar_gz, Compression::default());
-    let mut tar = Builder::new(enc);
+//     let tar_gz = File::create(&output_file_path)?;
+//     let enc = GzEncoder::new(tar_gz, Compression::default());
+//     let mut tar = Builder::new(enc);
 
-    tar.append_dir_all(".", input_dir)?;
+//     tar.append_dir_all(".", input_dir)?;
 
-    let enc = tar.into_inner()?;
-    enc.finish()?;
+//     let enc = tar.into_inner()?;
+//     enc.finish()?;
 
-    let metadata = fs::metadata(&output_file_path)?;
-    let time_taken = start.elapsed().expect("Time went backwards");
+//     let metadata = fs::metadata(&output_file_path)?;
+//     let time_taken = start.elapsed().expect("Time went backwards");
 
-    // info!(
-    //     "Tarball created: {} (size: {} bytes, time taken: {:?})",
-    //     output_file_path,
-    //     metadata.len(),
-    //     time_taken
-    // );
+//     // info!(
+//     //     "Tarball created: {} (size: {} bytes, time taken: {:?})",
+//     //     output_file_path,
+//     //     metadata.len(),
+//     //     time_taken
+//     // );
 
-    Ok(output_file_path)
-}
+//     Ok(output_file_path)
+// }
 
 impl RocksDB {
     pub fn js_create_db(mut cx: FunctionContext) -> JsResult<JsBox<Arc<RocksDB>>> {
@@ -415,6 +412,8 @@ impl RocksDB {
     }
 
     pub fn js_destroy(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+        // return cx.throw_error::<String, _>(format!("Not implemented"));
+
         let db = get_db(&mut cx)?;
         if let Err(e) = db.destroy() {
             return hub_error_to_js_throw(&mut cx, e);
@@ -456,7 +455,7 @@ impl RocksDB {
                 return hub_error_to_js_throw(
                     &mut cx,
                     HubError {
-                        code: "db.not_found".to_string(),
+                        code: "not_found".to_string(),
                         message: format!("key not found: {:?}", key),
                     },
                 )
@@ -538,12 +537,17 @@ impl RocksDB {
                 .as_slice(&cx)
                 .to_vec();
             let value = match js_object.get_opt::<JsBuffer, _, _>(&mut cx, "value")? {
-                Some(value) => Some(
-                    value
+                Some(value) => {
+                    let value = value
                         .downcast_or_throw::<JsBuffer, _>(&mut cx)?
                         .as_slice(&cx)
-                        .to_vec(),
-                ),
+                        .to_vec();
+                    if value.is_empty() {
+                        None
+                    } else {
+                        Some(value)
+                    }
+                }
                 None => None,
             };
 

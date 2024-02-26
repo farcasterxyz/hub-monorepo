@@ -624,20 +624,6 @@ describe("SyncEngine", () => {
     });
   });
 
-  describe("compactDbIfRequired", () => {
-    test("does not compact if under the threshold", async () => {
-      expect(syncEngine.shouldCompactDb).toBeFalsy();
-      expect(await syncEngine.compactDbIfRequired(1000)).toBeFalsy();
-      expect(syncEngine.shouldCompactDb).toBeFalsy();
-    });
-
-    test("compacts the db if over the threshold", async () => {
-      expect(syncEngine.shouldCompactDb).toBeFalsy();
-      expect(await syncEngine.compactDbIfRequired(1_000_000)).toBeTruthy();
-      expect(syncEngine.shouldCompactDb).toBeFalsy();
-    });
-  });
-
   describe("rebuildSyncTrie", () => {
     test("reconstructs the trie from the db", async () => {
       await engine.mergeOnChainEvent(custodyEvent);

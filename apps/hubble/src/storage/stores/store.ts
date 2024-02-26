@@ -19,7 +19,7 @@ import {
   messageDecode,
   putMessageTransaction,
 } from "../db/message.js";
-import RocksDB, { Transaction } from "../db/rocksdb.js";
+import RocksDB, { RocksDbTransaction } from "../db/rocksdb.js";
 import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
 import { MERGE_TIMEOUT_DEFAULT, MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
 import AsyncLock from "async-lock";
@@ -86,10 +86,10 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     return tsHash;
   }
 
-  async buildSecondaryIndices(_txn: Transaction, _add: TAdd): HubAsyncResult<void> {
+  async buildSecondaryIndices(_txn: RocksDbTransaction, _add: TAdd): HubAsyncResult<void> {
     return ok(undefined);
   }
-  async deleteSecondaryIndices(_txn: Transaction, _add: TAdd): HubAsyncResult<void> {
+  async deleteSecondaryIndices(_txn: RocksDbTransaction, _add: TAdd): HubAsyncResult<void> {
     return ok(undefined);
   }
 
@@ -256,60 +256,55 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     const timestampToPrune = this.pruneTimeLimit === undefined ? undefined : farcasterTime.value - this.pruneTimeLimit;
 
     // Go over all messages for this fid and postfix
-    await this._db.forEachIteratorByPrefix(
-      makeMessagePrimaryKey(fid, this._postfix),
-      async (_key, value) => {
-        const message = Result.fromThrowable(
-          () => messageDecode(new Uint8Array(value as Buffer)),
-          (e) => e,
-        )();
+    await this._db.forEachIteratorByPrefix(makeMessagePrimaryKey(fid, this._postfix), async (_key, value) => {
+      const message = Result.fromThrowable(
+        () => messageDecode(new Uint8Array(value as Buffer)),
+        (e) => e,
+      )();
 
-        if (message.isErr()) {
-          return false; // Ignore invalid messages
-        }
+      if (message.isErr()) {
+        return false; // Ignore invalid messages
+      }
 
-        const count = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
-        if (count.isErr()) {
-          logger.error({ err: count.error, fid, postfix: this._postfix }, "failed to get message count for pruning");
-          return true; // Can't continue pruning
-        }
+      const count = await this._eventHandler.getCacheMessageCount(fid, this._postfix);
+      if (count.isErr()) {
+        logger.error({ err: count.error, fid, postfix: this._postfix }, "failed to get message count for pruning");
+        return true; // Can't continue pruning
+      }
 
-        // Since the TS hash has the first 4 bytes be the timestamp (bigendian), we can use it to prune
-        // since the iteration will be implicitly sorted by timestamp
-        if (
-          count.value <= this.pruneSizeLimit * units.value &&
-          (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
-        ) {
-          return true; // Nothing left to prune
-        }
+      // Since the TS hash has the first 4 bytes be the timestamp (bigendian), we can use it to prune
+      // since the iteration will be implicitly sorted by timestamp
+      if (
+        count.value <= this.pruneSizeLimit * units.value &&
+        (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
+      ) {
+        return true; // Nothing left to prune
+      }
 
-        let txn = this._db.transaction();
+      let txn = this._db.transaction();
 
-        if (this._isAddType(message.value)) {
-          const txnMaybe = await this.deleteAddTransaction(txn, message.value);
-          if (txnMaybe.isErr()) throw txnMaybe.error;
-          txn = txnMaybe.value;
-        } else if (this._isRemoveType?.(message.value)) {
-          const txnMaybe = await this.deleteRemoveTransaction(txn, message.value);
-          if (txnMaybe.isErr()) throw txnMaybe.error;
-          txn = txnMaybe.value;
-        } else {
-          logger.error("invalid message type while pruning");
-          return false; // Ignore invalid messages and continue
-        }
+      if (this._isAddType(message.value)) {
+        const txnMaybe = await this.deleteAddTransaction(txn, message.value);
+        if (txnMaybe.isErr()) throw txnMaybe.error;
+        txn = txnMaybe.value;
+      } else if (this._isRemoveType?.(message.value)) {
+        const txnMaybe = await this.deleteRemoveTransaction(txn, message.value);
+        if (txnMaybe.isErr()) throw txnMaybe.error;
+        txn = txnMaybe.value;
+      } else {
+        logger.error("invalid message type while pruning");
+        return false; // Ignore invalid messages and continue
+      }
 
-        const commit = await this._eventHandler.commitTransaction(txn, this.pruneEventArgs(message.value));
-        if (commit.isErr()) {
-          logger.error({ errCode: commit.error.errCode, message: commit.error.message, fid }, "error pruning message");
-        } else {
-          commits.push(commit.value);
-        }
+      const commit = await this._eventHandler.commitTransaction(txn, this.pruneEventArgs(message.value));
+      if (commit.isErr()) {
+        logger.error({ errCode: commit.error.errCode, message: commit.error.message, fid }, "error pruning message");
+      } else {
+        commits.push(commit.value);
+      }
 
-        return false; // Continue pruning
-      },
-      { keys: false, valueAsBuffer: true },
-      1 * 60 * 60 * 1000, // 1 hour
-    );
+      return false; // Continue pruning
+    });
 
     return ok(commits);
   }
@@ -368,10 +363,10 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       const tsHash = Uint8Array.from(key as Buffer).subarray(prefix.length, prefix.length + TSHASH_LENGTH);
       const messageKey = makeMessagePrimaryKey(fid, this._postfix, tsHash);
 
-      lastPageToken = Uint8Array.from(key.subarray(prefix.length));
       messageKeys.push(messageKey);
 
       if (messageKeys.length >= limit) {
+        lastPageToken = Uint8Array.from(key.subarray(prefix.length));
         iteratorFinished = false;
         return true; // stop
       }
@@ -547,7 +542,10 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     return ok(conflicts);
   }
 
-  private async deleteManyTransaction(txn: Transaction, messages: (TAdd | TRemove)[]): Promise<Transaction> {
+  private async deleteManyTransaction(
+    txn: RocksDbTransaction,
+    messages: (TAdd | TRemove)[],
+  ): Promise<RocksDbTransaction> {
     let deleteTxn = txn;
 
     for (const message of messages) {
@@ -565,7 +563,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   /* Builds a RocksDB transaction to insert a TAdd message and construct its indices */
-  private async putAddTransaction(txn: Transaction, message: TAdd): HubAsyncResult<Transaction> {
+  private async putAddTransaction(txn: RocksDbTransaction, message: TAdd): HubAsyncResult<RocksDbTransaction> {
     // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
@@ -606,7 +604,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   /* Builds a RocksDB transaction to remove a TAdd message and delete its indices */
-  private async deleteAddTransaction(txn: Transaction, message: TAdd): HubAsyncResult<Transaction> {
+  private async deleteAddTransaction(txn: RocksDbTransaction, message: TAdd): HubAsyncResult<RocksDbTransaction> {
     // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
     const tsHash = makeTsHash(message.data!.timestamp, message.hash);
     if (tsHash.isErr()) {
@@ -628,7 +626,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   /* Builds a RocksDB transaction to insert a TRemove message and construct its indices */
-  private async putRemoveTransaction(txn: Transaction, message: TRemove): HubAsyncResult<Transaction> {
+  private async putRemoveTransaction(txn: RocksDbTransaction, message: TRemove): HubAsyncResult<RocksDbTransaction> {
     if (!this._isRemoveType) {
       throw new Error("remove type is unsupported for this store");
     }
@@ -669,7 +667,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   }
 
   /* Builds a RocksDB transaction to remove a TRemove message and delete its indices */
-  private async deleteRemoveTransaction(txn: Transaction, message: TRemove): HubAsyncResult<Transaction> {
+  private async deleteRemoveTransaction(txn: RocksDbTransaction, message: TRemove): HubAsyncResult<RocksDbTransaction> {
     if (!this._isRemoveType) {
       throw new Error("remove type is unsupported for this store");
     }

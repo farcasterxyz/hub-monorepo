@@ -18,11 +18,10 @@ import {
   RevokeMessageHubEvent,
   StoreType,
 } from "@farcaster/hub-nodejs";
-import AbstractRocksDB from "@farcaster/rocksdb";
 import AsyncLock from "async-lock";
 import { err, ok, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import RocksDB, { Transaction } from "../db/rocksdb.js";
+import RocksDB, { RocksDbIteratorOptions, RocksDbTransaction } from "../db/rocksdb.js";
 import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
 import { makeTsHash, unpackTsHash } from "../db/message.js";
@@ -166,7 +165,7 @@ const makeEventKey = (id?: number): Buffer => {
   return buffer;
 };
 
-const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => {
+const putEventTransaction = (txn: RocksDbTransaction, event: HubEvent): RocksDbTransaction => {
   const key = makeEventKey(event.id);
   const value = Buffer.from(HubEvent.encode(event).finish());
   return txn.put(key, value);
@@ -257,7 +256,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   getEventsIteratorOpts(
     options: { fromId?: number | undefined; toId?: number | undefined } = {},
-  ): HubResult<AbstractRocksDB.IteratorOptions> {
+  ): HubResult<RocksDbIteratorOptions> {
     const minKey = makeEventKey(options.fromId);
     const maxKey = options.toId ? ok(makeEventKey(options.toId)) : bytesIncrement(Uint8Array.from(makeEventKey()));
     if (maxKey.isErr()) {
@@ -273,10 +272,10 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    await this._db.forEachIterator((_key, value) => {
+    await this._db.forEachIteratorByOpts(iteratorOpts.value, (_key, value) => {
       const event = HubEvent.decode(Uint8Array.from(value as Buffer));
       events.push(event);
-    }, iteratorOpts.value);
+    });
 
     return ok(events);
   }
@@ -292,7 +291,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     let lastEventId = fromId;
-    await this._db.forEachIterator((key, value) => {
+    await this._db.forEachIteratorByOpts(iteratorOpts.value, (key, value) => {
       const event = HubEvent.decode(Uint8Array.from(value as Buffer));
       events.push(event);
 
@@ -305,7 +304,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       }
 
       return false;
-    }, iteratorOpts.value);
+    });
 
     return ok({ events, nextPageEventId: lastEventId + 1 });
   }
@@ -363,7 +362,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
   }
 
-  async commitTransaction(txn: Transaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
+  async commitTransaction(txn: RocksDbTransaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
     return this._lock
       .acquire("commit", async () => {
         const eventId = this._generator.generateId();
@@ -402,20 +401,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    const result = await this._db.forEachIterator(
-      async (key, _value) => {
-        const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
-        if (result.isErr()) {
-          return err(result.error);
-        }
-        return false;
-      },
-      iteratorOpts.value,
-      10 * 60 * 1000, // 10 minutes
-    );
+    let error: HubError | undefined;
+    await this._db.forEachIteratorByOpts(iteratorOpts.value, async (key, _value) => {
+      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
+      if (result.isErr()) {
+        error = result.error;
+        return true; // stop iteration
+      }
+      return false;
+    });
 
-    if (result) {
-      return err(result.error);
+    if (error) {
+      return err(error);
     } else {
       return ok(undefined);
     }

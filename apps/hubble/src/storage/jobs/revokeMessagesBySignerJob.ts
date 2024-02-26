@@ -8,11 +8,10 @@ import {
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import RocksDB from "../db/rocksdb.js";
+import RocksDB, { RocksDbIteratorOptions } from "../db/rocksdb.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../db/types.js";
 import Engine from "../engine/index.js";
-import AbstractRocksDB from "@farcaster/rocksdb";
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;
@@ -102,7 +101,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
   }
 
   /** Return rocksdb iterator for revoke signer jobs. If doBefore timestamp is missing, iterate over all jobs  */
-  iteratorOpts(doBefore?: number): HubResult<AbstractRocksDB.IteratorOptions> {
+  iteratorOpts(doBefore?: number): HubResult<RocksDbIteratorOptions> {
     const gte = RevokeMessagesBySignerJobQueue.jobKeyPrefix();
     let lt: Buffer;
     if (doBefore) {

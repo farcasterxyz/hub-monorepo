@@ -161,7 +161,7 @@ describe("with db", () => {
       const keys: Buffer[] = [];
       const values: Buffer[] = [];
 
-      await db.forEachIterator(async (key, value) => {
+      await db.forEachIteratorByPrefix(Buffer.from([]), async (key, value) => {
         keys.push(key as Buffer);
         values.push(value as Buffer);
       });
@@ -236,14 +236,11 @@ describe("with db", () => {
       await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
       await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
       const output = [];
-      await db.forEachIterator((key, value) => {
+      await db.forEachIteratorByPrefix(Buffer.from([]), (key, value) => {
         output.push([key, value]);
       });
 
       expect(output.length).toEqual(5);
-
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when iterator throws", async () => {
@@ -255,7 +252,7 @@ describe("with db", () => {
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
       const result = await ResultAsync.fromPromise(
-        db.forEachIterator((key, value) => {
+        db.forEachIteratorByPrefix(Buffer.from([]), (key, value) => {
           output.push([key, value]);
           if (key?.toString() === "allison") {
             throw new Error("oops");
@@ -267,8 +264,6 @@ describe("with db", () => {
       expect(result.isErr()).toEqual(true);
       expect(result._unsafeUnwrapErr().message).toEqual("oops");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when iterator throws async", async () => {
@@ -280,7 +275,7 @@ describe("with db", () => {
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
       const result = await ResultAsync.fromPromise(
-        db.forEachIterator(async (key, value) => {
+        db.forEachIteratorByPrefix(Buffer.from([]), async (key, value) => {
           output.push([key, value]);
           if (key?.toString() === "allison") {
             throw new Error("oops");
@@ -292,8 +287,6 @@ describe("with db", () => {
       expect(result.isErr()).toEqual(true);
       expect(result._unsafeUnwrapErr().message).toEqual("oops");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when returning to break", async () => {
@@ -304,10 +297,12 @@ describe("with db", () => {
       await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
-      const result = await db.forEachIterator((key, value) => {
+      let result;
+      await db.forEachIteratorByPrefix(Buffer.from([]), (key, value) => {
         output.push([key, value]);
         if (key?.toString() === "allison") {
-          return "break";
+          result = "break";
+          return true;
         } else {
           return false;
         }
@@ -315,8 +310,6 @@ describe("with db", () => {
 
       expect(result).toEqual("break");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when returning to break async", async () => {
@@ -327,10 +320,12 @@ describe("with db", () => {
       await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
-      const result = await db.forEachIterator(async (key, value) => {
+      let result;
+      await db.forEachIteratorByPrefix(Buffer.from([]), async (key, value) => {
         output.push([key, value]);
         if (key?.toString() === "allison") {
-          return Promise.resolve("break");
+          result = "break";
+          return Promise.resolve(true);
         } else {
           return false;
         }
@@ -338,39 +333,6 @@ describe("with db", () => {
 
       expect(result).toEqual("break");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
-    });
-
-    test("force closes open iterators after timeout", async () => {
-      const timeout = 1;
-
-      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
-      await db.put(Buffer.from("allison"), Buffer.from("oops"));
-      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
-
-      // Start iterating, but stall on the first item
-      await db.forEachIterator(
-        async (key, value) => {
-          await sleep(timeout * 100);
-        },
-        {},
-        timeout,
-      );
-
-      await sleep(timeout * 2);
-
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
-    });
-  });
-
-  describe("compact", () => {
-    test("succeeds", async () => {
-      await db.put(Buffer.from("foo"), Buffer.from("bar"));
-      await expect(db.get(Buffer.from("foo"))).resolves.toEqual(Buffer.from("bar"));
-      await expect(db.compact()).resolves.toEqual(undefined);
-      await expect(db.get(Buffer.from("foo"))).resolves.toEqual(Buffer.from("bar"));
     });
   });
 });

@@ -22,7 +22,7 @@ import {
 import { FID_BYTES, RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "./types.js";
 import { Store } from "./store.js";
-import { Transaction } from "../db/rocksdb.js";
+import { RocksDbTransaction } from "../db/rocksdb.js";
 import { logger } from "../../utils/logger.js";
 
 /**
@@ -172,7 +172,10 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     return await this.getRemovesByFid({ data: { fid } }, pageOptions);
   }
 
-  override async buildSecondaryIndices(txn: Transaction, message: VerificationAddAddressMessage): HubAsyncResult<void> {
+  override async buildSecondaryIndices(
+    txn: RocksDbTransaction,
+    message: VerificationAddAddressMessage,
+  ): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
     if (tsHash.isErr()) {
@@ -192,7 +195,7 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     return ok(undefined);
   }
   override async deleteSecondaryIndices(
-    txn: Transaction,
+    txn: RocksDbTransaction,
     message: VerificationAddAddressMessage,
   ): HubAsyncResult<void> {
     const address = message.data.verificationAddAddressBody.address;
@@ -273,90 +276,85 @@ class VerificationStore extends Store<VerificationAddAddressMessage, Verificatio
     let verificationsCount = 0;
     let duplicatesCount = 0;
 
-    await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.User]),
-      async (key, value) => {
-        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-        if (postfix !== this._postfix) {
-          return false; // Ignore non-verification messages
-        }
-        const message = Result.fromThrowable(
-          () => messageDecode(new Uint8Array(value as Buffer)),
-          (e) => e,
-        )();
+    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.User]), async (key, value) => {
+      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+      if (postfix !== this._postfix) {
+        return false; // Ignore non-verification messages
+      }
+      const message = Result.fromThrowable(
+        () => messageDecode(new Uint8Array(value as Buffer)),
+        (e) => e,
+      )();
 
-        if (message.isErr()) {
-          return false; // Ignore invalid messages
-        }
+      if (message.isErr()) {
+        return false; // Ignore invalid messages
+      }
 
-        if (!this._isAddType(message.value)) {
-          return false; // Ignore non-add messages
-        }
+      if (!this._isAddType(message.value)) {
+        return false; // Ignore non-add messages
+      }
 
-        const fid = message.value.data.fid;
-        const verificationAdd = message.value.data.verificationAddAddressBody;
-        const txn = this._db.transaction();
-        const byAddressKey = makeVerificationByAddressKey(message.value.data.verificationAddAddressBody.address);
-        const existingFidRes = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
-        if (existingFidRes.isOk()) {
-          const existingFid = readFidKey(existingFidRes.value);
-          const existingMessage = await this.getAdd({
-            data: {
-              fid: existingFid,
-              verificationAddAddressBody: {
-                address: verificationAdd.address,
-              },
+      const fid = message.value.data.fid;
+      const verificationAdd = message.value.data.verificationAddAddressBody;
+      const txn = this._db.transaction();
+      const byAddressKey = makeVerificationByAddressKey(message.value.data.verificationAddAddressBody.address);
+      const existingFidRes = await ResultAsync.fromPromise(this._db.get(byAddressKey), () => undefined);
+      if (existingFidRes.isOk()) {
+        const existingFid = readFidKey(existingFidRes.value);
+        const existingMessage = await this.getAdd({
+          data: {
+            fid: existingFid,
+            verificationAddAddressBody: {
+              address: verificationAdd.address,
             },
-          });
-          const tsHash = makeTsHash(message.value.data.timestamp, message.value.hash);
-          const existingTsHash = makeTsHash(existingMessage.data.timestamp, existingMessage.hash);
+          },
+        });
+        const tsHash = makeTsHash(message.value.data.timestamp, message.value.hash);
+        const existingTsHash = makeTsHash(existingMessage.data.timestamp, existingMessage.hash);
 
-          if (tsHash.isErr() || existingTsHash.isErr()) {
-            throw new HubError("bad_request", "failed to make tsHash");
-          }
-
-          const messageCompare = this.messageCompare(
-            this._addMessageType,
-            existingTsHash.value,
-            this._addMessageType,
-            tsHash.value,
-          );
-
-          if (messageCompare === 0) {
-            logger.info(
-              { fid: fid },
-              `Unexpected duplicate during migration: ${Buffer.from(verificationAdd.address).toString("hex")}`,
-            );
-          } else if (messageCompare > 0) {
-            logger.info(
-              { fid: fid, existingFid: existingFid },
-              `Deleting duplicate verification for fid: ${fid} ${Buffer.from(verificationAdd.address).toString("hex")}`,
-            );
-            deleteMessageTransaction(txn, message.value);
-            txn.put(byAddressKey, makeFidKey(existingFid));
-            duplicatesCount += 1;
-          } else {
-            logger.info(
-              { fid: existingFid, existingFid: fid },
-              `Deleting duplicate verification for fid: ${existingFid} ${Buffer.from(verificationAdd.address).toString(
-                "hex",
-              )}`,
-            );
-            deleteMessageTransaction(txn, existingMessage);
-            txn.put(byAddressKey, makeFidKey(fid));
-            duplicatesCount += 1;
-          }
-        } else {
-          txn.put(byAddressKey, makeFidKey(fid));
+        if (tsHash.isErr() || existingTsHash.isErr()) {
+          throw new HubError("bad_request", "failed to make tsHash");
         }
-        verificationsCount += 1;
-        await this._db.commit(txn);
 
-        return false; // Continue iterating
-      },
-      { valueAsBuffer: true },
-      1 * 60 * 60 * 1000, // 1 hour
-    );
+        const messageCompare = this.messageCompare(
+          this._addMessageType,
+          existingTsHash.value,
+          this._addMessageType,
+          tsHash.value,
+        );
+
+        if (messageCompare === 0) {
+          logger.info(
+            { fid: fid },
+            `Unexpected duplicate during migration: ${Buffer.from(verificationAdd.address).toString("hex")}`,
+          );
+        } else if (messageCompare > 0) {
+          logger.info(
+            { fid: fid, existingFid: existingFid },
+            `Deleting duplicate verification for fid: ${fid} ${Buffer.from(verificationAdd.address).toString("hex")}`,
+          );
+          deleteMessageTransaction(txn, message.value);
+          txn.put(byAddressKey, makeFidKey(existingFid));
+          duplicatesCount += 1;
+        } else {
+          logger.info(
+            { fid: existingFid, existingFid: fid },
+            `Deleting duplicate verification for fid: ${existingFid} ${Buffer.from(verificationAdd.address).toString(
+              "hex",
+            )}`,
+          );
+          deleteMessageTransaction(txn, existingMessage);
+          txn.put(byAddressKey, makeFidKey(fid));
+          duplicatesCount += 1;
+        }
+      } else {
+        txn.put(byAddressKey, makeFidKey(fid));
+      }
+      verificationsCount += 1;
+      await this._db.commit(txn);
+
+      return false; // Continue iterating
+    });
     return ok({ total: verificationsCount, duplicates: duplicatesCount });
   }
 }

@@ -8,8 +8,14 @@ const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
 import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
-import { PageOptions } from "./storage/stores/types.js";
+import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "storage/db/types.js";
+import { DbKeyValue, RocksDbIteratorOptions } from "storage/db/rocksdb.js";
+import { logger } from "utils/logger.js";
+
+const log = logger.child({
+  component: "RustFunctions",
+});
 
 export class RustDynStore {}
 export class RustDb {}
@@ -63,12 +69,109 @@ export const createDb = (path: string): RustDb => {
   return db as RustDb;
 };
 
-export const dbClear = async (db: RustDb) => {
-  return await lib.dbClear.call(db);
+export const dbClear = (db: RustDb) => {
+  return lib.dbClear.call(db);
 };
 
-export const dbDestroy = async (db: RustDb) => {
-  return await lib.dbDestroy.call(db);
+export const dbClose = (db: RustDb) => {
+  return lib.dbClose.call(db);
+};
+
+export const dbDestroy = (db: RustDb) => {
+  return lib.dbDestroy.call(db);
+};
+
+export const dbLocation = (db: RustDb): string => {
+  return lib.dbLocation.call(db);
+};
+
+export const dbGet = async (db: RustDb, key: Uint8Array): Promise<Buffer> => {
+  return await lib.dbGet.call(db, key);
+};
+
+export const dbGetMany = async (db: RustDb, keys: Uint8Array[]): Promise<Buffer[]> => {
+  return await lib.dbGetMany.call(db, keys);
+};
+
+export const dbPut = async (db: RustDb, key: Uint8Array, value: Uint8Array): Promise<void> => {
+  return await lib.dbPut.call(db, key, value);
+};
+
+export const dbDel = async (db: RustDb, key: Uint8Array): Promise<void> => {
+  return await lib.dbDel.call(db, key);
+};
+
+export const dbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<void> => {
+  return await lib.dbCommit.call(db, keyValues);
+};
+
+export const dbForEachIteratorByPrefix = async (
+  db: RustDb,
+  prefix: Uint8Array,
+  pageOptions: PageOptions,
+  cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
+) => {
+  let dbKeyValues: DbKeyValue[] = [];
+  let nextPageToken = pageOptions.pageToken;
+  let finished = false;
+
+  do {
+    const batchPageOptions = { ...pageOptions, pageToken: nextPageToken };
+
+    await lib.dbForEachIteratorByPrefix.call(db, prefix, batchPageOptions, (key: Buffer, value: Buffer | undefined) => {
+      dbKeyValues.push({ key, value });
+
+      if (dbKeyValues.length > PAGE_SIZE_MAX) {
+        nextPageToken = new Uint8Array(key.subarray(prefix.length));
+        return true; // Stop the iteration
+      }
+
+      return false; // Continue the iteration
+    });
+
+    // No more key-values to iterate over
+    if (dbKeyValues.length === 0) {
+      break;
+    }
+
+    // Iterate over the key-values
+    for (const kv of dbKeyValues) {
+      const shouldContinue = await cb(kv.key, kv.value);
+      if (!shouldContinue) {
+        finished = true;
+        break;
+      }
+    }
+
+    dbKeyValues = []; // Clear the key-values array
+  } while (!finished && nextPageToken);
+};
+
+export const dbForEachIteratorByOpts = async (
+  db: RustDb,
+  iteratorOpts: RocksDbIteratorOptions,
+  cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | void,
+) => {
+  const dbKeyValues: DbKeyValue[] = [];
+
+  await lib.dbForEachIteratorByOpts.call(db, iteratorOpts, (key: Buffer, value: Buffer) => {
+    dbKeyValues.push({ key, value });
+    if (dbKeyValues.length > PAGE_SIZE_MAX) {
+      log.error(
+        { iteratorOpts, numKeyValues: dbKeyValues.length, PAGE_SIZE_MAX },
+        "dbForEachIteratorByOpts: too many key-values. Iterator was terminated early.",
+      );
+      return true; // Stop the iteration
+    }
+    return false; // Continue the iteration
+  });
+
+  for (const kv of dbKeyValues) {
+    const shouldContinue = await cb(kv.key, kv.value);
+    if (!shouldContinue) {
+      break;
+    }
+  }
 };
 
 /** Create a reaction Store */

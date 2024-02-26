@@ -1187,46 +1187,42 @@ export default class Server {
           const rssUsage = process.memoryUsage().rss;
           const RSS_USAGE_THRESHOLD = 1_000_000_000; // 1G
 
-          await this.engine.getDb().forEachIterator(
-            async (_key, value) => {
-              const event = HubEvent.decode(Uint8Array.from(value as Buffer));
-              if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
-                const writeResult = bufferedStreamWriter.writeToStream(event);
+          await this.engine.getDb().forEachIteratorByOpts(eventsIteratorOpts.value, async (_key, value) => {
+            const event = HubEvent.decode(Uint8Array.from(value as Buffer));
+            if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
+              const writeResult = bufferedStreamWriter.writeToStream(event);
 
-                if (writeResult.isErr()) {
-                  logger.warn(
-                    { err: writeResult.error },
-                    `subscribe: failed to write to stream while returning events ${request.fromId}`,
-                  );
+              if (writeResult.isErr()) {
+                logger.warn(
+                  { err: writeResult.error },
+                  `subscribe: failed to write to stream while returning events ${request.fromId}`,
+                );
+
+                return true;
+              } else {
+                if (writeResult.value === false) {
+                  // If the stream was buffered, we can wait for a bit before continuing
+                  // to allow the client to read the data. If this happens too much, the bufferedStreamWriter
+                  // will timeout and destroy the stream.
+                  // The buffered writer is not async to make it easier to preserve ordering guarantees. So, we sleep here
+                  await sleep(SLOW_CLIENT_GRACE_PERIOD_MS / STREAM_MESSAGE_BUFFER_SIZE);
+                }
+
+                // Write was successful, check the RSS usage
+                if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
+                  // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
+                  // We'll destroy the stream.
+                  const error = new HubError("unavailable.network_failure", "stream memory usage too much");
+                  logger.error({ errCode: error.errCode }, error.message);
+                  stream.destroy(error);
 
                   return true;
-                } else {
-                  if (writeResult.value === false) {
-                    // If the stream was buffered, we can wait for a bit before continuing
-                    // to allow the client to read the data. If this happens too much, the bufferedStreamWriter
-                    // will timeout and destroy the stream.
-                    // The buffered writer is not async to make it easier to preserve ordering guarantees. So, we sleep here
-                    await sleep(SLOW_CLIENT_GRACE_PERIOD_MS / STREAM_MESSAGE_BUFFER_SIZE);
-                  }
-
-                  // Write was successful, check the RSS usage
-                  if (process.memoryUsage().rss > rssUsage + RSS_USAGE_THRESHOLD) {
-                    // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
-                    // We'll destroy the stream.
-                    const error = new HubError("unavailable.network_failure", "stream memory usage too much");
-                    logger.error({ errCode: error.errCode }, error.message);
-                    stream.destroy(error);
-
-                    return true;
-                  }
                 }
               }
+            }
 
-              return false;
-            },
-            eventsIteratorOpts.value,
-            HUBEVENTS_READER_TIMEOUT,
-          );
+            return false;
+          });
 
           // If we reach here, the iterator has ended, so we'll clear the timeout
           clearTimeout(timeout);

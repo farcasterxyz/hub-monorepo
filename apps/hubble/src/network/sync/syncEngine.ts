@@ -1050,8 +1050,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._syncMergeQ += messages.length;
     statsd().gauge("syncengine.merge_q", this._syncMergeQ);
 
-    await this.compactDbIfRequired(messages.length);
-
     const startTime = Date.now();
     for (const msg of messages) {
       const result = await this._hub.submitMessage(msg, "sync");
@@ -1359,22 +1357,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
   }
 
-  public async compactDbIfRequired(messagesLength: number): Promise<boolean> {
-    this._messagesSinceLastCompaction += messagesLength;
-    if (this.shouldCompactDb && !this._isCompacting) {
-      this._isCompacting = true;
-      log.info("Starting DB compaction");
-
-      await this._db.compact().catch((e) => log.warn(e, `Error compacting DB: ${e.message}`));
-
-      log.info("Completed DB compaction");
-      this._messagesSinceLastCompaction = 0;
-      this._isCompacting = false;
-      return true;
-    }
-    return false;
-  }
-
   public async getDbStats(): Promise<DbStats> {
     return { ...this._dbStats, numItems: await this._trie.items() };
   }
@@ -1388,16 +1370,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       () => {
         numFids += 1;
       },
-      { keys: false, values: false },
     );
 
-    await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.FNameUserNameProof]),
-      () => {
-        numFnames += 1;
-      },
-      { keys: false, values: false },
-    );
+    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.FNameUserNameProof]), () => {
+      numFnames += 1;
+    });
 
     return {
       numItems: await this._trie.items(),

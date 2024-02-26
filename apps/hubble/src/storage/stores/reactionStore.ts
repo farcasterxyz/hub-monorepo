@@ -1,259 +1,209 @@
 import {
   CastId,
-  getDefaultStoreLimit,
   HubAsyncResult,
   HubError,
-  isReactionAddMessage,
-  isReactionRemoveMessage,
-  MessageType,
+  HubEvent,
+  Message,
   ReactionAddMessage,
   ReactionRemoveMessage,
   ReactionType,
   StoreType,
+  getDefaultStoreLimit,
 } from "@farcaster/hub-nodejs";
-import { err, ok, ResultAsync } from "neverthrow";
 import {
-  getManyMessages,
-  getPageIteratorOptsByPrefix,
-  makeCastIdKey,
-  makeFidKey,
-  makeMessagePrimaryKey,
-  makeTsHash,
-  makeUserKey,
-} from "../db/message.js";
-import { Transaction } from "../db/rocksdb.js";
-import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
-import { Store } from "./store.js";
+  RustDb,
+  RustDynStore,
+  createReactionStore,
+  getAllMessagesByFid,
+  getMessage,
+  getReactionAdd,
+  getReactionAddsByFid,
+  getReactionRemove,
+  getReactionRemovesByFid,
+  getReactionsByTarget,
+  merge,
+  revoke,
+  rustErrorToHubError,
+} from "../../rustfunctions.js";
+import StoreEventHandler from "./storeEventHandler.js";
+import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
+import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { ResultAsync, err, ok } from "neverthrow";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
-const makeTargetKey = (target: CastId | string): Buffer => {
-  return typeof target === "string" ? Buffer.from(target) : makeCastIdKey(target);
-};
+export class ReactionStore {
+  private rustReactionStore: RustDynStore;
+  protected _eventHandler: StoreEventHandler;
 
-/**
- * Generates a unique key used to store a ReactionAdd message key in the ReactionsAdd Set index
- *
- * @param fid farcaster id of the user who created the reaction
- * @param type type of reaction created
- * @param targetId id of the object being reacted to
- *
- * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
- */
-const makeReactionAddsKey = (fid: number, type?: ReactionType, target?: CastId | string): Buffer => {
-  if (target && !type) {
-    throw new HubError("bad_request.validation_failure", "targetId provided without type");
+  private _postfix: UserMessagePostfix;
+  private _pruneSizeLimit: number;
+  protected _pruneTimeLimit: number | undefined;
+
+  constructor(rustDb: RustDb, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+    this.rustReactionStore = createReactionStore(rustDb);
+
+    this._postfix = UserPostfix.ReactionMessage;
+    this._eventHandler = eventHandler;
+
+    this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
+    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
   }
 
-  return Buffer.concat([
-    makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
-    Buffer.from([UserPostfix.ReactionAdds]), // -------------- reaction_adds key, 1 byte
-    Buffer.from(type ? [type] : ""), //-------- type, 1 byte
-    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 28 bytes
-  ]);
-};
-
-/**
- * Generates a unique key used to store a ReactionRemove message key in the ReactionsRemove Set index
- *
- * @param fid farcaster id of the user who created the reaction
- * @param type type of reaction created
- * @param targetId id of the object being reacted to
- *
- * @returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
- */
-const makeReactionRemovesKey = (fid: number, type?: ReactionType, target?: CastId | string): Buffer => {
-  if (target && !type) {
-    throw new HubError("bad_request.validation_failure", "targetId provided without type");
-  }
-
-  return Buffer.concat([
-    makeUserKey(fid), // --------------------------- fid prefix, 33 bytes
-    Buffer.from([UserPostfix.ReactionRemoves]), // ----------- reaction_adds key, 1 byte
-    Buffer.from(type ? [type] : ""), //-------- type, 1 byte
-    target ? makeTargetKey(target) : Buffer.from(""), //-- target id, 28 bytes
-  ]);
-};
-
-/**
- * Generates a unique key used to store a ReactionAdd Message in the ReactionsByTargetAndType index
- *
- * @param targetId the id of the object being reacted to (currently just cast id)
- * @param fid the fid of the user who created the reaction
- * @param tsHash the timestamp hash of the reaction message
- *
- * @returns RocksDB index key of the form <RootPrefix>:<target_key>:<fid?>:<tsHash?>
- */
-const makeReactionsByTargetKey = (target: CastId | string, fid?: number, tsHash?: Uint8Array): Buffer => {
-  if (fid && !tsHash) {
-    throw new HubError("bad_request.validation_failure", "fid provided without tsHash");
-  }
-
-  if (tsHash && !fid) {
-    throw new HubError("bad_request.validation_failure", "tsHash provided without fid");
-  }
-
-  return Buffer.concat([
-    Buffer.from([RootPrefix.ReactionsByTarget]),
-    makeTargetKey(target),
-    Buffer.from(tsHash ?? ""),
-    fid ? makeFidKey(fid) : Buffer.from(""),
-  ]);
-};
-
-/**
- * ReactionStore persists Reaction Messages in RocksDB using a two-phase CRDT set to guarantee
- * eventual consistency.
- *
- * A Reaction is created by a user and points at a target (e.g. cast) and has a type (e.g. like).
- * Reactions are added with a ReactionAdd and removed with a ReactionRemove. Reaction messages can
- * collide if two messages have the same user fid, target, and type. Collisions are handled with
- * Last-Write-Wins + Remove-Wins rules as follows:
- *
- * 1. Highest timestamp wins
- * 2. Remove wins over Adds
- * 3. Highest lexicographic hash wins
- *
- * ReactionMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash`,
- * which makes truncating a user's earliest messages easy. Indices are built to look up
- * reaction adds in th adds set, reaction removes in the remove set and all reactions
- * for a given target. The key-value entries created by the Reaction Store are:
- *
- * 1. fid:tsHash -> reaction message
- * 2. fid:set:targetCastTsHash:reactionType -> fid:tsHash (Set Index)
- * 3. reactionTarget:reactionType:targetCastTsHash -> fid:tsHash (Target Index)
- */
-class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
-  override _postfix: UserMessagePostfix = UserPostfix.ReactionMessage;
-  override makeAddKey(msg: ReactionAddMessage) {
-    return makeReactionAddsKey(
-      msg.data.fid,
-      msg.data.reactionBody.type,
-      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId,
-    ) as Buffer;
-  }
-
-  override makeRemoveKey(msg: ReactionRemoveMessage) {
-    return makeReactionRemovesKey(
-      msg.data.fid,
-      msg.data.reactionBody.type,
-      msg.data.reactionBody.targetUrl || msg.data.reactionBody.targetCastId,
-    );
-  }
-
-  override _isAddType = isReactionAddMessage;
-  override _isRemoveType = isReactionRemoveMessage;
-  override _addMessageType = MessageType.REACTION_ADD;
-  override _removeMessageType = MessageType.REACTION_REMOVE;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
+  protected get PRUNE_SIZE_LIMIT_DEFAULT() {
     return getDefaultStoreLimit(StoreType.REACTIONS);
   }
 
-  protected override get PRUNE_TIME_LIMIT_DEFAULT() {
+  protected get PRUNE_TIME_LIMIT_DEFAULT() {
     return PRUNE_TIME_LIMIT_DEFAULT;
   }
 
-  override async findMergeAddConflicts(_message: ReactionAddMessage): HubAsyncResult<void> {
-    return ok(undefined);
+  get pruneSizeLimit(): number {
+    return this._pruneSizeLimit;
   }
 
-  override async findMergeRemoveConflicts(_message: ReactionRemoveMessage): HubAsyncResult<void> {
-    return ok(undefined);
+  get pruneTimeLimit(): number | undefined {
+    // No more time based pruning after the migration
+    return undefined;
   }
 
-  override async buildSecondaryIndices(txn: Transaction, message: ReactionAddMessage): HubAsyncResult<void> {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-
-    if (tsHash.isErr()) {
-      return err(tsHash.error);
+  async merge(message: Message): Promise<number> {
+    const prunableResult = await this._eventHandler.isPrunable(
+      // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+      message as any,
+      this._postfix,
+      this.pruneSizeLimit,
+      this.pruneTimeLimit,
+    );
+    if (prunableResult.isErr()) {
+      throw prunableResult.error;
+    } else if (prunableResult.value) {
+      throw new HubError("bad_request.prunable", "message would be pruned");
     }
 
-    const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
-
-    if (!target) {
-      return err(new HubError("bad_request.invalid_param", "targetfid null"));
+    // Encode the message to bytes
+    const messageBytes = Message.encode(message).finish();
+    const result = await ResultAsync.fromPromise(merge(this.rustReactionStore, messageBytes), rustErrorToHubError);
+    if (result.isErr()) {
+      throw result.error;
     }
 
-    // Puts message key into the byTarget index
-    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
-    // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
-    txn = txn.put(byTargetKey, Buffer.from([message.data.reactionBody.type]));
+    // Read the result bytes as a HubEvent
+    const resultBytes = new Uint8Array(result.value);
+    const hubEvent = HubEvent.decode(resultBytes);
 
-    return ok(undefined);
+    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    return hubEvent.id;
   }
 
-  override async deleteSecondaryIndices(txn: Transaction, message: ReactionAddMessage): HubAsyncResult<void> {
-    const tsHash = makeTsHash(message.data.timestamp, message.hash);
-
-    if (tsHash.isErr()) {
-      return err(tsHash.error);
+  async revoke(message: Message): HubAsyncResult<number> {
+    const messageBytes = Message.encode(message).finish();
+    const result = await ResultAsync.fromPromise(revoke(this.rustReactionStore, messageBytes), rustErrorToHubError);
+    if (result.isErr()) {
+      return err(result.error);
     }
 
-    const target = message.data.reactionBody.targetCastId || message.data.reactionBody.targetUrl;
+    const resultBytes = new Uint8Array(result.value);
+    const hubEvent = HubEvent.decode(resultBytes);
 
-    if (!target) {
-      return err(new HubError("bad_request.invalid_param", "targetfid null"));
-    }
-
-    // Delete the message key from byTarget index
-    const byTargetKey = makeReactionsByTargetKey(target, message.data.fid, tsHash.value);
-    // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
-    txn = txn.del(byTargetKey);
-
-    return ok(undefined);
+    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    return ok(hubEvent.id);
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                              Instance Methods                              */
-  /* -------------------------------------------------------------------------- */
+  async getMessage(fid: number, set: UserMessagePostfix, tsHash: Uint8Array): Promise<Message> {
+    const message_bytes = await ResultAsync.fromPromise(
+      getMessage(this.rustReactionStore, fid, set, tsHash),
+      rustErrorToHubError,
+    );
+    if (message_bytes.isErr()) {
+      throw message_bytes.error;
+    }
 
-  /**
-   * Finds a ReactionAdd Message by checking the Adds Set index
-   *
-   * @param fid fid of the user who created the reaction add
-   * @param type type of reaction that was added
-   * @param castId id of the cast being reacted to
-   *
-   * @returns the ReactionAdd Model if it exists, undefined otherwise
-   */
+    return Message.decode(new Uint8Array(message_bytes.value));
+  }
+
+  async getAllMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
+    const messages_page = await getAllMessagesByFid(this.rustReactionStore, fid, pageOptions);
+
+    const messages =
+      messages_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage | ReactionRemoveMessage;
+      }) ?? [];
+
+    return { messages, nextPageToken: messages_page.nextPageToken };
+  }
+
   async getReactionAdd(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionAddMessage> {
-    const targetUrl = typeof target === "string" ? target : undefined;
-    const targetCastId = typeof target === "string" ? undefined : target;
-    return await this.getAdd({ data: { fid, reactionBody: { type, targetCastId, targetUrl } } });
+    let targetCastId = Buffer.from([]);
+    let targetUrl = "";
+
+    if (typeof target === "string") {
+      targetUrl = target;
+    } else {
+      targetCastId = Buffer.from(CastId.encode(target).finish());
+    }
+
+    const result = await ResultAsync.fromPromise(
+      getReactionAdd(this.rustReactionStore, fid, type, targetCastId, targetUrl),
+      rustErrorToHubError,
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return Message.decode(new Uint8Array(result.value)) as ReactionAddMessage;
   }
 
-  /**
-   * Finds a ReactionRemove Message by checking the Remove Set index
-   *
-   * @param fid fid of the user who created the reaction remove
-   * @param type type of reaction that was removed
-   * @param castId id of the cast being reacted to
-   * @returns the ReactionRemove message if it exists, undefined otherwise
-   */
   async getReactionRemove(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionRemoveMessage> {
-    const targetUrl = typeof target === "string" ? target : undefined;
-    const targetCastId = typeof target === "string" ? undefined : target;
-    return await this.getRemove({ data: { fid, reactionBody: { type, targetCastId, targetUrl } } });
+    let targetCastId = Buffer.from([]);
+    let targetUrl = "";
+
+    if (typeof target === "string") {
+      targetUrl = target;
+    } else {
+      targetCastId = Buffer.from(CastId.encode(target).finish());
+    }
+
+    const result = await ResultAsync.fromPromise(
+      getReactionRemove(this.rustReactionStore, fid, type, targetCastId, targetUrl),
+      rustErrorToHubError,
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return Message.decode(new Uint8Array(result.value)) as ReactionRemoveMessage;
   }
 
-  /** Finds all ReactionAdd Messages by iterating through the prefixes */
   async getReactionAddsByFid(
     fid: number,
     type?: ReactionType,
-    pageOptions: PageOptions = {},
+    pageOptions?: PageOptions,
   ): Promise<MessagesPage<ReactionAddMessage>> {
-    return await this.getAddsByFid({ data: { fid, reactionBody: { type: type as ReactionType } } }, pageOptions);
+    const messages_page = await getReactionAddsByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
+
+    const messages =
+      messages_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
+      }) ?? [];
+
+    return { messages, nextPageToken: messages_page.nextPageToken };
   }
 
-  /** Finds all ReactionRemove Messages by iterating through the prefixes */
   async getReactionRemovesByFid(
     fid: number,
     type?: ReactionType,
-    pageOptions: PageOptions = {},
+    pageOptions?: PageOptions,
   ): Promise<MessagesPage<ReactionRemoveMessage>> {
-    return await this.getRemovesByFid({ data: { fid, reactionBody: { type: type as ReactionType } } }, pageOptions);
+    const message_page = await getReactionRemovesByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
+
+    const messages =
+      message_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionRemoveMessage;
+      }) ?? [];
+
+    return { messages, nextPageToken: message_page.nextPageToken };
   }
 
   async getAllReactionMessagesByFid(
@@ -263,52 +213,33 @@ class ReactionStore extends Store<ReactionAddMessage, ReactionRemoveMessage> {
     return await this.getAllMessagesByFid(fid, pageOptions);
   }
 
-  /** Finds all ReactionAdds that point to a specific target by iterating through the prefixes */
   async getReactionsByTarget(
     target: CastId | string,
     type?: ReactionType,
     pageOptions: PageOptions = {},
   ): Promise<MessagesPage<ReactionAddMessage>> {
-    const prefix = makeReactionsByTargetKey(target);
+    let targetCastId = Buffer.from([]);
+    let targetUrl = "";
 
-    const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
-
-    const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
-
-    const messageKeys: Buffer[] = [];
-
-    let iteratorFinished = true;
-    let lastPageToken: Uint8Array | undefined;
-
-    await this._db.forEachIteratorByOpts(iteratorOpts, (key, value) => {
-      lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
-
-      if (type === undefined || value?.equals(Buffer.from([type]))) {
-        // Calculates the positions in the key where the fid and tsHash begin
-        const tsHashOffset = prefix.length;
-        const fidOffset = tsHashOffset + TSHASH_LENGTH;
-
-        const fid = Number((key as Buffer).readUint32BE(fidOffset));
-        const tsHash = Uint8Array.from(key as Buffer).subarray(tsHashOffset, tsHashOffset + TSHASH_LENGTH);
-        const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.ReactionMessage, tsHash);
-
-        messageKeys.push(messagePrimaryKey);
-        if (messageKeys.length >= limit) {
-          iteratorFinished = false;
-          return true; // stop
-        }
-      }
-      return false; // continue
-    });
-
-    const messages = await getManyMessages<ReactionAddMessage>(this._db, messageKeys);
-
-    if (!iteratorFinished) {
-      return { messages, nextPageToken: lastPageToken };
+    if (typeof target === "string") {
+      targetUrl = target;
     } else {
-      return { messages, nextPageToken: undefined };
+      targetCastId = Buffer.from(CastId.encode(target).finish());
     }
+
+    const message_page = await getReactionsByTarget(
+      this.rustReactionStore,
+      targetCastId,
+      targetUrl,
+      type ?? ReactionType.NONE,
+      pageOptions,
+    );
+
+    const messages =
+      message_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
+      }) ?? [];
+
+    return { messages, nextPageToken: message_page.nextPageToken };
   }
 }
-
-export default ReactionStore;

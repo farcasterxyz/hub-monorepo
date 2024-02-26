@@ -13,7 +13,7 @@ import {
 import { err, ok, ResultAsync } from "neverthrow";
 import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { Store } from "./store.js";
-import { Transaction } from "../db/rocksdb.js";
+import { RocksDbTransaction } from "../db/rocksdb.js";
 import { makeFidKey, makeTsHash, makeUserKey, readFidKey } from "../db/message.js";
 import { HubEventArgs } from "./storeEventHandler.js";
 
@@ -89,7 +89,7 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
     return result;
   }
 
-  override async buildSecondaryIndices(txn: Transaction, message: UsernameProofMessage): HubAsyncResult<void> {
+  override async buildSecondaryIndices(txn: RocksDbTransaction, message: UsernameProofMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
     if (tsHash.isErr()) {
@@ -108,7 +108,7 @@ class UsernameProofStore extends Store<UsernameProofMessage, never> {
 
     return ok(undefined);
   }
-  override async deleteSecondaryIndices(txn: Transaction, message: UsernameProofMessage): HubAsyncResult<void> {
+  override async deleteSecondaryIndices(txn: RocksDbTransaction, message: UsernameProofMessage): HubAsyncResult<void> {
     const name = message.data.usernameProofBody.name;
 
     if (name.length === 0) {

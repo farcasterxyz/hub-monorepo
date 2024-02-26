@@ -1,5 +1,5 @@
 import { HubState } from "@farcaster/hub-nodejs";
-import RocksDB, { Transaction } from "./rocksdb.js";
+import RocksDB, { RocksDbTransaction } from "./rocksdb.js";
 import { RootPrefix } from "./types.js";
 
 export const makeHubStatePrimaryKey = (): Buffer => {
@@ -16,7 +16,7 @@ export const putHubState = (db: RocksDB, hubState: HubState): Promise<void> => {
   return db.commit(txn);
 };
 
-export const putHubStateTransaction = (txn: Transaction, hubState: HubState): Transaction => {
+export const putHubStateTransaction = (txn: RocksDbTransaction, hubState: HubState): RocksDbTransaction => {
   const hubStateBuffer = Buffer.from(HubState.encode(hubState).finish());
   return txn.put(makeHubStatePrimaryKey(), hubStateBuffer);
 };
