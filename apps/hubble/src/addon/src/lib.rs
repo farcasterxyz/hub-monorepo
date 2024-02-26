@@ -91,14 +91,14 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("dbGetMany", RocksDB::js_get_many)?;
     cx.export_function("dbPut", RocksDB::js_put)?;
     cx.export_function("dbDel", RocksDB::js_del)?;
-    cx.export_function("commitTransaction", RocksDB::js_commit_transaction)?;
+    cx.export_function("dbCommit", RocksDB::js_commit_transaction)?;
 
     cx.export_function(
-        "forEachIteratorByPrefix",
+        "dbForEachIteratorByPrefix",
         RocksDB::js_for_each_iterator_by_prefix,
     )?;
     cx.export_function(
-        "forEachIteratorByOpts",
+        "dbForEachIteratorByOpts",
         RocksDB::js_for_each_iterator_by_js_opts,
     )?;
 
@@ -108,6 +108,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     // Generic methods that can accept any store
     cx.export_function("merge", Store::js_merge)?;
     cx.export_function("revoke", Store::js_revoke)?;
+    cx.export_function("pruneMessages", Store::js_prune_messages)?;
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
 
     // ReactionStore methods

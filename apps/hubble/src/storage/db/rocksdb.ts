@@ -1,9 +1,8 @@
-import { bytesIncrement, HubError, isHubError } from "@farcaster/hub-nodejs";
-import { mkdir } from "fs";
+import { HubError } from "@farcaster/hub-nodejs";
 import { logger } from "../../utils/logger.js";
 import * as tar from "tar";
 import * as fs from "fs";
-import { err, ok, Result } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import path from "path";
 import {
   createDb,
@@ -19,7 +18,8 @@ import {
   dbLocation,
   dbPut,
   RustDb,
-} from "rustfunctions.js";
+  rustErrorToHubError,
+} from "../../rustfunctions.js";
 import { PageOptions } from "storage/stores/types.js";
 
 export type DbStatus = "opening" | "open" | "closing" | "closed";
@@ -90,28 +90,52 @@ class RocksDB {
     this._status = "open";
   }
 
+  get rustDb(): RustDb {
+    return this._db;
+  }
+
   get location() {
     return dbLocation(this._db);
   }
 
   get status(): DbStatus {
-    return this.status;
+    return this._status;
   }
 
   async put(key: Buffer, value: Buffer): Promise<void> {
-    return dbPut(this._db, key, value);
+    const v = await ResultAsync.fromPromise(dbPut(this._db, key, value), (e) => rustErrorToHubError(e));
+    if (v.isErr()) {
+      throw v.error;
+    }
+
+    return v.value;
   }
 
   async get(key: Buffer): Promise<Buffer> {
-    return dbGet(this._db, key);
+    const v = await ResultAsync.fromPromise(dbGet(this._db, key), (e) => rustErrorToHubError(e));
+    if (v.isErr()) {
+      throw v.error;
+    }
+
+    return v.value;
   }
 
   async getMany(keys: Buffer[]): Promise<Buffer[]> {
-    return dbGetMany(this._db, keys);
+    const v = await ResultAsync.fromPromise(dbGetMany(this._db, keys), (e) => rustErrorToHubError(e));
+    if (v.isErr()) {
+      throw v.error;
+    }
+
+    return v.value;
   }
 
   async del(key: Buffer): Promise<void> {
-    return dbDel(this._db, key);
+    const v = await ResultAsync.fromPromise(dbDel(this._db, key), (e) => rustErrorToHubError(e));
+    if (v.isErr()) {
+      throw v.error;
+    }
+
+    return v.value;
   }
 
   open(): Promise<void> {

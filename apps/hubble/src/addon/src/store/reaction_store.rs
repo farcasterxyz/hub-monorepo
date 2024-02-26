@@ -1,5 +1,16 @@
 use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 
+use super::{
+    hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
+    store::{Store, StoreDef},
+    utils::{encode_messages_to_js_object, get_page_options, get_store},
+    HubError, MessagesPage, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
+};
+use crate::protos::message_data;
+use crate::{
+    db::{RocksDB, RocksDbTransactionBatch},
+    protos::{self, reaction_body::Target, Message, MessageType, ReactionBody, ReactionType},
+};
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
@@ -7,20 +18,10 @@ use neon::{
 };
 use prost::Message as _;
 
-use crate::{
-    db::{RocksDB, RocksDbTransactionBatch},
-    protos::{self, reaction_body::Target, Message, MessageType, ReactionBody, ReactionType},
-};
-
-use super::{
-    get_db, hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
-    store::{Store, StoreDef},
-    utils::{encode_messages_to_js_object, get_page_options, get_store},
-    HubError, MessagesPage, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
-};
-use crate::protos::message_data;
-
-pub struct ReactionStoreDef {}
+pub struct ReactionStoreDef {
+    prune_size_limit: u32,
+    prune_time_limit: u32,
+}
 
 impl StoreDef for ReactionStoreDef {
     fn postfix(&self) -> u8 {
@@ -116,6 +117,14 @@ impl StoreDef for ReactionStoreDef {
             reaction_body.target.as_ref(),
         )
     }
+
+    fn get_prune_time_limit(&self) -> u32 {
+        self.prune_time_limit
+    }
+
+    fn get_prune_size_limit(&self) -> u32 {
+        self.prune_size_limit
+    }
 }
 
 impl ReactionStoreDef {
@@ -208,8 +217,14 @@ impl ReactionStoreDef {
 pub struct ReactionStore {}
 
 impl ReactionStore {
-    pub fn new(db: Arc<RocksDB>) -> Store {
-        Store::new_with_store_def(db, Box::new(ReactionStoreDef {}))
+    pub fn new(db: Arc<RocksDB>, prune_size_limit: u32, prune_time_limit: u32) -> Store {
+        Store::new_with_store_def(
+            db,
+            Box::new(ReactionStoreDef {
+                prune_size_limit,
+                prune_time_limit,
+            }),
+        )
     }
 
     pub fn get_reaction_add(
@@ -387,7 +402,19 @@ impl ReactionStore {
         let db_js_box = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
         let db = (**db_js_box.borrow()).clone();
 
-        Ok(cx.boxed(Arc::new(ReactionStore::new(db))))
+        // Read the prune size limit and prune time limit from the options
+        let prune_size_limit = cx
+            .argument::<JsNumber>(1)
+            .map(|n| n.value(&mut cx) as u32)?;
+        let prune_time_limit = cx
+            .argument::<JsNumber>(2)
+            .map(|n| n.value(&mut cx) as u32)?;
+
+        Ok(cx.boxed(Arc::new(ReactionStore::new(
+            db,
+            prune_size_limit,
+            prune_time_limit,
+        ))))
     }
 
     pub fn js_get_reaction_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -397,7 +424,6 @@ impl ReactionStore {
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
 
         let page_options = get_page_options(&mut cx, 2)?;
-        println!("page_options: {:?}", page_options);
 
         let messages = match ReactionStore::get_reaction_adds_by_fid(
             &store,
@@ -408,7 +434,6 @@ impl ReactionStore {
             Ok(messages) => messages,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
-        println!("Reaction adds: {:?}", messages.messages.len());
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
@@ -554,15 +579,12 @@ impl ReactionStore {
         } else {
             Target::TargetUrl(target_url)
         };
-        println!("target: {:?}", target);
 
         let reaction_type = cx
             .argument::<JsNumber>(2)
             .map(|n| n.value(&mut cx) as i32)?;
-        println!("reaction_type: {:?}", reaction_type);
 
         let page_options = get_page_options(&mut cx, 3)?;
-        println!("page_options: {:?}", page_options);
 
         let messages = match ReactionStore::get_reactions_by_target(
             &store,

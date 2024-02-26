@@ -9,9 +9,9 @@ const lib = require("./addon/index.node");
 
 import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
 import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
-import { UserMessagePostfix } from "storage/db/types.js";
-import { DbKeyValue, RocksDbIteratorOptions } from "storage/db/rocksdb.js";
-import { logger } from "utils/logger.js";
+import { UserMessagePostfix } from "./storage/db/types.js";
+import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
+import { logger } from "./utils/logger.js";
 
 const log = logger.child({
   component: "RustFunctions",
@@ -136,8 +136,8 @@ export const dbForEachIteratorByPrefix = async (
 
     // Iterate over the key-values
     for (const kv of dbKeyValues) {
-      const shouldContinue = await cb(kv.key, kv.value);
-      if (!shouldContinue) {
+      const shouldStop = await cb(kv.key, kv.value);
+      if (shouldStop) {
         finished = true;
         break;
       }
@@ -175,10 +175,8 @@ export const dbForEachIteratorByOpts = async (
 };
 
 /** Create a reaction Store */
-export const createReactionStore = (db: RustDb): RustDynStore => {
-  const store = lib.createReactionStore(db);
-  // console.log("store is ", store);
-  // console.log("merge is ", lib.merge);
+export const createReactionStore = (db: RustDb, pruneSizeLimit: number, pruneTimeLimit: number): RustDynStore => {
+  const store = lib.createReactionStore(db, pruneSizeLimit, pruneTimeLimit);
 
   return store as RustDynStore;
 };
@@ -203,6 +201,14 @@ export const revoke = async (store: RustDynStore, messageBytes: Uint8Array): Pro
 };
 
 /** This is dynamically dispatched to any Store, and the messages will be returned from that store */
+export const pruneMessages = async (
+  store: RustDynStore,
+  fid: number,
+  cachedCount: number,
+  units: number,
+): Promise<Buffer> => {
+  return await lib.pruneMessages.call(store, fid, cachedCount, units);
+};
 
 export const getAllMessagesByFid = async (
   store: RustDynStore,

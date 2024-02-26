@@ -12,7 +12,7 @@ use prost::Message as _;
 
 use crate::{db::RocksDB, store::PAGE_SIZE_MAX};
 
-use super::{HubError, MessagesPage, PageOptions, Store};
+use super::{HubError, MessagesPage, PageOptions, Store, FARCASTER_EPOCH};
 
 /**
  * Helper function to cast a vec into a [u8; 24] for TsHash
@@ -99,7 +99,6 @@ pub fn encode_messages_to_js_object<'a>(
     cx: &mut TaskContext<'a>,
     messages_page: MessagesPage,
 ) -> JsResult<'a, JsObject> {
-    println!("Encoding messages: {:?}", messages_page.messages.len());
     let js_messages = JsArray::new(cx, messages_page.messages.len() as u32);
     for (i, message) in messages_page.messages.iter().enumerate() {
         let message_bytes = message.encode_to_vec();
@@ -108,8 +107,6 @@ pub fn encode_messages_to_js_object<'a>(
         js_buffer.as_mut_slice(cx).copy_from_slice(&message_bytes);
         js_messages.set(cx, i as u32, js_buffer)?;
     }
-
-    println!("Encoded messages finished: {:?}", js_messages);
 
     // Create a JsObject to return the array of buffers
     let js_object = JsObject::new(cx);
@@ -125,8 +122,6 @@ pub fn encode_messages_to_js_object<'a>(
         js_object.set(cx, "nextPageToken", undefined_obj)?;
     }
 
-    println!("js_object: {:?}", js_object);
-
     Ok(js_object)
 }
 
@@ -136,7 +131,6 @@ pub fn encode_messages_to_js_object<'a>(
 */
 pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions, Throw> {
     let js_object = cx.argument::<JsObject>(at)?;
-    println!("js_object: {:?}", js_object);
 
     let page_size = js_object
         .get_opt::<JsNumber, _, _>(cx, "pageSize")?
@@ -174,4 +168,37 @@ pub fn get_db(cx: &mut FunctionContext) -> Result<Arc<RocksDB>, Throw> {
 
 pub fn hub_error_to_js_throw<'a, T, U: Context<'a>>(cx: &mut U, e: HubError) -> Result<T, Throw> {
     cx.throw_error::<String, T>(format!("{}/{}", e.code, e.message))
+}
+
+pub fn to_farcaster_time(time_ms: u64) -> Result<u64, HubError> {
+    if time_ms < FARCASTER_EPOCH {
+        return Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: format!("time_ms is before the farcaster epoch: {}", time_ms),
+        });
+    }
+
+    let seconds_since_epoch = (time_ms - FARCASTER_EPOCH) / 1000;
+    if seconds_since_epoch > u32::MAX as u64 {
+        return Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: format!("time too far in future: {}", time_ms),
+        });
+    }
+
+    Ok(seconds_since_epoch as u64)
+}
+
+pub fn from_farcaster_time(time: u64) -> u64 {
+    time * 1000 + FARCASTER_EPOCH
+}
+
+pub fn get_farcaster_time() -> Result<u64, HubError> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| HubError {
+            code: "internal_error".to_string(),
+            message: format!("failed to get time: {}", e),
+        })?;
+    Ok(to_farcaster_time(now.as_millis() as u64)?)
 }

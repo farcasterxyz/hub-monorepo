@@ -9,8 +9,7 @@ use neon::types::{
     JsString,
 };
 use rocksdb::{Options, TransactionDB};
-use std::fs;
-use std::fs::File;
+use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 pub struct RocksDbTransactionBatch {
@@ -45,6 +44,7 @@ pub struct JsIteratorOptions {
 
 pub struct RocksDB {
     pub db: RwLock<Option<rocksdb::TransactionDB>>,
+    pub path: String,
 }
 
 impl Finalize for RocksDB {}
@@ -62,6 +62,7 @@ impl RocksDB {
         let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, path).unwrap();
         Ok(RocksDB {
             db: RwLock::new(Some(db)),
+            path: path.to_string(),
         })
     }
 
@@ -75,17 +76,19 @@ impl RocksDB {
             .to_string()
     }
 
-    pub fn close(&self) -> Result<String, HubError> {
+    pub fn close(&self) -> Result<(), HubError> {
         let mut db_lock = self.db.write().unwrap();
-        let db = db_lock.take().unwrap();
-        let path = db.path().to_str().unwrap().to_string();
-        drop(db);
+        if db_lock.is_some() {
+            let db = db_lock.take().unwrap();
+            drop(db);
+        }
 
-        Ok(path)
+        Ok(())
     }
 
     pub fn destroy(&self) -> Result<(), HubError> {
-        let path = self.close()?;
+        self.close()?;
+        let path = Path::new(&self.path);
 
         rocksdb::DB::destroy(&rocksdb::Options::default(), path).map_err(|e| HubError {
             code: "db.internal_error".to_string(),
@@ -155,8 +158,10 @@ impl RocksDB {
 
         for (key, value) in batch.batch {
             if value.is_none() {
+                // println!("rust txn is delete, key: {:?}", key);
                 txn.delete(key)?;
             } else {
+                // println!("rust txn is put, key: {:?}", key);
                 txn.put(key, value.unwrap())?;
             }
         }
@@ -168,6 +173,17 @@ impl RocksDB {
     }
 
     fn get_iterator_options(prefix: &[u8], page_options: &PageOptions) -> IteratorOptions {
+        // Handle the special case if the prefix is empty, then we want to iterate over the entire database
+        if prefix.is_empty() {
+            let mut opts = rocksdb::ReadOptions::default();
+            opts.set_iterate_lower_bound(vec![]);
+            opts.set_iterate_upper_bound(vec![255]);
+            return IteratorOptions {
+                opts,
+                reverse: page_options.reverse,
+            };
+        }
+
         let mut lower_prefix;
         let mut upper_prefix;
 
@@ -194,8 +210,8 @@ impl RocksDB {
             upper_prefix = prefix_end.to_vec();
         }
 
-        println!("lower_prefix: {:?}", lower_prefix);
-        println!("upper_prefix: {:?}", upper_prefix);
+        // println!("lower_prefix: {:?}", lower_prefix);
+        // println!("upper_prefix: {:?}", upper_prefix);
 
         let mut opts = rocksdb::ReadOptions::default();
         opts.set_iterate_lower_bound(lower_prefix);
@@ -401,23 +417,25 @@ impl RocksDB {
         Ok(cx.number(result))
     }
 
-    pub fn js_close(mut cx: FunctionContext) -> JsResult<JsString> {
+    pub fn js_close(mut cx: FunctionContext) -> JsResult<JsBoolean> {
         let db = get_db(&mut cx)?;
         let result = match db.close() {
-            Ok(result) => result,
+            Ok(_) => true,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
-        Ok(cx.string(result))
+        Ok(cx.boolean(result))
     }
 
     pub fn js_destroy(mut cx: FunctionContext) -> JsResult<JsBoolean> {
         // return cx.throw_error::<String, _>(format!("Not implemented"));
 
         let db = get_db(&mut cx)?;
+
         if let Err(e) = db.destroy() {
             return hub_error_to_js_throw(&mut cx, e);
         }
+
         Ok(cx.boolean(true))
     }
 

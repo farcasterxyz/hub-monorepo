@@ -3,19 +3,19 @@ use crate::{
     protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message, MessageType},
     store::make_ts_hash,
 };
-use neon::types::buffer::TypedArray;
+use neon::context::Context;
 use neon::types::{Finalize, JsBuffer, JsNumber};
-use neon::{context::Context, types::JsBox};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
+use neon::{object::Object, types::buffer::TypedArray};
 use prost::Message as _;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
 use super::{
-    bytes_compare, delete_message_transaction, get_db, get_message, hub_error_to_js_throw,
-    make_message_primary_key, message, put_message_transaction,
+    bytes_compare, delete_message_transaction, get_farcaster_time, get_message,
+    hub_error_to_js_throw, make_message_primary_key, message, put_message_transaction,
     utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
-    MessagesPage, ReactionStore, StoreEventHandler, TS_HASH_LENGTH,
+    MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
 };
 use rocksdb;
 
@@ -58,7 +58,7 @@ impl From<std::io::Error> for HubError {
 pub const FID_LOCKS_COUNT: usize = 4;
 pub const PAGE_SIZE_MAX: usize = 10_000;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PageOptions {
     pub page_size: Option<usize>,
     pub page_token: Option<Vec<u8>>,
@@ -100,6 +100,9 @@ pub trait StoreDef: Send + Sync {
 
     fn make_add_key(&self, message: &Message) -> Vec<u8>;
     fn make_remove_key(&self, message: &Message) -> Vec<u8>;
+
+    fn get_prune_time_limit(&self) -> u32;
+    fn get_prune_size_limit(&self) -> u32;
 }
 
 pub struct Store {
@@ -589,6 +592,75 @@ impl Store {
         Ok(hub_event_bytes)
     }
 
+    fn prune_messages(
+        &self,
+        fid: u32,
+        cached_count: u64,
+        units: u64,
+    ) -> Result<Vec<HubEvent>, HubError> {
+        let mut pruned_events = vec![];
+
+        let farcaster_time = get_farcaster_time()?;
+
+        let timestamp_to_prune = if self.store_def.get_prune_time_limit() > 0 {
+            Some(farcaster_time as u32 - self.store_def.get_prune_time_limit())
+        } else {
+            None
+        };
+
+        let mut count = cached_count;
+        let prune_size_limit = self.store_def.get_prune_size_limit();
+
+        let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
+        self.db
+            .for_each_iterator_by_prefix(prefix, &PageOptions::default(), |_key, value| {
+                // Value is a message, so try to decode it
+                let message = match protos::Message::decode(value) {
+                    Ok(message) => message,
+                    Err(e) => {
+                        return Err(HubError {
+                            code: "bad_request.internal_error".to_string(),
+                            message: e.to_string(),
+                        })
+                    }
+                };
+
+                if count <= (prune_size_limit as u64) * units
+                    && (timestamp_to_prune.is_none()
+                        || message.data.as_ref().unwrap().timestamp >= timestamp_to_prune.unwrap())
+                {
+                    return Ok(false); // Stop the iteration, nothing left to prune
+                }
+
+                let mut txn = self.db.txn();
+                if self.store_def.is_add_type(&message) {
+                    let ts_hash =
+                        make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
+                    self.delete_add_transaction(&mut txn, &ts_hash, &message)?;
+                } else if self.store_def.remove_type_supported()
+                    && self.store_def.is_remove_type(&message)
+                {
+                    self.delete_remove_transaction(&mut txn, &message)?;
+                }
+
+                // Event Handler
+                let mut hub_event = self.prune_event_args(&message);
+                let id = self
+                    .store_event_handler
+                    .commit_transaction(&mut txn, &mut hub_event)?;
+
+                self.db.commit(txn)?;
+                count -= 1;
+
+                hub_event.id = id;
+                pruned_events.push(hub_event);
+
+                Ok(true) // Continue the iteration
+            })?;
+
+        Ok(pruned_events)
+    }
+
     fn revoke_event_args(&self, message: &Message) -> HubEvent {
         HubEvent {
             r#type: HubEventType::RevokeMessage as i32,
@@ -608,6 +680,18 @@ impl Store {
                 message: Some(message.clone()),
                 deleted_messages: merge_conflicts,
             })),
+            id: 0,
+        }
+    }
+
+    fn prune_event_args(&self, message: &Message) -> HubEvent {
+        HubEvent {
+            r#type: HubEventType::PruneMessage as i32,
+            body: Some(hub_event::Body::PruneMessageBody(
+                protos::PruneMessageBody {
+                    message: Some(message.clone()),
+                },
+            )),
             id: 0,
         }
     }
@@ -728,6 +812,38 @@ impl Store {
                 Ok(js_buffer)
             }
             Err(e) => cx.throw_error(format!("{}/{}", e.code, e.message)),
+        });
+
+        Ok(promise)
+    }
+
+    pub fn js_prune_messages(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store = get_store(&mut cx)?;
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let cached_count = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as u64;
+        let units = cx.argument::<JsNumber>(2).unwrap().value(&mut cx) as u64;
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        deferred.settle_with(&channel, move |mut cx| {
+            let pruned_events = match store.prune_messages(fid, cached_count, units) {
+                Ok(pruned_events) => pruned_events,
+                Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+            };
+
+            let js_array = cx.empty_array();
+            for (i, hub_event) in pruned_events.iter().enumerate() {
+                let hub_event_bytes = hub_event.encode_to_vec();
+                let mut js_buffer = cx.buffer(hub_event_bytes.len())?;
+                js_buffer
+                    .as_mut_slice(&mut cx)
+                    .copy_from_slice(&hub_event_bytes);
+                js_array.set(&mut cx, i as u32, js_buffer)?;
+            }
+
+            Ok(js_array)
         });
 
         Ok(promise)

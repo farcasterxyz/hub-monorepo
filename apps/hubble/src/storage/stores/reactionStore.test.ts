@@ -19,7 +19,7 @@ import {
 import { err, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { getMessage, makeTsHash } from "../db/message.js";
-import { UserPostfix } from "../db/types.js";
+import { RootPrefix, UserPostfix } from "../db/types.js";
 import ReactionStore from "../stores/reactionStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
@@ -730,14 +730,15 @@ describe("revoke", () => {
   test("deletes all keys relating to the reaction", async () => {
     await set.merge(reactionAdd);
     const reactionKeys: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeys.push(key as Buffer);
     });
 
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reactionAdd);
+
     const reactionKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([RootPrefix.HubEvents]), (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
     });
 
@@ -751,14 +752,14 @@ describe("revoke", () => {
     });
     await set.merge(reaction);
     const reactionKeys: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeys.push(key as Buffer);
     });
 
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reaction);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([RootPrefix.HubEvents]), (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
     });
 
@@ -887,6 +888,7 @@ describe("pruneMessages", () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
+      console.log(result);
       expect(result.isOk()).toBeTruthy();
       expect(result._unsafeUnwrap().length).toEqual(2);
 

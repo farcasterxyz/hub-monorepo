@@ -294,15 +294,10 @@ where
     let mut messages = Vec::new();
     let mut last_key = vec![];
 
-    println!(
-        "get_messages_page_by_prefix prefix: {:?}. Page = {:?}",
-        prefix, page_options
-    );
-
     db.for_each_iterator_by_prefix(
         prefix,
         page_options,
-        |key, value| match MessageProto::decode(value.deref()) {
+        |key, value| match MessageProto::decode(value) {
             Ok(message) => {
                 if filter(&message) {
                     messages.push(message);

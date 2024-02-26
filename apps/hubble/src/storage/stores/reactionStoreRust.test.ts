@@ -14,20 +14,19 @@ import {
   ReactionType,
   RevokeMessageHubEvent,
 } from "@farcaster/hub-nodejs";
-import { err, ok } from "neverthrow";
+import { err } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { makeTsHash } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
-import { ReactionStoreProxy } from "./reactionStore.proxy.js";
-import { createDb, dbClear, dbDestroy } from "../../rustfunctions.js";
 
-const db = jestRocksDB("protobufs.reactionStore.test");
-const rustDb = createDb("/tmp/rust_db_for_test.Rusttest");
+import ReactionStore from "./reactionStore.js";
+
+const db = jestRocksDB("protobufs.reactionStore.Rust.test");
 
 const eventHandler = new StoreEventHandler(db);
-const set = new ReactionStoreProxy(rustDb, eventHandler);
+const set = new ReactionStore(db, eventHandler);
 const fid = Factories.Fid.build();
 const castId = Factories.CastId.build();
 
@@ -66,13 +65,8 @@ beforeAll(async () => {
   await db.commit(putOnChainEventTransaction(db.transaction(), rent));
 });
 
-afterAll(async () => {
-  await dbDestroy(db);
-});
-
 beforeEach(async () => {
   await eventHandler.syncCache();
-  await dbClear(rustDb);
 });
 
 describe("getReactionAdd", () => {
@@ -736,14 +730,14 @@ describe("revoke", () => {
   test("deletes all keys relating to the reaction", async () => {
     await set.merge(reactionAdd);
     const reactionKeys: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeys.push(key as Buffer);
     });
 
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reactionAdd);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
     });
 
@@ -757,14 +751,14 @@ describe("revoke", () => {
     });
     await set.merge(reaction);
     const reactionKeys: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeys.push(key as Buffer);
     });
 
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reaction);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
     });
 

@@ -11,7 +11,6 @@ import {
   getDefaultStoreLimit,
 } from "@farcaster/hub-nodejs";
 import {
-  RustDb,
   RustDynStore,
   createReactionStore,
   getAllMessagesByFid,
@@ -22,6 +21,7 @@ import {
   getReactionRemovesByFid,
   getReactionsByTarget,
   merge,
+  pruneMessages,
   revoke,
   rustErrorToHubError,
 } from "../../rustfunctions.js";
@@ -29,10 +29,11 @@ import StoreEventHandler from "./storeEventHandler.js";
 import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
 import { UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { ResultAsync, err, ok } from "neverthrow";
+import RocksDB from "storage/db/rocksdb.js";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
 
-export class ReactionStore {
+class ReactionStore {
   private rustReactionStore: RustDynStore;
   protected _eventHandler: StoreEventHandler;
 
@@ -40,14 +41,14 @@ export class ReactionStore {
   private _pruneSizeLimit: number;
   protected _pruneTimeLimit: number | undefined;
 
-  constructor(rustDb: RustDb, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    this.rustReactionStore = createReactionStore(rustDb);
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+    this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
+    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
+
+    this.rustReactionStore = createReactionStore(db.rustDb, this._pruneSizeLimit, this._pruneTimeLimit);
 
     this._postfix = UserPostfix.ReactionMessage;
     this._eventHandler = eventHandler;
-
-    this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
   }
 
   protected get PRUNE_SIZE_LIMIT_DEFAULT() {
@@ -108,6 +109,43 @@ export class ReactionStore {
 
     void this._eventHandler.processRustCommitedTransaction(hubEvent);
     return ok(hubEvent.id);
+  }
+
+  async pruneMessages(fid: number): HubAsyncResult<number[]> {
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix, false);
+    const units = await this._eventHandler.getCurrentStorageUnitsForFid(fid);
+
+    // Require storage cache to be synced to prune
+    if (cachedCount.isErr()) {
+      return err(cachedCount.error);
+    }
+
+    if (units.isErr()) {
+      return err(units.error);
+    }
+
+    // Return immediately if there are no messages to prune
+    if (cachedCount.value === 0) {
+      return ok([]);
+    }
+
+    const result = await ResultAsync.fromPromise(
+      pruneMessages(this.rustReactionStore, fid, cachedCount.value, units.value),
+      rustErrorToHubError,
+    );
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    // Read the result bytes as an array of HubEvents
+    const commits = [];
+    for (const resultBytes of result.value) {
+      const hubEvent = HubEvent.decode(new Uint8Array(resultBytes));
+      commits.push(hubEvent.id);
+      void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    }
+
+    return ok(commits);
   }
 
   async getMessage(fid: number, set: UserMessagePostfix, tsHash: Uint8Array): Promise<Message> {
@@ -243,3 +281,5 @@ export class ReactionStore {
     return { messages, nextPageToken: message_page.nextPageToken };
   }
 }
+
+export default ReactionStore;
