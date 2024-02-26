@@ -582,7 +582,7 @@ export class Hub implements HubInterface {
     if (dbResult.isErr()) {
       throw dbResult.error;
     } else {
-      log.info("rocksdb opened");
+      log.info({ path: this.rocksDB.location }, "rocksdb opened");
     }
 
     if (this.options.resetDB === true) {

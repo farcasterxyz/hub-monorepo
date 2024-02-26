@@ -7,7 +7,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
-import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
+import { HubError, HubErrorCode, bytesCompare, validations } from "@farcaster/hub-nodejs";
 import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
@@ -114,6 +114,7 @@ export const dbForEachIteratorByPrefix = async (
   cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
 ) => {
   let dbKeyValues: DbKeyValue[] = [];
+  let lastPageToken = undefined;
   let nextPageToken = pageOptions.pageToken;
   let finished = false;
 
@@ -124,7 +125,7 @@ export const dbForEachIteratorByPrefix = async (
       // console.log("dbForeachIteratorByPrefix key", key, "value", value);
       dbKeyValues.push({ key, value });
 
-      if (dbKeyValues.length > PAGE_SIZE_MAX) {
+      if (dbKeyValues.length >= PAGE_SIZE_MAX) {
         nextPageToken = new Uint8Array(key.subarray(prefix.length));
         return true; // Stop the iteration
       }
@@ -144,6 +145,12 @@ export const dbForEachIteratorByPrefix = async (
         finished = true;
         break;
       }
+    }
+
+    if (nextPageToken && lastPageToken && bytesCompare(nextPageToken, lastPageToken) === 0) {
+      finished = true;
+    } else {
+      lastPageToken = nextPageToken;
     }
 
     dbKeyValues = []; // Clear the key-values array

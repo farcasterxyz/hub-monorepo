@@ -120,9 +120,6 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
 
-      - name: List cargo directories
-        run: which cargo
-
       - name: Restore cached dependencies for Node modules.
         id: module-cache
         uses: actions/cache@v3
