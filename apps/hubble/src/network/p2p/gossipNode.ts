@@ -22,7 +22,7 @@ import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
-import { statsd } from "../../utils/statsd.js";
+import { statsd, StatsDInitParams } from "../../utils/statsd.js";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -79,6 +79,8 @@ export interface NodeOptions {
   connectToDbPeers?: boolean | undefined;
   /** The maximum amount of time to dial a peer in libp2p network in milliseconds */
   p2pConnectTimeoutMs?: number | undefined;
+  /** StatsD parameters */
+  statsdParams?: StatsDInitParams | undefined;
 }
 
 // A common return type for several methods on the libp2p node.
@@ -510,10 +512,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
-          const t = Date.now();
-          console.log(
-            JSON.stringify({ time: t, msgId: detail.msgId, topic: detail.msg.topic, msg: "Received gossip" }),
-          );
 
           this.emit(
             "message",

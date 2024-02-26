@@ -65,7 +65,7 @@ import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
 import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
-import { statsd } from "./utils/statsd.js";
+import { statsd, StatsDInitParams } from "./utils/statsd.js";
 import {
   getDbSchemaVersion,
   LATEST_DB_SCHEMA_VERSION,
@@ -174,6 +174,9 @@ export interface HubOptions {
 
   /** Rank RPCs and use the ones with best stability and latency */
   rankRpcs?: boolean;
+
+  /** StatsD parameters */
+  statsdParams?: StatsDInitParams | undefined;
 
   /** ETH mainnet RPC URL(s) */
   ethMainnetRpcUrl?: string;
@@ -692,6 +695,7 @@ export class Hub implements HubInterface {
       applicationScoreCap: this.options.applicationScoreCap,
       strictNoSign: this.strictNoSign,
       connectToDbPeers: this.options.connectToDbPeers,
+      statsdParams: this.options.statsdParams,
     });
 
     await this.registerEventHandlers();

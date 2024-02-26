@@ -19,7 +19,7 @@ import { Config as DefaultConfig } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
-import { initializeStatsd } from "./utils/statsd.js";
+import { getStatsdInitialization, initializeStatsd } from "./utils/statsd.js";
 import os from "os";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { mainnet, optimism } from "viem/chains";
@@ -502,6 +502,7 @@ app
       rebuildSyncTrie,
       profileSync,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,
+      statsdParams: getStatsdInitialization(),
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
       commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,

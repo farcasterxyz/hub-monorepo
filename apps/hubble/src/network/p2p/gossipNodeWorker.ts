@@ -94,6 +94,11 @@ export class LibP2PNode {
   }
 
   async makeNode(options: NodeOptions): HubAsyncResult<boolean> {
+    // since we are running in a worker thread, we need to initialize statsd
+    if (options.statsdParams) {
+      initializeStatsd(options.statsdParams.host, options.statsdParams.port);
+    }
+
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
@@ -439,9 +444,6 @@ export class LibP2PNode {
       ? statsd().increment("gossip.async_validation.accept")
       : statsd().increment("gossip.async_validation.reject");
 
-    const t = Date.now();
-    console.log(JSON.stringify({ time: t, msgId: messageId, msg: `Reporting as valid: ${isValid}` }));
-
     this.gossip?.reportMessageValidationResult(
       messageId,
       propagationSource,
@@ -486,8 +488,6 @@ export class LibP2PNode {
     this.gossip?.addEventListener("subscription-change", eventHandler("subscription-change"));
   }
 }
-
-initializeStatsd("127.0.0.1", 8125);
 
 const libp2pNode = new LibP2PNode(workerData?.network as FarcasterNetwork);
 
