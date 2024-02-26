@@ -48,7 +48,7 @@ async fn main() {
     let private_key = SigningKey::from_bytes(
         &SecretKey::from_hex("0x...").expect("Please provide a valid private key"),
     );
-    let signature = private_key.sign(&msg_data_bytes).to_bytes();
+    let signature = private_key.sign(&hash).to_bytes();
 
     msg.set_signature_scheme(message::SignatureScheme::SIGNATURE_SCHEME_ED25519);
     msg.set_signature(signature.to_vec());

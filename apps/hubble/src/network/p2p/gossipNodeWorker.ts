@@ -10,6 +10,8 @@ import {
   LibP2PNodeMethodReturnType,
   NodeOptions,
   GOSSIP_SEEN_TTL,
+  LIBP2P_CONNECT_TIMEOUT_MS,
+  ENV_LIBP2P_CONNECT_TIMEOUT_MS,
 } from "./gossipNode.js";
 import {
   ContactInfoContent,
@@ -35,7 +37,7 @@ import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign } from "./protocol.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { Logger } from "../../utils/logger.js";
-import { statsd } from "../../utils/statsd.js";
+import { initializeStatsd, statsd } from "../../utils/statsd.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -60,10 +62,12 @@ export class LibP2PNode {
   private _connectionGater?: ConnectionFilter;
   private _network: FarcasterNetwork;
   private _peerScores: Map<string, number>;
+  private _p2pConnectTimeoutMs: number;
 
   constructor(network: FarcasterNetwork) {
     this._network = network;
     this._peerScores = new Map<string, number>();
+    this._p2pConnectTimeoutMs = LIBP2P_CONNECT_TIMEOUT_MS;
   }
 
   get identity() {
@@ -90,6 +94,11 @@ export class LibP2PNode {
   }
 
   async makeNode(options: NodeOptions): HubAsyncResult<boolean> {
+    // since we are running in a worker thread, we need to initialize statsd
+    if (options.statsdParams) {
+      initializeStatsd(options.statsdParams.host, options.statsdParams.port);
+    }
+
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
     const listenPort = options.gossipPort ?? 0;
     const listenMultiAddrStr = `${listenIPMultiAddr}/tcp/${listenPort}`;
@@ -117,6 +126,14 @@ export class LibP2PNode {
     const gossipsubIWantFollowupMs = process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"]
       ? parseInt(process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"])
       : 3 * 1000;
+
+    if (options.p2pConnectTimeoutMs) {
+      this._p2pConnectTimeoutMs = options.p2pConnectTimeoutMs;
+    } else {
+      this._p2pConnectTimeoutMs = process.env[ENV_LIBP2P_CONNECT_TIMEOUT_MS]
+        ? parseInt(process.env[ENV_LIBP2P_CONNECT_TIMEOUT_MS])
+        : LIBP2P_CONNECT_TIMEOUT_MS;
+    }
 
     const gossip = gossipsub({
       emitSelf: false,
@@ -271,7 +288,11 @@ export class LibP2PNode {
   async connectAddress(address: MultiAddr.Multiaddr): Promise<HubResult<void>> {
     log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
     try {
-      const conn = await this._node?.dial(address);
+      const controller = new AbortController();
+      // Set timeout to abort the dial operation
+      setTimeout(() => controller.abort(), this._p2pConnectTimeoutMs);
+
+      const conn = await this._node?.dial(address, { signal: controller.signal });
 
       if (conn) {
         log.info({ identity: this.identity, address: address.toString() }, `Connected to peer at address: ${address}`);
@@ -484,6 +505,7 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
   // console.log("Received message from parent thread", msg);
   const { method, methodCallId } = msg;
 
+  const start = Date.now();
   switch (method) {
     case "makeNode": {
       const specificMsg = msg as LibP2PNodeMessage<"makeNode">;
@@ -562,6 +584,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       });
       break;
     }
+    // NOTE: connectAddress attempts to dial a peer in the p2p network. A large influx of these requests can cause
+    //   backlog congestion for the worker thread if the timeout value is too large. The default value is defined in
+    //   gossipNode.ts [LIBP2P_CONNECT_TIMEOUT_MS] and can be overridden by the environment variable [ENV_LIBP2P_CONNECT_TIMEOUT_MS].
     case "connectAddress": {
       const specificMsg = msg as LibP2PNodeMessage<"connectAddress">;
       const [multiaddr] = specificMsg.args;
@@ -697,4 +722,5 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       break;
     }
   }
+  statsd().histogram(`gossip.worker.${method}.latency_ms`, Date.now() - start);
 });

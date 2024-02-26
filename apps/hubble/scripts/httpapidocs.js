@@ -90,28 +90,27 @@ export function httpapidocs() {
   }
 
   function getParametersForEndpoint(endpoint, trees) {
-    let foundEndpoint = false;
-    let parameters = [];
-    let line = 0;
-
-    trees.forEach(({ fileName, tree }) => {
-      tree.children.forEach((node, index) => {
+    // Get the markdown documented parameters for a given endpoint
+    for (const { fileName, tree } of trees) {
+      let foundEndpoint = false;
+      for (const node of tree.children) {
         if (node.type === "heading" && node.children[0].value === endpoint) {
           foundEndpoint = true;
+          continue;
         }
 
         if (foundEndpoint && node.type === "table") {
-          parameters = node.children
+          const parameters = node.children
             .slice(1)
             .map((row) => row.children[0].children[0]?.value)
             .filter((p) => p !== undefined);
-          line = `${fileName}:${node.position.start.line}`;
-          foundEndpoint = false; // Reset to stop looking after finding the table
+          const line = `${fileName}:${node.position.start.line}`;
+          return { parameters, line};
         }
-      });
-    });
+      }
+    }
 
-    return { parameters, line };
+    return { parameters: [], line: '' };
   }
 
   function checkParametersInDocs(docTags, trees) {

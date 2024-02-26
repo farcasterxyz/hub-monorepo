@@ -1,5 +1,12 @@
 # @farcaster/hub-nodejs
 
+## 0.11.3
+
+### Patch Changes
+
+- Updated dependencies [1fd0f686]
+  - @farcaster/core@0.14.3
+
 ## 0.11.2
 
 ### Patch Changes

@@ -17,8 +17,15 @@ Note: these are the bare minimum and are likely to increase as the network incre
 
 ### Instructions
 
+#### Automatic Boostrap Script
+
 1. Run: `curl -sSL https://download.farcaster.xyz/bootstrap-replicator.sh | bash`
 2. Answer the prompts.
+
+#### Running Manually
+
+1. Copy .env.sample into .env in this folder
+2. Run: `docker compose up -d`
 
 Once the Docker images have finished downloading, you should start to see messages like:
 

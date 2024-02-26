@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.10.4
+
+### Patch Changes
+
+- addf097c: chore: update @farcaster/hub-nodejs
+
 ## 1.10.3
 
 ### Patch Changes

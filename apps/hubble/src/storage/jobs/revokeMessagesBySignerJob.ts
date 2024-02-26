@@ -12,6 +12,7 @@ import RocksDB, { Iterator } from "../db/rocksdb.js";
 import { logger } from "../../utils/logger.js";
 import { RootPrefix } from "../db/types.js";
 import Engine from "../engine/index.js";
+import AbstractRocksDB from "@farcaster/rocksdb";
 
 export type JobQueueEvents = {
   enqueueJob: (jobKey: Buffer) => void;
@@ -101,7 +102,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
   }
 
   /** Return rocksdb iterator for revoke signer jobs. If doBefore timestamp is missing, iterate over all jobs  */
-  iterator(doBefore?: number): HubResult<Iterator> {
+  iteratorOpts(doBefore?: number): HubResult<AbstractRocksDB.IteratorOptions> {
     const gte = RevokeMessagesBySignerJobQueue.jobKeyPrefix();
     let lt: Buffer;
     if (doBefore) {
@@ -118,7 +119,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
       lt = Buffer.from(nextKey.value);
     }
 
-    return ok(this._db.iterator({ gte, lt }));
+    return ok({ gte, lt });
   }
 
   async enqueueJob(payload: RevokeMessagesBySignerJobPayload, doAt?: number): HubAsyncResult<Buffer> {
@@ -158,21 +159,25 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
   }
 
   async popNextJob(doBefore?: number): HubAsyncResult<RevokeMessagesBySignerJobPayload> {
-    const iterator = this.iterator(doBefore);
-    if (iterator.isErr()) {
-      return err(iterator.error);
+    const iteratorOpts = this.iteratorOpts(doBefore);
+    if (iteratorOpts.isErr()) {
+      return err(iteratorOpts.error);
     }
 
-    const result = await ResultAsync.fromPromise(iterator.value.next(), (e) => e as HubError);
-    if (result.isErr()) {
-      await iterator.value.end();
-      return err(result.error);
-    }
+    let nextKey: Buffer | undefined;
+    let nextValue: Buffer | undefined;
+    await this._db.forEachIteratorByOpts(iteratorOpts.value, (key, value) => {
+      nextKey = key;
+      nextValue = value;
+      return true; // Finish the itearation after the first key-value pair
+    });
 
-    const [key, value] = result.value;
+    if (!nextKey || !nextValue) {
+      return err(new HubError("not_found", "No jobs found"));
+    }
 
     const payload = Result.fromThrowable(
-      () => RevokeMessagesBySignerJobPayload.decode(Uint8Array.from(value as Buffer)),
+      () => RevokeMessagesBySignerJobPayload.decode(Uint8Array.from(nextValue as Buffer)),
       (err) =>
         new HubError("bad_request.parse_failure", {
           cause: err as Error,
@@ -180,11 +185,8 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
         }),
     )();
 
-    // clear rocksdb iterator
-    await iterator.value.end();
-
     // Delete job from rocksdb to prevent it from being done multiple times
-    await this._db.del(key as Buffer);
+    await this._db.del(nextKey as Buffer);
 
     return payload;
   }
