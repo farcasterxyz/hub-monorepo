@@ -89,8 +89,10 @@ export const dbGet = async (db: RustDb, key: Uint8Array): Promise<Buffer> => {
   return await lib.dbGet.call(db, key);
 };
 
-export const dbGetMany = async (db: RustDb, keys: Uint8Array[]): Promise<Buffer[]> => {
-  return await lib.dbGetMany.call(db, keys);
+export const dbGetMany = async (db: RustDb, keys: Uint8Array[]): Promise<(Buffer | undefined)[]> => {
+  const results = await lib.dbGetMany.call(db, keys);
+  // If a key was not found, it is set to an empty buffer. We want to return undefined in that case
+  return results.map((result: Buffer) => (result.length === 0 ? undefined : result));
 };
 
 export const dbPut = async (db: RustDb, key: Uint8Array, value: Uint8Array): Promise<void> => {
@@ -119,6 +121,7 @@ export const dbForEachIteratorByPrefix = async (
     const batchPageOptions = { ...pageOptions, pageToken: nextPageToken };
 
     await lib.dbForEachIteratorByPrefix.call(db, prefix, batchPageOptions, (key: Buffer, value: Buffer | undefined) => {
+      // console.log("dbForeachIteratorByPrefix key", key, "value", value);
       dbKeyValues.push({ key, value });
 
       if (dbKeyValues.length > PAGE_SIZE_MAX) {
@@ -167,8 +170,8 @@ export const dbForEachIteratorByOpts = async (
   });
 
   for (const kv of dbKeyValues) {
-    const shouldContinue = await cb(kv.key, kv.value);
-    if (!shouldContinue) {
+    const shouldStop = await cb(kv.key, kv.value);
+    if (shouldStop) {
       break;
     }
   }

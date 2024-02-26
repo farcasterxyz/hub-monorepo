@@ -100,7 +100,7 @@ export const getManyOnChainEvents = async <T extends OnChainEvent>(
   primaryKeys: Buffer[],
 ): Promise<T[]> => {
   const buffers = await db.getMany(primaryKeys);
-  return buffers.map((buffer) => OnChainEvent.decode(new Uint8Array(buffer)) as T);
+  return buffers.map((buffer) => OnChainEvent.decode(new Uint8Array(buffer ?? [])) as T);
 };
 
 export const forEachOnChainEvent = async (

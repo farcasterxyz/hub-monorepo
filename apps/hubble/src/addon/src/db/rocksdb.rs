@@ -112,16 +112,10 @@ impl RocksDB {
 
         // If any of the results are Errors, return an error
         let results = results.into_iter().collect::<Result<Vec<_>, _>>()?;
-
-        // If any of the results are None, return a not found error
-        if results.iter().any(|r| r.is_none()) {
-            return Err(HubError {
-                code: "db.not_found".to_string(),
-                message: "key not found".to_string(),
-            });
-        }
-
-        let results = results.into_iter().map(|r| r.unwrap()).collect::<Vec<_>>();
+        let results = results
+            .into_iter()
+            .map(|r| r.unwrap_or(vec![]))
+            .collect::<Vec<_>>();
 
         Ok(results)
     }
@@ -233,6 +227,7 @@ impl RocksDB {
         F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     {
         let iter_opts = RocksDB::get_iterator_options(prefix, page_options);
+
         let db = self.db();
         let mut iter = db.as_ref().unwrap().raw_iterator_opt(iter_opts.opts);
 
@@ -474,7 +469,7 @@ impl RocksDB {
                     &mut cx,
                     HubError {
                         code: "not_found".to_string(),
-                        message: format!("key not found: {:?}", key),
+                        message: format!("NotFound: key not found: {:?}", key),
                     },
                 )
             }

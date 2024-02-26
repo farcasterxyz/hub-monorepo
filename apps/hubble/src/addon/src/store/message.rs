@@ -1,12 +1,12 @@
 use prost::Message as _;
 
 use crate::{
-    db::{IteratorOptions, RocksDB, RocksDbTransactionBatch},
+    db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, CastId, Message as MessageProto, MessageType},
 };
 
-use super::{store::HubError, utils::increment_vec_u8, PageOptions, PAGE_SIZE_MAX};
-use std::{convert::TryFrom, ops::Deref};
+use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
+use std::convert::TryFrom;
 
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;

@@ -74,7 +74,7 @@ export type RocksDbIteratorOptions = {
  */
 class RocksDB {
   protected _db: RustDb;
-  private _status: DbStatus = "closed";
+  private _status: DbStatus = "opening";
 
   constructor(name?: string) {
     const createdDb = Result.fromThrowable(
@@ -120,7 +120,7 @@ class RocksDB {
     return v.value;
   }
 
-  async getMany(keys: Buffer[]): Promise<Buffer[]> {
+  async getMany(keys: Buffer[]): Promise<(Buffer | undefined)[]> {
     const v = await ResultAsync.fromPromise(dbGetMany(this._db, keys), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
@@ -152,6 +152,7 @@ class RocksDB {
 
   close(): void {
     dbClose(this._db);
+    this._status = "closed";
   }
 
   clear(): void {

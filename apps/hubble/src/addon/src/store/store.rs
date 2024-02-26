@@ -98,8 +98,8 @@ pub trait StoreDef: Send + Sync {
     fn find_merge_add_conflicts(&self, message: &Message) -> Result<(), HubError>;
     fn find_merge_remove_conflicts(&self, message: &Message) -> Result<(), HubError>;
 
-    fn make_add_key(&self, message: &Message) -> Vec<u8>;
-    fn make_remove_key(&self, message: &Message) -> Vec<u8>;
+    fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
+    fn make_remove_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
 
     fn get_prune_time_limit(&self) -> u32;
     fn get_prune_size_limit(&self) -> u32;
@@ -157,7 +157,7 @@ impl Store {
             });
         }
 
-        let adds_key = self.store_def.make_add_key(partial_message);
+        let adds_key = self.store_def.make_add_key(partial_message)?;
         let message_ts_hash = self.db.get(&adds_key)?;
 
         if message_ts_hash.is_none() {
@@ -191,7 +191,7 @@ impl Store {
             });
         }
 
-        let removes_key = self.store_def.make_remove_key(partial_message);
+        let removes_key = self.store_def.make_remove_key(partial_message)?;
         // println!("trying to get removes key {:?}", removes_key);
         let message_ts_hash = self.db.get(&removes_key)?;
         // println!("got removes key ts_hash: {:?}", message_ts_hash);
@@ -264,7 +264,7 @@ impl Store {
     ) -> Result<(), HubError> {
         put_message_transaction(txn, &message)?;
 
-        let adds_key = self.store_def.make_add_key(message);
+        let adds_key = self.store_def.make_add_key(message)?;
 
         // TODO: Test check for the postfix
 
@@ -285,7 +285,7 @@ impl Store {
         self.store_def
             .delete_secondary_indicies(txn, ts_hash, message)?;
 
-        let add_key = self.store_def.make_add_key(message);
+        let add_key = self.store_def.make_add_key(message)?;
         txn.delete(add_key);
 
         delete_message_transaction(txn, message)
@@ -306,7 +306,7 @@ impl Store {
 
         put_message_transaction(txn, &message)?;
 
-        let removes_key = self.store_def.make_remove_key(message);
+        let removes_key = self.store_def.make_remove_key(message)?;
         txn.put(removes_key, ts_hash.to_vec());
 
         Ok(())
@@ -324,7 +324,7 @@ impl Store {
             });
         }
 
-        let remove_key = self.store_def.make_remove_key(message);
+        let remove_key = self.store_def.make_remove_key(message)?;
         txn.delete(remove_key);
 
         delete_message_transaction(txn, message)
@@ -368,7 +368,7 @@ impl Store {
         let mut conflicts = vec![];
 
         if self.store_def.remove_type_supported() {
-            let remove_key = self.store_def.make_remove_key(message);
+            let remove_key = self.store_def.make_remove_key(message)?;
             let remove_ts_hash = self.db.get(&remove_key)?;
 
             if remove_ts_hash.is_some() {
@@ -412,7 +412,7 @@ impl Store {
         }
 
         // Check if there is an add timestamp hash for this
-        let add_key = self.store_def.make_add_key(message);
+        let add_key = self.store_def.make_add_key(message)?;
         let add_ts_hash = self.db.get(&add_key)?;
 
         if add_ts_hash.is_some() {

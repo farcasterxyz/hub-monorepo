@@ -92,7 +92,7 @@ impl StoreDef for ReactionStoreDef {
         Ok(())
     }
 
-    fn make_add_key(&self, message: &protos::Message) -> Vec<u8> {
+    fn make_add_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let reaction_body = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::ReactionBody(reaction_body) => reaction_body,
             _ => panic!("Invalid reaction body"),
@@ -105,7 +105,7 @@ impl StoreDef for ReactionStoreDef {
         )
     }
 
-    fn make_remove_key(&self, message: &protos::Message) -> Vec<u8> {
+    fn make_remove_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let reaction_body = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::ReactionBody(reaction_body) => reaction_body,
             _ => panic!("Invalid reaction body"),
@@ -181,7 +181,17 @@ impl ReactionStoreDef {
         }
     }
 
-    pub fn make_reaction_adds_key(fid: u32, r#type: i32, target: Option<&Target>) -> Vec<u8> {
+    pub fn make_reaction_adds_key(
+        fid: u32,
+        r#type: i32,
+        target: Option<&Target>,
+    ) -> Result<Vec<u8>, HubError> {
+        if target.is_some() && r#type == 0 {
+            return Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: "targetId provided without type".to_string(),
+            });
+        }
         let mut key = Vec::with_capacity(33 + 1 + 1 + 28);
 
         key.extend_from_slice(&make_user_key(fid));
@@ -194,10 +204,20 @@ impl ReactionStoreDef {
             key.extend_from_slice(&Self::make_target_key(target.unwrap()));
         }
 
-        key
+        Ok(key)
     }
 
-    pub fn make_reaction_removes_key(fid: u32, r#type: i32, target: Option<&Target>) -> Vec<u8> {
+    pub fn make_reaction_removes_key(
+        fid: u32,
+        r#type: i32,
+        target: Option<&Target>,
+    ) -> Result<Vec<u8>, HubError> {
+        if target.is_some() && r#type == 0 {
+            return Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: "targetId provided without type".to_string(),
+            });
+        }
         let mut key = Vec::with_capacity(33 + 1 + 1 + 28);
 
         key.extend_from_slice(&make_user_key(fid));
@@ -210,7 +230,7 @@ impl ReactionStoreDef {
             // target, 28 bytes
         }
 
-        key
+        Ok(key)
     }
 }
 

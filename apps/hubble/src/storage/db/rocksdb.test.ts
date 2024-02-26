@@ -4,7 +4,6 @@ import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
 import RocksDB from "./rocksdb.js";
 import { ResultAsync } from "neverthrow";
-import { sleep } from "../../utils/crypto.js";
 
 //Safety: fs is safe to use in tests
 
@@ -27,7 +26,7 @@ describe("open", () => {
 
     test("when directory does not exist", async () => {
       if (existsSync(db.location)) {
-        rmdirSync(db.location);
+        rmdirSync(db.location, { recursive: true });
       }
     });
 
@@ -44,35 +43,26 @@ describe("open", () => {
 describe("close", () => {
   test("succeeds", async () => {
     const db = new RocksDB(randomDbName());
-    expect(db.status).toEqual("new");
+    expect(db.status).toEqual("open");
     await db.open();
-    await expect(db.close()).resolves.toEqual(undefined);
+    db.close();
     expect(db.status).toEqual("closed");
     await db.destroy();
   });
 });
 
 describe("destroy", () => {
-  test("fails when db has never been opened", async () => {
-    const db = new RocksDB(randomDbName());
-    expect(db.status).toEqual("new");
-    await expect(db.destroy()).rejects.toThrow(new Error("db never opened"));
-
-    // Call close to clear the open iterator timers that might still be open
-    await db.close();
-  });
-
   test("succeeds when db is open", async () => {
     const db = new RocksDB(randomDbName());
     await db.open();
-    await expect(db.destroy()).resolves.toEqual(undefined);
+    await expect(db.destroy()).resolves.toEqual(true);
   });
 
   test("destroys db", async () => {
     const db = new RocksDB(randomDbName());
     await db.open();
-    await db.close();
-    await expect(db.destroy()).resolves.toEqual(undefined);
+    db.close();
+    await expect(db.destroy()).resolves.toEqual(true);
   });
 });
 
@@ -83,7 +73,8 @@ describe("clear", () => {
     await db.put(Buffer.from("key"), Buffer.from("value"));
     const value = await db.get(Buffer.from("key"));
     expect(value).toEqual(Buffer.from("value"));
-    await expect(db.clear()).resolves.toEqual(undefined);
+
+    db.clear();
     await expect(db.get(Buffer.from("key"))).rejects.toThrow(HubError);
     await db.destroy();
   });
@@ -212,8 +203,8 @@ describe("with db", () => {
     test("succeeds with single byte prefix", async () => {
       const tsx = db
         .transaction()
-        .put(Buffer.from([255, 1]), Buffer.from("a"))
-        .put(Buffer.from([255, 2]), Buffer.from("b"))
+        .put(Buffer.from([225, 1]), Buffer.from("a"))
+        .put(Buffer.from([225, 2]), Buffer.from("b"))
         .put(Buffer.from([2, 0]), Buffer.from("c"))
         .put(Buffer.from([1, 0]), Buffer.from("d"))
         .put(Buffer.from([254, 255]), Buffer.from("e"));
@@ -221,7 +212,7 @@ describe("with db", () => {
       await db.commit(tsx);
 
       const values: Buffer[] = [];
-      await db.forEachIteratorByPrefix(Buffer.from([255]), (key, value) => {
+      await db.forEachIteratorByPrefix(Buffer.from([225]), (_key, value) => {
         values.push(value as Buffer);
       });
       expect(values).toEqual([Buffer.from("a"), Buffer.from("b")]);

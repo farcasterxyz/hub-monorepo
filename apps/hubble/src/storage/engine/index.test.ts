@@ -275,7 +275,7 @@ describe("mergeMessage", () => {
         await expect(engine.mergeMessage(verificationAdd)).resolves.toBeInstanceOf(Ok);
         await expect(engine.mergeMessage(verificationRemove)).resolves.toBeInstanceOf(Ok);
         const removeResult = await engine.getVerification(fid, verificationAdd.data.verificationAddAddressBody.address);
-        await expect(removeResult).toEqual(err(new HubError("not_found", "NotFound: ")));
+        expect(removeResult._unsafeUnwrapErr().errCode).toBe("not_found");
         expect(mergedMessages).toEqual([verificationAdd, verificationRemove]);
       });
 

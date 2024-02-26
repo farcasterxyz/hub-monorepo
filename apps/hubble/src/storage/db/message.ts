@@ -151,7 +151,7 @@ export const deleteMessage = (db: RocksDB, message: Message): Promise<void> => {
 
 export const getManyMessages = async <T extends Message>(db: RocksDB, primaryKeys: Buffer[]): Promise<T[]> => {
   const buffers = await db.getMany(primaryKeys);
-  return buffers.map((buffer) => messageDecode(new Uint8Array(buffer)) as T);
+  return buffers.map((buffer) => messageDecode(new Uint8Array(buffer ?? [])) as T);
 };
 
 export const getManyMessagesByFid = async <T extends Message>(
