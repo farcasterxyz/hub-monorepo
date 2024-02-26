@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import { HubError } from "@farcaster/hub-nodejs";
-import { existsSync, mkdirSync, rmdirSync } from "fs";
+import { existsSync, mkdirSync, rmSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
 import RocksDB from "./rocksdb.js";
 import { ResultAsync } from "neverthrow";
@@ -26,7 +26,7 @@ describe("open", () => {
 
     test("when directory does not exist", async () => {
       if (existsSync(db.location)) {
-        rmdirSync(db.location, { recursive: true });
+        rmSync(db.location, { recursive: true });
       }
     });
 

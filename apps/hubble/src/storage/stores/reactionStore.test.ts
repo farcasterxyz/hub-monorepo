@@ -888,7 +888,6 @@ describe("pruneMessages", () => {
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
-      console.log(result);
       expect(result.isOk()).toBeTruthy();
       expect(result._unsafeUnwrap().length).toEqual(2);
 

@@ -62,6 +62,11 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '20'
+      
+      - name: Install Protocol Buffer Compiler
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "24.4"
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
@@ -69,6 +74,24 @@ jobs:
         with:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}--node--${{ hashFiles('**/yarn.lock') }}
+
+      - name: Cache Cargo registry and git
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache Cargo build artifacts
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
 
       - name: Install dependencies
         run: yarn install
@@ -97,12 +120,34 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
 
+      - name: List cargo directories
+        run: which cargo
+
       - name: Restore cached dependencies for Node modules.
         id: module-cache
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('**/yarn.lock') }}
+
+      - name: Cache Cargo registry and git
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ runner.home }}/.cargo/registry
+            ${{ runner.home }}/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache Cargo build artifacts
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Protocol Buffer Compiler
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "24.4"
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1

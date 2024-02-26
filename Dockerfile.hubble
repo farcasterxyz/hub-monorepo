@@ -24,7 +24,7 @@ RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 FROM node:21.6-slim AS build
 
 # Needed for compilation step
-RUN apt-get update && apt-get install -y python3 make g++ linux-headers-generic curl
+RUN apt-get update && apt-get install -y python3 make g++ linux-headers-generic curl protobuf-compiler libclang-dev
 
 USER node
 RUN mkdir /home/node/app
@@ -47,6 +47,7 @@ RUN yarn install --frozen-lockfile --network-timeout 1800000
 COPY --chown=node:node --from=prune /home/node/app/out/full/ .
 # turbo prune doesn't include global tsconfig.json (https://github.com/vercel/turbo/issues/2177)
 COPY --chown=node:node tsconfig.json tsconfig.json
+COPY --chown=node:node protobufs protobufs
 
 # Build code
 RUN yarn build
@@ -76,6 +77,7 @@ COPY --chown=node:node --from=build /home/node/app/apps/hubble/build ./apps/hubb
 COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node --from=build /home/node/app/packages/core/dist ./packages/core/dist/
 COPY --chown=node:node --from=build /home/node/app/packages/hub-nodejs/dist ./packages/hub-nodejs/dist/
+
 
 # BuildKit doesn't support --squash flag, so emulate by copying into fewer layers
 FROM scratch

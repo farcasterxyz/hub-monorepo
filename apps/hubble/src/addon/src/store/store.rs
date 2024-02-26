@@ -266,8 +266,6 @@ impl Store {
 
         let adds_key = self.store_def.make_add_key(message)?;
 
-        // TODO: Test check for the postfix
-
         txn.put(adds_key, ts_hash.to_vec());
 
         self.store_def
@@ -476,8 +474,6 @@ impl Store {
         }
 
         let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
-
-        // TODO: We're skipping the prune check.
 
         if self.store_def.is_add_type(message) {
             self.merge_add(&ts_hash, message)
@@ -701,7 +697,6 @@ impl Store {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        // TODO: The page_token's pageToken and reverse are not handled yet
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {

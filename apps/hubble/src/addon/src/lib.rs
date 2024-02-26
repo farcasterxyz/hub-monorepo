@@ -102,7 +102,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         RocksDB::js_for_each_iterator_by_js_opts,
     )?;
 
-    // TODO: This probably should not be on the store but directly on the DB?
     cx.export_function("getMessage", Store::js_get_message)?;
 
     // Generic methods that can accept any store
