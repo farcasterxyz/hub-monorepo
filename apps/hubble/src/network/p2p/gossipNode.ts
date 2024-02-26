@@ -34,6 +34,10 @@ export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
 export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
 
+/** The maximum amount of time to dial a peer in libp2p network in milliseconds */
+export const LIBP2P_CONNECT_TIMEOUT_MS = 2000;
+export const ENV_LIBP2P_CONNECT_TIMEOUT_MS = "LIBP2P_CONNECT_TIMEOUT_MS";
+
 const log = logger.child({ component: "GossipNode" });
 const workerLog = logger.child({ component: "GossipNodeWorker" });
 
@@ -73,6 +77,8 @@ export interface NodeOptions {
   strictNoSign?: boolean | undefined;
   /** Whether to connect to peers that were remembered in the DB */
   connectToDbPeers?: boolean | undefined;
+  /** The maximum amount of time to dial a peer in libp2p network in milliseconds */
+  p2pConnectTimeoutMs?: number | undefined;
 }
 
 // A common return type for several methods on the libp2p node.

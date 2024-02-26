@@ -10,6 +10,8 @@ import {
   LibP2PNodeMethodReturnType,
   NodeOptions,
   GOSSIP_SEEN_TTL,
+  LIBP2P_CONNECT_TIMEOUT_MS,
+  ENV_LIBP2P_CONNECT_TIMEOUT_MS,
 } from "./gossipNode.js";
 import {
   ContactInfoContent,
@@ -60,10 +62,12 @@ export class LibP2PNode {
   private _connectionGater?: ConnectionFilter;
   private _network: FarcasterNetwork;
   private _peerScores: Map<string, number>;
+  private _p2pConnectTimeoutMs: number;
 
   constructor(network: FarcasterNetwork) {
     this._network = network;
     this._peerScores = new Map<string, number>();
+    this._p2pConnectTimeoutMs = LIBP2P_CONNECT_TIMEOUT_MS;
   }
 
   get identity() {
@@ -117,6 +121,14 @@ export class LibP2PNode {
     const gossipsubIWantFollowupMs = process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"]
       ? parseInt(process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"])
       : 3 * 1000;
+
+    if (options.p2pConnectTimeoutMs) {
+      this._p2pConnectTimeoutMs = options.p2pConnectTimeoutMs;
+    } else {
+      this._p2pConnectTimeoutMs = process.env[ENV_LIBP2P_CONNECT_TIMEOUT_MS]
+        ? parseInt(process.env[ENV_LIBP2P_CONNECT_TIMEOUT_MS])
+        : LIBP2P_CONNECT_TIMEOUT_MS;
+    }
 
     const gossip = gossipsub({
       emitSelf: false,
@@ -272,9 +284,8 @@ export class LibP2PNode {
     log.debug({ identity: this.identity, address }, `Attempting to connect to address ${address}`);
     try {
       const controller = new AbortController();
-      const timeout = process.env["LIBP2P_CONNECT_TIMEOUT"] ? parseInt(process.env["LIBP2P_CONNECT_TIMEOUT"]) : 500;
-      // Set timeout to abort the dial operation in 500 ms
-      setTimeout(() => controller.abort(), timeout);
+      // Set timeout to abort the dial operation
+      setTimeout(() => controller.abort(), this._p2pConnectTimeoutMs);
 
       const conn = await this._node?.dial(address, { signal: controller.signal });
 
@@ -573,6 +584,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       });
       break;
     }
+    // NOTE: connectAddress attempts to dial a peer in the p2p network. A large influx of these requests can cause
+    //   backlog congestion for the worker thread if the timeout value is too large. The default value is defined in
+    //   gossipNode.ts [LIBP2P_CONNECT_TIMEOUT_MS] and can be overridden by the environment variable [ENV_LIBP2P_CONNECT_TIMEOUT_MS].
     case "connectAddress": {
       const specificMsg = msg as LibP2PNodeMessage<"connectAddress">;
       const [multiaddr] = specificMsg.args;
