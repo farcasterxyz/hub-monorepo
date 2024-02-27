@@ -19,7 +19,7 @@ import { Config as DefaultConfig } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
-import { initializeStatsd } from "./utils/statsd.js";
+import { getStatsdInitialization, initializeStatsd } from "./utils/statsd.js";
 import os from "os";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { mainnet, optimism } from "viem/chains";
@@ -502,6 +502,7 @@ app
       rebuildSyncTrie,
       profileSync,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,
+      statsdParams: getStatsdInitialization(),
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
       commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
@@ -596,24 +597,6 @@ app
       console.log("Please wait... This may take several minutes");
     }
 
-    const hub = hubResult.value;
-    const startResult = await ResultAsync.fromPromise(
-      hub.start(),
-      (e) => new Error("Failed to start hub", { cause: e }),
-    );
-    if (startResult.isErr()) {
-      logger.fatal(startResult.error);
-      logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
-      try {
-        await hub.teardown();
-      } finally {
-        logger.flush();
-        process.exit(1);
-      }
-    }
-
-    process.stdin.resume();
-
     process.on("SIGINT", () => {
       handleShutdownSignal("SIGINT");
     });
@@ -637,6 +620,24 @@ app
 
       handleShutdownSignal("unhandledRejection");
     });
+
+    const hub = hubResult.value;
+    const startResult = await ResultAsync.fromPromise(
+      hub.start(),
+      (e) => new Error("Failed to start hub", { cause: e }),
+    );
+    if (startResult.isErr()) {
+      logger.fatal(startResult.error);
+      logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
+      try {
+        await hub.teardown();
+      } finally {
+        logger.flush();
+        process.exit(1);
+      }
+    }
+
+    process.stdin.resume();
   });
 
 /*//////////////////////////////////////////////////////////////

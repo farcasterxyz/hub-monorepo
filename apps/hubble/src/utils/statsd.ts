@@ -30,7 +30,7 @@ export function statsd(): StatsD {
 
 let statsdInitialization: StatsDInitParams | undefined;
 
-export function getStatusdInitialization(): StatsDInitParams | undefined {
+export function getStatsdInitialization(): StatsDInitParams | undefined {
   return statsdInitialization;
 }
 

@@ -12,7 +12,7 @@ import {
   UserMessagePostfixMax,
 } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
-import { getStatusdInitialization } from "../../utils/statsd.js";
+import { getStatsdInitialization } from "../../utils/statsd.js";
 import { messageDecode } from "../../storage/db/message.js";
 
 /**
@@ -113,7 +113,7 @@ class MerkleTrie {
     } else {
       const workerPath = new URL("../../../build/network/sync/merkleTrieWorker.js", import.meta.url);
       this._worker = new Worker(workerPath, {
-        workerData: { statsdInitialization: getStatusdInitialization(), dbPath: this._db.location },
+        workerData: { statsdInitialization: getStatsdInitialization(), dbPath: this._db.location },
       });
     }
 

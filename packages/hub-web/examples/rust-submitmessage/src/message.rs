@@ -452,11 +452,12 @@ pub enum MessageData_oneof_body {
     cast_add_body(CastAddBody),
     cast_remove_body(CastRemoveBody),
     reaction_body(ReactionBody),
-    verification_add_eth_address_body(VerificationAddEthAddressBody),
+    verification_add_address_body(VerificationAddAddressBody),
     verification_remove_body(VerificationRemoveBody),
     user_data_body(UserDataBody),
     link_body(LinkBody),
     username_proof_body(super::username_proof::UserNameProof),
+    frame_action_body(FrameActionBody),
 }
 
 impl MessageData {
@@ -671,52 +672,52 @@ impl MessageData {
         }
     }
 
-    // .VerificationAddEthAddressBody verification_add_eth_address_body = 9;
+    // .VerificationAddAddressBody verification_add_address_body = 9;
 
 
-    pub fn get_verification_add_eth_address_body(&self) -> &VerificationAddEthAddressBody {
+    pub fn get_verification_add_address_body(&self) -> &VerificationAddAddressBody {
         match self.body {
-            ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(ref v)) => v,
-            _ => <VerificationAddEthAddressBody as ::protobuf::Message>::default_instance(),
+            ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(ref v)) => v,
+            _ => <VerificationAddAddressBody as ::protobuf::Message>::default_instance(),
         }
     }
-    pub fn clear_verification_add_eth_address_body(&mut self) {
+    pub fn clear_verification_add_address_body(&mut self) {
         self.body = ::std::option::Option::None;
     }
 
-    pub fn has_verification_add_eth_address_body(&self) -> bool {
+    pub fn has_verification_add_address_body(&self) -> bool {
         match self.body {
-            ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(..)) => true,
+            ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(..)) => true,
             _ => false,
         }
     }
 
     // Param is passed by value, moved
-    pub fn set_verification_add_eth_address_body(&mut self, v: VerificationAddEthAddressBody) {
-        self.body = ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(v))
+    pub fn set_verification_add_address_body(&mut self, v: VerificationAddAddressBody) {
+        self.body = ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(v))
     }
 
     // Mutable pointer to the field.
-    pub fn mut_verification_add_eth_address_body(&mut self) -> &mut VerificationAddEthAddressBody {
-        if let ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(_)) = self.body {
+    pub fn mut_verification_add_address_body(&mut self) -> &mut VerificationAddAddressBody {
+        if let ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(_)) = self.body {
         } else {
-            self.body = ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(VerificationAddEthAddressBody::new()));
+            self.body = ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(VerificationAddAddressBody::new()));
         }
         match self.body {
-            ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(ref mut v)) => v,
+            ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(ref mut v)) => v,
             _ => panic!(),
         }
     }
 
     // Take field
-    pub fn take_verification_add_eth_address_body(&mut self) -> VerificationAddEthAddressBody {
-        if self.has_verification_add_eth_address_body() {
+    pub fn take_verification_add_address_body(&mut self) -> VerificationAddAddressBody {
+        if self.has_verification_add_address_body() {
             match self.body.take() {
-                ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(v)) => v,
+                ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(v)) => v,
                 _ => panic!(),
             }
         } else {
-            VerificationAddEthAddressBody::new()
+            VerificationAddAddressBody::new()
         }
     }
 
@@ -915,6 +916,55 @@ impl MessageData {
             super::username_proof::UserNameProof::new()
         }
     }
+
+    // .FrameActionBody frame_action_body = 16;
+
+
+    pub fn get_frame_action_body(&self) -> &FrameActionBody {
+        match self.body {
+            ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(ref v)) => v,
+            _ => <FrameActionBody as ::protobuf::Message>::default_instance(),
+        }
+    }
+    pub fn clear_frame_action_body(&mut self) {
+        self.body = ::std::option::Option::None;
+    }
+
+    pub fn has_frame_action_body(&self) -> bool {
+        match self.body {
+            ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_frame_action_body(&mut self, v: FrameActionBody) {
+        self.body = ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_frame_action_body(&mut self) -> &mut FrameActionBody {
+        if let ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(_)) = self.body {
+        } else {
+            self.body = ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(FrameActionBody::new()));
+        }
+        match self.body {
+            ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_frame_action_body(&mut self) -> FrameActionBody {
+        if self.has_frame_action_body() {
+            match self.body.take() {
+                ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            FrameActionBody::new()
+        }
+    }
 }
 
 impl ::protobuf::Message for MessageData {
@@ -934,7 +984,7 @@ impl ::protobuf::Message for MessageData {
                 return false;
             }
         }
-        if let Some(MessageData_oneof_body::verification_add_eth_address_body(ref v)) = self.body {
+        if let Some(MessageData_oneof_body::verification_add_address_body(ref v)) = self.body {
             if !v.is_initialized() {
                 return false;
             }
@@ -955,6 +1005,11 @@ impl ::protobuf::Message for MessageData {
             }
         }
         if let Some(MessageData_oneof_body::username_proof_body(ref v)) = self.body {
+            if !v.is_initialized() {
+                return false;
+            }
+        }
+        if let Some(MessageData_oneof_body::frame_action_body(ref v)) = self.body {
             if !v.is_initialized() {
                 return false;
             }
@@ -1008,7 +1063,7 @@ impl ::protobuf::Message for MessageData {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.body = ::std::option::Option::Some(MessageData_oneof_body::verification_add_eth_address_body(is.read_message()?));
+                    self.body = ::std::option::Option::Some(MessageData_oneof_body::verification_add_address_body(is.read_message()?));
                 },
                 10 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
@@ -1033,6 +1088,12 @@ impl ::protobuf::Message for MessageData {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
                     self.body = ::std::option::Option::Some(MessageData_oneof_body::username_proof_body(is.read_message()?));
+                },
+                16 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    self.body = ::std::option::Option::Some(MessageData_oneof_body::frame_action_body(is.read_message()?));
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -1072,7 +1133,7 @@ impl ::protobuf::Message for MessageData {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
-                &MessageData_oneof_body::verification_add_eth_address_body(ref v) => {
+                &MessageData_oneof_body::verification_add_address_body(ref v) => {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
@@ -1091,6 +1152,10 @@ impl ::protobuf::Message for MessageData {
                 &MessageData_oneof_body::username_proof_body(ref v) => {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+                },
+                &MessageData_oneof_body::frame_action_body(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 2 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
             };
         }
@@ -1129,7 +1194,7 @@ impl ::protobuf::Message for MessageData {
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &MessageData_oneof_body::verification_add_eth_address_body(ref v) => {
+                &MessageData_oneof_body::verification_add_address_body(ref v) => {
                     os.write_tag(9, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
@@ -1151,6 +1216,11 @@ impl ::protobuf::Message for MessageData {
                 },
                 &MessageData_oneof_body::username_proof_body(ref v) => {
                     os.write_tag(15, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+                    os.write_raw_varint32(v.get_cached_size())?;
+                    v.write_to_with_cached_sizes(os)?;
+                },
+                &MessageData_oneof_body::frame_action_body(ref v) => {
+                    os.write_tag(16, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
@@ -1229,10 +1299,10 @@ impl ::protobuf::Message for MessageData {
                 MessageData::has_reaction_body,
                 MessageData::get_reaction_body,
             ));
-            fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, VerificationAddEthAddressBody>(
-                "verification_add_eth_address_body",
-                MessageData::has_verification_add_eth_address_body,
-                MessageData::get_verification_add_eth_address_body,
+            fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, VerificationAddAddressBody>(
+                "verification_add_address_body",
+                MessageData::has_verification_add_address_body,
+                MessageData::get_verification_add_address_body,
             ));
             fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, VerificationRemoveBody>(
                 "verification_remove_body",
@@ -1254,6 +1324,11 @@ impl ::protobuf::Message for MessageData {
                 MessageData::has_username_proof_body,
                 MessageData::get_username_proof_body,
             ));
+            fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, FrameActionBody>(
+                "frame_action_body",
+                MessageData::has_frame_action_body,
+                MessageData::get_frame_action_body,
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<MessageData>(
                 "MessageData",
                 fields,
@@ -1274,6 +1349,7 @@ impl ::protobuf::Clear for MessageData {
         self.fid = 0;
         self.timestamp = 0;
         self.network = FarcasterNetwork::FARCASTER_NETWORK_NONE;
+        self.body = ::std::option::Option::None;
         self.body = ::std::option::Option::None;
         self.body = ::std::option::Option::None;
         self.body = ::std::option::Option::None;
@@ -2911,26 +2987,27 @@ impl ::protobuf::reflect::ProtobufValue for ReactionBody {
 }
 
 #[derive(PartialEq,Clone,Default)]
-pub struct VerificationAddEthAddressBody {
+pub struct VerificationAddAddressBody {
     // message fields
     pub address: ::std::vec::Vec<u8>,
-    pub eth_signature: ::std::vec::Vec<u8>,
+    pub claim_signature: ::std::vec::Vec<u8>,
     pub block_hash: ::std::vec::Vec<u8>,
     pub verification_type: u32,
     pub chain_id: u32,
+    pub protocol: Protocol,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
 }
 
-impl<'a> ::std::default::Default for &'a VerificationAddEthAddressBody {
-    fn default() -> &'a VerificationAddEthAddressBody {
-        <VerificationAddEthAddressBody as ::protobuf::Message>::default_instance()
+impl<'a> ::std::default::Default for &'a VerificationAddAddressBody {
+    fn default() -> &'a VerificationAddAddressBody {
+        <VerificationAddAddressBody as ::protobuf::Message>::default_instance()
     }
 }
 
-impl VerificationAddEthAddressBody {
-    pub fn new() -> VerificationAddEthAddressBody {
+impl VerificationAddAddressBody {
+    pub fn new() -> VerificationAddAddressBody {
         ::std::default::Default::default()
     }
 
@@ -2960,30 +3037,30 @@ impl VerificationAddEthAddressBody {
         ::std::mem::replace(&mut self.address, ::std::vec::Vec::new())
     }
 
-    // bytes eth_signature = 2;
+    // bytes claim_signature = 2;
 
 
-    pub fn get_eth_signature(&self) -> &[u8] {
-        &self.eth_signature
+    pub fn get_claim_signature(&self) -> &[u8] {
+        &self.claim_signature
     }
-    pub fn clear_eth_signature(&mut self) {
-        self.eth_signature.clear();
+    pub fn clear_claim_signature(&mut self) {
+        self.claim_signature.clear();
     }
 
     // Param is passed by value, moved
-    pub fn set_eth_signature(&mut self, v: ::std::vec::Vec<u8>) {
-        self.eth_signature = v;
+    pub fn set_claim_signature(&mut self, v: ::std::vec::Vec<u8>) {
+        self.claim_signature = v;
     }
 
     // Mutable pointer to the field.
     // If field is not initialized, it is initialized with default value first.
-    pub fn mut_eth_signature(&mut self) -> &mut ::std::vec::Vec<u8> {
-        &mut self.eth_signature
+    pub fn mut_claim_signature(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.claim_signature
     }
 
     // Take field
-    pub fn take_eth_signature(&mut self) -> ::std::vec::Vec<u8> {
-        ::std::mem::replace(&mut self.eth_signature, ::std::vec::Vec::new())
+    pub fn take_claim_signature(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.claim_signature, ::std::vec::Vec::new())
     }
 
     // bytes block_hash = 3;
@@ -3041,9 +3118,24 @@ impl VerificationAddEthAddressBody {
     pub fn set_chain_id(&mut self, v: u32) {
         self.chain_id = v;
     }
+
+    // .Protocol protocol = 7;
+
+
+    pub fn get_protocol(&self) -> Protocol {
+        self.protocol
+    }
+    pub fn clear_protocol(&mut self) {
+        self.protocol = Protocol::PROTOCOL_ETHEREUM;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_protocol(&mut self, v: Protocol) {
+        self.protocol = v;
+    }
 }
 
-impl ::protobuf::Message for VerificationAddEthAddressBody {
+impl ::protobuf::Message for VerificationAddAddressBody {
     fn is_initialized(&self) -> bool {
         true
     }
@@ -3056,7 +3148,7 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.address)?;
                 },
                 2 => {
-                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.eth_signature)?;
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.claim_signature)?;
                 },
                 3 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.block_hash)?;
@@ -3075,6 +3167,9 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
                     let tmp = is.read_uint32()?;
                     self.chain_id = tmp;
                 },
+                7 => {
+                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.protocol, 7, &mut self.unknown_fields)?
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -3090,8 +3185,8 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
         if !self.address.is_empty() {
             my_size += ::protobuf::rt::bytes_size(1, &self.address);
         }
-        if !self.eth_signature.is_empty() {
-            my_size += ::protobuf::rt::bytes_size(2, &self.eth_signature);
+        if !self.claim_signature.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(2, &self.claim_signature);
         }
         if !self.block_hash.is_empty() {
             my_size += ::protobuf::rt::bytes_size(3, &self.block_hash);
@@ -3102,6 +3197,9 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
         if self.chain_id != 0 {
             my_size += ::protobuf::rt::value_size(5, self.chain_id, ::protobuf::wire_format::WireTypeVarint);
         }
+        if self.protocol != Protocol::PROTOCOL_ETHEREUM {
+            my_size += ::protobuf::rt::enum_size(7, self.protocol);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -3111,8 +3209,8 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
         if !self.address.is_empty() {
             os.write_bytes(1, &self.address)?;
         }
-        if !self.eth_signature.is_empty() {
-            os.write_bytes(2, &self.eth_signature)?;
+        if !self.claim_signature.is_empty() {
+            os.write_bytes(2, &self.claim_signature)?;
         }
         if !self.block_hash.is_empty() {
             os.write_bytes(3, &self.block_hash)?;
@@ -3122,6 +3220,9 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
         }
         if self.chain_id != 0 {
             os.write_uint32(5, self.chain_id)?;
+        }
+        if self.protocol != Protocol::PROTOCOL_ETHEREUM {
+            os.write_enum(7, ::protobuf::ProtobufEnum::value(&self.protocol))?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -3153,8 +3254,8 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
         Self::descriptor_static()
     }
 
-    fn new() -> VerificationAddEthAddressBody {
-        VerificationAddEthAddressBody::new()
+    fn new() -> VerificationAddAddressBody {
+        VerificationAddAddressBody::new()
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
@@ -3163,61 +3264,67 @@ impl ::protobuf::Message for VerificationAddEthAddressBody {
             let mut fields = ::std::vec::Vec::new();
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
                 "address",
-                |m: &VerificationAddEthAddressBody| { &m.address },
-                |m: &mut VerificationAddEthAddressBody| { &mut m.address },
+                |m: &VerificationAddAddressBody| { &m.address },
+                |m: &mut VerificationAddAddressBody| { &mut m.address },
             ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
-                "eth_signature",
-                |m: &VerificationAddEthAddressBody| { &m.eth_signature },
-                |m: &mut VerificationAddEthAddressBody| { &mut m.eth_signature },
+                "claim_signature",
+                |m: &VerificationAddAddressBody| { &m.claim_signature },
+                |m: &mut VerificationAddAddressBody| { &mut m.claim_signature },
             ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
                 "block_hash",
-                |m: &VerificationAddEthAddressBody| { &m.block_hash },
-                |m: &mut VerificationAddEthAddressBody| { &mut m.block_hash },
+                |m: &VerificationAddAddressBody| { &m.block_hash },
+                |m: &mut VerificationAddAddressBody| { &mut m.block_hash },
             ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
                 "verification_type",
-                |m: &VerificationAddEthAddressBody| { &m.verification_type },
-                |m: &mut VerificationAddEthAddressBody| { &mut m.verification_type },
+                |m: &VerificationAddAddressBody| { &m.verification_type },
+                |m: &mut VerificationAddAddressBody| { &mut m.verification_type },
             ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
                 "chain_id",
-                |m: &VerificationAddEthAddressBody| { &m.chain_id },
-                |m: &mut VerificationAddEthAddressBody| { &mut m.chain_id },
+                |m: &VerificationAddAddressBody| { &m.chain_id },
+                |m: &mut VerificationAddAddressBody| { &mut m.chain_id },
             ));
-            ::protobuf::reflect::MessageDescriptor::new_pb_name::<VerificationAddEthAddressBody>(
-                "VerificationAddEthAddressBody",
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<Protocol>>(
+                "protocol",
+                |m: &VerificationAddAddressBody| { &m.protocol },
+                |m: &mut VerificationAddAddressBody| { &mut m.protocol },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<VerificationAddAddressBody>(
+                "VerificationAddAddressBody",
                 fields,
                 file_descriptor_proto()
             )
         })
     }
 
-    fn default_instance() -> &'static VerificationAddEthAddressBody {
-        static instance: ::protobuf::rt::LazyV2<VerificationAddEthAddressBody> = ::protobuf::rt::LazyV2::INIT;
-        instance.get(VerificationAddEthAddressBody::new)
+    fn default_instance() -> &'static VerificationAddAddressBody {
+        static instance: ::protobuf::rt::LazyV2<VerificationAddAddressBody> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(VerificationAddAddressBody::new)
     }
 }
 
-impl ::protobuf::Clear for VerificationAddEthAddressBody {
+impl ::protobuf::Clear for VerificationAddAddressBody {
     fn clear(&mut self) {
         self.address.clear();
-        self.eth_signature.clear();
+        self.claim_signature.clear();
         self.block_hash.clear();
         self.verification_type = 0;
         self.chain_id = 0;
+        self.protocol = Protocol::PROTOCOL_ETHEREUM;
         self.unknown_fields.clear();
     }
 }
 
-impl ::std::fmt::Debug for VerificationAddEthAddressBody {
+impl ::std::fmt::Debug for VerificationAddAddressBody {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for VerificationAddEthAddressBody {
+impl ::protobuf::reflect::ProtobufValue for VerificationAddAddressBody {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Message(self)
     }
@@ -3227,6 +3334,7 @@ impl ::protobuf::reflect::ProtobufValue for VerificationAddEthAddressBody {
 pub struct VerificationRemoveBody {
     // message fields
     pub address: ::std::vec::Vec<u8>,
+    pub protocol: Protocol,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -3268,6 +3376,21 @@ impl VerificationRemoveBody {
     pub fn take_address(&mut self) -> ::std::vec::Vec<u8> {
         ::std::mem::replace(&mut self.address, ::std::vec::Vec::new())
     }
+
+    // .Protocol protocol = 2;
+
+
+    pub fn get_protocol(&self) -> Protocol {
+        self.protocol
+    }
+    pub fn clear_protocol(&mut self) {
+        self.protocol = Protocol::PROTOCOL_ETHEREUM;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_protocol(&mut self, v: Protocol) {
+        self.protocol = v;
+    }
 }
 
 impl ::protobuf::Message for VerificationRemoveBody {
@@ -3281,6 +3404,9 @@ impl ::protobuf::Message for VerificationRemoveBody {
             match field_number {
                 1 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.address)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.protocol, 2, &mut self.unknown_fields)?
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -3297,6 +3423,9 @@ impl ::protobuf::Message for VerificationRemoveBody {
         if !self.address.is_empty() {
             my_size += ::protobuf::rt::bytes_size(1, &self.address);
         }
+        if self.protocol != Protocol::PROTOCOL_ETHEREUM {
+            my_size += ::protobuf::rt::enum_size(2, self.protocol);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -3305,6 +3434,9 @@ impl ::protobuf::Message for VerificationRemoveBody {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if !self.address.is_empty() {
             os.write_bytes(1, &self.address)?;
+        }
+        if self.protocol != Protocol::PROTOCOL_ETHEREUM {
+            os.write_enum(2, ::protobuf::ProtobufEnum::value(&self.protocol))?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -3349,6 +3481,11 @@ impl ::protobuf::Message for VerificationRemoveBody {
                 |m: &VerificationRemoveBody| { &m.address },
                 |m: &mut VerificationRemoveBody| { &mut m.address },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<Protocol>>(
+                "protocol",
+                |m: &VerificationRemoveBody| { &m.protocol },
+                |m: &mut VerificationRemoveBody| { &mut m.protocol },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<VerificationRemoveBody>(
                 "VerificationRemoveBody",
                 fields,
@@ -3366,6 +3503,7 @@ impl ::protobuf::Message for VerificationRemoveBody {
 impl ::protobuf::Clear for VerificationRemoveBody {
     fn clear(&mut self) {
         self.address.clear();
+        self.protocol = Protocol::PROTOCOL_ETHEREUM;
         self.unknown_fields.clear();
     }
 }
@@ -3634,6 +3772,341 @@ impl ::protobuf::reflect::ProtobufValue for LinkBody {
     }
 }
 
+#[derive(PartialEq,Clone,Default)]
+pub struct FrameActionBody {
+    // message fields
+    pub url: ::std::vec::Vec<u8>,
+    pub button_index: u32,
+    pub cast_id: ::protobuf::SingularPtrField<CastId>,
+    pub input_text: ::std::vec::Vec<u8>,
+    pub state: ::std::vec::Vec<u8>,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a FrameActionBody {
+    fn default() -> &'a FrameActionBody {
+        <FrameActionBody as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl FrameActionBody {
+    pub fn new() -> FrameActionBody {
+        ::std::default::Default::default()
+    }
+
+    // bytes url = 1;
+
+
+    pub fn get_url(&self) -> &[u8] {
+        &self.url
+    }
+    pub fn clear_url(&mut self) {
+        self.url.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_url(&mut self, v: ::std::vec::Vec<u8>) {
+        self.url = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_url(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.url
+    }
+
+    // Take field
+    pub fn take_url(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.url, ::std::vec::Vec::new())
+    }
+
+    // uint32 button_index = 2;
+
+
+    pub fn get_button_index(&self) -> u32 {
+        self.button_index
+    }
+    pub fn clear_button_index(&mut self) {
+        self.button_index = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_button_index(&mut self, v: u32) {
+        self.button_index = v;
+    }
+
+    // .CastId cast_id = 3;
+
+
+    pub fn get_cast_id(&self) -> &CastId {
+        self.cast_id.as_ref().unwrap_or_else(|| <CastId as ::protobuf::Message>::default_instance())
+    }
+    pub fn clear_cast_id(&mut self) {
+        self.cast_id.clear();
+    }
+
+    pub fn has_cast_id(&self) -> bool {
+        self.cast_id.is_some()
+    }
+
+    // Param is passed by value, moved
+    pub fn set_cast_id(&mut self, v: CastId) {
+        self.cast_id = ::protobuf::SingularPtrField::some(v);
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_cast_id(&mut self) -> &mut CastId {
+        if self.cast_id.is_none() {
+            self.cast_id.set_default();
+        }
+        self.cast_id.as_mut().unwrap()
+    }
+
+    // Take field
+    pub fn take_cast_id(&mut self) -> CastId {
+        self.cast_id.take().unwrap_or_else(|| CastId::new())
+    }
+
+    // bytes input_text = 4;
+
+
+    pub fn get_input_text(&self) -> &[u8] {
+        &self.input_text
+    }
+    pub fn clear_input_text(&mut self) {
+        self.input_text.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_input_text(&mut self, v: ::std::vec::Vec<u8>) {
+        self.input_text = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_input_text(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.input_text
+    }
+
+    // Take field
+    pub fn take_input_text(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.input_text, ::std::vec::Vec::new())
+    }
+
+    // bytes state = 5;
+
+
+    pub fn get_state(&self) -> &[u8] {
+        &self.state
+    }
+    pub fn clear_state(&mut self) {
+        self.state.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_state(&mut self, v: ::std::vec::Vec<u8>) {
+        self.state = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_state(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.state
+    }
+
+    // Take field
+    pub fn take_state(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.state, ::std::vec::Vec::new())
+    }
+}
+
+impl ::protobuf::Message for FrameActionBody {
+    fn is_initialized(&self) -> bool {
+        for v in &self.cast_id {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.url)?;
+                },
+                2 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint32()?;
+                    self.button_index = tmp;
+                },
+                3 => {
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.cast_id)?;
+                },
+                4 => {
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.input_text)?;
+                },
+                5 => {
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.state)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.url.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(1, &self.url);
+        }
+        if self.button_index != 0 {
+            my_size += ::protobuf::rt::value_size(2, self.button_index, ::protobuf::wire_format::WireTypeVarint);
+        }
+        if let Some(ref v) = self.cast_id.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+        }
+        if !self.input_text.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(4, &self.input_text);
+        }
+        if !self.state.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(5, &self.state);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.url.is_empty() {
+            os.write_bytes(1, &self.url)?;
+        }
+        if self.button_index != 0 {
+            os.write_uint32(2, self.button_index)?;
+        }
+        if let Some(ref v) = self.cast_id.as_ref() {
+            os.write_tag(3, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
+        }
+        if !self.input_text.is_empty() {
+            os.write_bytes(4, &self.input_text)?;
+        }
+        if !self.state.is_empty() {
+            os.write_bytes(5, &self.state)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> FrameActionBody {
+        FrameActionBody::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
+                "url",
+                |m: &FrameActionBody| { &m.url },
+                |m: &mut FrameActionBody| { &mut m.url },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+                "button_index",
+                |m: &FrameActionBody| { &m.button_index },
+                |m: &mut FrameActionBody| { &mut m.button_index },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<CastId>>(
+                "cast_id",
+                |m: &FrameActionBody| { &m.cast_id },
+                |m: &mut FrameActionBody| { &mut m.cast_id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
+                "input_text",
+                |m: &FrameActionBody| { &m.input_text },
+                |m: &mut FrameActionBody| { &mut m.input_text },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
+                "state",
+                |m: &FrameActionBody| { &m.state },
+                |m: &mut FrameActionBody| { &mut m.state },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<FrameActionBody>(
+                "FrameActionBody",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static FrameActionBody {
+        static instance: ::protobuf::rt::LazyV2<FrameActionBody> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(FrameActionBody::new)
+    }
+}
+
+impl ::protobuf::Clear for FrameActionBody {
+    fn clear(&mut self) {
+        self.url.clear();
+        self.button_index = 0;
+        self.cast_id.clear();
+        self.input_text.clear();
+        self.state.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for FrameActionBody {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for FrameActionBody {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub enum HashScheme {
     HASH_SCHEME_NONE = 0,
@@ -3750,6 +4223,7 @@ pub enum MessageType {
     MESSAGE_TYPE_VERIFICATION_REMOVE = 8,
     MESSAGE_TYPE_USER_DATA_ADD = 11,
     MESSAGE_TYPE_USERNAME_PROOF = 12,
+    MESSAGE_TYPE_FRAME_ACTION = 13,
 }
 
 impl ::protobuf::ProtobufEnum for MessageType {
@@ -3770,6 +4244,7 @@ impl ::protobuf::ProtobufEnum for MessageType {
             8 => ::std::option::Option::Some(MessageType::MESSAGE_TYPE_VERIFICATION_REMOVE),
             11 => ::std::option::Option::Some(MessageType::MESSAGE_TYPE_USER_DATA_ADD),
             12 => ::std::option::Option::Some(MessageType::MESSAGE_TYPE_USERNAME_PROOF),
+            13 => ::std::option::Option::Some(MessageType::MESSAGE_TYPE_FRAME_ACTION),
             _ => ::std::option::Option::None
         }
     }
@@ -3787,6 +4262,7 @@ impl ::protobuf::ProtobufEnum for MessageType {
             MessageType::MESSAGE_TYPE_VERIFICATION_REMOVE,
             MessageType::MESSAGE_TYPE_USER_DATA_ADD,
             MessageType::MESSAGE_TYPE_USERNAME_PROOF,
+            MessageType::MESSAGE_TYPE_FRAME_ACTION,
         ];
         values
     }
@@ -3985,6 +4461,56 @@ impl ::protobuf::reflect::ProtobufValue for ReactionType {
     }
 }
 
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum Protocol {
+    PROTOCOL_ETHEREUM = 0,
+    PROTOCOL_SOLANA = 1,
+}
+
+impl ::protobuf::ProtobufEnum for Protocol {
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<Protocol> {
+        match value {
+            0 => ::std::option::Option::Some(Protocol::PROTOCOL_ETHEREUM),
+            1 => ::std::option::Option::Some(Protocol::PROTOCOL_SOLANA),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    fn values() -> &'static [Self] {
+        static values: &'static [Protocol] = &[
+            Protocol::PROTOCOL_ETHEREUM,
+            Protocol::PROTOCOL_SOLANA,
+        ];
+        values
+    }
+
+    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<Protocol>("Protocol", file_descriptor_proto())
+        })
+    }
+}
+
+impl ::std::marker::Copy for Protocol {
+}
+
+impl ::std::default::Default for Protocol {
+    fn default() -> Self {
+        Protocol::PROTOCOL_ETHEREUM
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for Protocol {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
+    }
+}
+
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\rmessage.proto\x1a\x14username_proof.proto\"\x8f\x02\n\x07Message\x12\
     \"\n\x04data\x18\x01\x20\x01(\x0b2\x0c.MessageDataR\x04dataB\0\x12\x14\n\
@@ -3993,69 +4519,78 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x04\x20\x01(\x0cR\tsignatureB\0\x12=\n\x10signature_scheme\x18\x05\x20\
     \x01(\x0e2\x10.SignatureSchemeR\x0fsignatureSchemeB\0\x12\x18\n\x06signe\
     r\x18\x06\x20\x01(\x0cR\x06signerB\0\x12\x1f\n\ndata_bytes\x18\x07\x20\
-    \x01(\x0cR\tdataBytesB\0:\0\"\xb9\x05\n\x0bMessageData\x12\"\n\x04type\
+    \x01(\x0cR\tdataBytesB\0:\0\"\xf1\x05\n\x0bMessageData\x12\"\n\x04type\
     \x18\x01\x20\x01(\x0e2\x0c.MessageTypeR\x04typeB\0\x12\x12\n\x03fid\x18\
     \x02\x20\x01(\x04R\x03fidB\0\x12\x1e\n\ttimestamp\x18\x03\x20\x01(\rR\tt\
     imestampB\0\x12-\n\x07network\x18\x04\x20\x01(\x0e2\x11.FarcasterNetwork\
     R\x07networkB\0\x124\n\rcast_add_body\x18\x05\x20\x01(\x0b2\x0c.CastAddB\
     odyH\0R\x0bcastAddBodyB\0\x12=\n\x10cast_remove_body\x18\x06\x20\x01(\
     \x0b2\x0f.CastRemoveBodyH\0R\x0ecastRemoveBodyB\0\x126\n\rreaction_body\
-    \x18\x07\x20\x01(\x0b2\r.ReactionBodyH\0R\x0creactionBodyB\0\x12l\n!veri\
-    fication_add_eth_address_body\x18\t\x20\x01(\x0b2\x1e.VerificationAddEth\
-    AddressBodyH\0R\x1dverificationAddEthAddressBodyB\0\x12U\n\x18verificati\
-    on_remove_body\x18\n\x20\x01(\x0b2\x17.VerificationRemoveBodyH\0R\x16ver\
-    ificationRemoveBodyB\0\x127\n\x0euser_data_body\x18\x0c\x20\x01(\x0b2\r.\
-    UserDataBodyH\0R\x0cuserDataBodyB\0\x12*\n\tlink_body\x18\x0e\x20\x01(\
-    \x0b2\t.LinkBodyH\0R\x08linkBodyB\0\x12B\n\x13username_proof_body\x18\
-    \x0f\x20\x01(\x0b2\x0e.UserNameProofH\0R\x11usernameProofBodyB\0B\x06\n\
-    \x04body:\0\"M\n\x0cUserDataBody\x12#\n\x04type\x18\x01\x20\x01(\x0e2\r.\
-    UserDataTypeR\x04typeB\0\x12\x16\n\x05value\x18\x02\x20\x01(\tR\x05value\
-    B\0:\0\"N\n\x05Embed\x12\x14\n\x03url\x18\x01\x20\x01(\tH\0R\x03urlB\0\
-    \x12$\n\x07cast_id\x18\x02\x20\x01(\x0b2\x07.CastIdH\0R\x06castIdB\0B\
-    \x07\n\x05embed:\0\"\xa5\x02\n\x0bCastAddBody\x12-\n\x11embeds_deprecate\
-    d\x18\x01\x20\x03(\tR\x10embedsDeprecatedB\0\x12\x1c\n\x08mentions\x18\
-    \x02\x20\x03(\x04R\x08mentionsB\0\x121\n\x0eparent_cast_id\x18\x03\x20\
-    \x01(\x0b2\x07.CastIdH\0R\x0cparentCastIdB\0\x12!\n\nparent_url\x18\x07\
-    \x20\x01(\tH\0R\tparentUrlB\0\x12\x14\n\x04text\x18\x04\x20\x01(\tR\x04t\
-    extB\0\x12/\n\x12mentions_positions\x18\x05\x20\x03(\rR\x11mentionsPosit\
-    ionsB\0\x12\x20\n\x06embeds\x18\x06\x20\x03(\x0b2\x06.EmbedR\x06embedsB\
-    \0B\x08\n\x06parent:\0\"5\n\x0eCastRemoveBody\x12!\n\x0btarget_hash\x18\
-    \x01\x20\x01(\x0cR\ntargetHashB\0:\0\"4\n\x06CastId\x12\x12\n\x03fid\x18\
-    \x01\x20\x01(\x04R\x03fidB\0\x12\x14\n\x04hash\x18\x02\x20\x01(\x0cR\x04\
-    hashB\0:\0\"\x95\x01\n\x0cReactionBody\x12#\n\x04type\x18\x01\x20\x01(\
-    \x0e2\r.ReactionTypeR\x04typeB\0\x121\n\x0etarget_cast_id\x18\x02\x20\
-    \x01(\x0b2\x07.CastIdH\0R\x0ctargetCastIdB\0\x12!\n\ntarget_url\x18\x03\
-    \x20\x01(\tH\0R\ttargetUrlB\0B\x08\n\x06target:\0\"\xd1\x01\n\x1dVerific\
-    ationAddEthAddressBody\x12\x1a\n\x07address\x18\x01\x20\x01(\x0cR\x07add\
-    ressB\0\x12%\n\reth_signature\x18\x02\x20\x01(\x0cR\x0cethSignatureB\0\
-    \x12\x1f\n\nblock_hash\x18\x03\x20\x01(\x0cR\tblockHashB\0\x12-\n\x11ver\
-    ification_type\x18\x04\x20\x01(\rR\x10verificationTypeB\0\x12\x1b\n\x08c\
-    hain_id\x18\x05\x20\x01(\rR\x07chainIdB\0:\0\"6\n\x16VerificationRemoveB\
-    ody\x12\x1a\n\x07address\x18\x01\x20\x01(\x0cR\x07addressB\0:\0\"}\n\x08\
-    LinkBody\x12\x14\n\x04type\x18\x01\x20\x01(\tR\x04typeB\0\x12,\n\x10disp\
-    layTimestamp\x18\x02\x20\x01(\rR\x10displayTimestampB\0\x12!\n\ntarget_f\
-    id\x18\x03\x20\x01(\x04H\0R\ttargetFidB\0B\x08\n\x06target:\0*<\n\nHashS\
-    cheme\x12\x14\n\x10HASH_SCHEME_NONE\x10\0\x12\x16\n\x12HASH_SCHEME_BLAKE\
-    3\x10\x01\x1a\0*i\n\x0fSignatureScheme\x12\x19\n\x15SIGNATURE_SCHEME_NON\
-    E\x10\0\x12\x1c\n\x18SIGNATURE_SCHEME_ED25519\x10\x01\x12\x1b\n\x17SIGNA\
-    TURE_SCHEME_EIP712\x10\x02\x1a\0*\xef\x02\n\x0bMessageType\x12\x15\n\x11\
-    MESSAGE_TYPE_NONE\x10\0\x12\x19\n\x15MESSAGE_TYPE_CAST_ADD\x10\x01\x12\
-    \x1c\n\x18MESSAGE_TYPE_CAST_REMOVE\x10\x02\x12\x1d\n\x19MESSAGE_TYPE_REA\
-    CTION_ADD\x10\x03\x12\x20\n\x1cMESSAGE_TYPE_REACTION_REMOVE\x10\x04\x12\
-    \x19\n\x15MESSAGE_TYPE_LINK_ADD\x10\x05\x12\x1c\n\x18MESSAGE_TYPE_LINK_R\
-    EMOVE\x10\x06\x12-\n)MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS\x10\x07\
-    \x12$\n\x20MESSAGE_TYPE_VERIFICATION_REMOVE\x10\x08\x12\x1e\n\x1aMESSAGE\
-    _TYPE_USER_DATA_ADD\x10\x0b\x12\x1f\n\x1bMESSAGE_TYPE_USERNAME_PROOF\x10\
-    \x0c\x1a\0*\x8c\x01\n\x10FarcasterNetwork\x12\x1a\n\x16FARCASTER_NETWORK\
-    _NONE\x10\0\x12\x1d\n\x19FARCASTER_NETWORK_MAINNET\x10\x01\x12\x1d\n\x19\
-    FARCASTER_NETWORK_TESTNET\x10\x02\x12\x1c\n\x18FARCASTER_NETWORK_DEVNET\
-    \x10\x03\x1a\0*\xaa\x01\n\x0cUserDataType\x12\x17\n\x13USER_DATA_TYPE_NO\
-    NE\x10\0\x12\x16\n\x12USER_DATA_TYPE_PFP\x10\x01\x12\x1a\n\x16USER_DATA_\
-    TYPE_DISPLAY\x10\x02\x12\x16\n\x12USER_DATA_TYPE_BIO\x10\x03\x12\x16\n\
-    \x12USER_DATA_TYPE_URL\x10\x05\x12\x1b\n\x17USER_DATA_TYPE_USERNAME\x10\
-    \x06\x1a\0*Z\n\x0cReactionType\x12\x16\n\x12REACTION_TYPE_NONE\x10\0\x12\
-    \x16\n\x12REACTION_TYPE_LIKE\x10\x01\x12\x18\n\x14REACTION_TYPE_RECAST\
-    \x10\x02\x1a\0B\0b\x06proto3\
+    \x18\x07\x20\x01(\x0b2\r.ReactionBodyH\0R\x0creactionBodyB\0\x12b\n\x1dv\
+    erification_add_address_body\x18\t\x20\x01(\x0b2\x1b.VerificationAddAddr\
+    essBodyH\0R\x1averificationAddAddressBodyB\0\x12U\n\x18verification_remo\
+    ve_body\x18\n\x20\x01(\x0b2\x17.VerificationRemoveBodyH\0R\x16verificati\
+    onRemoveBodyB\0\x127\n\x0euser_data_body\x18\x0c\x20\x01(\x0b2\r.UserDat\
+    aBodyH\0R\x0cuserDataBodyB\0\x12*\n\tlink_body\x18\x0e\x20\x01(\x0b2\t.L\
+    inkBodyH\0R\x08linkBodyB\0\x12B\n\x13username_proof_body\x18\x0f\x20\x01\
+    (\x0b2\x0e.UserNameProofH\0R\x11usernameProofBodyB\0\x12@\n\x11frame_act\
+    ion_body\x18\x10\x20\x01(\x0b2\x10.FrameActionBodyH\0R\x0fframeActionBod\
+    yB\0B\x06\n\x04body:\0\"M\n\x0cUserDataBody\x12#\n\x04type\x18\x01\x20\
+    \x01(\x0e2\r.UserDataTypeR\x04typeB\0\x12\x16\n\x05value\x18\x02\x20\x01\
+    (\tR\x05valueB\0:\0\"N\n\x05Embed\x12\x14\n\x03url\x18\x01\x20\x01(\tH\0\
+    R\x03urlB\0\x12$\n\x07cast_id\x18\x02\x20\x01(\x0b2\x07.CastIdH\0R\x06ca\
+    stIdB\0B\x07\n\x05embed:\0\"\xa5\x02\n\x0bCastAddBody\x12-\n\x11embeds_d\
+    eprecated\x18\x01\x20\x03(\tR\x10embedsDeprecatedB\0\x12\x1c\n\x08mentio\
+    ns\x18\x02\x20\x03(\x04R\x08mentionsB\0\x121\n\x0eparent_cast_id\x18\x03\
+    \x20\x01(\x0b2\x07.CastIdH\0R\x0cparentCastIdB\0\x12!\n\nparent_url\x18\
+    \x07\x20\x01(\tH\0R\tparentUrlB\0\x12\x14\n\x04text\x18\x04\x20\x01(\tR\
+    \x04textB\0\x12/\n\x12mentions_positions\x18\x05\x20\x03(\rR\x11mentions\
+    PositionsB\0\x12\x20\n\x06embeds\x18\x06\x20\x03(\x0b2\x06.EmbedR\x06emb\
+    edsB\0B\x08\n\x06parent:\0\"5\n\x0eCastRemoveBody\x12!\n\x0btarget_hash\
+    \x18\x01\x20\x01(\x0cR\ntargetHashB\0:\0\"4\n\x06CastId\x12\x12\n\x03fid\
+    \x18\x01\x20\x01(\x04R\x03fidB\0\x12\x14\n\x04hash\x18\x02\x20\x01(\x0cR\
+    \x04hashB\0:\0\"\x95\x01\n\x0cReactionBody\x12#\n\x04type\x18\x01\x20\
+    \x01(\x0e2\r.ReactionTypeR\x04typeB\0\x121\n\x0etarget_cast_id\x18\x02\
+    \x20\x01(\x0b2\x07.CastIdH\0R\x0ctargetCastIdB\0\x12!\n\ntarget_url\x18\
+    \x03\x20\x01(\tH\0R\ttargetUrlB\0B\x08\n\x06target:\0\"\xfb\x01\n\x1aVer\
+    ificationAddAddressBody\x12\x1a\n\x07address\x18\x01\x20\x01(\x0cR\x07ad\
+    dressB\0\x12)\n\x0fclaim_signature\x18\x02\x20\x01(\x0cR\x0eclaimSignatu\
+    reB\0\x12\x1f\n\nblock_hash\x18\x03\x20\x01(\x0cR\tblockHashB\0\x12-\n\
+    \x11verification_type\x18\x04\x20\x01(\rR\x10verificationTypeB\0\x12\x1b\
+    \n\x08chain_id\x18\x05\x20\x01(\rR\x07chainIdB\0\x12'\n\x08protocol\x18\
+    \x07\x20\x01(\x0e2\t.ProtocolR\x08protocolB\0:\0\"_\n\x16VerificationRem\
+    oveBody\x12\x1a\n\x07address\x18\x01\x20\x01(\x0cR\x07addressB\0\x12'\n\
+    \x08protocol\x18\x02\x20\x01(\x0e2\t.ProtocolR\x08protocolB\0:\0\"}\n\
+    \x08LinkBody\x12\x14\n\x04type\x18\x01\x20\x01(\tR\x04typeB\0\x12,\n\x10\
+    displayTimestamp\x18\x02\x20\x01(\rR\x10displayTimestampB\0\x12!\n\ntarg\
+    et_fid\x18\x03\x20\x01(\x04H\0R\ttargetFidB\0B\x08\n\x06target:\0\"\xa9\
+    \x01\n\x0fFrameActionBody\x12\x12\n\x03url\x18\x01\x20\x01(\x0cR\x03urlB\
+    \0\x12#\n\x0cbutton_index\x18\x02\x20\x01(\rR\x0bbuttonIndexB\0\x12\"\n\
+    \x07cast_id\x18\x03\x20\x01(\x0b2\x07.CastIdR\x06castIdB\0\x12\x1f\n\nin\
+    put_text\x18\x04\x20\x01(\x0cR\tinputTextB\0\x12\x16\n\x05state\x18\x05\
+    \x20\x01(\x0cR\x05stateB\0:\0*<\n\nHashScheme\x12\x14\n\x10HASH_SCHEME_N\
+    ONE\x10\0\x12\x16\n\x12HASH_SCHEME_BLAKE3\x10\x01\x1a\0*i\n\x0fSignature\
+    Scheme\x12\x19\n\x15SIGNATURE_SCHEME_NONE\x10\0\x12\x1c\n\x18SIGNATURE_S\
+    CHEME_ED25519\x10\x01\x12\x1b\n\x17SIGNATURE_SCHEME_EIP712\x10\x02\x1a\0\
+    *\x8e\x03\n\x0bMessageType\x12\x15\n\x11MESSAGE_TYPE_NONE\x10\0\x12\x19\
+    \n\x15MESSAGE_TYPE_CAST_ADD\x10\x01\x12\x1c\n\x18MESSAGE_TYPE_CAST_REMOV\
+    E\x10\x02\x12\x1d\n\x19MESSAGE_TYPE_REACTION_ADD\x10\x03\x12\x20\n\x1cME\
+    SSAGE_TYPE_REACTION_REMOVE\x10\x04\x12\x19\n\x15MESSAGE_TYPE_LINK_ADD\
+    \x10\x05\x12\x1c\n\x18MESSAGE_TYPE_LINK_REMOVE\x10\x06\x12-\n)MESSAGE_TY\
+    PE_VERIFICATION_ADD_ETH_ADDRESS\x10\x07\x12$\n\x20MESSAGE_TYPE_VERIFICAT\
+    ION_REMOVE\x10\x08\x12\x1e\n\x1aMESSAGE_TYPE_USER_DATA_ADD\x10\x0b\x12\
+    \x1f\n\x1bMESSAGE_TYPE_USERNAME_PROOF\x10\x0c\x12\x1d\n\x19MESSAGE_TYPE_\
+    FRAME_ACTION\x10\r\x1a\0*\x8c\x01\n\x10FarcasterNetwork\x12\x1a\n\x16FAR\
+    CASTER_NETWORK_NONE\x10\0\x12\x1d\n\x19FARCASTER_NETWORK_MAINNET\x10\x01\
+    \x12\x1d\n\x19FARCASTER_NETWORK_TESTNET\x10\x02\x12\x1c\n\x18FARCASTER_N\
+    ETWORK_DEVNET\x10\x03\x1a\0*\xaa\x01\n\x0cUserDataType\x12\x17\n\x13USER\
+    _DATA_TYPE_NONE\x10\0\x12\x16\n\x12USER_DATA_TYPE_PFP\x10\x01\x12\x1a\n\
+    \x16USER_DATA_TYPE_DISPLAY\x10\x02\x12\x16\n\x12USER_DATA_TYPE_BIO\x10\
+    \x03\x12\x16\n\x12USER_DATA_TYPE_URL\x10\x05\x12\x1b\n\x17USER_DATA_TYPE\
+    _USERNAME\x10\x06\x1a\0*Z\n\x0cReactionType\x12\x16\n\x12REACTION_TYPE_N\
+    ONE\x10\0\x12\x16\n\x12REACTION_TYPE_LIKE\x10\x01\x12\x18\n\x14REACTION_\
+    TYPE_RECAST\x10\x02\x1a\0*8\n\x08Protocol\x12\x15\n\x11PROTOCOL_ETHEREUM\
+    \x10\0\x12\x13\n\x0fPROTOCOL_SOLANA\x10\x01\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

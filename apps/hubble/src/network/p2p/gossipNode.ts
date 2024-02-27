@@ -22,7 +22,7 @@ import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
-import { statsd } from "../../utils/statsd.js";
+import { statsd, StatsDInitParams } from "../../utils/statsd.js";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -33,6 +33,10 @@ import { sleep } from "../../utils/crypto.js";
 export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
 export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
+
+/** The maximum amount of time to dial a peer in libp2p network in milliseconds */
+export const LIBP2P_CONNECT_TIMEOUT_MS = 2000;
+export const ENV_LIBP2P_CONNECT_TIMEOUT_MS = "LIBP2P_CONNECT_TIMEOUT_MS";
 
 const log = logger.child({ component: "GossipNode" });
 const workerLog = logger.child({ component: "GossipNodeWorker" });
@@ -73,6 +77,10 @@ export interface NodeOptions {
   strictNoSign?: boolean | undefined;
   /** Whether to connect to peers that were remembered in the DB */
   connectToDbPeers?: boolean | undefined;
+  /** The maximum amount of time to dial a peer in libp2p network in milliseconds */
+  p2pConnectTimeoutMs?: number | undefined;
+  /** StatsD parameters */
+  statsdParams?: StatsDInitParams | undefined;
 }
 
 // A common return type for several methods on the libp2p node.
@@ -504,6 +512,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
+
           this.emit(
             "message",
             detail.msg.topic,
