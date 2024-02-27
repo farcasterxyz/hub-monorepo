@@ -1,8 +1,7 @@
-use std::{convert::TryInto, sync::Arc};
-
 use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
+use std::convert::TryInto;
 use store::{ReactionStore, Store};
 
 mod db;
