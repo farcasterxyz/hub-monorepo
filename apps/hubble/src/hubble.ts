@@ -1064,7 +1064,13 @@ export class Hub implements HubInterface {
           await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
         }
       } else {
-        statsd().increment(`gossip.message_failure.${result.error.errCode}`);
+        const tags: { [key: string]: string } = {
+          valid: reportedAsInvalid ? "false" : "true",
+          error_code: result.error.errCode,
+          message_type: messageTypeToName(message.data?.type),
+        };
+
+        statsd().increment("gossip.message_failure", 1, tags);
         log.info(
           {
             errCode: result.error.errCode,
@@ -1413,7 +1419,12 @@ export class Hub implements HubInterface {
       },
       (e) => {
         logMessage.warn({ errCode: e.errCode, source }, `submitMessage error: ${e.message}`);
-        statsd().increment(`submit_message.error.${source}.${e.errCode}`);
+        const tags: { [key: string]: string } = {
+          error_code: e.errCode,
+          message_type: type,
+          source: source ?? "unknown-source",
+        };
+        statsd().increment("submit_message.error", 1, tags);
       },
     );
 
