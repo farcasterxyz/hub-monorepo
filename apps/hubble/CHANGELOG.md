@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.10.5
+
+### Patch Changes
+
+- 72bbf29c: fix: Set dial timeout when connecting to peers for gossip node (default: 2 seconds) and expose LIBP2P_CONNECT_TIMEOUT_MS environment variable
+- de5b0905: fix: Deprecate raw iterators and switch to forEach iterators
+
 ## 1.10.4
 
 ### Patch Changes
