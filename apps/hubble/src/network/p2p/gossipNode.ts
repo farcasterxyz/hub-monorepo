@@ -520,7 +520,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           const decoded = GossipNode.decodeMessage(data);
           if (decoded.isOk()) {
             tags["message_type"] = messageTypeToName(decoded.value.message?.data?.type) || "unknown-message-type";
-            tags["fid"] = decoded.value.message?.data?.fid.toString() ?? "unknown-fid";
           }
 
           this.emit("message", detail.msg.topic, decoded, detail.propagationSource, detail.msgId);

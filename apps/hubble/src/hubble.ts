@@ -1423,7 +1423,6 @@ export class Hub implements HubInterface {
           error_code: e.errCode,
           message_type: type,
           source: source ?? "unknown-source",
-          fid: message.data?.fid.toString() ?? "unknown-fid",
         };
         statsd().increment("submit_message.error", 1, tags);
       },
