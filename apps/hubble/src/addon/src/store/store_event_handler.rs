@@ -1,11 +1,8 @@
-use std::sync::{Arc, Mutex};
-
-use prost::Message as _;
-
-use crate::{db::RocksDbTransactionBatch, protos::HubEvent};
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use super::{HubError, RootPrefix};
+use crate::{db::RocksDbTransactionBatch, protos::HubEvent};
+use prost::Message as _;
+use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const TIMESTAMP_BITS: u32 = 41;
 const SEQUENCE_BITS: u32 = 12;

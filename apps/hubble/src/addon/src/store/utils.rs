@@ -1,18 +1,13 @@
-use std::{borrow::Borrow, sync::Arc};
-
+use super::{HubError, MessagesPage, PageOptions, Store, FARCASTER_EPOCH};
+use crate::{db::RocksDB, store::PAGE_SIZE_MAX};
 use neon::{
     context::{Context, FunctionContext, TaskContext},
     object::Object,
     result::{JsResult, Throw},
-    types::{
-        buffer::TypedArray, JsArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsObject, JsUndefined,
-    },
+    types::{buffer::TypedArray, JsArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsObject},
 };
 use prost::Message as _;
-
-use crate::{db::RocksDB, store::PAGE_SIZE_MAX};
-
-use super::{HubError, MessagesPage, PageOptions, Store, FARCASTER_EPOCH};
+use std::{borrow::Borrow, sync::Arc};
 
 /**
  * Helper function to cast a vec into a [u8; 24] for TsHash
@@ -201,4 +196,23 @@ pub fn get_farcaster_time() -> Result<u64, HubError> {
             message: format!("failed to get time: {}", e),
         })?;
     Ok(to_farcaster_time(now.as_millis() as u64)?)
+}
+
+pub fn bytes_compare(a: &[u8], b: &[u8]) -> i8 {
+    let len = a.len().min(b.len());
+    for i in 0..len {
+        if a[i] < b[i] {
+            return -1;
+        }
+        if a[i] > b[i] {
+            return 1;
+        }
+    }
+    if a.len() < b.len() {
+        -1
+    } else if a.len() > b.len() {
+        1
+    } else {
+        0
+    }
 }

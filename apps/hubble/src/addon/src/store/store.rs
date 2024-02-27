@@ -1,3 +1,9 @@
+use super::{
+    bytes_compare, delete_message_transaction, get_farcaster_time, get_message,
+    hub_error_to_js_throw, make_message_primary_key, message, put_message_transaction,
+    utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
+    MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
+};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message, MessageType},
@@ -8,16 +14,9 @@ use neon::types::{Finalize, JsBuffer, JsNumber};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use neon::{object::Object, types::buffer::TypedArray};
 use prost::Message as _;
+use rocksdb;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
-
-use super::{
-    bytes_compare, delete_message_transaction, get_farcaster_time, get_message,
-    hub_error_to_js_throw, make_message_primary_key, message, put_message_transaction,
-    utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
-    MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
-};
-use rocksdb;
 
 #[derive(Debug)]
 pub struct HubError {
@@ -625,7 +624,7 @@ impl Store {
                     && (timestamp_to_prune.is_none()
                         || message.data.as_ref().unwrap().timestamp >= timestamp_to_prune.unwrap())
                 {
-                    return Ok(false); // Stop the iteration, nothing left to prune
+                    return Ok(true); // Stop the iteration, nothing left to prune
                 }
 
                 let mut txn = self.db.txn();
@@ -651,7 +650,7 @@ impl Store {
                 hub_event.id = id;
                 pruned_events.push(hub_event);
 
-                Ok(true) // Continue the iteration
+                Ok(false) // Continue the iteration
             })?;
 
         Ok(pruned_events)

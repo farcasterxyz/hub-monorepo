@@ -1,11 +1,9 @@
-use prost::Message as _;
-
+use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, CastId, Message as MessageProto, MessageType},
 };
-
-use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
+use prost::Message as _;
 use std::convert::TryFrom;
 
 pub const TS_HASH_LENGTH: usize = 24;
@@ -13,6 +11,7 @@ pub const HASH_LENGTH: usize = 20;
 
 const TRUE_VALUE: u8 = 1;
 
+/** Copied from the JS code */
 pub enum RootPrefix {
     /* Used for multiple purposes, starts with a 4-byte fid */
     User = 1,
@@ -73,6 +72,7 @@ pub enum RootPrefix {
     ConnectedPeers = 26,
 }
 
+/** Copied from the JS code */
 pub enum UserPostfix {
     /* Message records (1-85) */
     CastMessage = 1,
@@ -117,11 +117,13 @@ pub enum UserPostfix {
     UserNameProofAdds = 99,
 }
 
+/** A page of messages returned from various APIs */
 pub struct MessagesPage {
     pub messages: Vec<MessageProto>,
     pub next_page_token: Option<Vec<u8>>,
 }
 
+/** Convert a specific message type (CastAdd / CastRemove) to a class of message (CastMessage) */
 pub fn type_to_set_postfix(message_type: MessageType) -> UserPostfix {
     if message_type == MessageType::CastAdd || message_type == MessageType::CastRemove {
         return UserPostfix::CastMessage;
@@ -252,6 +254,11 @@ pub fn get_message(
     }
 }
 
+/** Read many messages.
+ * Note that if a message is not found, that corresponding entry in the result will be None.
+ * This is different from the behaviour of get_message, which returns an error.
+ *
+ */
 pub fn get_many_messages(
     db: &RocksDB,
     primary_keys: Vec<Vec<u8>>,
@@ -304,11 +311,11 @@ where
 
                     if messages.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
                         last_key = key.to_vec();
-                        return Ok(false);
+                        return Ok(true); // Stop iterating
                     }
                 }
 
-                Ok(true) // Continue iterating
+                Ok(false) // Continue iterating
             }
             Err(e) => Err(HubError {
                 code: "db.internal_error".to_string(),
@@ -379,23 +386,4 @@ pub fn delete_message_transaction(
     txn.delete(by_signer_key);
 
     Ok(())
-}
-
-pub fn bytes_compare(a: &[u8], b: &[u8]) -> i8 {
-    let len = a.len().min(b.len());
-    for i in 0..len {
-        if a[i] < b[i] {
-            return -1;
-        }
-        if a[i] > b[i] {
-            return 1;
-        }
-    }
-    if a.len() < b.len() {
-        -1
-    } else if a.len() > b.len() {
-        1
-    } else {
-        0
-    }
 }

@@ -1,5 +1,3 @@
-use std::{borrow::Borrow, convert::TryInto, sync::Arc};
-
 use super::{
     hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
@@ -17,6 +15,7 @@ use neon::{
     types::{buffer::TypedArray, JsBox, JsBuffer, JsNumber, JsPromise, JsString},
 };
 use prost::Message as _;
+use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 
 pub struct ReactionStoreDef {
     prune_size_limit: u32,
@@ -551,13 +550,11 @@ impl ReactionStore {
                     message_keys.push(message_primary_key.to_vec());
                     if message_keys.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
                         last_key = key.to_vec();
-                        return Ok(false);
+                        return Ok(true); // Stop iterating
                     }
-
-                    Ok(true)
-                } else {
-                    Ok(true)
                 }
+
+                Ok(false) // Continue iterating
             })?;
 
         let messages = message::get_many_messages(store.db().borrow(), message_keys)?;

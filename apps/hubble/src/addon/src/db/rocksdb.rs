@@ -14,6 +14,7 @@ use rocksdb::{Options, TransactionDB};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
+/** Hold a transaction. List of key/value pairs that will be commited together */
 pub struct RocksDbTransactionBatch {
     pub batch: Vec<(Vec<u8>, Option<Vec<u8>>)>,
 }
@@ -37,6 +38,7 @@ pub struct IteratorOptions {
     pub reverse: bool,
 }
 
+/** Iterator options passed in from JS */
 pub struct JsIteratorOptions {
     pub reverse: bool,
     pub gte: Option<Vec<u8>>,
@@ -49,6 +51,7 @@ pub struct RocksDB {
     pub path: String,
 }
 
+/** Needed to make sure neon can clean up the RocksDB at the end */
 impl Finalize for RocksDB {}
 
 impl RocksDB {
@@ -221,6 +224,10 @@ impl RocksDB {
         }
     }
 
+    /**
+     * Iterate over all keys with a given prefix.
+     * The callback function should return true to stop the iteration, or false to continue.
+     */
     pub fn for_each_iterator_by_prefix<F>(
         &self,
         prefix: &[u8],
@@ -245,7 +252,7 @@ impl RocksDB {
         let mut count = 0;
         while iter.valid() {
             if let Some((key, value)) = iter.item() {
-                if !f(&key, &value)? {
+                if f(&key, &value)? {
                     all_done = false;
                     break;
                 }
@@ -266,6 +273,10 @@ impl RocksDB {
         Ok(all_done)
     }
 
+    /**
+     * Iterate over all keys using the raw lower/upper bound options.
+     * The callback function should return true to stop the iteration, or false to continue.
+     */
     pub fn for_each_iterator_by_jsopts(
         &self,
         js_opts: JsIteratorOptions,
@@ -320,7 +331,7 @@ impl RocksDB {
         let mut all_done = true;
         while iter.valid() {
             if let Some((key, value)) = iter.item() {
-                if !f(&key, &value)? {
+                if f(&key, &value)? {
                     all_done = false;
                     break;
                 }
@@ -639,8 +650,7 @@ impl RocksDB {
             .downcast_or_throw::<JsBoolean, _>(cx)?
             .value(cx);
 
-        // Return true if we want to continue, false if we want to abort (inverted logic from JS callback)
-        Ok(!result)
+        Ok(result)
     }
 
     pub fn js_for_each_iterator_by_prefix(mut cx: FunctionContext) -> JsResult<JsPromise> {
