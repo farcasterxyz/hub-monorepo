@@ -722,5 +722,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       break;
     }
   }
-  statsd().histogram(`gossip.worker.${method}.latency_ms`, Date.now() - start);
+
+  const tags: { [key: string]: string } = {
+    method: method,
+  };
+  statsd().histogram("gossip.worker.latency_ms", Date.now() - start, 1.0, tags);
 });
