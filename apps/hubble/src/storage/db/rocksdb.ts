@@ -16,13 +16,14 @@ import {
   dbGet,
   dbGetMany,
   dbLocation,
+  dbOpen,
   dbPut,
   RustDb,
   rustErrorToHubError,
 } from "../../rustfunctions.js";
 import { PageOptions } from "storage/stores/types.js";
 
-export type DbStatus = "opening" | "open" | "closing" | "closed";
+export type DbStatus = "new" | "opening" | "open" | "closing" | "closed";
 
 export const DB_DIRECTORY = ".rocks";
 const DB_NAME_DEFAULT = "farcaster";
@@ -30,13 +31,6 @@ const DB_NAME_DEFAULT = "farcaster";
 const log = logger.child({
   component: "RocksDB",
 });
-
-const parseError = (e: Error): HubError => {
-  if (/NotFound/i.test(e.message)) {
-    return new HubError("not_found", e);
-  }
-  return new HubError("unavailable.storage_failure", e);
-};
 
 export type DbKeyValue = {
   key: Buffer;
@@ -73,12 +67,15 @@ export type RocksDbIteratorOptions = {
  * transactions and iterating by prefix are provided at the end of the file.
  */
 class RocksDB {
-  protected _db: RustDb;
-  private _status: DbStatus = "opening";
+  private _db: RustDb;
+  private _status: DbStatus;
+  private _name: string | undefined;
 
   constructor(name?: string) {
+    this._name = name;
+
     const createdDb = Result.fromThrowable(
-      () => createDb(`${DB_DIRECTORY}/${name ?? DB_NAME_DEFAULT}`),
+      () => createDb(`${DB_DIRECTORY}/${this._name ?? DB_NAME_DEFAULT}`),
       (e) => e,
     )();
     if (createdDb.isErr()) {
@@ -87,7 +84,7 @@ class RocksDB {
     }
 
     this._db = createdDb.value;
-    this._status = "open";
+    this._status = "new";
   }
 
   get rustDb(): RustDb {
@@ -145,6 +142,11 @@ class RocksDB {
       } else if (this.status === "closing") {
         reject(new Error("db is closing"));
       } else if (this.status === "open") {
+        resolve(undefined);
+      } else {
+        this._status = "opening";
+        dbOpen(this._db);
+        this._status = "open";
         resolve(undefined);
       }
     });

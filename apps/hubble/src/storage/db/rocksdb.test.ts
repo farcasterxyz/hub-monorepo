@@ -43,8 +43,9 @@ describe("open", () => {
 describe("close", () => {
   test("succeeds", async () => {
     const db = new RocksDB(randomDbName());
-    expect(db.status).toEqual("open");
+    expect(db.status).toEqual("new");
     await db.open();
+    expect(db.status).toEqual("open");
     db.close();
     expect(db.status).toEqual("closed");
     await db.destroy();

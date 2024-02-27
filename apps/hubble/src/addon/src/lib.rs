@@ -83,6 +83,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("blake3_20", blake3_20)?;
 
     cx.export_function("createDb", RocksDB::js_create_db)?;
+    cx.export_function("dbOpen", RocksDB::js_open)?;
     cx.export_function("dbClear", RocksDB::js_clear)?;
     cx.export_function("dbClose", RocksDB::js_close)?;
     cx.export_function("dbDestroy", RocksDB::js_destroy)?;

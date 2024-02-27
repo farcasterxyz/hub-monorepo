@@ -51,6 +51,15 @@ impl Finalize for RocksDB {}
 
 impl RocksDB {
     pub fn new(path: &str) -> Result<RocksDB, HubError> {
+        Ok(RocksDB {
+            db: RwLock::new(None),
+            path: path.to_string(),
+        })
+    }
+
+    pub fn open(&self) -> Result<(), HubError> {
+        let mut db_lock = self.db.write().unwrap();
+
         // Create RocksDB options
         let mut opts = Options::default();
         opts.create_if_missing(true); // Creates a database if it does not exist
@@ -59,21 +68,14 @@ impl RocksDB {
         tx_db_opts.set_default_lock_timeout(5000); // 5 seconds
 
         // Open the database with multi-threaded support
-        let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, path).unwrap();
-        Ok(RocksDB {
-            db: RwLock::new(Some(db)),
-            path: path.to_string(),
-        })
+        let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, &self.path)?;
+        *db_lock = Some(db);
+
+        Ok(())
     }
 
     pub fn location(&self) -> String {
-        self.db()
-            .as_ref()
-            .unwrap()
-            .path()
-            .to_str()
-            .unwrap()
-            .to_string()
+        self.path.clone()
     }
 
     pub fn close(&self) -> Result<(), HubError> {
@@ -400,6 +402,16 @@ impl RocksDB {
         }
 
         Ok(cx.boxed(Arc::new(db.unwrap())))
+    }
+
+    pub fn js_open(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+        let db = get_db(&mut cx)?;
+        let result = match db.open() {
+            Ok(_) => true,
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
+        };
+
+        Ok(cx.boolean(result))
     }
 
     pub fn js_clear(mut cx: FunctionContext) -> JsResult<JsNumber> {

@@ -69,6 +69,10 @@ export const createDb = (path: string): RustDb => {
   return db as RustDb;
 };
 
+export const dbOpen = (db: RustDb): void => {
+  lib.dbOpen.call(db);
+};
+
 export const dbClear = (db: RustDb) => {
   return lib.dbClear.call(db);
 };
