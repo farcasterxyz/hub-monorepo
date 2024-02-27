@@ -1068,7 +1068,7 @@ export class Hub implements HubInterface {
           valid: reportedAsInvalid ? "false" : "true",
           error_code: result.error.errCode,
           error_message: result.error.message,
-          message_type: message.data?.type.toString() ?? "",
+          message_type: messageTypeToName(message.data?.type),
         };
 
         statsd().increment("gossip.message_failure", 1, tags);
