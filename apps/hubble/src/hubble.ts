@@ -1071,7 +1071,7 @@ export class Hub implements HubInterface {
           message_type: message.data?.type.toString() ?? "",
         };
 
-        statsd().increment("gossip.message_failure", tags);
+        statsd().increment("gossip.message_failure", 1, tags);
         log.info(
           {
             errCode: result.error.errCode,
