@@ -62,7 +62,18 @@ export const rustErrorToHubError = (e: unknown) => {
   return new HubError(errCode as HubErrorCode, errMsg ?? "");
 };
 
-/** Create or Open a DB at a give path */
+/** Create or Open a DB at a give path 
+ * 
+ * All rust objects need to be "owned" by someone so that rust can manage its lifecycle. For rust objects like the
+ *  `RocksDb` and the `ReactionStore`, we create them as `JsBox<Arc<T>>`. `JsBox` is like Rust's `Box`, except it is 
+ * owned by the Javascript pointer that is returned. That is, 
+    - The DB object is owned by the Javascript object that is returned
+    - When the Javascript object goes out of scope and is gc'd, it is `drop()`-ed in Rust. 
+
+  Since the Rust objects are `Arc<T>` inside a `JsBox`, we can clone them and keep them around in the rust code as we 
+  please, since the Javascript code will continue to own one `Arc<T>`, making sure that it lasts for the lifetime of 
+  the program.
+*/
 export const createDb = (path: string): RustDb => {
   const db = lib.createDb(path);
 
@@ -111,6 +122,27 @@ export const dbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<voi
   return await lib.dbCommit.call(db, keyValues);
 };
 
+/**
+ * Rust code needs to be memory-safe, which means that we can't pass around iterators like we do in Javascript. 
+ * This is because the `iterator` reference is valid for only as long as the `db` is valid, and the reference is 
+ * dropped right after the iterator is finished.
+
+  This specifically means that we need to use iterators as callbacks. The way the iterators are set up is:
+  - Call the `forEachIteartor` method with your callback (Either in JS or Rust)
+  - Perform all actions in the callback
+  - At the end of the itearation, the iterator is returned and closed by Rust
+
+  In JS, we can have async functions as callbacks to the `forEachIterator` methods. This means that the callback
+  can take arbitrarily long, and that is bad because keeping iterators open for long periods of time is very
+  problematic. Additionally, we can't call async JS methods from rust. To address these both, the iterators are 
+  automatically paged. 
+
+    That means that when you start an iterator:
+    1. JS code will fetch a page full of keys and values from rust
+    2. Close the iterator right after. 
+    3. Calls the async callbacks with the cached key, value parirs, which can take as long as needed. 
+    4. Go back to step 1 to get the next page of key, value pairs. 
+ */
 export const dbForEachIteratorByPrefix = async (
   db: RustDb,
   prefix: Uint8Array,
@@ -158,6 +190,9 @@ export const dbForEachIteratorByPrefix = async (
   return !stopped && allFinished;
 };
 
+/**
+ * Iterator using raw iterator options. See note above for how the paging works.
+ */
 export const dbForEachIteratorByOpts = async (
   db: RustDb,
   iteratorOpts: RocksDbIteratorOptions,
