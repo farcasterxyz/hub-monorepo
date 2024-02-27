@@ -14,8 +14,8 @@ concurrency:
 
 jobs:
   build-image:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    runs-on: 'buildjet-4vcpu-ubuntu-2204'
 
     steps:
       - uses: actions/checkout@v3
