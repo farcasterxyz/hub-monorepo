@@ -17,7 +17,7 @@ import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
 import { err, ok, Result } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import { logger } from "../../utils/logger.js";
+import { logger, messageTypeToName } from "../../utils/logger.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
@@ -517,7 +517,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
           const decoded = GossipNode.decodeMessage(data);
           if (decoded.isOk()) {
-            tags["message_type"] = decoded.value.message?.data?.type.toString() ?? "unknown-message-type";
+            tags["message_type"] = messageTypeToName(decoded.value.message?.data?.type) || "unknown-message-type";
             tags["fid"] = decoded.value.message?.data?.fid.toString() ?? "unknown-fid";
           }
 
