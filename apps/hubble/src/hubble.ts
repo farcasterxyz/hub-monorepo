@@ -1067,7 +1067,6 @@ export class Hub implements HubInterface {
         const tags: { [key: string]: string } = {
           valid: reportedAsInvalid ? "false" : "true",
           error_code: result.error.errCode,
-          error_message: result.error.message,
           message_type: messageTypeToName(message.data?.type),
         };
 
