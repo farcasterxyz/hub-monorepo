@@ -56,9 +56,9 @@ export class RocksDbTransaction {
 }
 
 export type RocksDbIteratorOptions = {
-  gte?: Buffer;
-  gt?: Buffer;
-  lt?: Buffer;
+  gte?: Buffer | undefined;
+  gt?: Buffer | undefined;
+  lt?: Buffer | undefined;
   reverse?: boolean;
 };
 
@@ -187,7 +187,7 @@ class RocksDB {
     prefix: Buffer,
     callback: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
     pageOptions: PageOptions = {},
-  ): Promise<void> {
+  ): Promise<boolean> {
     return dbForEachIteratorByPrefix(this._db, prefix, pageOptions, callback);
   }
 
@@ -198,7 +198,7 @@ class RocksDB {
   async forEachIteratorByOpts(
     options: RocksDbIteratorOptions,
     callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<boolean> | boolean | void,
-  ): Promise<void> {
+  ): Promise<boolean> {
     return dbForEachIteratorByOpts(this._db, options, callback);
   }
 

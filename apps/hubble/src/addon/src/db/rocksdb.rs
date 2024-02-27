@@ -1,4 +1,6 @@
-use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
+use crate::store::{
+    self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions, PAGE_SIZE_MAX,
+};
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
@@ -224,7 +226,7 @@ impl RocksDB {
         prefix: &[u8],
         page_options: &PageOptions,
         mut f: F,
-    ) -> Result<(), HubError>
+    ) -> Result<bool, HubError>
     where
         F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     {
@@ -239,9 +241,17 @@ impl RocksDB {
             iter.seek_to_first();
         }
 
+        let mut all_done = true;
+        let mut count = 0;
         while iter.valid() {
             if let Some((key, value)) = iter.item() {
                 if !f(&key, &value)? {
+                    all_done = false;
+                    break;
+                }
+                count += 1;
+                if count >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
+                    all_done = false;
                     break;
                 }
             }
@@ -253,14 +263,14 @@ impl RocksDB {
             }
         }
 
-        Ok(())
+        Ok(all_done)
     }
 
     pub fn for_each_iterator_by_jsopts(
         &self,
         js_opts: JsIteratorOptions,
         mut f: impl FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
-    ) -> Result<(), HubError> {
+    ) -> Result<bool, HubError> {
         // Can't have both gte and gt set
         if js_opts.gte.is_some() && js_opts.gt.is_some() {
             return Err(HubError {
@@ -307,9 +317,11 @@ impl RocksDB {
             iter.next();
         }
 
+        let mut all_done = true;
         while iter.valid() {
             if let Some((key, value)) = iter.item() {
                 if !f(&key, &value)? {
+                    all_done = false;
                     break;
                 }
             }
@@ -321,7 +333,7 @@ impl RocksDB {
             }
         }
 
-        Ok(())
+        Ok(all_done)
     }
 
     pub fn clear(&self) -> Result<u32, HubError> {
@@ -654,7 +666,7 @@ impl RocksDB {
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| Ok(cx.undefined()));
+        deferred.settle_with(&channel, move |mut cx| Ok(cx.boolean(result.unwrap())));
 
         Ok(promise)
     }
@@ -701,7 +713,7 @@ impl RocksDB {
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| Ok(cx.undefined()));
+        deferred.settle_with(&channel, move |mut cx| Ok(cx.boolean(result.unwrap())));
 
         Ok(promise)
     }

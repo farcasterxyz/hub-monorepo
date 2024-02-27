@@ -88,7 +88,7 @@ jobs:
       - name: Cache Cargo build artifacts
         uses: actions/cache@v3
         with:
-          path: target
+          path: ${{ github.workspace }}/apps/hubble/src/addon/target
           key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-
@@ -131,14 +131,16 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ${{ runner.home }}/.cargo/registry
-            ${{ runner.home }}/.cargo/git
+            ~/.cargo/registry
+            ~/.cargo/git
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
 
       - name: Cache Cargo build artifacts
         uses: actions/cache@v3
         with:
-          path: target
+          path: ${{ github.workspace }}/apps/hubble/src/addon/target
           key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install Protocol Buffer Compiler

@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, rmSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
 import RocksDB from "./rocksdb.js";
 import { ResultAsync } from "neverthrow";
+import { dbForEachIteratorByOpts, dbForEachIteratorByPrefix } from "../../rustfunctions.js";
 
 //Safety: fs is safe to use in tests
 
@@ -163,7 +164,7 @@ describe("with db", () => {
     });
   });
 
-  describe("iteratorByPrefix", () => {
+  describe("forEachIteratorByPrefix", () => {
     test("succeeds", async () => {
       await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
       await db.put(Buffer.from("allison"), Buffer.from("oops"));
@@ -220,7 +221,194 @@ describe("with db", () => {
     });
   });
 
-  describe("forEachIterator", () => {
+  describe("db forEachIteratorByOpts paging", () => {
+    test("forEachIteratorByOpts succeeds with paging", async () => {
+      const allValues = [
+        Buffer.from("a"),
+        Buffer.from("b"),
+        Buffer.from("c"),
+        Buffer.from("d"),
+        Buffer.from("e"),
+        Buffer.from("f"),
+        Buffer.from("g"),
+      ];
+
+      const tsx = db
+        .transaction()
+        .put(Buffer.from([100, 1]), allValues[0] as Buffer)
+        .put(Buffer.from([100, 2]), allValues[1] as Buffer)
+        .put(Buffer.from([100, 3]), allValues[2] as Buffer)
+        .put(Buffer.from([100, 4]), allValues[3] as Buffer)
+        .put(Buffer.from([100, 5]), allValues[4] as Buffer)
+        .put(Buffer.from([100, 6]), allValues[5] as Buffer)
+        .put(Buffer.from([100, 7]), allValues[6] as Buffer);
+
+      await db.commit(tsx);
+
+      // Returns the first 3 values with the correct ranges
+      let values: Buffer[] = [];
+      let allFinished = await dbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 4]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(0, 3));
+
+      // Correctly pages through all the values even with a small overridePageSize
+      values = [];
+      allFinished = await dbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        3,
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(0, 5));
+
+      // Stops iteration if the callback returns true
+      values = [];
+      allFinished = await dbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+          return true; // stop iteration
+        },
+      );
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(0, 1));
+
+      // Respects "gt" instead of "gte"
+      values = [];
+      allFinished = await dbForEachIteratorByOpts(
+        db.rustDb,
+        { gt: Buffer.from([100, 1]), lt: Buffer.from([100, 6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(1, 5));
+
+      // Respects reverse even with a small overridePageSize
+      values = [];
+      allFinished = await dbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 6]), reverse: true },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        3,
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(0, 5).reverse());
+    });
+  });
+
+  describe("db forEachIteratorByPrefix paging", () => {
+    test("forEachIteratorByPrefix succeeds with paging", async () => {
+      const allValues = [
+        Buffer.from("a"),
+        Buffer.from("b"),
+        Buffer.from("c"),
+        Buffer.from("d"),
+        Buffer.from("e"),
+        Buffer.from("f"),
+        Buffer.from("g"),
+      ];
+
+      const tsx = db
+        .transaction()
+        .put(Buffer.from([100, 1]), allValues[0] as Buffer)
+        .put(Buffer.from([100, 2]), allValues[1] as Buffer)
+        .put(Buffer.from([100, 3]), allValues[2] as Buffer)
+        .put(Buffer.from([100, 4]), allValues[3] as Buffer)
+        .put(Buffer.from([100, 5]), allValues[4] as Buffer)
+        .put(Buffer.from([100, 6]), allValues[5] as Buffer)
+        .put(Buffer.from([100, 7]), allValues[6] as Buffer);
+
+      await db.commit(tsx);
+
+      // With a max page size, all values are returned
+      let values: Buffer[] = [];
+      let allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues);
+
+      // With a page size of 3, the first 3 values are returned
+      values = [];
+      allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), { pageSize: 3 }, (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(0, 3));
+
+      // With a continuation token and page size, the next 3 values are returned
+      values = [];
+      allFinished = await dbForEachIteratorByPrefix(
+        db.rustDb,
+        Buffer.from([100]),
+        { pageSize: 3, pageToken: Buffer.from([3]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(3, 6));
+
+      // With a continuation token and no page size, all remaining values are returned
+      values = [];
+      allFinished = await dbForEachIteratorByPrefix(
+        db.rustDb,
+        Buffer.from([100]),
+        { pageToken: Buffer.from([3]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(3, 7));
+
+      // With the last continuation token and page size, all remaining values are returned
+      values = [];
+      allFinished = await dbForEachIteratorByPrefix(
+        db.rustDb,
+        Buffer.from([100]),
+        { pageSize: 3, pageToken: Buffer.from([6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(6, 7));
+
+      // If the prefix doesn't exist, the iterator returns finished
+      values = [];
+      allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([101]), {}, (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual([]);
+
+      // allFinished returns false if the callback returns true
+      values = [];
+      allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
+        values.push(value as Buffer);
+        return true;
+      });
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(0, 1));
+    });
+  });
+
+  describe("forEachIterator errors", () => {
     test("succeeds", async () => {
       await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
       await db.put(Buffer.from("allison"), Buffer.from("oops"));

@@ -69,6 +69,7 @@ import { nativeValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { ValidationWorkerData } from "./validation.worker.js";
+import { statsd } from "../../utils/statsd.js";
 
 const log = logger.child({
   component: "Engine",
@@ -253,8 +254,17 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     }
 
+    const start = Date.now();
     const mergeResult = await this.mergeMessageToStore(message);
+
     if (mergeResult.isOk() && limiter) {
+      const timeTakenMs = Date.now() - start;
+
+      if (typeToSetPostfix(message.data?.type ?? MessageType.NONE) === UserPostfix.ReactionMessage) {
+        statsd().timing("engine.merge.rust", timeTakenMs);
+      } else {
+        statsd().timing("engine.merge.nodejs", timeTakenMs);
+      }
       consumeRateLimitByKey(`${fid}`, limiter);
     }
 

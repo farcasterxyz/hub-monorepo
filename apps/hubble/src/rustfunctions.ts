@@ -116,76 +116,93 @@ export const dbForEachIteratorByPrefix = async (
   prefix: Uint8Array,
   pageOptions: PageOptions,
   cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
-) => {
+): Promise<boolean> => {
   let dbKeyValues: DbKeyValue[] = [];
-  let lastPageToken = undefined;
-  let nextPageToken = pageOptions.pageToken;
-  let finished = false;
+  const batchPageSize = pageOptions.pageSize ?? PAGE_SIZE_MAX;
+
+  let allFinished = false;
+  let nextPageToken = undefined;
+  let stopped = false;
+  let batchPageOptions = { ...pageOptions };
 
   do {
-    const batchPageOptions = { ...pageOptions, pageToken: nextPageToken };
+    allFinished = await lib.dbForEachIteratorByPrefix.call(
+      db,
+      prefix,
+      batchPageOptions,
+      (key: Buffer, value: Buffer | undefined) => {
+        dbKeyValues.push({ key, value });
 
-    await lib.dbForEachIteratorByPrefix.call(db, prefix, batchPageOptions, (key: Buffer, value: Buffer | undefined) => {
-      // console.log("dbForeachIteratorByPrefix key", key, "value", value);
-      dbKeyValues.push({ key, value });
+        if (dbKeyValues.length > batchPageSize) {
+          nextPageToken = new Uint8Array(key.subarray(prefix.length));
+          return true; // Stop the iteration
+        }
 
-      if (dbKeyValues.length >= PAGE_SIZE_MAX) {
-        nextPageToken = new Uint8Array(key.subarray(prefix.length));
-        return true; // Stop the iteration
-      }
-
-      return false; // Continue the iteration
-    });
-
-    // No more key-values to iterate over
-    if (dbKeyValues.length === 0) {
-      break;
-    }
+        return false; // Continue the iteration
+      },
+    );
 
     // Iterate over the key-values
     for (const kv of dbKeyValues) {
       const shouldStop = await cb(kv.key, kv.value);
       if (shouldStop) {
-        finished = true;
+        stopped = true;
         break;
       }
     }
 
-    if (nextPageToken && lastPageToken && bytesCompare(nextPageToken, lastPageToken) === 0) {
-      finished = true;
-    } else {
-      lastPageToken = nextPageToken;
-    }
-
+    batchPageOptions = { ...pageOptions, pageToken: nextPageToken };
     dbKeyValues = []; // Clear the key-values array
-  } while (!finished && nextPageToken);
+  } while (!allFinished && !stopped && nextPageToken);
+
+  return !stopped && allFinished;
 };
 
 export const dbForEachIteratorByOpts = async (
   db: RustDb,
   iteratorOpts: RocksDbIteratorOptions,
   cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | void,
-) => {
-  const dbKeyValues: DbKeyValue[] = [];
+  overridePageSize?: number, // Only for tests
+): Promise<boolean> => {
+  let dbKeyValues: DbKeyValue[] = [];
+  const batchPageSize = overridePageSize ?? PAGE_SIZE_MAX;
 
-  await lib.dbForEachIteratorByOpts.call(db, iteratorOpts, (key: Buffer, value: Buffer) => {
-    dbKeyValues.push({ key, value });
-    if (dbKeyValues.length > PAGE_SIZE_MAX) {
-      log.error(
-        { iteratorOpts, numKeyValues: dbKeyValues.length, PAGE_SIZE_MAX },
-        "dbForEachIteratorByOpts: too many key-values. Iterator was terminated early.",
-      );
-      return true; // Stop the iteration
-    }
-    return false; // Continue the iteration
-  });
+  let stopped = false;
+  let nextPageToken = undefined;
+  let allFinished = false;
 
-  for (const kv of dbKeyValues) {
-    const shouldStop = await cb(kv.key, kv.value);
-    if (shouldStop) {
-      break;
+  do {
+    const batchPageOptions = { ...iteratorOpts };
+    if (nextPageToken) {
+      if (iteratorOpts.reverse) {
+        batchPageOptions.lt = nextPageToken;
+      } else {
+        batchPageOptions.gt = nextPageToken;
+        batchPageOptions.gte = undefined;
+      }
     }
-  }
+
+    allFinished = await lib.dbForEachIteratorByOpts.call(db, batchPageOptions, (key: Buffer, value: Buffer) => {
+      dbKeyValues.push({ key, value });
+      if (dbKeyValues.length >= batchPageSize) {
+        nextPageToken = new Uint8Array(key);
+        return true; // Stop the iteration
+      }
+      return false; // Continue the iteration
+    });
+
+    for (const kv of dbKeyValues) {
+      const shouldStop = await cb(kv.key, kv.value);
+      if (shouldStop) {
+        stopped = true;
+        break;
+      }
+    }
+
+    dbKeyValues = []; // Clear the key-values array
+  } while (!allFinished && !stopped && nextPageToken);
+
+  return !stopped && allFinished;
 };
 
 /** Create a reaction Store */
