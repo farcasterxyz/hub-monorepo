@@ -502,9 +502,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         topic: detail.msg.topic,
       });
 
-      const tags: { [key: string]: string } = {
-        topic: detail.msg.topic,
-      };
+      statsd().increment(`gossip.${detail.msg.topic}.messages`);
+
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
       if (this.gossipTopics().includes(detail.msg.topic)) {
         try {
@@ -515,6 +514,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
 
+          const tags: { [key: string]: string } = {
+            topic: detail.msg.topic,
+          };
           const decoded = GossipNode.decodeMessage(data);
           if (decoded.isOk()) {
             tags["message_type"] = messageTypeToName(decoded.value.message?.data?.type) || "unknown-message-type";
@@ -522,6 +524,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           }
 
           this.emit("message", detail.msg.topic, decoded, detail.propagationSource, detail.msgId);
+          statsd().increment("gossip.emit", 1, tags);
         } catch (e) {
           logger.error({ e, data: detail.msg.data }, "Failed to decode message");
         }
@@ -529,8 +532,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         // Report other messages we don't care about (peer discovery mainly) as being valid, so they can be forwarded correctly
         this.reportValid(detail.msgId, peerIdFromString(detail.propagationSource.toString()).toBytes(), true);
       }
-
-      statsd().increment("gossip.messages", 1, tags);
     });
   }
 
