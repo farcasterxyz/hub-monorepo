@@ -786,17 +786,32 @@ export class Hub implements HubInterface {
           if (dbFiles.isErr() || dbFiles.value.length === 0) {
             log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
 
-            const response = await axios.get(`https://download.farcaster.xyz/${this.getSnapshotFolder()}/latest.json`);
-            const { key } = response.data;
+            let prevVersion = 0;
+            let latestSnapshotKey;
+            do {
+              const response = await axios.get(
+                `https://download.farcaster.xyz/${this.getSnapshotFolder(prevVersion)}/latest.json`,
+              );
+              const { key } = response.data;
 
-            if (!key) {
-              log.error({ data: response.data }, "No latest snapshot name found in latest.json");
+              if (!key) {
+                log.error(
+                  { data: response.data, folder: this.getSnapshotFolder(prevVersion) },
+                  "No latest snapshot name found in latest.json",
+                );
+                prevVersion += 1;
+              } else {
+                latestSnapshotKey = key as string;
+                break;
+              }
+            } while (prevVersion < LATEST_DB_SCHEMA_VERSION);
+
+            if (!latestSnapshotKey) {
               resolve(err(new HubError("unavailable", "No latest snapshot name found in latest.json")));
               return;
+            } else {
+              log.info({ latestSnapshotKey }, "found latest S3 snapshot");
             }
-
-            const latestSnapshotKey = key as string;
-            log.info({ latestSnapshotKey }, "found latest S3 snapshot");
 
             const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
             const response2 = await axios.get(snapshotUrl, {
@@ -1566,9 +1581,9 @@ export class Hub implements HubInterface {
     return ok(this.gossipNode?.updateApplicationPeerScore(peerId, score));
   }
 
-  private getSnapshotFolder(): string {
+  private getSnapshotFolder(prevVersionCounter?: number): string {
     const network = FarcasterNetwork[this.options.network].toString();
-    return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION}`;
+    return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
   }
 
   async uploadToS3(filePath: string): HubAsyncResult<string> {

@@ -4,6 +4,7 @@ import cron from "node-cron";
 import Engine from "../engine/index.js";
 import { logger } from "../../utils/logger.js";
 import { statsd } from "../../utils/statsd.js";
+import { sleep } from "../../utils/crypto.js";
 
 export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = "0 */2 * * *"; // Every two hours
 
@@ -59,11 +60,12 @@ export class PruneMessagesJobScheduler {
     log.info({}, "starting prune messages job");
     const start = Date.now();
     this._running = true;
+    let totalPruned = 0;
 
     let finished = false;
     let pageToken: Uint8Array | undefined;
     do {
-      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 100 });
+      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 1000 });
       if (fidsPage.isErr()) {
         return err(fidsPage.error);
       }
@@ -75,7 +77,14 @@ export class PruneMessagesJobScheduler {
       }
 
       for (const fid of fids) {
-        await this._engine.pruneMessages(fid);
+        totalPruned += (await this._engine.pruneMessages(fid)).unwrapOr(0);
+
+        // Sleep for a bit avoid overloading the Merkle Trie
+        if (totalPruned > 10_000) {
+          log.info({ totalPruned }, "pruned 10k messages, sleeping for 10s");
+          await sleep(10_000);
+          totalPruned = 0;
+        }
       }
     } while (!finished);
 
