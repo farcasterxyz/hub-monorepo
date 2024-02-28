@@ -18,7 +18,7 @@ Since the Rust objects are `Arc<T>` inside a `JsBox`, we can clone them and keep
 Rust code needs to be memory-safe, which means that we can't pass around iterators like we do in Javascript. This is because the `iterator` reference is valid for only as long as the `db` is valid, and the reference is dropped right after the iterator is finished.
 
 This specifically means that we need to use iterators as callbacks. The way the iterators are set up is:
-- Call the `forEachIteartor` method with your callback (Either in JS or Rust)
+- Call the `forEachIterator` method with your callback (Either in JS or Rust)
 - Perform all actions in the callback
 - At the end of the itearation, the iterator is returned and closed by Rust
 
