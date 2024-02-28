@@ -1,3 +1,4 @@
+use crate::store::StoreEventHandler;
 use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
@@ -80,6 +81,12 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_signMessageHash", ed25519_sign_message_hash)?;
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", blake3_20)?;
+
+    cx.export_function(
+        "createStoreEventHandler",
+        StoreEventHandler::js_create_store_event_handler,
+    )?;
+    cx.export_function("getNextEventId", StoreEventHandler::js_get_next_event_id)?;
 
     cx.export_function("createDb", RocksDB::js_create_db)?;
     cx.export_function("dbOpen", RocksDB::js_open)?;

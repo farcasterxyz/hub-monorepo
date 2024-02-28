@@ -45,7 +45,12 @@ class ReactionStore {
     this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
 
-    this.rustReactionStore = createReactionStore(db.rustDb, this._pruneSizeLimit, this._pruneTimeLimit);
+    this.rustReactionStore = createReactionStore(
+      db.rustDb,
+      eventHandler.getRustStoreEventHandler(),
+      this._pruneSizeLimit,
+      this._pruneTimeLimit,
+    );
 
     this._postfix = UserPostfix.ReactionMessage;
     this._eventHandler = eventHandler;

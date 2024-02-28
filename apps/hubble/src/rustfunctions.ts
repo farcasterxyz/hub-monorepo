@@ -7,11 +7,12 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
-import { HubError, HubErrorCode, bytesCompare, validations } from "@farcaster/hub-nodejs";
+import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
 import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
 import { logger } from "./utils/logger.js";
+import { Result } from "neverthrow";
 
 const log = logger.child({
   component: "RustFunctions",
@@ -19,6 +20,7 @@ const log = logger.child({
 
 export class RustDynStore {}
 export class RustDb {}
+export class RustStoreEventHandler {}
 
 // Type returned from Rust which is equivalent to the TypeScript type `MessagesPage`
 export class RustMessagesPage {
@@ -137,11 +139,16 @@ export const dbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<voi
   problematic. Additionally, we can't call async JS methods from rust. To address these both, the iterators are 
   automatically paged. 
 
-    That means that when you start an iterator:
-    1. JS code will fetch a page full of keys and values from rust
-    2. Close the iterator right after. 
-    3. Calls the async callbacks with the cached key, value parirs, which can take as long as needed. 
-    4. Go back to step 1 to get the next page of key, value pairs. 
+  That means that when you start an iterator:
+  1. JS code will fetch a page full of keys and values from rust
+  2. Close the iterator right after. 
+  3. Calls the async callbacks with the cached key, value parirs, which can take as long as needed. 
+  4. Go back to step 1 to get the next page of key, value pairs. 
+
+  This method returns a boolean, which is true if the iteration is finished, and false if it is not. 
+  - If the iteration was stopped because it hit the pageSize, it returns false (i.e., there are more keys available)
+  - If the iteration was stopped because the callback returned true, it returns false (i.e., there are more keys available)
+  
  */
 export const dbForEachIteratorByPrefix = async (
   db: RustDb,
@@ -240,9 +247,29 @@ export const dbForEachIteratorByOpts = async (
   return !stopped && allFinished;
 };
 
+export const createStoreEventHandler = (
+  epoch?: number,
+  last_timestamp?: number,
+  last_seq?: number,
+): RustStoreEventHandler => {
+  return lib.createStoreEventHandler(epoch, last_timestamp, last_seq) as RustStoreEventHandler;
+};
+
+export const getNextEventId = (
+  eventHandler: RustStoreEventHandler,
+  currentTimestamp?: number,
+): Result<number, HubError> => {
+  return Result.fromThrowable(() => lib.getNextEventId.call(eventHandler, currentTimestamp), rustErrorToHubError)();
+};
+
 /** Create a reaction Store */
-export const createReactionStore = (db: RustDb, pruneSizeLimit: number, pruneTimeLimit: number): RustDynStore => {
-  const store = lib.createReactionStore(db, pruneSizeLimit, pruneTimeLimit);
+export const createReactionStore = (
+  db: RustDb,
+  eventHandler: RustStoreEventHandler,
+  pruneSizeLimit: number,
+  pruneTimeLimit: number,
+): RustDynStore => {
+  const store = lib.createReactionStore(db, eventHandler, pruneSizeLimit, pruneTimeLimit);
 
   return store as RustDynStore;
 };

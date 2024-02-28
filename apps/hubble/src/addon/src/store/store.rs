@@ -117,10 +117,14 @@ impl Finalize for Store {
 }
 
 impl Store {
-    pub fn new_with_store_def(db: Arc<RocksDB>, store_def: Box<dyn StoreDef>) -> Store {
+    pub fn new_with_store_def(
+        db: Arc<RocksDB>,
+        store_event_handler: Arc<StoreEventHandler>,
+        store_def: Box<dyn StoreDef>,
+    ) -> Store {
         Store {
             store_def,
-            store_event_handler: Arc::new(StoreEventHandler::new()),
+            store_event_handler,
             fid_locks: Arc::new([
                 Mutex::new(()),
                 Mutex::new(()),
@@ -128,7 +132,7 @@ impl Store {
                 Mutex::new(()),
             ]),
             db,
-            pool: Arc::new(Mutex::new(ThreadPool::new(4))),
+            pool: Arc::new(Mutex::new(ThreadPool::new(1))),
         }
     }
 

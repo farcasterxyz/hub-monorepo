@@ -177,8 +177,29 @@ impl RocksDB {
         // Handle the special case if the prefix is empty, then we want to iterate over the entire database
         if prefix.is_empty() {
             let mut opts = rocksdb::ReadOptions::default();
-            opts.set_iterate_lower_bound(vec![]);
-            opts.set_iterate_upper_bound(vec![255]);
+
+            if page_options.reverse {
+                if page_options.page_token.is_none() {
+                    opts.set_iterate_upper_bound(vec![255u8; 32]);
+                } else {
+                    // The upper bound is exclusive, so no need to increment the page_token
+                    opts.set_iterate_upper_bound(page_options.page_token.clone().unwrap());
+                }
+
+                opts.set_iterate_lower_bound(vec![]);
+            } else {
+                if page_options.page_token.is_none() {
+                    opts.set_iterate_lower_bound(vec![]);
+                } else {
+                    // lower_bound is always inclusive, so we need to increment the page_token
+                    opts.set_iterate_lower_bound(increment_vec_u8(
+                        &page_options.page_token.clone().unwrap(),
+                    ));
+                }
+
+                opts.set_iterate_upper_bound(vec![255u8; 32]);
+            }
+
             return IteratorOptions {
                 opts,
                 reverse: page_options.reverse,
@@ -256,10 +277,13 @@ impl RocksDB {
                     all_done = false;
                     break;
                 }
-                count += 1;
-                if count >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
-                    all_done = false;
-                    break;
+
+                if page_options.page_size.is_some() {
+                    count += 1;
+                    if count >= page_options.page_size.unwrap() {
+                        all_done = false;
+                        break;
+                    }
                 }
             }
 

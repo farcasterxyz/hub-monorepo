@@ -1,5 +1,5 @@
 ## Rust Addons for Hubble
-This directory contains the addon code for Hubble. It uses neon to call from NodeJS into Rust. 
+This directory contains the addon code for Hubble. It uses neon to call from NodeJS into Rust. The rust library is compiled into the binary file `index.node` (see `Cargo.toml` and `package.json`) and copied into the `addon` folder. This can then be imported into a TS file like a normal JS import (see `rustfunctions.ts`)
 
 ### DB
 The Rust code hosts the RocksDB, and the NodeJS code calls into the rust `rocksdb.rs` for all DB operations. 

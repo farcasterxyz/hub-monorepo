@@ -38,7 +38,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { createReactionStore, nativeValidationMethods } from "./rustfunctions.js";
+import { nativeValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";

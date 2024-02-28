@@ -1142,7 +1142,12 @@ export default class Server {
         const bufferedStreamWriter = new BufferedStreamWriter(stream);
 
         // We'll listen to all events and write them to the stream as they happen
+        let lastEventId = 0;
         const eventListener = (event: HubEvent) => {
+          if (event.id <= lastEventId) {
+            log.warn({ event, lastEventId }, "subscribe: Out-of-order event sent on subscribe()");
+          }
+          lastEventId = event.id;
           bufferedStreamWriter.writeToStream(event);
         };
 

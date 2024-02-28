@@ -55,7 +55,7 @@ export class StorageCache {
 
     await this._db.forEachIteratorByPrefix(
       Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid])]),
-      async () => {
+      () => {
         totalFids++;
       },
     );

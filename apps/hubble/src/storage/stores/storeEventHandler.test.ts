@@ -3,11 +3,12 @@ import { ok, Result } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { getMessage, makeTsHash, putMessage, putMessageTransaction } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
-import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from "./storeEventHandler.js";
+import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
 import { extractEventTimestamp, getFarcasterTime } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
 import CastStore from "./castStore.js";
+import { createStoreEventHandler, getNextEventId } from "../../rustfunctions.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
@@ -40,13 +41,13 @@ beforeAll(async () => {
 });
 
 describe("HubEventIdGenerator", () => {
-  const generator = new HubEventIdGenerator();
+  const generator = createStoreEventHandler();
 
   test("succeeds", () => {
     let lastId = 0;
 
     for (let i = 0; i < 10; i++) {
-      const id = generator.generateId()._unsafeUnwrap();
+      const id = getNextEventId(generator)._unsafeUnwrap();
       expect(id).toBeGreaterThan(lastId);
       lastId = id;
     }
@@ -54,19 +55,15 @@ describe("HubEventIdGenerator", () => {
 
   test("fails if sequence ID exceeds max allowed", () => {
     const currentTimestamp = Date.now();
-    const generator = new HubEventIdGenerator({ lastTimestamp: currentTimestamp, lastIndex: 4094 });
-    expect(generator.generateId({ currentTimestamp }).isOk()).toEqual(true);
-    expect(generator.generateId({ currentTimestamp }).isErr()).toEqual(true);
+    const generator = createStoreEventHandler(0, currentTimestamp, 4094);
+    expect(getNextEventId(generator, currentTimestamp).isOk()).toEqual(true);
+    expect(getNextEventId(generator, currentTimestamp).isErr()).toEqual(true);
   });
 
   test("can parse timestamps from event id", async () => {
     const currentTimestamp = Date.now();
-    const generator = new HubEventIdGenerator({
-      lastTimestamp: currentTimestamp,
-      lastIndex: 0,
-      epoch: FARCASTER_EPOCH,
-    });
-    const id = generator.generateId({ currentTimestamp })._unsafeUnwrap();
+    const generator = createStoreEventHandler(FARCASTER_EPOCH, currentTimestamp, 0);
+    const id = getNextEventId(generator, currentTimestamp)._unsafeUnwrap();
     expect(extractEventTimestamp(id)).toEqual(currentTimestamp);
   });
 });

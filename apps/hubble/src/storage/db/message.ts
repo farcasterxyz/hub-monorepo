@@ -116,7 +116,7 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.UsernameProofMessage;
   }
 
-  throw new Error("invalid type");
+  throw new Error(`invalid type: ${type}`);
 };
 
 export const putMessage = (db: RocksDB, message: Message): Promise<void> => {

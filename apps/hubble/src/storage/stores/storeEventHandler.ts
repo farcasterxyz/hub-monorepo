@@ -39,6 +39,7 @@ import {
   VerificationRemoveMessage,
 } from "@farcaster/core";
 import { logger } from "../../utils/logger.js";
+import { createStoreEventHandler, getNextEventId, RustStoreEventHandler } from "../../rustfunctions.js";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 5_000;
@@ -123,39 +124,6 @@ const makeEventId = (timestamp: number, seq: number): number => {
   return parseInt(binaryTimestamp + binarySeq, 2);
 };
 
-export class HubEventIdGenerator {
-  private _lastTimestamp: number; // ms since epoch
-  private _lastSeq: number;
-  private _epoch: number;
-
-  constructor(options: { epoch?: number; lastTimestamp?: number; lastIndex?: number } = {}) {
-    this._epoch = options.epoch ?? 0;
-    this._lastTimestamp = options.lastTimestamp ?? 0;
-    this._lastSeq = options.lastIndex ?? 0;
-  }
-
-  generateId(options: { currentTimestamp?: number } = {}): HubResult<number> {
-    const timestamp = (options.currentTimestamp || Date.now()) - this._epoch;
-
-    if (timestamp === this._lastTimestamp) {
-      this._lastSeq = this._lastSeq + 1;
-    } else {
-      this._lastTimestamp = timestamp;
-      this._lastSeq = 0;
-    }
-
-    if (this._lastTimestamp >= 2 ** TIMESTAMP_BITS) {
-      return err(new HubError("bad_request.invalid_param", `timestamp > ${TIMESTAMP_BITS} bits`));
-    }
-
-    if (this._lastSeq >= 2 ** SEQUENCE_BITS) {
-      return err(new HubError("bad_request.invalid_param", `sequence > ${SEQUENCE_BITS} bits`));
-    }
-
-    return ok(makeEventId(this._lastTimestamp, this._lastSeq));
-  }
-}
-
 const makeEventKey = (id?: number): Buffer => {
   const buffer = Buffer.alloc(1 + (id ? 8 : 0));
   buffer.writeUint8(RootPrefix.HubEvents, 0);
@@ -178,21 +146,31 @@ export type StoreEventHandlerOptions = {
 
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _db: RocksDB;
-  private _generator: HubEventIdGenerator;
+
+  // Pointer to the rust store event handler object
+  private _rustStoreEventHandler: RustStoreEventHandler;
+
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
 
-  constructor(db: RocksDB, options: StoreEventHandlerOptions = {}) {
+  constructor(db: RocksDB, options: StoreEventHandlerOptions = {}, rustEventHandler?: RustStoreEventHandler) {
     super();
 
     this._db = db;
-    this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
+
+    // Create default store if no options are passed
+    this._rustStoreEventHandler = rustEventHandler ?? createStoreEventHandler();
+
     this._lock = new AsyncLock({
       maxPending: options.lockMaxPending ?? DEFAULT_LOCK_MAX_PENDING,
       maxExecutionTime: options.lockExecutionTimeout ?? DEFAULT_EXECUTION_TIMEOUT,
     });
 
     this._storageCache = new StorageCache(this._db);
+  }
+
+  getRustStoreEventHandler(): RustStoreEventHandler {
+    return this._rustStoreEventHandler;
   }
 
   async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
@@ -365,7 +343,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   async commitTransaction(txn: RocksDbTransaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
     return this._lock
       .acquire("commit", async () => {
-        const eventId = this._generator.generateId();
+        const eventId = getNextEventId(this._rustStoreEventHandler);
         if (eventId.isErr()) {
           throw eventId.error;
         }
@@ -377,7 +355,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         await this._db.commit(txn);
 
         void this._storageCache.processEvent(event);
-        void this.broadcastEvent(event);
+        this.broadcastEvent(event);
 
         return ok(event.id);
       })
@@ -388,7 +366,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   async processRustCommitedTransaction(event: HubEvent): HubAsyncResult<void> {
     void this._storageCache.processEvent(event);
-    void this.broadcastEvent(event);
+    this.broadcastEvent(event);
     return ok(undefined);
   }
 

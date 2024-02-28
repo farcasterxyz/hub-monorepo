@@ -2,7 +2,8 @@ use super::{
     hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
     store::{Store, StoreDef},
     utils::{encode_messages_to_js_object, get_page_options, get_store},
-    HubError, MessagesPage, PageOptions, RootPrefix, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
+    HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, PAGE_SIZE_MAX,
+    TS_HASH_LENGTH,
 };
 use crate::protos::message_data;
 use crate::{
@@ -236,9 +237,15 @@ impl ReactionStoreDef {
 pub struct ReactionStore {}
 
 impl ReactionStore {
-    pub fn new(db: Arc<RocksDB>, prune_size_limit: u32, prune_time_limit: u32) -> Store {
+    pub fn new(
+        db: Arc<RocksDB>,
+        store_event_handler: Arc<StoreEventHandler>,
+        prune_size_limit: u32,
+        prune_time_limit: u32,
+    ) -> Store {
         Store::new_with_store_def(
             db,
+            store_event_handler,
             Box::new(ReactionStoreDef {
                 prune_size_limit,
                 prune_time_limit,
@@ -421,16 +428,21 @@ impl ReactionStore {
         let db_js_box = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
         let db = (**db_js_box.borrow()).clone();
 
+        // Read the StoreEventHandler
+        let store_event_handler_js_box = cx.argument::<JsBox<Arc<StoreEventHandler>>>(1)?;
+        let store_event_handler = (**store_event_handler_js_box.borrow()).clone();
+
         // Read the prune size limit and prune time limit from the options
         let prune_size_limit = cx
-            .argument::<JsNumber>(1)
+            .argument::<JsNumber>(2)
             .map(|n| n.value(&mut cx) as u32)?;
         let prune_time_limit = cx
-            .argument::<JsNumber>(2)
+            .argument::<JsNumber>(3)
             .map(|n| n.value(&mut cx) as u32)?;
 
         Ok(cx.boxed(Arc::new(ReactionStore::new(
             db,
+            store_event_handler,
             prune_size_limit,
             prune_time_limit,
         ))))

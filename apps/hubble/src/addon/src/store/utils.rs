@@ -129,7 +129,7 @@ pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions
 
     let page_size = js_object
         .get_opt::<JsNumber, _, _>(cx, "pageSize")?
-        .map_or(PAGE_SIZE_MAX, |v| v.value(cx) as usize);
+        .map(|v| v.value(cx) as usize);
 
     let page_token = js_object
         .get_opt::<JsBuffer, _, _>(cx, "pageToken")?
@@ -140,7 +140,7 @@ pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions
         .map_or(false, |js_boolean| js_boolean.value(cx));
 
     Ok(PageOptions {
-        page_size: Some(page_size),
+        page_size,
         page_token: if page_token.is_empty() {
             None
         } else {
