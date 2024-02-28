@@ -118,10 +118,6 @@ impl StoreDef for ReactionStoreDef {
         )
     }
 
-    fn get_prune_time_limit(&self) -> u32 {
-        self.prune_time_limit
-    }
-
     fn get_prune_size_limit(&self) -> u32 {
         self.prune_size_limit
     }

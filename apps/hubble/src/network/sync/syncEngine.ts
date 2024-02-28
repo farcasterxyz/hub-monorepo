@@ -723,7 +723,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         let progressBar: SingleBar | undefined;
 
         const missingMessages = otherSnapshot.numMessages - ourSnapshot.numMessages;
-        if (missingMessages > 100_000) {
+        if (missingMessages > 1_000_000) {
           this._currentSyncStatus.initialSync = true;
           progressBar = addProgressBar(
             ourSnapshot.numMessages === 0 ? "Initial Sync" : "Catchup Sync",
