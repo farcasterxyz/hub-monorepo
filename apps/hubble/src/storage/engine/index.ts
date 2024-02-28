@@ -65,7 +65,7 @@ import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
 import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByKey } from "../../utils/rateLimits.js";
-import { nativeValidationMethods } from "../../rustfunctions.js";
+import { rsValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { ValidationWorkerData } from "./validation.worker.js";
@@ -1051,7 +1051,7 @@ class Engine extends TypedEmitter<EngineEvents> {
         worker.postMessage({ id, message });
       });
     } else {
-      return validations.validateMessage(message, nativeValidationMethods, this.getPublicClients());
+      return validations.validateMessage(message, rsValidationMethods, this.getPublicClients());
     }
   }
 

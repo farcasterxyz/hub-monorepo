@@ -39,7 +39,7 @@ import {
   VerificationRemoveMessage,
 } from "@farcaster/core";
 import { logger } from "../../utils/logger.js";
-import { createStoreEventHandler, getNextEventId, RustStoreEventHandler } from "../../rustfunctions.js";
+import { rsCreateStoreEventHandler, rsGetNextEventId, RustStoreEventHandler } from "../../rustfunctions.js";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 5_000;
@@ -159,7 +159,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     this._db = db;
 
     // Create default store if no options are passed
-    this._rustStoreEventHandler = rustEventHandler ?? createStoreEventHandler();
+    this._rustStoreEventHandler = rustEventHandler ?? rsCreateStoreEventHandler();
 
     this._lock = new AsyncLock({
       maxPending: options.lockMaxPending ?? DEFAULT_LOCK_MAX_PENDING,
@@ -343,7 +343,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   async commitTransaction(txn: RocksDbTransaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
     return this._lock
       .acquire("commit", async () => {
-        const eventId = getNextEventId(this._rustStoreEventHandler);
+        const eventId = rsGetNextEventId(this._rustStoreEventHandler);
         if (eventId.isErr()) {
           throw eventId.error;
         }

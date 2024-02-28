@@ -5,19 +5,19 @@ import * as fs from "fs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import path from "path";
 import {
-  createDb,
-  dbClear,
-  dbClose,
-  dbCommit,
-  dbDel,
-  dbDestroy,
-  dbForEachIteratorByOpts,
-  dbForEachIteratorByPrefix,
-  dbGet,
-  dbGetMany,
-  dbLocation,
-  dbOpen,
-  dbPut,
+  rsCreateDb,
+  rsDbClear,
+  rsDbClose,
+  rsDbCommit,
+  rsDbDel,
+  rsDbDestroy,
+  rsDbForEachIteratorByOpts,
+  rsDbForEachIteratorByPrefix,
+  rsDbGet,
+  rsDbGetMany,
+  rsDbLocation,
+  rsDbOpen,
+  rsDbPut,
   RustDb,
   rustErrorToHubError,
 } from "../../rustfunctions.js";
@@ -75,7 +75,7 @@ class RocksDB {
     this._name = name;
 
     const createdDb = Result.fromThrowable(
-      () => createDb(`${DB_DIRECTORY}/${this._name ?? DB_NAME_DEFAULT}`),
+      () => rsCreateDb(`${DB_DIRECTORY}/${this._name ?? DB_NAME_DEFAULT}`),
       (e) => e,
     )();
     if (createdDb.isErr()) {
@@ -92,7 +92,7 @@ class RocksDB {
   }
 
   get location() {
-    return dbLocation(this._db);
+    return rsDbLocation(this._db);
   }
 
   get status(): DbStatus {
@@ -100,7 +100,7 @@ class RocksDB {
   }
 
   async put(key: Buffer, value: Buffer): Promise<void> {
-    const v = await ResultAsync.fromPromise(dbPut(this._db, key, value), (e) => rustErrorToHubError(e));
+    const v = await ResultAsync.fromPromise(rsDbPut(this._db, key, value), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
     }
@@ -109,7 +109,7 @@ class RocksDB {
   }
 
   async get(key: Buffer): Promise<Buffer> {
-    const v = await ResultAsync.fromPromise(dbGet(this._db, key), (e) => rustErrorToHubError(e));
+    const v = await ResultAsync.fromPromise(rsDbGet(this._db, key), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
     }
@@ -118,7 +118,7 @@ class RocksDB {
   }
 
   async getMany(keys: Buffer[]): Promise<(Buffer | undefined)[]> {
-    const v = await ResultAsync.fromPromise(dbGetMany(this._db, keys), (e) => rustErrorToHubError(e));
+    const v = await ResultAsync.fromPromise(rsDbGetMany(this._db, keys), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
     }
@@ -127,7 +127,7 @@ class RocksDB {
   }
 
   async del(key: Buffer): Promise<void> {
-    const v = await ResultAsync.fromPromise(dbDel(this._db, key), (e) => rustErrorToHubError(e));
+    const v = await ResultAsync.fromPromise(rsDbDel(this._db, key), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
     }
@@ -145,7 +145,7 @@ class RocksDB {
         resolve(undefined);
       } else {
         this._status = "opening";
-        dbOpen(this._db);
+        rsDbOpen(this._db);
         this._status = "open";
         resolve(undefined);
       }
@@ -153,19 +153,19 @@ class RocksDB {
   }
 
   close(): void {
-    dbClose(this._db);
+    rsDbClose(this._db);
     this._status = "closed";
   }
 
   clear(): void {
-    dbClear(this._db);
+    rsDbClear(this._db);
   }
 
   async destroy(): Promise<void> {
     if (this.status === "open") {
       this.close();
     }
-    return dbDestroy(this._db);
+    return rsDbDestroy(this._db);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -177,7 +177,7 @@ class RocksDB {
   }
 
   async commit(tsx: RocksDbTransaction): Promise<void> {
-    return dbCommit(this._db, tsx.getKeyValues());
+    return rsDbCommit(this._db, tsx.getKeyValues());
   }
 
   /**
@@ -188,7 +188,7 @@ class RocksDB {
     callback: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
     pageOptions: PageOptions = {},
   ): Promise<boolean> {
-    return dbForEachIteratorByPrefix(this._db, prefix, pageOptions, callback);
+    return rsDbForEachIteratorByPrefix(this._db, prefix, pageOptions, callback);
   }
 
   /**
@@ -199,7 +199,7 @@ class RocksDB {
     options: RocksDbIteratorOptions,
     callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<boolean> | boolean | void,
   ): Promise<boolean> {
-    return dbForEachIteratorByOpts(this._db, options, callback);
+    return rsDbForEachIteratorByOpts(this._db, options, callback);
   }
 
   async approximateSize(): Promise<number> {

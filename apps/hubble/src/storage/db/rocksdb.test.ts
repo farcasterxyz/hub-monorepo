@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, rmSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
 import RocksDB from "./rocksdb.js";
 import { ResultAsync } from "neverthrow";
-import { dbForEachIteratorByOpts, dbForEachIteratorByPrefix } from "../../rustfunctions.js";
+import { rsDbForEachIteratorByOpts, rsDbForEachIteratorByPrefix } from "../../rustfunctions.js";
 
 //Safety: fs is safe to use in tests
 
@@ -385,7 +385,7 @@ describe("with db", () => {
 
       // Returns the first 3 values with the correct ranges
       let values: Buffer[] = [];
-      let allFinished = await dbForEachIteratorByOpts(
+      let allFinished = await rsDbForEachIteratorByOpts(
         db.rustDb,
         { gte: Buffer.from([100]), lt: Buffer.from([100, 4]) },
         (_key, value) => {
@@ -397,7 +397,7 @@ describe("with db", () => {
 
       // Correctly pages through all the values even with a small overridePageSize
       values = [];
-      allFinished = await dbForEachIteratorByOpts(
+      allFinished = await rsDbForEachIteratorByOpts(
         db.rustDb,
         { gte: Buffer.from([100]), lt: Buffer.from([100, 6]) },
         (_key, value) => {
@@ -410,7 +410,7 @@ describe("with db", () => {
 
       // Stops iteration if the callback returns true
       values = [];
-      allFinished = await dbForEachIteratorByOpts(
+      allFinished = await rsDbForEachIteratorByOpts(
         db.rustDb,
         { gte: Buffer.from([100]), lt: Buffer.from([100, 6]) },
         (_key, value) => {
@@ -423,7 +423,7 @@ describe("with db", () => {
 
       // Respects "gt" instead of "gte"
       values = [];
-      allFinished = await dbForEachIteratorByOpts(
+      allFinished = await rsDbForEachIteratorByOpts(
         db.rustDb,
         { gt: Buffer.from([100, 1]), lt: Buffer.from([100, 6]) },
         (_key, value) => {
@@ -435,7 +435,7 @@ describe("with db", () => {
 
       // Respects reverse even with a small overridePageSize
       values = [];
-      allFinished = await dbForEachIteratorByOpts(
+      allFinished = await rsDbForEachIteratorByOpts(
         db.rustDb,
         { gte: Buffer.from([100]), lt: Buffer.from([100, 6]), reverse: true },
         (_key, value) => {
@@ -474,7 +474,7 @@ describe("with db", () => {
 
       // With a max page size, all values are returned
       let values: Buffer[] = [];
-      let allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
+      let allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
         values.push(value as Buffer);
       });
       expect(allFinished).toEqual(true);
@@ -482,7 +482,7 @@ describe("with db", () => {
 
       // With a page size of 3, the first 3 values are returned
       values = [];
-      allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), { pageSize: 3 }, (_key, value) => {
+      allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), { pageSize: 3 }, (_key, value) => {
         values.push(value as Buffer);
       });
       expect(allFinished).toEqual(false);
@@ -490,7 +490,7 @@ describe("with db", () => {
 
       // With a continuation token and page size, the next 3 values are returned
       values = [];
-      allFinished = await dbForEachIteratorByPrefix(
+      allFinished = await rsDbForEachIteratorByPrefix(
         db.rustDb,
         Buffer.from([100]),
         { pageSize: 3, pageToken: Buffer.from([3]) },
@@ -503,7 +503,7 @@ describe("with db", () => {
 
       // With a continuation token and no page size, all remaining values are returned
       values = [];
-      allFinished = await dbForEachIteratorByPrefix(
+      allFinished = await rsDbForEachIteratorByPrefix(
         db.rustDb,
         Buffer.from([100]),
         { pageToken: Buffer.from([3]) },
@@ -516,7 +516,7 @@ describe("with db", () => {
 
       // With the last continuation token and page size, all remaining values are returned
       values = [];
-      allFinished = await dbForEachIteratorByPrefix(
+      allFinished = await rsDbForEachIteratorByPrefix(
         db.rustDb,
         Buffer.from([100]),
         { pageSize: 3, pageToken: Buffer.from([6]) },
@@ -529,7 +529,7 @@ describe("with db", () => {
 
       // If the prefix doesn't exist, the iterator returns finished
       values = [];
-      allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([101]), {}, (_key, value) => {
+      allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([101]), {}, (_key, value) => {
         values.push(value as Buffer);
       });
       expect(allFinished).toEqual(true);
@@ -537,7 +537,7 @@ describe("with db", () => {
 
       // allFinished returns false if the callback returns true
       values = [];
-      allFinished = await dbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
+      allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
         values.push(value as Buffer);
         return true;
       });

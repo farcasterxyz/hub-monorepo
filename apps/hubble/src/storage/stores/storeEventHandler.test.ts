@@ -8,7 +8,7 @@ import { sleep } from "../../utils/crypto.js";
 import { extractEventTimestamp, getFarcasterTime } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
 import CastStore from "./castStore.js";
-import { createStoreEventHandler, getNextEventId } from "../../rustfunctions.js";
+import { rsCreateStoreEventHandler, rsGetNextEventId } from "../../rustfunctions.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
@@ -41,13 +41,13 @@ beforeAll(async () => {
 });
 
 describe("HubEventIdGenerator", () => {
-  const generator = createStoreEventHandler();
+  const generator = rsCreateStoreEventHandler();
 
   test("succeeds", () => {
     let lastId = 0;
 
     for (let i = 0; i < 10; i++) {
-      const id = getNextEventId(generator)._unsafeUnwrap();
+      const id = rsGetNextEventId(generator)._unsafeUnwrap();
       expect(id).toBeGreaterThan(lastId);
       lastId = id;
     }
@@ -55,15 +55,15 @@ describe("HubEventIdGenerator", () => {
 
   test("fails if sequence ID exceeds max allowed", () => {
     const currentTimestamp = Date.now();
-    const generator = createStoreEventHandler(0, currentTimestamp, 4094);
-    expect(getNextEventId(generator, currentTimestamp).isOk()).toEqual(true);
-    expect(getNextEventId(generator, currentTimestamp).isErr()).toEqual(true);
+    const generator = rsCreateStoreEventHandler(0, currentTimestamp, 4094);
+    expect(rsGetNextEventId(generator, currentTimestamp).isOk()).toEqual(true);
+    expect(rsGetNextEventId(generator, currentTimestamp).isErr()).toEqual(true);
   });
 
   test("can parse timestamps from event id", async () => {
     const currentTimestamp = Date.now();
-    const generator = createStoreEventHandler(FARCASTER_EPOCH, currentTimestamp, 0);
-    const id = getNextEventId(generator, currentTimestamp)._unsafeUnwrap();
+    const generator = rsCreateStoreEventHandler(FARCASTER_EPOCH, currentTimestamp, 0);
+    const id = rsGetNextEventId(generator, currentTimestamp)._unsafeUnwrap();
     expect(extractEventTimestamp(id)).toEqual(currentTimestamp);
   });
 });

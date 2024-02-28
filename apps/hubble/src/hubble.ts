@@ -38,7 +38,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { nativeValidationMethods } from "./rustfunctions.js";
+import { rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -914,12 +914,12 @@ export class Hub implements HubInterface {
       const hash = await validations.createMessageHash(
         ContactInfoContentBody.encode(body).finish(),
         HashScheme.BLAKE3,
-        nativeValidationMethods,
+        rsValidationMethods,
       );
       if (hash.isErr()) {
         return err(hash.error);
       }
-      const signature = await validations.signMessageHash(hash.value, rawPrivKey.marshal(), nativeValidationMethods);
+      const signature = await validations.signMessageHash(hash.value, rawPrivKey.marshal(), rsValidationMethods);
       if (signature.isErr()) {
         return err(signature.error);
       }
@@ -1128,7 +1128,7 @@ export class Hub implements HubInterface {
         return false;
       }
 
-      const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, nativeValidationMethods);
+      const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, rsValidationMethods);
       if (hash.isErr()) {
         log.warn({ message: content }, "could not hash message");
         return false;
@@ -1138,7 +1138,7 @@ export class Hub implements HubInterface {
         hash.value,
         content.signature,
         content.signer,
-        nativeValidationMethods,
+        rsValidationMethods,
       );
       if (result.isErr()) {
         log.warn({ message: content, error: result.error }, "signature verification failed for contact info");

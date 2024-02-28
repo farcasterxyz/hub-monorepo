@@ -1,4 +1,4 @@
-import { nativeBlake3Hash20 } from "../rustfunctions.js";
+import { rsBlake3Hash20 } from "../rustfunctions.js";
 import { blake3 } from "@noble/hashes/blake3";
 
 export const BLAKE3TRUNCATE160_EMPTY_HASH = Buffer.from(blake3(new Uint8Array(), { dkLen: 20 }));
@@ -34,5 +34,5 @@ export const blake3Truncate160 = (msg: Uint8Array | undefined): Uint8Array => {
   if (msg === undefined || msg.length === 0) {
     return BLAKE3TRUNCATE160_EMPTY_HASH;
   }
-  return nativeBlake3Hash20(msg);
+  return rsBlake3Hash20(msg);
 };

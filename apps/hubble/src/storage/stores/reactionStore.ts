@@ -12,16 +12,16 @@ import {
 } from "@farcaster/hub-nodejs";
 import {
   RustDynStore,
-  createReactionStore,
-  getAllMessagesByFid,
-  getMessage,
-  getReactionAdd,
-  getReactionAddsByFid,
-  getReactionRemove,
-  getReactionRemovesByFid,
-  getReactionsByTarget,
-  merge,
-  pruneMessages,
+  rsCreateReactionStore,
+  rsGetAllMessagesByFid,
+  rsGetMessage,
+  rsGetReactionAdd,
+  rsGetReactionAddsByFid,
+  rsGetReactionRemove,
+  rsGetReactionRemovesByFid,
+  rsGetReactionsByTarget,
+  rsMerge,
+  rsPruneMessages,
   revoke,
   rustErrorToHubError,
 } from "../../rustfunctions.js";
@@ -45,7 +45,7 @@ class ReactionStore {
     this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
     this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
 
-    this.rustReactionStore = createReactionStore(
+    this.rustReactionStore = rsCreateReactionStore(
       db.rustDb,
       eventHandler.getRustStoreEventHandler(),
       this._pruneSizeLimit,
@@ -89,7 +89,7 @@ class ReactionStore {
 
     // Encode the message to bytes
     const messageBytes = Message.encode(message).finish();
-    const result = await ResultAsync.fromPromise(merge(this.rustReactionStore, messageBytes), rustErrorToHubError);
+    const result = await ResultAsync.fromPromise(rsMerge(this.rustReactionStore, messageBytes), rustErrorToHubError);
     if (result.isErr()) {
       throw result.error;
     }
@@ -135,7 +135,7 @@ class ReactionStore {
     }
 
     const result = await ResultAsync.fromPromise(
-      pruneMessages(this.rustReactionStore, fid, cachedCount.value, units.value),
+      rsPruneMessages(this.rustReactionStore, fid, cachedCount.value, units.value),
       rustErrorToHubError,
     );
     if (result.isErr()) {
@@ -155,7 +155,7 @@ class ReactionStore {
 
   async getMessage(fid: number, set: UserMessagePostfix, tsHash: Uint8Array): Promise<Message> {
     const message_bytes = await ResultAsync.fromPromise(
-      getMessage(this.rustReactionStore, fid, set, tsHash),
+      rsGetMessage(this.rustReactionStore, fid, set, tsHash),
       rustErrorToHubError,
     );
     if (message_bytes.isErr()) {
@@ -169,7 +169,7 @@ class ReactionStore {
     fid: number,
     pageOptions: PageOptions = {},
   ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
-    const messages_page = await getAllMessagesByFid(this.rustReactionStore, fid, pageOptions);
+    const messages_page = await rsGetAllMessagesByFid(this.rustReactionStore, fid, pageOptions);
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
@@ -190,7 +190,7 @@ class ReactionStore {
     }
 
     const result = await ResultAsync.fromPromise(
-      getReactionAdd(this.rustReactionStore, fid, type, targetCastId, targetUrl),
+      rsGetReactionAdd(this.rustReactionStore, fid, type, targetCastId, targetUrl),
       rustErrorToHubError,
     );
     if (result.isErr()) {
@@ -210,7 +210,7 @@ class ReactionStore {
     }
 
     const result = await ResultAsync.fromPromise(
-      getReactionRemove(this.rustReactionStore, fid, type, targetCastId, targetUrl),
+      rsGetReactionRemove(this.rustReactionStore, fid, type, targetCastId, targetUrl),
       rustErrorToHubError,
     );
     if (result.isErr()) {
@@ -224,7 +224,7 @@ class ReactionStore {
     type?: ReactionType,
     pageOptions?: PageOptions,
   ): Promise<MessagesPage<ReactionAddMessage>> {
-    const messages_page = await getReactionAddsByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
+    const messages_page = await rsGetReactionAddsByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
@@ -239,7 +239,7 @@ class ReactionStore {
     type?: ReactionType,
     pageOptions?: PageOptions,
   ): Promise<MessagesPage<ReactionRemoveMessage>> {
-    const message_page = await getReactionRemovesByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
+    const message_page = await rsGetReactionRemovesByFid(this.rustReactionStore, fid, type ?? 0, pageOptions ?? {});
 
     const messages =
       message_page.messageBytes?.map((message_bytes) => {
@@ -270,7 +270,7 @@ class ReactionStore {
       targetCastId = Buffer.from(CastId.encode(target).finish());
     }
 
-    const message_page = await getReactionsByTarget(
+    const message_page = await rsGetReactionsByTarget(
       this.rustReactionStore,
       targetCastId,
       targetUrl,

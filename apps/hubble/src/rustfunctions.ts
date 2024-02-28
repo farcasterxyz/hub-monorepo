@@ -29,13 +29,13 @@ export class RustMessagesPage {
 }
 
 // Use this function in TypeScript to call the rust code.
-export function nativeBlake3Hash20(data: Uint8Array): Uint8Array {
+export function rsBlake3Hash20(data: Uint8Array): Uint8Array {
   const dataBuf = Buffer.from(data);
 
   return new Uint8Array(lib.blake3_20(dataBuf));
 }
 
-export function nativeEd25519SignMessageHash(hash: Uint8Array, signerKey: Uint8Array): Uint8Array {
+export function rsEd25519SignMessageHash(hash: Uint8Array, signerKey: Uint8Array): Uint8Array {
   const hashBuf = Buffer.from(hash);
   const signerKeyBuf = Buffer.from(signerKey);
 
@@ -43,7 +43,7 @@ export function nativeEd25519SignMessageHash(hash: Uint8Array, signerKey: Uint8A
 }
 
 // Use this function in TypeScript to call the rust code.
-export function nativeEd25519Verify(signature: Uint8Array, hash: Uint8Array, signer: Uint8Array): boolean {
+export function rsEd25519Verify(signature: Uint8Array, hash: Uint8Array, signer: Uint8Array): boolean {
   const sigBuf = Buffer.from(signature);
   const hashBuf = Buffer.from(hash);
   const signerBuf = Buffer.from(signer);
@@ -52,10 +52,10 @@ export function nativeEd25519Verify(signature: Uint8Array, hash: Uint8Array, sig
 }
 
 /** Fast, native implementation of validation methods to improve perf */
-export const nativeValidationMethods: validations.ValidationMethods = {
-  ed25519_verify: async (s: Uint8Array, m: Uint8Array, p: Uint8Array) => nativeEd25519Verify(s, m, p),
-  ed25519_signMessageHash: async (m: Uint8Array, s: Uint8Array) => nativeEd25519SignMessageHash(m, s),
-  blake3_20: (message: Uint8Array) => nativeBlake3Hash20(message),
+export const rsValidationMethods: validations.ValidationMethods = {
+  ed25519_verify: async (s: Uint8Array, m: Uint8Array, p: Uint8Array) => rsEd25519Verify(s, m, p),
+  ed25519_signMessageHash: async (m: Uint8Array, s: Uint8Array) => rsEd25519SignMessageHash(m, s),
+  blake3_20: (message: Uint8Array) => rsBlake3Hash20(message),
 };
 
 export const rustErrorToHubError = (e: unknown) => {
@@ -76,51 +76,51 @@ export const rustErrorToHubError = (e: unknown) => {
   please, since the Javascript code will continue to own one `Arc<T>`, making sure that it lasts for the lifetime of 
   the program.
 */
-export const createDb = (path: string): RustDb => {
+export const rsCreateDb = (path: string): RustDb => {
   const db = lib.createDb(path);
 
   return db as RustDb;
 };
 
-export const dbOpen = (db: RustDb): void => {
+export const rsDbOpen = (db: RustDb): void => {
   lib.dbOpen.call(db);
 };
 
-export const dbClear = (db: RustDb) => {
+export const rsDbClear = (db: RustDb) => {
   return lib.dbClear.call(db);
 };
 
-export const dbClose = (db: RustDb) => {
+export const rsDbClose = (db: RustDb) => {
   return lib.dbClose.call(db);
 };
 
-export const dbDestroy = (db: RustDb) => {
+export const rsDbDestroy = (db: RustDb) => {
   return lib.dbDestroy.call(db);
 };
 
-export const dbLocation = (db: RustDb): string => {
+export const rsDbLocation = (db: RustDb): string => {
   return lib.dbLocation.call(db);
 };
 
-export const dbGet = async (db: RustDb, key: Uint8Array): Promise<Buffer> => {
+export const rsDbGet = async (db: RustDb, key: Uint8Array): Promise<Buffer> => {
   return await lib.dbGet.call(db, key);
 };
 
-export const dbGetMany = async (db: RustDb, keys: Uint8Array[]): Promise<(Buffer | undefined)[]> => {
+export const rsDbGetMany = async (db: RustDb, keys: Uint8Array[]): Promise<(Buffer | undefined)[]> => {
   const results = await lib.dbGetMany.call(db, keys);
   // If a key was not found, it is set to an empty buffer. We want to return undefined in that case
   return results.map((result: Buffer) => (result.length === 0 ? undefined : result));
 };
 
-export const dbPut = async (db: RustDb, key: Uint8Array, value: Uint8Array): Promise<void> => {
+export const rsDbPut = async (db: RustDb, key: Uint8Array, value: Uint8Array): Promise<void> => {
   return await lib.dbPut.call(db, key, value);
 };
 
-export const dbDel = async (db: RustDb, key: Uint8Array): Promise<void> => {
+export const rsDbDel = async (db: RustDb, key: Uint8Array): Promise<void> => {
   return await lib.dbDel.call(db, key);
 };
 
-export const dbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<void> => {
+export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<void> => {
   return await lib.dbCommit.call(db, keyValues);
 };
 
@@ -150,7 +150,7 @@ export const dbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<voi
   - If the iteration was stopped because the callback returned true, it returns false (i.e., there are more keys available)
   
  */
-export const dbForEachIteratorByPrefix = async (
+export const rsDbForEachIteratorByPrefix = async (
   db: RustDb,
   prefix: Uint8Array,
   pageOptions: PageOptions,
@@ -200,7 +200,7 @@ export const dbForEachIteratorByPrefix = async (
 /**
  * Iterator using raw iterator options. See note above for how the paging works.
  */
-export const dbForEachIteratorByOpts = async (
+export const rsDbForEachIteratorByOpts = async (
   db: RustDb,
   iteratorOpts: RocksDbIteratorOptions,
   cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | void,
@@ -247,7 +247,7 @@ export const dbForEachIteratorByOpts = async (
   return !stopped && allFinished;
 };
 
-export const createStoreEventHandler = (
+export const rsCreateStoreEventHandler = (
   epoch?: number,
   last_timestamp?: number,
   last_seq?: number,
@@ -255,7 +255,7 @@ export const createStoreEventHandler = (
   return lib.createStoreEventHandler(epoch, last_timestamp, last_seq) as RustStoreEventHandler;
 };
 
-export const getNextEventId = (
+export const rsGetNextEventId = (
   eventHandler: RustStoreEventHandler,
   currentTimestamp?: number,
 ): Result<number, HubError> => {
@@ -263,7 +263,7 @@ export const getNextEventId = (
 };
 
 /** Create a reaction Store */
-export const createReactionStore = (
+export const rsCreateReactionStore = (
   db: RustDb,
   eventHandler: RustStoreEventHandler,
   pruneSizeLimit: number,
@@ -274,7 +274,7 @@ export const createReactionStore = (
   return store as RustDynStore;
 };
 
-export const getMessage = async (
+export const rsGetMessage = async (
   store: RustDynStore,
   fid: number,
   set: UserMessagePostfix,
@@ -284,7 +284,7 @@ export const getMessage = async (
 };
 
 /** This is dynamically dispatched to any Store that you pass in */
-export const merge = async (store: RustDynStore, messageBytes: Uint8Array): Promise<Buffer> => {
+export const rsMerge = async (store: RustDynStore, messageBytes: Uint8Array): Promise<Buffer> => {
   return await lib.merge.call(store, messageBytes);
 };
 
@@ -294,7 +294,7 @@ export const revoke = async (store: RustDynStore, messageBytes: Uint8Array): Pro
 };
 
 /** This is dynamically dispatched to any Store, and the messages will be returned from that store */
-export const pruneMessages = async (
+export const rsPruneMessages = async (
   store: RustDynStore,
   fid: number,
   cachedCount: number,
@@ -303,7 +303,7 @@ export const pruneMessages = async (
   return await lib.pruneMessages.call(store, fid, cachedCount, units);
 };
 
-export const getAllMessagesByFid = async (
+export const rsGetAllMessagesByFid = async (
   store: RustDynStore,
   fid: number,
   pageOptions: PageOptions,
@@ -311,7 +311,7 @@ export const getAllMessagesByFid = async (
   return await lib.getAllMessagesByFid.call(store, fid, pageOptions);
 };
 
-export const getReactionAdd = async (
+export const rsGetReactionAdd = async (
   store: RustDynStore,
   fid: number,
   type: number,
@@ -321,7 +321,7 @@ export const getReactionAdd = async (
   return await lib.getReactionAdd.call(store, fid, type, targetCastIdBytes, targetUrl);
 };
 
-export const getReactionRemove = async (
+export const rsGetReactionRemove = async (
   store: RustDynStore,
   fid: number,
   type: number,
@@ -331,7 +331,7 @@ export const getReactionRemove = async (
   return await lib.getReactionRemove.call(store, fid, type, targetCastIdBytes, targetUrl);
 };
 
-export const getReactionAddsByFid = async (
+export const rsGetReactionAddsByFid = async (
   store: RustDynStore,
   fid: number,
   type: number,
@@ -340,7 +340,7 @@ export const getReactionAddsByFid = async (
   return await lib.getReactionAddsByFid.call(store, fid, type, pageOptions);
 };
 
-export const getReactionRemovesByFid = async (
+export const rsGetReactionRemovesByFid = async (
   store: RustDynStore,
   fid: number,
   type: number,
@@ -349,7 +349,7 @@ export const getReactionRemovesByFid = async (
   return await lib.getReactionRemovesByFid.call(store, fid, type, pageOptions);
 };
 
-export const getReactionsByTarget = async (
+export const rsGetReactionsByTarget = async (
   store: RustDynStore,
   targetCastIdBytes: Buffer,
   targetUrl: string,
