@@ -14,7 +14,7 @@ All rust objects need to be "owned" by someone so that rust can manage its lifec
 
 Since the Rust objects are `Arc<T>` inside a `JsBox`, we can clone them and keep them around in the rust code as we please, since the Javascript code will continue to own one `Arc<T>`, making sure that it lasts for the lifetime of the program.
 
-### Note about itearators
+### Note about iterators
 Rust code needs to be memory-safe, which means that we can't pass around iterators like we do in Javascript. This is because the `iterator` reference is valid for only as long as the `db` is valid, and the reference is dropped right after the iterator is finished.
 
 This specifically means that we need to use iterators as callbacks. The way the iterators are set up is:
