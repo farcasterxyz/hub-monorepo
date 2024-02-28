@@ -20,7 +20,6 @@ use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 
 pub struct ReactionStoreDef {
     prune_size_limit: u32,
-    prune_time_limit: u32,
 }
 
 impl StoreDef for ReactionStoreDef {
@@ -237,15 +236,11 @@ impl ReactionStore {
         db: Arc<RocksDB>,
         store_event_handler: Arc<StoreEventHandler>,
         prune_size_limit: u32,
-        prune_time_limit: u32,
     ) -> Store {
         Store::new_with_store_def(
             db,
             store_event_handler,
-            Box::new(ReactionStoreDef {
-                prune_size_limit,
-                prune_time_limit,
-            }),
+            Box::new(ReactionStoreDef { prune_size_limit }),
         )
     }
 
@@ -432,15 +427,11 @@ impl ReactionStore {
         let prune_size_limit = cx
             .argument::<JsNumber>(2)
             .map(|n| n.value(&mut cx) as u32)?;
-        let prune_time_limit = cx
-            .argument::<JsNumber>(3)
-            .map(|n| n.value(&mut cx) as u32)?;
 
         Ok(cx.boxed(Arc::new(ReactionStore::new(
             db,
             store_event_handler,
             prune_size_limit,
-            prune_time_limit,
         ))))
     }
 

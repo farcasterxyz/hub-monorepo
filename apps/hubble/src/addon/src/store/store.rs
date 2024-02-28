@@ -100,11 +100,6 @@ pub trait StoreDef: Send + Sync {
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
     fn make_remove_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
 
-    fn get_prune_time_limit(&self) -> u32 {
-        // No prune time limits after migration
-        0
-    }
-
     fn get_prune_size_limit(&self) -> u32;
 }
 
@@ -603,14 +598,6 @@ impl Store {
     ) -> Result<Vec<HubEvent>, HubError> {
         let mut pruned_events = vec![];
 
-        let farcaster_time = get_farcaster_time()?;
-
-        let timestamp_to_prune = if self.store_def.get_prune_time_limit() > 0 {
-            Some(farcaster_time as u32 - self.store_def.get_prune_time_limit())
-        } else {
-            None
-        };
-
         let mut count = cached_count;
         let prune_size_limit = self.store_def.get_prune_size_limit();
 
@@ -633,10 +620,7 @@ impl Store {
                     return Ok(false); // Continue the iteration
                 }
 
-                if count <= (prune_size_limit as u64) * units
-                    && (timestamp_to_prune.is_none()
-                        || message.data.as_ref().unwrap().timestamp >= timestamp_to_prune.unwrap())
-                {
+                if count <= (prune_size_limit as u64) * units {
                     return Ok(true); // Stop the iteration, nothing left to prune
                 }
 

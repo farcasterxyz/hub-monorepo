@@ -267,9 +267,8 @@ export const rsCreateReactionStore = (
   db: RustDb,
   eventHandler: RustStoreEventHandler,
   pruneSizeLimit: number,
-  pruneTimeLimit: number,
 ): RustDynStore => {
-  const store = lib.createReactionStore(db, eventHandler, pruneSizeLimit, pruneTimeLimit);
+  const store = lib.createReactionStore(db, eventHandler, pruneSizeLimit);
 
   return store as RustDynStore;
 };

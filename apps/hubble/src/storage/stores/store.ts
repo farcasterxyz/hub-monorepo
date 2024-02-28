@@ -54,7 +54,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
   protected _db: RocksDB;
   protected _eventHandler: StoreEventHandler;
   private _pruneSizeLimit: number;
-  protected _pruneTimeLimit: number | undefined;
   private _mergeLock: AsyncLock;
 
   abstract _postfix: UserMessagePostfix;
@@ -97,7 +96,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     this._db = db;
     this._eventHandler = eventHandler;
     this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
     this._mergeLock = new AsyncLock({ timeout: MERGE_TIMEOUT_DEFAULT });
   }
 
@@ -187,7 +185,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
             message as any,
             this._postfix,
             this.pruneSizeLimit,
-            this.pruneTimeLimit,
           );
           if (prunableResult.isErr()) {
             throw prunableResult.error;
@@ -252,9 +249,6 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       return err(farcasterTime.error);
     }
 
-    // Calculate the timestamp cut-off to prune
-    const timestampToPrune = this.pruneTimeLimit === undefined ? undefined : farcasterTime.value - this.pruneTimeLimit;
-
     // Go over all messages for this fid and postfix
     await this._db.forEachIteratorByPrefix(makeMessagePrimaryKey(fid, this._postfix), async (_key, value) => {
       const message = Result.fromThrowable(
@@ -274,10 +268,7 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
 
       // Since the TS hash has the first 4 bytes be the timestamp (bigendian), we can use it to prune
       // since the iteration will be implicitly sorted by timestamp
-      if (
-        count.value <= this.pruneSizeLimit * units.value &&
-        (timestampToPrune === undefined || (message.value.data && message.value.data.timestamp >= timestampToPrune))
-      ) {
+      if (count.value <= this.pruneSizeLimit * units.value) {
         return true; // Nothing left to prune
       }
 
@@ -313,17 +304,8 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
     return this._pruneSizeLimit;
   }
 
-  get pruneTimeLimit(): number | undefined {
-    // No more time based pruning after the migration
-    return undefined;
-  }
-
   protected get PRUNE_SIZE_LIMIT_DEFAULT(): number {
     return 10000;
-  }
-
-  protected get PRUNE_TIME_LIMIT_DEFAULT(): number | undefined {
-    return undefined;
   }
 
   protected mergeEventArgs(mergedMessage: TAdd | TRemove, mergeConflicts: (TAdd | TRemove)[]): HubEventArgs {

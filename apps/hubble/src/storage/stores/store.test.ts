@@ -90,7 +90,6 @@ describe("store", () => {
 
     const store = new TestStore(db, eventHandler, {
       pruneSizeLimit: 100,
-      pruneTimeLimit: 100,
     });
     await store.merge(castAdd._unsafeUnwrap());
 

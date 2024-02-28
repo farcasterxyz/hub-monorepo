@@ -291,22 +291,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     message: PrunableMessage,
     set: UserMessagePostfix,
     sizeLimit: number,
-    timeLimit: number | undefined = undefined,
   ): HubAsyncResult<boolean> {
-    const farcasterTime = getFarcasterTime();
-    if (farcasterTime.isErr()) {
-      return err(farcasterTime.error);
-    }
-
-    // Calculate the timestamp cut-off to prune if set supports time based expiry
-    if (timeLimit !== undefined) {
-      const timestampToPrune = farcasterTime.value - timeLimit;
-
-      if (message.data.timestamp < timestampToPrune) {
-        return ok(true);
-      }
-    }
-
     const units = await this.getCurrentStorageUnitsForFid(message.data.fid);
 
     if (units.isErr()) {

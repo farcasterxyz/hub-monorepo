@@ -188,7 +188,6 @@ describe("usernameProofStore", () => {
 
       test("defaults size limit", async () => {
         expect(set.pruneSizeLimit).toEqual(getDefaultStoreLimit(StoreType.USERNAME_PROOFS));
-        expect(set.pruneTimeLimit).toBeUndefined();
       });
 
       test("no-ops when no messages have been merged", async () => {

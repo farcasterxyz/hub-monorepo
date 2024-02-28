@@ -31,25 +31,20 @@ import { UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { ResultAsync, err, ok } from "neverthrow";
 import RocksDB from "storage/db/rocksdb.js";
 
-const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 90; // 90 days
-
 class ReactionStore {
   private rustReactionStore: RustDynStore;
   protected _eventHandler: StoreEventHandler;
 
   private _postfix: UserMessagePostfix;
   private _pruneSizeLimit: number;
-  protected _pruneTimeLimit: number | undefined;
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
     this._pruneSizeLimit = options.pruneSizeLimit ?? this.PRUNE_SIZE_LIMIT_DEFAULT;
-    this._pruneTimeLimit = options.pruneTimeLimit ?? this.PRUNE_TIME_LIMIT_DEFAULT;
 
     this.rustReactionStore = rsCreateReactionStore(
       db.rustDb,
       eventHandler.getRustStoreEventHandler(),
       this._pruneSizeLimit,
-      this._pruneTimeLimit,
     );
 
     this._postfix = UserPostfix.ReactionMessage;
@@ -60,17 +55,8 @@ class ReactionStore {
     return getDefaultStoreLimit(StoreType.REACTIONS);
   }
 
-  protected get PRUNE_TIME_LIMIT_DEFAULT() {
-    return PRUNE_TIME_LIMIT_DEFAULT;
-  }
-
   get pruneSizeLimit(): number {
     return this._pruneSizeLimit;
-  }
-
-  get pruneTimeLimit(): number | undefined {
-    // No more time based pruning after the migration
-    return undefined;
   }
 
   async merge(message: Message): Promise<number> {
@@ -79,7 +65,6 @@ class ReactionStore {
       message as any,
       this._postfix,
       this.pruneSizeLimit,
-      this.pruneTimeLimit,
     );
     if (prunableResult.isErr()) {
       throw prunableResult.error;

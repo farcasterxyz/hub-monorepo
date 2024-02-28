@@ -137,10 +137,6 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
     return getDefaultStoreLimit(StoreType.CASTS);
   }
 
-  protected override get PRUNE_TIME_LIMIT_DEFAULT() {
-    return 60 * 60 * 24 * 365; // 1 year
-  }
-
   override async buildSecondaryIndices(txn: RocksDbTransaction, message: CastAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 

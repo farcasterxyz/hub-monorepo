@@ -95,23 +95,16 @@ describe("commitTransaction", () => {
 });
 
 describe("isPrunable", () => {
-  test("returns true if messsage is earlier than prune time limit", async () => {
-    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 101 } });
-    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10, 100)).resolves.toEqual(ok(true));
-  });
   test("returns false if there is no prune time limit", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 101 } });
     await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10)).resolves.toEqual(ok(false));
   });
-  test("returns false if message is later than prune time limit", async () => {
-    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
-    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10, 100)).resolves.toEqual(ok(false));
-  });
+
   test("returns false if under size limit", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
     await putMessage(db, message);
     await expect(eventHandler.getCacheMessageCount(message.data.fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
-    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(false));
+    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 1)).resolves.toEqual(ok(false));
   });
   test("returns false if over size limit and message is later than earliest message", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
@@ -121,7 +114,7 @@ describe("isPrunable", () => {
     const laterMessage = await Factories.CastAddMessage.create({
       data: { fid: message.data.fid, timestamp: currentTime + 50 },
     });
-    await expect(eventHandler.isPrunable(laterMessage, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(false));
+    await expect(eventHandler.isPrunable(laterMessage, UserPostfix.CastMessage, 1)).resolves.toEqual(ok(false));
   });
   test("returns true if over size limit and message is earlier than earliest message", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
@@ -134,7 +127,7 @@ describe("isPrunable", () => {
     const earlierMessage = await Factories.CastAddMessage.create({
       data: { fid: message.data.fid, timestamp: currentTime - 75 },
     });
-    await expect(eventHandler.isPrunable(earlierMessage, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(true));
+    await expect(eventHandler.isPrunable(earlierMessage, UserPostfix.CastMessage, 1)).resolves.toEqual(ok(true));
   });
 });
 
