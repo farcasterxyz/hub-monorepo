@@ -19,7 +19,7 @@ import { Config as DefaultConfig } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
-import { initializeStatsd } from "./utils/statsd.js";
+import { getStatsdInitialization, initializeStatsd } from "./utils/statsd.js";
 import os from "os";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { mainnet, optimism } from "viem/chains";
@@ -340,31 +340,6 @@ app
       rpcRateLimit = hubConfig.rpcRateLimit;
     }
 
-    // Check if the DB_RESET_TOKEN env variable is set. If it is, we might need to reset the DB.
-    let resetDB = false;
-    const dbResetToken = process.env["DB_RESET_TOKEN"];
-    if (dbResetToken) {
-      // Read the contents of the "db_reset_token.txt" file, and if the number is
-      // different from the DB_RESET_TOKEN env variable, then we should reset the DB
-      const dbResetTokenFile = `${processFileDir}/db_reset_token.txt`;
-      let dbResetTokenFileContents = "";
-      try {
-        dbResetTokenFileContents = fs.readFileSync(dbResetTokenFile, "utf8").trim();
-      } catch (err) {
-        // Ignore error
-      }
-
-      if (dbResetTokenFileContents !== dbResetToken) {
-        // Write the new token to the file
-        fs.mkdirSync(processFileDir, { recursive: true });
-        fs.writeFileSync(dbResetTokenFile, dbResetToken);
-
-        // Reset the DB
-        logger.warn({ dbResetTokenFileContents, dbResetToken }, "Resetting DB since DB_RESET_TOKEN was set");
-        resetDB = true;
-      }
-    }
-
     // Metrics
     const statsDServer = cliOptions.statsdMetricsServer ?? hubConfig.statsdMetricsServer;
     if (statsDServer) {
@@ -523,10 +498,11 @@ app
       rpcRateLimit,
       rpcSubscribePerIpLimit: cliOptions.rpcSubscribePerIpLimit ?? hubConfig.rpcSubscribePerIpLimit,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
-      resetDB,
+      resetDB: false,
       rebuildSyncTrie,
       profileSync,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,
+      statsdParams: getStatsdInitialization(),
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,
       commitLockMaxPending: cliOptions.commitLockMaxPending ?? hubConfig.commitLockMaxPending,
       adminServerEnabled: cliOptions.adminServerEnabled ?? hubConfig.adminServerEnabled,
@@ -621,24 +597,6 @@ app
       console.log("Please wait... This may take several minutes");
     }
 
-    const hub = hubResult.value;
-    const startResult = await ResultAsync.fromPromise(
-      hub.start(),
-      (e) => new Error("Failed to start hub", { cause: e }),
-    );
-    if (startResult.isErr()) {
-      logger.fatal(startResult.error);
-      logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
-      try {
-        await hub.teardown();
-      } finally {
-        logger.flush();
-        process.exit(1);
-      }
-    }
-
-    process.stdin.resume();
-
     process.on("SIGINT", () => {
       handleShutdownSignal("SIGINT");
     });
@@ -662,6 +620,24 @@ app
 
       handleShutdownSignal("unhandledRejection");
     });
+
+    const hub = hubResult.value;
+    const startResult = await ResultAsync.fromPromise(
+      hub.start(),
+      (e) => new Error("Failed to start hub", { cause: e }),
+    );
+    if (startResult.isErr()) {
+      logger.fatal(startResult.error);
+      logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
+      try {
+        await hub.teardown();
+      } finally {
+        logger.flush();
+        process.exit(1);
+      }
+    }
+
+    process.stdin.resume();
   });
 
 /*//////////////////////////////////////////////////////////////

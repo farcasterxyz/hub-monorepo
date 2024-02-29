@@ -2,15 +2,94 @@
 import Long from "long";
 import _m0 from "protobufjs/minimal";
 
+export interface ValidateOrRevokeJobState {
+  /** The (Farcaster time epoch) timestamp where the last job started */
+  lastJobTimestamp: number;
+  /** The last FID to complete successfully. If this is 0, then the last job finished successfully */
+  lastFid: number;
+}
+
 export interface HubState {
   /** uint32 last_eth_block = 1; // Deprecated */
   lastFnameProof: number;
-  /** bool syncEvents = 4; // Deprecated */
   lastL2Block: number;
+  /** bool syncEvents = 4; // Deprecated */
+  validateOrRevokeState: ValidateOrRevokeJobState | undefined;
 }
 
+function createBaseValidateOrRevokeJobState(): ValidateOrRevokeJobState {
+  return { lastJobTimestamp: 0, lastFid: 0 };
+}
+
+export const ValidateOrRevokeJobState = {
+  encode(message: ValidateOrRevokeJobState, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.lastJobTimestamp !== 0) {
+      writer.uint32(8).uint32(message.lastJobTimestamp);
+    }
+    if (message.lastFid !== 0) {
+      writer.uint32(16).uint32(message.lastFid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ValidateOrRevokeJobState {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseValidateOrRevokeJobState();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.lastJobTimestamp = reader.uint32();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.lastFid = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ValidateOrRevokeJobState {
+    return {
+      lastJobTimestamp: isSet(object.lastJobTimestamp) ? Number(object.lastJobTimestamp) : 0,
+      lastFid: isSet(object.lastFid) ? Number(object.lastFid) : 0,
+    };
+  },
+
+  toJSON(message: ValidateOrRevokeJobState): unknown {
+    const obj: any = {};
+    message.lastJobTimestamp !== undefined && (obj.lastJobTimestamp = Math.round(message.lastJobTimestamp));
+    message.lastFid !== undefined && (obj.lastFid = Math.round(message.lastFid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ValidateOrRevokeJobState>, I>>(base?: I): ValidateOrRevokeJobState {
+    return ValidateOrRevokeJobState.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ValidateOrRevokeJobState>, I>>(object: I): ValidateOrRevokeJobState {
+    const message = createBaseValidateOrRevokeJobState();
+    message.lastJobTimestamp = object.lastJobTimestamp ?? 0;
+    message.lastFid = object.lastFid ?? 0;
+    return message;
+  },
+};
+
 function createBaseHubState(): HubState {
-  return { lastFnameProof: 0, lastL2Block: 0 };
+  return { lastFnameProof: 0, lastL2Block: 0, validateOrRevokeState: undefined };
 }
 
 export const HubState = {
@@ -20,6 +99,9 @@ export const HubState = {
     }
     if (message.lastL2Block !== 0) {
       writer.uint32(24).uint64(message.lastL2Block);
+    }
+    if (message.validateOrRevokeState !== undefined) {
+      ValidateOrRevokeJobState.encode(message.validateOrRevokeState, writer.uint32(42).fork()).ldelim();
     }
     return writer;
   },
@@ -45,6 +127,13 @@ export const HubState = {
 
           message.lastL2Block = longToNumber(reader.uint64() as Long);
           continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.validateOrRevokeState = ValidateOrRevokeJobState.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -58,6 +147,9 @@ export const HubState = {
     return {
       lastFnameProof: isSet(object.lastFnameProof) ? Number(object.lastFnameProof) : 0,
       lastL2Block: isSet(object.lastL2Block) ? Number(object.lastL2Block) : 0,
+      validateOrRevokeState: isSet(object.validateOrRevokeState)
+        ? ValidateOrRevokeJobState.fromJSON(object.validateOrRevokeState)
+        : undefined,
     };
   },
 
@@ -65,6 +157,9 @@ export const HubState = {
     const obj: any = {};
     message.lastFnameProof !== undefined && (obj.lastFnameProof = Math.round(message.lastFnameProof));
     message.lastL2Block !== undefined && (obj.lastL2Block = Math.round(message.lastL2Block));
+    message.validateOrRevokeState !== undefined && (obj.validateOrRevokeState = message.validateOrRevokeState
+      ? ValidateOrRevokeJobState.toJSON(message.validateOrRevokeState)
+      : undefined);
     return obj;
   },
 
@@ -76,6 +171,10 @@ export const HubState = {
     const message = createBaseHubState();
     message.lastFnameProof = object.lastFnameProof ?? 0;
     message.lastL2Block = object.lastL2Block ?? 0;
+    message.validateOrRevokeState =
+      (object.validateOrRevokeState !== undefined && object.validateOrRevokeState !== null)
+        ? ValidateOrRevokeJobState.fromPartial(object.validateOrRevokeState)
+        : undefined;
     return message;
   },
 };

@@ -56,10 +56,11 @@ describe("makeMessagePrimaryKey", () => {
     for (const key of [key1, key2, key3, key4, key5]) {
       await db.put(key, TRUE_VALUE);
     }
-    const dbKeys = [];
-    for await (const [key] of db.iterator({ values: false, keyAsBuffer: true })) {
-      dbKeys.push(key);
-    }
+    const dbKeys: Buffer[] = [];
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key, _) => {
+      dbKeys.push(key as Buffer);
+    });
+
     expect(dbKeys).toEqual([key1, key2, key3, key4, key5]);
   });
 });

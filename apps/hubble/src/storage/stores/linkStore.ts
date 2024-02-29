@@ -11,7 +11,7 @@ import {
 } from "@farcaster/hub-nodejs";
 import {
   getManyMessages,
-  getPageIteratorByPrefix,
+  getPageIteratorOptsByPrefix,
   makeFidKey,
   makeMessagePrimaryKey,
   makeTsHash,
@@ -255,23 +255,16 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   ): Promise<MessagesPage<LinkAddMessage>> {
     const prefix = makeLinksByTargetKey(target);
 
-    const iterator = getPageIteratorByPrefix(this._db, prefix, pageOptions);
+    const iteratorOpts = getPageIteratorOptsByPrefix(this._db, prefix, pageOptions);
 
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
     const messageKeys: Buffer[] = [];
 
-    let iteratorFinished = false;
+    let iteratorFinished = true;
     let lastPageToken: Uint8Array | undefined;
-    do {
-      const result = await ResultAsync.fromPromise(iterator.next(), (e) => e as HubError);
-      if (result.isErr()) {
-        iteratorFinished = true;
-        break;
-      }
 
-      const [key, value] = result.value;
-
+    await this._db.forEachIteratorByOpts(iteratorOpts, (key, value) => {
       lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
 
       if (type === undefined || value?.equals(Buffer.from(type))) {
@@ -284,12 +277,17 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
         const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.LinkMessage, tsHash);
 
         messageKeys.push(messagePrimaryKey);
-      }
-    } while (messageKeys.length < limit);
 
+        if (messageKeys.length >= limit) {
+          iteratorFinished = false;
+          return true; // stop
+        }
+      }
+
+      return false; // continue
+    });
     const messages = await getManyMessages<LinkAddMessage>(this._db, messageKeys);
 
-    await iterator.end();
     if (!iteratorFinished) {
       return { messages, nextPageToken: lastPageToken };
     } else {

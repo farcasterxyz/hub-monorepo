@@ -38,9 +38,14 @@ cd ~/hubble && ./hubble.sh upgrade
 
 ## Install via Docker
 
-Hubble can also be set up by running the docker image directly. To do this: 
+Hubble can also be set up by running the docker image directly. To do this:
 
-1. Check out the [hub-monorepo](https://github.com/farcasterxyz/hub-monorepo) locally.
+1. Check out the latest release locally:
+
+```bash
+git clone -c advice.detachedHead=false -b @latest https://github.com/farcasterxyz/hub-monorepo.git
+```
+
 2. From the root of this folder navigate to `apps/hubble`
 3. Generate your identity key pair with docker compose.
 
@@ -84,8 +89,8 @@ docker compose logs -f hubble
 Navigate to `apps/hubble` in hub-monorepo and run: 
 
 ```bash
-git checkout main && git pull
-docker compose stop && docker compose up -d --force-recreate --pull always
+git fetch --tags --force && git checkout @latest  # Checkout to the latest release
+docker compose stop && docker compose up -d --force-recreate --pull always  # Stop current container and start the upgraded one
 ```
 
 ## Installing from source

@@ -4,7 +4,7 @@ info:
   version: "1.0"
   description: >
     Perform basic queries of Farcaster state via the REST API of a Farcaster hub.
-    See the [Farcaster docs](https://docs.farcaster.xyz/reference/hubble/httpapi/httpapi) for more details.
+    See the [Farcaster docs](https://www.thehubble.xyz/docs/httpapi/httpapi.html) for more details.
     Some client libraries:
       - [TypeScript](https://www.npmjs.com/package/@standard-crypto/farcaster-js-hub-rest)
 servers:
@@ -781,9 +781,10 @@ paths:
           \ The message protobuf is an envelope \nthat wraps a MessageData object\
           \ and contains a hash and signature which can verify its authenticity."
         content:
-          application/json:
+          application/octet-stream:
             schema:
-              $ref: '#/components/schemas/Message'
+              type: string
+              format: binary
         required: true
       responses:
         200:
@@ -792,6 +793,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      x-codegen-request-body-name: body
+  /v1/validateMessage:
+    post:
+      tags:
+        - ValidateMessage
+      summary: Validate a signed protobuf-serialized message with the Hub
+      operationId: ValidateMessage
+      security:
+        - usernamePassword: []
+      requestBody:
+        description: "* \nA Message is a delta operation on the Farcaster network.\
+          \ The message protobuf is an envelope \nthat wraps a MessageData object\
+          \ and contains a hash and signature which can verify its authenticity."
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        required: true
+      responses:
+        200:
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateMessageResponse'
         default:
           $ref: '#/components/responses/ErrorResponse'
       x-codegen-request-body-name: body
@@ -884,7 +913,14 @@ components:
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataCastAdd'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataCastAdd'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     CastAddBody:
@@ -929,13 +965,27 @@ components:
         - text
         - mentionsPositions
         - embeds
+    CastEmbed:
+      type: object
+      properties:
+        castId:
+          $ref: '#/components/schemas/CastId'
+      required:
+        - castId
     CastRemove:
       allOf:
         - $ref: '#/components/schemas/MessageCommon'
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataCastRemove'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataCastRemove'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     CastId:
@@ -982,15 +1032,9 @@ components:
           type: integer
           format: uint64
     Embed:
-      type: object
-      properties:
-        url:
-          type: string
-          format: uri
-        castId:
-          $ref: '#/components/schemas/CastId'
-      required:
-        - url
+      oneOf:
+        - $ref: '#/components/schemas/CastEmbed'
+        - $ref: '#/components/schemas/UrlEmbed'
     ErrorResponse:
       required:
         - code
@@ -1047,6 +1091,25 @@ components:
       required:
         - fids
         - nextPageToken
+    FrameActionBody:
+      description: 'A Farcaster Frame action'
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        buttonIndex:
+          title: The index of the button pressed (1-4)
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 4
+        castId:
+          $ref: '#/components/schemas/CastId'
+      required:
+        - url
+        - buttonIndex
+        - castId
     HashScheme:
       type: string
       description: >
@@ -1175,14 +1238,15 @@ components:
       type: object
       properties:
         to:
-          pattern: ^0x[a-fA-F0-9]{40}$
+          pattern: ^0x[a-fA-F0-9]*$
           type: string
+          example: '0x00000000fcd5a8e45785c8a4b9a718c9348e4f18'
         eventType:
           $ref: '#/components/schemas/IdRegisterEventType'
         from:
           pattern: ^0x[a-fA-F0-9]*$
           type: string
-          example: 0x
+          example: '0x00000000fcd5a8e45785c8a4b9a718c9348e4f18'
         recoveryAddress:
           pattern: ^0x[a-fA-F0-9]*$
           type: string
@@ -1205,7 +1269,14 @@ components:
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataLink'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataLink'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     LinkBody:
@@ -1232,7 +1303,14 @@ components:
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataLink'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataLink'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     LinkType:
@@ -1287,6 +1365,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataVerificationRemove'
                 - $ref: '#/components/schemas/MessageDataUserDataAdd'
                 - $ref: '#/components/schemas/MessageDataUsernameProof'
+                - $ref: '#/components/schemas/MessageDataFrameAction'
               discriminator:
                 propertyName: type
                 mapping:
@@ -1300,6 +1379,7 @@ components:
                   MESSAGE_TYPE_VERIFICATION_REMOVE: '#/components/schemas/MessageDataVerificationRemove'
                   MESSAGE_TYPE_USER_DATA_ADD: '#/components/schemas/MessageDataUserDataAdd'
                   MESSAGE_TYPE_USERNAME_PROOF: '#/components/schemas/MessageDataUsernameProof'
+                  MESSAGE_TYPE_FRAME_ACTION: '#/components/schemas/MessageDataFrameAction'
           required:
             - data
         - $ref: '#/components/schemas/MessageCommon'
@@ -1338,11 +1418,8 @@ components:
         - fid
         - network
         - timestamp
-        - type
       type: object
       properties:
-        type:
-          $ref: '#/components/schemas/MessageType'
         fid:
           title: Farcaster ID of the user producing the message
           type: integer
@@ -1373,6 +1450,15 @@ components:
           properties:
             castRemoveBody:
               $ref: '#/components/schemas/CastRemoveBody'
+    MessageDataFrameAction:
+      allOf:
+        - $ref: '#/components/schemas/MessageDataCommon'
+        - type: object
+          required:
+            - frameActionBody
+          properties:
+            frameActionBody:
+              $ref: '#/components/schemas/FrameActionBody'
     MessageDataLink:
       allOf:
         - $ref: '#/components/schemas/MessageDataCommon'
@@ -1431,7 +1517,7 @@ components:
       type: string
       description: |-
         Type of the MessageBody.
-        - MESSAGE_TYPE_CAST_ADD: Add a new Cast
+         - MESSAGE_TYPE_CAST_ADD: Add a new Cast
          - MESSAGE_TYPE_CAST_REMOVE: Remove an existing Cast
          - MESSAGE_TYPE_REACTION_ADD: Add a Reaction to a Cast
          - MESSAGE_TYPE_REACTION_REMOVE: Remove a Reaction from a Cast
@@ -1439,12 +1525,9 @@ components:
          - MESSAGE_TYPE_LINK_REMOVE: Remove an existing Link
          - MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS: Add a Verification of an Ethereum Address
          - MESSAGE_TYPE_VERIFICATION_REMOVE: Remove a Verification
-         - MESSAGE_TYPE_USER_DATA_ADD: Deprecated
-         MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
-         MESSAGE_TYPE_SIGNER_REMOVE = 10; // Remove an Ed25519 key pair that signs messages for a user
-
-        Add metadata about a user
+         - MESSAGE_TYPE_USER_DATA_ADD: Add metadata about a user
          - MESSAGE_TYPE_USERNAME_PROOF: Add or replace a username proof
+         - MESSAGE_TYPE_FRAME_ACTION: A Farcaster Frame action
       default: MESSAGE_TYPE_CAST_ADD
       enum:
         - MESSAGE_TYPE_CAST_ADD
@@ -1457,6 +1540,7 @@ components:
         - MESSAGE_TYPE_VERIFICATION_REMOVE
         - MESSAGE_TYPE_USER_DATA_ADD
         - MESSAGE_TYPE_USERNAME_PROOF
+        - MESSAGE_TYPE_FRAME_ACTION
     OnChainEvent:
       oneOf:
         - $ref: '#/components/schemas/OnChainEventSigner'
@@ -1561,7 +1645,14 @@ components:
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataReaction'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataReaction'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     ReactionBody:
@@ -1699,13 +1790,28 @@ components:
         - STORE_TYPE_USER_DATA
         - STORE_TYPE_VERIFICATIONS
         - STORE_TYPE_USERNAME_PROOFS
+    UrlEmbed:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
     UserDataAdd:
       allOf:
         - $ref: '#/components/schemas/MessageCommon'
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataUserDataAdd'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataUserDataAdd'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     UserDataBody:
@@ -1779,13 +1885,30 @@ components:
       enum:
         - USERNAME_TYPE_FNAME
         - USERNAME_TYPE_ENS_L1
+    ValidateMessageResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        message:
+          $ref: '#/components/schemas/Message'
+      required:
+        - valid
+        - message
     Verification:
       allOf:
         - $ref: '#/components/schemas/MessageCommon'
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataVerificationAdd'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataVerificationAdd'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     VerificationAddEthAddressBody:
@@ -1815,7 +1938,14 @@ components:
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/MessageDataVerificationRemove'
+              allOf:
+                - $ref: '#/components/schemas/MessageDataVerificationRemove'
+                - type: object
+                  properties:
+                    type: 
+                      $ref: '#/components/schemas/MessageType'
+                  required:
+                    - type
           required:
             - data
     VerificationRemoveBody:

@@ -1,5 +1,25 @@
 # @farcaster/core
 
+## 0.14.3
+
+### Patch Changes
+
+- 1fd0f686: fix: add bs58 dependency
+
+## 0.14.2
+
+### Patch Changes
+
+- 5703d339: feat: add state field to frame message
+- 136ef6b4: fix: Remove old dependencies
+
+## 0.14.1
+
+### Patch Changes
+
+- bf37ec76: feat: Run validateOrRevoke only if signer is updated
+- 1a52b869: fix: Handle solana verification removes
+
 ## 0.14.0
 
 ### Minor Changes

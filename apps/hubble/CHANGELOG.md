@@ -1,5 +1,48 @@
 # @farcaster/hubble
 
+## 1.10.5
+
+### Patch Changes
+
+- 72bbf29c: fix: Set dial timeout when connecting to peers for gossip node (default: 2 seconds) and expose LIBP2P_CONNECT_TIMEOUT_MS environment variable
+- de5b0905: fix: Deprecate raw iterators and switch to forEach iterators
+
+## 1.10.4
+
+### Patch Changes
+
+- addf097c: chore: update @farcaster/hub-nodejs
+
+## 1.10.3
+
+### Patch Changes
+
+- 9bcaa9c1: Run via pm2 process supervisor
+- a8b7dfcb: fix: Replace hot-shots with @figma/hot-shots
+- Updated dependencies [5703d339]
+  - @farcaster/hub-nodejs@0.11.2
+
+## 1.10.2
+
+### Patch Changes
+
+- 915c6adb: fix: Fix hub crash from bad message data submit
+
+## 1.10.1
+
+### Patch Changes
+
+- 8e928cea: fix: Small optimizations for merge code
+- 83f66ab1: fix: Fix gossip seen ttl check (convert to seconds first)
+- 83f66ab1: fix: Reduce fname poll timeout so we reject username messages less often
+- e1c590a8: chore: log gossip message delay
+- 8dc17613: fix: Add additional checks to prevent contact info duplicates
+- bf37ec76: feat: Run validateOrRevoke only if signer is updated
+- 1a52b869: fix: Handle solana verification removes
+- 7f60a223: fix: Increase hub stream buffer size
+- 8cfaa2cf: fix: Remove DB_RESET_TOKEN
+  - @farcaster/hub-nodejs@0.11.1
+
 ## 1.10.0
 
 ### Minor Changes

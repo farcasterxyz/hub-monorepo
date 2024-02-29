@@ -179,4 +179,5 @@ message FrameActionBody {
   uint32 button_index = 2; // The index of the button pressed (1-4)
   CastId cast_id = 3; // The cast which contained the frame url
   bytes input_text = 4; // Text input from the user, if present
+  bytes state = 5; // Serialized frame state value
 }

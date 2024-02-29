@@ -591,6 +591,11 @@ const VerificationRemoveBodyFactory = Factory.define<protobufs.VerificationRemov
         address: EthAddressFactory.build(),
         protocol: protobufs.Protocol.ETHEREUM,
       });
+    case Protocol.SOLANA:
+      return protobufs.VerificationRemoveBody.create({
+        address: SolAddressFactory.build(),
+        protocol: protobufs.Protocol.SOLANA,
+      });
     default:
       throw new Error(`Unsupported protocol [found: ${params.protocol}]`);
   }

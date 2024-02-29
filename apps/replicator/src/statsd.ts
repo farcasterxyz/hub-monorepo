@@ -1,4 +1,4 @@
-import { StatsD } from "hot-shots";
+import { StatsD } from "@figma/hot-shots";
 import { log as parentLog } from "./log.js";
 import { AssertionError } from "./error.js";
 
