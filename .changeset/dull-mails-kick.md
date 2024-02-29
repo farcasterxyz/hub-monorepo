@@ -1,8 +1,8 @@
 ---
-"@farcaster/hub-nodejs": minor
-"@farcaster/hub-web": minor
-"@farcaster/core": minor
-"@farcaster/hubble": minor
+"@farcaster/hub-nodejs": patch
+"@farcaster/hub-web": patch
+"@farcaster/core": patch
+"@farcaster/hubble": patch
 ---
 
 Add currentPeers RPC endpoint
