@@ -23,7 +23,9 @@ export class PruneMessagesJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PRUNE_MESSAGES_JOB_CRON, () => this.doJobs());
+    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PRUNE_MESSAGES_JOB_CRON, () => this.doJobs(), {
+      timezone: "Etc/UTC",
+    });
 
     // Log the DB Size at startup
     setTimeout(() => {
