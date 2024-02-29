@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.10.6
+
+### Patch Changes
+
+- 361996cf: fix: Update neynar bootstrap hub
+- 419d8287: Add currentPeers RPC endpoint
+- c4305b3e: fix: Use UTC for jobs scheduler
+- Updated dependencies [579d29a4]
+- Updated dependencies [419d8287]
+  - @farcaster/hub-nodejs@0.11.4
+
 ## 1.10.5
 
 ### Patch Changes

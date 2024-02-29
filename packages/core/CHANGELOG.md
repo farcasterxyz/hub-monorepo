@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.14.4
+
+### Patch Changes
+
+- 579d29a4: feat: add transaction ID to frame message
+- 419d8287: Add currentPeers RPC endpoint
+
 ## 0.14.3
 
 ### Patch Changes

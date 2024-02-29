@@ -107,11 +107,20 @@ jobs:
 
   test:
     timeout-minutes: 10
-    runs-on: 'buildjet-4vcpu-ubuntu-2204'
 
     strategy:
       matrix:
-        node_version: [18, 20, 21]
+        include:
+          - node_version: 18
+            runs_on: 'buildjet-8vcpu-ubuntu-2204'
+          - node_version: 20
+            runs_on: 'buildjet-8vcpu-ubuntu-2204' 
+          - node_version: 21
+            runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'
+
+    runs-on: ${{ matrix.runs_on }}
+
+    name: test (${{ matrix.node_version }})
 
     steps:
       - uses: actions/checkout@v3
@@ -125,7 +134,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
 
       - name: Cache Cargo registry and git
         uses: actions/cache@v3
