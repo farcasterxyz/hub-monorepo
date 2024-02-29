@@ -853,12 +853,18 @@ export class Hub implements HubInterface {
               resolve(ok(true));
             });
 
+            let lastDownloadedSize = 0;
             response2.data
               .on("error", handleError)
               // biome-ignore lint/suspicious/noExplicitAny: <explanation>
               .on("data", (chunk: any) => {
                 downloadedSize += chunk.length;
                 progressBar?.update(downloadedSize);
+
+                if (downloadedSize - lastDownloadedSize > 1024 * 1024 * 1024) {
+                  log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
+                  lastDownloadedSize = downloadedSize;
+                }
               })
               .pipe(gunzip)
               .on("error", handleError)
