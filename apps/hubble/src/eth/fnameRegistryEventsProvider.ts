@@ -106,6 +106,7 @@ export class FNameRegistryEventsProvider {
     if (this.pollTimeoutId) {
       clearTimeout(this.pollTimeoutId);
     }
+    log.info("Stopped fname events provider");
   }
 
   private async pollForNewEvents() {

@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { HubError, bytesIncrement } from "@farcaster/hub-nodejs";
+import { HubError, bytesCompare, bytesIncrement } from "@farcaster/hub-nodejs";
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
 import RocksDB from "./rocksdb.js";
@@ -223,9 +223,11 @@ describe("with db", () => {
 
   describe("large iterators", () => {
     test("pages 10k messages", async () => {
+      const testSize = 10_000 + 5;
+
       // Create an array with 10k + 5 messages
       let count = new Uint8Array(Buffer.from([100, 0, 0, 0]));
-      const keys = Array.from({ length: 10005 }, (_, i) => {
+      const keys = Array.from({ length: testSize }, (_, i) => {
         count = bytesIncrement(count)._unsafeUnwrap();
         return new Uint8Array(count);
       });
@@ -242,16 +244,18 @@ describe("with db", () => {
       let allFinished = await db.forEachIteratorByPrefix(Buffer.from([100]), (_key, value) => {
         values.push(value as Buffer);
       });
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10005);
+      expect(values.length).toEqual(testSize);
 
       // 2. Iterate through all the messages with a blank prefix
       values = [];
       allFinished = await db.forEachIteratorByPrefix(Buffer.from([]), (_key, value) => {
         values.push(value as Buffer);
       });
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10005);
+      expect(values.length).toEqual(testSize);
 
       // 3. Iterate through all messages with prefix + reverse
       values = [];
@@ -262,8 +266,9 @@ describe("with db", () => {
         },
         { reverse: true },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10005);
+      expect(values.length).toEqual(testSize);
 
       // 4. Iterate through all messages with no prefix + reverse
       values = [];
@@ -274,8 +279,9 @@ describe("with db", () => {
         },
         { reverse: true },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10005);
+      expect(values.length).toEqual(testSize);
 
       // 5. Iterate through all messages with prefix + page size
       values = [];
@@ -286,6 +292,8 @@ describe("with db", () => {
         },
         { pageSize: 100 },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[99] as Buffer, keys[99] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(false);
       expect(values.length).toEqual(100);
 
@@ -298,8 +306,49 @@ describe("with db", () => {
         },
         { pageSize: 100 },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[99] as Buffer, keys[99] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(false);
       expect(values.length).toEqual(100);
+
+      // 6.1 Iterate through all messages with no prefix + page size + page token
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageSize: 100, pageToken: keys[100] as Buffer },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[101] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(false);
+      expect(values.length).toEqual(100);
+
+      // 6.2 Iterate through all messages with no prefix + page size + page token + reverse
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageSize: 100, pageToken: keys[100] as Buffer, reverse: true },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[99] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(false);
+      expect(values.length).toEqual(100);
+
+      // 6.3 Iterate through all messages with no prefix + page token
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageToken: keys[99] as Buffer },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[100] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize - 100);
 
       // 7. Iterate using opts
       values = [];
@@ -309,8 +358,9 @@ describe("with db", () => {
           values.push(value as Buffer);
         },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10005);
+      expect(values.length).toEqual(testSize);
 
       // 8. Iterate using opts + reverse
       values = [];
@@ -320,30 +370,35 @@ describe("with db", () => {
           values.push(value as Buffer);
         },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10005);
+      expect(values.length).toEqual(testSize);
 
       // 9. Iterate using opts + prefix starting in the middle
       values = [];
       allFinished = await db.forEachIteratorByOpts(
-        { gte: Buffer.from([100, 0, 0, 6]), lt: Buffer.from([101]) },
+        { gte: keys[5] as Buffer, lt: Buffer.from([101]) },
         (_key, value) => {
           values.push(value as Buffer);
         },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[5] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[values.length - 1] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10000);
+      expect(values.length).toEqual(testSize - 5);
 
       // 10. Iterate using opts + prefix starting in the middle + reverse
       values = [];
       allFinished = await db.forEachIteratorByOpts(
-        { gte: Buffer.from([100, 0, 0, 6]), lt: Buffer.from([101]), reverse: true },
+        { gte: keys[5] as Buffer, lt: Buffer.from([101]), reverse: true },
         (_key, value) => {
           values.push(value as Buffer);
         },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[values.length - 1] as Buffer, keys[5] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(true);
-      expect(values.length).toEqual(10000);
+      expect(values.length).toEqual(testSize - 5);
 
       // 11. Iterate using opts + prefix but interrupt after 1 message
       values = [];
@@ -354,6 +409,7 @@ describe("with db", () => {
           return true;
         },
       );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
       expect(allFinished).toEqual(false);
       expect(values.length).toEqual(1);
     });

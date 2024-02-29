@@ -18,9 +18,11 @@ export class PruneMessagesJobScheduler {
   private _engine: Engine;
   private _cronTask?: cron.ScheduledTask;
   private _running = false;
+  private _getSyncTrieQSizeFn: () => number;
 
-  constructor(engine: Engine) {
+  constructor(engine: Engine, getSyncTrieQSizeFn: () => number) {
     this._engine = engine;
+    this._getSyncTrieQSizeFn = getSyncTrieQSizeFn;
   }
 
   start(cronSchedule?: string) {
@@ -67,7 +69,7 @@ export class PruneMessagesJobScheduler {
     let finished = false;
     let pageToken: Uint8Array | undefined;
     do {
-      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 1000 });
+      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 100 });
       if (fidsPage.isErr()) {
         return err(fidsPage.error);
       }
@@ -80,17 +82,18 @@ export class PruneMessagesJobScheduler {
 
       for (const fid of fids) {
         totalPruned += (await this._engine.pruneMessages(fid)).unwrapOr(0);
+      }
 
-        // Sleep for a bit avoid overloading the Merkle Trie
-        if (totalPruned > 10_000) {
-          log.info({ totalPruned }, "pruned 10k messages, sleeping for 10s");
-          await sleep(10_000);
-          totalPruned = 0;
-        }
+      // Sleep for a bit avoid overloading the Merkle Trie
+
+      const syncTrieQSize = this._getSyncTrieQSizeFn();
+      if (syncTrieQSize > 10_000) {
+        log.info({ syncTrieQSize }, "sync trie Q is large, sleeping for 30s");
+        await sleep(30_000);
       }
     } while (!finished);
 
-    log.info({ timeTakenMs: Date.now() - start }, "finished prune messages job");
+    log.info({ totalPruned, timeTakenMs: Date.now() - start }, "finished prune messages job");
     this._running = false;
 
     this.logDbSize();

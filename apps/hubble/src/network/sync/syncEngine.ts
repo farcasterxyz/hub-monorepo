@@ -397,6 +397,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     this._started = false;
     this._currentSyncStatus.interruptSync = false;
+    log.info("Sync engine stopped");
   }
 
   public getBadPeerIds(): string[] {

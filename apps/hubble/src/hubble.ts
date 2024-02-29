@@ -412,6 +412,7 @@ export class Hub implements HubInterface {
       this.fNameRegistryEventsProvider,
       profileSync,
     );
+
     this.strictContactInfoValidation = options.strictContactInfoValidation || false;
     this.strictNoSign = options.strictNoSign || false;
 
@@ -470,7 +471,7 @@ export class Hub implements HubInterface {
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers
-    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
+    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine, () => this.syncEngine.syncTrieQSize);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
@@ -967,7 +968,13 @@ export class Hub implements HubInterface {
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine
-    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(terminateGossipWorker), this.syncEngine.stop()]);
+    await Promise.all([
+      this.adminServer.stop(),
+      this.gossipNode.stop(terminateGossipWorker),
+      this.syncEngine.stop(),
+      this.l2RegistryProvider.stop(),
+      this.fNameRegistryEventsProvider.stop(),
+    ]);
 
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();
@@ -979,9 +986,6 @@ export class Hub implements HubInterface {
     this.gossipContactInfoJobScheduler.stop();
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
-
-    await this.l2RegistryProvider.stop();
-    await this.fNameRegistryEventsProvider.stop();
 
     // Stop the engine
     await this.engine.stop();
