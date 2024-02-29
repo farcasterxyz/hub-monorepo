@@ -269,7 +269,11 @@ describe("validateCastAddBody", () => {
   });
 
   test("when text is empty", () => {
-    const body = Factories.CastAddBody.build({ text: "", mentions: [], mentionsPositions: [] });
+    const body = Factories.CastAddBody.build({
+      text: "",
+      mentions: [],
+      mentionsPositions: [],
+    });
     expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 
@@ -318,12 +322,18 @@ describe("validateCastAddBody", () => {
       });
 
       test("with an embed url string over 256 ASCII characters", () => {
-        body = Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.random.alphaNumeric(257)] });
+        body = Factories.CastAddBody.build({
+          embeds: [],
+          embedsDeprecated: [faker.random.alphaNumeric(257)],
+        });
         hubErrorMessage = "url > 256 bytes";
       });
 
       test("with an embed url string over 256 bytes", () => {
-        body = Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [`${faker.random.alphaNumeric(254)}🤓`] });
+        body = Factories.CastAddBody.build({
+          embeds: [],
+          embedsDeprecated: [`${faker.random.alphaNumeric(254)}🤓`],
+        });
         hubErrorMessage = "url > 256 bytes";
       });
 
@@ -356,12 +366,16 @@ describe("validateCastAddBody", () => {
     });
 
     test("when text is null", () => {
-      body = Factories.CastAddBody.build({ text: null as unknown as undefined });
+      body = Factories.CastAddBody.build({
+        text: null as unknown as undefined,
+      });
       hubErrorMessage = "text is missing";
     });
 
     test("when text is longer than 320 ASCII characters", () => {
-      body = Factories.CastAddBody.build({ text: faker.random.alphaNumeric(321) });
+      body = Factories.CastAddBody.build({
+        text: faker.random.alphaNumeric(321),
+      });
       hubErrorMessage = "text > 320 bytes";
     });
 
@@ -423,7 +437,9 @@ describe("validateCastAddBody", () => {
     });
 
     test("when parent hash is missing", () => {
-      body = Factories.CastAddBody.build({ parentCastId: Factories.CastId.build({ hash: undefined }) });
+      body = Factories.CastAddBody.build({
+        parentCastId: Factories.CastId.build({ hash: undefined }),
+      });
       hubErrorMessage = "hash is missing";
     });
 
@@ -436,7 +452,10 @@ describe("validateCastAddBody", () => {
     });
 
     test("with a parentUrl of empty string", () => {
-      body = Factories.CastAddBody.build({ parentUrl: "", parentCastId: undefined });
+      body = Factories.CastAddBody.build({
+        parentUrl: "",
+        parentCastId: undefined,
+      });
       hubErrorMessage = "url < 1 byte";
     });
 
@@ -523,7 +542,10 @@ describe("validateCastAddBody", () => {
     });
 
     test("with non-integer mentionsPositions", () => {
-      body = Factories.CastAddBody.build({ mentions: [Factories.Fid.build()], mentionsPositions: [1.5] });
+      body = Factories.CastAddBody.build({
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [1.5],
+      });
       hubErrorMessage = "mentionsPositions must be integers";
     });
 
@@ -568,12 +590,17 @@ describe("validateReactionBody", () => {
     });
 
     test("with invalid reaction type", () => {
-      body = Factories.ReactionBody.build({ type: 100 as unknown as protobufs.ReactionType });
+      body = Factories.ReactionBody.build({
+        type: 100 as unknown as protobufs.ReactionType,
+      });
       hubErrorMessage = "invalid reaction type";
     });
 
     test("without target", () => {
-      body = Factories.ReactionBody.build({ targetCastId: undefined, targetUrl: undefined });
+      body = Factories.ReactionBody.build({
+        targetCastId: undefined,
+        targetUrl: undefined,
+      });
       hubErrorMessage = "target is missing";
     });
 
@@ -600,7 +627,10 @@ describe("validateReactionBody", () => {
     });
 
     test("with a targetUrl of empty string", () => {
-      body = Factories.ReactionBody.build({ targetUrl: "", targetCastId: undefined });
+      body = Factories.ReactionBody.build({
+        targetUrl: "",
+        targetCastId: undefined,
+      });
       hubErrorMessage = "url < 1 byte";
     });
 
@@ -734,7 +764,9 @@ describe("validateVerificationAddEthAddressBody", () => {
     });
 
     test("with missing block hash", async () => {
-      body = Factories.VerificationAddAddressBody.build({ blockHash: undefined });
+      body = Factories.VerificationAddAddressBody.build({
+        blockHash: undefined,
+      });
       hubErrorMessage = "blockHash is missing";
     });
 
@@ -833,7 +865,14 @@ describe("validateVerificationAddEthAddressSignature", () => {
         chainId,
         verificationType: 1,
       },
-      { transient: { fid, network, contractSignature: true, protocol: Protocol.ETHEREUM } },
+      {
+        transient: {
+          fid,
+          network,
+          contractSignature: true,
+          protocol: Protocol.ETHEREUM,
+        },
+      },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
     expect(result.isOk()).toBeTruthy();
@@ -852,7 +891,14 @@ describe("validateVerificationAddEthAddressSignature", () => {
         chainId,
         verificationType: 1,
       },
-      { transient: { fid, network, contractSignature: true, protocol: Protocol.ETHEREUM } },
+      {
+        transient: {
+          fid,
+          network,
+          contractSignature: true,
+          protocol: Protocol.ETHEREUM,
+        },
+      },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, publicClients);
     expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid claimSignature")));
@@ -884,12 +930,16 @@ describe("validateVerificationAddEthAddressSignature", () => {
 
 describe("validateVerificationRemoveBody", () => {
   test("ethereum-succeeds", () => {
-    const body = Factories.VerificationRemoveBody.build({ protocol: Protocol.ETHEREUM });
+    const body = Factories.VerificationRemoveBody.build({
+      protocol: Protocol.ETHEREUM,
+    });
     expect(validations.validateVerificationRemoveBody(body)).toEqual(ok(body));
   });
 
   test("solana-succeeds", () => {
-    const body = Factories.VerificationRemoveBody.build({ protocol: Protocol.SOLANA });
+    const body = Factories.VerificationRemoveBody.build({
+      protocol: Protocol.SOLANA,
+    });
     expect(validations.validateVerificationRemoveBody(body)).toEqual(ok(body));
   });
 
@@ -936,7 +986,10 @@ describe("validateUserDataAddBody", () => {
   });
 
   test("succeeds for ens names", async () => {
-    const body = Factories.UserDataBody.build({ type: UserDataType.USERNAME, value: "averylongensname.eth" });
+    const body = Factories.UserDataBody.build({
+      type: UserDataType.USERNAME,
+      value: "averylongensname.eth",
+    });
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
@@ -998,7 +1051,9 @@ describe("validateUsernameProof", () => {
   });
   test("when name does not end with .eth", async () => {
     const proof = await Factories.UsernameProofMessage.create({
-      data: { usernameProofBody: { name: utf8StringToBytes("aname")._unsafeUnwrap() } },
+      data: {
+        usernameProofBody: { name: utf8StringToBytes("aname")._unsafeUnwrap() },
+      },
     });
     const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
     const hubError = result._unsafeUnwrapErr();
@@ -1147,7 +1202,10 @@ describe("validateMessageData", () => {
     test("fails with embedsDeprecated when timestamp is past cut-off", async () => {
       const data = Factories.CastAddData.build({
         timestamp: validations.EMBEDS_V1_CUTOFF + 1,
-        castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
+        castAddBody: Factories.CastAddBody.build({
+          embeds: [],
+          embedsDeprecated: [faker.internet.url()],
+        }),
       });
       const result = await validations.validateMessageData(data);
       expect(result).toEqual(err(new HubError("bad_request.validation_failure", "string embeds have been deprecated")));
@@ -1156,7 +1214,10 @@ describe("validateMessageData", () => {
     test("fails with embedsDeprecated when timestamp is at cut-off", async () => {
       const data = Factories.CastAddData.build({
         timestamp: validations.EMBEDS_V1_CUTOFF,
-        castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
+        castAddBody: Factories.CastAddBody.build({
+          embeds: [],
+          embedsDeprecated: [faker.internet.url()],
+        }),
       });
       const result = await validations.validateMessageData(data);
       expect(result).toEqual(err(new HubError("bad_request.validation_failure", "string embeds have been deprecated")));
@@ -1165,7 +1226,10 @@ describe("validateMessageData", () => {
     test("succeeds with embedsDeprecated when timestamp is before cut-off", async () => {
       const data = Factories.CastAddData.build({
         timestamp: validations.EMBEDS_V1_CUTOFF - 1,
-        castAddBody: Factories.CastAddBody.build({ embeds: [], embedsDeprecated: [faker.internet.url()] }),
+        castAddBody: Factories.CastAddBody.build({
+          embeds: [],
+          embedsDeprecated: [faker.internet.url()],
+        }),
       });
       const result = await validations.validateMessageData(data);
       expect(result).toEqual(ok(data));
@@ -1178,7 +1242,10 @@ describe("validateFrameActionBody", () => {
     const body = Factories.FrameActionBody.build({
       buttonIndex: 1,
       url: Buffer.from("https://example.com"),
-      castId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
+      castId: {
+        fid: Factories.Fid.build(),
+        hash: Factories.MessageHash.build(),
+      },
     });
     const result = validations.validateFrameActionBody(body);
     expect(result.isOk()).toBeTruthy();
@@ -1211,5 +1278,12 @@ describe("validateFrameActionBody", () => {
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid state");
+  });
+  test("fails when transaction ID is too long", async () => {
+    const body = Factories.FrameActionBody.build({
+      transactionId: Buffer.from(faker.datatype.string(257)),
+    });
+    const result = validations.validateFrameActionBody(body);
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid transaction ID");
   });
 });

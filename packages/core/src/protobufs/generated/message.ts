@@ -513,6 +513,8 @@ export interface FrameActionBody {
   inputText: Uint8Array;
   /** Serialized frame state value */
   state: Uint8Array;
+  /** Chain-specific transaction ID for tx actions */
+  transactionId: Uint8Array;
 }
 
 function createBaseMessage(): Message {
@@ -1775,6 +1777,7 @@ function createBaseFrameActionBody(): FrameActionBody {
     castId: undefined,
     inputText: new Uint8Array(),
     state: new Uint8Array(),
+    transactionId: new Uint8Array(),
   };
 }
 
@@ -1794,6 +1797,9 @@ export const FrameActionBody = {
     }
     if (message.state.length !== 0) {
       writer.uint32(42).bytes(message.state);
+    }
+    if (message.transactionId.length !== 0) {
+      writer.uint32(50).bytes(message.transactionId);
     }
     return writer;
   },
@@ -1840,6 +1846,13 @@ export const FrameActionBody = {
 
           message.state = reader.bytes();
           continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.transactionId = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1856,6 +1869,7 @@ export const FrameActionBody = {
       castId: isSet(object.castId) ? CastId.fromJSON(object.castId) : undefined,
       inputText: isSet(object.inputText) ? bytesFromBase64(object.inputText) : new Uint8Array(),
       state: isSet(object.state) ? bytesFromBase64(object.state) : new Uint8Array(),
+      transactionId: isSet(object.transactionId) ? bytesFromBase64(object.transactionId) : new Uint8Array(),
     };
   },
 
@@ -1869,6 +1883,10 @@ export const FrameActionBody = {
       (obj.inputText = base64FromBytes(message.inputText !== undefined ? message.inputText : new Uint8Array()));
     message.state !== undefined &&
       (obj.state = base64FromBytes(message.state !== undefined ? message.state : new Uint8Array()));
+    message.transactionId !== undefined &&
+      (obj.transactionId = base64FromBytes(
+        message.transactionId !== undefined ? message.transactionId : new Uint8Array(),
+      ));
     return obj;
   },
 
@@ -1885,6 +1903,7 @@ export const FrameActionBody = {
       : undefined;
     message.inputText = object.inputText ?? new Uint8Array();
     message.state = object.state ?? new Uint8Array();
+    message.transactionId = object.transactionId ?? new Uint8Array();
     return message;
   },
 };
