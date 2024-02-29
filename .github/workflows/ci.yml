@@ -84,11 +84,16 @@ jobs:
 
   test:
     timeout-minutes: 10
-    runs-on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     strategy:
       matrix:
-        node_version: [18, 20, 21]
+        include:
+          - node_version: 18
+            runs_on: 'buildjet-8vcpu-ubuntu-2204'
+          - node_version: 20
+            runs_on: 'buildjet-8vcpu-ubuntu-2204' 
+          - node_version: 21
+            runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     steps:
       - uses: actions/checkout@v3
@@ -102,7 +107,14 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock, */yarn.lock') }}
+          key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
+
+      - name: Debug
+        run: |
+          echo "Node version: ${{ matrix.node_version }}"
+          ls -la
+          pwd
+        
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
