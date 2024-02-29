@@ -1,5 +1,18 @@
 # @farcaster/hubble
 
+## 1.11.0
+
+### Minor Changes
+
+- 419d8287: Add currentPeers RPC endpoint
+
+### Patch Changes
+
+- 361996cf: fix: Update neynar bootstrap hub
+- Updated dependencies [579d29a4]
+- Updated dependencies [419d8287]
+  - @farcaster/hub-nodejs@0.12.0
+
 ## 1.10.5
 
 ### Patch Changes

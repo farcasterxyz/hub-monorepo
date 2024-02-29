@@ -1,5 +1,18 @@
 # @farcaster/hub-nodejs
 
+## 0.12.0
+
+### Minor Changes
+
+- 419d8287: Add currentPeers RPC endpoint
+
+### Patch Changes
+
+- 579d29a4: feat: add transaction ID to frame message
+- Updated dependencies [579d29a4]
+- Updated dependencies [419d8287]
+  - @farcaster/core@0.15.0
+
 ## 0.11.3
 
 ### Patch Changes
