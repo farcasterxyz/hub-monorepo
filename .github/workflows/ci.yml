@@ -111,13 +111,6 @@ jobs:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
 
-      - name: Debug
-        run: |
-          echo "Node version: ${{ matrix.node_version }}"
-          ls -la
-          pwd
-        
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
