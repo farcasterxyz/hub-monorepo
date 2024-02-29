@@ -102,7 +102,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock, */yarn.lock') }}
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
