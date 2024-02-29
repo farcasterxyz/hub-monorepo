@@ -92,9 +92,9 @@ service HubService {
   // @http-api: none
   rpc GetAllLinkMessagesByFid(FidRequest) returns (MessagesResponse);
 
-  // Sync Methods  
-  // Outside the "info" RPC, the HTTP API doesn't implement any of the sync methods
+  // Sync Methods    
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
+  rpc GetCurrentPeers(Empty) returns (ContactInfoResponse);
   // @http-api: none
   rpc GetSyncStatus(SyncStatusRequest) returns (SyncStatusResponse);
   // @http-api: none
@@ -104,7 +104,7 @@ service HubService {
   // @http-api: none
   rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);
   // @http-api: none
-  rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);
+  rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);  
 }
 
 service AdminService {

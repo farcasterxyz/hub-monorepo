@@ -118,6 +118,16 @@ describe("httpServer", () => {
     });
   });
 
+  describe("currentPeers", () => {
+    test("currentPeers", async () => {
+      const url = getFullUrl("/v1/currentPeers");
+      const response = await axios.get(url);
+
+      expect(response.status).toBe(200);
+      expect(response.data.contacts).toEqual([]);
+    });
+  });
+
   describe("submit APIs", () => {
     let castAdd: CastAddMessage;
 

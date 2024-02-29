@@ -17,7 +17,7 @@ import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
 import { err, ok, Result } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import { logger } from "../../utils/logger.js";
+import { logger, messageTypeToName } from "../../utils/logger.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
@@ -501,6 +501,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         from: detail.propagationSource,
         topic: detail.msg.topic,
       });
+
       statsd().increment(`gossip.${detail.msg.topic}.messages`);
 
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
@@ -513,13 +514,16 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
 
-          this.emit(
-            "message",
-            detail.msg.topic,
-            GossipNode.decodeMessage(data),
-            detail.propagationSource,
-            detail.msgId,
-          );
+          const tags: { [key: string]: string } = {
+            topic: detail.msg.topic,
+          };
+          const decoded = GossipNode.decodeMessage(data);
+          if (decoded.isOk()) {
+            tags["message_type"] = messageTypeToName(decoded.value.message?.data?.type) || "unknown-message-type";
+          }
+
+          this.emit("message", detail.msg.topic, decoded, detail.propagationSource, detail.msgId);
+          statsd().increment("gossip.emit", 1, tags);
         } catch (e) {
           logger.error({ e, data: detail.msg.data }, "Failed to decode message");
         }

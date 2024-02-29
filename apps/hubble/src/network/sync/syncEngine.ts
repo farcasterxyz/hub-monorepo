@@ -423,6 +423,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this.currentHubPeerContacts.get(peerId);
   }
 
+  public getCurrentHubPeerContacts() {
+    return this.currentHubPeerContacts.values();
+  }
+
   public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContentBody) {
     const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
     if (existingPeerInfo) {
