@@ -34,7 +34,7 @@
     "profile": "node --max-old-space-size=4096 build/cli.js profile",
     "status": "node build/cli.js status",
     "test": "yarn build:all && NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest",
-    "test:ci": "yarn build:all && ENVIRONMENT=test NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest --ci --forceExit --coverage --maxWorkers=2"
+    "test:ci": "yarn build:all && ENVIRONMENT=test NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest --ci --forceExit --coverage"
   },
   "devDependencies": {
     "@libp2p/interface-mocks": "^9.0.0",
