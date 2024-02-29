@@ -29,7 +29,9 @@ export class ValidateOrRevokeMessagesJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON, () => this.doJobs());
+    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON, () => this.doJobs(), {
+      timezone: "Etc/UTC",
+    });
   }
 
   stop() {

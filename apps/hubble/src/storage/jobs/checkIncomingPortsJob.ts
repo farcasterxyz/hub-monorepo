@@ -24,7 +24,9 @@ export class CheckIncomingPortsJobScheduler {
 
   start(cronSchedule?: string) {
     const defaultSchedule = "15 * * * *"; // Every hour at :15
-    this._cronTask = cron.schedule(cronSchedule ?? defaultSchedule, () => this.doJobs());
+    this._cronTask = cron.schedule(cronSchedule ?? defaultSchedule, () => this.doJobs(), {
+      timezone: "Etc/UTC",
+    });
   }
 
   stop() {
