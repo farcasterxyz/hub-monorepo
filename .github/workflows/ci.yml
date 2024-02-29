@@ -150,7 +150,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/apps/hubble/src/addon/target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
 
       - name: Install Protocol Buffer Compiler
         uses: arduino/setup-protoc@v3
