@@ -11497,47 +11497,47 @@ tty-table@^4.1.5:
     wcwidth "^1.0.1"
     yargs "^17.1.1"
 
-turbo-darwin-64@1.12.4:
-  version "1.12.4"
-  resolved "https://registry.npmjs.org/turbo-darwin-64/-/turbo-darwin-64-1.12.4.tgz#c03061dcf3e9fb6e530b7c5be035e44627015af7"
-  integrity sha512-dBwFxhp9isTa9RS/fz2gDVk5wWhKQsPQMozYhjM7TT4jTrnYn0ZJMzr7V3B/M/T8QF65TbniW7w1gtgxQgX5Zg==
+turbo-darwin-64@1.10.3:
+  version "1.10.3"
+  resolved "https://registry.npmjs.org/turbo-darwin-64/-/turbo-darwin-64-1.10.3.tgz#b04f715530ae3c8b6d1ce86229236a7513a28c8c"
+  integrity sha512-IIB9IomJGyD3EdpSscm7Ip1xVWtYb7D0x7oH3vad3gjFcjHJzDz9xZ/iw/qItFEW+wGFcLSRPd+1BNnuLM8AsA==
 
-turbo-darwin-arm64@1.12.4:
-  version "1.12.4"
-  resolved "https://registry.npmjs.org/turbo-darwin-arm64/-/turbo-darwin-arm64-1.12.4.tgz#5a10367004077fb7874717f4ddc47b2f66f74cfb"
-  integrity sha512-1Uo5iI6xsJ1j9ObsqxYRsa3W26mEbUe6fnj4rQYV6kDaqYD54oAMJ6hM53q9rB8JvFxwdrUXGp3PwTw9A0qqkA==
+turbo-darwin-arm64@1.10.3:
+  version "1.10.3"
+  resolved "https://registry.npmjs.org/turbo-darwin-arm64/-/turbo-darwin-arm64-1.10.3.tgz#ff9c819643c0a2629cb3cd43136022177d2c8205"
+  integrity sha512-SBNmOZU9YEB0eyNIxeeQ+Wi0Ufd+nprEVp41rgUSRXEIpXjsDjyBnKnF+sQQj3+FLb4yyi/yZQckB+55qXWEsw==
 
-turbo-linux-64@1.12.4:
-  version "1.12.4"
-  resolved "https://registry.npmjs.org/turbo-linux-64/-/turbo-linux-64-1.12.4.tgz#22af551b152634a162a13c4a14af28816b383fc9"
-  integrity sha512-ONg2aSqKP7LAQOg7ysmU5WpEQp4DGNxSlAiR7um+LKtbmC/UxogbR5+T+Uuq6zGuQ5kJyKjWJ4NhtvUswOqBsA==
+turbo-linux-64@1.10.3:
+  version "1.10.3"
+  resolved "https://registry.npmjs.org/turbo-linux-64/-/turbo-linux-64-1.10.3.tgz#d6cbd198e95620e75baa70f1e09f355db6d3e1de"
+  integrity sha512-kvAisGKE7xHJdyMxZLvg53zvHxjqPK1UVj4757PQqtx9dnjYHSc8epmivE6niPgDHon5YqImzArCjVZJYpIGHQ==
 
-turbo-linux-arm64@1.12.4:
-  version "1.12.4"
-  resolved "https://registry.npmjs.org/turbo-linux-arm64/-/turbo-linux-arm64-1.12.4.tgz#f13fb4da0e9fd968ccc0b807df643913ee8fab50"
-  integrity sha512-9FPufkwdgfIKg/9jj87Cdtftw8o36y27/S2vLN7FTR2pp9c0MQiTBOLVYadUr1FlShupddmaMbTkXEhyt9SdrA==
+turbo-linux-arm64@1.10.3:
+  version "1.10.3"
+  resolved "https://registry.npmjs.org/turbo-linux-arm64/-/turbo-linux-arm64-1.10.3.tgz#53148b79e84d020ece82c8af170a2f1d16a01b5b"
+  integrity sha512-Qgaqln0IYRgyL0SowJOi+PNxejv1I2xhzXOI+D+z4YHbgSx87ox1IsALYBlK8VRVYY8VCXl+PN12r1ioV09j7A==
 
-turbo-windows-64@1.12.4:
-  version "1.12.4"
-  resolved "https://registry.npmjs.org/turbo-windows-64/-/turbo-windows-64-1.12.4.tgz#9b72a5082f6db8f995f409226220982ee90661f7"
-  integrity sha512-2mOtxHW5Vjh/5rDVu/aFwsMzI+chs8XcEuJHlY1sYOpEymYTz+u6AXbnzRvwZFMrLKr7J7fQOGl+v96sLKbNdA==
+turbo-windows-64@1.10.3:
+  version "1.10.3"
+  resolved "https://registry.npmjs.org/turbo-windows-64/-/turbo-windows-64-1.10.3.tgz#a90af7313cbada57296d672515c4957ef86e5905"
+  integrity sha512-rbH9wManURNN8mBnN/ZdkpUuTvyVVEMiUwFUX4GVE5qmV15iHtZfDLUSGGCP2UFBazHcpNHG1OJzgc55GFFrUw==
 
-turbo-windows-arm64@1.12.4:
-  version "1.12.4"
-  resolved "https://registry.npmjs.org/turbo-windows-arm64/-/turbo-windows-arm64-1.12.4.tgz#e7058885e18705c625436acebcd66fda3dd506d5"
-  integrity sha512-nOY5wae9qnxPOpT1fRuYO0ks6dTwpKMPV6++VkDkamFDLFHUDVM/9kmD2UTeh1yyrKnrZksbb9zmShhmfj1wog==
+turbo-windows-arm64@1.10.3:
+  version "1.10.3"
+  resolved "https://registry.npmjs.org/turbo-windows-arm64/-/turbo-windows-arm64-1.10.3.tgz#3ed80e34aa5a432b312ccf2f4770c63a72d0b254"
+  integrity sha512-ThlkqxhcGZX39CaTjsHqJnqVe+WImjX13pmjnpChz6q5HHbeRxaJSFzgrHIOt0sUUVx90W/WrNRyoIt/aafniw==
 
-turbo@^1.12.4:
-  version "1.12.4"
-  resolved "https://registry.npmjs.org/turbo/-/turbo-1.12.4.tgz#c3ba81871eba9ec87ac86af9e6270857726da9cb"
-  integrity sha512-yUJ7elEUSToiGwFZogXpYKJpQ0BvaMbkEuQECIWtkBLcmWzlMOt6bActsIm29oN83mRU0WbzGt4e8H1KHWedhg==
+turbo@1.10.3:
+  version "1.10.3"
+  resolved "https://registry.npmjs.org/turbo/-/turbo-1.10.3.tgz#125944cb59f3aa60ca4aa93e4c505b974fe55097"
+  integrity sha512-U4gKCWcKgLcCjQd4Pl8KJdfEKumpyWbzRu75A6FCj6Ctea1PIm58W6Ltw1QXKqHrl2pF9e1raAskf/h6dlrPCA==
   optionalDependencies:
-    turbo-darwin-64 "1.12.4"
-    turbo-darwin-arm64 "1.12.4"
-    turbo-linux-64 "1.12.4"
-    turbo-linux-arm64 "1.12.4"
-    turbo-windows-64 "1.12.4"
-    turbo-windows-arm64 "1.12.4"
+    turbo-darwin-64 "1.10.3"
+    turbo-darwin-arm64 "1.10.3"
+    turbo-linux-64 "1.10.3"
+    turbo-linux-arm64 "1.10.3"
+    turbo-windows-64 "1.10.3"
+    turbo-windows-arm64 "1.10.3"
 
 tv4@^1.3.0:
   version "1.3.0"
