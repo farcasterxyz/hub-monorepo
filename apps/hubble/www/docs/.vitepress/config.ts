@@ -31,6 +31,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: "Using HTTP APIs", link: "/docs/httpapi/httpapi" },
+              { text: "Current Peers API", link: "/docs/httpapi/currentpeers" },
               { text: "Info API", link: "/docs/httpapi/info" },
               { text: "Casts API", link: "/docs/httpapi/casts" },
               { text: "Reactions API", link: "/docs/httpapi/reactions" },

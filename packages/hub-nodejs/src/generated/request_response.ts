@@ -1,6 +1,7 @@
 /* eslint-disable */
 import Long from "long";
 import _m0 from "protobufjs/minimal";
+import { ContactInfoContentBody } from "./gossip";
 import { HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
 import {
   CastId,
@@ -288,6 +289,10 @@ export interface LinksByTargetRequest {
 
 export interface IdRegistryEventByAddressRequest {
   address: Uint8Array;
+}
+
+export interface ContactInfoResponse {
+  contacts: ContactInfoContentBody[];
 }
 
 export interface ValidationResponse {
@@ -3413,6 +3418,70 @@ export const IdRegistryEventByAddressRequest = {
   ): IdRegistryEventByAddressRequest {
     const message = createBaseIdRegistryEventByAddressRequest();
     message.address = object.address ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseContactInfoResponse(): ContactInfoResponse {
+  return { contacts: [] };
+}
+
+export const ContactInfoResponse = {
+  encode(message: ContactInfoResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.contacts) {
+      ContactInfoContentBody.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ContactInfoResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseContactInfoResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.contacts.push(ContactInfoContentBody.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ContactInfoResponse {
+    return {
+      contacts: Array.isArray(object?.contacts)
+        ? object.contacts.map((e: any) => ContactInfoContentBody.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ContactInfoResponse): unknown {
+    const obj: any = {};
+    if (message.contacts) {
+      obj.contacts = message.contacts.map((e) => e ? ContactInfoContentBody.toJSON(e) : undefined);
+    } else {
+      obj.contacts = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ContactInfoResponse>, I>>(base?: I): ContactInfoResponse {
+    return ContactInfoResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ContactInfoResponse>, I>>(object: I): ContactInfoResponse {
+    const message = createBaseContactInfoResponse();
+    message.contacts = object.contacts?.map((e) => ContactInfoContentBody.fromPartial(e)) || [];
     return message;
   },
 };

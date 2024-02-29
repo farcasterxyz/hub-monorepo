@@ -2,6 +2,7 @@ import {
   CastAddMessage,
   CastId,
   CastRemoveMessage,
+  ContactInfoResponse,
   DbStats,
   FidsResponse,
   getServer,
@@ -377,6 +378,25 @@ export default class Server {
           callback(null, info);
         })();
       },
+      getCurrentPeers: (call, callback) => {
+        (async () => {
+          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+          log.debug({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer}`);
+
+          (async () => {
+            const currentHubPeerContacts = this.syncEngine?.getCurrentHubPeerContacts();
+
+            if (!currentHubPeerContacts) {
+              callback(null, ContactInfoResponse.create({ contacts: [] }));
+              return;
+            }
+
+            const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact.contactInfo);
+            callback(null, ContactInfoResponse.create({ contacts: contactInfoArray }));
+          })();
+        })();
+      },
+
       getSyncStatus: (call, callback) => {
         (async () => {
           const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");

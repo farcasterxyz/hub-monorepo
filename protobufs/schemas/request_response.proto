@@ -4,6 +4,7 @@ import "message.proto";
 import "onchain_event.proto";
 import "hub_event.proto";
 import "username_proof.proto";
+import "gossip.proto";
 
 message Empty {}
 
@@ -238,6 +239,10 @@ message LinksByTargetRequest {
 
 message IdRegistryEventByAddressRequest {
   bytes address = 1;
+}
+
+message ContactInfoResponse {
+  repeated ContactInfoContentBody contacts = 1;
 }
 
 message ValidationResponse {
