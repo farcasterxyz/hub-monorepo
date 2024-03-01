@@ -1,6 +1,7 @@
 import {
   hexStringToBytes,
   HubAsyncResult,
+  HubError,
   IdRegisterEventBody,
   IdRegisterEventType,
   OnChainEvent,
@@ -175,7 +176,7 @@ export class L2EventsProvider {
     return this._lastBlockNumber;
   }
 
-  public async start() {
+  public async start(): HubAsyncResult<void> {
     // Connect to L2 RPC
 
     // Start the contract watchers first, so we cache events while we sync historical events
@@ -183,15 +184,33 @@ export class L2EventsProvider {
     this._watchIdRegistryV2ContractEvents?.start();
     this._watchKeyRegistryV2ContractEvents?.start();
 
-    await this.connectAndSyncHistoricalEvents();
-
-    this._watchBlockNumber?.start();
+    const syncHistoryResult = await this.connectAndSyncHistoricalEvents();
+    if (syncHistoryResult.isErr()) {
+      return err(syncHistoryResult.error);
+    } else if (!this._isHistoricalSyncDone) {
+      return err(new HubError("unavailable", "Historical sync failed to complete"));
+    } else {
+      return ok(this._watchBlockNumber?.start());
+    }
   }
 
   public async stop() {
-    this._watchStorageContractEvents?.stop();
-    this._watchIdRegistryV2ContractEvents?.stop();
-    this._watchKeyRegistryV2ContractEvents?.stop();
+    // NOTE: Contract event watchers may rely on creation of filters (eth_newFilter) - however, by default providers like
+    // Alchemy will expire filters if they're not used for 5 minutes.
+    // As a result, we log errors on the contract event watchers, but continue with the rest of the shutdown process.
+    [
+      this._watchStorageContractEvents?.stop(),
+      this._watchIdRegistryV2ContractEvents?.stop(),
+      this._watchKeyRegistryV2ContractEvents?.stop(),
+    ].forEach((result) => {
+      if (!result) {
+        return;
+      }
+
+      if (result.isErr()) {
+        log.error(result.error, "error stopping contract event watcher");
+      }
+    });
     this._watchBlockNumber?.stop();
 
     // Wait for all async promises to resolve
@@ -500,20 +519,19 @@ export class L2EventsProvider {
   }
 
   /** Connect to OP RPC and sync events. Returns the highest block that was synced */
-  private async connectAndSyncHistoricalEvents(): Promise<number> {
+  private async connectAndSyncHistoricalEvents(): HubAsyncResult<number> {
     const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
-      log.error(
-        { err: latestBlockResult.error },
-        "failed to connect to optimism node. Check your eth RPC URL (e.g. --l2-rpc-url)",
-      );
-      return 0;
+      const msg = "failed to connect to optimism node. Check your eth RPC URL (e.g. --l2-rpc-url)";
+      log.error({ err: latestBlockResult.error }, msg);
+      return err(new HubError("unavailable.network_failure", msg));
     }
     const latestBlock = Number(latestBlockResult.value);
 
     if (!latestBlock) {
-      log.error("failed to get the latest block from the RPC provider");
-      return 0;
+      const msg = "failed to get the latest block from the RPC provider";
+      log.error(msg);
+      return err(new HubError("unavailable.network_failure", msg));
     }
 
     log.info({ latestBlock: latestBlock }, "connected to optimism node");
@@ -543,11 +561,22 @@ export class L2EventsProvider {
       const chunkSize = this._useFilters ? this._chunkSize : 250;
 
       // Sync old Rent events
-      await this.syncHistoricalEvents(lastSyncedBlock, toBlock, chunkSize);
+      const syncResult = await ResultAsync.fromPromise(
+        this.syncHistoricalEvents(lastSyncedBlock, toBlock, chunkSize),
+        (e) => {
+          return {
+            message: `failed to sync historical events from ${lastSyncedBlock} to ${toBlock}`,
+            cause: new Error(JSON.stringify(e)),
+          };
+        },
+      );
+      if (syncResult.isErr()) {
+        return err(new HubError("unavailable.network_failure", syncResult.error));
+      }
     }
 
     this._isHistoricalSyncDone = true;
-    return latestBlock;
+    return ok(latestBlock);
   }
 
   /**
