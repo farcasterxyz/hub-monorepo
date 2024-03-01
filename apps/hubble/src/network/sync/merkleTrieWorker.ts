@@ -7,7 +7,7 @@ import {
   MerkleTrieKV,
   NodeMetadata,
 } from "./merkleTrie.js";
-import { Logger } from "../../utils/logger.js";
+import { logger } from "../../utils/logger.js";
 import ReadWriteLock from "rwlock";
 import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import { StatsDInitParams, initializeStatsd, statsd } from "../../utils/statsd.js";
@@ -19,15 +19,7 @@ import { ResultAsync } from "neverthrow";
 // Approx 100k * 10 nodes * 65 bytes per node = approx 64MB of cached data
 const TRIE_UNLOAD_THRESHOLD = 100_000;
 
-// We use a proxy to log messages to the main thread
-const log = new Proxy<Logger>({} as Logger, {
-  get: (_target, prop) => {
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    return (...args: any[]) => {
-      parentPort?.postMessage({ log: { level: prop, logObj: args[0], message: args[1] } });
-    };
-  },
-});
+const log = logger.child({ component: "SyncMerkleTrieWorker" });
 
 // A type to get key/values from the DB
 export type DBGetter = (key: Buffer) => Promise<Buffer | undefined>;
@@ -169,7 +161,7 @@ class MerkleTrieImpl {
             "Merkle Trie loaded from DB",
           );
         } else {
-          log.info("Merkle Trie initialized with empty root node");
+          log.info("MerkleTrieImpl: Merkle Trie initialized with empty root node");
           this._root = new TrieNode();
         }
 
@@ -556,6 +548,12 @@ parentPort?.on(
       case "commitToDb": {
         await merkleTrie.commitToDb();
         parentPort?.postMessage({ methodCallId, result: makeResult<"commitToDb">(undefined) });
+        break;
+      }
+      case "loggerFlush": {
+        // Flush any buffered logs and start logging to STDOUT
+        logger.flush();
+        parentPort?.postMessage({ methodCallId, result: makeResult<"loggerFlush">(undefined) });
         break;
       }
       case "unloadChildrenAtPrefix": {
