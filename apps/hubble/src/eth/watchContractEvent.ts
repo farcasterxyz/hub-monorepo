@@ -40,7 +40,9 @@ export class WatchContractEvent<
         this._log.error(`Error watching contract events: ${error}`, { error });
         const restartResult = this.restart();
         if (restartResult.isErr()) {
-          this._log.error(restartResult.error, "Error restarting watch contract events");
+          // Note: restart returns error if start fails - if start fails, we throw the error since
+          // it can lead to inconsistent state.
+          throw restartResult.error;
         }
         if (this._params.onError) this._params.onError(error);
       },
@@ -73,7 +75,7 @@ export class WatchContractEvent<
   public restart(): HubResult<void> {
     const stopResult = this.stop();
     if (stopResult.isErr()) {
-      return err(stopResult.error);
+      this._log.error(stopResult.error, "Error stopping watch contract events");
     }
 
     return Result.fromThrowable(
