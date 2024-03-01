@@ -1,4 +1,4 @@
-import { parentPort, threadId, workerData } from "worker_threads";
+import { parentPort, workerData } from "worker_threads";
 import {
   MerkleTrieInterface,
   MerkleTrieInterfaceMessage,
