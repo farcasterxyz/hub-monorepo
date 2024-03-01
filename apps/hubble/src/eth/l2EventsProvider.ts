@@ -186,9 +186,9 @@ export class L2EventsProvider {
 
     const syncHistoryResult = await this.connectAndSyncHistoricalEvents();
     if (syncHistoryResult.isErr()) {
-      return err(syncHistoryResult.error);
+      throw syncHistoryResult.error;
     } else if (!this._isHistoricalSyncDone) {
-      return err(new HubError("unavailable", "Historical sync failed to complete"));
+      throw new HubError("unavailable", "Historical sync failed to complete");
     } else {
       return ok(this._watchBlockNumber?.start());
     }
