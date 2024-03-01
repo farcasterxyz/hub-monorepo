@@ -40,7 +40,7 @@ export class WatchContractEvent<
         this._log.error(`Error watching contract events: ${error}`, { error });
         const restartResult = this.restart();
         if (restartResult.isErr()) {
-          this._log.error(`Error restarting watch contract events: ${restartResult.error}`);
+          this._log.error(restartResult.error, "Error restarting watch contract events");
         }
         if (this._params.onError) this._params.onError(error);
       },
