@@ -21,7 +21,9 @@ export class PruneEventsJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PRUNE_EVENTS_JOB_CRON, () => this.doJobs());
+    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PRUNE_EVENTS_JOB_CRON, () => this.doJobs(), {
+      timezone: "Etc/UTC",
+    });
   }
 
   stop() {

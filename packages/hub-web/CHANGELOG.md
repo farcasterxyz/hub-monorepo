@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.8.3
+
+### Patch Changes
+
+- 579d29a4: feat: add transaction ID to frame message
+- 419d8287: Add currentPeers RPC endpoint
+- Updated dependencies [579d29a4]
+- Updated dependencies [419d8287]
+  - @farcaster/core@0.14.4
+
 ## 0.8.2
 
 ### Patch Changes

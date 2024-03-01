@@ -31,7 +31,6 @@ export type NodeMetadata = {
 };
 
 const log = logger.child({ component: "SyncMerkleTrie" });
-const workerLog = logger.child({ component: "SyncMerkleTrieWorker" });
 
 export interface MerkleTrieKV {
   key: Uint8Array;
@@ -52,6 +51,7 @@ export interface MerkleTrieInterface {
   items(): Promise<number>;
   rootHash(): Promise<string>;
   commitToDb(): Promise<void>;
+  loggerFlush(): Promise<void>;
   unloadChildrenAtPrefix(prefix: Uint8Array): Promise<void>;
   stop(): Promise<void>;
 }
@@ -115,6 +115,13 @@ class MerkleTrie {
       this._worker = new Worker(workerPath, {
         workerData: { statsdInitialization: getStatsdInitialization(), dbPath: this._db.location },
       });
+      // Loggers start off buffered, and they are "flushed" when the startup checks and progress
+      // bars finish. This is to avoid logging to the console before the progress bars are set up
+      // So, we need to listen for the flush event and call the logger.flush method in the worker
+      // thread
+      logger.onFlushListener(() => {
+        this.callMethod("loggerFlush");
+      });
     }
 
     this._worker.addListener("message", async (event) => {
@@ -162,11 +169,6 @@ class MerkleTrie {
         this._worker.postMessage({
           dbKeyValuesCallId: event.dbKeyValuesCallId,
         });
-      } else if (event.log) {
-        // Log event from the libp2p worker thread.
-        const { level, logObj, message } = event.log;
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        (workerLog as any)[level](logObj, message);
       } else {
         // Result of a method call. Pick the correct method call from the map and resolve/reject the promise
         const result = event;

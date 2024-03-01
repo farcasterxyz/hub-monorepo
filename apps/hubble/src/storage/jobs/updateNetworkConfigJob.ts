@@ -21,7 +21,9 @@ export class UpdateNetworkConfigJobScheduler {
 
   start(cronSchedule?: string) {
     const defaultSchedule = "59 * * * *"; // Every hour at :59
-    this._cronTask = cron.schedule(cronSchedule ?? defaultSchedule, () => this.doJobs());
+    this._cronTask = cron.schedule(cronSchedule ?? defaultSchedule, () => this.doJobs(), {
+      timezone: "Etc/UTC",
+    });
   }
 
   stop() {
