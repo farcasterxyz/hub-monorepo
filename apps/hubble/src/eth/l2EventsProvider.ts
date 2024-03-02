@@ -2,6 +2,7 @@ import {
   hexStringToBytes,
   HubAsyncResult,
   HubError,
+  HubResult,
   IdRegisterEventBody,
   IdRegisterEventType,
   OnChainEvent,
@@ -202,7 +203,8 @@ export class L2EventsProvider {
       this._watchStorageContractEvents?.stop(),
       this._watchIdRegistryV2ContractEvents?.stop(),
       this._watchKeyRegistryV2ContractEvents?.stop(),
-    ].forEach((result) => {
+      this._watchBlockNumber?.stop(),
+    ].forEach((result: HubResult<void> | undefined) => {
       if (!result) {
         return;
       }
@@ -211,7 +213,6 @@ export class L2EventsProvider {
         log.error(result.error, "error stopping contract event watcher");
       }
     });
-    this._watchBlockNumber?.stop();
 
     // Wait for all async promises to resolve
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -742,6 +743,15 @@ export class L2EventsProvider {
     progressBar?.stop();
   }
 
+  private async withRetry<T>(operation: () => Promise<T>, attempts = 3, delay = 500): Promise<T> {
+    try {
+      return await operation();
+    } catch (err) {
+      if (attempts === 1) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return this.withRetry(operation, attempts - 1, delay * 2);
+    }
+  }
   /** Wrapper around Viem client getFilterLogs/getContractEvents. Uses filters
    *  when supported, otherwise falls back to getContractEvents.
    */
@@ -752,19 +762,21 @@ export class L2EventsProvider {
     toBlock: bigint;
     strict: boolean;
   }) {
-    try {
-      if (this._useFilters) {
-        const filter = await this._publicClient.createContractEventFilter(params);
-        return this._publicClient.getFilterLogs({
-          filter,
-        });
-      } else {
-        return this._publicClient.getContractEvents(params);
-      }
-    } catch (err) {
+    return this.withRetry(
+      async () => {
+        if (this._useFilters) {
+          const filter = await this._publicClient.createContractEventFilter(params);
+          return this._publicClient.getFilterLogs({ filter });
+        } else {
+          return this._publicClient.getContractEvents(params);
+        }
+      },
+      3, // attempts
+      500, // initial delay in ms
+    ).catch((err) => {
       log.error({ err, params }, "failed to get contract events");
       return [];
-    }
+    });
   }
 
   /** Detect whether the configured RPC provider supports filters */
