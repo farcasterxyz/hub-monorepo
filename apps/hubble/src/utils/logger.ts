@@ -50,7 +50,7 @@ if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
   defaultOptions.level = process.env["LOG_LEVEL"];
 }
 
-type ProxiedLogger = { $: BufferedLogger } & Logger;
+type ProxiedLogger = { $: BufferedLogger; onFlushListener: (cb: () => void) => void } & Logger;
 
 class BufferedLogger {
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -58,8 +58,13 @@ class BufferedLogger {
   private buffering = false;
   private logger: Logger;
 
+  // Keep track of all worker thread loggers so we can propogate the flush event
+  private workerThreadLoggerCallbacks: (() => void)[] = [];
+
   constructor() {
     this.logger = pino.pino(defaultOptions);
+    this.buffering = true;
+    this.buffer = [];
   }
 
   createProxy(loggerInstance: Logger = this.logger): ProxiedLogger {
@@ -80,7 +85,7 @@ class BufferedLogger {
                 this.buffer.push({ method: prop, args });
 
                 if (this.buffer.length > MAX_BUFFERLOG_SIZE) {
-                  this.finishBuffering();
+                  this.flush();
                 }
               }
             }
@@ -91,10 +96,14 @@ class BufferedLogger {
             return this.createProxy(childLogger);
           };
         } else if (prop === "flush") {
-          this.finishBuffering();
+          this.flush();
           return target[prop];
         } else if (prop === "$") {
           return this;
+        } else if (prop === "onFlushListener") {
+          return (cb: () => void) => {
+            this.workerThreadLoggerCallbacks.push(cb);
+          };
         } else {
           return target[prop];
         }
@@ -102,15 +111,16 @@ class BufferedLogger {
     });
   }
 
-  startBuffering(): void {
-    this.buffering = true;
-    this.buffer = [];
-  }
-
-  finishBuffering(): void {
+  flush(): void {
     if (!this.buffering) return;
-
     this.buffering = false;
+
+    // Call all the callbacks (to flush the logger) from worker threads
+    (async () => {
+      for (const cb of this.workerThreadLoggerCallbacks) {
+        cb();
+      }
+    })();
 
     // And then in an async function, flush the buffer so that we don't block the main thread
     (async () => {

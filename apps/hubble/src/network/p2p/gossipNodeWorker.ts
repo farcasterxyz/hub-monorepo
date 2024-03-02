@@ -36,24 +36,13 @@ import { noise } from "@chainsafe/libp2p-noise";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign } from "./protocol.js";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
-import { Logger } from "../../utils/logger.js";
+import { logger } from "../../utils/logger.js";
 import { initializeStatsd, statsd } from "../../utils/statsd.js";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
 
-// We use a proxy to log messages to the main thread
-const log = new Proxy<Logger>({} as Logger, {
-  get: (_target, prop) => {
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    return (...args: any[]) => {
-      parentPort?.postMessage({
-        log: { level: prop, logObj: args[0], message: args[1] },
-      });
-    };
-  },
-});
-
+const log = logger.child({ component: "GossipNodeWorker" });
 /**
  * A wrapper around a libp2p node that is designed to run in a worker thread.
  */
@@ -543,6 +532,12 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
 
       // Exit the worker thread
       setTimeout(() => process.exit(0), 1000);
+      break;
+    }
+    case "loggerFlush": {
+      // Flush any buffered logs and start logging to STDOUT
+      logger.flush();
+      parentPort?.postMessage({ methodCallId, result: makeResult<"loggerFlush">(undefined) });
       break;
     }
     case "allPeerIds": {

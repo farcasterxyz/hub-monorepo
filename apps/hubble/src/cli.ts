@@ -177,9 +177,6 @@ app
       }
     };
 
-    // Start the logger off in buffered mode
-    logger.$.startBuffering();
-
     console.log("\n Hubble Startup Checks");
     console.log("------------------------");
 

@@ -67,7 +67,7 @@ export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions gl
 
 export type RpcUsers = Map<string, string[]>;
 
-const log = logger.child({ component: "rpcServer" });
+const log = logger.child({ component: "gRPCServer" });
 
 // Check if the user is authenticated via the metadata
 export const authenticateUser = (metadata: Metadata, rpcUsers: RpcUsers): HubResult<boolean> => {
