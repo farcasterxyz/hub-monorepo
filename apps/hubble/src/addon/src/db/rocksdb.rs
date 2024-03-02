@@ -1,3 +1,4 @@
+use crate::logger::{flush_log_buffer, LOGGER};
 use crate::store::{
     self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions, PAGE_SIZE_MAX,
 };
@@ -11,6 +12,7 @@ use neon::types::{
     JsString,
 };
 use rocksdb::{Options, TransactionDB};
+use slog::{info, o, slog_info};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
@@ -49,6 +51,7 @@ pub struct JsIteratorOptions {
 pub struct RocksDB {
     pub db: RwLock<Option<rocksdb::TransactionDB>>,
     pub path: String,
+    logger: slog::Logger,
 }
 
 /** Needed to make sure neon can clean up the RocksDB at the end */
@@ -56,9 +59,14 @@ impl Finalize for RocksDB {}
 
 impl RocksDB {
     pub fn new(path: &str) -> Result<RocksDB, HubError> {
+        let logger = LOGGER.clone();
+
+        info!(logger, "Creating new RocksDB"; "path" => path);
+
         Ok(RocksDB {
             db: RwLock::new(None),
             path: path.to_string(),
+            logger,
         })
     }
 
@@ -75,6 +83,11 @@ impl RocksDB {
         // Open the database with multi-threaded support
         let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, &self.path)?;
         *db_lock = Some(db);
+
+        slog_info!(self.logger, "Opened database"; "path" => &self.path);
+
+        flush_log_buffer();
+        slog_info!(self.logger, "After flushed log buffer");
 
         Ok(())
     }
@@ -258,6 +271,7 @@ impl RocksDB {
     where
         F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     {
+        info!(self.logger, "for_each_iterator_by_prefix"; "prefix" => format!("{:?}", prefix), "page_options" => format!("{:?}", page_options));
         let iter_opts = RocksDB::get_iterator_options(prefix, page_options);
 
         let db = self.db();

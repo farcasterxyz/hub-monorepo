@@ -36,16 +36,16 @@ impl StoreDef for ReactionStoreDef {
     }
 
     fn is_add_type(&self, message: &protos::Message) -> bool {
-        message.signature_scheme == protos::SignatureScheme::Ed25519.into()
+        message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
-            && message.data.as_ref().unwrap().r#type == MessageType::ReactionAdd.into()
+            && message.data.as_ref().unwrap().r#type == MessageType::ReactionAdd as i32
             && message.data.as_ref().unwrap().body.is_some()
     }
 
     fn is_remove_type(&self, message: &protos::Message) -> bool {
-        message.signature_scheme == protos::SignatureScheme::Ed25519.into()
+        message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
-            && message.data.as_ref().unwrap().r#type == MessageType::ReactionRemove.into()
+            && message.data.as_ref().unwrap().r#type == MessageType::ReactionRemove as i32
             && message.data.as_ref().unwrap().body.is_some()
     }
 

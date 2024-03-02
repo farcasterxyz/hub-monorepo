@@ -6,6 +6,7 @@ use std::convert::TryInto;
 use store::{ReactionStore, Store};
 
 mod db;
+mod logger;
 mod store;
 
 mod protos {
