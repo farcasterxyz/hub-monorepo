@@ -56,6 +56,8 @@ type StaticEncodable<T> = {
   toJSON(message: T): unknown;
 };
 
+export const MAX_PAGE_SIZE = 1000; // Global maximum limit
+
 // Get the call Object for a given method
 function getCallObject<M extends keyof HubServiceServer>(
   method: M,
@@ -191,8 +193,6 @@ type QueryPageParams = {
   pageToken?: string;
   reverse?: number | boolean;
 };
-
-export const MAX_PAGE_SIZE = 1000; // Global maximum limit
 
 function getPageOptions(query: QueryPageParams): PageOptions {
   const pageSize = query.pageSize ? parseInt(query.pageSize.toString()) : MAX_PAGE_SIZE;
