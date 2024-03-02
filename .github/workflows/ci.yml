@@ -73,7 +73,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}--node--${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}--node--20--${{ hashFiles('yarn.lock') }}
 
       - name: Cache Cargo registry and git
         uses: actions/cache@v3
@@ -81,17 +81,13 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
 
       - name: Cache Cargo build artifacts
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/apps/hubble/src/addon/target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-build-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
 
       - name: Install dependencies
         run: yarn install
