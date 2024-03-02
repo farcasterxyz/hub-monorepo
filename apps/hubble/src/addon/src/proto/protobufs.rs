@@ -384,6 +384,9 @@ pub struct FrameActionBody {
     /// Serialized frame state value
     #[prost(bytes = "vec", tag = "5")]
     pub state: ::prost::alloc::vec::Vec<u8>,
+    /// Chain-specific transaction ID for tx actions
+    #[prost(bytes = "vec", tag = "6")]
+    pub transaction_id: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for FrameActionBody {
     const NAME: &'static str = "FrameActionBody";
@@ -1962,6 +1965,19 @@ pub struct IdRegistryEventByAddressRequest {
 }
 impl ::prost::Name for IdRegistryEventByAddressRequest {
     const NAME: &'static str = "IdRegistryEventByAddressRequest";
+    const PACKAGE: &'static str = "";
+    fn full_name() -> ::prost::alloc::string::String {
+        ::prost::alloc::format!("{}", Self::NAME)
+    }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ContactInfoResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub contacts: ::prost::alloc::vec::Vec<ContactInfoContentBody>,
+}
+impl ::prost::Name for ContactInfoResponse {
+    const NAME: &'static str = "ContactInfoResponse";
     const PACKAGE: &'static str = "";
     fn full_name() -> ::prost::alloc::string::String {
         ::prost::alloc::format!("{}", Self::NAME)

@@ -45,6 +45,7 @@ First, ensure that the following are installed globally on your machine:
 - [Node.js 18.7+](https://nodejs.org/en/download/releases)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
+- [Protobuf compiler](https://protobuf.dev/downloads/)
 - [Rust](https://www.rust-lang.org/tools/install)
 
 Then, from the root folder run:
