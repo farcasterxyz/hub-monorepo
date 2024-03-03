@@ -59,6 +59,8 @@ The returned `nextPageToken` is empty if there are no more pages to return.
 
 Pagination query parameters can be combined with other query parameters supported by the endpoint. For example, `/v1/casts?fid=2&pageSize=3`.
 
+All endpoints have a maximum page size of `1000`.
+
 **Example**
 
 Fetch all casts by FID `2`, fetching upto 3 casts per Page
