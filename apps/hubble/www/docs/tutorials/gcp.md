@@ -37,14 +37,14 @@ provider "google" {
 
 resource "google_compute_instance" "farcaster-hub-vm" {
   name         = "farcaster-hub-vm"
-  machine_type = "n1-standard-4"  # 4 vCPUs, 15 GB memory
+  machine_type = "e2-standard-4"  # 4 vCPUs, 16 GB memory
   zone         = "us-central1-a"  # Specify the zone here
 
 
   boot_disk {
     initialize_params {
       image = "ubuntu-2004-focal-v20231213"  # Ubuntu 20.04 LTS image URL
-      size = 40  # 40 GB disk size
+      size = 60  # 60 GB disk size
     }
   }
 
