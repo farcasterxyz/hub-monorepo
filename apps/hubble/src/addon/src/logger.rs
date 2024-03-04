@@ -1,5 +1,8 @@
 use chrono::Utc;
-use slog::{o, Drain, FnValue, Logger, PushFnValue, Record};
+use neon::context::FunctionContext;
+use neon::result::JsResult;
+use neon::types::JsUndefined;
+use slog::{o, Drain, FnValue, Level, Logger, PushFnValue, Record};
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -19,23 +22,13 @@ impl<W: Write> BufferedSwitchWriter<W> {
             flush_next,
         }
     }
-
-    pub fn flush_buffer(&mut self) -> io::Result<()> {
-        if let Some(ref mut buffer) = self.buffer {
-            self.writer.write_all(&buffer)?;
-            self.writer.flush()?;
-            self.buffer = None;
-        }
-
-        Ok(())
-    }
 }
 
 impl<W: Write> Write for BufferedSwitchWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         // First check if we need to flush the buffer
         if self.flush_next.load(Ordering::Relaxed) {
-            self.flush_buffer()?;
+            self.flush()?;
             self.flush_next.store(false, Ordering::Relaxed);
         }
 
@@ -48,13 +41,19 @@ impl<W: Write> Write for BufferedSwitchWriter<W> {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.flush_buffer()
+        if let Some(ref mut buffer) = self.buffer {
+            self.writer.write_all(&buffer)?;
+            self.writer.flush()?;
+            self.buffer = None;
+        }
+
+        self.writer.flush()
     }
 }
 
 impl<W: Write> Drop for BufferedSwitchWriter<W> {
     fn drop(&mut self) {
-        let _ = self.flush_buffer();
+        let _ = self.flush();
     }
 }
 
@@ -68,10 +67,8 @@ fn create_logger() -> Logger {
 
     let json_logger = slog_json::Json::new(buffered_stdout)
         .add_key_value(o!(
-            "time" => FnValue(move |_ : &slog::Record| {
-                format!("{}", Utc::now().timestamp_millis())
-            }),
-            "pid" => process::id().to_string(),
+            "time" =>Utc::now().timestamp_millis(),
+            "pid" => process::id(),
             "hostname" => hostname,
         ))
         .add_key_value(o!(
@@ -79,7 +76,15 @@ fn create_logger() -> Logger {
                 ser.emit(record.msg())
             }),
             "level" => FnValue(move |rinfo : &Record| {
-                (rinfo.level().as_usize() - 1) * 10 // Convert log level to a number for datadog
+                // Convert slog log level to a number for datadog
+                match rinfo.level() {
+                    Level::Critical => 60,
+                    Level::Error => 50,
+                    Level::Warning => 40,
+                    Level::Info => 30,
+                    Level::Debug => 20,
+                    Level::Trace => 10,
+                }
             }),
         ))
         .set_newlines(true)
@@ -91,8 +96,10 @@ fn create_logger() -> Logger {
     Logger::root(async_drain, o!("root" => "true"))
 }
 
-pub fn flush_log_buffer() {
+pub fn js_flush_log_buffer(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     FLUSH_NEXT.store(true, Ordering::Relaxed);
+
+    Ok(JsUndefined::new(&mut cx))
 }
 
 use once_cell::sync::Lazy;

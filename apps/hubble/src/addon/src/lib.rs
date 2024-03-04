@@ -7,6 +7,7 @@ use store::{ReactionStore, Store};
 
 mod db;
 mod logger;
+mod statsd;
 mod store;
 
 mod protos {
@@ -82,6 +83,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_signMessageHash", ed25519_sign_message_hash)?;
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", blake3_20)?;
+
+    cx.export_function("flushLogBuffer", logger::js_flush_log_buffer)?;
 
     cx.export_function(
         "createStoreEventHandler",

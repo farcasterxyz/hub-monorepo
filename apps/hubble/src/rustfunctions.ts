@@ -14,8 +14,9 @@ import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
 import { logger } from "./utils/logger.js";
 import { Result } from "neverthrow";
 
-const log = logger.child({
-  component: "RustFunctions",
+// Also set up the log flush listener
+logger.onFlushListener(() => {
+  lib.flushLogBuffer();
 });
 
 export class RustDynStore {}

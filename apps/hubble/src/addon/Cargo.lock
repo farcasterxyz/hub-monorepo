@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "bytes",
+ "cadence",
  "chrono",
  "ed25519-dalek",
  "glob",
@@ -147,6 +148,15 @@ dependencies = [
  "cc",
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "cadence"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "472b6b55bd7e5410178ecd5d544b0bd6d6af926a960fae4048b570923dffdb08"
+dependencies = [
+ "crossbeam-channel",
 ]
 
 [[package]]
