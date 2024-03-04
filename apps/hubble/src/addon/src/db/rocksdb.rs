@@ -1,4 +1,5 @@
 use crate::logger::LOGGER;
+use crate::statsd::statsd;
 use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
@@ -164,6 +165,8 @@ impl RocksDB {
     pub fn commit(&self, batch: RocksDbTransactionBatch) -> Result<(), HubError> {
         let db = self.db();
         let txn = db.as_ref().unwrap().transaction();
+
+        statsd().incr("rust.db.commit");
 
         for (key, value) in batch.batch {
             if value.is_none() {

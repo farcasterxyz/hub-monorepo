@@ -65,6 +65,10 @@ export const rustErrorToHubError = (e: unknown) => {
   return new HubError(errCode as HubErrorCode, errMsg ?? "");
 };
 
+export const rsCreateStatsdClient = (host: string, port: number, prefix: string): void => {
+  lib.createStatsdClient(host, port, prefix);
+};
+
 /** Create or Open a DB at a give path 
  * 
  * All rust objects need to be "owned" by someone so that rust can manage its lifecycle. For rust objects like the

@@ -1,5 +1,6 @@
 import { StatsD } from "@figma/hot-shots";
 import { logger } from "./logger.js";
+import { rsCreateStatsdClient } from "../rustfunctions.js";
 
 const log = logger.child({ module: "statsd" });
 
@@ -41,6 +42,9 @@ export function initializeStatsd(host: string, port: number) {
 
   let lastLoggedErrorTime = 0;
   const errorLogInterval = 60 * 1000; // 1 minute in milliseconds
+
+  // Also create the rust client
+  rsCreateStatsdClient(host, port, statsdInitialization.prefix);
 
   // Attach an error listener to handle errors
   statsdObject.socket.on("error", (error) => {

@@ -84,7 +84,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", blake3_20)?;
 
+    cx.export_function("createStatsdClient", statsd::js_create_statsd_client)?;
+
     cx.export_function("flushLogBuffer", logger::js_flush_log_buffer)?;
+    cx.export_function("setLogLevel", logger::js_set_log_level)?;
 
     cx.export_function(
         "createStoreEventHandler",

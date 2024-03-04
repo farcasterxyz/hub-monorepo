@@ -1,9 +1,10 @@
 use super::{
-    bytes_compare, delete_message_transaction, get_farcaster_time, get_message,
-    hub_error_to_js_throw, make_message_primary_key, message, put_message_transaction,
+    bytes_compare, delete_message_transaction, get_message, hub_error_to_js_throw,
+    make_message_primary_key, message, put_message_transaction,
     utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
     MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
 };
+use crate::logger::LOGGER;
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message, MessageType},
@@ -15,6 +16,7 @@ use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use neon::{object::Object, types::buffer::TypedArray};
 use prost::Message as _;
 use rocksdb;
+use slog::{o, warn};
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
@@ -108,6 +110,7 @@ pub struct Store {
     store_event_handler: Arc<StoreEventHandler>,
     fid_locks: Arc<[Mutex<()>; 4]>,
     db: Arc<RocksDB>,
+    logger: slog::Logger,
     pub pool: Arc<Mutex<threadpool::ThreadPool>>, // TODO: Move this out
 }
 
@@ -131,6 +134,7 @@ impl Store {
                 Mutex::new(()),
             ]),
             db,
+            logger: LOGGER.new(o!("component" => "Store")),
             pool: Arc::new(Mutex::new(ThreadPool::new(1))),
         }
     }
@@ -617,6 +621,7 @@ impl Store {
 
                 if message.data.is_none() {
                     // This shouldn't happen, but if it does, skip it
+                    warn!(self.logger, "Message data is unexpectedly missing"; "full_message" => format!("{:?}", message));
                     return Ok(false); // Continue the iteration
                 }
 

@@ -20,6 +20,7 @@ dependencies = [
  "rocksdb",
  "slog",
  "slog-async",
+ "slog-atomic",
  "slog-json",
  "threadpool",
 ]
@@ -53,6 +54,12 @@ name = "anyhow"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
+
+[[package]]
+name = "arc-swap"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b3d0060af21e8d11a926981cc00c6c1541aa91dd64b9f881985c3da1094425f"
 
 [[package]]
 name = "arrayref"
@@ -978,6 +985,16 @@ dependencies = [
  "slog",
  "take_mut",
  "thread_local",
+]
+
+[[package]]
+name = "slog-atomic"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6b517f2dda9e1458733eb8350bad1a3632ffed8141be4c0f3d6def899a9b066"
+dependencies = [
+ "arc-swap",
+ "slog",
 ]
 
 [[package]]
