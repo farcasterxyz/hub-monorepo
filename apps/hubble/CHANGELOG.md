@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.10.8
+
+### Patch Changes
+
+- ff1eefbe: fix: Fix bad version release because of package.json
+
 ## 1.10.7
 
 ### Patch Changes
