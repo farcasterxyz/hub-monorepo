@@ -1,6 +1,8 @@
 import { Abi } from "abitype";
 import { PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
 import { logger, Logger } from "../utils/logger.js";
+import { HubError, HubResult } from "@farcaster/core";
+import { err, ok, Result } from "neverthrow";
 
 /**
  * Wrapper around watchContractEvent that restarts when an error
@@ -36,7 +38,12 @@ export class WatchContractEvent<
       ...this._params,
       onError: (error) => {
         this._log.error(`Error watching contract events: ${error}`, { error });
-        this.restart();
+        const restartResult = this.restart();
+        if (restartResult.isErr()) {
+          // Note: restart returns error if start fails - if start fails, we throw the error since
+          // it can lead to inconsistent state.
+          throw restartResult.error;
+        }
         if (this._params.onError) this._params.onError(error);
       },
     });
@@ -44,13 +51,43 @@ export class WatchContractEvent<
     this._log.info(`Started watching contract events at address ${this._params.address}`);
   }
 
-  public stop() {
-    if (this._unwatch) this._unwatch();
-    this._log.info("Stopped watching contract events");
+  public stop(): HubResult<void> {
+    let stopResult: Result<void, HubError>;
+    if (this._unwatch) {
+      stopResult = Result.fromThrowable(this._unwatch, (error): HubError => {
+        const errorResult: string = JSON.stringify(error);
+        const message: string = "error stopping watch contract events";
+        this._log.error(message, { error });
+        return new HubError("unavailable.network_failure", errorResult);
+      })();
+    } else {
+      stopResult = ok(undefined);
+    }
+
+    if (stopResult.isErr()) {
+      return err(stopResult.error);
+    } else {
+      this._log.info("Stopped watching contract events");
+      return stopResult;
+    }
   }
 
-  public restart() {
-    this.stop();
-    this.start();
+  public restart(): HubResult<void> {
+    const stopResult = this.stop();
+    if (stopResult.isErr()) {
+      this._log.error(stopResult.error, "Error stopping watch contract events");
+    }
+
+    return Result.fromThrowable(
+      () => {
+        this.start();
+      },
+      (error): HubError => {
+        const errorResult: string = JSON.stringify(error);
+        const message: string = "error starting watch contract events";
+        this._log.error(message, { error });
+        return new HubError("unavailable", errorResult);
+      },
+    )();
   }
 }

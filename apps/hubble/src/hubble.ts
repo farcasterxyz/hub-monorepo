@@ -390,14 +390,14 @@ export class Hub implements HubInterface {
     });
 
     const opMainnetRpcUrls = options.l2RpcUrl.split(",");
-    const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
+    const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 3, retryDelay: 500 }));
     const opClient = createPublicClient({
       chain: optimism,
       transport: fallback(opTransports, { rank: options.rankRpcs ?? false }),
     });
 
     const ethMainnetRpcUrls = options.ethMainnetRpcUrl.split(",");
-    const transports = ethMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
+    const transports = ethMainnetRpcUrls.map((url) => http(url, { retryCount: 3, retryDelay: 500 }));
     const mainnetClient = createPublicClient({
       chain: mainnet,
       transport: fallback(transports, { rank: options.rankRpcs ?? false }),
