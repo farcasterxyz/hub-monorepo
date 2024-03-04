@@ -38,7 +38,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { nativeValidationMethods } from "./rustfunctions.js";
+import { rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -412,6 +412,7 @@ export class Hub implements HubInterface {
       this.fNameRegistryEventsProvider,
       profileSync,
     );
+
     this.strictContactInfoValidation = options.strictContactInfoValidation || false;
     this.strictNoSign = options.strictNoSign || false;
 
@@ -470,7 +471,7 @@ export class Hub implements HubInterface {
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers
-    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
+    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine, () => this.syncEngine.syncTrieQSize);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
@@ -585,7 +586,7 @@ export class Hub implements HubInterface {
     if (dbResult.isErr()) {
       throw dbResult.error;
     } else {
-      log.info("rocksdb opened");
+      log.info({ path: this.rocksDB.location }, "rocksdb opened");
     }
 
     if (this.options.resetDB === true) {
@@ -786,17 +787,32 @@ export class Hub implements HubInterface {
           if (dbFiles.isErr() || dbFiles.value.length === 0) {
             log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
 
-            const response = await axios.get(`https://download.farcaster.xyz/${this.getSnapshotFolder()}/latest.json`);
-            const { key } = response.data;
+            let prevVersion = 0;
+            let latestSnapshotKey;
+            do {
+              const response = await axios.get(
+                `https://download.farcaster.xyz/${this.getSnapshotFolder(prevVersion)}/latest.json`,
+              );
+              const { key } = response.data;
 
-            if (!key) {
-              log.error({ data: response.data }, "No latest snapshot name found in latest.json");
+              if (!key) {
+                log.error(
+                  { data: response.data, folder: this.getSnapshotFolder(prevVersion) },
+                  "No latest snapshot name found in latest.json",
+                );
+                prevVersion += 1;
+              } else {
+                latestSnapshotKey = key as string;
+                break;
+              }
+            } while (prevVersion < LATEST_DB_SCHEMA_VERSION);
+
+            if (!latestSnapshotKey) {
               resolve(err(new HubError("unavailable", "No latest snapshot name found in latest.json")));
               return;
+            } else {
+              log.info({ latestSnapshotKey }, "found latest S3 snapshot");
             }
-
-            const latestSnapshotKey = key as string;
-            log.info({ latestSnapshotKey }, "found latest S3 snapshot");
 
             const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
             const response2 = await axios.get(snapshotUrl, {
@@ -838,12 +854,18 @@ export class Hub implements HubInterface {
               resolve(ok(true));
             });
 
+            let lastDownloadedSize = 0;
             response2.data
               .on("error", handleError)
               // biome-ignore lint/suspicious/noExplicitAny: <explanation>
               .on("data", (chunk: any) => {
                 downloadedSize += chunk.length;
                 progressBar?.update(downloadedSize);
+
+                if (downloadedSize - lastDownloadedSize > 1024 * 1024 * 1024) {
+                  log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
+                  lastDownloadedSize = downloadedSize;
+                }
               })
               .pipe(gunzip)
               .on("error", handleError)
@@ -914,12 +936,12 @@ export class Hub implements HubInterface {
       const hash = await validations.createMessageHash(
         ContactInfoContentBody.encode(body).finish(),
         HashScheme.BLAKE3,
-        nativeValidationMethods,
+        rsValidationMethods,
       );
       if (hash.isErr()) {
         return err(hash.error);
       }
-      const signature = await validations.signMessageHash(hash.value, rawPrivKey.marshal(), nativeValidationMethods);
+      const signature = await validations.signMessageHash(hash.value, rawPrivKey.marshal(), rsValidationMethods);
       if (signature.isErr()) {
         return err(signature.error);
       }
@@ -946,7 +968,13 @@ export class Hub implements HubInterface {
     await this.rpcServer.stop(true); // Force shutdown until we have a graceful way of ending active streams
 
     // Stop admin, gossip and sync engine
-    await Promise.all([this.adminServer.stop(), this.gossipNode.stop(terminateGossipWorker), this.syncEngine.stop()]);
+    await Promise.all([
+      this.adminServer.stop(),
+      this.gossipNode.stop(terminateGossipWorker),
+      this.syncEngine.stop(),
+      this.l2RegistryProvider.stop(),
+      this.fNameRegistryEventsProvider.stop(),
+    ]);
 
     // Stop cron tasks
     this.pruneMessagesJobScheduler.stop();
@@ -958,9 +986,6 @@ export class Hub implements HubInterface {
     this.gossipContactInfoJobScheduler.stop();
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
-
-    await this.l2RegistryProvider.stop();
-    await this.fNameRegistryEventsProvider.stop();
 
     // Stop the engine
     await this.engine.stop();
@@ -1142,7 +1167,7 @@ export class Hub implements HubInterface {
         return false;
       }
 
-      const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, nativeValidationMethods);
+      const hash = await validations.createMessageHash(bytes, HashScheme.BLAKE3, rsValidationMethods);
       if (hash.isErr()) {
         log.warn({ message: content }, "could not hash message");
         return false;
@@ -1152,7 +1177,7 @@ export class Hub implements HubInterface {
         hash.value,
         content.signature,
         content.signer,
-        nativeValidationMethods,
+        rsValidationMethods,
       );
       if (result.isErr()) {
         log.warn({ message: content, error: result.error }, "signature verification failed for contact info");
@@ -1579,9 +1604,9 @@ export class Hub implements HubInterface {
     return ok(this.gossipNode?.updateApplicationPeerScore(peerId, score));
   }
 
-  private getSnapshotFolder(): string {
+  private getSnapshotFolder(prevVersionCounter?: number): string {
     const network = FarcasterNetwork[this.options.network].toString();
-    return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION}`;
+    return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
   }
 
   async uploadToS3(filePath: string): HubAsyncResult<string> {

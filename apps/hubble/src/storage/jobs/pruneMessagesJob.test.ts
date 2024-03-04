@@ -19,7 +19,7 @@ import { makeTsHash } from "../../storage/db/message.js";
 const db = jestRocksDB("jobs.pruneMessagesJob.test");
 
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
-const scheduler = new PruneMessagesJobScheduler(engine);
+const scheduler = new PruneMessagesJobScheduler(engine, () => 0);
 
 // Use farcaster timestamp
 const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed25519Signer, timestamp: number) => {

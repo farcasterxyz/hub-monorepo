@@ -22,6 +22,7 @@ import { LibP2PNode } from "./gossipNodeWorker.js";
 import { ResultAsync } from "neverthrow";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
+const TEST_TIMEOUT_LONG = 30 * 1000;
 const db = jestRocksDB("network.p2p.gossipNode.test");
 
 describe("GossipNode", () => {
@@ -97,7 +98,7 @@ describe("GossipNode", () => {
         await node3.stop();
       }
     },
-    TEST_TIMEOUT_SHORT,
+    TEST_TIMEOUT_LONG,
   );
 
   test(

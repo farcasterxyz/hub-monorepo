@@ -239,69 +239,54 @@ class MerkleTrie {
     let count = 0;
 
     // Messages
-    await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.User]),
-      async (key, value) => {
-        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-        if (postfix < UserMessagePostfixMax) {
-          const message = Result.fromThrowable(
-            () => messageDecode(new Uint8Array(value as Buffer)),
-            (e) => e as HubError,
-          )();
-          if (message.isOk() && message.value.hash.length === HASH_LENGTH) {
-            await this.insert(SyncId.fromMessage(message.value));
-            count += 1;
-            if (count % 10_000 === 0) {
-              log.info({ count }, "Rebuilding Merkle Trie");
-            }
-          }
-        }
-      },
-      {},
-      1 * 60 * 60 * 1000,
-    );
-    log.info({ count }, "Rebuilt messages trie");
-    // On chain events
-    await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.OnChainEvent]),
-      async (key, value) => {
-        const postfix = (key as Buffer).readUint8(1);
-        if (postfix === OnChainEventPostfix.OnChainEvents) {
-          const event = Result.fromThrowable(
-            () => OnChainEvent.decode(new Uint8Array(value as Buffer)),
-            (e) => e as HubError,
-          )();
-          if (event.isOk()) {
-            await this.insert(SyncId.fromOnChainEvent(event.value));
-            count += 1;
-            if (count % 10_000 === 0) {
-              log.info({ count }, "Rebuilding Merkle Trie (events)");
-            }
-          }
-        }
-      },
-      {},
-      1 * 60 * 60 * 1000,
-    );
-    log.info({ count }, "Rebuilt events trie");
-    await this._db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.FNameUserNameProof]),
-      async (key, value) => {
-        const proof = Result.fromThrowable(
-          () => UserNameProof.decode(new Uint8Array(value as Buffer)),
+    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.User]), async (key, value) => {
+      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+      if (postfix < UserMessagePostfixMax) {
+        const message = Result.fromThrowable(
+          () => messageDecode(new Uint8Array(value as Buffer)),
           (e) => e as HubError,
         )();
-        if (proof.isOk()) {
-          await this.insert(SyncId.fromFName(proof.value));
+        if (message.isOk() && message.value.hash.length === HASH_LENGTH) {
+          await this.insert(SyncId.fromMessage(message.value));
           count += 1;
           if (count % 10_000 === 0) {
-            log.info({ count }, "Rebuilding Merkle Trie (proofs)");
+            log.info({ count }, "Rebuilding Merkle Trie");
           }
         }
-      },
-      {},
-      1 * 60 * 60 * 1000,
-    );
+      }
+    });
+    log.info({ count }, "Rebuilt messages trie");
+    // On chain events
+    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.OnChainEvent]), async (key, value) => {
+      const postfix = (key as Buffer).readUint8(1);
+      if (postfix === OnChainEventPostfix.OnChainEvents) {
+        const event = Result.fromThrowable(
+          () => OnChainEvent.decode(new Uint8Array(value as Buffer)),
+          (e) => e as HubError,
+        )();
+        if (event.isOk()) {
+          await this.insert(SyncId.fromOnChainEvent(event.value));
+          count += 1;
+          if (count % 10_000 === 0) {
+            log.info({ count }, "Rebuilding Merkle Trie (events)");
+          }
+        }
+      }
+    });
+    log.info({ count }, "Rebuilt events trie");
+    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.FNameUserNameProof]), async (key, value) => {
+      const proof = Result.fromThrowable(
+        () => UserNameProof.decode(new Uint8Array(value as Buffer)),
+        (e) => e as HubError,
+      )();
+      if (proof.isOk()) {
+        await this.insert(SyncId.fromFName(proof.value));
+        count += 1;
+        if (count % 10_000 === 0) {
+          log.info({ count }, "Rebuilding Merkle Trie (proofs)");
+        }
+      }
+    });
     log.info({ count }, "Rebuilt fnmames trie");
   }
 

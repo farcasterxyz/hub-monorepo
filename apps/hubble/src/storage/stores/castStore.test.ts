@@ -586,14 +586,14 @@ describe("revoke", () => {
   test("deletes all keys relating to the cast", async () => {
     await store.merge(castAdd);
     const castKeys: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       castKeys.push(key as Buffer);
     });
 
     expect(castKeys.length).toBeGreaterThan(0);
     await store.revoke(castAdd);
     const castKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       castKeysAfterRevoke.push(key as Buffer);
     });
 
@@ -607,14 +607,14 @@ describe("revoke", () => {
     });
     await store.merge(cast);
     const castKeys: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       castKeys.push(key as Buffer);
     });
 
     expect(castKeys.length).toBeGreaterThan(0);
     await store.revoke(cast);
     const castKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator(async (key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       castKeysAfterRevoke.push(key as Buffer);
     });
 

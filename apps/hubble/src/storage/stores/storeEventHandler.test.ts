@@ -3,11 +3,12 @@ import { ok, Result } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { getMessage, makeTsHash, putMessage, putMessageTransaction } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
-import StoreEventHandler, { HubEventArgs, HubEventIdGenerator } from "./storeEventHandler.js";
+import StoreEventHandler, { HubEventArgs } from "./storeEventHandler.js";
 import { sleep } from "../../utils/crypto.js";
 import { extractEventTimestamp, getFarcasterTime } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
 import CastStore from "./castStore.js";
+import { rsCreateStoreEventHandler, rsGetNextEventId } from "../../rustfunctions.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
@@ -40,13 +41,13 @@ beforeAll(async () => {
 });
 
 describe("HubEventIdGenerator", () => {
-  const generator = new HubEventIdGenerator();
+  const generator = rsCreateStoreEventHandler();
 
   test("succeeds", () => {
     let lastId = 0;
 
     for (let i = 0; i < 10; i++) {
-      const id = generator.generateId()._unsafeUnwrap();
+      const id = rsGetNextEventId(generator)._unsafeUnwrap();
       expect(id).toBeGreaterThan(lastId);
       lastId = id;
     }
@@ -54,19 +55,15 @@ describe("HubEventIdGenerator", () => {
 
   test("fails if sequence ID exceeds max allowed", () => {
     const currentTimestamp = Date.now();
-    const generator = new HubEventIdGenerator({ lastTimestamp: currentTimestamp, lastIndex: 4094 });
-    expect(generator.generateId({ currentTimestamp }).isOk()).toEqual(true);
-    expect(generator.generateId({ currentTimestamp }).isErr()).toEqual(true);
+    const generator = rsCreateStoreEventHandler(0, currentTimestamp, 4094);
+    expect(rsGetNextEventId(generator, currentTimestamp).isOk()).toEqual(true);
+    expect(rsGetNextEventId(generator, currentTimestamp).isErr()).toEqual(true);
   });
 
   test("can parse timestamps from event id", async () => {
     const currentTimestamp = Date.now();
-    const generator = new HubEventIdGenerator({
-      lastTimestamp: currentTimestamp,
-      lastIndex: 0,
-      epoch: FARCASTER_EPOCH,
-    });
-    const id = generator.generateId({ currentTimestamp })._unsafeUnwrap();
+    const generator = rsCreateStoreEventHandler(FARCASTER_EPOCH, currentTimestamp, 0);
+    const id = rsGetNextEventId(generator, currentTimestamp)._unsafeUnwrap();
     expect(extractEventTimestamp(id)).toEqual(currentTimestamp);
   });
 });
@@ -98,23 +95,16 @@ describe("commitTransaction", () => {
 });
 
 describe("isPrunable", () => {
-  test("returns true if messsage is earlier than prune time limit", async () => {
-    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 101 } });
-    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10, 100)).resolves.toEqual(ok(true));
-  });
   test("returns false if there is no prune time limit", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 101 } });
     await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10)).resolves.toEqual(ok(false));
   });
-  test("returns false if message is later than prune time limit", async () => {
-    message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
-    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 10, 100)).resolves.toEqual(ok(false));
-  });
+
   test("returns false if under size limit", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
     await putMessage(db, message);
     await expect(eventHandler.getCacheMessageCount(message.data.fid, UserPostfix.CastMessage)).resolves.toEqual(ok(1));
-    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(false));
+    await expect(eventHandler.isPrunable(message, UserPostfix.CastMessage, 1)).resolves.toEqual(ok(false));
   });
   test("returns false if over size limit and message is later than earliest message", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
@@ -124,7 +114,7 @@ describe("isPrunable", () => {
     const laterMessage = await Factories.CastAddMessage.create({
       data: { fid: message.data.fid, timestamp: currentTime + 50 },
     });
-    await expect(eventHandler.isPrunable(laterMessage, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(false));
+    await expect(eventHandler.isPrunable(laterMessage, UserPostfix.CastMessage, 1)).resolves.toEqual(ok(false));
   });
   test("returns true if over size limit and message is earlier than earliest message", async () => {
     message = await Factories.CastAddMessage.create({ data: { timestamp: currentTime - 50 } });
@@ -137,7 +127,7 @@ describe("isPrunable", () => {
     const earlierMessage = await Factories.CastAddMessage.create({
       data: { fid: message.data.fid, timestamp: currentTime - 75 },
     });
-    await expect(eventHandler.isPrunable(earlierMessage, UserPostfix.CastMessage, 1, 100)).resolves.toEqual(ok(true));
+    await expect(eventHandler.isPrunable(earlierMessage, UserPostfix.CastMessage, 1)).resolves.toEqual(ok(true));
   });
 });
 

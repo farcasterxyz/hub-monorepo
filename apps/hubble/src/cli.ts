@@ -803,7 +803,10 @@ app
       logger.warn({ rocksDBName }, "Failed to open RocksDB, falling back to rm");
       fallback();
     } else {
-      const clearResult = await ResultAsync.fromPromise(rocksDB.clear(), (e) => e as Error);
+      const clearResult = Result.fromThrowable(
+        () => rocksDB.clear(),
+        (e) => e as Error,
+      )();
       if (clearResult.isErr()) {
         logger.warn({ rocksDBName }, "Failed to open RocksDB, falling back to rm");
         fallback();

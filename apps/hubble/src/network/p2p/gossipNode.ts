@@ -257,7 +257,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
     // Collect all the known peers in the DB
     const peerAddresses = new Map<string, string>();
-    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.ConnectedPeers]), async (key, value) => {
+    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.ConnectedPeers]), (key, value) => {
       if (key && value) {
         peerAddresses.set(key.toString("ascii").slice(1), value.toString("ascii"));
       }

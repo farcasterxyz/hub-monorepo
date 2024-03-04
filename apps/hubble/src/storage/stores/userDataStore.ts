@@ -22,7 +22,7 @@ import { UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
 import { usernameProofCompare } from "../stores/utils.js";
 import { Store } from "./store.js";
-import { Transaction } from "../db/rocksdb.js";
+import { RocksDbTransaction } from "../db/rocksdb.js";
 
 /**
  * Generates unique keys used to store or fetch UserDataAdd messages in the UserDataAdd set index
@@ -120,7 +120,7 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
       throw new HubError("bad_request.conflict", "proof does not exist");
     }
 
-    let txn: Transaction;
+    let txn: RocksDbTransaction;
     if (usernameProof.fid === 0) {
       txn = deleteUserNameProofTransaction(this._db.transaction(), usernameProof);
     } else {

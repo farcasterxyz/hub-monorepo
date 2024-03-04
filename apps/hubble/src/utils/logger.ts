@@ -42,7 +42,8 @@ const defaultOptions: pino.LoggerOptions = {};
 
 const MAX_BUFFERLOG_SIZE = 1_000_000;
 
-// Disable logging in tests and CI to reduce noise
+// Disable logging in tests and CI to reduce noise.
+// PLEASE SEE `logger.rs` for the equivalent in Rust as well for rust logging.
 if (process.env["NODE_ENV"] === "test" || process.env["CI"]) {
   // defaultOptions.level = "debug";
   defaultOptions.level = "silent";

@@ -1,5 +1,5 @@
 import { UserNameProof } from "@farcaster/hub-nodejs";
-import RocksDB, { Transaction } from "../db/rocksdb.js";
+import RocksDB, { RocksDbTransaction } from "../db/rocksdb.js";
 import { RootPrefix } from "../db/types.js";
 import { makeFidKey } from "./message.js";
 
@@ -24,7 +24,10 @@ export const getFNameProofByFid = async (db: RocksDB, fid: number): Promise<User
   return UserNameProof.decode(new Uint8Array(buffer));
 };
 
-export const putUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
+export const putUserNameProofTransaction = (
+  txn: RocksDbTransaction,
+  usernameProof: UserNameProof,
+): RocksDbTransaction => {
   const proofBuffer = Buffer.from(UserNameProof.encode(usernameProof).finish());
 
   const primaryKey = makeFNameUserNameProofKey(usernameProof.name);
@@ -35,7 +38,10 @@ export const putUserNameProofTransaction = (txn: Transaction, usernameProof: Use
   return putTxn;
 };
 
-export const deleteUserNameProofTransaction = (txn: Transaction, usernameProof: UserNameProof): Transaction => {
+export const deleteUserNameProofTransaction = (
+  txn: RocksDbTransaction,
+  usernameProof: UserNameProof,
+): RocksDbTransaction => {
   const primaryKey = makeFNameUserNameProofKey(usernameProof.name);
   const secondaryKey = makeFNameUserNameProofByFidKey(usernameProof.fid);
   const deleteTxn = txn.del(primaryKey);

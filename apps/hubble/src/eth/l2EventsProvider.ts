@@ -196,6 +196,7 @@ export class L2EventsProvider {
 
     // Wait for all async promises to resolve
     await new Promise((resolve) => setTimeout(resolve, 0));
+    log.info("L2EventsProvider stopped");
   }
 
   /* -------------------------------------------------------------------------- */

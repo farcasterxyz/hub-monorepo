@@ -16,30 +16,25 @@ export async function fnameProofIndexMigration(db: RocksDB): Promise<boolean> {
   let count = 0;
   const start = Date.now();
 
-  await db.forEachIteratorByPrefix(
-    Buffer.from([RootPrefix.FNameUserNameProof]),
-    async (key, value) => {
-      if (!key || !value) {
-        return;
-      }
+  await db.forEachIteratorByPrefix(Buffer.from([RootPrefix.FNameUserNameProof]), async (key, value) => {
+    if (!key || !value) {
+      return;
+    }
 
-      let proof: UserNameProof | undefined = undefined;
-      try {
-        proof = UserNameProof.decode(new Uint8Array(value));
-      } catch (e) {
-        log.error({ key: key.toString("hex"), error: e }, "Failed to decode proof, deleting");
-        await db.del(key);
-      }
+    let proof: UserNameProof | undefined = undefined;
+    try {
+      proof = UserNameProof.decode(new Uint8Array(value));
+    } catch (e) {
+      log.error({ key: key.toString("hex"), error: e }, "Failed to decode proof, deleting");
+      await db.del(key);
+    }
 
-      if (proof?.fid) {
-        const secondaryKey = makeFNameUserNameProofByFidKey(proof?.fid);
-        await db.put(secondaryKey, key);
-        count += 1;
-      }
-    },
-    {},
-    1 * 60 * 60 * 1000,
-  );
+    if (proof?.fid) {
+      const secondaryKey = makeFNameUserNameProofByFidKey(proof?.fid);
+      await db.put(secondaryKey, key);
+      count += 1;
+    }
+  });
 
   log.info({ count, duration: Date.now() - start }, "Finished fname proof index migration");
   return true;

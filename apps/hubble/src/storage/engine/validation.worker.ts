@@ -1,5 +1,5 @@
 import { validations } from "@farcaster/hub-nodejs";
-import { nativeValidationMethods } from "../../rustfunctions.js";
+import { rsValidationMethods } from "../../rustfunctions.js";
 import { workerData, parentPort } from "worker_threads";
 import { http, createPublicClient, fallback } from "viem";
 import { optimism, mainnet } from "viem/chains";
@@ -33,7 +33,7 @@ const publicClients = {
 parentPort?.on("message", (data) => {
   (async () => {
     const { id, message } = data;
-    const result = await validations.validateMessage(message, nativeValidationMethods, publicClients);
+    const result = await validations.validateMessage(message, rsValidationMethods, publicClients);
 
     if (result.isErr()) {
       parentPort?.postMessage({ id, errCode: result.error.errCode, errMessage: result.error.message });

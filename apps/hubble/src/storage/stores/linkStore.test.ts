@@ -706,14 +706,14 @@ describe("revoke", () => {
   test("deletes all keys relating to the link", async () => {
     await set.merge(linkAdd);
     const linkKeys: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       linkKeys.push(key as Buffer);
     });
 
     expect(linkKeys.length).toBeGreaterThan(0);
     await set.revoke(linkAdd);
     const linkKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       linkKeysAfterRevoke.push(key as Buffer);
     });
 

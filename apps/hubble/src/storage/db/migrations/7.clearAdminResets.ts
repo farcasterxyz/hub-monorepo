@@ -44,8 +44,6 @@ export const clearAdminResets = async (db: RocksDB): Promise<boolean> => {
         }
       }
     },
-    {},
-    1 * 60 * 60 * 1000,
   );
   await syncTrie.commitToDb();
   await syncTrie.stop();

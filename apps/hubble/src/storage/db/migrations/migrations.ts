@@ -45,6 +45,14 @@ migrations.set(7, async (db: RocksDB) => {
   return await clearAdminResets(db);
 });
 
+migrations.set(8, async (db: RocksDB) => {
+  /**
+   * This is the rust DB migration. There's no actual migration
+   * to be done, but we set a new version to mark the migration
+   */
+  return true;
+});
+
 // To Add a new migration
 // migrations.set(<next number>, async (db: RocksDB) => {
 //   <call migration script>

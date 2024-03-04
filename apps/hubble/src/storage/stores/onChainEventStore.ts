@@ -12,7 +12,7 @@ import {
   SignerMigratedOnChainEvent,
   SignerOnChainEvent,
 } from "@farcaster/hub-nodejs";
-import RocksDB, { Transaction } from "../db/rocksdb.js";
+import RocksDB, { RocksDbTransaction } from "../db/rocksdb.js";
 import StoreEventHandler from "./storeEventHandler.js";
 import {
   getManyOnChainEvents,
@@ -68,15 +68,11 @@ class OnChainEventStore {
 
   async getOnChainEvents<T extends OnChainEvent>(type: OnChainEventType, fid: number): Promise<T[]> {
     const keys: Buffer[] = [];
-    await this._db.forEachIteratorByPrefix(
-      makeOnChainEventIteratorPrefix(type, fid),
-      (key) => {
-        if (key) {
-          keys.push(key);
-        }
-      },
-      { keys: true, values: false },
-    );
+    await this._db.forEachIteratorByPrefix(makeOnChainEventIteratorPrefix(type, fid), (key) => {
+      if (key) {
+        keys.push(key);
+      }
+    });
     return getManyOnChainEvents(this._db, keys);
   }
 
@@ -208,7 +204,7 @@ class OnChainEventStore {
     return result.value;
   }
 
-  private async _handleSignerEvent(txn: Transaction, event: SignerOnChainEvent): Promise<Transaction> {
+  private async _handleSignerEvent(txn: RocksDbTransaction, event: SignerOnChainEvent): Promise<RocksDbTransaction> {
     const secondaryKey = makeSignerOnChainEventBySignerKey(event.fid, event.signerEventBody.key);
     const existingEvent = await this._getEventBySecondaryKey<SignerOnChainEvent>(secondaryKey);
     if (existingEvent) {
@@ -255,7 +251,10 @@ class OnChainEventStore {
     return txn.put(secondaryKey, makeOnChainEventPrimaryKey(event.type, event.fid, event.blockNumber, event.logIndex));
   }
 
-  private async _handleIdRegisterEvent(txn: Transaction, event: IdRegisterOnChainEvent): Promise<Transaction> {
+  private async _handleIdRegisterEvent(
+    txn: RocksDbTransaction,
+    event: IdRegisterOnChainEvent,
+  ): Promise<RocksDbTransaction> {
     if (event.idRegisterEventBody.eventType === IdRegisterEventType.CHANGE_RECOVERY) {
       // change recovery events are not indexed (id and custody address are the same)
       return txn;
@@ -290,18 +289,13 @@ class OnChainEventStore {
 
   static async clearEvents(db: RocksDB) {
     let count = 0;
-    await db.forEachIteratorByPrefix(
-      Buffer.from([RootPrefix.OnChainEvent]),
-      async (key, value) => {
-        if (!key || !value) {
-          return;
-        }
-        await db.del(key);
-        count++;
-      },
-      {},
-      1 * 60 * 60 * 1000,
-    );
+    await db.forEachIteratorByPrefix(Buffer.from([RootPrefix.OnChainEvent]), async (key, value) => {
+      if (!key || !value) {
+        return;
+      }
+      await db.del(key);
+      count++;
+    });
     const result = await ResultAsync.fromPromise(getHubState(db), (e) => e as HubError);
     if (result.isOk()) {
       result.value.lastL2Block = 0;

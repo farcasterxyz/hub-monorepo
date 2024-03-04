@@ -99,7 +99,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         if (totalFidsChecked % 5000 === 0) {
           log.info({ fid, totalMessagesChecked, totalFidsChecked }, "ValidateOrRevokeMessagesJob: progress");
 
-          // Also write the hub state to the database every 1000 FIDs, so that we can recover from
+          // Also write the hub state to the database every 5000 FIDs, so that we can recover from
           // unfinished job
           const hubState = await getHubState(this._db);
           hubState.validateOrRevokeState = {
@@ -174,44 +174,39 @@ export class ValidateOrRevokeMessagesJobScheduler {
     log.info({ fid, lastJobTimestamp, latestSignerEventTs }, "ValidateOrRevokeMessagesJob: checking FID");
 
     let count = 0;
-    await this._db.forEachIteratorByPrefix(
-      prefix,
-      async (key, value) => {
-        if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
-          // Not a message key, so we can skip it.
-          return; // continue
-        }
+    await this._db.forEachIteratorByPrefix(prefix, async (key, value) => {
+      if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
+        // Not a message key, so we can skip it.
+        return; // continue
+      }
 
-        // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
-        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-        if (postfix > UserMessagePostfixMax) {
-          // Not a message key, so we can skip it.
-          return; // continue
-        }
+      // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
+      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+      if (postfix > UserMessagePostfixMax) {
+        // Not a message key, so we can skip it.
+        return; // continue
+      }
 
-        const message = Result.fromThrowable(
-          () => messageDecode(new Uint8Array(value as Buffer)),
-          (e) => e as HubError,
-        )();
+      const message = Result.fromThrowable(
+        () => messageDecode(new Uint8Array(value as Buffer)),
+        (e) => e as HubError,
+      )();
 
-        if (message.isOk()) {
-          const result = await this._engine.validateOrRevokeMessage(message.value);
-          count += 1;
-          result.match(
-            (result) => {
-              if (result !== undefined) {
-                log.info({ fid, hash: bytesToHexString(message.value.hash)._unsafeUnwrap() }, "revoked message");
-              }
-            },
-            (e) => {
-              log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
-            },
-          );
-        }
-      },
-      {},
-      15 * 60 * 1000, // 15 minutes
-    );
+      if (message.isOk()) {
+        const result = await this._engine.validateOrRevokeMessage(message.value);
+        count += 1;
+        result.match(
+          (result) => {
+            if (result !== undefined) {
+              log.info({ fid, hash: bytesToHexString(message.value.hash)._unsafeUnwrap() }, "revoked message");
+            }
+          },
+          (e) => {
+            log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
+          },
+        );
+      }
+    });
 
     return ok(count);
   }
@@ -225,44 +220,39 @@ export class ValidateOrRevokeMessagesJobScheduler {
     const prefix = makeUserKey(fid);
     let count = 0;
 
-    await this._db.forEachIteratorByPrefix(
-      prefix,
-      async (key, value) => {
-        if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
-          // Not a message key, so we can skip it.
-          return; // continue
-        }
+    await this._db.forEachIteratorByPrefix(prefix, async (key, value) => {
+      if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
+        // Not a message key, so we can skip it.
+        return; // continue
+      }
 
-        // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
-        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-        if (postfix !== UserPostfix.UsernameProofMessage && postfix !== UserPostfix.UserDataMessage) {
-          // Not a user name proof key, so we can skip it.
-          return; // continue
-        }
+      // Get the UserMessagePostfix from the key, which is the 1 + 32 bytes from the start
+      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+      if (postfix !== UserPostfix.UsernameProofMessage && postfix !== UserPostfix.UserDataMessage) {
+        // Not a user name proof key, so we can skip it.
+        return; // continue
+      }
 
-        const message = Result.fromThrowable(
-          () => messageDecode(new Uint8Array(value as Buffer)),
-          (e) => e as HubError,
-        )();
+      const message = Result.fromThrowable(
+        () => messageDecode(new Uint8Array(value as Buffer)),
+        (e) => e as HubError,
+      )();
 
-        if (message.isOk()) {
-          const result = await this._engine.validateOrRevokeMessage(message.value);
-          count += 1;
-          result.match(
-            (result) => {
-              if (result !== undefined) {
-                log.info({ fid, hash: bytesToHexString(message.value.hash)._unsafeUnwrap() }, "revoked message");
-              }
-            },
-            (e) => {
-              log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
-            },
-          );
-        }
-      },
-      {},
-      15 * 60 * 1000, // 15 minutes
-    );
+      if (message.isOk()) {
+        const result = await this._engine.validateOrRevokeMessage(message.value);
+        count += 1;
+        result.match(
+          (result) => {
+            if (result !== undefined) {
+              log.info({ fid, hash: bytesToHexString(message.value.hash)._unsafeUnwrap() }, "revoked message");
+            }
+          },
+          (e) => {
+            log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
+          },
+        );
+      }
+    });
 
     return ok(count);
   }

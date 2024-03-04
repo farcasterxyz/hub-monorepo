@@ -55,10 +55,9 @@ export class StorageCache {
 
     await this._db.forEachIteratorByPrefix(
       Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid])]),
-      async () => {
+      () => {
         totalFids++;
       },
-      { keys: false, values: false },
     );
 
     const progressBar = addProgressBar("Syncing storage cache", totalFids * 2);
@@ -104,30 +103,25 @@ export class StorageCache {
     log.info("starting storage cache prepopulation");
 
     const prefix = Buffer.from([RootPrefix.User]);
-    await this._db.forEachIteratorByPrefix(
-      prefix,
-      async (key) => {
-        const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-        if (postfix < UserMessagePostfixMax) {
-          const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
+    await this._db.forEachIteratorByPrefix(prefix, async (key) => {
+      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
+      if (postfix < UserMessagePostfixMax) {
+        const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
 
-          if (prevFid !== fid || prevPostfix !== postfix) {
-            await this.getMessageCount(fid, postfix);
+        if (prevFid !== fid || prevPostfix !== postfix) {
+          await this.getMessageCount(fid, postfix);
 
-            if (prevFid !== fid) {
-              totalFids += 1;
-              // Sleep to allow other threads to run between each fid
-              await sleep(1);
-            }
-
-            prevFid = fid;
-            prevPostfix = postfix;
+          if (prevFid !== fid) {
+            totalFids += 1;
+            // Sleep to allow other threads to run between each fid
+            await sleep(1);
           }
+
+          prevFid = fid;
+          prevPostfix = postfix;
         }
-      },
-      { values: false },
-      1 * 60 * 60 * 1000, // 1 hour
-    );
+      }
+    });
     this.prepopulateComplete = true;
     log.info({ timeTakenMs: Date.now() - start, totalFids }, "storage cache prepopulation finished");
   }
@@ -136,13 +130,9 @@ export class StorageCache {
     const key = makeKey(fid, set);
     if (this._counts.get(key) === undefined && forceFetch) {
       let total = 0;
-      await this._db.forEachIteratorByPrefix(
-        makeMessagePrimaryKey(fid, set),
-        () => {
-          total += 1;
-        },
-        { keys: false, values: false },
-      );
+      await this._db.forEachIteratorByPrefix(makeMessagePrimaryKey(fid, set), () => {
+        total += 1;
+      });
 
       // Recheck the count in case it was set by another thread (i.e. no race conditions)
       if (this._counts.get(key) === undefined) {

@@ -18,11 +18,10 @@ import {
   RevokeMessageHubEvent,
   StoreType,
 } from "@farcaster/hub-nodejs";
-import AbstractRocksDB from "@farcaster/rocksdb";
 import AsyncLock from "async-lock";
 import { err, ok, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import RocksDB, { Transaction } from "../db/rocksdb.js";
+import RocksDB, { RocksDbIteratorOptions, RocksDbTransaction } from "../db/rocksdb.js";
 import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
 import { makeTsHash, unpackTsHash } from "../db/message.js";
@@ -40,6 +39,7 @@ import {
   VerificationRemoveMessage,
 } from "@farcaster/core";
 import { logger } from "../../utils/logger.js";
+import { rsCreateStoreEventHandler, rsGetNextEventId, RustStoreEventHandler } from "../../rustfunctions.js";
 
 const PRUNE_TIME_LIMIT_DEFAULT = 60 * 60 * 24 * 3 * 1000; // 3 days in ms
 const DEFAULT_LOCK_MAX_PENDING = 5_000;
@@ -124,39 +124,6 @@ const makeEventId = (timestamp: number, seq: number): number => {
   return parseInt(binaryTimestamp + binarySeq, 2);
 };
 
-export class HubEventIdGenerator {
-  private _lastTimestamp: number; // ms since epoch
-  private _lastSeq: number;
-  private _epoch: number;
-
-  constructor(options: { epoch?: number; lastTimestamp?: number; lastIndex?: number } = {}) {
-    this._epoch = options.epoch ?? 0;
-    this._lastTimestamp = options.lastTimestamp ?? 0;
-    this._lastSeq = options.lastIndex ?? 0;
-  }
-
-  generateId(options: { currentTimestamp?: number } = {}): HubResult<number> {
-    const timestamp = (options.currentTimestamp || Date.now()) - this._epoch;
-
-    if (timestamp === this._lastTimestamp) {
-      this._lastSeq = this._lastSeq + 1;
-    } else {
-      this._lastTimestamp = timestamp;
-      this._lastSeq = 0;
-    }
-
-    if (this._lastTimestamp >= 2 ** TIMESTAMP_BITS) {
-      return err(new HubError("bad_request.invalid_param", `timestamp > ${TIMESTAMP_BITS} bits`));
-    }
-
-    if (this._lastSeq >= 2 ** SEQUENCE_BITS) {
-      return err(new HubError("bad_request.invalid_param", `sequence > ${SEQUENCE_BITS} bits`));
-    }
-
-    return ok(makeEventId(this._lastTimestamp, this._lastSeq));
-  }
-}
-
 const makeEventKey = (id?: number): Buffer => {
   const buffer = Buffer.alloc(1 + (id ? 8 : 0));
   buffer.writeUint8(RootPrefix.HubEvents, 0);
@@ -166,7 +133,7 @@ const makeEventKey = (id?: number): Buffer => {
   return buffer;
 };
 
-const putEventTransaction = (txn: Transaction, event: HubEvent): Transaction => {
+const putEventTransaction = (txn: RocksDbTransaction, event: HubEvent): RocksDbTransaction => {
   const key = makeEventKey(event.id);
   const value = Buffer.from(HubEvent.encode(event).finish());
   return txn.put(key, value);
@@ -179,21 +146,31 @@ export type StoreEventHandlerOptions = {
 
 class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _db: RocksDB;
-  private _generator: HubEventIdGenerator;
+
+  // Pointer to the rust store event handler object
+  private _rustStoreEventHandler: RustStoreEventHandler;
+
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
 
-  constructor(db: RocksDB, options: StoreEventHandlerOptions = {}) {
+  constructor(db: RocksDB, options: StoreEventHandlerOptions = {}, rustEventHandler?: RustStoreEventHandler) {
     super();
 
     this._db = db;
-    this._generator = new HubEventIdGenerator({ epoch: FARCASTER_EPOCH });
+
+    // Create default store if no options are passed
+    this._rustStoreEventHandler = rustEventHandler ?? rsCreateStoreEventHandler();
+
     this._lock = new AsyncLock({
       maxPending: options.lockMaxPending ?? DEFAULT_LOCK_MAX_PENDING,
       maxExecutionTime: options.lockExecutionTimeout ?? DEFAULT_EXECUTION_TIMEOUT,
     });
 
     this._storageCache = new StorageCache(this._db);
+  }
+
+  getRustStoreEventHandler(): RustStoreEventHandler {
+    return this._rustStoreEventHandler;
   }
 
   async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
@@ -257,7 +234,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   getEventsIteratorOpts(
     options: { fromId?: number | undefined; toId?: number | undefined } = {},
-  ): HubResult<AbstractRocksDB.IteratorOptions> {
+  ): HubResult<RocksDbIteratorOptions> {
     const minKey = makeEventKey(options.fromId);
     const maxKey = options.toId ? ok(makeEventKey(options.toId)) : bytesIncrement(Uint8Array.from(makeEventKey()));
     if (maxKey.isErr()) {
@@ -273,10 +250,10 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    await this._db.forEachIterator((_key, value) => {
+    await this._db.forEachIteratorByOpts(iteratorOpts.value, (_key, value) => {
       const event = HubEvent.decode(Uint8Array.from(value as Buffer));
       events.push(event);
-    }, iteratorOpts.value);
+    });
 
     return ok(events);
   }
@@ -292,7 +269,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     let lastEventId = fromId;
-    await this._db.forEachIterator((key, value) => {
+    await this._db.forEachIteratorByOpts(iteratorOpts.value, (key, value) => {
       const event = HubEvent.decode(Uint8Array.from(value as Buffer));
       events.push(event);
 
@@ -305,7 +282,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       }
 
       return false;
-    }, iteratorOpts.value);
+    });
 
     return ok({ events, nextPageEventId: lastEventId + 1 });
   }
@@ -314,22 +291,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     message: PrunableMessage,
     set: UserMessagePostfix,
     sizeLimit: number,
-    timeLimit: number | undefined = undefined,
   ): HubAsyncResult<boolean> {
-    const farcasterTime = getFarcasterTime();
-    if (farcasterTime.isErr()) {
-      return err(farcasterTime.error);
-    }
-
-    // Calculate the timestamp cut-off to prune if set supports time based expiry
-    if (timeLimit !== undefined) {
-      const timestampToPrune = farcasterTime.value - timeLimit;
-
-      if (message.data.timestamp < timestampToPrune) {
-        return ok(true);
-      }
-    }
-
     const units = await this.getCurrentStorageUnitsForFid(message.data.fid);
 
     if (units.isErr()) {
@@ -363,10 +325,10 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
   }
 
-  async commitTransaction(txn: Transaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
+  async commitTransaction(txn: RocksDbTransaction, eventArgs: HubEventArgs): HubAsyncResult<number> {
     return this._lock
       .acquire("commit", async () => {
-        const eventId = this._generator.generateId();
+        const eventId = rsGetNextEventId(this._rustStoreEventHandler);
         if (eventId.isErr()) {
           throw eventId.error;
         }
@@ -378,13 +340,19 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
         await this._db.commit(txn);
 
         void this._storageCache.processEvent(event);
-        void this.broadcastEvent(event);
+        this.broadcastEvent(event);
 
         return ok(event.id);
       })
       .catch((e: Error) => {
         return err(isHubError(e) ? e : new HubError("unavailable.storage_failure", e.message));
       });
+  }
+
+  async processRustCommitedTransaction(event: HubEvent): HubAsyncResult<void> {
+    void this._storageCache.processEvent(event);
+    void this.broadcastEvent(event);
+    return ok(undefined);
   }
 
   async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
@@ -396,20 +364,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    const result = await this._db.forEachIterator(
-      async (key, _value) => {
-        const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
-        if (result.isErr()) {
-          return err(result.error);
-        }
-        return false;
-      },
-      iteratorOpts.value,
-      10 * 60 * 1000, // 10 minutes
-    );
+    let error: HubError | undefined;
+    await this._db.forEachIteratorByOpts(iteratorOpts.value, async (key, _value) => {
+      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
+      if (result.isErr()) {
+        error = result.error;
+        return true; // stop iteration
+      }
+      return false;
+    });
 
-    if (result) {
-      return err(result.error);
+    if (error) {
+      return err(error);
     } else {
       return ok(undefined);
     }

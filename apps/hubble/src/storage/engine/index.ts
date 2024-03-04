@@ -65,10 +65,11 @@ import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
 import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByKey } from "../../utils/rateLimits.js";
-import { nativeValidationMethods } from "../../rustfunctions.js";
+import { rsValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { ValidationWorkerData } from "./validation.worker.js";
+import { statsd } from "../../utils/statsd.js";
 
 const log = logger.child({
   component: "Engine",
@@ -253,8 +254,17 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     }
 
+    const start = Date.now();
     const mergeResult = await this.mergeMessageToStore(message);
+
     if (mergeResult.isOk() && limiter) {
+      const timeTakenMs = Date.now() - start;
+
+      if (typeToSetPostfix(message.data?.type ?? MessageType.NONE) === UserPostfix.ReactionMessage) {
+        statsd().timing("engine.merge.rust", timeTakenMs);
+      } else {
+        statsd().timing("engine.merge.nodejs", timeTakenMs);
+      }
       consumeRateLimitByKey(`${fid}`, limiter);
     }
 
@@ -397,36 +407,39 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(undefined);
   }
 
-  async pruneMessages(fid: number): HubAsyncResult<void> {
-    const logPruneResult = (result: HubResult<number[]>, store: string): void => {
-      result.match(
+  async pruneMessages(fid: number): HubAsyncResult<number> {
+    const logPruneResult = (result: HubResult<number[]>, store: string): number => {
+      return result.match(
         (ids) => {
           if (ids.length > 0) {
             log.info(`pruned ${ids.length} ${store} messages for fid ${fid}`);
           }
+          return ids.length;
         },
         (e) => {
           log.error({ errCode: e.errCode }, `error pruning ${store} messages for fid ${fid}: ${e.message}`);
+          return 0;
         },
       );
     };
 
+    let totalPruned = 0;
     const castResult = await this._castStore.pruneMessages(fid);
-    logPruneResult(castResult, "cast");
+    totalPruned += logPruneResult(castResult, "cast");
 
     const reactionResult = await this._reactionStore.pruneMessages(fid);
-    logPruneResult(reactionResult, "reaction");
+    totalPruned += logPruneResult(reactionResult, "reaction");
 
     const verificationResult = await this._verificationStore.pruneMessages(fid);
-    logPruneResult(verificationResult, "verification");
+    totalPruned += logPruneResult(verificationResult, "verification");
 
     const userDataResult = await this._userDataStore.pruneMessages(fid);
-    logPruneResult(userDataResult, "user data");
+    totalPruned += logPruneResult(userDataResult, "user data");
 
     const linkResult = await this._linkStore.pruneMessages(fid);
-    logPruneResult(linkResult, "link");
+    totalPruned += logPruneResult(linkResult, "link");
 
-    return ok(undefined);
+    return ok(totalPruned);
   }
 
   /** revoke message if it is not valid */
@@ -1041,7 +1054,7 @@ class Engine extends TypedEmitter<EngineEvents> {
         worker.postMessage({ id, message });
       });
     } else {
-      return validations.validateMessage(message, nativeValidationMethods, this.getPublicClients());
+      return validations.validateMessage(message, rsValidationMethods, this.getPublicClients());
     }
   }
 

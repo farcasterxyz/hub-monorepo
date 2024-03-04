@@ -1,11 +1,10 @@
 import { faker } from "@faker-js/faker";
-import { HubError } from "@farcaster/hub-nodejs";
-import { existsSync, mkdirSync, rmdirSync } from "fs";
+import { HubError, bytesCompare, bytesIncrement } from "@farcaster/hub-nodejs";
+import { existsSync, mkdirSync, rmSync } from "fs";
 import { jestRocksDB } from "./jestUtils.js";
-import RocksDB, { MAX_DB_ITERATOR_OPEN_MILLISECONDS } from "./rocksdb.js";
-import { jest } from "@jest/globals";
+import RocksDB from "./rocksdb.js";
 import { ResultAsync } from "neverthrow";
-import { sleep } from "../../utils/crypto.js";
+import { rsDbForEachIteratorByOpts, rsDbForEachIteratorByPrefix } from "../../rustfunctions.js";
 
 //Safety: fs is safe to use in tests
 
@@ -28,7 +27,7 @@ describe("open", () => {
 
     test("when directory does not exist", async () => {
       if (existsSync(db.location)) {
-        rmdirSync(db.location);
+        rmSync(db.location, { recursive: true });
       }
     });
 
@@ -47,33 +46,25 @@ describe("close", () => {
     const db = new RocksDB(randomDbName());
     expect(db.status).toEqual("new");
     await db.open();
-    await expect(db.close()).resolves.toEqual(undefined);
+    expect(db.status).toEqual("open");
+    db.close();
     expect(db.status).toEqual("closed");
     await db.destroy();
   });
 });
 
 describe("destroy", () => {
-  test("fails when db has never been opened", async () => {
-    const db = new RocksDB(randomDbName());
-    expect(db.status).toEqual("new");
-    await expect(db.destroy()).rejects.toThrow(new Error("db never opened"));
-
-    // Call close to clear the open iterator timers that might still be open
-    await db.close();
-  });
-
   test("succeeds when db is open", async () => {
     const db = new RocksDB(randomDbName());
     await db.open();
-    await expect(db.destroy()).resolves.toEqual(undefined);
+    await expect(db.destroy()).resolves.toEqual(true);
   });
 
   test("destroys db", async () => {
     const db = new RocksDB(randomDbName());
     await db.open();
-    await db.close();
-    await expect(db.destroy()).resolves.toEqual(undefined);
+    db.close();
+    await expect(db.destroy()).resolves.toEqual(true);
   });
 });
 
@@ -84,7 +75,8 @@ describe("clear", () => {
     await db.put(Buffer.from("key"), Buffer.from("value"));
     const value = await db.get(Buffer.from("key"));
     expect(value).toEqual(Buffer.from("value"));
-    await expect(db.clear()).resolves.toEqual(undefined);
+
+    db.clear();
     await expect(db.get(Buffer.from("key"))).rejects.toThrow(HubError);
     await db.destroy();
   });
@@ -162,7 +154,7 @@ describe("with db", () => {
       const keys: Buffer[] = [];
       const values: Buffer[] = [];
 
-      await db.forEachIterator(async (key, value) => {
+      await db.forEachIteratorByPrefix(Buffer.from([]), async (key, value) => {
         keys.push(key as Buffer);
         values.push(value as Buffer);
       });
@@ -172,7 +164,7 @@ describe("with db", () => {
     });
   });
 
-  describe("iteratorByPrefix", () => {
+  describe("forEachIteratorByPrefix", () => {
     test("succeeds", async () => {
       await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
       await db.put(Buffer.from("allison"), Buffer.from("oops"));
@@ -213,8 +205,8 @@ describe("with db", () => {
     test("succeeds with single byte prefix", async () => {
       const tsx = db
         .transaction()
-        .put(Buffer.from([255, 1]), Buffer.from("a"))
-        .put(Buffer.from([255, 2]), Buffer.from("b"))
+        .put(Buffer.from([225, 1]), Buffer.from("a"))
+        .put(Buffer.from([225, 2]), Buffer.from("b"))
         .put(Buffer.from([2, 0]), Buffer.from("c"))
         .put(Buffer.from([1, 0]), Buffer.from("d"))
         .put(Buffer.from([254, 255]), Buffer.from("e"));
@@ -222,14 +214,395 @@ describe("with db", () => {
       await db.commit(tsx);
 
       const values: Buffer[] = [];
-      await db.forEachIteratorByPrefix(Buffer.from([255]), (key, value) => {
+      await db.forEachIteratorByPrefix(Buffer.from([225]), (_key, value) => {
         values.push(value as Buffer);
       });
       expect(values).toEqual([Buffer.from("a"), Buffer.from("b")]);
     });
   });
 
-  describe("forEachIterator", () => {
+  describe("large iterators", () => {
+    test("pages 10k messages", async () => {
+      const testSize = 10_000 + 5;
+
+      // Create an array with 10k + 5 messages
+      let count = new Uint8Array(Buffer.from([100, 0, 0, 0]));
+      const keys = Array.from({ length: testSize }, (_, i) => {
+        count = bytesIncrement(count)._unsafeUnwrap();
+        return new Uint8Array(count);
+      });
+
+      // Add all the messages to the db
+      const tsx = db.transaction();
+      keys.forEach((key) => {
+        tsx.put(Buffer.from(key), Buffer.from(key));
+      });
+      await db.commit(tsx);
+
+      // 1. Iterate through all the messages with just the prefix
+      let values: Buffer[] = [];
+      let allFinished = await db.forEachIteratorByPrefix(Buffer.from([100]), (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize);
+
+      // 2. Iterate through all the messages with a blank prefix
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(Buffer.from([]), (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize);
+
+      // 3. Iterate through all messages with prefix + reverse
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([100]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { reverse: true },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize);
+
+      // 4. Iterate through all messages with no prefix + reverse
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { reverse: true },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize);
+
+      // 5. Iterate through all messages with prefix + page size
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([100]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageSize: 100 },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[99] as Buffer, keys[99] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(false);
+      expect(values.length).toEqual(100);
+
+      // 6. Iterate through all messages with no prefix + page size
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageSize: 100 },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[99] as Buffer, keys[99] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(false);
+      expect(values.length).toEqual(100);
+
+      // 6.1 Iterate through all messages with no prefix + page size + page token
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageSize: 100, pageToken: keys[100] as Buffer },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[101] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(false);
+      expect(values.length).toEqual(100);
+
+      // 6.2 Iterate through all messages with no prefix + page size + page token + reverse
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageSize: 100, pageToken: keys[100] as Buffer, reverse: true },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[99] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(false);
+      expect(values.length).toEqual(100);
+
+      // 6.3 Iterate through all messages with no prefix + page token
+      values = [];
+      allFinished = await db.forEachIteratorByPrefix(
+        Buffer.from([]),
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        { pageToken: keys[99] as Buffer },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[100] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize - 100);
+
+      // 7. Iterate using opts
+      values = [];
+      allFinished = await db.forEachIteratorByOpts(
+        { gte: Buffer.from([100]), lt: Buffer.from([101]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize);
+
+      // 8. Iterate using opts + reverse
+      values = [];
+      allFinished = await db.forEachIteratorByOpts(
+        { gte: Buffer.from([100]), lt: Buffer.from([101]), reverse: true },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize);
+
+      // 9. Iterate using opts + prefix starting in the middle
+      values = [];
+      allFinished = await db.forEachIteratorByOpts(
+        { gte: keys[5] as Buffer, lt: Buffer.from([101]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[5] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[values.length - 1] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize - 5);
+
+      // 10. Iterate using opts + prefix starting in the middle + reverse
+      values = [];
+      allFinished = await db.forEachIteratorByOpts(
+        { gte: keys[5] as Buffer, lt: Buffer.from([101]), reverse: true },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[testSize - 1] as Buffer)).toEqual(0);
+      expect(bytesCompare(values[values.length - 1] as Buffer, keys[5] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(true);
+      expect(values.length).toEqual(testSize - 5);
+
+      // 11. Iterate using opts + prefix but interrupt after 1 message
+      values = [];
+      allFinished = await db.forEachIteratorByOpts(
+        { gte: Buffer.from([100]), lt: Buffer.from([101]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+          return true;
+        },
+      );
+      expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
+      expect(allFinished).toEqual(false);
+      expect(values.length).toEqual(1);
+    });
+  });
+
+  describe("db forEachIteratorByOpts paging", () => {
+    test("forEachIteratorByOpts succeeds with paging", async () => {
+      const allValues = [
+        Buffer.from("a"),
+        Buffer.from("b"),
+        Buffer.from("c"),
+        Buffer.from("d"),
+        Buffer.from("e"),
+        Buffer.from("f"),
+        Buffer.from("g"),
+      ];
+
+      const tsx = db
+        .transaction()
+        .put(Buffer.from([100, 1]), allValues[0] as Buffer)
+        .put(Buffer.from([100, 2]), allValues[1] as Buffer)
+        .put(Buffer.from([100, 3]), allValues[2] as Buffer)
+        .put(Buffer.from([100, 4]), allValues[3] as Buffer)
+        .put(Buffer.from([100, 5]), allValues[4] as Buffer)
+        .put(Buffer.from([100, 6]), allValues[5] as Buffer)
+        .put(Buffer.from([100, 7]), allValues[6] as Buffer);
+
+      await db.commit(tsx);
+
+      // Returns the first 3 values with the correct ranges
+      let values: Buffer[] = [];
+      let allFinished = await rsDbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 4]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(0, 3));
+
+      // Correctly pages through all the values even with a small overridePageSize
+      values = [];
+      allFinished = await rsDbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        3,
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(0, 5));
+
+      // Stops iteration if the callback returns true
+      values = [];
+      allFinished = await rsDbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+          return true; // stop iteration
+        },
+      );
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(0, 1));
+
+      // Respects "gt" instead of "gte"
+      values = [];
+      allFinished = await rsDbForEachIteratorByOpts(
+        db.rustDb,
+        { gt: Buffer.from([100, 1]), lt: Buffer.from([100, 6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(1, 5));
+
+      // Respects reverse even with a small overridePageSize
+      values = [];
+      allFinished = await rsDbForEachIteratorByOpts(
+        db.rustDb,
+        { gte: Buffer.from([100]), lt: Buffer.from([100, 6]), reverse: true },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+        3,
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(0, 5).reverse());
+    });
+  });
+
+  describe("db forEachIteratorByPrefix paging", () => {
+    test("forEachIteratorByPrefix succeeds with paging", async () => {
+      const allValues = [
+        Buffer.from("a"),
+        Buffer.from("b"),
+        Buffer.from("c"),
+        Buffer.from("d"),
+        Buffer.from("e"),
+        Buffer.from("f"),
+        Buffer.from("g"),
+      ];
+
+      const tsx = db
+        .transaction()
+        .put(Buffer.from([100, 1]), allValues[0] as Buffer)
+        .put(Buffer.from([100, 2]), allValues[1] as Buffer)
+        .put(Buffer.from([100, 3]), allValues[2] as Buffer)
+        .put(Buffer.from([100, 4]), allValues[3] as Buffer)
+        .put(Buffer.from([100, 5]), allValues[4] as Buffer)
+        .put(Buffer.from([100, 6]), allValues[5] as Buffer)
+        .put(Buffer.from([100, 7]), allValues[6] as Buffer);
+
+      await db.commit(tsx);
+
+      // With a max page size, all values are returned
+      let values: Buffer[] = [];
+      let allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues);
+
+      // With a page size of 3, the first 3 values are returned
+      values = [];
+      allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), { pageSize: 3 }, (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(0, 3));
+
+      // With a continuation token and page size, the next 3 values are returned
+      values = [];
+      allFinished = await rsDbForEachIteratorByPrefix(
+        db.rustDb,
+        Buffer.from([100]),
+        { pageSize: 3, pageToken: Buffer.from([3]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(3, 6));
+
+      // With a continuation token and no page size, all remaining values are returned
+      values = [];
+      allFinished = await rsDbForEachIteratorByPrefix(
+        db.rustDb,
+        Buffer.from([100]),
+        { pageToken: Buffer.from([3]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(3, 7));
+
+      // With the last continuation token and page size, all remaining values are returned
+      values = [];
+      allFinished = await rsDbForEachIteratorByPrefix(
+        db.rustDb,
+        Buffer.from([100]),
+        { pageSize: 3, pageToken: Buffer.from([6]) },
+        (_key, value) => {
+          values.push(value as Buffer);
+        },
+      );
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual(allValues.slice(6, 7));
+
+      // If the prefix doesn't exist, the iterator returns finished
+      values = [];
+      allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([101]), {}, (_key, value) => {
+        values.push(value as Buffer);
+      });
+      expect(allFinished).toEqual(true);
+      expect(values).toEqual([]);
+
+      // allFinished returns false if the callback returns true
+      values = [];
+      allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
+        values.push(value as Buffer);
+        return true;
+      });
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(0, 1));
+    });
+  });
+
+  describe("forEachIterator errors", () => {
     test("succeeds", async () => {
       await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
       await db.put(Buffer.from("allison"), Buffer.from("oops"));
@@ -237,14 +610,11 @@ describe("with db", () => {
       await db.put(Buffer.from("bobprefix!a"), Buffer.from("bar"));
       await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
       const output = [];
-      await db.forEachIterator((key, value) => {
+      await db.forEachIteratorByPrefix(Buffer.from([]), (key, value) => {
         output.push([key, value]);
       });
 
       expect(output.length).toEqual(5);
-
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when iterator throws", async () => {
@@ -256,7 +626,7 @@ describe("with db", () => {
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
       const result = await ResultAsync.fromPromise(
-        db.forEachIterator((key, value) => {
+        db.forEachIteratorByPrefix(Buffer.from([]), (key, value) => {
           output.push([key, value]);
           if (key?.toString() === "allison") {
             throw new Error("oops");
@@ -268,8 +638,6 @@ describe("with db", () => {
       expect(result.isErr()).toEqual(true);
       expect(result._unsafeUnwrapErr().message).toEqual("oops");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when iterator throws async", async () => {
@@ -281,7 +649,7 @@ describe("with db", () => {
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
       const result = await ResultAsync.fromPromise(
-        db.forEachIterator(async (key, value) => {
+        db.forEachIteratorByPrefix(Buffer.from([]), async (key, value) => {
           output.push([key, value]);
           if (key?.toString() === "allison") {
             throw new Error("oops");
@@ -293,8 +661,6 @@ describe("with db", () => {
       expect(result.isErr()).toEqual(true);
       expect(result._unsafeUnwrapErr().message).toEqual("oops");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when returning to break", async () => {
@@ -305,10 +671,12 @@ describe("with db", () => {
       await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
-      const result = await db.forEachIterator((key, value) => {
+      let result;
+      await db.forEachIteratorByPrefix(Buffer.from([]), (key, value) => {
         output.push([key, value]);
         if (key?.toString() === "allison") {
-          return "break";
+          result = "break";
+          return true;
         } else {
           return false;
         }
@@ -316,8 +684,6 @@ describe("with db", () => {
 
       expect(result).toEqual("break");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
     });
 
     test("fails when returning to break async", async () => {
@@ -328,10 +694,12 @@ describe("with db", () => {
       await db.put(Buffer.from("prefix!a"), Buffer.from("bar"));
 
       const output: Array<[Buffer | undefined, Buffer | undefined]> = [];
-      const result = await db.forEachIterator(async (key, value) => {
+      let result;
+      await db.forEachIteratorByPrefix(Buffer.from([]), async (key, value) => {
         output.push([key, value]);
         if (key?.toString() === "allison") {
-          return Promise.resolve("break");
+          result = "break";
+          return Promise.resolve(true);
         } else {
           return false;
         }
@@ -339,39 +707,6 @@ describe("with db", () => {
 
       expect(result).toEqual("break");
       expect(output.length).toEqual(3);
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
-    });
-
-    test("force closes open iterators after timeout", async () => {
-      const timeout = 1;
-
-      await db.put(Buffer.from("aliceprefix!b"), Buffer.from("foo"));
-      await db.put(Buffer.from("allison"), Buffer.from("oops"));
-      await db.put(Buffer.from("aliceprefix!a"), Buffer.from("bar"));
-
-      // Start iterating, but stall on the first item
-      await db.forEachIterator(
-        async (key, value) => {
-          await sleep(timeout * 100);
-        },
-        {},
-        timeout,
-      );
-
-      await sleep(timeout * 2);
-
-      // All iterators are closed
-      expect([...db.openIterators].find((it) => it.iterator.isOpen)).toBeUndefined();
-    });
-  });
-
-  describe("compact", () => {
-    test("succeeds", async () => {
-      await db.put(Buffer.from("foo"), Buffer.from("bar"));
-      await expect(db.get(Buffer.from("foo"))).resolves.toEqual(Buffer.from("bar"));
-      await expect(db.compact()).resolves.toEqual(undefined);
-      await expect(db.get(Buffer.from("foo"))).resolves.toEqual(Buffer.from("bar"));
     });
   });
 });

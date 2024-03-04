@@ -20,7 +20,7 @@ import {
   makeTsHash,
   makeUserKey,
 } from "../db/message.js";
-import { Transaction } from "../db/rocksdb.js";
+import { RocksDbTransaction } from "../db/rocksdb.js";
 import { RootPrefix, TRUE_VALUE, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions } from "../stores/types.js";
 import { Store } from "./store.js";
@@ -137,11 +137,7 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
     return getDefaultStoreLimit(StoreType.CASTS);
   }
 
-  protected override get PRUNE_TIME_LIMIT_DEFAULT() {
-    return 60 * 60 * 24 * 365; // 1 year
-  }
-
-  override async buildSecondaryIndices(txn: Transaction, message: CastAddMessage): HubAsyncResult<void> {
+  override async buildSecondaryIndices(txn: RocksDbTransaction, message: CastAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
     if (tsHash.isErr()) {
@@ -164,7 +160,7 @@ class CastStore extends Store<CastAddMessage, CastRemoveMessage> {
     return ok(undefined);
   }
 
-  override async deleteSecondaryIndices(txn: Transaction, message: CastAddMessage): HubAsyncResult<void> {
+  override async deleteSecondaryIndices(txn: RocksDbTransaction, message: CastAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
     if (tsHash.isErr()) {

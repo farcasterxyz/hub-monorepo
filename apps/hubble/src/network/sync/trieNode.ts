@@ -4,7 +4,7 @@ import { TIMESTAMP_LENGTH } from "./syncId.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { blake3Truncate160, BLAKE3TRUNCATE160_EMPTY_HASH } from "../../utils/crypto.js";
 import { NodeMetadata } from "./merkleTrie.js";
-import { nativeBlake3Hash20 } from "../../rustfunctions.js";
+import { rsBlake3Hash20 } from "../../rustfunctions.js";
 import { DBGetter } from "./merkleTrieWorker.js";
 
 export const EMPTY_HASH = BLAKE3TRUNCATE160_EMPTY_HASH.toString("hex");
@@ -436,7 +436,7 @@ class TrieNode {
     }
 
     // Call blake3.hash() with the concatenated buffer.
-    const digest = nativeBlake3Hash20(Buffer.concat(childHashes));
+    const digest = rsBlake3Hash20(Buffer.concat(childHashes));
 
     return {
       hash: Buffer.from(digest.buffer, digest.byteOffset, digest.byteLength).toString("hex"),
@@ -501,7 +501,7 @@ class TrieNode {
       }
 
       // Call blake3.hash() with the concatenated buffer.
-      digest = nativeBlake3Hash20(Buffer.concat(childHashes));
+      digest = rsBlake3Hash20(Buffer.concat(childHashes));
     }
     this._hash = digest;
   }

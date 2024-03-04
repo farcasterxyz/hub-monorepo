@@ -20,8 +20,8 @@ import {
 import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./types.js";
 import { Store } from "./store.js";
-import { err, ok, ResultAsync } from "neverthrow";
-import { Transaction } from "../db/rocksdb.js";
+import { err, ok } from "neverthrow";
+import { RocksDbTransaction } from "../db/rocksdb.js";
 
 const makeTargetKey = (target: number): Buffer => {
   return makeFidKey(target);
@@ -155,7 +155,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
     return getDefaultStoreLimit(StoreType.LINKS);
   }
 
-  override async buildSecondaryIndices(txn: Transaction, message: LinkAddMessage): HubAsyncResult<void> {
+  override async buildSecondaryIndices(txn: RocksDbTransaction, message: LinkAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
     if (tsHash.isErr()) {
@@ -174,7 +174,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
     return ok(undefined);
   }
 
-  override async deleteSecondaryIndices(txn: Transaction, message: LinkAddMessage): HubAsyncResult<void> {
+  override async deleteSecondaryIndices(txn: RocksDbTransaction, message: LinkAddMessage): HubAsyncResult<void> {
     const tsHash = makeTsHash(message.data.timestamp, message.hash);
 
     if (tsHash.isErr()) {
@@ -255,7 +255,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
   ): Promise<MessagesPage<LinkAddMessage>> {
     const prefix = makeLinksByTargetKey(target);
 
-    const iteratorOpts = getPageIteratorOptsByPrefix(this._db, prefix, pageOptions);
+    const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
 
     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
 
@@ -265,8 +265,6 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
     let lastPageToken: Uint8Array | undefined;
 
     await this._db.forEachIteratorByOpts(iteratorOpts, (key, value) => {
-      lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
-
       if (type === undefined || value?.equals(Buffer.from(type))) {
         // Calculates the positions in the key where the fid and tsHash begin
         const tsHashOffset = prefix.length;
@@ -279,6 +277,7 @@ class LinkStore extends Store<LinkAddMessage, LinkRemoveMessage> {
         messageKeys.push(messagePrimaryKey);
 
         if (messageKeys.length >= limit) {
+          lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
           iteratorFinished = false;
           return true; // stop
         }

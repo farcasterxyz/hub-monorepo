@@ -9,11 +9,11 @@ export const jestRocksDB = (name: string) => {
   });
 
   afterEach(async () => {
-    await expect(db.clear()).resolves.not.toThrow();
+    db.clear();
   });
 
   afterAll(async () => {
-    await expect(db.close()).resolves.not.toThrow();
+    db.close();
     await expect(db.destroy()).resolves.not.toThrow();
   });
 

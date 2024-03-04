@@ -9,7 +9,7 @@ import StoreEventHandler from "./storeEventHandler.js";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { ResultAsync, ok } from "neverthrow";
 import { HubError } from "@farcaster/hub-nodejs";
-import { Transaction } from "../db/rocksdb.js";
+import { RocksDbTransaction } from "../db/rocksdb.js";
 import { Factories } from "@farcaster/hub-nodejs";
 import { getFarcasterTime } from "@farcaster/hub-nodejs";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
@@ -64,10 +64,10 @@ class TestStore extends Store<CastAddMessage, CastRemoveMessage> {
   override validateRemove(_remove: CastRemoveMessage): HubAsyncResult<Uint8Array> {
     throw new Error("Method not implemented.");
   }
-  override async buildSecondaryIndices(_txn: Transaction, _add: CastAddMessage): HubAsyncResult<void> {
+  override async buildSecondaryIndices(_txn: RocksDbTransaction, _add: CastAddMessage): HubAsyncResult<void> {
     return ok(undefined);
   }
-  override async deleteSecondaryIndices(_txn: Transaction, _add: CastAddMessage): HubAsyncResult<void> {
+  override async deleteSecondaryIndices(_txn: RocksDbTransaction, _add: CastAddMessage): HubAsyncResult<void> {
     return ok(undefined);
   }
 }
@@ -90,7 +90,6 @@ describe("store", () => {
 
     const store = new TestStore(db, eventHandler, {
       pruneSizeLimit: 100,
-      pruneTimeLimit: 100,
     });
     await store.merge(castAdd._unsafeUnwrap());
 

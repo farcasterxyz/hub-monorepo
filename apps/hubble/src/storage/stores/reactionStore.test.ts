@@ -15,11 +15,12 @@ import {
   ReactionRemoveMessage,
   ReactionType,
   RevokeMessageHubEvent,
+  MessageData,
 } from "@farcaster/hub-nodejs";
-import { err, ok } from "neverthrow";
+import { ResultAsync, err, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
-import { getMessage, makeTsHash } from "../db/message.js";
-import { UserPostfix } from "../db/types.js";
+import { ensureMessageData, getMessage, makeTsHash } from "../db/message.js";
+import { RootPrefix, UserPostfix } from "../db/types.js";
 import ReactionStore from "../stores/reactionStore.js";
 import StoreEventHandler from "../stores/storeEventHandler.js";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
@@ -138,6 +139,30 @@ describe("getReactionRemove", () => {
     await expect(set.getReactionRemove(fid, reactionRemove.data.reactionBody.type, castId)).resolves.toEqual(
       reactionRemove,
     );
+  });
+});
+
+describe("dataBytes only Reaction messages", () => {
+  const cloneMessage = (message: Message): Message => {
+    return Message.decode(Message.encode(message).finish());
+  };
+
+  test("merges and retrieves ReactionAdd with just reaction add", async () => {
+    const reactionAddClone = cloneMessage(reactionAdd);
+    reactionAddClone.data = undefined;
+    reactionAddClone.dataBytes = MessageData.encode(reactionAdd.data).finish();
+
+    // Try and merge
+    const result = await ResultAsync.fromPromise(set.merge(ensureMessageData(reactionAddClone)), (e) => e);
+    expect(result.isOk()).toBeTruthy();
+
+    const fetched = await ResultAsync.fromPromise(
+      set.getReactionAdd(fid, reactionAdd.data.reactionBody.type, reactionAdd.data.reactionBody.targetCastId as CastId),
+      (e) => e,
+    );
+
+    expect(fetched.isOk()).toBeTruthy();
+    expect(MessageData.toJSON(fetched._unsafeUnwrap().data)).toEqual(MessageData.toJSON(reactionAdd.data));
   });
 });
 
@@ -730,14 +755,15 @@ describe("revoke", () => {
   test("deletes all keys relating to the reaction", async () => {
     await set.merge(reactionAdd);
     const reactionKeys: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeys.push(key as Buffer);
     });
 
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reactionAdd);
+
     const reactionKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([RootPrefix.HubEvents]), (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
     });
 
@@ -751,14 +777,14 @@ describe("revoke", () => {
     });
     await set.merge(reaction);
     const reactionKeys: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([]), (key) => {
       reactionKeys.push(key as Buffer);
     });
 
     expect(reactionKeys.length).toBeGreaterThan(0);
     await set.revoke(reaction);
     const reactionKeysAfterRevoke: Buffer[] = [];
-    await db.forEachIterator((key) => {
+    await db.forEachIteratorByPrefix(Buffer.from([RootPrefix.HubEvents]), (key) => {
       reactionKeysAfterRevoke.push(key as Buffer);
     });
 

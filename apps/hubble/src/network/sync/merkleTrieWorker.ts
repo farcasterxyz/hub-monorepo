@@ -16,8 +16,8 @@ import path from "path";
 import { ResultAsync } from "neverthrow";
 
 // The number of messages to process before unloading the trie from memory
-// Approx 100k * 10 nodes * 65 bytes per node = approx 64MB of cached data
-const TRIE_UNLOAD_THRESHOLD = 100_000;
+// Approx 10k * 10 nodes * 65 bytes per node = approx 6.5MB of cached data
+const TRIE_UNLOAD_THRESHOLD = 10_000;
 
 const log = logger.child({ component: "SyncMerkleTrieWorker" });
 
