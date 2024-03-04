@@ -5,6 +5,7 @@ import * as fs from "fs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import path from "path";
 import {
+  rsApproximateSize as rsDbApproximateSize,
   rsCreateDb,
   rsDbClear,
   rsDbClose,
@@ -203,7 +204,7 @@ class RocksDB {
   }
 
   async approximateSize(): Promise<number> {
-    return 0; // TODO: There isn't a good way to do this, we need to do it manually.
+    return rsDbApproximateSize(this._db);
   }
 }
 
