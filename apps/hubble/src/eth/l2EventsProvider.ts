@@ -694,7 +694,10 @@ export class L2EventsProvider {
     for (let i = 0; i < numOfRuns; i++) {
       this._blockTimestampsCache.clear(); // Clear the cache for each block to avoid unbounded growth
       let nextFromBlock = fromBlock + i * batchSize;
-      const nextToBlock = nextFromBlock + batchSize;
+      let nextToBlock = nextFromBlock + batchSize;
+      if (nextToBlock > toBlock) {
+        nextToBlock = toBlock;
+      }
 
       if (i > 0) {
         // If this isn't our first loop, we need to up the fromBlock by 1, or else we will be re-caching an already cached block.
