@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.10.7
+
+### Patch Changes
+
+- 5a1764d8: perf: Move DB and Reactions store to rust
+- ac861b12: fix: Log directly from worker threads
+- Updated dependencies [5a1764d8]
+  - @farcaster/hub-nodejs@0.11.5
+
 ## 1.10.6
 
 ### Patch Changes
