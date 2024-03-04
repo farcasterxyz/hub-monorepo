@@ -57,12 +57,16 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
 
     const timestamp = farcasterTimeToDate(message.data.timestamp);
 
+    const signature = verificationAddBody.claimSignature;
     const updatedProps = {
       timestamp,
       hash: message.hash,
       signerAddress: verificationAddBody.address,
       blockHash: verificationAddBody.blockHash,
-      signature: verificationAddBody.claimSignature,
+      signature:
+        signature.length > 0 && signature[signature.length - 1] === 0
+          ? signature.slice(0, signature.length - 1)
+          : signature,
     };
 
     // Upsert the verification, if it's shadowed by a remove, mark it as deleted

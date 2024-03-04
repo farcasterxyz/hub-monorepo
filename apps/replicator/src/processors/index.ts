@@ -155,13 +155,19 @@ export async function processMessage(
         log.debug(`Processing LinkRemoveMessage ${hash} (fid ${fid})`, { fid, hash });
         await processLinkRemove(message, operation, trx);
         break;
-      case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
+      case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {
         // TODO: add support for multi-protoocl verification
         if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
+        const claimSignature = message.data.verificationAddAddressBody.claimSignature;
+        message.data.verificationAddAddressBody.claimSignature =
+          claimSignature.length > 0 && claimSignature[claimSignature.length - 1] === 0
+            ? claimSignature.slice(0, claimSignature.length - 1)
+            : claimSignature;
         await processVerificationAddEthAddress(message, operation, trx);
         break;
+      }
       case MessageType.VERIFICATION_REMOVE:
         if (!isVerificationRemoveMessage(message))
           throw new AssertionError(`Invalid VerificationRemoveMessage: ${message}`);
@@ -196,7 +202,16 @@ export async function processMessage(
       switch (e.reason) {
         case "missing_message":
         case "fid_not_registered": {
-          log.debug(`Unable to process message ${hash} (from fid ${fid}): ${e.message}`, { hash, fid, error: e });
+          log.debug(
+            {
+              messageHash: hash,
+              fid: fid,
+              error: e.name,
+              errorReason: e.reason,
+              errorMessage: e.message,
+            },
+            "Replicator unable to process message",
+          );
           if (!(e instanceof HubEventProcessingBlockedError))
             throw new AssertionError("fid_not_registered/missing_message error isn't a HubEventProcessingBlockedError");
           blockedOnFid = e.blockedOnFid || null;
@@ -219,7 +234,15 @@ export async function processMessage(
         .expire(`messages-blocked-on-hash:${blockedOnHash}`, 60 * 60 * 24 * 30) // Expire after 30 days so we don't leak memory
         .exec();
     } else {
-      log.error(`Error processing message ${hash} (fid ${fid}): ${e}`);
+      log.error(
+        {
+          messageHash: hash,
+          fid: fid,
+          rawMessage: raw,
+          operation: operation.toString(),
+        },
+        `Error processing message ${hash} (fid ${fid}): ${e}`,
+      );
       throw e; // Message was not processed successfully, so throw so it gets retried later
     }
   }
