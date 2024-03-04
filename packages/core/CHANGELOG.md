@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.5
+
+### Patch Changes
+
+- 5a1764d8: perf: Move DB and Reactions store to rust
+
 ## 0.14.4
 
 ### Patch Changes

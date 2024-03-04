@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.8.4
+
+### Patch Changes
+
+- 5a1764d8: perf: Move DB and Reactions store to rust
+- Updated dependencies [5a1764d8]
+  - @farcaster/core@0.14.5
+
 ## 0.8.3
 
 ### Patch Changes

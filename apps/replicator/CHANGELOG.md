@@ -1,5 +1,13 @@
 # @farcaster/replicator
 
+## 0.3.3
+
+### Patch Changes
+
+- 5a1764d8: perf: Move DB and Reactions store to rust
+- Updated dependencies [5a1764d8]
+  - @farcaster/hub-nodejs@0.11.5
+
 ## 0.3.2
 
 ### Patch Changes
