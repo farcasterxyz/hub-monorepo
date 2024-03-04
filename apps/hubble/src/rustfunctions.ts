@@ -91,6 +91,10 @@ export const rsDbOpen = (db: RustDb): void => {
   lib.dbOpen.call(db);
 };
 
+export const rsApproximateSize = (db: RustDb): number => {
+  return lib.dbApproximateSize.call(db);
+};
+
 export const rsDbClear = (db: RustDb) => {
   return lib.dbClear.call(db);
 };

@@ -12,8 +12,10 @@ use neon::types::{
 };
 use rocksdb::{Options, TransactionDB};
 use slog::{info, o};
+use std::fs;
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
+use walkdir::WalkDir;
 
 /** Hold a transaction. List of key/value pairs that will be commited together */
 pub struct RocksDbTransactionBatch {
@@ -412,8 +414,13 @@ impl RocksDB {
     }
 
     pub fn approximate_size(&self) -> u64 {
-        // TODO: There isn't a good way to get the size of the database
-        0
+        WalkDir::new(self.location())
+            .into_iter()
+            .filter_map(Result::ok) // Filter out any Errs and unwrap the Ok values.
+            .filter_map(|entry| fs::metadata(entry.path()).ok()) // Attempt to get metadata, filter out Errs.
+            .filter(|metadata| metadata.is_file()) // Ensure we only consider files.
+            .map(|metadata| metadata.len()) // Extract the file size.
+            .sum() // Sum the sizes.
     }
 }
 
@@ -470,6 +477,13 @@ impl RocksDB {
         };
 
         Ok(cx.boolean(result))
+    }
+
+    pub fn js_approximate_size(mut cx: FunctionContext) -> JsResult<JsNumber> {
+        let db = get_db(&mut cx)?;
+        let result = db.approximate_size();
+
+        Ok(cx.number(result as f64))
     }
 
     pub fn js_clear(mut cx: FunctionContext) -> JsResult<JsNumber> {
