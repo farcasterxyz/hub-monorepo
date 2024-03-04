@@ -220,7 +220,6 @@ class MerkleTrieImpl {
       this._root.unloadChildren();
 
       statsd().gauge("merkle_trie.num_messages", this._root.items);
-      statsd().gauge("rocksdb.trie.approximate_size", (await this._trieDb?.approximateSize()) || 0);
     };
 
     if (force || this._pendingDbUpdates.size >= TRIE_UNLOAD_THRESHOLD) {
