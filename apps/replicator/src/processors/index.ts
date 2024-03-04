@@ -2,15 +2,6 @@ import {
   HubEvent,
   HubEventType,
   IdRegisterEventType,
-  MergeMessageHubEvent,
-  MergeOnChainEventHubEvent,
-  MergeUsernameProofHubEvent,
-  Message,
-  MessageType,
-  OnChainEvent,
-  PruneMessageHubEvent,
-  RevokeMessageHubEvent,
-  UserNameProof,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
@@ -27,6 +18,15 @@ import {
   isUsernameProofMessage,
   isVerificationAddAddressMessage,
   isVerificationRemoveMessage,
+  MergeMessageHubEvent,
+  MergeOnChainEventHubEvent,
+  MergeUsernameProofHubEvent,
+  Message,
+  MessageType,
+  OnChainEvent,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+  UserNameProof,
 } from "@farcaster/hub-nodejs";
 import { Redis } from "ioredis";
 import { sql } from "kysely";
@@ -34,11 +34,11 @@ import { DB, DBTransaction, execute, executeTx } from "../db.js";
 import { PARTITIONS } from "../env.js";
 import { Logger } from "../log.js";
 import {
-  StoreMessageOperation,
   bytesToHex,
   convertProtobufMessageBodyToJson,
   exhaustiveGuard,
   farcasterTimeToDate,
+  StoreMessageOperation,
 } from "../util.js";
 import { processOnChainEvent } from "./onChainEvent.js";
 import { processUserNameProofAdd, processUserNameProofMessage, processUserNameProofRemove } from "./usernameProof.js";
@@ -160,11 +160,9 @@ export async function processMessage(
         if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
-        const claimSignature = message.data.verificationAddAddressBody.claimSignature;
-        message.data.verificationAddAddressBody.claimSignature =
-          claimSignature.length > 0 && claimSignature[claimSignature.length - 1] === 0
-            ? claimSignature.slice(0, claimSignature.length - 1)
-            : claimSignature;
+        message.data.verificationAddAddressBody.claimSignature = new Uint8Array(
+          message.data.verificationAddAddressBody.claimSignature.filter((byte) => byte !== 0),
+        );
         await processVerificationAddEthAddress(message, operation, trx);
         break;
       }
