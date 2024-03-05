@@ -95,6 +95,10 @@ export const rsApproximateSize = (db: RustDb): number => {
   return lib.dbApproximateSize.call(db);
 };
 
+export const rsCreateTarBackup = (db: RustDb): Promise<string> => {
+  return lib.dbCreateTarBackup.call(db);
+};
+
 export const rsDbClear = (db: RustDb) => {
   return lib.dbClear.call(db);
 };
