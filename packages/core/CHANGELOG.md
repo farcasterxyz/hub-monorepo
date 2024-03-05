@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.6
+
+### Patch Changes
+
+- f7d13376: Fix unicode error for replicator, add constraint where verification message claim signatures must be hex
+
 ## 0.14.5
 
 ### Patch Changes

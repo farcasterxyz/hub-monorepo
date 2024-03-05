@@ -1,5 +1,12 @@
 # @farcaster/replicator
 
+## 0.3.4
+
+### Patch Changes
+
+- f7d13376: Fix unicode error for replicator, add constraint where verification message claim signatures must be hex
+  - @farcaster/hub-nodejs@0.11.6
+
 ## 0.3.3
 
 ### Patch Changes
