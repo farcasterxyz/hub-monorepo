@@ -85,16 +85,21 @@ pub trait StoreDef: Send + Sync {
 
     fn build_secondary_indicies(
         &self,
-        txn: &mut RocksDbTransactionBatch,
-        ts_hash: &[u8; TS_HASH_LENGTH],
-        message: &Message,
-    ) -> Result<(), HubError>;
+        _txn: &mut RocksDbTransactionBatch,
+        _ts_hash: &[u8; TS_HASH_LENGTH],
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
+    }
+
     fn delete_secondary_indicies(
         &self,
-        txn: &mut RocksDbTransactionBatch,
-        ts_hash: &[u8; TS_HASH_LENGTH],
-        message: &Message,
-    ) -> Result<(), HubError>;
+        _txn: &mut RocksDbTransactionBatch,
+        _ts_hash: &[u8; TS_HASH_LENGTH],
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
+    }
 
     fn find_merge_add_conflicts(&self, message: &Message) -> Result<(), HubError>;
     fn find_merge_remove_conflicts(&self, message: &Message) -> Result<(), HubError>;
@@ -145,6 +150,10 @@ impl Store {
 
     pub fn db(&self) -> Arc<RocksDB> {
         self.db.clone()
+    }
+
+    pub fn event_handler(&self) -> Arc<StoreEventHandler> {
+        self.store_event_handler.clone()
     }
 
     pub fn postfix(&self) -> u8 {

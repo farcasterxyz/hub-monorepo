@@ -63,7 +63,7 @@ pub enum RootPrefix {
     DBSchemaVersion = 24,
 
     /* Used to index fname username proofs by fid */
-    // FNameUserNameProofByFid = 25,
+    FNameUserNameProofByFid = 25,
 
     /* Used to index verifications by address */
     // VerificationByAddress = 25,

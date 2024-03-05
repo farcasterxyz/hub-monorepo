@@ -3,7 +3,7 @@ use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
 use std::convert::TryInto;
-use store::{ReactionStore, Store};
+use store::{ReactionStore, Store, UserDataStore};
 
 mod db;
 mod logger;
@@ -142,6 +142,20 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         "getReactionsByTarget",
         ReactionStore::js_get_reactions_by_target,
     )?;
+
+    // UserDataStore methods
+    cx.export_function("createUserDataStore", UserDataStore::create_userdata_store)?;
+    cx.export_function("getUserDataAdd", UserDataStore::js_get_userdata_add)?;
+    cx.export_function(
+        "getUserDataAddsByFid",
+        UserDataStore::js_get_user_data_adds_by_fid,
+    )?;
+    cx.export_function("getUserNameProof", UserDataStore::js_get_username_proof)?;
+    cx.export_function(
+        "getUserNameProofByFid",
+        UserDataStore::js_get_username_proof_by_fid,
+    )?;
+    cx.export_function("mergeUserNameProof", UserDataStore::js_merge_username_proof)?;
 
     Ok(())
 }

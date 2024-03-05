@@ -1,0 +1,146 @@
+import { HubAsyncResult, HubError, HubEvent, Message, StoreType, getDefaultStoreLimit } from "@farcaster/hub-nodejs";
+import {
+  RustDynStore,
+  rsGetAllMessagesByFid,
+  rsGetMessage,
+  rsMerge,
+  rsPruneMessages,
+  revoke,
+  rustErrorToHubError,
+} from "../../rustfunctions.js";
+import StoreEventHandler from "./storeEventHandler.js";
+import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
+import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { ResultAsync, err, ok } from "neverthrow";
+import RocksDB from "storage/db/rocksdb.js";
+
+/**
+ * Base class with common methods for all stores implemented in Rust
+ */
+export abstract class RustStoreBase<TAdd extends Message, TRemove extends Message> {
+  protected _eventHandler: StoreEventHandler;
+  protected _rustStore: RustDynStore;
+
+  protected _postfix: UserMessagePostfix;
+  protected _pruneSizeLimit: number;
+
+  constructor(
+    db: RocksDB,
+    rustStore: RustDynStore,
+    postfix: UserMessagePostfix,
+    eventHandler: StoreEventHandler,
+    pruneSizeLimit: number,
+  ) {
+    this._rustStore = rustStore;
+    this._pruneSizeLimit = pruneSizeLimit;
+
+    this._postfix = postfix;
+    this._eventHandler = eventHandler;
+  }
+
+  get pruneSizeLimit(): number {
+    return this._pruneSizeLimit;
+  }
+
+  async merge(message: Message): Promise<number> {
+    const prunableResult = await this._eventHandler.isPrunable(
+      // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+      message as any,
+      this._postfix,
+      this._pruneSizeLimit,
+    );
+    if (prunableResult.isErr()) {
+      throw prunableResult.error;
+    } else if (prunableResult.value) {
+      throw new HubError("bad_request.prunable", "message would be pruned");
+    }
+
+    // Encode the message to bytes
+    const messageBytes = Message.encode(message).finish();
+    const result = await ResultAsync.fromPromise(rsMerge(this._rustStore, messageBytes), rustErrorToHubError);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    // Read the result bytes as a HubEvent
+    const resultBytes = new Uint8Array(result.value);
+    const hubEvent = HubEvent.decode(resultBytes);
+
+    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    return hubEvent.id;
+  }
+
+  async revoke(message: Message): HubAsyncResult<number> {
+    const messageBytes = Message.encode(message).finish();
+    const result = await ResultAsync.fromPromise(revoke(this._rustStore, messageBytes), rustErrorToHubError);
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    const resultBytes = new Uint8Array(result.value);
+    const hubEvent = HubEvent.decode(resultBytes);
+
+    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    return ok(hubEvent.id);
+  }
+
+  async pruneMessages(fid: number): HubAsyncResult<number[]> {
+    const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix, false);
+    const units = await this._eventHandler.getCurrentStorageUnitsForFid(fid);
+
+    // Require storage cache to be synced to prune
+    if (cachedCount.isErr()) {
+      return err(cachedCount.error);
+    }
+
+    if (units.isErr()) {
+      return err(units.error);
+    }
+
+    // Return immediately if there are no messages to prune
+    if (cachedCount.value === 0) {
+      return ok([]);
+    }
+
+    const result = await ResultAsync.fromPromise(
+      rsPruneMessages(this._rustStore, fid, cachedCount.value, units.value),
+      rustErrorToHubError,
+    );
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    // Read the result bytes as an array of HubEvents
+    const commits = [];
+    for (const resultBytes of result.value) {
+      const hubEvent = HubEvent.decode(new Uint8Array(resultBytes));
+      commits.push(hubEvent.id);
+      void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    }
+
+    return ok(commits);
+  }
+
+  async getMessage(fid: number, set: UserMessagePostfix, tsHash: Uint8Array): Promise<Message> {
+    const message_bytes = await ResultAsync.fromPromise(
+      rsGetMessage(this._rustStore, fid, set, tsHash),
+      rustErrorToHubError,
+    );
+    if (message_bytes.isErr()) {
+      throw message_bytes.error;
+    }
+
+    return Message.decode(new Uint8Array(message_bytes.value));
+  }
+
+  async getAllMessagesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd | TRemove>> {
+    const messages_page = await rsGetAllMessagesByFid(this._rustStore, fid, pageOptions);
+
+    const messages =
+      messages_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as TAdd | TRemove;
+      }) ?? [];
+
+    return { messages, nextPageToken: messages_page.nextPageToken };
+  }
+}
