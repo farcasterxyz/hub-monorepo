@@ -28,7 +28,7 @@ import {
   VerificationAddressClaimEthereum,
   VerificationAddressClaimSolana,
 } from "./verifications";
-import { LocalAccount } from "viem";
+import { bytesToHex, hexToBytes, isHex, LocalAccount } from "viem";
 import { toBigInt } from "ethers";
 
 /** Scalars */
@@ -463,7 +463,7 @@ const VerificationAddAddressBodyFactory = Factory.define<
             protocol: Protocol.SOLANA,
           });
           const fullMessage = recreateSolanaClaimMessage(claim as VerificationAddressClaimSolana, body.address);
-          body.claimSignature = (await solSigner.signMessageHash(fullMessage))._unsafeUnwrap();
+          body.claimSignature = hexToBytes(bytesToHex((await solSigner.signMessageHash(fullMessage))._unsafeUnwrap()));
         }
         body.protocol = Protocol.SOLANA;
         return body;

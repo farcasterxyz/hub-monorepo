@@ -207,7 +207,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         case Protocol.SOLANA:
           return {
             address: new TextDecoder().decode(address),
-            claimSignature: new TextDecoder().decode(claimSignature),
+            claimSignature: bytesToHex(claimSignature),
             blockHash: new TextDecoder().decode(blockHash),
             protocol: Protocol.SOLANA,
           } satisfies VerificationAddSolAddressBodyJson;
@@ -408,4 +408,20 @@ export async function terminateProcess({ success, log }: { success: boolean; log
 // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export function onTerminate(fn: () => Promise<any>) {
   finalizers.push(fn);
+}
+
+function isHexEncoded(data: Uint8Array): boolean {
+  // Regular expression to match hexadecimal character patterns
+  const hexPattern = /^[0-9a-fA-F]+$/;
+  // Convert the Uint8Array to a string to check against the pattern
+  const dataString = String.fromCharCode(...data);
+  return hexPattern.test(dataString) && data.length % 2 === 0;
+}
+export function toHexEncodedUint8Array(data: Uint8Array): Uint8Array {
+  if (isHexEncoded(data)) {
+    return data;
+  }
+
+  const hex = Buffer.from(data).toString("hex");
+  return hexToBytes(`0x${hex}`);
 }

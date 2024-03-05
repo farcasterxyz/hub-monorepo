@@ -1,8 +1,15 @@
-import { MessageType, VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
+import {
+  base58ToBytes,
+  bytesToBase58,
+  MessageType,
+  Protocol,
+  VerificationAddAddressMessage,
+  VerificationRemoveMessage,
+} from "@farcaster/hub-nodejs";
 import { Selectable, sql } from "kysely";
 import { buildAddRemoveMessageProcessor } from "../messageProcessor.js";
-import { VerificationRow, executeTakeFirst, executeTakeFirstOrThrow } from "../db.js";
-import { bytesToHex, farcasterTimeToDate } from "../util.js";
+import { executeTakeFirst, executeTakeFirstOrThrow, VerificationRow } from "../db.js";
+import { bytesToHex, farcasterTimeToDate, hexToBytes } from "../util.js";
 
 const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageProcessor<
   VerificationAddAddressMessage,

@@ -1,16 +1,9 @@
 import {
+  base58ToBytes,
+  bytesToBase58,
   HubEvent,
   HubEventType,
   IdRegisterEventType,
-  MergeMessageHubEvent,
-  MergeOnChainEventHubEvent,
-  MergeUsernameProofHubEvent,
-  Message,
-  MessageType,
-  OnChainEvent,
-  PruneMessageHubEvent,
-  RevokeMessageHubEvent,
-  UserNameProof,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
@@ -27,6 +20,16 @@ import {
   isUsernameProofMessage,
   isVerificationAddAddressMessage,
   isVerificationRemoveMessage,
+  MergeMessageHubEvent,
+  MergeOnChainEventHubEvent,
+  MergeUsernameProofHubEvent,
+  Message,
+  MessageType,
+  OnChainEvent,
+  Protocol,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+  UserNameProof,
 } from "@farcaster/hub-nodejs";
 import { Redis } from "ioredis";
 import { sql } from "kysely";
@@ -34,11 +37,12 @@ import { DB, DBTransaction, execute, executeTx } from "../db.js";
 import { PARTITIONS } from "../env.js";
 import { Logger } from "../log.js";
 import {
-  StoreMessageOperation,
   bytesToHex,
   convertProtobufMessageBodyToJson,
   exhaustiveGuard,
   farcasterTimeToDate,
+  StoreMessageOperation,
+  toHexEncodedUint8Array,
 } from "../util.js";
 import { processOnChainEvent } from "./onChainEvent.js";
 import { processUserNameProofAdd, processUserNameProofMessage, processUserNameProofRemove } from "./usernameProof.js";
@@ -160,12 +164,54 @@ export async function processMessage(
         if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
-        const claimSignature = message.data.verificationAddAddressBody.claimSignature;
-        message.data.verificationAddAddressBody.claimSignature =
-          claimSignature.length > 0 && claimSignature[claimSignature.length - 1] === 0
-            ? claimSignature.slice(0, claimSignature.length - 1)
-            : claimSignature;
-        await processVerificationAddEthAddress(message, operation, trx);
+
+        const claimSignature = toHexEncodedUint8Array(message.data.verificationAddAddressBody.claimSignature);
+        let blockHash = message.data.verificationAddAddressBody.blockHash;
+        let address = message.data.verificationAddAddressBody.address;
+        // convert block hash and address to base58 encoded values for Solana
+        switch (message.data.verificationAddAddressBody.protocol) {
+          case Protocol.SOLANA: {
+            const blockHashBase58 = bytesToBase58(blockHash);
+            if (blockHashBase58.isErr()) {
+              throw new AssertionError(`Invalid blockHash: ${blockHashBase58.error}`);
+            }
+
+            const blockHashBytes = base58ToBytes(blockHashBase58.value);
+            if (blockHashBytes.isErr()) {
+              throw new AssertionError(`Invalid blockHash: ${blockHashBytes.error}`);
+            }
+
+            blockHash = blockHashBytes.value;
+
+            const addressBase58 = bytesToBase58(address);
+            if (addressBase58.isErr()) {
+              throw new AssertionError(`Invalid address: ${addressBase58.error}`);
+            }
+
+            const addressBytes = base58ToBytes(addressBase58.value);
+            if (addressBytes.isErr()) {
+              throw new AssertionError(`Invalid address: ${addressBytes.error}`);
+            }
+
+            address = addressBytes.value;
+          }
+        }
+        await processVerificationAddEthAddress(
+          {
+            ...message,
+            data: {
+              ...message.data,
+              verificationAddAddressBody: {
+                ...message.data.verificationAddAddressBody,
+                claimSignature: claimSignature,
+                blockHash: blockHash,
+                address: address,
+              },
+            },
+          },
+          operation,
+          trx,
+        );
         break;
       }
       case MessageType.VERIFICATION_REMOVE:
