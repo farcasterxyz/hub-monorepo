@@ -209,27 +209,3 @@ class RocksDB {
 }
 
 export default RocksDB;
-
-export async function createTarBackup(inputDir: string): Promise<Result<string, Error>> {
-  // Output path is {dirname}-{date as yyyy-mm-dd}-{timestamp}.tar.gz
-  const outputFilePath = `${inputDir}-${new Date().toISOString().split("T")[0]}-${Math.floor(
-    Date.now() / 1000,
-  )}.tar.gz`;
-
-  const start = Date.now();
-  log.info({ inputDir, outputFilePath }, "Creating tarball");
-
-  return new Promise((resolve) => {
-    tar
-      .c({ gzip: true, file: outputFilePath, cwd: path.dirname(inputDir) }, [path.basename(inputDir)])
-      .then(() => {
-        const stats = fs.statSync(outputFilePath);
-        log.info({ size: stats.size, outputFilePath, timeTakenMs: Date.now() - start }, "Tarball created");
-        resolve(ok(outputFilePath));
-      })
-      .catch((e: Error) => {
-        log.error({ error: e, inputDir, outputFilePath }, "Error creating tarball");
-        resolve(err(e));
-      });
-  });
-}

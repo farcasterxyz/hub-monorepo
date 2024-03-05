@@ -32,13 +32,13 @@ import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB, { createTarBackup } from "./storage/db/rocksdb.js";
+import RocksDB from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { rsValidationMethods } from "./rustfunctions.js";
+import { rsCreateTarBackup, rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -536,7 +536,7 @@ export class Hub implements HubInterface {
 
     if (this.options.enableSnapshotToS3) {
       // Back up the DB before opening it
-      const tarResult = await createTarBackup(this.rocksDB.location);
+      const tarResult = await ResultAsync.fromPromise(rsCreateTarBackup(this.rocksDB.rustDb), (e) => e as Error);
 
       if (tarResult.isOk()) {
         // Upload to S3. Run this in the background so we don't block startup.
