@@ -1,6 +1,8 @@
 use crate::logger::LOGGER;
 use crate::statsd::statsd;
 use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
@@ -12,9 +14,10 @@ use neon::types::{
 };
 use rocksdb::{Options, TransactionDB};
 use slog::{info, o};
-use std::fs;
+use std::fs::{self, File};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
+use tar::Builder;
 use walkdir::WalkDir;
 
 /** Hold a transaction. List of key/value pairs that will be commited together */
@@ -166,6 +169,13 @@ impl RocksDB {
 
     pub fn commit(&self, batch: RocksDbTransactionBatch) -> Result<(), HubError> {
         let db = self.db();
+        if (*db).is_none() {
+            return Err(HubError {
+                code: "db.internal_error".to_string(),
+                message: "Database is not open".to_string(),
+            });
+        }
+
         let txn = db.as_ref().unwrap().transaction();
 
         statsd().incr("rust.db.commit");
@@ -422,39 +432,53 @@ impl RocksDB {
             .map(|metadata| metadata.len()) // Extract the file size.
             .sum() // Sum the sizes.
     }
+
+    pub fn create_tar_backup(&self, input_dir: &str) -> Result<String, HubError> {
+        if self.db.read().unwrap().is_some() {
+            return Err(HubError {
+                code: "db.open".to_string(),
+                message: "Can't create a Tar backup while DB is open".to_string(),
+            });
+        }
+
+        let base_name = Path::new(input_dir)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or(".".to_string());
+
+        let output_file_path = format!(
+            "{}-{}.tar.gz",
+            input_dir,
+            chrono::Local::now().format("%Y-%m-%d-%s")
+        );
+
+        let start = std::time::SystemTime::now();
+        info!(self.logger, "Creating tarball for directory: {}", input_dir; 
+            o!("output_file_path" => &output_file_path, "base_name" => &base_name));
+
+        let tar_gz = File::create(&output_file_path)?;
+        let enc = GzEncoder::new(tar_gz, Compression::default());
+        let mut tar = Builder::new(enc);
+
+        tar.append_dir_all(base_name, input_dir)?;
+
+        let enc = tar.into_inner()?;
+        enc.finish()?;
+
+        let metadata = fs::metadata(&output_file_path)?;
+        let time_taken = start.elapsed().expect("Time went backwards");
+
+        info!(
+            self.logger,
+            "Tarball created: path = {}, size = {} bytes, time taken = {:?}",
+            output_file_path,
+            metadata.len(),
+            time_taken
+        );
+
+        Ok(output_file_path)
+    }
 }
-
-// pub fn create_tar_backup(input_dir: &str) -> Result<String, HubError> {
-//     let output_file_path = format!(
-//         "{}-{}.tar.gz",
-//         input_dir,
-//         chrono::Local::now().format("%Y-%m-%d-%s")
-//     );
-
-//     let start = std::time::SystemTime::now();
-//     // info!("Creating tarball for directory: {}", input_dir);
-
-//     let tar_gz = File::create(&output_file_path)?;
-//     let enc = GzEncoder::new(tar_gz, Compression::default());
-//     let mut tar = Builder::new(enc);
-
-//     tar.append_dir_all(".", input_dir)?;
-
-//     let enc = tar.into_inner()?;
-//     enc.finish()?;
-
-//     let metadata = fs::metadata(&output_file_path)?;
-//     let time_taken = start.elapsed().expect("Time went backwards");
-
-//     // info!(
-//     //     "Tarball created: {} (size: {} bytes, time taken: {:?})",
-//     //     output_file_path,
-//     //     metadata.len(),
-//     //     time_taken
-//     // );
-
-//     Ok(output_file_path)
-// }
 
 impl RocksDB {
     pub fn js_create_db(mut cx: FunctionContext) -> JsResult<JsBox<Arc<RocksDB>>> {
@@ -484,6 +508,26 @@ impl RocksDB {
         let result = db.approximate_size();
 
         Ok(cx.number(result as f64))
+    }
+
+    pub fn js_create_tar_backup(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let db = get_db(&mut cx)?;
+        let input_dir = db.location();
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        // Spawn a new thread to create the tarball
+        std::thread::spawn(move || {
+            let result = db.create_tar_backup(&input_dir);
+
+            deferred.settle_with(&channel, move |mut tcx| match result {
+                Ok(output_path) => Ok(tcx.string(output_path)),
+                Err(e) => hub_error_to_js_throw(&mut tcx, e),
+            });
+        });
+
+        Ok(promise)
     }
 
     pub fn js_clear(mut cx: FunctionContext) -> JsResult<JsNumber> {
