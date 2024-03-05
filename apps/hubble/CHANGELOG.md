@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.10.9
+
+### Patch Changes
+
+- 4a0fa6f4: fix: Handle latestBlock properly when sending to API
+- 48d49b2e: fix: Simplify github actions test runs
+- b302d3f4: fix: Add approximate_size for DB
+- 6d765651: fix: hub crash on contract events
+
 ## 1.10.8
 
 ### Patch Changes
