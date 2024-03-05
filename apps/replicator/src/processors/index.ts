@@ -196,22 +196,13 @@ export async function processMessage(
             address = addressBytes.value;
           }
         }
-        await processVerificationAddEthAddress(
-          {
-            ...message,
-            data: {
-              ...message.data,
-              verificationAddAddressBody: {
-                ...message.data.verificationAddAddressBody,
-                claimSignature: claimSignature,
-                blockHash: blockHash,
-                address: address,
-              },
-            },
-          },
-          operation,
-          trx,
-        );
+        message.data.verificationAddAddressBody = {
+          ...message.data.verificationAddAddressBody,
+          address: address,
+          blockHash: blockHash,
+          claimSignature: claimSignature,
+        };
+        await processVerificationAddEthAddress(message, operation, trx);
         break;
       }
       case MessageType.VERIFICATION_REMOVE:
