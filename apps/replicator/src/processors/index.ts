@@ -114,12 +114,13 @@ export async function revokeMessage(message: Message, trx: DBTransaction, log: L
 }
 
 export async function processMessage(
-  message: Message,
+  inputMessage: Message,
   operation: StoreMessageOperation,
   trx: DBTransaction,
   log: Logger,
   redis: Redis,
 ) {
+  const message = transformMessage(inputMessage);
   if (!message.data) throw new AssertionError("Message contained no data");
 
   await storeMessage(message, operation, trx, log);
@@ -165,43 +166,6 @@ export async function processMessage(
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
 
-        const claimSignature = toHexEncodedUint8Array(message.data.verificationAddAddressBody.claimSignature);
-        let blockHash = message.data.verificationAddAddressBody.blockHash;
-        let address = message.data.verificationAddAddressBody.address;
-        // convert block hash and address to base58 encoded values for Solana
-        switch (message.data.verificationAddAddressBody.protocol) {
-          case Protocol.SOLANA: {
-            const blockHashBase58 = bytesToBase58(blockHash);
-            if (blockHashBase58.isErr()) {
-              throw new AssertionError(`Invalid blockHash: ${blockHashBase58.error}`);
-            }
-
-            const blockHashBytes = base58ToBytes(blockHashBase58.value);
-            if (blockHashBytes.isErr()) {
-              throw new AssertionError(`Invalid blockHash: ${blockHashBytes.error}`);
-            }
-
-            blockHash = blockHashBytes.value;
-
-            const addressBase58 = bytesToBase58(address);
-            if (addressBase58.isErr()) {
-              throw new AssertionError(`Invalid address: ${addressBase58.error}`);
-            }
-
-            const addressBytes = base58ToBytes(addressBase58.value);
-            if (addressBytes.isErr()) {
-              throw new AssertionError(`Invalid address: ${addressBytes.error}`);
-            }
-
-            address = addressBytes.value;
-          }
-        }
-        message.data.verificationAddAddressBody = {
-          ...message.data.verificationAddAddressBody,
-          address: address,
-          blockHash: blockHash,
-          claimSignature: claimSignature,
-        };
         await processVerificationAddEthAddress(message, operation, trx);
         break;
       }
@@ -297,6 +261,74 @@ export async function processMessage(
     // Remove it from the blocked set. If it's still blocked, it'll be re-added to the set later
     await redis.hdel(`messages-blocked-on-hash:${hash}`, bytesToHex(unblockedMessage.hash));
   }
+}
+
+function transformMessage(message: Message): Message {
+  if (!message.data) {
+    return message;
+  }
+
+  if (message.data.verificationAddAddressBody) {
+    // for ALL protocol message verifications, encode the claim signatures to hex
+    const claimSignature = toHexEncodedUint8Array(message.data.verificationAddAddressBody.claimSignature);
+    let blockHash = message.data.verificationAddAddressBody.blockHash;
+    let address = message.data.verificationAddAddressBody.address;
+    // convert block hash and address to base58 encoded values for Solana
+    // TODO: create separate processAdd for Solana
+    switch (message.data.verificationAddAddressBody.protocol) {
+      case Protocol.SOLANA: {
+        const blockHashBase58 = bytesToBase58(blockHash);
+        if (blockHashBase58.isErr()) {
+          throw new AssertionError(`Invalid blockHash: ${blockHashBase58.error}`);
+        }
+
+        const blockHashBytes = base58ToBytes(blockHashBase58.value);
+        if (blockHashBytes.isErr()) {
+          throw new AssertionError(`Invalid blockHash: ${blockHashBytes.error}`);
+        }
+
+        blockHash = blockHashBytes.value;
+
+        const addressBase58 = bytesToBase58(address);
+        if (addressBase58.isErr()) {
+          throw new AssertionError(`Invalid address: ${addressBase58.error}`);
+        }
+
+        const addressBytes = base58ToBytes(addressBase58.value);
+        if (addressBytes.isErr()) {
+          throw new AssertionError(`Invalid address: ${addressBytes.error}`);
+        }
+
+        address = addressBytes.value;
+      }
+    }
+    message.data.verificationAddAddressBody = {
+      ...message.data.verificationAddAddressBody,
+      address: address,
+      blockHash: blockHash,
+      claimSignature: claimSignature,
+    };
+  }
+
+  if (message.data.verificationRemoveBody) {
+    if (message.data.verificationRemoveBody.protocol === Protocol.SOLANA) {
+      const address = message.data.verificationRemoveBody.address;
+
+      const addressBase58 = bytesToBase58(address);
+      if (addressBase58.isErr()) {
+        throw new AssertionError(`Invalid address: ${addressBase58.error}`);
+      }
+
+      const addressBytes = base58ToBytes(addressBase58.value);
+      if (addressBytes.isErr()) {
+        throw new AssertionError(`Invalid address: ${addressBytes.error}`);
+      }
+
+      message.data.verificationRemoveBody.address = addressBytes.value;
+    }
+  }
+
+  return message;
 }
 
 export async function storeMessage(
