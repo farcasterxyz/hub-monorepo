@@ -23,7 +23,17 @@ export function getWorker(redis: Redis, log: Logger, { concurrency }: { concurre
 
   worker.on("failed", (job, err) => {
     if (err.message === "Unexpected exit code: 0 signal: null") return; // Ignore explicit process termination
-    log.error(`Job ${job?.name} ${job?.id} failed: ${err.message}: ${err.stack}`);
+    log.error(
+      {
+        jobName: job?.name,
+        jobId: job?.id,
+        reason: job?.failedReason,
+        errorName: err.name,
+        errorMessage: err.message,
+        errorStack: err.stack,
+      },
+      "Job failed",
+    );
   });
   worker.on("error", (err) => {
     log.error(`Worker encountered error: ${err.message}: ${err.stack}`);

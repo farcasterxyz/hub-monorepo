@@ -3,6 +3,9 @@ version: '3.9'
 services:
   replicator:
     image: farcasterxyz/replicator:latest
+    build:
+        context: ../../
+        dockerfile: Dockerfile.replicator
     restart: unless-stopped
     init: true
     command: ['node', 'build/app.js', 'start']

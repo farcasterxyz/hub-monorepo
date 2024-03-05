@@ -1,16 +1,9 @@
 import {
+  base58ToBytes,
+  bytesToBase58,
   HubEvent,
   HubEventType,
   IdRegisterEventType,
-  MergeMessageHubEvent,
-  MergeOnChainEventHubEvent,
-  MergeUsernameProofHubEvent,
-  Message,
-  MessageType,
-  OnChainEvent,
-  PruneMessageHubEvent,
-  RevokeMessageHubEvent,
-  UserNameProof,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
@@ -27,6 +20,16 @@ import {
   isUsernameProofMessage,
   isVerificationAddAddressMessage,
   isVerificationRemoveMessage,
+  MergeMessageHubEvent,
+  MergeOnChainEventHubEvent,
+  MergeUsernameProofHubEvent,
+  Message,
+  MessageType,
+  OnChainEvent,
+  Protocol,
+  PruneMessageHubEvent,
+  RevokeMessageHubEvent,
+  UserNameProof,
 } from "@farcaster/hub-nodejs";
 import { Redis } from "ioredis";
 import { sql } from "kysely";
@@ -34,11 +37,12 @@ import { DB, DBTransaction, execute, executeTx } from "../db.js";
 import { PARTITIONS } from "../env.js";
 import { Logger } from "../log.js";
 import {
-  StoreMessageOperation,
   bytesToHex,
   convertProtobufMessageBodyToJson,
   exhaustiveGuard,
   farcasterTimeToDate,
+  StoreMessageOperation,
+  toHexEncodedUint8Array,
 } from "../util.js";
 import { processOnChainEvent } from "./onChainEvent.js";
 import { processUserNameProofAdd, processUserNameProofMessage, processUserNameProofRemove } from "./usernameProof.js";
@@ -110,12 +114,13 @@ export async function revokeMessage(message: Message, trx: DBTransaction, log: L
 }
 
 export async function processMessage(
-  message: Message,
+  inputMessage: Message,
   operation: StoreMessageOperation,
   trx: DBTransaction,
   log: Logger,
   redis: Redis,
 ) {
+  const message = transformMessage(inputMessage);
   if (!message.data) throw new AssertionError("Message contained no data");
 
   await storeMessage(message, operation, trx, log);
@@ -155,13 +160,15 @@ export async function processMessage(
         log.debug(`Processing LinkRemoveMessage ${hash} (fid ${fid})`, { fid, hash });
         await processLinkRemove(message, operation, trx);
         break;
-      case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
+      case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {
         // TODO: add support for multi-protoocl verification
         if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
+
         await processVerificationAddEthAddress(message, operation, trx);
         break;
+      }
       case MessageType.VERIFICATION_REMOVE:
         if (!isVerificationRemoveMessage(message))
           throw new AssertionError(`Invalid VerificationRemoveMessage: ${message}`);
@@ -196,7 +203,16 @@ export async function processMessage(
       switch (e.reason) {
         case "missing_message":
         case "fid_not_registered": {
-          log.debug(`Unable to process message ${hash} (from fid ${fid}): ${e.message}`, { hash, fid, error: e });
+          log.debug(
+            {
+              messageHash: hash,
+              fid: fid,
+              error: e.name,
+              errorReason: e.reason,
+              errorMessage: e.message,
+            },
+            "Replicator unable to process message",
+          );
           if (!(e instanceof HubEventProcessingBlockedError))
             throw new AssertionError("fid_not_registered/missing_message error isn't a HubEventProcessingBlockedError");
           blockedOnFid = e.blockedOnFid || null;
@@ -219,7 +235,15 @@ export async function processMessage(
         .expire(`messages-blocked-on-hash:${blockedOnHash}`, 60 * 60 * 24 * 30) // Expire after 30 days so we don't leak memory
         .exec();
     } else {
-      log.error(`Error processing message ${hash} (fid ${fid}): ${e}`);
+      log.error(
+        {
+          messageHash: hash,
+          fid: fid,
+          rawMessage: raw,
+          operation: operation.toString(),
+        },
+        `Error processing message ${hash} (fid ${fid}): ${e}`,
+      );
       throw e; // Message was not processed successfully, so throw so it gets retried later
     }
   }
@@ -237,6 +261,84 @@ export async function processMessage(
     // Remove it from the blocked set. If it's still blocked, it'll be re-added to the set later
     await redis.hdel(`messages-blocked-on-hash:${hash}`, bytesToHex(unblockedMessage.hash));
   }
+}
+
+// At the moment, transform message is explicitly used to change the data encoding for verification messages.
+// Message attributes may be stored as JSONB, which does not allow for null bytes.
+// However, cryptographic hashes and signatures can be seen as arbitrary bytes of data which means they may or may not
+// contain 0 byte values, since a null byte in JSONB is just a 0.
+// 1. When MessageType === VERIFICATION_ADD_ETH_ADDRESS:
+//    - Convert all claim signatures to hex
+//    - [Protocol.Solana] Convert block hash and address to base58 encoding
+// 2. When MessageType === VERIFICATION_REMOVE:
+//    - [Protocol.Solana] Convert block hash and address to base58 encoding
+// TODO: There are many better ways to do this in the future.
+function transformMessage(message: Message): Message {
+  if (!message.data) {
+    return message;
+  }
+
+  if (message.data.verificationAddAddressBody) {
+    // for ALL protocol message verifications, encode the claim signatures to hex
+    const claimSignature = toHexEncodedUint8Array(message.data.verificationAddAddressBody.claimSignature);
+    let blockHash = message.data.verificationAddAddressBody.blockHash;
+    let address = message.data.verificationAddAddressBody.address;
+    // convert block hash and address to base58 encoded values for Solana
+    // TODO: create separate processAdd for Solana
+    switch (message.data.verificationAddAddressBody.protocol) {
+      case Protocol.SOLANA: {
+        const blockHashBase58 = bytesToBase58(blockHash);
+        if (blockHashBase58.isErr()) {
+          throw new AssertionError(`Invalid blockHash: ${blockHashBase58.error}`);
+        }
+
+        const blockHashBytes = base58ToBytes(blockHashBase58.value);
+        if (blockHashBytes.isErr()) {
+          throw new AssertionError(`Invalid blockHash: ${blockHashBytes.error}`);
+        }
+
+        blockHash = blockHashBytes.value;
+
+        const addressBase58 = bytesToBase58(address);
+        if (addressBase58.isErr()) {
+          throw new AssertionError(`Invalid address: ${addressBase58.error}`);
+        }
+
+        const addressBytes = base58ToBytes(addressBase58.value);
+        if (addressBytes.isErr()) {
+          throw new AssertionError(`Invalid address: ${addressBytes.error}`);
+        }
+
+        address = addressBytes.value;
+      }
+    }
+    message.data.verificationAddAddressBody = {
+      ...message.data.verificationAddAddressBody,
+      address: address,
+      blockHash: blockHash,
+      claimSignature: claimSignature,
+    };
+  }
+
+  if (message.data.verificationRemoveBody) {
+    if (message.data.verificationRemoveBody.protocol === Protocol.SOLANA) {
+      const address = message.data.verificationRemoveBody.address;
+
+      const addressBase58 = bytesToBase58(address);
+      if (addressBase58.isErr()) {
+        throw new AssertionError(`Invalid address: ${addressBase58.error}`);
+      }
+
+      const addressBytes = base58ToBytes(addressBase58.value);
+      if (addressBytes.isErr()) {
+        throw new AssertionError(`Invalid address: ${addressBytes.error}`);
+      }
+
+      message.data.verificationRemoveBody.address = addressBytes.value;
+    }
+  }
+
+  return message;
 }
 
 export async function storeMessage(

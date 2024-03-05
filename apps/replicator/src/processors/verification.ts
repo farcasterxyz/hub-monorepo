@@ -1,8 +1,9 @@
-import { MessageType, VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
+import { MessageType, Protocol, VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
 import { Selectable, sql } from "kysely";
 import { buildAddRemoveMessageProcessor } from "../messageProcessor.js";
-import { VerificationRow, executeTakeFirst, executeTakeFirstOrThrow } from "../db.js";
+import { executeTakeFirst, executeTakeFirstOrThrow, VerificationRow } from "../db.js";
 import { bytesToHex, farcasterTimeToDate } from "../util.js";
+import base58 from "bs58";
 
 const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageProcessor<
   VerificationAddAddressMessage,
@@ -13,13 +14,23 @@ const { processAdd: processAddEthereum, processRemove } = buildAddRemoveMessageP
   addMessageType: MessageType.VERIFICATION_ADD_ETH_ADDRESS,
   removeMessageType: MessageType.VERIFICATION_REMOVE,
   withConflictId(message) {
-    const ethAddress =
-      message.data.type === MessageType.VERIFICATION_ADD_ETH_ADDRESS
-        ? message.data.verificationAddAddressBody.address
-        : message.data.verificationRemoveBody.address;
+    let protocolAddressBytes: Uint8Array;
+    let protocol: Protocol;
+    switch (message.data.type) {
+      case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
+        protocolAddressBytes = message.data.verificationAddAddressBody.address;
+        protocol = message.data.verificationAddAddressBody.protocol;
+        break;
+      default:
+        protocolAddressBytes = message.data.verificationRemoveBody.address;
+        protocol = message.data.verificationRemoveBody.protocol;
+    }
+
+    const protocolAddress =
+      protocol === Protocol.ETHEREUM ? bytesToHex(protocolAddressBytes) : base58.encode(protocolAddressBytes);
 
     return ({ eb, and }) => {
-      return and([eb(sql<string>`body ->> 'address'`, "=", bytesToHex(ethAddress)), eb("fid", "=", message.data.fid)]);
+      return and([eb(sql<string>`body ->> 'address'`, "=", protocolAddress), eb("fid", "=", message.data.fid)]);
     };
   },
   async getDerivedRow(message, trx) {
