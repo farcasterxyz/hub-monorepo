@@ -263,6 +263,16 @@ export async function processMessage(
   }
 }
 
+// At the moment, transform message is explicitly used to change the data encoding for verification messages.
+// Message attributes may be stored as JSONB, which does not allow for null bytes.
+// However, cryptographic hashes and signatures can be seen as arbitrary bytes of data which means they may or may not
+// contain 0 byte values, since a null byte in JSONB is just a 0.
+// 1. When MessageType === VERIFICATION_ADD_ETH_ADDRESS:
+//    - Convert all claim signatures to hex
+//    - [Protocol.Solana] Convert block hash and address to base58 encoding
+// 2. When MessageType === VERIFICATION_REMOVE:
+//    - [Protocol.Solana] Convert block hash and address to base58 encoding
+// TODO: There are many better ways to do this in the future.
 function transformMessage(message: Message): Message {
   if (!message.data) {
     return message;
