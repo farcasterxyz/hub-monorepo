@@ -1,43 +1,27 @@
 import {
-  HubAsyncResult,
-  HubError,
-  HubEventType,
-  isUserDataAddMessage,
-  MessageType,
   UserNameProof,
   UserDataAddMessage,
   UserDataType,
   getDefaultStoreLimit,
   StoreType,
+  Message,
+  HubEvent,
 } from "@farcaster/hub-nodejs";
-import { ok, ResultAsync } from "neverthrow";
-import { makeUserKey } from "../db/message.js";
+import { ResultAsync } from "neverthrow";
+import { UserPostfix } from "../db/types.js";
+import { MessagesPage, PageOptions, StorePruneOptions } from "../stores/types.js";
+import RocksDB from "../db/rocksdb.js";
+import StoreEventHandler from "./storeEventHandler.js";
 import {
-  getUserNameProof,
-  putUserNameProofTransaction,
-  deleteUserNameProofTransaction,
-  getFNameProofByFid,
-} from "../db/nameRegistryEvent.js";
-import { UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { MessagesPage, PageOptions } from "../stores/types.js";
-import { usernameProofCompare } from "../stores/utils.js";
-import { Store } from "./store.js";
-import { RocksDbTransaction } from "../db/rocksdb.js";
-
-/**
- * Generates unique keys used to store or fetch UserDataAdd messages in the UserDataAdd set index
- *
- * @param fid farcaster id of the user who created the message
- * @param dataType type of data being added
- * @returns RocksDB key of the form <root_prefix>:<fid>:<user_postfix>:<dataType?>
- */
-const makeUserDataAddsKey = (fid: number, dataType?: UserDataType): Buffer => {
-  return Buffer.concat([
-    makeUserKey(fid),
-    Buffer.from([UserPostfix.UserDataAdds]),
-    dataType ? Buffer.from([dataType]) : Buffer.from(""),
-  ]);
-};
+  rsCreateUserDataStore,
+  rsGetUserDataAdd,
+  rsGetUserDataAddsByFid,
+  rsGetUserNameProof,
+  rsGetUserNameProofByFid,
+  rsMergeUserNameProof,
+  rustErrorToHubError,
+} from "../../rustfunctions.js";
+import { RustStoreBase } from "./rustStoreBase.js";
 
 /**
  * UserDataStore persists UserData messages in RocksDB using a grow-only CRDT set to guarantee
@@ -58,32 +42,13 @@ const makeUserDataAddsKey = (fid: number, dataType?: UserDataType): Buffer => {
  * 1. fid:tsHash -> cast message
  * 2. fid:set:datatype -> fid:tsHash (adds set index)
  */
-class UserDataStore extends Store<UserDataAddMessage, never> {
-  override _postfix: UserMessagePostfix = UserPostfix.UserDataMessage;
+class UserDataStore extends RustStoreBase<UserDataAddMessage, never> {
+  constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
+    const pruneSizeLimit = options.pruneSizeLimit ?? getDefaultStoreLimit(StoreType.USER_DATA);
 
-  override makeAddKey(msg: UserDataAddMessage) {
-    return makeUserDataAddsKey(msg.data.fid, msg.data.userDataBody.type) as Buffer;
-  }
+    const rustUserDataStore = rsCreateUserDataStore(db.rustDb, eventHandler.getRustStoreEventHandler(), pruneSizeLimit);
 
-  override makeRemoveKey(_: never): Buffer {
-    throw new Error("removes not supported");
-  }
-
-  override async findMergeAddConflicts(_message: UserDataAddMessage): HubAsyncResult<void> {
-    return ok(undefined);
-  }
-
-  override async findMergeRemoveConflicts(_message: never): HubAsyncResult<void> {
-    throw new Error("removes not supported");
-  }
-
-  override _isAddType = isUserDataAddMessage;
-  override _isRemoveType = undefined;
-  override _addMessageType = MessageType.USER_DATA_ADD;
-  override _removeMessageType = undefined;
-
-  protected override get PRUNE_SIZE_LIMIT_DEFAULT() {
-    return getDefaultStoreLimit(StoreType.USER_DATA);
+    super(db, rustUserDataStore, UserPostfix.UserDataMessage, eventHandler, pruneSizeLimit);
   }
 
   /**
@@ -94,54 +59,60 @@ class UserDataStore extends Store<UserDataAddMessage, never> {
    * @returns the UserDataAdd Model if it exists, undefined otherwise
    */
   async getUserDataAdd(fid: number, dataType: UserDataType): Promise<UserDataAddMessage> {
-    return await this.getAdd({ data: { fid, userDataBody: { type: dataType } } });
+    const result = await ResultAsync.fromPromise(rsGetUserDataAdd(this._rustStore, fid, dataType), rustErrorToHubError);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return Message.decode(new Uint8Array(result.value)) as UserDataAddMessage;
   }
 
   /** Finds all UserDataAdd messages for an fid */
   async getUserDataAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<UserDataAddMessage>> {
-    return await this.getAddsByFid({ data: { fid } }, pageOptions);
+    const messages_page = await rsGetUserDataAddsByFid(this._rustStore, fid, pageOptions);
+
+    const messages =
+      messages_page.messageBytes?.map((message_bytes) => {
+        return Message.decode(new Uint8Array(message_bytes)) as UserDataAddMessage;
+      }) ?? [];
+
+    return { messages, nextPageToken: messages_page.nextPageToken };
   }
 
   async getUserNameProof(name: Uint8Array): Promise<UserNameProof> {
-    return getUserNameProof(this._db, name);
-  }
-
-  async getUserNameProofByFid(fid: number): Promise<UserNameProof> {
-    return getFNameProofByFid(this._db, fid);
-  }
-
-  async mergeUserNameProof(usernameProof: UserNameProof): Promise<number> {
-    const existingProof = await ResultAsync.fromPromise(this.getUserNameProof(usernameProof.name), () => undefined);
-    if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) === 0) {
-      throw new HubError("bad_request.duplicate", "proof already exists");
-    } else if (existingProof.isOk() && usernameProofCompare(existingProof.value, usernameProof) > 0) {
-      throw new HubError("bad_request.conflict", "event conflicts with a more recent UserNameProof");
-    } else if (existingProof.isErr() && usernameProof.fid === 0) {
-      throw new HubError("bad_request.conflict", "proof does not exist");
-    }
-
-    let txn: RocksDbTransaction;
-    if (usernameProof.fid === 0) {
-      txn = deleteUserNameProofTransaction(this._db.transaction(), usernameProof);
-    } else {
-      txn = putUserNameProofTransaction(this._db.transaction(), usernameProof);
-    }
-
-    const result = await this._eventHandler.commitTransaction(txn, {
-      type: HubEventType.MERGE_USERNAME_PROOF,
-      mergeUsernameProofBody: {
-        usernameProof: usernameProof,
-        deletedUsernameProof: existingProof.isOk() ? existingProof.value : undefined,
-        usernameProofMessage: undefined,
-        deletedUsernameProofMessage: undefined,
-      },
-    });
-
+    const result = await ResultAsync.fromPromise(rsGetUserNameProof(this._rustStore, name), rustErrorToHubError);
     if (result.isErr()) {
       throw result.error;
     }
 
-    return result.value;
+    return UserNameProof.decode(new Uint8Array(result.value));
+  }
+
+  async getUserNameProofByFid(fid: number): Promise<UserNameProof> {
+    const result = await ResultAsync.fromPromise(rsGetUserNameProofByFid(this._rustStore, fid), rustErrorToHubError);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    return UserNameProof.decode(new Uint8Array(result.value));
+  }
+
+  async mergeUserNameProof(usernameProof: UserNameProof): Promise<number> {
+    const usernameProofBytes = UserNameProof.encode(usernameProof).finish();
+
+    const result = await ResultAsync.fromPromise(
+      rsMergeUserNameProof(this._rustStore, usernameProofBytes),
+      rustErrorToHubError,
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    // Read the reuslt bytes as a HubEvent
+    const resultBytes = new Uint8Array(result.value);
+    const hubEvent = HubEvent.decode(resultBytes);
+
+    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    return hubEvent.id;
   }
 }
 

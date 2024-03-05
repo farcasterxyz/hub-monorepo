@@ -94,10 +94,15 @@ impl StoreDef for ReactionStoreDef {
     fn make_add_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let reaction_body = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::ReactionBody(reaction_body) => reaction_body,
-            _ => panic!("Invalid reaction body"),
+            _ => {
+                return Err(HubError {
+                    code: "bad_request.validation_failure".to_string(),
+                    message: "Invalid reaction body".to_string(),
+                })
+            }
         };
 
-        ReactionStoreDef::make_reaction_adds_key(
+        Self::make_reaction_adds_key(
             message.data.as_ref().unwrap().fid as u32,
             reaction_body.r#type,
             reaction_body.target.as_ref(),
@@ -107,10 +112,15 @@ impl StoreDef for ReactionStoreDef {
     fn make_remove_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let reaction_body = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::ReactionBody(reaction_body) => reaction_body,
-            _ => panic!("Invalid reaction body"),
+            _ => {
+                return Err(HubError {
+                    code: "bad_request.validation_failure".to_string(),
+                    message: "Invalid reaction body".to_string(),
+                })
+            }
         };
 
-        ReactionStoreDef::make_reaction_removes_key(
+        Self::make_reaction_removes_key(
             message.data.as_ref().unwrap().fid as u32,
             reaction_body.r#type,
             reaction_body.target.as_ref(),
@@ -298,7 +308,7 @@ impl ReactionStore {
             Some(Target::TargetUrl(target_url))
         };
 
-        let result = match ReactionStore::get_reaction_add(&store, fid, reaction_type, target) {
+        let result = match Self::get_reaction_add(&store, fid, reaction_type, target) {
             Ok(Some(message)) => message.encode_to_vec(),
             Ok(None) => cx.throw_error(format!(
                 "{}/{} for {}",
@@ -443,15 +453,11 @@ impl ReactionStore {
 
         let page_options = get_page_options(&mut cx, 2)?;
 
-        let messages = match ReactionStore::get_reaction_adds_by_fid(
-            &store,
-            fid,
-            reaction_type,
-            &page_options,
-        ) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
+        let messages =
+            match Self::get_reaction_adds_by_fid(&store, fid, reaction_type, &page_options) {
+                Ok(messages) => messages,
+                Err(e) => return hub_error_to_js_throw(&mut cx, e),
+            };
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();

@@ -370,3 +370,37 @@ export const rsGetReactionsByTarget = async (
 ): Promise<RustMessagesPage> => {
   return await lib.getReactionsByTarget.call(store, targetCastIdBytes, targetUrl, type, pageOptions);
 };
+
+export const rsCreateUserDataStore = (
+  db: RustDb,
+  eventHandler: RustStoreEventHandler,
+  pruneSizeLimit: number,
+): RustDynStore => {
+  const store = lib.createUserDataStore(db, eventHandler, pruneSizeLimit);
+
+  return store as RustDynStore;
+};
+
+export const rsGetUserDataAdd = async (store: RustDynStore, fid: number, dataType: number): Promise<Buffer> => {
+  return await lib.getUserDataAdd.call(store, fid, dataType);
+};
+
+export const rsGetUserDataAddsByFid = async (
+  store: RustDynStore,
+  fid: number,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getUserDataAddsByFid.call(store, fid, pageOptions);
+};
+
+export const rsGetUserNameProof = async (store: RustDynStore, name: Uint8Array): Promise<Buffer> => {
+  return await lib.getUserNameProof.call(store, name);
+};
+
+export const rsGetUserNameProofByFid = async (store: RustDynStore, fid: number): Promise<Buffer> => {
+  return await lib.getUserNameProofByFid.call(store, fid);
+};
+
+export const rsMergeUserNameProof = async (store: RustDynStore, usernameProof: Uint8Array): Promise<Buffer> => {
+  return await lib.mergeUserNameProof.call(store, usernameProof);
+};
