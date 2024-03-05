@@ -56,7 +56,7 @@ type StaticEncodable<T> = {
   toJSON(message: T): unknown;
 };
 
-export const MAX_PAGE_SIZE = 1000; // Global maximum limit
+export const DEFAULT_PAGE_SIZE = 1000; // Global maximum limit
 
 // Get the call Object for a given method
 function getCallObject<M extends keyof HubServiceServer>(
@@ -195,10 +195,10 @@ type QueryPageParams = {
 };
 
 function getPageOptions(query: QueryPageParams): PageOptions {
-  const pageSize = query.pageSize ? parseInt(query.pageSize.toString()) : MAX_PAGE_SIZE;
+  const pageSize = query.pageSize ? parseInt(query.pageSize.toString()) : DEFAULT_PAGE_SIZE;
 
   // Ensure the pageSize does not exceed the global maximum
-  const effectivePageSize = Math.min(pageSize, MAX_PAGE_SIZE);
+  const effectivePageSize = Math.min(pageSize, DEFAULT_PAGE_SIZE);
 
   const pageToken = query.pageToken
     ? Uint8Array.from(Buffer.from(query.pageToken.replaceAll(" ", "+"), "base64"))
