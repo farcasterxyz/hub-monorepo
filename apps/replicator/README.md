@@ -14,6 +14,7 @@ Note: these are the bare minimum and are likely to increase as the network incre
 
 * 2GB of memory
 * 4GB of free disk space
+* Postgres 15+
 
 ### Instructions
 
