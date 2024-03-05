@@ -3,7 +3,6 @@ import * as onChainEventProtobufs from "./generated/onchain_event";
 import * as protobufs from "./generated/message";
 import { Protocol } from "./generated/message";
 import * as types from "./types";
-import { bytesToHex, isHex } from "viem";
 
 /** Message typeguards */
 
@@ -84,8 +83,7 @@ export const isVerificationAddAddressData = (data: protobufs.MessageData): data 
     data.type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS &&
     typeof data.verificationAddAddressBody !== "undefined" &&
     (data.verificationAddAddressBody.protocol === Protocol.ETHEREUM ||
-      data.verificationAddAddressBody.protocol === Protocol.SOLANA) &&
-    isHex(bytesToHex(data.verificationAddAddressBody.claimSignature))
+      data.verificationAddAddressBody.protocol === Protocol.SOLANA)
   );
 };
 
