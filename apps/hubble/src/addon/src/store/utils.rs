@@ -1,5 +1,5 @@
 use super::{HubError, MessagesPage, PageOptions, Store, FARCASTER_EPOCH};
-use crate::{db::RocksDB, store::PAGE_SIZE_MAX};
+use crate::db::RocksDB;
 use neon::{
     context::{Context, FunctionContext, TaskContext},
     object::Object,
@@ -214,5 +214,92 @@ pub fn bytes_compare(a: &[u8], b: &[u8]) -> i8 {
         1
     } else {
         0
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_increment_vec_u8() {
+        let vec = vec![0, 0, 0];
+        let result = increment_vec_u8(&vec);
+        assert_eq!(result, vec![0, 0, 1]);
+
+        let vec = vec![0, 0, 255];
+        let result = increment_vec_u8(&vec);
+        assert_eq!(result, vec![0, 1, 0]);
+
+        let vec = vec![0, 255, 255];
+        let result = increment_vec_u8(&vec);
+        assert_eq!(result, vec![1, 0, 0]);
+
+        let vec = vec![255, 255, 255];
+        let result = increment_vec_u8(&vec);
+        assert_eq!(result, vec![1, 0, 0, 0]);
+
+        let vec = vec![255, 255, 255];
+        let result = increment_vec_u8(&vec);
+        assert_eq!(result, vec![1, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_decrement_vec_u8() {
+        let vec = vec![0, 0, 1];
+        let result = decrement_vec_u8(&vec);
+        assert_eq!(result, vec![0, 0, 0]);
+
+        let vec = vec![0, 1, 0];
+        let result = decrement_vec_u8(&vec);
+        assert_eq!(result, vec![0, 0, 255]);
+
+        let vec = vec![1, 0, 0];
+        let result = decrement_vec_u8(&vec);
+        assert_eq!(result, vec![0, 255, 255]);
+
+        let vec = vec![1, 0, 0, 0];
+        let result = decrement_vec_u8(&vec);
+        assert_eq!(result, vec![0, 255, 255, 255]);
+    }
+
+    #[test]
+    fn test_bytes_compare() {
+        let a = vec![0, 0, 0];
+        let b = vec![0, 0, 0];
+        assert_eq!(bytes_compare(&a, &b), 0);
+
+        let a = vec![0, 0, 0];
+        let b = vec![0, 0, 1];
+        assert_eq!(bytes_compare(&a, &b), -1);
+
+        let a = vec![0, 0, 1];
+        let b = vec![0, 0, 0];
+        assert_eq!(bytes_compare(&a, &b), 1);
+    }
+
+    #[test]
+    fn test_get_farcaster_time() {
+        let time = get_farcaster_time().unwrap();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        assert!(time <= now);
+    }
+
+    #[test]
+    fn to_farcaster_time_test() {
+        // It is an error to pass a time before the farcaster epoch
+        let time = to_farcaster_time(0);
+        assert!(time.is_err());
+
+        let time = to_farcaster_time(FARCASTER_EPOCH - 1);
+        assert!(time.is_err());
+
+        let time = to_farcaster_time(FARCASTER_EPOCH).unwrap();
+        assert_eq!(time, 0);
+
+        let time = to_farcaster_time(FARCASTER_EPOCH + 1000).unwrap();
+        assert_eq!(time, 1);
     }
 }
