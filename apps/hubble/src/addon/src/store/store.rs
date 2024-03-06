@@ -71,6 +71,9 @@ pub struct PageOptions {
 /// The `Sync` trait indicates that a type can be safely shared between threads.
 /// The `StoreDef` trait is implemented for types that are both `Send` and `Sync`,
 /// allowing them to be used as trait objects in the `Store` struct.
+///
+/// Some methods in this trait provide default implementations. These methods can be overridden
+/// by implementing the trait for a specific type.
 pub trait StoreDef: Send + Sync {
     fn postfix(&self) -> u8;
     fn add_message_type(&self) -> u8;
@@ -109,6 +112,137 @@ pub trait StoreDef: Send + Sync {
     fn make_remove_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
 
     fn get_prune_size_limit(&self) -> u32;
+
+    fn get_merge_conflicts(
+        &self,
+        db: &RocksDB,
+        message: &Message,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+    ) -> Result<Vec<Message>, HubError> {
+        // The JS code does validateAdd()/validateRemove() here, but that's not needed because we
+        // already validated that the message has a data field and a body field in the is_add_type()
+
+        if self.is_add_type(message) {
+            self.find_merge_add_conflicts(message)?;
+        } else {
+            self.find_merge_remove_conflicts(message)?;
+        }
+
+        let mut conflicts = vec![];
+
+        if self.remove_type_supported() {
+            let remove_key = self.make_remove_key(message)?;
+            let remove_ts_hash = db.get(&remove_key)?;
+
+            if remove_ts_hash.is_some() {
+                let remove_compare = self.message_compare(
+                    self.remove_message_type(),
+                    &remove_ts_hash.clone().unwrap(),
+                    message.data.as_ref().unwrap().r#type as u8,
+                    &ts_hash.to_vec(),
+                );
+
+                if remove_compare > 0 {
+                    return Err(HubError {
+                        code: "bad_request.conflict".to_string(),
+                        message: "message conflicts with a more recent remove".to_string(),
+                    });
+                }
+                if remove_compare == 0 {
+                    return Err(HubError {
+                        code: "bad_request.duplicate".to_string(),
+                        message: "message has already been merged".to_string(),
+                    });
+                }
+
+                // If the existing remove has a lower order than the new message, retrieve the full
+                // Remove message and delete it as part of the RocksDB transaction
+                let existing_remove = get_message(
+                    &db,
+                    message.data.as_ref().unwrap().fid as u32,
+                    self.postfix(),
+                    &utils::vec_to_u8_24(&remove_ts_hash)?,
+                )?
+                .ok_or_else(|| HubError {
+                    code: "bad_request.internal_error".to_string(),
+                    message: format!(
+                        "The message for the {:x?} not found",
+                        remove_ts_hash.unwrap()
+                    ),
+                })?;
+                conflicts.push(existing_remove);
+            }
+        }
+
+        // Check if there is an add timestamp hash for this
+        let add_key = self.make_add_key(message)?;
+        let add_ts_hash = db.get(&add_key)?;
+
+        if add_ts_hash.is_some() {
+            let add_compare = self.message_compare(
+                self.add_message_type(),
+                &add_ts_hash.clone().unwrap(),
+                message.data.as_ref().unwrap().r#type as u8,
+                &ts_hash.to_vec(),
+            );
+            // println!("add_compare: {}", add_compare);
+
+            if add_compare > 0 {
+                return Err(HubError {
+                    code: "bad_request.conflict".to_string(),
+                    message: "message conflicts with a more recent add".to_string(),
+                });
+            }
+            if add_compare == 0 {
+                return Err(HubError {
+                    code: "bad_request.duplicate".to_string(),
+                    message: "message has already been merged".to_string(),
+                });
+            }
+
+            // If the existing add has a lower order than the new message, retrieve the full
+            // Add message and delete it as part of the RocksDB transaction
+            let existing_add = get_message(
+                &db,
+                message.data.as_ref().unwrap().fid as u32,
+                self.postfix(),
+                &utils::vec_to_u8_24(&add_ts_hash)?,
+            )?
+            .ok_or_else(|| HubError {
+                code: "bad_request.internal_error".to_string(),
+                message: format!("The message for the {:x?} not found", add_ts_hash.unwrap()),
+            })?;
+            // println!("existing_add: {:?}", existing_add);
+            conflicts.push(existing_add);
+        }
+
+        // println!("conflicts: {:?}", conflicts);
+        Ok(conflicts)
+    }
+
+    fn message_compare(
+        &self,
+        a_type: u8,
+        a_ts_hash: &Vec<u8>,
+        b_type: u8,
+        b_ts_hash: &Vec<u8>,
+    ) -> i8 {
+        // Compare timestamps (first 4 bytes of ts_hash)
+        let ts_compare = bytes_compare(&a_ts_hash[0..4], &b_ts_hash[0..4]);
+        if ts_compare != 0 {
+            return ts_compare;
+        }
+
+        if a_type == self.remove_message_type() && b_type == self.add_message_type() {
+            return 1;
+        }
+        if a_type == self.add_message_type() && b_type == self.remove_message_type() {
+            return -1;
+        }
+
+        // Compare the rest of the ts_hash to break ties
+        bytes_compare(&a_ts_hash[4..24], &b_ts_hash[4..24])
+    }
 }
 
 pub struct Store {
@@ -363,112 +497,6 @@ impl Store {
         Ok(())
     }
 
-    fn get_merge_conflicts(
-        &self,
-        message: &Message,
-        ts_hash: &[u8; TS_HASH_LENGTH],
-    ) -> Result<Vec<Message>, HubError> {
-        // The JS code does validateAdd()/validateRemove() here, but that's not needed because we
-        // already validated that the message has a data field and a body field in the is_add_type()
-
-        if self.store_def.is_add_type(message) {
-            self.store_def.find_merge_add_conflicts(message)?;
-        } else {
-            self.store_def.find_merge_remove_conflicts(message)?;
-        }
-
-        let mut conflicts = vec![];
-
-        if self.store_def.remove_type_supported() {
-            let remove_key = self.store_def.make_remove_key(message)?;
-            let remove_ts_hash = self.db.get(&remove_key)?;
-
-            if remove_ts_hash.is_some() {
-                let remove_compare = self.message_compare(
-                    self.store_def.remove_message_type(),
-                    &remove_ts_hash.clone().unwrap(),
-                    message.data.as_ref().unwrap().r#type as u8,
-                    &ts_hash.to_vec(),
-                );
-
-                if remove_compare > 0 {
-                    return Err(HubError {
-                        code: "bad_request.conflict".to_string(),
-                        message: "message conflicts with a more recent remove".to_string(),
-                    });
-                }
-                if remove_compare == 0 {
-                    return Err(HubError {
-                        code: "bad_request.duplicate".to_string(),
-                        message: "message has already been merged".to_string(),
-                    });
-                }
-
-                // If the existing remove has a lower order than the new message, retrieve the full
-                // Remove message and delete it as part of the RocksDB transaction
-                let existing_remove = get_message(
-                    &self.db,
-                    message.data.as_ref().unwrap().fid as u32,
-                    self.store_def.postfix(),
-                    &utils::vec_to_u8_24(&remove_ts_hash)?,
-                )?
-                .ok_or_else(|| HubError {
-                    code: "bad_request.internal_error".to_string(),
-                    message: format!(
-                        "The message for the {:x?} not found",
-                        remove_ts_hash.unwrap()
-                    ),
-                })?;
-                conflicts.push(existing_remove);
-            }
-        }
-
-        // Check if there is an add timestamp hash for this
-        let add_key = self.store_def.make_add_key(message)?;
-        let add_ts_hash = self.db.get(&add_key)?;
-
-        if add_ts_hash.is_some() {
-            let add_compare = self.message_compare(
-                self.store_def.add_message_type(),
-                &add_ts_hash.clone().unwrap(),
-                message.data.as_ref().unwrap().r#type as u8,
-                &ts_hash.to_vec(),
-            );
-            // println!("add_compare: {}", add_compare);
-
-            if add_compare > 0 {
-                return Err(HubError {
-                    code: "bad_request.conflict".to_string(),
-                    message: "message conflicts with a more recent add".to_string(),
-                });
-            }
-            if add_compare == 0 {
-                return Err(HubError {
-                    code: "bad_request.duplicate".to_string(),
-                    message: "message has already been merged".to_string(),
-                });
-            }
-
-            // If the existing add has a lower order than the new message, retrieve the full
-            // Add message and delete it as part of the RocksDB transaction
-            let existing_add = get_message(
-                &self.db,
-                message.data.as_ref().unwrap().fid as u32,
-                self.store_def.postfix(),
-                &utils::vec_to_u8_24(&add_ts_hash)?,
-            )?
-            .ok_or_else(|| HubError {
-                code: "bad_request.internal_error".to_string(),
-                message: format!("The message for the {:x?} not found", add_ts_hash.unwrap()),
-            })?;
-            // println!("existing_add: {:?}", existing_add);
-            conflicts.push(existing_add);
-        }
-
-        // println!("conflicts: {:?}", conflicts);
-        Ok(conflicts)
-    }
-
     pub fn merge(&self, message: &Message) -> Result<Vec<u8>, HubError> {
         // Grab a merge lock. The typescript code does this by individual fid, but we don't have a
         // good way of doing that efficiently here. We'll just use an array of locks, with each fid
@@ -537,7 +565,9 @@ impl Store {
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
-        let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
+        let merge_conflicts = self
+            .store_def
+            .get_merge_conflicts(&self.db, message, ts_hash)?;
         // println!("merge_conflicts: {:?}", merge_conflicts);
 
         // start a transaction
@@ -574,7 +604,9 @@ impl Store {
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
-        let merge_conflicts = self.get_merge_conflicts(message, ts_hash)?;
+        let merge_conflicts = self
+            .store_def
+            .get_merge_conflicts(&self.db, message, ts_hash)?;
 
         // start a transaction
         let mut txn = self.db.txn();
@@ -731,34 +763,6 @@ impl Store {
             })?;
 
         Ok(messages)
-    }
-
-    fn message_compare(
-        &self,
-        a_type: u8,
-        a_ts_hash: &Vec<u8>,
-        b_type: u8,
-        b_ts_hash: &Vec<u8>,
-    ) -> i8 {
-        // Compare timestamps (first 4 bytes of ts_hash)
-        let ts_compare = bytes_compare(&a_ts_hash[0..4], &b_ts_hash[0..4]);
-        if ts_compare != 0 {
-            return ts_compare;
-        }
-
-        if a_type == self.store_def.remove_message_type()
-            && b_type == self.store_def.add_message_type()
-        {
-            return 1;
-        }
-        if a_type == self.store_def.add_message_type()
-            && b_type == self.store_def.remove_message_type()
-        {
-            return -1;
-        }
-
-        // Compare the rest of the ts_hash to break ties
-        bytes_compare(&a_ts_hash[4..24], &b_ts_hash[4..24])
     }
 }
 
