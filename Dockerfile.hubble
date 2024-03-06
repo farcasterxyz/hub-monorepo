@@ -24,7 +24,7 @@ RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 FROM node:21.6-slim AS build
 
 # Needed for compilation step
-RUN apt-get update && apt-get install -y python3 make g++ linux-headers-generic curl protobuf-compiler libclang-dev
+RUN apt-get update && apt-get install -y python3 make g++ linux-headers-generic curl protobuf-compiler libclang-dev cmake
 
 USER node
 RUN mkdir /home/node/app

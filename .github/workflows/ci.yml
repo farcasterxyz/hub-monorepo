@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-image:
     timeout-minutes: 10
-    runs-on: 'buildjet-8vcpu-ubuntu-2204'
+    runs-on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     steps:
       - uses: actions/checkout@v3
@@ -40,7 +40,7 @@ jobs:
 
       - name: Download grpcurl
         shell: bash
-        run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz -o - | tar -xzf -
+        run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_arm64.tar.gz -o - | tar -xzf -
 
       - name: Check that gRPC server is running
         uses: nick-fields/retry@v2

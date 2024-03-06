@@ -38,7 +38,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { rsCreateTarBackup, rsValidationMethods } from "./rustfunctions.js";
+import { rsCreateTarBackup, rsCreateTarGzip, rsValidationMethods, rustErrorToHubError } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -1609,20 +1609,31 @@ export class Hub implements HubInterface {
     return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
   }
 
-  async uploadToS3(filePath: string): HubAsyncResult<string> {
-    const network = FarcasterNetwork[this.options.network].toString();
+  async uploadToS3(tarFilePath: string): HubAsyncResult<string> {
+    let start = Date.now();
+    log.info({ tarFilePath }, "Creating tar.gz file ...");
+
+    // First, gzip the file. Do it in rust, which can run the CPU intensive gzip in a separate thread
+    const gzipResult = await ResultAsync.fromPromise(rsCreateTarGzip(tarFilePath), rustErrorToHubError);
+    if (gzipResult.isErr()) {
+      log.error({ error: gzipResult.error }, "Error creating tar.gz file");
+      return err(gzipResult.error);
+    }
+
+    log.info({ timeTakenMs: Date.now() - start, gzipResult }, "Finished creating tar.gz file created");
+    const filePath = gzipResult.value;
 
     const s3 = new S3Client({
       region: S3_REGION,
     });
 
-    // The AWS key is "snapshots/{network}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
+    // The AWS key is "snapshots/{network}/{DB_SCHEMA_VERSION}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
     const key = `${this.getSnapshotFolder()}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
       Date.now() / 1000,
     )}.tar.gz`;
 
-    const start = Date.now();
-    log.info({ filePath }, "Uploading snapshot to S3");
+    start = Date.now();
+    log.info({ filePath, key }, "Uploading snapshot to S3");
 
     const fileStream = fs.createReadStream(filePath);
     fileStream.on("error", function (err) {

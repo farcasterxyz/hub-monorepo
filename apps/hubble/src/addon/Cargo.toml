@@ -28,7 +28,7 @@ cadence = "1.2.0"
 slog-atomic = "3.1.0"
 walkdir = "2.5.0"
 tar = "0.4.40"
-flate2 = "1.0.28"
+gzp = "0.11.3"
 
 [build-dependencies]
 prost-build = "0.12.3"

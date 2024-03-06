@@ -99,6 +99,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("dbOpen", RocksDB::js_open)?;
     cx.export_function("dbApproximateSize", RocksDB::js_approximate_size)?;
     cx.export_function("dbCreateTarBackup", RocksDB::js_create_tar_backup)?;
+    cx.export_function("dbCreateTarGzip", RocksDB::js_create_tar_gzip)?;
     cx.export_function("dbClear", RocksDB::js_clear)?;
     cx.export_function("dbClose", RocksDB::js_close)?;
     cx.export_function("dbDestroy", RocksDB::js_destroy)?;
