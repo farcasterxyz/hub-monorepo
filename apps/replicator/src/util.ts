@@ -46,6 +46,7 @@ import { AssertionError } from "./error.js";
 import { Logger } from "./log.js";
 import { threadId as workerThreadId } from "worker_threads";
 import { pid } from "process";
+import base58 from "bs58";
 
 export type StoreMessageOperation = "merge" | "delete" | "prune" | "revoke";
 
@@ -206,9 +207,9 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
           } satisfies VerificationAddEthAddressBodyJson;
         case Protocol.SOLANA:
           return {
-            address: new TextDecoder().decode(address),
+            address: base58.encode(address),
             claimSignature: bytesToHex(claimSignature),
-            blockHash: new TextDecoder().decode(blockHash),
+            blockHash: base58.encode(blockHash),
             protocol: Protocol.SOLANA,
           } satisfies VerificationAddSolAddressBodyJson;
         default:
