@@ -8,5 +8,5 @@
     "outDir": "build",
     "rootDir": "src"
   },
-  "exclude": ["node_modules", "jest.config.ts"]
+  "exclude": ["node_modules", "jest.config.ts", "src/addon/target"]
 }

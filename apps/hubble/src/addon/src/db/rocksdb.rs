@@ -1,8 +1,11 @@
 use crate::logger::LOGGER;
 use crate::statsd::statsd;
 use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
-use flate2::write::GzEncoder;
-use flate2::Compression;
+use gzp::{
+    deflate::Gzip,
+    par::compress::{ParCompress, ParCompressBuilder},
+    ZWriter,
+};
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
@@ -447,7 +450,7 @@ impl RocksDB {
             .unwrap_or(".".to_string());
 
         let output_file_path = format!(
-            "{}-{}.tar.gz",
+            "{}-{}.tar",
             input_dir,
             chrono::Local::now().format("%Y-%m-%d-%s")
         );
@@ -456,14 +459,12 @@ impl RocksDB {
         info!(self.logger, "Creating tarball for directory: {}", input_dir; 
             o!("output_file_path" => &output_file_path, "base_name" => &base_name));
 
-        let tar_gz = File::create(&output_file_path)?;
-        let enc = GzEncoder::new(tar_gz, Compression::default());
-        let mut tar = Builder::new(enc);
+        let tar_file = File::create(&output_file_path)?;
+        let mut tar = Builder::new(tar_file);
 
         tar.append_dir_all(base_name, input_dir)?;
 
-        let enc = tar.into_inner()?;
-        enc.finish()?;
+        tar.finish()?;
 
         let metadata = fs::metadata(&output_file_path)?;
         let time_taken = start.elapsed().expect("Time went backwards");
@@ -477,6 +478,25 @@ impl RocksDB {
         );
 
         Ok(output_file_path)
+    }
+
+    pub fn create_tar_gzip(input_tar: &str) -> Result<String, HubError> {
+        let output_gz_path = format!("{}.gz", input_tar);
+
+        let mut tar_file = File::open(input_tar)?;
+        let gz_file = File::create(&output_gz_path)?;
+        // let mut gz_encoder = GzEncoder::new(gz_file, Compression::default());
+        let mut parz: ParCompress<Gzip> = ParCompressBuilder::new().from_writer(gz_file);
+
+        std::io::copy(&mut tar_file, &mut parz)?;
+
+        parz.finish().map_err(|e| HubError {
+            code: "db.internal_error".to_string(),
+            message: format!("Error creating gzip file: {}", e.to_string()),
+        })?;
+        fs::remove_file(input_tar)?;
+
+        Ok(output_gz_path)
     }
 }
 
@@ -520,6 +540,25 @@ impl RocksDB {
         // Spawn a new thread to create the tarball
         std::thread::spawn(move || {
             let result = db.create_tar_backup(&input_dir);
+
+            deferred.settle_with(&channel, move |mut tcx| match result {
+                Ok(output_path) => Ok(tcx.string(output_path)),
+                Err(e) => hub_error_to_js_throw(&mut tcx, e),
+            });
+        });
+
+        Ok(promise)
+    }
+
+    pub fn js_create_tar_gzip(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let input_tar = cx.argument::<JsString>(0)?.value(&mut cx);
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        // Spawn a new thread to create the tarball
+        std::thread::spawn(move || {
+            let result = RocksDB::create_tar_gzip(&input_tar);
 
             deferred.settle_with(&channel, move |mut tcx| match result {
                 Ok(output_path) => Ok(tcx.string(output_path)),

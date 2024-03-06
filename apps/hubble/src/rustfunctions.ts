@@ -99,6 +99,10 @@ export const rsCreateTarBackup = (db: RustDb): Promise<string> => {
   return lib.dbCreateTarBackup.call(db);
 };
 
+export const rsCreateTarGzip = (filePath: string): Promise<string> => {
+  return lib.dbCreateTarGzip(filePath);
+};
+
 export const rsDbClear = (db: RustDb) => {
   return lib.dbClear.call(db);
 };
