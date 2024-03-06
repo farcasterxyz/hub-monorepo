@@ -85,7 +85,6 @@ export class PruneMessagesJobScheduler {
       }
 
       // Sleep for a bit avoid overloading the Merkle Trie
-
       const syncTrieQSize = this._getSyncTrieQSizeFn();
       if (syncTrieQSize > 10_000) {
         log.info({ syncTrieQSize }, "sync trie Q is large, sleeping for 30s");

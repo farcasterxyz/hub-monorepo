@@ -14,6 +14,7 @@ use neon::context::Context;
 use neon::types::{Finalize, JsBuffer, JsNumber};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use neon::{object::Object, types::buffer::TypedArray};
+use once_cell::sync::Lazy;
 use prost::Message as _;
 use rocksdb;
 use slog::{o, warn};
@@ -116,7 +117,6 @@ pub struct Store {
     fid_locks: Arc<[Mutex<()>; 4]>,
     db: Arc<RocksDB>,
     logger: slog::Logger,
-    pub pool: Arc<Mutex<threadpool::ThreadPool>>, // TODO: Move this out
 }
 
 impl Finalize for Store {
@@ -140,7 +140,6 @@ impl Store {
             ]),
             db,
             logger: LOGGER.new(o!("component" => "Store")),
-            pool: Arc::new(Mutex::new(ThreadPool::new(1))),
         }
     }
 
@@ -629,8 +628,24 @@ impl Store {
                 };
 
                 if message.data.is_none() {
-                    // This shouldn't happen, but if it does, skip it
-                    warn!(self.logger, "Message data is unexpectedly missing"; "full_message" => format!("{:?}", message));
+                    // This shouldn't happen, but if it does, skip it                    
+                    if message.data_bytes.is_none() {
+                        warn!(self.logger, "Missing message_data: Message data and data_bytes are both missing"; "full_message" => format!("{:?}", message));
+                        return Ok(false); // Continue the iteration
+                    }
+
+                    // Try to interpret the message data
+                    let bytes = message.data_bytes.as_ref().unwrap().as_slice();
+                    let data = match protos::MessageData::decode(bytes) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            warn!(self.logger, "Missing message_data: : Failed to decode message data"; "full_message" => format!("{:?}", message), "error" => e.to_string());
+                            return Ok(false); // Continue the iteration
+                        }
+                    };
+
+                    // Print the message data
+                    warn!(self.logger, "Missing message_data: Message data is missing, but data_bytes is present"; "full_message" => format!("{:?}", message), "data" => format!("{:?}", data));
                     return Ok(false); // Continue the iteration
                 }
 
@@ -832,23 +847,27 @@ impl Store {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        deferred.settle_with(&channel, move |mut cx| {
-            let pruned_events = match store.prune_messages(fid, cached_count, units) {
-                Ok(pruned_events) => pruned_events,
-                Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
-            };
+        // We run the prune in a threadpool because it can be very CPU intensive and it will block
+        // the NodeJS main thread.
+        THREAD_POOL.lock().unwrap().execute(move || {
+            deferred.settle_with(&channel, move |mut cx| {
+                let pruned_events = match store.prune_messages(fid, cached_count, units) {
+                    Ok(pruned_events) => pruned_events,
+                    Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
+                };
 
-            let js_array = cx.empty_array();
-            for (i, hub_event) in pruned_events.iter().enumerate() {
-                let hub_event_bytes = hub_event.encode_to_vec();
-                let mut js_buffer = cx.buffer(hub_event_bytes.len())?;
-                js_buffer
-                    .as_mut_slice(&mut cx)
-                    .copy_from_slice(&hub_event_bytes);
-                js_array.set(&mut cx, i as u32, js_buffer)?;
-            }
+                let js_array = cx.empty_array();
+                for (i, hub_event) in pruned_events.iter().enumerate() {
+                    let hub_event_bytes = hub_event.encode_to_vec();
+                    let mut js_buffer = cx.buffer(hub_event_bytes.len())?;
+                    js_buffer
+                        .as_mut_slice(&mut cx)
+                        .copy_from_slice(&hub_event_bytes);
+                    js_array.set(&mut cx, i as u32, js_buffer)?;
+                }
 
-            Ok(js_array)
+                Ok(js_array)
+            });
         });
 
         Ok(promise)
@@ -910,3 +929,6 @@ impl Store {
         Ok(promise)
     }
 }
+
+// Threadpool for use in the store
+static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| Mutex::new(ThreadPool::new(1)));

@@ -260,7 +260,8 @@ class Engine extends TypedEmitter<EngineEvents> {
     if (mergeResult.isOk() && limiter) {
       const timeTakenMs = Date.now() - start;
 
-      if (typeToSetPostfix(message.data?.type ?? MessageType.NONE) === UserPostfix.ReactionMessage) {
+      const messagePostFix = typeToSetPostfix(message.data?.type ?? MessageType.NONE);
+      if (messagePostFix === UserPostfix.ReactionMessage || messagePostFix === UserPostfix.UserDataMessage) {
         statsd().timing("engine.merge.rust", timeTakenMs);
       } else {
         statsd().timing("engine.merge.nodejs", timeTakenMs);
