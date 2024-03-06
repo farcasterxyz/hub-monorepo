@@ -1,5 +1,11 @@
 # @farcaster/replicator
 
+## 0.3.5
+
+### Patch Changes
+
+- ff5b8cbc: Base 58 encode solana data
+
 ## 0.3.4
 
 ### Patch Changes
