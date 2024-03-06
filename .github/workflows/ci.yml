@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-image:
     timeout-minutes: 10
-    runs-on: 'buildjet-8vcpu-ubuntu-2204-arm'
+    runs-on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     steps:
       - uses: actions/checkout@v3
