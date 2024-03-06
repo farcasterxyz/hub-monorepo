@@ -11,6 +11,7 @@ import { ProcessHubEvent } from "./jobs/processHubEvent.js";
 import { processOnChainEvent } from "./processors/onChainEvent.js";
 import { statsd } from "./statsd.js";
 import { sleep } from "./util.js";
+import { STATSD_HOST } from "./env.js";
 
 export class HubReplicator {
   private eventsSubscriber: HubSubscriber;
@@ -39,9 +40,11 @@ export class HubReplicator {
   }
 
   public async start() {
-    setInterval(() => {
-      this.updateTableMetrics();
-    }, 5_000);
+    if (STATSD_HOST) {
+      setInterval(() => {
+        this.updateTableMetrics();
+      }, 5_000);
+    }
     await this.backfill();
   }
 
