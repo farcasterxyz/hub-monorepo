@@ -43,6 +43,7 @@ export default defineConfig({
               { text: "Username Proofs API", link: "/docs/httpapi/usernameproof" },
               { text: "Verifications API", link: "/docs/httpapi/verification" },
               { text: "On Chain API", link: "/docs/httpapi/onchain" },
+              { text: "Message API", link: "/docs/httpapi/message" },
               { text: "Events API", link: "/docs/httpapi/events" },
             ],
           },
