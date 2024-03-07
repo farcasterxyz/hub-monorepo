@@ -25,7 +25,7 @@ jobs:
 
       - name: Build Docker image
         id: docker-image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           cache-from: type=gha
           cache-to: type=gha,type=inline
@@ -43,7 +43,7 @@ jobs:
         run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_arm64.tar.gz -o - | tar -xzf -
 
       - name: Check that gRPC server is running
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           timeout_seconds: 10
           retry_wait_seconds: 5
