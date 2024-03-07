@@ -157,20 +157,19 @@ pub trait StoreDef: Send + Sync {
 
                 // If the existing remove has a lower order than the new message, retrieve the full
                 // Remove message and delete it as part of the RocksDB transaction
-                let existing_remove = get_message(
+                let maybe_existing_remove = get_message(
                     &db,
                     message.data.as_ref().unwrap().fid as u32,
                     self.postfix(),
                     &utils::vec_to_u8_24(&remove_ts_hash)?,
-                )?
-                .ok_or_else(|| HubError {
-                    code: "bad_request.internal_error".to_string(),
-                    message: format!(
-                        "The message for the {:x?} not found",
-                        remove_ts_hash.unwrap()
-                    ),
-                })?;
-                conflicts.push(existing_remove);
+                )?;
+
+                if maybe_existing_remove.is_some() {
+                    conflicts.push(maybe_existing_remove.unwrap());
+                } else {
+                    warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                        o!("remove_ts_hash" => format!("{:x?}", remove_ts_hash.unwrap())));
+                }
             }
         }
 
@@ -202,18 +201,19 @@ pub trait StoreDef: Send + Sync {
 
             // If the existing add has a lower order than the new message, retrieve the full
             // Add message and delete it as part of the RocksDB transaction
-            let existing_add = get_message(
+            let maybe_existing_add = get_message(
                 &db,
                 message.data.as_ref().unwrap().fid as u32,
                 self.postfix(),
                 &utils::vec_to_u8_24(&add_ts_hash)?,
-            )?
-            .ok_or_else(|| HubError {
-                code: "bad_request.internal_error".to_string(),
-                message: format!("The message for the {:x?} not found", add_ts_hash.unwrap()),
-            })?;
-            // println!("existing_add: {:?}", existing_add);
-            conflicts.push(existing_add);
+            )?;
+
+            if maybe_existing_add.is_none() {
+                warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                    o!("add_ts_hash" => format!("{:x?}", add_ts_hash.unwrap())));
+            } else {
+                conflicts.push(maybe_existing_add.unwrap());
+            }
         }
 
         // println!("conflicts: {:?}", conflicts);
