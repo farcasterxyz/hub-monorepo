@@ -158,5 +158,31 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     )?;
     cx.export_function("mergeUserNameProof", UserDataStore::js_merge_username_proof)?;
 
+    // VerificationStore methods
+    cx.export_function(
+        "createVerificationStore",
+        store::VerificationStore::create_verification_store,
+    )?;
+    cx.export_function(
+        "getVerificationAdd",
+        store::VerificationStore::js_get_verification_add,
+    )?;
+    cx.export_function(
+        "getVerificationAddsByFid",
+        store::VerificationStore::js_get_verification_adds_by_fid,
+    )?;
+    cx.export_function(
+        "getVerificationRemove",
+        store::VerificationStore::js_get_verification_remove,
+    )?;
+    cx.export_function(
+        "getVerificationRemovesByFid",
+        store::VerificationStore::js_get_verification_removes_by_fid,
+    )?;
+    cx.export_function(
+        "migrateVerifications",
+        store::VerificationStore::js_migrate_verifications,
+    )?;
+
     Ok(())
 }

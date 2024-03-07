@@ -119,6 +119,15 @@ pub trait StoreDef: Send + Sync {
         message: &Message,
         ts_hash: &[u8; TS_HASH_LENGTH],
     ) -> Result<Vec<Message>, HubError> {
+        Self::get_default_merge_conflicts(&self, db, message, ts_hash)
+    }
+
+    fn get_default_merge_conflicts(
+        &self,
+        db: &RocksDB,
+        message: &Message,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+    ) -> Result<Vec<Message>, HubError> {
         // The JS code does validateAdd()/validateRemove() here, but that's not needed because we
         // already validated that the message has a data field and a body field in the is_add_type()
 
@@ -277,9 +286,13 @@ impl Store {
         }
     }
 
-    // fn log(&self, message: &str) {
-    //     // println!("{}", message);
-    // }
+    pub fn logger(&self) -> &slog::Logger {
+        &self.logger
+    }
+
+    pub fn store_def(&self) -> &dyn StoreDef {
+        self.store_def.as_ref()
+    }
 
     pub fn db(&self) -> Arc<RocksDB> {
         self.db.clone()
