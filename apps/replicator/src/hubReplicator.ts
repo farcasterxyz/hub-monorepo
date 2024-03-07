@@ -1,9 +1,8 @@
 import { HubEvent, HubEventType, HubRpcClient, OnChainEvent, isHubError } from "@farcaster/hub-nodejs";
 import humanizeDuration from "humanize-duration";
 import { Redis, RedisKey } from "ioredis";
-import { sql } from "kysely";
 import { Logger } from "pino";
-import { DB, Tables, executeTakeFirstOrThrow, executeTx } from "./db.js";
+import { DB, Tables, getEstimateOfTablesRowCount, executeTx } from "./db.js";
 import { AssertionError } from "./error.js";
 import { HubSubscriber } from "./hubSubscriber.js";
 import { BackfillFidData } from "./jobs/backfillFidData.js";
@@ -12,6 +11,7 @@ import { ProcessHubEvent } from "./jobs/processHubEvent.js";
 import { processOnChainEvent } from "./processors/onChainEvent.js";
 import { statsd } from "./statsd.js";
 import { sleep } from "./util.js";
+import { STATSD_HOST } from "./env.js";
 
 export class HubReplicator {
   private eventsSubscriber: HubSubscriber;
@@ -40,9 +40,11 @@ export class HubReplicator {
   }
 
   public async start() {
-    setInterval(() => {
-      this.updateTableMetrics();
-    }, 5_000);
+    if (STATSD_HOST) {
+      setInterval(() => {
+        this.updateTableMetrics();
+      }, 5_000);
+    }
     await this.backfill();
   }
 
@@ -61,33 +63,26 @@ export class HubReplicator {
   }
 
   private async updateTableMetrics() {
-    const stats = await executeTakeFirstOrThrow(
-      this.db.selectNoFrom(({ selectFrom }) =>
-        (
-          [
-            "chainEvents",
-            "fids",
-            "signers",
-            "usernameProofs",
-            "fnames",
-            "messages",
-            "casts",
-            "reactions",
-            "links",
-            "verifications",
-            "userData",
-            "storageAllocations",
-          ] satisfies Array<keyof Tables>
-        ).map((tableName) =>
-          selectFrom(tableName)
-            .select(({ fn }) => fn.coalesce(fn.countAll<number>(), sql<number>`0`).as(tableName))
-            .as(tableName),
-        ),
-      ),
-    );
-
-    for (const [tableName, count] of Object.entries(stats)) {
-      statsd().gauge(`db.${tableName}.rows`, count as number);
+    const tablesToMonitor: Array<keyof Tables> = [
+      "chainEvents",
+      "fids",
+      "signers",
+      "usernameProofs",
+      "fnames",
+      "messages",
+      "casts",
+      "reactions",
+      "links",
+      "verifications",
+      "userData",
+      "storageAllocations",
+    ];
+    const stats = await getEstimateOfTablesRowCount(this.db, tablesToMonitor);
+    for (const row of stats.rows) {
+      if (row.estimate < 0) {
+        row.estimate = 0;
+      }
+      statsd().gauge(`db.${row.tableName}.rows`, row.estimate as number);
     }
   }
 
