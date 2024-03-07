@@ -12,3 +12,4 @@ mod store;
 mod store_event_handler;
 mod user_data_store;
 mod utils;
+mod link_store;
