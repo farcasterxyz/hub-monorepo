@@ -40,7 +40,7 @@ describe("fnameUserNameProofByFid migration", () => {
     const tsHash = makeTsHash(verificationAdd.data.timestamp, verificationAdd.hash)._unsafeUnwrap();
 
     // Add the FnameUserNameProofByFidPrefix key with the old (25) prefix
-    const key = Buffer.concat([Buffer.from([RootPrefix.FNameUserNameProofByFid]), makeFidKey(fid)]);
+    const key = Buffer.concat([Buffer.from([25]), makeFidKey(fid)]);
     await db.put(key, Buffer.from(tsHash));
 
     const success = await performDbMigrations(db, 8, 9);
@@ -52,7 +52,7 @@ describe("fnameUserNameProofByFid migration", () => {
     expect(value).toEqual(Buffer.from(tsHash));
 
     // Expect that the old key was deleted
-    const oldKey = Buffer.concat([Buffer.from([25]), makeFidKey(fid)]);
+    const oldKey = key;
     const oldValue = await ResultAsync.fromPromise(db.get(oldKey), (e) => e as HubError);
     expect(oldValue.isErr()).toBe(true);
     expect(oldValue._unsafeUnwrapErr().errCode).toBe("not_found");
