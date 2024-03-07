@@ -1,7 +1,6 @@
 /**
  * Up until now, the RootPrefix.FNameUserNameProofByFid and RootPrefix.VerificationByAddress both
  * had the value of 25. This migration will change the value of RootPrefix.FNameUserNameProofByFid to 27
- *
  */
 
 import { logger } from "../../../utils/logger.js";
@@ -23,7 +22,7 @@ export async function fnameUserNameProofByFidPrefix(db: RocksDB): Promise<boolea
     // If the key is exactly 5 bytes long, then that means it was the FnameUserNameProofByFid key
     // and not the VerificationByAddress key
     if (key.length === 1 + FID_BYTES) {
-      const newKey = Buffer.from([RootPrefix.FNameUserNameProofByFid, ...key.slice(1)]);
+      const newKey = Buffer.from([RootPrefix.FNameUserNameProofByFid, ...new Uint8Array(key).slice(1)]);
       await db.put(newKey, value);
       await db.del(key);
 
