@@ -69,7 +69,7 @@ export class PruneMessagesJobScheduler {
     let finished = false;
     let pageToken: Uint8Array | undefined;
     do {
-      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 100 });
+      const fidsPage = await this._engine.getFids({ pageToken });
       if (fidsPage.isErr()) {
         return err(fidsPage.error);
       }
