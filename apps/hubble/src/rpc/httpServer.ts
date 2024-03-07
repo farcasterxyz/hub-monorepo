@@ -91,7 +91,11 @@ function handleResponse<M>(reply: fastify.FastifyReply, obj: StaticEncodable<M>)
   };
 }
 
-function convertB64ToHex(str: string): string {
+export function convertB64ToHex(str: string): string {
+  if (str.length === 0) {
+    return str;
+  }
+
   try {
     // Try to convert the string from base64 to hex
     const bytesBuf = Buffer.from(str, "base64");
@@ -105,7 +109,7 @@ function convertB64ToHex(str: string): string {
   }
 }
 
-function convertB64ToB58(str: string): string {
+export function convertB64ToB58(str: string): string {
   try {
     const bytesBuf = Buffer.from(str, "base64");
 

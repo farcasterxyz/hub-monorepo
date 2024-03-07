@@ -1,4 +1,4 @@
-import { HttpAPIServer, protoToJSON } from "../httpServer.js";
+import { HttpAPIServer, convertB64ToB58, convertB64ToHex, protoToJSON } from "../httpServer.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import {
   bytesToBase58,
@@ -35,6 +35,7 @@ import { mergeDeepPartial } from "../../test/utils.js";
 import { publicClient } from "../../test/utils.js";
 import { IdRegisterOnChainEvent } from "@farcaster/core";
 import { APP_VERSION } from "../../hubble.js";
+import base58 from "bs58";
 
 const db = jestRocksDB("httpserver.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -87,6 +88,21 @@ describe("httpServer", () => {
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
+  });
+
+  describe("conversions", () => {
+    const buf = Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    const b64 = buf.toString("base64");
+    const b58 = base58.encode(buf);
+    const hex = `0x${buf.toString("hex")}`;
+
+    expect(convertB64ToHex("")).toEqual("");
+    expect(convertB64ToHex(b64)).toEqual(hex);
+    expect(convertB64ToHex(b64)).toEqual(bytesToHexString(buf)._unsafeUnwrap());
+
+    expect(convertB64ToB58("")).toEqual("");
+    expect(convertB64ToB58(b64)).toEqual(b58);
+    expect(convertB64ToB58(b64)).toEqual(bytesToBase58(buf)._unsafeUnwrap());
   });
 
   describe("cors", () => {
