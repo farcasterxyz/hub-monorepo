@@ -790,7 +790,6 @@ impl Store {
         let message_bytes = cx.argument::<JsBuffer>(0);
         let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
 
-        // TODO: Using the pool is so much slower
         // let pool = store.pool.clone();
         // pool.lock().unwrap().execute(move || {
         let result = if message.is_err() {

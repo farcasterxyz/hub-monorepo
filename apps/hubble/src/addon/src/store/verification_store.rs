@@ -273,10 +273,7 @@ impl VerificationStoreDef {
     pub fn make_verification_by_address_key(address: &[u8]) -> Vec<u8> {
         let mut key = Vec::with_capacity(1 + address.len());
 
-        // TODO: We have accidentally used the same prefix as FNameUserNameProofById. We need
-        // a migration to fix this. For now, it's not a problem because the keys luckily don't conflict.
-        // Fname is adding a 4-byte fid, and verifications is adding a 32-byte address.
-        key.push(RootPrefix::FNameUserNameProofByFid as u8);
+        key.push(RootPrefix::VerificationByAddress as u8);
         key.extend_from_slice(address);
         key
     }
