@@ -164,9 +164,7 @@ impl StoreEventHandler {
     }
 
     pub fn js_get_next_event_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
-        let this = cx
-            .this()
-            .downcast_or_throw::<JsBox<Arc<StoreEventHandler>>, _>(&mut cx)?;
+        let this = cx.this::<JsBox<Arc<StoreEventHandler>>>()?;
 
         // Read an optional timestamp (number) from the arguments
         let timestamp = match cx.argument_opt(0) {

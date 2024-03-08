@@ -669,7 +669,7 @@ impl RocksDB {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
-            let js_array = JsArray::new(&mut cx, result.len() as u32);
+            let js_array = JsArray::new(&mut cx, result.len());
             for (i, value) in result.iter().enumerate() {
                 let mut buffer = cx.buffer(value.len())?;
                 let target = buffer.as_mut_slice(&mut cx);

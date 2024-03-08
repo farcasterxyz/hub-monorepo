@@ -94,7 +94,7 @@ pub fn encode_messages_to_js_object<'a>(
     cx: &mut TaskContext<'a>,
     messages_page: MessagesPage,
 ) -> JsResult<'a, JsObject> {
-    let js_messages = JsArray::new(cx, messages_page.messages.len() as u32);
+    let js_messages = JsArray::new(cx, messages_page.messages.len());
     for (i, message) in messages_page.messages.iter().enumerate() {
         let message_bytes = message.encode_to_vec();
 
@@ -124,7 +124,7 @@ pub fn encode_messages_to_js_object<'a>(
 * Extract the page options from a JavaScript object at the given index. Fills in default values
 * if they are not provided.
 */
-pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions, Throw> {
+pub fn get_page_options(cx: &mut FunctionContext, at: usize) -> Result<PageOptions, Throw> {
     let js_object = cx.argument::<JsObject>(at)?;
 
     let page_size = js_object
@@ -152,12 +152,12 @@ pub fn get_page_options(cx: &mut FunctionContext, at: i32) -> Result<PageOptions
 
 /** Get the store object from the context */
 pub fn get_store(cx: &mut FunctionContext) -> Result<Arc<Store>, Throw> {
-    let store_js_box = cx.this().downcast_or_throw::<JsBox<Arc<Store>>, _>(cx)?;
+    let store_js_box = cx.this::<JsBox<Arc<Store>>>()?;
     Ok((**store_js_box.borrow()).clone())
 }
 
 pub fn get_db(cx: &mut FunctionContext) -> Result<Arc<RocksDB>, Throw> {
-    let db_js_box = cx.this().downcast_or_throw::<JsBox<Arc<RocksDB>>, _>(cx)?;
+    let db_js_box = cx.this::<JsBox<Arc<RocksDB>>>()?;
     Ok((**db_js_box.borrow()).clone())
 }
 
