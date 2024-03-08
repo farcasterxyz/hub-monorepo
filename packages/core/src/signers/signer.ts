@@ -5,7 +5,7 @@ export interface Signer {
   readonly scheme: SignatureScheme;
 
   /**
-   * Get the key in bytes used to idenitfy this signer.
+   * Get the key in bytes used to identify this signer.
    */
   getSignerKey(): HubAsyncResult<Uint8Array>;
 
