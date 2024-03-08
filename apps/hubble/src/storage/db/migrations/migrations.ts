@@ -1,16 +1,17 @@
 import { Result, ResultAsync } from "neverthrow";
 import RocksDB from "../rocksdb.js";
 import { logger } from "../../../utils/logger.js";
+import { RootPrefix } from "../types.js";
+import rocksdb from "../rocksdb.js";
+import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
 import { usernameProofIndexMigration } from "./1.usernameproof.js";
 import { fnameProofIndexMigration } from "./2.fnameproof.js";
 import { clearEventsMigration } from "./3.clearEvents.js";
 import { uniqueVerificationsMigration } from "./4.uniqueVerifications.js";
 import { fnameSyncIds } from "./5.fnameSyncIds.js";
 import { oldContractEvents } from "./6.oldContractEvents.js";
-import { HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
-import { RootPrefix } from "../types.js";
-import rocksdb from "../rocksdb.js";
 import { clearAdminResets } from "./7.clearAdminResets.js";
+import { fnameUserNameProofByFidPrefix } from "./9.fnameUserNameProofByFidPrefix.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
@@ -51,6 +52,10 @@ migrations.set(8, async (db: RocksDB) => {
    * to be done, but we set a new version to mark the migration
    */
   return true;
+});
+
+migrations.set(9, async (db: RocksDB) => {
+  return await fnameUserNameProofByFidPrefix(db);
 });
 
 // To Add a new migration
