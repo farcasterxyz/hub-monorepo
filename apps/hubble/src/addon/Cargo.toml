@@ -2,7 +2,7 @@
 name = "addon"
 version = "0.1.0"
 license = "ISC"
-edition = "2018"
+edition = "2021"
 exclude = ["index.node"]
 build = "build.rs"
 
@@ -16,7 +16,7 @@ blake3 = "1.4.1"
 ed25519-dalek = "2.0.0"
 prost = "0.12.3"
 bytes = "1.1"
-rocksdb = {version ="0.22.0", features=["multi-threaded-cf"]}
+rocksdb = {version="0.22.0", features=["multi-threaded-cf"]}
 threadpool = "1.8.1"
 slog = "2.7.0"
 slog-async = "2.8.0"
@@ -29,9 +29,10 @@ slog-atomic = "3.1.0"
 walkdir = "2.5.0"
 tar = "0.4.40"
 gzp = "0.11.3"
+tonic = "0.11.0"
 
 [build-dependencies]
-prost-build = "0.12.3"
+tonic-build = "0.11"
 glob = "0.3.1"
 
 [dependencies.neon]
