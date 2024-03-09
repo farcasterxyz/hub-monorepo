@@ -139,7 +139,7 @@ describe("MerkleTrie", () => {
       TEST_TIMEOUT_LONG,
     );
 
-    test("inserting multiple items that differ by one byte succeds", async () => {
+    test("inserting multiple items that differ by one byte succeeds", async () => {
       const event1 = await Factories.IdRegistryOnChainEvent.build();
       const event2 = await Factories.IdRegistryOnChainEvent.build({
         blockNumber: event1.blockNumber,

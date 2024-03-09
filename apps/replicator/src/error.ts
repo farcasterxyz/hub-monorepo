@@ -142,7 +142,7 @@ export class AssertionError extends StandardFullError {
 
 /**
  * Any error that is safe to present to the client because it is something the
- * client is reponsible for (incorrect parameters, lack of permissions, etc.)
+ * client is responsible for (incorrect parameters, lack of permissions, etc.)
  */
 export class ClientError extends StandardLightError {
   // Client errors are safe to show to the client.
