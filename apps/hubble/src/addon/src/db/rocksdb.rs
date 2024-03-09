@@ -23,7 +23,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use tar::Builder;
 use walkdir::WalkDir;
 
-/** Hold a transaction. List of key/value pairs that will be commited together */
+/** Hold a transaction. List of key/value pairs that will be committed together */
 pub struct RocksDbTransactionBatch {
     pub batch: Vec<(Vec<u8>, Option<Vec<u8>>)>,
 }
