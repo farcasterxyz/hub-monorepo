@@ -14,7 +14,7 @@ services:
   hubble:
     image: farcasterxyz/hubble:latest
     pull_policy: always
-    restart: on-failure:5
+    restart: always
     command: ["npx", "pm2-runtime", "start", "pm2.config.cjs"]
     environment:
       NODE_OPTIONS: "--no-warnings --max-old-space-size=8192"
@@ -54,8 +54,8 @@ services:
       # - '2003:2003' # Carbon line receiver
       # - '2004:2004' # Carbon pickle receiver
       # - '7002:7002' # Carbon cache query
-      - '8125:8125/udp' # StatsD
-      - '8126:8126' # StatsD admin
+      - '${STATSD_PUBLISH:-8125}:8125/udp' # StatsD
+      - '${STATSD_ADMIN_PUBLISH:-8126}:8126' # StatsD admin
     networks:
       - my-network
 

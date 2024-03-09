@@ -168,7 +168,7 @@ export class RevokeMessagesBySignerJobQueue extends TypedEmitter<JobQueueEvents>
     await this._db.forEachIteratorByOpts(iteratorOpts.value, (key, value) => {
       nextKey = key;
       nextValue = value;
-      return true; // Finish the itearation after the first key-value pair
+      return true; // Finish the iteration after the first key-value pair
     });
 
     if (!nextKey || !nextValue) {

@@ -15,6 +15,7 @@ import {
   QueryNode,
   ColumnType,
   MigrationInfo,
+  sql,
 } from "kysely";
 import Cursor from "pg-cursor";
 import { Pool, types } from "pg";
@@ -560,6 +561,16 @@ export async function stream<DB, UT extends keyof DB, TB extends keyof DB, O>(
     }
   } catch (e) {
     throw extendStackTrace(e, new Error(), query);
+  }
+}
+
+export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof Tables>) {
+  try {
+    return sql<{ tableName: string; estimate: number }>`SELECT relname AS table_name, reltuples AS estimate
+               FROM pg_class
+               WHERE relname IN (${sql.join(tablesToMonitor)})`.execute(db);
+  } catch (e) {
+    throw extendStackTrace(e, new Error());
   }
 }
 

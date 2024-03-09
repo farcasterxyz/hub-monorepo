@@ -5,7 +5,7 @@ use crate::{
     protos::UserNameProof,
 };
 
-use super::{HubError, RootPrefix, UserPostfix};
+use super::{HubError, RootPrefix};
 
 pub fn make_fname_username_proof_key(name: &[u8]) -> Vec<u8> {
     let mut key = Vec::with_capacity(1 + 32 + 1 + 32);

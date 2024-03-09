@@ -18,14 +18,14 @@ jobs:
     runs-on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Docker buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
         id: docker-image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           cache-from: type=gha
           cache-to: type=gha,type=inline
@@ -43,14 +43,14 @@ jobs:
         run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_arm64.tar.gz -o - | tar -xzf -
 
       - name: Check that gRPC server is running
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           timeout_seconds: 10
           retry_wait_seconds: 5
           max_attempts: 10
           shell: bash
           command: ./grpcurl -plaintext -import-path protobufs/schemas -proto protobufs/schemas/rpc.proto 127.0.0.1:2283 HubService.GetInfo
-          on_retry_command: docker logs hub      
+          on_retry_command: docker logs hub
 
   test:
     timeout-minutes: 10
@@ -61,7 +61,7 @@ jobs:
           - node_version: 18
             runs_on: 'buildjet-8vcpu-ubuntu-2204'
           - node_version: 20
-            runs_on: 'buildjet-8vcpu-ubuntu-2204' 
+            runs_on: 'buildjet-8vcpu-ubuntu-2204'
           - node_version: 21
             runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
@@ -70,21 +70,21 @@ jobs:
     name: test (${{ matrix.node_version }})
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
 
       - name: Cache Cargo registry and git
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -92,7 +92,7 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
 
       - name: Cache Cargo build artifacts
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/apps/hubble/src/addon/target
           key: ${{ runner.os }}-${{ runner.arch }}-cargo-build-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
@@ -121,4 +121,4 @@ jobs:
         run: yarn test:ci
 
       - name: Upload coverage results
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4

@@ -484,14 +484,24 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
         } else {
           // If the existing remove has a lower order than the new message, retrieve the full
           // TRemove message and delete it as part of the RocksDB transaction
-          const existingRemove = await getMessage<TRemove>(
-            this._db,
-            // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-            message.data!.fid,
-            this._postfix,
-            removeTsHash.value,
+          const existingRemove = await ResultAsync.fromPromise(
+            getMessage<TRemove>(
+              this._db,
+              // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+              message.data!.fid,
+              this._postfix,
+              removeTsHash.value,
+            ),
+            (e) => e,
           );
-          conflicts.push(existingRemove);
+          if (existingRemove.isOk()) {
+            conflicts.push(existingRemove.value);
+          } else {
+            logger.warn(
+              { message, tsHash, removeTsHash, error: existingRemove.error },
+              "Message's ts_hash exists but message not found in store",
+            );
+          }
         }
       }
     }
@@ -515,9 +525,19 @@ export abstract class Store<TAdd extends Message, TRemove extends Message> {
       } else {
         // If the existing add has a lower order than the new message, retrieve the full
         // TAdd message and delete it as part of the RocksDB transaction
-        // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-        const existingAdd = await getMessage<TAdd>(this._db, message.data!.fid, this._postfix, addTsHash.value);
-        conflicts.push(existingAdd);
+        const existingAdd = await ResultAsync.fromPromise(
+          // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+          getMessage<TAdd>(this._db, message.data!.fid, this._postfix, addTsHash.value),
+          (e) => e,
+        );
+        if (existingAdd.isOk()) {
+          conflicts.push(existingAdd.value);
+        } else {
+          logger.warn(
+            { message, tsHash, addTsHash, error: existingAdd.error },
+            "Message's ts_hash exists but message not found in store",
+          );
+        }
       }
     }
 

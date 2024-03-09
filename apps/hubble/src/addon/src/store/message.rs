@@ -62,14 +62,14 @@ pub enum RootPrefix {
     /** DB Schema version */
     DBSchemaVersion = 24,
 
-    /* Used to index fname username proofs by fid */
-    FNameUserNameProofByFid = 25,
-
     /* Used to index verifications by address */
-    // VerificationByAddress = 25,
+    VerificationByAddress = 25,
 
     /* Store the connected peers */
     ConnectedPeers = 26,
+
+    /* Used to index fname username proofs by fid */
+    FNameUserNameProofByFid = 27,
 }
 
 /** Copied from the JS code */

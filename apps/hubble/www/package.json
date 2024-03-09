@@ -2,10 +2,11 @@
   "name": "www-hubble-xyz",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "license": "UNLICENSED",
   "devDependencies": {
     "prettier": "^2.8.7",
-    "vitepress": "v1.0.0-alpha.73"
+    "vitepress": "^1.0.0-rc.45"
   },
   "scripts": {
     "docs:dev": "vitepress dev docs",
