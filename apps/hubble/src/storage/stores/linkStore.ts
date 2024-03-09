@@ -406,7 +406,10 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
     return { messages, nextPageToken: messages_page.nextPageToken };
   }
 
-  async getAllLinkMessagesByFid(fid: number, pageOptions?: PageOptions): Promise<HubError> {
+  async getAllLinkMessagesByFid(
+    fid: number,
+    pageOptions?: PageOptions,
+  ): Promise<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
     throw new Error("Not implemented yet");
   }
 }

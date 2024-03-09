@@ -461,25 +461,14 @@ impl LinkStore {
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let link_type = cx.argument::<JsString>(1).unwrap().value(&mut cx);
 
-        let target_fid_buffer = cx.argument::<JsBuffer>(2)?;
-        let target_fid_bytes = target_fid_buffer.as_slice(&cx);
-        let target_fid = match target_fid_bytes.len() {
-            1..=8 => {
-                let mut arr = [0u8;8];
-                arr[8 - target_fid_bytes.len()..].copy_from_slice(target_fid_bytes);
-                Some(u64::from_be_bytes(arr))
-            }
-            _ => {
-                None
-            }
-        };
+        let target_fid = cx.argument::<JsNumber>(2).unwrap().value(&mut cx) as u32;
 
         // target fid must be specified
-        if target_fid.is_none() {
+        if target_fid == 0 {
             return cx.throw_error("target_fid is required");
         }
 
-        let target = Some(crate::protos::link_body::Target::TargetFid(target_fid.unwrap()));
+        let target = Some(crate::protos::link_body::Target::TargetFid(target_fid as u64));
 
         let result = match Self::get_link_remove(&store, fid, link_type, target) {
             Ok(Some(message)) => message.encode_to_vec(),
