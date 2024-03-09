@@ -161,7 +161,7 @@ export async function processMessage(
         await processLinkRemove(message, operation, trx);
         break;
       case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {
-        // TODO: add support for multi-protoocl verification
+        // TODO: add support for multi-protocol verification
         if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });

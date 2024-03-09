@@ -2,7 +2,7 @@
 // We import the Rust code as a NodeJS module, and then export it as a JS function.
 // Note that we need to use the `createRequire` function to import the module, since it
 // is binary code. If we used `import` instead, it would be interpreted as a JS module, and
-// we would get an error becaues it would try to parse it as JS
+// we would get an error because it would try to parse it as JS
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
@@ -149,7 +149,7 @@ export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<v
   This specifically means that we need to use iterators as callbacks. The way the iterators are set up is:
   - Call the `forEachIteartor` method with your callback (Either in JS or Rust)
   - Perform all actions in the callback
-  - At the end of the itearation, the iterator is returned and closed by Rust
+  - At the end of the iteration, the iterator is returned and closed by Rust
 
   In JS, we can have async functions as callbacks to the `forEachIterator` methods. This means that the callback
   can take arbitrarily long, and that is bad because keeping iterators open for long periods of time is very
@@ -159,7 +159,7 @@ export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<v
   That means that when you start an iterator:
   1. JS code will fetch a page full of keys and values from rust
   2. Close the iterator right after. 
-  3. Calls the async callbacks with the cached key, value parirs, which can take as long as needed. 
+  3. Calls the async callbacks with the cached key, value pairs, which can take as long as needed.
   4. Go back to step 1 to get the next page of key, value pairs. 
 
   This method returns a boolean, which is true if the iteration is finished, and false if it is not. 
