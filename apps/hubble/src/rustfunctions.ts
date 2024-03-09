@@ -7,8 +7,8 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
-import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
-import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
+import { HubError, HubErrorCode, LinkAddMessage, validations } from "@farcaster/hub-nodejs";
+import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
 import { logger } from "./utils/logger.js";
@@ -408,3 +408,55 @@ export const rsGetUserNameProofByFid = async (store: RustDynStore, fid: number):
 export const rsMergeUserNameProof = async (store: RustDynStore, usernameProof: Uint8Array): Promise<Buffer> => {
   return await lib.mergeUserNameProof.call(store, usernameProof);
 };
+
+export namespace rsLinkStore {
+  export const CreateLinkStore = (
+    db: RustDb,
+    eventHandler: RustStoreEventHandler,
+    pruneSizeLimit: number,
+  ): RustDynStore => {
+    const store = lib.createLinkStore(db, eventHandler, pruneSizeLimit);
+
+    return store as RustDynStore;
+  };
+
+  export const GetLinkAdd = async (store: RustDynStore, fid: number, type: string, target: number): Promise<Buffer> => {
+    return await lib.getLinkAdd(store, fid, type, target);
+  };
+
+  export const GetLinkAddsByFid = async (
+    store: RustDynStore,
+    fid: number,
+    type: string,
+    pageOptions: PageOptions,
+  ): Promise<RustMessagesPage> => {
+    return await lib.getLinkAddsByFid.call(store, fid, type, pageOptions);
+  };
+
+  export const GetLinkRemovesByFid = async (
+    store: RustDynStore,
+    fid: number,
+    type: string,
+    pageOptions: PageOptions,
+  ): Promise<RustMessagesPage> => {
+    return await lib.getLinkRemovesByFid.call(store, fid, type, pageOptions);
+  };
+
+  export const GetLinksByTarget = async (
+    store: RustDynStore,
+    target: number,
+    type: string,
+    pageOptions: PageOptions,
+  ): Promise<RustMessagesPage> => {
+    return await lib.getLinksByTarget.call(store, target, type, pageOptions);
+  };
+
+  export const GetLinkRemove = async (
+    store: RustDynStore,
+    fid: number,
+    type: string,
+    target: number,
+  ): Promise<Buffer> => {
+    return await lib.getLinkRemove(store, fid, type, target);
+  };
+}
