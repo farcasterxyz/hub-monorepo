@@ -421,7 +421,7 @@ export namespace rsLinkStore {
   };
 
   export const GetLinkAdd = async (store: RustDynStore, fid: number, type: string, target: number): Promise<Buffer> => {
-    return await lib.getLinkAdd(store, fid, type, target);
+    return await lib.getLinkAdd.call(store, fid, type, target);
   };
 
   export const GetLinkAddsByFid = async (
@@ -457,6 +457,14 @@ export namespace rsLinkStore {
     type: string,
     target: number,
   ): Promise<Buffer> => {
-    return await lib.getLinkRemove(store, fid, type, target);
+    return await lib.getLinkRemove.call(store, fid, type, target);
+  };
+
+  export const GetAllLinkMessagesByFid = async (
+    store: RustDynStore,
+    fid: number,
+    pageOptions: PageOptions,
+  ): Promise<RustMessagesPage> => {
+    return await lib.getAllLinkMessagesByFid.call(store, fid, pageOptions);
   };
 }

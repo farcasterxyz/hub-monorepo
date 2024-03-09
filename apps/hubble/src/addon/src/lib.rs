@@ -134,6 +134,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getLinksByTarget", LinkStore::js_get_links_by_target)?;
     cx.export_function("getLinkAddsByFid", LinkStore::js_get_link_adds_by_fid)?;
     cx.export_function("getLinkRemovesByFid", LinkStore::js_get_link_removes_by_fid)?;
+    cx.export_function("getAllLinkMessagesByFid", LinkStore::js_get_all_link_messages_by_fid)?;
 
     // ReactionStore methods
     cx.export_function("createReactionStore", ReactionStore::create_reaction_store)?;

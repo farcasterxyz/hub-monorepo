@@ -519,6 +519,33 @@ impl LinkStore {
         Ok(promise)
     }
 
+    pub fn js_get_all_link_messages_by_fid(
+        mut cx: FunctionContext
+    ) -> JsResult<JsPromise> {
+        let store = get_store(&mut cx)?;
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let page_options = get_page_options(&mut cx, 1)?;
+
+        // fid must be specified
+        if fid == 0 {
+            return cx.throw_error("fid is required");
+        }
+
+        let messages = match Self::get_all_link_messages_by_fid(&store, fid, &page_options) {
+            Ok(messages) => messages,
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
+        };
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+        deferred.settle_with(&channel, move |mut cx| {
+            encode_messages_to_js_object(&mut cx, messages)
+        });
+
+        Ok(promise)
+    }
+
 }
 
 impl StoreDef for LinkStore {
