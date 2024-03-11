@@ -218,7 +218,7 @@ describe("getLinksByTarget", () => {
     expect(byFid).toEqual({ messages: [], nextPageToken: undefined });
   });
 
-  test.only("returns links if they exist for a target in chronological order and according to pageOptions", async () => {
+  test("returns links if they exist for a target in chronological order and according to pageOptions", async () => {
     const linkSameTarget = await Factories.LinkAddMessage.create({
       data: { timestamp: linkAddEndorse.data.timestamp + 1, linkBody: { targetFid: targetFid } },
     });

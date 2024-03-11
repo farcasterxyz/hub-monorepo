@@ -82,6 +82,14 @@ impl LinkStore {
         ))))
     }
 
+    /// Finds a LinkAdd Message by checking the Adds Set index.
+    /// Return the LinkAdd Model if it exists, undefined otherwise
+    ///
+    /// # Arguments
+    /// * `store` - the Rust data store used to query for finding a LinkAdd message
+    /// * `fid` - fid of the user who created the link add
+    /// * `r#type` - type of link that was added
+    /// * `target` - id of the fid being linked to
     pub fn get_link_add(
         store: &Store,
         fid: u32,
@@ -217,6 +225,14 @@ impl LinkStore {
         let r = store.get_remove(&partial_message);
         r
     }
+
+    /// Generates a unique key used to store a LinkAdd message key in the LinksAdd Set index.
+    /// Returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
+    ///
+    /// # Arguments
+    /// * `fid` - farcaster id of the user who created the link
+    /// * `link_body` - body of link that contains type of link created and target ID of the object
+    ///                 being reacted to
     fn link_add_key(fid: u32, link_body: &LinkBody) -> Result<Vec<u8>, HubError> {
         if link_body.target.is_some() && (link_body.r#type.is_empty() || link_body.r#type.len() == 0) {
             return Err(HubError::validation_failure("targetId provided without type"));
@@ -245,6 +261,14 @@ impl LinkStore {
         Ok(key)
     }
 
+
+    /// Generates a unique key used to store a LinkRemove message key in the LinksRemove Set index.
+    /// Returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
+    ///
+    /// # Arguments
+    /// * `fid` - farcaster id of the user who created the link
+    /// * `link_body` - body of link that contains type of link created and target ID of the object
+    ///                 being reacted to
     fn link_remove_key(fid: u32, link_body: &LinkBody) -> Result<Vec<u8>, HubError> {
         if link_body.target.is_some() && (link_body.r#type.is_empty() || link_body.r#type.len() == 0) {
             return Err(HubError::validation_failure(""));
@@ -273,6 +297,13 @@ impl LinkStore {
         Ok(key)
     }
 
+    /// Generates a unique key used to store a LinkAdd Message in the LinksByTargetAndType index.
+    /// Returns RocksDB index key of the form <RootPrefix>:<target_key>:<fid?>:<tsHash?>
+    ///
+    /// # Arguments
+    /// * `target` - target ID of the object being reacted to (currently just cast id)
+    /// * `fid` - the fid of the user who created the link
+    /// * `ts_hash` - the timestamp hash of the link message
     fn links_by_target_key(
         target: &Target,
         fid: u32,
