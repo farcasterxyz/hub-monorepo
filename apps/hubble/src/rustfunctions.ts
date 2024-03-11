@@ -69,16 +69,16 @@ export const rsCreateStatsdClient = (host: string, port: number, prefix: string)
   lib.createStatsdClient(host, port, prefix);
 };
 
-/** Create or Open a DB at a give path 
- * 
+/** Create or Open a DB at a give path
+ *
  * All rust objects need to be "owned" by someone so that rust can manage its lifecycle. For rust objects like the
- *  `RocksDb` and the `ReactionStore`, we create them as `JsBox<Arc<T>>`. `JsBox` is like Rust's `Box`, except it is 
- * owned by the Javascript pointer that is returned. That is, 
+ *  `RocksDb` and the `ReactionStore`, we create them as `JsBox<Arc<T>>`. `JsBox` is like Rust's `Box`, except it is
+ * owned by the Javascript pointer that is returned. That is,
     - The DB object is owned by the Javascript object that is returned
-    - When the Javascript object goes out of scope and is gc'd, it is `drop()`-ed in Rust. 
+    - When the Javascript object goes out of scope and is gc'd, it is `drop()`-ed in Rust.
 
-  Since the Rust objects are `Arc<T>` inside a `JsBox`, we can clone them and keep them around in the rust code as we 
-  please, since the Javascript code will continue to own one `Arc<T>`, making sure that it lasts for the lifetime of 
+  Since the Rust objects are `Arc<T>` inside a `JsBox`, we can clone them and keep them around in the rust code as we
+  please, since the Javascript code will continue to own one `Arc<T>`, making sure that it lasts for the lifetime of
   the program.
 */
 export const rsCreateDb = (path: string): RustDb => {
@@ -142,8 +142,8 @@ export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<v
 };
 
 /**
- * Rust code needs to be memory-safe, which means that we can't pass around iterators like we do in Javascript. 
- * This is because the `iterator` reference is valid for only as long as the `db` is valid, and the reference is 
+ * Rust code needs to be memory-safe, which means that we can't pass around iterators like we do in Javascript.
+ * This is because the `iterator` reference is valid for only as long as the `db` is valid, and the reference is
  * dropped right after the iterator is finished.
 
   This specifically means that we need to use iterators as callbacks. The way the iterators are set up is:
@@ -153,19 +153,19 @@ export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<v
 
   In JS, we can have async functions as callbacks to the `forEachIterator` methods. This means that the callback
   can take arbitrarily long, and that is bad because keeping iterators open for long periods of time is very
-  problematic. Additionally, we can't call async JS methods from rust. To address these both, the iterators are 
-  automatically paged. 
+  problematic. Additionally, we can't call async JS methods from rust. To address these both, the iterators are
+  automatically paged.
 
   That means that when you start an iterator:
   1. JS code will fetch a page full of keys and values from rust
-  2. Close the iterator right after. 
+  2. Close the iterator right after.
   3. Calls the async callbacks with the cached key, value pairs, which can take as long as needed.
-  4. Go back to step 1 to get the next page of key, value pairs. 
+  4. Go back to step 1 to get the next page of key, value pairs.
 
-  This method returns a boolean, which is true if the iteration is finished, and false if it is not. 
+  This method returns a boolean, which is true if the iteration is finished, and false if it is not.
   - If the iteration was stopped because it hit the pageSize, it returns false (i.e., there are more keys available)
   - If the iteration was stopped because the callback returned true, it returns false (i.e., there are more keys available)
-  
+
  */
 export const rsDbForEachIteratorByPrefix = async (
   db: RustDb,

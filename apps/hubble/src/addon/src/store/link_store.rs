@@ -4,7 +4,7 @@ use neon::{
     result::JsResult,
     types::{JsBox, JsNumber},
 };
-use neon::prelude::{JsBuffer, JsPromise, JsString};
+use neon::prelude::{JsPromise, JsString};
 use neon::types::buffer::TypedArray;
 use prost::Message as _;
 use crate::db::{RocksDB, RocksDbTransactionBatch};
@@ -118,7 +118,7 @@ impl LinkStore {
                 message.data.as_ref().is_some_and(|data| {
                     match data.body.as_ref() {
                         Some(message_data::Body::LinkBody(body)) => {
-                            body.r#type == r#type
+                            r#type.is_empty() || body.r#type == r#type
                         }
                         _ => {
                             false
@@ -219,7 +219,7 @@ impl LinkStore {
     }
     fn link_add_key(fid: u32, link_body: &LinkBody) -> Result<Vec<u8>, HubError> {
         if link_body.target.is_some() && (link_body.r#type.is_empty() || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure("foo"));
+            return Err(HubError::validation_failure("targetId provided without type"));
         }
 
         if !link_body.r#type.is_empty()
@@ -231,9 +231,10 @@ impl LinkStore {
             Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE + Self::TARGET_ID_BYTE_SIZE
         );
 
-        key.extend_from_slice(&make_user_key(fid)[..Self::ROOT_PREFIXED_FID_BYTE_SIZE]);
+        // TODO: does the fid and rtype need to be padded? Is it okay not the check their lengths?
+        key.extend_from_slice(&make_user_key(fid));
         key.push(UserPostfix::LinkAdds.as_u8());
-        key.extend_from_slice(&link_body.r#type.as_bytes()[..Self::LINK_TYPE_BYTE_SIZE]);
+        key.extend_from_slice(&link_body.r#type.as_bytes());
         match link_body.target {
             None => {}
             Some(Target::TargetFid(fid)) => {
@@ -258,9 +259,10 @@ impl LinkStore {
             Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE + Self::TARGET_ID_BYTE_SIZE
         );
 
-        key.extend_from_slice(&make_user_key(fid)[..Self::ROOT_PREFIXED_FID_BYTE_SIZE]);
+        // TODO: does the fid and rtype need to be padded? Is it okay not the check their lengths?
+        key.extend_from_slice(&make_user_key(fid));
         key.push(UserPostfix::LinkRemoves.as_u8());
-        key.extend_from_slice(&link_body.r#type.as_bytes()[..Self::LINK_TYPE_BYTE_SIZE]);
+        key.extend_from_slice(&link_body.r#type.as_bytes());
         match link_body.target {
             None => {}
             Some(Target::TargetFid(fid)) => {
@@ -276,7 +278,7 @@ impl LinkStore {
         fid: u32,
         ts_hash: Option<&[u8; TS_HASH_LENGTH]>,
     ) -> Vec<u8> {
-        if fid == 0 && ts_hash.is_none() {
+        if fid != 0 && (ts_hash.is_none() || ts_hash.is_some_and(|tsh| tsh.len() == 0)) {
             panic!("bad_request.validation_failure - fid provided without timestamp hash");
         }
 
@@ -303,7 +305,10 @@ impl LinkStore {
             }
             _ => {}
         }
-        key.extend(make_fid_key(fid));
+
+        if fid > 0 {
+            key.extend(make_fid_key(fid));
+        }
 
         key
     }
@@ -321,8 +326,8 @@ impl LinkStore {
                 data.body.as_ref().ok_or(HubError::invalid_parameter(""))
                     .and_then(|body| match body {
                         Body::LinkBody(link_body) => {
-                            link_body
-                                .target.as_ref().ok_or(HubError::invalid_parameter(""))
+                            return link_body
+                                .target.as_ref().ok_or(HubError::invalid_parameter("invalid parameter"))
                                 .and_then(|target| {
                                     let by_target_key = LinkStore::links_by_target_key(
                                         target,
@@ -330,10 +335,10 @@ impl LinkStore {
                                         Some(ts_hash),
                                     );
                                     Ok((by_target_key, link_body.r#type.as_bytes().to_vec()))
-                                })
+                                });
                         }
                         _ => {
-                            Err(HubError::invalid_parameter(""))
+                            Err(HubError::invalid_parameter("invalid parameter"))
                         }
                     })
             })
@@ -343,7 +348,7 @@ impl LinkStore {
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0)?.value(&mut cx) as u32;
-        let link_type = cx.argument::<JsString>(1).unwrap().value(&mut cx);
+        let link_type = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
         let page_options = get_page_options(&mut cx, 2)?;
 
         let messages = match Self::get_link_adds_by_fid(&store, fid, link_type, &page_options) {
@@ -364,7 +369,7 @@ impl LinkStore {
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0)?.value(&mut cx) as u32;
-        let link_type = cx.argument::<JsString>(1).unwrap().value(&mut cx);
+        let link_type = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
         let page_options = get_page_options(&mut cx, 2)?;
 
         let messages = match Self::get_link_removes_by_fid(&store, fid, link_type, &page_options) {
@@ -412,27 +417,15 @@ impl LinkStore {
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-        let link_type = cx.argument::<JsString>(1).unwrap().value(&mut cx);
-
-        let target_fid_buffer = cx.argument::<JsBuffer>(2)?;
-        let target_fid_bytes = target_fid_buffer.as_slice(&cx);
-        let target_fid = match target_fid_bytes.len() {
-            1..=8 => {
-                let mut arr = [0u8;8];
-                arr[8 - target_fid_bytes.len()..].copy_from_slice(target_fid_bytes);
-                Some(u64::from_be_bytes(arr))
-            }
-            _ => {
-                None
-            }
-        };
+        let link_type = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
+        let target_fid = cx.argument::<JsNumber>(2).unwrap().value(&mut cx) as u32;
 
         // target fid must be specified
-        if target_fid.is_none() {
-            return cx.throw_error("target_fid is required");
+        if target_fid == 0 {
+            return cx.throw_error("target fid is required");
         }
 
-        let target = Some(crate::protos::link_body::Target::TargetFid(target_fid.unwrap()));
+        let target = Some(crate::protos::link_body::Target::TargetFid(target_fid as u64));
 
         let result = match Self::get_link_add(&store, fid, link_type, target) {
             Ok(Some(message)) => message.encode_to_vec(),
@@ -459,7 +452,7 @@ impl LinkStore {
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-        let link_type = cx.argument::<JsString>(1).unwrap().value(&mut cx);
+        let link_type = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
 
         let target_fid = cx.argument::<JsNumber>(2).unwrap().value(&mut cx) as u32;
 
@@ -495,7 +488,7 @@ impl LinkStore {
         let store = get_store(&mut cx)?;
 
         let target_fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-        let link_type = cx.argument::<JsString>(1).unwrap().value(&mut cx);
+        let link_type = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
         let page_options = get_page_options(&mut cx, 2)?;
 
         // target fid must be specified
