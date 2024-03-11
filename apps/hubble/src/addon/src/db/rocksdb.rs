@@ -9,7 +9,7 @@ use gzp::{
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
-use neon::result::JsResult;
+use neon::result::{JsResult, ResultExt as _};
 use neon::types::buffer::TypedArray;
 use neon::types::{
     Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
@@ -746,6 +746,84 @@ impl RocksDB {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| Ok(cx.undefined()));
+
+        Ok(promise)
+    }
+
+    pub fn js_async_callback(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let channel = cx.channel();
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(4)
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let channel2 = channel.clone();
+        let (deferred, promise) = cx.promise();
+
+        let rt = Arc::new(Box::new(runtime));
+        let rt2 = rt.clone();
+
+        std::thread::spawn(move || {
+            rt2.block_on(async move {
+                println!("ttt: In rust start");
+                // let (sender, receiver) = oneshot::channel();
+
+                let r1 = channel.send(move |mut cx| {
+                    let global_fn = cx.global::<JsFunction>("globalFn").unwrap();
+                    let arg = cx.string("Hello from Rust");
+                    let undefined = cx.undefined();
+                    let mut callback_args = Vec::new();
+                    callback_args.push(arg);
+                    // Convert callback arguments to a format suitable for calling the JS function
+                    let callback_args = callback_args
+                        .into_iter()
+                        .map(|arg| arg.upcast())
+                        .collect::<Vec<_>>();
+                    // Call the JS callback function
+                    let result = global_fn
+                        .call(&mut cx, undefined, callback_args)
+                        .unwrap()
+                        .downcast_or_throw::<JsPromise, _>(&mut cx)
+                        .unwrap();
+                    println!("ttt: In rust after call {:?}", result);
+                    let f = result
+                        .to_future(&mut cx, |mut cx, ret| {
+                            let ret = ret.or_throw(&mut cx)?;
+                            let value = ret
+                                .downcast_or_throw::<JsString, _>(&mut cx)?
+                                .value(&mut cx);
+                            println!("ttt: In rust in future {}", value);
+                            Ok(value)
+                        })
+                        .unwrap();
+
+                    // Send the future result through the oneshot channel
+                    // match sender.send(f) {
+                    //     Ok(_) => (),
+                    //     Err(_) => println!("ttt: In rust error sending future result"),
+                    // }
+
+                    println!("ttt: In rust after send");
+
+                    Ok(f)
+                });
+
+                // let r2 = rt.spawn(async move {
+                // Await the result from the oneshot channel
+                println!("ttt: In rust before await...");
+                let ret_value = r1.await.unwrap().await.unwrap() + " from Rust";
+                println!("ttt: In rust after await {}", ret_value);
+
+                deferred.settle_with(&channel2, move |mut cx| Ok(cx.string(ret_value)))
+                // });
+
+                // let (a1, a2) = tokio::join!(r1, r2);
+                // println!("ttt: In rust end");
+                // a1.unwrap();
+                // a2.unwrap();
+            });
+        });
 
         Ok(promise)
     }

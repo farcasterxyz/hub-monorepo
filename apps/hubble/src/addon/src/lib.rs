@@ -119,6 +119,9 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         RocksDB::js_for_each_iterator_by_js_opts,
     )?;
 
+    cx.export_function("asyncCallback", RocksDB::js_async_callback)?;
+
+    // Message
     cx.export_function("getMessage", Store::js_get_message)?;
 
     // Generic methods that can accept any store
