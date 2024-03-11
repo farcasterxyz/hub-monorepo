@@ -1,24 +1,5 @@
-import {
-  getDefaultStoreLimit,
-  HubAsyncResult,
-  HubError,
-  isLinkAddMessage,
-  isLinkRemoveMessage,
-  LinkAddMessage,
-  LinkRemoveMessage,
-  Message,
-  MessageType,
-  ReactionAddMessage,
-  StoreType,
-} from "@farcaster/hub-nodejs";
-import {
-  getManyMessages,
-  getPageIteratorOptsByPrefix,
-  makeFidKey,
-  makeMessagePrimaryKey,
-  makeTsHash,
-  makeUserKey,
-} from "../../storage/db/message.js";
+import { getDefaultStoreLimit, LinkAddMessage, LinkRemoveMessage, Message, StoreType } from "@farcaster/hub-nodejs";
+import { makeFidKey } from "../../storage/db/message.js";
 import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../db/types.js";
 import { MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
 import { Store } from "./store.js";
@@ -32,95 +13,6 @@ const makeTargetKey = (target: number): Buffer => {
   return makeFidKey(target);
 };
 
-//   /* -------------------------------------------------------------------------- */
-//   /*                              Instance Methods                              */
-//   /* -------------------------------------------------------------------------- */
-//
-//   /**
-//    * Finds a LinkRemove Message by checking the Remove Set index
-//    *
-//    * @param fid fid of the user who created the link remove
-//    * @param type type of link that was removed
-//    * @param target id of the fid being linked to
-//    * @returns the LinkRemove message if it exists, undefined otherwise
-//    */
-//   async getLinkRemove(fid: number, type: string, target: number): Promise<LinkRemoveMessage> {
-//     return await this.getRemove({ data: { fid, linkBody: { type, targetFid: target } } });
-//   }
-//
-//   /** Finds all LinkAdd Messages by iterating through the prefixes */
-//   async getLinkAddsByFid(
-//     fid: number,
-//     type?: string,
-//     pageOptions: PageOptions = {},
-//   ): Promise<MessagesPage<LinkAddMessage>> {
-//     return await this.getAddsByFid({ data: { fid, linkBody: { type: type as string } } }, pageOptions);
-//   }
-//
-//   /** Finds all LinkRemove Messages by iterating through the prefixes */
-//   async getLinkRemovesByFid(
-//     fid: number,
-//     type?: string,
-//     pageOptions: PageOptions = {},
-//   ): Promise<MessagesPage<LinkRemoveMessage>> {
-//     return await this.getRemovesByFid({ data: { fid, linkBody: { type: type as string } } }, pageOptions);
-//   }
-//
-//   async getAllLinkMessagesByFid(
-//     fid: number,
-//     pageOptions: PageOptions = {},
-//   ): Promise<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
-//     return await this.getAllMessagesByFid(fid, pageOptions);
-//   }
-//
-//   /** Finds all LinkAdds that point to a specific target by iterating through the prefixes */
-//   async getLinksByTarget(
-//     target: number,
-//     type?: string,
-//     pageOptions: PageOptions = {},
-//   ): Promise<MessagesPage<LinkAddMessage>> {
-//     const prefix = makeLinksByTargetKey(target);
-//
-//     const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
-//
-//     const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
-//
-//     const messageKeys: Buffer[] = [];
-//
-//     let iteratorFinished = true;
-//     let lastPageToken: Uint8Array | undefined;
-//
-//     await this._db.forEachIteratorByOpts(iteratorOpts, (key, value) => {
-//       if (type === undefined || value?.equals(Buffer.from(type))) {
-//         // Calculates the positions in the key where the fid and tsHash begin
-//         const tsHashOffset = prefix.length;
-//         const fidOffset = tsHashOffset + TSHASH_LENGTH;
-//
-//         const fid = Number((key as Buffer).readUint32BE(fidOffset));
-//         const tsHash = Uint8Array.from(key as Buffer).subarray(tsHashOffset, tsHashOffset + TSHASH_LENGTH);
-//         const messagePrimaryKey = makeMessagePrimaryKey(fid, UserPostfix.LinkMessage, tsHash);
-//
-//         messageKeys.push(messagePrimaryKey);
-//
-//         if (messageKeys.length >= limit) {
-//           lastPageToken = Uint8Array.from((key as Buffer).subarray(prefix.length));
-//           iteratorFinished = false;
-//           return true; // stop
-//         }
-//       }
-//
-//       return false; // continue
-//     });
-//     const messages = await getManyMessages<LinkAddMessage>(this._db, messageKeys);
-//
-//     if (!iteratorFinished) {
-//       return { messages, nextPageToken: lastPageToken };
-//     } else {
-//       return { messages, nextPageToken: undefined };
-//     }
-//   }
-// }
-//
 /**
  * LinkStore persists Link Messages in RocksDB using a two-phase CRDT set to guarantee
  * eventual consistency.
@@ -181,6 +73,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
     return Message.decode(new Uint8Array(result.value)) as LinkRemoveMessage;
   }
 
+  /** Finds all LinkAdd Messages by iterating through the prefixes */
   async getLinkAddsByFid(
     fid: number,
     type?: string,
@@ -196,6 +89,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
     return { messages, nextPageToken: messages_page.nextPageToken };
   }
 
+  /** Finds all LinkRemove Messages by iterating through the prefixes */
   async getLinkRemovesByFid(
     fid: number,
     type?: string,

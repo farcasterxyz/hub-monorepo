@@ -83,7 +83,7 @@ impl LinkStore {
     }
 
     /// Finds a LinkAdd Message by checking the Adds Set index.
-    /// Return the LinkAdd Model if it exists, undefined otherwise
+    /// Return the LinkAdd Model if it exists, none otherwise
     ///
     /// # Arguments
     /// * `store` - the Rust data store used to query for finding a LinkAdd message
@@ -202,6 +202,14 @@ impl LinkStore {
         )
     }
 
+    /// Finds a LinkRemove Message by checking the Remove Set index.
+    /// Return the LinkRemove message if it exists, none otherwise
+    ///
+    /// # Arguments
+    /// * `store` - the Rust data store used to query for finding a LinkAdd message
+    /// * `fid` - fid of the user who created the link add
+    /// * `r#type` - type of link that was added
+    /// * `target` - id of the fid being linked to
     pub fn get_link_remove(
         store: &Store,
         fid: u32,
@@ -214,8 +222,8 @@ impl LinkStore {
                 r#type: MessageType::LinkRemove.into(),
                 body: Some(message_data::Body::LinkBody(LinkBody{
                     r#type,
-                    display_timestamp: None,
                     target,
+                    ..Default::default()
                 })),
                 ..Default::default()
             }),
@@ -431,7 +439,7 @@ impl LinkStore {
                 message.data.as_ref().is_some_and(|data| {
                     match data.body.as_ref() {
                         Some(message_data::Body::LinkBody(body)) => {
-                            body.r#type == r#type
+                            r#type.is_empty() || body.r#type == r#type
                         }
                         _ => {
                             false
