@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.11.7
+
+### Patch Changes
+
+- 22615b3c: Add address to frame message
+- Updated dependencies [22615b3c]
+  - @farcaster/core@0.14.7
+
 ## 0.11.6
 
 ### Patch Changes
