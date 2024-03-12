@@ -1286,4 +1286,11 @@ describe("validateFrameActionBody", () => {
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid transaction ID");
   });
+  test("fails when address is too long", async () => {
+    const body = Factories.FrameActionBody.build({
+      address: Buffer.from(faker.datatype.string(65)),
+    });
+    const result = validations.validateFrameActionBody(body);
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid address");
+  });
 });
