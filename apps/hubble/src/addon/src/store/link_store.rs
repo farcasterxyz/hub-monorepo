@@ -248,7 +248,7 @@ impl LinkStore {
 
         if !link_body.r#type.is_empty()
             && (link_body.r#type.len() > Self::LINK_TYPE_BYTE_SIZE || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure(""));
+            return Err(HubError::validation_failure("link type invalid - non-empty link type found with invalid length"));
         }
 
         let mut key = Vec::with_capacity(
@@ -279,12 +279,12 @@ impl LinkStore {
     ///                 being reacted to
     fn link_remove_key(fid: u32, link_body: &LinkBody) -> Result<Vec<u8>, HubError> {
         if link_body.target.is_some() && (link_body.r#type.is_empty() || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure(""));
+            return Err(HubError::validation_failure("targetID provided without type"));
         }
 
         if !link_body.r#type.is_empty()
             && (link_body.r#type.len() > Self::LINK_TYPE_BYTE_SIZE || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure(""));
+            return Err(HubError::validation_failure("link type invalid - non-empty link type found with invalid length"));
         }
 
         let mut key = Vec::with_capacity(
@@ -360,13 +360,13 @@ impl LinkStore {
         message
             .data
             .as_ref()
-            .ok_or(HubError::invalid_parameter(""))
+            .ok_or(HubError::invalid_parameter("invalid message data"))
             .and_then(|data| {
-                data.body.as_ref().ok_or(HubError::invalid_parameter(""))
+                data.body.as_ref().ok_or(HubError::invalid_parameter("invalid message data body"))
                     .and_then(|body| match body {
                         Body::LinkBody(link_body) => {
                             return link_body
-                                .target.as_ref().ok_or(HubError::invalid_parameter("invalid parameter"))
+                                .target.as_ref().ok_or(HubError::invalid_parameter("target ID not specified"))
                                 .and_then(|target| {
                                     let by_target_key = LinkStore::links_by_target_key(
                                         target,
@@ -377,7 +377,7 @@ impl LinkStore {
                                 });
                         }
                         _ => {
-                            Err(HubError::invalid_parameter("invalid parameter"))
+                            Err(HubError::invalid_parameter("link body not specified"))
                         }
                     })
             })
@@ -641,14 +641,14 @@ impl StoreDef for LinkStore {
         message
             .data
             .as_ref()
-            .ok_or(HubError::invalid_parameter(""))
+            .ok_or(HubError::invalid_parameter("invalid message data"))
             .and_then(|data| {
-                data.body.as_ref().ok_or(HubError::invalid_parameter(""))
+                data.body.as_ref().ok_or(HubError::invalid_parameter("invalid message data body"))
                     .and_then(|body_option| match body_option {
                         Body::LinkBody(link_body) => {
                             Self::link_add_key(data.fid as u32, link_body)
                         },
-                        _ => Err(HubError::invalid_parameter(""))
+                        _ => Err(HubError::invalid_parameter("link body not specified"))
                     })
             })
     }
@@ -657,14 +657,14 @@ impl StoreDef for LinkStore {
         message
             .data
             .as_ref()
-            .ok_or(HubError::invalid_parameter(""))
+            .ok_or(HubError::invalid_parameter("invalid message data"))
             .and_then(|data| {
-                data.body.as_ref().ok_or(HubError::invalid_parameter(""))
+                data.body.as_ref().ok_or(HubError::invalid_parameter("invalid message data body"))
                     .and_then(|body_option| match body_option {
                         Body::LinkBody(link_body) => {
                             Self::link_remove_key(data.fid as u32, link_body)
                         },
-                        _ => Err(HubError::invalid_parameter(""))
+                        _ => Err(HubError::invalid_parameter("link body not specified"))
                     })
             })
     }
