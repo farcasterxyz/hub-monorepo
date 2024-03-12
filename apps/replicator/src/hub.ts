@@ -119,7 +119,7 @@ export function filterEvents(
 export async function getUserNameProofsByFid(hub: HubRpcClient, fid: number) {
   const result = await retryHubCallWithExponentialBackoff(() => hub.getUserNameProofsByFid({ fid }));
   if (result.isErr()) {
-    throw new Error(`Unable to backfill profs for FID ${fid}`, { cause: result.error });
+    throw new Error(`Unable to backfill proofs for FID ${fid}`, { cause: result.error });
   }
   return result.value.proofs;
 }
