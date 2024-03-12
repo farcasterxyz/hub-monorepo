@@ -23,7 +23,7 @@ async function retryHubCallWithExponentialBackoff<T>(
   fn: () => Promise<HubResult<T>>,
   attempt = 1,
   maxAttempts = 10,
-  baseDelayMs = 1000,
+  baseDelayMs = 100,
 ): Promise<HubResult<T>> {
   let currentAttempt = attempt;
   try {
