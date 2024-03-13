@@ -440,25 +440,6 @@ impl ReactionStore {
         ))))
     }
 
-    pub fn create_link_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
-        let db_js_box = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
-        let db = (**db_js_box.borrow()).clone();
-
-        // Read the StoreEventHandler
-        let store_event_handler_js_box = cx.argument::<JsBox<Arc<StoreEventHandler>>>(1)?;
-        let store_event_handler = (**store_event_handler_js_box.borrow()).clone();
-
-        // Read the prune size limit and prune time limit from the options
-        let prune_size_limit = cx
-            .argument::<JsNumber>(2)
-            .map(|n| n.value(&mut cx) as u32)?;
-
-        Ok(cx.boxed(Arc::new(LinkStore::new(
-            db,
-            store_event_handler,
-            prune_size_limit,
-        ))))
-    }
     pub fn js_get_reaction_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let store = get_store(&mut cx)?;
 

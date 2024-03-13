@@ -102,8 +102,8 @@ impl LinkStore {
                 r#type: MessageType::LinkAdd.into(),
                 body: Some(message_data::Body::LinkBody(LinkBody{
                     r#type,
-                    display_timestamp: None,
                     target,
+                    ..Default::default()
                 })),
                 ..Default::default()
             }),
@@ -155,7 +155,7 @@ impl LinkStore {
         r#type: String,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        let prefix: Vec<u8> = LinkStore::links_by_target_key(target, 0, None);
+        let prefix: Vec<u8> = LinkStore::links_by_target_key(target, 0, None)?;
 
         let mut message_keys = vec![];
         let mut last_key = vec![];
@@ -316,13 +316,13 @@ impl LinkStore {
         target: &Target,
         fid: u32,
         ts_hash: Option<&[u8; TS_HASH_LENGTH]>,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, HubError> {
         if fid != 0 && (ts_hash.is_none() || ts_hash.is_some_and(|tsh| tsh.len() == 0)) {
-            panic!("bad_request.validation_failure - fid provided without timestamp hash");
+            return Err(HubError::validation_failure("fid provided without timestamp hash"));
         }
 
         if ts_hash.is_some() && fid == 0 {
-            panic!("bad_request.validation_failure - timestamp hash provided without fid");
+            return Err(HubError::validation_failure("timestamp hash provided without fid"));
         }
 
         let mut key = Vec::with_capacity(
@@ -335,7 +335,7 @@ impl LinkStore {
                 key.extend(make_fid_key(*target_fid as u32));
             }
             _ => {
-                panic!("bad_request.validation_failure - invalid target specified");
+                return Err(HubError::validation_failure("invalid target specified"));
             }
         }
         match ts_hash {
@@ -349,7 +349,7 @@ impl LinkStore {
             key.extend(make_fid_key(fid));
         }
 
-        key
+        Ok(key)
     }
 
     fn secondary_index_key(
@@ -368,12 +368,13 @@ impl LinkStore {
                             return link_body
                                 .target.as_ref().ok_or(HubError::invalid_parameter("target ID not specified"))
                                 .and_then(|target| {
-                                    let by_target_key = LinkStore::links_by_target_key(
+                                    LinkStore::links_by_target_key(
                                         target,
                                         data.fid as u32,
                                         Some(ts_hash),
-                                    );
-                                    Ok((by_target_key, link_body.r#type.as_bytes().to_vec()))
+                                    ).and_then(|target_key| {
+                                        Ok((target_key, link_body.r#type.as_bytes().to_vec()))
+                                    })
                                 });
                         }
                         _ => {
