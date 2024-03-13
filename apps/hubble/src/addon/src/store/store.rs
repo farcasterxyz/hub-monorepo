@@ -1,3 +1,6 @@
+use std::clone::Clone;
+use std::num::IntErrorKind::Empty;
+use std::string::ToString;
 use super::{
     bytes_compare, delete_message_transaction, get_message, hub_error_to_js_throw,
     make_message_primary_key, message, put_message_transaction,
@@ -25,6 +28,22 @@ use threadpool::ThreadPool;
 pub struct HubError {
     pub code: String,
     pub message: String,
+}
+
+impl HubError {
+    pub fn validation_failure(error_message: &str) -> HubError {
+        HubError{
+            code: "bad_request.validation_failure".to_string(),
+            message: error_message.to_string(),
+        }
+    }
+
+    pub fn invalid_parameter(error_message: &str) -> HubError {
+        HubError{
+            code: "bad_request.invalid_param".to_string(),
+            message: error_message.to_string(),
+        }
+    }
 }
 
 /** Convert RocksDB errors  */
@@ -87,7 +106,7 @@ pub trait StoreDef: Send + Sync {
         self.remove_message_type() != MessageType::None as u8
     }
 
-    fn build_secondary_indicies(
+    fn build_secondary_indices(
         &self,
         _txn: &mut RocksDbTransactionBatch,
         _ts_hash: &[u8; TS_HASH_LENGTH],
@@ -96,7 +115,7 @@ pub trait StoreDef: Send + Sync {
         Ok(())
     }
 
-    fn delete_secondary_indicies(
+    fn delete_secondary_indices(
         &self,
         _txn: &mut RocksDbTransactionBatch,
         _ts_hash: &[u8; TS_HASH_LENGTH],
@@ -417,7 +436,7 @@ impl Store {
         txn.put(adds_key, ts_hash.to_vec());
 
         self.store_def
-            .build_secondary_indicies(txn, ts_hash, message)?;
+            .build_secondary_indices(txn, ts_hash, message)?;
 
         Ok(())
     }
@@ -429,7 +448,7 @@ impl Store {
         message: &Message,
     ) -> Result<(), HubError> {
         self.store_def
-            .delete_secondary_indicies(txn, ts_hash, message)?;
+            .delete_secondary_indices(txn, ts_hash, message)?;
 
         let add_key = self.store_def.make_add_key(message)?;
         txn.delete(add_key);

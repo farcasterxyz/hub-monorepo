@@ -3,7 +3,7 @@ use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
 use std::convert::TryInto;
-use store::{ReactionStore, Store, UserDataStore};
+use store::{ReactionStore, Store, LinkStore, UserDataStore};
 
 mod db;
 mod logger;
@@ -126,6 +126,15 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("revoke", Store::js_revoke)?;
     cx.export_function("pruneMessages", Store::js_prune_messages)?;
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
+
+    // LinkStore methods
+    cx.export_function("createLinkStore", LinkStore::create_link_store)?;
+    cx.export_function("getLinkAdd", LinkStore::js_get_link_add)?;
+    cx.export_function("getLinkRemove", LinkStore::js_get_link_remove)?;
+    cx.export_function("getLinksByTarget", LinkStore::js_get_links_by_target)?;
+    cx.export_function("getLinkAddsByFid", LinkStore::js_get_link_adds_by_fid)?;
+    cx.export_function("getLinkRemovesByFid", LinkStore::js_get_link_removes_by_fid)?;
+    cx.export_function("getAllLinkMessagesByFid", LinkStore::js_get_all_link_messages_by_fid)?;
 
     // ReactionStore methods
     cx.export_function("createReactionStore", ReactionStore::create_reaction_store)?;
