@@ -12,7 +12,17 @@ use crate::protos;
 use crate::protos::{LinkBody, Message, message_data, MessageData, MessageType};
 use crate::protos::link_body::Target;
 use crate::protos::message_data::Body;
-use crate::store::{encode_messages_to_js_object, get_page_options, get_store, hub_error_to_js_throw, HubError, IntoI32, IntoU8, link_store, make_fid_key, make_ts_hash, make_user_key, message, MessagesPage, PAGE_SIZE_MAX, PageOptions, RootPrefix, Store, StoreDef, StoreEventHandler, TS_HASH_LENGTH, UserPostfix};
+use crate::store::{
+    encode_messages_to_js_object, get_page_options, get_store,
+    hub_error_to_js_throw, HubError,
+    IntoI32, IntoU8,
+    make_fid_key, make_user_key, message, MessagesPage,
+    PAGE_SIZE_MAX, PageOptions,
+    RootPrefix,
+    Store, StoreDef, StoreEventHandler,
+    TS_HASH_LENGTH,
+    UserPostfix
+};
 
 /**
  * LinkStore persists Link Messages in RocksDB using a two-phase CRDT set to guarantee
