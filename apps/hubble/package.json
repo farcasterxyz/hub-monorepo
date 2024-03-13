@@ -24,6 +24,7 @@
     "clean": "rimraf ./build && cargo clean --manifest-path ./src/addon/Cargo.toml",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "yarn lint:customjs && biome format src/ --write && biome check src/ --apply",
+    "lint:rust": "cargo fmt --manifest-path ./src/addon/Cargo.toml",
     "lint:ci": "yarn lint:customjs && biome ci src/",
     "lint:customjs": "node scripts/linter.cjs",
     "start": "node --max-old-space-size=8192 --no-warnings build/cli.js start",

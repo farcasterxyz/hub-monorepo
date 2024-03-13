@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;
 
-const TRUE_VALUE: u8 = 1;
+pub const TRUE_VALUE: u8 = 1;
 
 /** Copied from the JS code */
 pub enum RootPrefix {
@@ -328,7 +328,7 @@ where
     let mut messages = Vec::new();
     let mut last_key = vec![];
 
-    db.for_each_iterator_by_prefix(
+    db.for_each_iterator_by_prefix_unbounded(
         prefix,
         page_options,
         |key, value| match MessageProto::decode(value) {

@@ -290,6 +290,58 @@ export const rsCreateReactionStore = (
   return store as RustDynStore;
 };
 
+/** Create a cast Store */
+export const rsCreateCastStore = (
+  db: RustDb,
+  eventHandler: RustStoreEventHandler,
+  pruneSizeLimit: number,
+): RustDynStore => {
+  const store = lib.createCastStore(db, eventHandler, pruneSizeLimit);
+
+  return store as RustDynStore;
+};
+
+export const rsGetCastAdd = async (store: RustDynStore, fid: number, hashBytes: Buffer): Promise<Buffer> => {
+  return await lib.getCastAdd.call(store, fid, hashBytes);
+};
+
+export const rsGetCastRemove = async (store: RustDynStore, fid: number, hashBytes: Buffer): Promise<Buffer> => {
+  return await lib.getCastRemove.call(store, fid, hashBytes);
+};
+
+export const rsGetCastAddsByFid = async (
+  store: RustDynStore,
+  fid: number,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getCastAddsByFid.call(store, fid, pageOptions);
+};
+
+export const rsGetCastRemovesByFid = async (
+  store: RustDynStore,
+  fid: number,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getCastRemovesByFid.call(store, fid, pageOptions);
+};
+
+export const rsGetCastsByParent = async (
+  store: RustDynStore,
+  parentCastIdBytes: Buffer,
+  parentUrl: string,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getCastsByParent.call(store, parentCastIdBytes, parentUrl, pageOptions);
+};
+
+export const rsGetCastsByMention = async (
+  store: RustDynStore,
+  mentionFid: number,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getCastsByMention.call(store, mentionFid, pageOptions);
+};
+
 export const rsGetMessage = async (
   store: RustDynStore,
   fid: number,

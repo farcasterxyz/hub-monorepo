@@ -124,8 +124,8 @@ pub trait StoreDef: Send + Sync {
         Ok(())
     }
 
-    fn find_merge_add_conflicts(&self, message: &Message) -> Result<(), HubError>;
-    fn find_merge_remove_conflicts(&self, message: &Message) -> Result<(), HubError>;
+    fn find_merge_add_conflicts(&self, db: &RocksDB, message: &Message) -> Result<(), HubError>;
+    fn find_merge_remove_conflicts(&self, db: &RocksDB, message: &Message) -> Result<(), HubError>;
 
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
     fn make_remove_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
@@ -142,9 +142,9 @@ pub trait StoreDef: Send + Sync {
         // already validated that the message has a data field and a body field in the is_add_type()
 
         if self.is_add_type(message) {
-            self.find_merge_add_conflicts(message)?;
+            self.find_merge_add_conflicts(db, message)?;
         } else {
-            self.find_merge_remove_conflicts(message)?;
+            self.find_merge_remove_conflicts(db, message)?;
         }
 
         let mut conflicts = vec![];
@@ -203,7 +203,6 @@ pub trait StoreDef: Send + Sync {
                 message.data.as_ref().unwrap().r#type as u8,
                 &ts_hash.to_vec(),
             );
-            // println!("add_compare: {}", add_compare);
 
             if add_compare > 0 {
                 return Err(HubError {
@@ -234,8 +233,7 @@ pub trait StoreDef: Send + Sync {
                 conflicts.push(maybe_existing_add.unwrap());
             }
         }
-
-        // println!("conflicts: {:?}", conflicts);
+        
         Ok(conflicts)
     }
 
@@ -295,11 +293,7 @@ impl Store {
             logger: LOGGER.new(o!("component" => "Store")),
         }
     }
-
-    // fn log(&self, message: &str) {
-    //     // println!("{}", message);
-    // }
-
+    
     pub fn db(&self) -> Arc<RocksDB> {
         self.db.clone()
     }
@@ -359,17 +353,12 @@ impl Store {
         }
 
         let removes_key = self.store_def.make_remove_key(partial_message)?;
-        // println!("trying to get removes key {:?}", removes_key);
         let message_ts_hash = self.db.get(&removes_key)?;
-        // println!("got removes key ts_hash: {:?}", message_ts_hash);
 
         if message_ts_hash.is_none() {
-            // println!("get_remove() message_ts_hash is none");
             return Ok(None);
         }
-
-        // println!("get_remove() message_ts_hash: {:?}", message_ts_hash);
-
+        
         get_message(
             &self.db,
             partial_message.data.as_ref().unwrap().fid as u32,
@@ -501,11 +490,9 @@ impl Store {
         messages: Vec<Message>,
     ) -> Result<(), HubError> {
         for message in &messages {
-            // println!("trying to deleting message: {:?}", message);
             if self.store_def.is_add_type(message) {
                 let ts_hash =
                     make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
-                // println!("deleting add: {:?}", ts_hash);
                 self.delete_add_transaction(txn, &ts_hash, message)?;
             }
             if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
@@ -587,7 +574,6 @@ impl Store {
         let merge_conflicts = self
             .store_def
             .get_merge_conflicts(&self.db, message, ts_hash)?;
-        // println!("merge_conflicts: {:?}", merge_conflicts);
 
         // start a transaction
         let mut txn = self.db.txn();
@@ -606,10 +592,7 @@ impl Store {
 
         // Commit the transaction
         self.db.commit(txn)?;
-
-        // println!("Commiting transaction ");
-        // println!("hub_event: {:?}", hub_event);
-
+        
         hub_event.id = id;
         // Serialize the hub_event
         let hub_event_bytes = hub_event.encode_to_vec();
@@ -666,7 +649,7 @@ impl Store {
 
         let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
         self.db
-            .for_each_iterator_by_prefix(prefix, &PageOptions::default(), |_key, value| {
+            .for_each_iterator_by_prefix_unbounded(prefix, &PageOptions::default(), |_key, value| {
                 // Value is a message, so try to decode it
                 let message = match protos::Message::decode(value) {
                     Ok(message) => message,
@@ -931,7 +914,6 @@ impl Store {
     }
 
     pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        // println!("js_get_all_messages_by_fid");
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
