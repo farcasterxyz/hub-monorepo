@@ -11,7 +11,6 @@ use neon::{
 };
 use prost::Message as _;
 use std::{borrow::Borrow, convert::TryInto, sync::Arc};
-use crate::store::link_store::LinkStore;
 
 pub struct ReactionStoreDef {
     prune_size_limit: u32,
@@ -72,6 +71,7 @@ impl StoreDef for ReactionStoreDef {
 
     fn find_merge_add_conflicts(
         &self,
+        _db: &RocksDB,
         _message: &protos::Message,
     ) -> Result<(), HubError> {
         // For reactions, there will be no conflicts
@@ -80,6 +80,7 @@ impl StoreDef for ReactionStoreDef {
 
     fn find_merge_remove_conflicts(
         &self,
+        _db: &RocksDB,
         _message: &Message,
     ) -> Result<(), HubError> {
         // For reactions, there will be no conflicts
@@ -527,7 +528,7 @@ impl ReactionStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
                 // println!("key: {:x?}, value: {:x?}", key, value);
 
                 if reaction_type == ReactionType::None as i32

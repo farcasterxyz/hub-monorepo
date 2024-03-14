@@ -1,4 +1,4 @@
-use crate::store::StoreEventHandler;
+use crate::store::{CastStore, StoreEventHandler};
 use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
@@ -152,6 +152,16 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         "getReactionsByTarget",
         ReactionStore::js_get_reactions_by_target,
     )?;
+
+    // CastStore methods
+    cx.export_function("createCastStore", CastStore::create_cast_store)?;
+    cx.export_function("getCastAdd", CastStore::js_get_cast_add)?;
+    cx.export_function("getCastRemove", CastStore::js_get_cast_remove)?;
+    cx.export_function("getCastAddsByFid", CastStore::js_get_cast_adds_by_fid)?;
+    cx.export_function("getCastRemovesByFid", CastStore::js_get_cast_removes_by_fid)?;
+    cx.export_function("getCastsByParent", CastStore::js_get_casts_by_parent)?;
+    cx.export_function("getCastsByMention", CastStore::js_get_casts_by_mention)?;
+
 
     // UserDataStore methods
     cx.export_function("createUserDataStore", UserDataStore::create_userdata_store)?;

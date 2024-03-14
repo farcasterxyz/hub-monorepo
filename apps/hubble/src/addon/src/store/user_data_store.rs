@@ -50,12 +50,12 @@ impl StoreDef for UserDataStoreDef {
         false
     }
 
-    fn find_merge_add_conflicts(&self, _message: &Message) -> Result<(), HubError> {
+    fn find_merge_add_conflicts(&self, _db: &RocksDB, _message: &Message) -> Result<(), HubError> {
         // No conflicts
         Ok(())
     }
 
-    fn find_merge_remove_conflicts(&self, _message: &Message) -> Result<(), HubError> {
+    fn find_merge_remove_conflicts(&self, _db: &RocksDB, _message: &Message) -> Result<(), HubError> {
         Err(HubError {
             code: "bad_request.invalid_param".to_string(),
             message: "UserDataStoree doesn't support merging removes".to_string(),
