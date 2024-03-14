@@ -360,9 +360,9 @@ setup_crontab() {
         exit 1
     fi
 
-    # skip installing crontab if SKIP_CRONTAB is set to anything
-    if [ "${SKIP_CRONTAB:-}" = "true" ]; then
-        echo "✅ SKIP_CRONTAB is 'true'. Skipping crontab setup."
+    # skip installing crontab if SKIP_CRONTAB is set to anything in the .env
+    if key_exists "SKIP_CRONTAB"; then
+        echo "✅ SKIP_CRONTAB exists in .env. Skipping crontab setup."
         return 0
     fi
 
@@ -621,6 +621,6 @@ if [ $# -eq 0 ] || [ "$1" == "help" ]; then
     echo "  down     Stop Hubble and Grafana dashboard"
     echo "  help     Show this help"
     echo ""
-    echo "export SKIP_CRONTAB=true to skip installing the autoupgrade crontab"
+    echo "add SKIP_CRONTAB=true to your .env to skip installing the autoupgrade crontab"
     exit 0
 fi
