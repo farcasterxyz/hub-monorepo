@@ -5,7 +5,7 @@
 # itself in the process.
 
 # Define the version of this script
-CURRENT_VERSION="4"
+CURRENT_VERSION="5"
 
 REPO="farcasterxyz/hub-monorepo"
 RAWFILE_BASE="https://raw.githubusercontent.com/$REPO"
@@ -360,6 +360,12 @@ setup_crontab() {
         exit 1
     fi
 
+    # skip installing crontab if SKIP_CRONTAB is set to anything
+    if [ "${SKIP_CRONTAB:-}" = "true" ]; then
+        echo "✅ SKIP_CRONTAB is 'true'. Skipping crontab setup."
+        return 0
+    fi
+
     # If the crontab was installed for the current user (instead of root) then
     # remove it
     if [[ "$(uname)" == "Linux" ]]; then
@@ -614,5 +620,7 @@ if [ $# -eq 0 ] || [ "$1" == "help" ]; then
     echo "  up       Start Hubble and Grafana dashboard"
     echo "  down     Stop Hubble and Grafana dashboard"
     echo "  help     Show this help"
+    echo ""
+    echo "export SKIP_CRONTAB=true to skip installing the autoupgrade crontab"
     exit 0
 fi
