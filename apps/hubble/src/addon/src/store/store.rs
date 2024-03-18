@@ -1,6 +1,3 @@
-use std::clone::Clone;
-use std::num::IntErrorKind::Empty;
-use std::string::ToString;
 use super::{
     bytes_compare, delete_message_transaction, get_message, hub_error_to_js_throw,
     make_message_primary_key, message, put_message_transaction,
@@ -21,6 +18,8 @@ use once_cell::sync::Lazy;
 use prost::Message as _;
 use rocksdb;
 use slog::{o, warn};
+use std::clone::Clone;
+use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
@@ -32,14 +31,14 @@ pub struct HubError {
 
 impl HubError {
     pub fn validation_failure(error_message: &str) -> HubError {
-        HubError{
+        HubError {
             code: "bad_request.validation_failure".to_string(),
             message: error_message.to_string(),
         }
     }
 
     pub fn invalid_parameter(error_message: &str) -> HubError {
-        HubError{
+        HubError {
             code: "bad_request.invalid_param".to_string(),
             message: error_message.to_string(),
         }
@@ -133,6 +132,15 @@ pub trait StoreDef: Send + Sync {
     fn get_prune_size_limit(&self) -> u32;
 
     fn get_merge_conflicts(
+        &self,
+        db: &RocksDB,
+        message: &Message,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+    ) -> Result<Vec<Message>, HubError> {
+        Self::get_default_merge_conflicts(&self, db, message, ts_hash)
+    }
+
+    fn get_default_merge_conflicts(
         &self,
         db: &RocksDB,
         message: &Message,
@@ -233,7 +241,7 @@ pub trait StoreDef: Send + Sync {
                 conflicts.push(maybe_existing_add.unwrap());
             }
         }
-        
+
         Ok(conflicts)
     }
 
@@ -293,7 +301,15 @@ impl Store {
             logger: LOGGER.new(o!("component" => "Store")),
         }
     }
-    
+
+    pub fn logger(&self) -> &slog::Logger {
+        &self.logger
+    }
+
+    pub fn store_def(&self) -> &dyn StoreDef {
+        self.store_def.as_ref()
+    }
+
     pub fn db(&self) -> Arc<RocksDB> {
         self.db.clone()
     }
@@ -358,7 +374,7 @@ impl Store {
         if message_ts_hash.is_none() {
             return Ok(None);
         }
-        
+
         get_message(
             &self.db,
             partial_message.data.as_ref().unwrap().fid as u32,
@@ -592,7 +608,7 @@ impl Store {
 
         // Commit the transaction
         self.db.commit(txn)?;
-        
+
         hub_event.id = id;
         // Serialize the hub_event
         let hub_event_bytes = hub_event.encode_to_vec();
@@ -779,7 +795,6 @@ impl Store {
         let message_bytes = cx.argument::<JsBuffer>(0);
         let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
 
-        // TODO: Using the pool is so much slower
         // let pool = store.pool.clone();
         // pool.lock().unwrap().execute(move || {
         let result = if message.is_err() {

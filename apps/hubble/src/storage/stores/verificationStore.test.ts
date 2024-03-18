@@ -421,7 +421,7 @@ describe("merge", () => {
         data: {
           ...verificationAdd.data,
           timestamp: verificationAdd.data.timestamp + 1,
-          fid: Factories.Fid.build(),
+          fid: verificationAdd.data.fid + 1,
         },
       });
 

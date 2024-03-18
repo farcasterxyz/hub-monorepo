@@ -2,16 +2,30 @@ import { performDbMigrations } from "./migrations.js";
 import { Factories, isVerificationAddAddressMessage } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../jestUtils.js";
 import StoreEventHandler from "../../stores/storeEventHandler.js";
-import VerificationStore, {
-  makeVerificationAddsKey,
-  makeVerificationRemovesKey,
-} from "../../stores/verificationStore.js";
+import VerificationStore from "../../stores/verificationStore.js";
 import { VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/core";
 import RocksDB from "../rocksdb.js";
-import { makeTsHash, putMessageTransaction } from "../message.js";
+import { makeTsHash, makeUserKey, putMessageTransaction } from "../message.js";
 import OnChainEventStore from "../../stores/onChainEventStore.js";
+import { UserPostfix } from "../types.js";
 
 const db = jestRocksDB("uniqueverifications.migration.test");
+
+/**
+ * Generates a unique key used to store a VerificationAdds message key in the VerificationsAdds
+ * set index
+ */
+export const makeVerificationAddsKey = (fid: number, address?: Uint8Array): Buffer => {
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationAdds]), Buffer.from(address ?? "")]);
+};
+
+/**
+ * Generates a unique key used to store a VerificationAdd message key in the VerificationRemoves
+ * set index
+ */
+export const makeVerificationRemovesKey = (fid: number, address?: Uint8Array): Buffer => {
+  return Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.VerificationRemoves]), Buffer.from(address ?? "")]);
+};
 
 describe("uniqueVerifications migration", () => {
   const putVerificationMessage = async (

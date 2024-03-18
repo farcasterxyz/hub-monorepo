@@ -427,6 +427,7 @@ export const rsGetReactionsByTarget = async (
   return await lib.getReactionsByTarget.call(store, targetCastIdBytes, targetUrl, type, pageOptions);
 };
 
+/** UserData Store */
 export const rsCreateUserDataStore = (
   db: RustDb,
   eventHandler: RustStoreEventHandler,
@@ -461,6 +462,48 @@ export const rsMergeUserNameProof = async (store: RustDynStore, usernameProof: U
   return await lib.mergeUserNameProof.call(store, usernameProof);
 };
 
+/** VerificationStore */
+export const rsCreateVerificationStore = (
+  db: RustDb,
+  eventHandler: RustStoreEventHandler,
+  pruneSizeLimit: number,
+): RustDynStore => {
+  const store = lib.createVerificationStore(db, eventHandler, pruneSizeLimit);
+
+  return store as RustDynStore;
+};
+
+export const rsGetVerificationAdd = async (store: RustDynStore, fid: number, address: Uint8Array): Promise<Buffer> => {
+  return await lib.getVerificationAdd.call(store, fid, address);
+};
+
+export const rsGetVerificationRemove = async (
+  store: RustDynStore,
+  fid: number,
+  address: Uint8Array,
+): Promise<Buffer> => {
+  return await lib.getVerificationRemove.call(store, fid, address);
+};
+
+export const rsGetVerificationAddsByFid = async (
+  store: RustDynStore,
+  fid: number,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getVerificationAddsByFid.call(store, fid, pageOptions);
+};
+
+export const rsGetVerificationRemovesByFid = async (
+  store: RustDynStore,
+  fid: number,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getVerificationRemovesByFid.call(store, fid, pageOptions);
+};
+
+export const rsMigrateVerifications = async (store: RustDynStore): Promise<{ total: number; duplicates: number }> => {
+  return await lib.migrateVerifications.call(store);
+};
 export namespace rsLinkStore {
   export const CreateLinkStore = (
     db: RustDb,

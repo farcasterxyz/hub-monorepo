@@ -6,6 +6,8 @@ use crate::{
 use prost::Message as _;
 use std::convert::TryFrom;
 
+pub const FID_BYTES: usize = 4;
+
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;
 
@@ -213,6 +215,12 @@ pub fn unpack_ts_hash(ts_hash: &[u8; TS_HASH_LENGTH]) -> (u32, [u8; HASH_LENGTH]
 
 pub fn make_fid_key(fid: u32) -> Vec<u8> {
     fid.to_be_bytes().to_vec()
+}
+
+pub fn read_fid_key(key: &[u8]) -> u32 {
+    let mut fid_bytes = [0u8; 4];
+    fid_bytes.copy_from_slice(&key[0..4]);
+    u32::from_be_bytes(fid_bytes)
 }
 
 pub fn make_user_key(fid: u32) -> Vec<u8> {
