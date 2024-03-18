@@ -9,7 +9,7 @@ use gzp::{
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
-use neon::result::JsResult;
+use neon::result::{JsResult, ResultExt as _};
 use neon::types::buffer::TypedArray;
 use neon::types::{
     Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
@@ -330,13 +330,13 @@ impl RocksDB {
         page_options: &PageOptions,
         f: F,
     ) -> Result<bool, HubError>
-        where
-            F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
+    where
+        F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     {
         let unbounded_page_options = PageOptions {
             page_size: None,
             page_token: page_options.page_token.clone(),
-            reverse: page_options.reverse
+            reverse: page_options.reverse,
         };
         self.for_each_iterator_by_prefix(prefix, &unbounded_page_options, f)
     }
@@ -687,7 +687,7 @@ impl RocksDB {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| {
-            let js_array = JsArray::new(&mut cx, result.len() as u32);
+            let js_array = JsArray::new(&mut cx, result.len());
             for (i, value) in result.iter().enumerate() {
                 let mut buffer = cx.buffer(value.len())?;
                 let target = buffer.as_mut_slice(&mut cx);

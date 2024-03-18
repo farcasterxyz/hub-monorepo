@@ -3,7 +3,7 @@ use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
 use std::convert::TryInto;
-use store::{ReactionStore, Store, LinkStore, UserDataStore};
+use store::{LinkStore, ReactionStore, Store, UserDataStore};
 
 mod db;
 mod logger;
@@ -119,6 +119,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         RocksDB::js_for_each_iterator_by_js_opts,
     )?;
 
+    // Message
     cx.export_function("getMessage", Store::js_get_message)?;
 
     // Generic methods that can accept any store
@@ -134,7 +135,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getLinksByTarget", LinkStore::js_get_links_by_target)?;
     cx.export_function("getLinkAddsByFid", LinkStore::js_get_link_adds_by_fid)?;
     cx.export_function("getLinkRemovesByFid", LinkStore::js_get_link_removes_by_fid)?;
-    cx.export_function("getAllLinkMessagesByFid", LinkStore::js_get_all_link_messages_by_fid)?;
+    cx.export_function(
+        "getAllLinkMessagesByFid",
+        LinkStore::js_get_all_link_messages_by_fid,
+    )?;
 
     // ReactionStore methods
     cx.export_function("createReactionStore", ReactionStore::create_reaction_store)?;
@@ -161,7 +165,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getCastRemovesByFid", CastStore::js_get_cast_removes_by_fid)?;
     cx.export_function("getCastsByParent", CastStore::js_get_casts_by_parent)?;
     cx.export_function("getCastsByMention", CastStore::js_get_casts_by_mention)?;
-
 
     // UserDataStore methods
     cx.export_function("createUserDataStore", UserDataStore::create_userdata_store)?;

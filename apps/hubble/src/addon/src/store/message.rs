@@ -151,7 +151,6 @@ impl IntoI32 for MessageType {
     }
 }
 
-
 /** Convert a specific message type (CastAdd / CastRemove) to a class of message (CastMessage) */
 pub fn type_to_set_postfix(message_type: MessageType) -> UserPostfix {
     if message_type == MessageType::CastAdd || message_type == MessageType::CastRemove {
@@ -336,10 +335,8 @@ where
     let mut messages = Vec::new();
     let mut last_key = vec![];
 
-    db.for_each_iterator_by_prefix_unbounded(
-        prefix,
-        page_options,
-        |key, value| match MessageProto::decode(value) {
+    db.for_each_iterator_by_prefix_unbounded(prefix, page_options, |key, value| {
+        match MessageProto::decode(value) {
             Ok(message) => {
                 if filter(&message) {
                     messages.push(message);
@@ -356,8 +353,8 @@ where
                 code: "db.internal_error".to_string(),
                 message: format!("could not decode message: {}", e),
             }),
-        },
-    )?;
+        }
+    })?;
 
     let next_page_token = if last_key.len() > 0 {
         Some(last_key[prefix.len()..].to_vec())
