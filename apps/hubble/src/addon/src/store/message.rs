@@ -11,7 +11,7 @@ pub const FID_BYTES: usize = 4;
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;
 
-const TRUE_VALUE: u8 = 1;
+pub const TRUE_VALUE: u8 = 1;
 
 /** Copied from the JS code */
 pub enum RootPrefix {
@@ -75,6 +75,7 @@ pub enum RootPrefix {
 }
 
 /** Copied from the JS code */
+#[repr(u8)]
 pub enum UserPostfix {
     /* Message records (1-85) */
     CastMessage = 1,
@@ -119,11 +120,37 @@ pub enum UserPostfix {
     UserNameProofAdds = 99,
 }
 
+impl UserPostfix {
+    pub fn as_u8(self) -> u8 {
+        self as u8
+    }
+}
+
 /** A page of messages returned from various APIs */
 pub struct MessagesPage {
     pub messages: Vec<MessageProto>,
     pub next_page_token: Option<Vec<u8>>,
 }
+
+pub trait IntoU8 {
+    fn into_u8(self) -> u8;
+}
+impl IntoU8 for MessageType {
+    fn into_u8(self) -> u8 {
+        self as u8
+    }
+}
+
+pub trait IntoI32 {
+    fn into_i32(self) -> i32;
+}
+
+impl IntoI32 for MessageType {
+    fn into_i32(self) -> i32 {
+        self as i32
+    }
+}
+
 
 /** Convert a specific message type (CastAdd / CastRemove) to a class of message (CastMessage) */
 pub fn type_to_set_postfix(message_type: MessageType) -> UserPostfix {
@@ -309,7 +336,7 @@ where
     let mut messages = Vec::new();
     let mut last_key = vec![];
 
-    db.for_each_iterator_by_prefix(
+    db.for_each_iterator_by_prefix_unbounded(
         prefix,
         page_options,
         |key, value| match MessageProto::decode(value) {

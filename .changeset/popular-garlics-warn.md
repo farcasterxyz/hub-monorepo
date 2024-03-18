@@ -2,4 +2,4 @@
 "@farcaster/hubble": patch
 ---
 
-perf: Move UserData store to rust
+perf: Migrate cast store to rust

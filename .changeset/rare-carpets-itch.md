@@ -2,4 +2,4 @@
 "@farcaster/hubble": patch
 ---
 
-docs: Fix broken link on docs site
+Migrate link store to Rust

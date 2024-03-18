@@ -515,6 +515,8 @@ export interface FrameActionBody {
   state: Uint8Array;
   /** Chain-specific transaction ID for tx actions */
   transactionId: Uint8Array;
+  /** Chain-specific address for tx actions */
+  address: Uint8Array;
 }
 
 function createBaseMessage(): Message {
@@ -1778,6 +1780,7 @@ function createBaseFrameActionBody(): FrameActionBody {
     inputText: new Uint8Array(),
     state: new Uint8Array(),
     transactionId: new Uint8Array(),
+    address: new Uint8Array(),
   };
 }
 
@@ -1800,6 +1803,9 @@ export const FrameActionBody = {
     }
     if (message.transactionId.length !== 0) {
       writer.uint32(50).bytes(message.transactionId);
+    }
+    if (message.address.length !== 0) {
+      writer.uint32(58).bytes(message.address);
     }
     return writer;
   },
@@ -1853,6 +1859,13 @@ export const FrameActionBody = {
 
           message.transactionId = reader.bytes();
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.address = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1870,6 +1883,7 @@ export const FrameActionBody = {
       inputText: isSet(object.inputText) ? bytesFromBase64(object.inputText) : new Uint8Array(),
       state: isSet(object.state) ? bytesFromBase64(object.state) : new Uint8Array(),
       transactionId: isSet(object.transactionId) ? bytesFromBase64(object.transactionId) : new Uint8Array(),
+      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
     };
   },
 
@@ -1887,6 +1901,8 @@ export const FrameActionBody = {
       (obj.transactionId = base64FromBytes(
         message.transactionId !== undefined ? message.transactionId : new Uint8Array(),
       ));
+    message.address !== undefined &&
+      (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
     return obj;
   },
 
@@ -1904,6 +1920,7 @@ export const FrameActionBody = {
     message.inputText = object.inputText ?? new Uint8Array();
     message.state = object.state ?? new Uint8Array();
     message.transactionId = object.transactionId ?? new Uint8Array();
+    message.address = object.address ?? new Uint8Array();
     return message;
   },
 };

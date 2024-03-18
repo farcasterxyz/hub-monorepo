@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.7
+
+### Patch Changes
+
+- 22615b3c: Add address to frame message
+
 ## 0.14.6
 
 ### Patch Changes

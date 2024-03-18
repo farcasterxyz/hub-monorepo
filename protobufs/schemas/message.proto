@@ -181,4 +181,5 @@ message FrameActionBody {
   bytes input_text = 4; // Text input from the user, if present
   bytes state = 5; // Serialized frame state value
   bytes transaction_id = 6; // Chain-specific transaction ID for tx actions
+  bytes address = 7; // Chain-specific address for tx actions
 }

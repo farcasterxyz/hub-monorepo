@@ -1,5 +1,33 @@
 # @farcaster/hubble
 
+## 1.10.11
+
+### Patch Changes
+
+- 22615b3c: Add address to frame message
+- Updated dependencies [22615b3c]
+  - @farcaster/hub-nodejs@0.11.7
+
+## 1.10.10
+
+### Patch Changes
+
+- 3e0f195c: fix: Run prune job in a thread to not block NodeJS main thread
+- aad4396a: Set maximum & default page size for HTTP API requests to 1K
+- aedde259: chore: Refactor store.rs to make migrating verifications store easier
+- 18800701: Change Docker Compose restart policy to `always`
+- 451ae847: Increase read timeout for Fname Registry server requests 2.5s → 5s
+- 280946d0: fix: Tar file before gzip to make snapshotting faster.
+- b51c15b2: fix: Use default page size for prune job
+- a14b0dfb: Reduce default chunk size from 10000 to 9999
+- f1eea12f: fix: Move snapshot tar creation into rocksdb.rs
+- c4ca31ef: bug: Migrate FNameUserNameProofByFid prefix from 25 -> 27 to resolve conflict with VerificationsByAddress
+- 6cb4c995: fix: Catch exception if inconsistency in DB
+- 498ec9bb: tests: Setup testing framework for rust
+- 9c5c7628: docs: Fix broken link on docs site
+- 3e3edf2d: perf: Move UserData store to rust
+- 4ec6c607: fix: Don't return '0x' for empty addresses
+
 ## 1.10.9
 
 ### Patch Changes

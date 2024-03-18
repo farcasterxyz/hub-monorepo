@@ -1,10 +1,4 @@
-use super::{
-    hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
-    store::{Store, StoreDef},
-    utils::{encode_messages_to_js_object, get_page_options, get_store},
-    HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, PAGE_SIZE_MAX,
-    TS_HASH_LENGTH,
-};
+use super::{hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message, store::{Store, StoreDef}, utils::{encode_messages_to_js_object, get_page_options, get_store}, HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH, IntoU8};
 use crate::protos::message_data;
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
@@ -24,11 +18,11 @@ pub struct ReactionStoreDef {
 
 impl StoreDef for ReactionStoreDef {
     fn postfix(&self) -> u8 {
-        UserPostfix::ReactionMessage as u8
+        UserPostfix::ReactionMessage.as_u8()
     }
 
     fn add_message_type(&self) -> u8 {
-        MessageType::ReactionAdd as u8
+        MessageType::ReactionAdd.into_u8()
     }
 
     fn remove_message_type(&self) -> u8 {
@@ -49,23 +43,7 @@ impl StoreDef for ReactionStoreDef {
             && message.data.as_ref().unwrap().body.is_some()
     }
 
-    fn find_merge_add_conflicts(
-        &self,
-        _message: &protos::Message,
-    ) -> Result<(), super::store::HubError> {
-        // For reactions, there will be no conflicts
-        Ok(())
-    }
-
-    fn find_merge_remove_conflicts(
-        &self,
-        _message: &protos::Message,
-    ) -> Result<(), super::store::HubError> {
-        // For reactions, there will be no conflicts
-        Ok(())
-    }
-
-    fn build_secondary_indicies(
+    fn build_secondary_indices(
         &self,
         txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
@@ -78,7 +56,7 @@ impl StoreDef for ReactionStoreDef {
         Ok(())
     }
 
-    fn delete_secondary_indicies(
+    fn delete_secondary_indices(
         &self,
         txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
@@ -88,6 +66,24 @@ impl StoreDef for ReactionStoreDef {
 
         txn.delete(by_target_key);
 
+        Ok(())
+    }
+
+    fn find_merge_add_conflicts(
+        &self,
+        _db: &RocksDB,
+        _message: &protos::Message,
+    ) -> Result<(), HubError> {
+        // For reactions, there will be no conflicts
+        Ok(())
+    }
+
+    fn find_merge_remove_conflicts(
+        &self,
+        _db: &RocksDB,
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        // For reactions, there will be no conflicts
         Ok(())
     }
 
@@ -532,7 +528,7 @@ impl ReactionStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
                 // println!("key: {:x?}, value: {:x?}", key, value);
 
                 if reaction_type == ReactionType::None as i32

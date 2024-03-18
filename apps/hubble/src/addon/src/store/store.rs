@@ -18,6 +18,9 @@ use once_cell::sync::Lazy;
 use prost::Message as _;
 use rocksdb;
 use slog::{o, warn};
+use std::clone::Clone;
+use std::num::IntErrorKind::Empty;
+use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 
@@ -25,6 +28,22 @@ use threadpool::ThreadPool;
 pub struct HubError {
     pub code: String,
     pub message: String,
+}
+
+impl HubError {
+    pub fn validation_failure(error_message: &str) -> HubError {
+        HubError {
+            code: "bad_request.validation_failure".to_string(),
+            message: error_message.to_string(),
+        }
+    }
+
+    pub fn invalid_parameter(error_message: &str) -> HubError {
+        HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: error_message.to_string(),
+        }
+    }
 }
 
 /** Convert RocksDB errors  */
@@ -87,7 +106,7 @@ pub trait StoreDef: Send + Sync {
         self.remove_message_type() != MessageType::None as u8
     }
 
-    fn build_secondary_indicies(
+    fn build_secondary_indices(
         &self,
         _txn: &mut RocksDbTransactionBatch,
         _ts_hash: &[u8; TS_HASH_LENGTH],
@@ -96,7 +115,7 @@ pub trait StoreDef: Send + Sync {
         Ok(())
     }
 
-    fn delete_secondary_indicies(
+    fn delete_secondary_indices(
         &self,
         _txn: &mut RocksDbTransactionBatch,
         _ts_hash: &[u8; TS_HASH_LENGTH],
@@ -105,8 +124,8 @@ pub trait StoreDef: Send + Sync {
         Ok(())
     }
 
-    fn find_merge_add_conflicts(&self, message: &Message) -> Result<(), HubError>;
-    fn find_merge_remove_conflicts(&self, message: &Message) -> Result<(), HubError>;
+    fn find_merge_add_conflicts(&self, db: &RocksDB, message: &Message) -> Result<(), HubError>;
+    fn find_merge_remove_conflicts(&self, db: &RocksDB, message: &Message) -> Result<(), HubError>;
 
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
     fn make_remove_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
@@ -132,9 +151,9 @@ pub trait StoreDef: Send + Sync {
         // already validated that the message has a data field and a body field in the is_add_type()
 
         if self.is_add_type(message) {
-            self.find_merge_add_conflicts(message)?;
+            self.find_merge_add_conflicts(db, message)?;
         } else {
-            self.find_merge_remove_conflicts(message)?;
+            self.find_merge_remove_conflicts(db, message)?;
         }
 
         let mut conflicts = vec![];
@@ -193,7 +212,6 @@ pub trait StoreDef: Send + Sync {
                 message.data.as_ref().unwrap().r#type as u8,
                 &ts_hash.to_vec(),
             );
-            // println!("add_compare: {}", add_compare);
 
             if add_compare > 0 {
                 return Err(HubError {
@@ -225,7 +243,6 @@ pub trait StoreDef: Send + Sync {
             }
         }
 
-        // println!("conflicts: {:?}", conflicts);
         Ok(conflicts)
     }
 
@@ -284,14 +301,6 @@ impl Store {
             db,
             logger: LOGGER.new(o!("component" => "Store")),
         }
-    }
-
-    pub fn logger(&self) -> &slog::Logger {
-        &self.logger
-    }
-
-    pub fn store_def(&self) -> &dyn StoreDef {
-        self.store_def.as_ref()
     }
 
     pub fn db(&self) -> Arc<RocksDB> {
@@ -353,16 +362,11 @@ impl Store {
         }
 
         let removes_key = self.store_def.make_remove_key(partial_message)?;
-        // println!("trying to get removes key {:?}", removes_key);
         let message_ts_hash = self.db.get(&removes_key)?;
-        // println!("got removes key ts_hash: {:?}", message_ts_hash);
 
         if message_ts_hash.is_none() {
-            // println!("get_remove() message_ts_hash is none");
             return Ok(None);
         }
-
-        // println!("get_remove() message_ts_hash: {:?}", message_ts_hash);
 
         get_message(
             &self.db,
@@ -430,7 +434,7 @@ impl Store {
         txn.put(adds_key, ts_hash.to_vec());
 
         self.store_def
-            .build_secondary_indicies(txn, ts_hash, message)?;
+            .build_secondary_indices(txn, ts_hash, message)?;
 
         Ok(())
     }
@@ -442,7 +446,7 @@ impl Store {
         message: &Message,
     ) -> Result<(), HubError> {
         self.store_def
-            .delete_secondary_indicies(txn, ts_hash, message)?;
+            .delete_secondary_indices(txn, ts_hash, message)?;
 
         let add_key = self.store_def.make_add_key(message)?;
         txn.delete(add_key);
@@ -495,11 +499,9 @@ impl Store {
         messages: Vec<Message>,
     ) -> Result<(), HubError> {
         for message in &messages {
-            // println!("trying to deleting message: {:?}", message);
             if self.store_def.is_add_type(message) {
                 let ts_hash =
                     make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
-                // println!("deleting add: {:?}", ts_hash);
                 self.delete_add_transaction(txn, &ts_hash, message)?;
             }
             if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
@@ -581,7 +583,6 @@ impl Store {
         let merge_conflicts = self
             .store_def
             .get_merge_conflicts(&self.db, message, ts_hash)?;
-        // println!("merge_conflicts: {:?}", merge_conflicts);
 
         // start a transaction
         let mut txn = self.db.txn();
@@ -600,9 +601,6 @@ impl Store {
 
         // Commit the transaction
         self.db.commit(txn)?;
-
-        // println!("Commiting transaction ");
-        // println!("hub_event: {:?}", hub_event);
 
         hub_event.id = id;
         // Serialize the hub_event
@@ -660,7 +658,7 @@ impl Store {
 
         let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
         self.db
-            .for_each_iterator_by_prefix(prefix, &PageOptions::default(), |_key, value| {
+            .for_each_iterator_by_prefix_unbounded(prefix, &PageOptions::default(), |_key, value| {
                 // Value is a message, so try to decode it
                 let message = match protos::Message::decode(value) {
                     Ok(message) => message,
@@ -924,7 +922,6 @@ impl Store {
     }
 
     pub fn js_get_all_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        // println!("js_get_all_messages_by_fid");
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;

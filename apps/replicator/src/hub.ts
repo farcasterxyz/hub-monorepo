@@ -8,13 +8,43 @@ import {
   getSSLHubRpcClient,
   isIdRegisterOnChainEvent,
   isSignerOnChainEvent,
+  HubResult,
 } from "@farcaster/hub-nodejs";
 import { AssertionError } from "./error.js";
 import { exhaustiveGuard } from "./util.js";
+import { log } from "./log";
 
 export function getHubClient(host: string, { ssl }: { ssl?: boolean }) {
   const hub = ssl ? getSSLHubRpcClient(host) : getInsecureHubRpcClient(host);
   return hub;
+}
+
+async function retryHubCallWithExponentialBackoff<T>(
+  fn: () => Promise<HubResult<T>>,
+  attempt = 1,
+  maxAttempts = 10,
+  baseDelayMs = 100,
+): Promise<HubResult<T>> {
+  let currentAttempt = attempt;
+  try {
+    const result = await fn();
+    if (result.isErr()) {
+      throw new Error(`maybe retryable error : ${JSON.stringify(result.error)}`);
+    }
+    return result;
+  } catch (error) {
+    log.warn(error);
+    if (currentAttempt >= maxAttempts) {
+      throw error;
+    }
+
+    const delayMs = baseDelayMs * 2 ** currentAttempt;
+    log.warn(`Error in backfill, attempt ${currentAttempt}/${maxAttempts}, retrying in ${delayMs}ms`);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+    currentAttempt++;
+    return retryHubCallWithExponentialBackoff(fn, currentAttempt, maxAttempts, delayMs);
+  }
 }
 
 export async function* getOnChainEventsByFidInBatchesOf(
@@ -36,10 +66,10 @@ export async function* getOnChainEventsByFidInBatchesOf(
   const hasSubTypeFilter = signerEventTypes?.length || idRegisterEventTypes?.length;
 
   for (const eventType of eventTypes) {
-    let result = await hub.getOnChainEvents({ pageSize, fid, eventType });
+    let result = await retryHubCallWithExponentialBackoff(() => hub.getOnChainEvents({ pageSize, fid, eventType }));
     for (;;) {
       if (result.isErr()) {
-        throw new Error("Unable to backfill", { cause: result.error });
+        throw new Error(`Unable to backfill events for FID ${fid} of type ${eventType}`, { cause: result.error });
       }
 
       const { events, nextPageToken: pageToken } = result.value;
@@ -52,7 +82,9 @@ export async function* getOnChainEventsByFidInBatchesOf(
       }
 
       if (!pageToken?.length) break;
-      result = await hub.getOnChainEvents({ pageSize, pageToken, fid, eventType });
+      result = await retryHubCallWithExponentialBackoff(() =>
+        hub.getOnChainEvents({ pageSize, pageToken, fid, eventType }),
+      );
     }
   }
 }
@@ -85,18 +117,18 @@ export function filterEvents(
 }
 
 export async function getUserNameProofsByFid(hub: HubRpcClient, fid: number) {
-  const result = await hub.getUserNameProofsByFid({ fid });
+  const result = await retryHubCallWithExponentialBackoff(() => hub.getUserNameProofsByFid({ fid }));
   if (result.isErr()) {
-    throw new Error("Unable to backfill", { cause: result.error });
+    throw new Error(`Unable to backfill proofs for FID ${fid}`, { cause: result.error });
   }
   return result.value.proofs;
 }
 
 export async function* getCastsByFidInBatchesOf(hub: HubRpcClient, fid: number, pageSize: number) {
-  let result = await hub.getCastsByFid({ pageSize, fid });
+  let result = await retryHubCallWithExponentialBackoff(() => hub.getCastsByFid({ pageSize, fid }));
   for (;;) {
     if (result.isErr()) {
-      throw new Error("Unable to backfill", { cause: result.error });
+      throw new Error(`Unable to backfill casts for FID ${fid}`, { cause: result.error });
     }
 
     const { messages, nextPageToken: pageToken } = result.value;
@@ -104,12 +136,12 @@ export async function* getCastsByFidInBatchesOf(hub: HubRpcClient, fid: number, 
     yield messages;
 
     if (!pageToken?.length) break;
-    result = await hub.getCastsByFid({ pageSize, pageToken, fid });
+    result = await retryHubCallWithExponentialBackoff(() => hub.getCastsByFid({ pageSize, pageToken, fid }));
   }
 }
 
 export async function* getReactionsByFidInBatchesOf(hub: HubRpcClient, fid: number, pageSize: number) {
-  let result = await hub.getReactionsByFid({ pageSize, fid });
+  let result = await retryHubCallWithExponentialBackoff(() => hub.getReactionsByFid({ pageSize, fid }));
   for (;;) {
     if (result.isErr()) {
       throw new Error(`Unable to fetch Reaction messages for FID ${fid}`, { cause: result.error });
@@ -120,12 +152,12 @@ export async function* getReactionsByFidInBatchesOf(hub: HubRpcClient, fid: numb
     yield messages;
 
     if (!pageToken?.length) break;
-    result = await hub.getReactionsByFid({ pageSize, pageToken, fid });
+    result = await retryHubCallWithExponentialBackoff(() => hub.getReactionsByFid({ pageSize, pageToken, fid }));
   }
 }
 
 export async function* getLinksByFidInBatchesOf(hub: HubRpcClient, fid: number, pageSize: number) {
-  let result = await hub.getLinksByFid({ pageSize, fid });
+  let result = await retryHubCallWithExponentialBackoff(() => hub.getLinksByFid({ pageSize, fid }));
   for (;;) {
     if (result.isErr()) {
       throw new Error(`Unable to fetch Link messages for FID ${fid}`, { cause: result.error });
@@ -136,12 +168,12 @@ export async function* getLinksByFidInBatchesOf(hub: HubRpcClient, fid: number, 
     yield messages;
 
     if (!pageToken?.length) break;
-    result = await hub.getLinksByFid({ pageSize, pageToken, fid });
+    result = await retryHubCallWithExponentialBackoff(() => hub.getLinksByFid({ pageSize, pageToken, fid }));
   }
 }
 
 export async function* getVerificationsByFidInBatchesOf(hub: HubRpcClient, fid: number, pageSize: number) {
-  let result = await hub.getVerificationsByFid({ pageSize, fid });
+  let result = await retryHubCallWithExponentialBackoff(() => hub.getVerificationsByFid({ pageSize, fid }));
   for (;;) {
     if (result.isErr()) {
       throw new Error(`Unable to fetch Verification messages for FID ${fid}`, { cause: result.error });
@@ -152,12 +184,12 @@ export async function* getVerificationsByFidInBatchesOf(hub: HubRpcClient, fid: 
     yield messages;
 
     if (!pageToken?.length) break;
-    result = await hub.getVerificationsByFid({ pageSize, pageToken, fid });
+    result = await retryHubCallWithExponentialBackoff(() => hub.getVerificationsByFid({ pageSize, pageToken, fid }));
   }
 }
 
 export async function* getUserDataByFidInBatchesOf(hub: HubRpcClient, fid: number, pageSize: number) {
-  let result = await hub.getUserDataByFid({ pageSize, fid });
+  let result = await retryHubCallWithExponentialBackoff(() => hub.getUserDataByFid({ pageSize, fid }));
   for (;;) {
     if (result.isErr()) {
       throw new Error(`Unable to fetch UserData messages for FID ${fid}`, { cause: result.error });
@@ -168,6 +200,6 @@ export async function* getUserDataByFidInBatchesOf(hub: HubRpcClient, fid: numbe
     yield messages;
 
     if (!pageToken?.length) break;
-    result = await hub.getUserDataByFid({ pageSize, pageToken, fid });
+    result = await retryHubCallWithExponentialBackoff(() => hub.getUserDataByFid({ pageSize, pageToken, fid }));
   }
 }

@@ -387,6 +387,9 @@ pub struct FrameActionBody {
     /// Chain-specific transaction ID for tx actions
     #[prost(bytes = "vec", tag = "6")]
     pub transaction_id: ::prost::alloc::vec::Vec<u8>,
+    /// Chain-specific address for tx actions
+    #[prost(bytes = "vec", tag = "7")]
+    pub address: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for FrameActionBody {
     const NAME: &'static str = "FrameActionBody";

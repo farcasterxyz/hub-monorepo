@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hub-web",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -28,7 +28,7 @@
     "ts-proto": "^1.146.0"
   },
   "dependencies": {
-    "@farcaster/core": "^0.14.5",
+    "@farcaster/core": "^0.14.7",
     "@improbable-eng/grpc-web": "^0.15.0",
     "rxjs": "^7.8.0"
   }

@@ -1,5 +1,17 @@
 # @farcaster/replicator
 
+## 0.3.7
+
+### Patch Changes
+
+- 02bca881: fix(replicator): handle Hub errors in backfill
+
+## 0.3.6
+
+### Patch Changes
+
+- 0b1a6862: updateTableMetrics is using too much postgresql CPU
+
 ## 0.3.5
 
 ### Patch Changes

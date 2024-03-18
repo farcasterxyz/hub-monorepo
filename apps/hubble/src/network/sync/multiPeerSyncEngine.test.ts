@@ -212,7 +212,7 @@ describe("Multi peer sync engine", () => {
       await addMessagesWithTimeDelta(engine1, [167, 169, 172]);
       await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-      // Engine 2 should sync with engine1 (inlcuding onchain events and fnames)
+      // Engine 2 should sync with engine1 (including onchain events and fnames)
       expect(
         (await syncEngine2.syncStatus("engine2", (await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
           .shouldSync,
@@ -314,7 +314,7 @@ describe("Multi peer sync engine", () => {
 
     await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-    // Engine 2 should sync with engine1 (inlcuding onchain events and fnames)
+    // Engine 2 should sync with engine1 (including onchain events and fnames)
     expect(
       (await syncEngine2.syncStatus("engine2", (await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
         .shouldSync,
