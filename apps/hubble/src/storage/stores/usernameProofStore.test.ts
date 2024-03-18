@@ -75,7 +75,7 @@ describe("usernameProofStore", () => {
       const proof = await set.getUsernameProof(fname, UserNameType.USERNAME_TYPE_ENS_L1);
       expect(proof).toEqual(newProof);
 
-      const rawProof = await set.getAdd({ data: { fid, usernameProofBody: { name: fname } } });
+      const rawProof = await set.getUsernameProofByFidAndName(fid, fname);
       expect(rawProof).toEqual(newProof);
     });
 
@@ -90,7 +90,7 @@ describe("usernameProofStore", () => {
       const proof = await set.getUsernameProof(fname, UserNameType.USERNAME_TYPE_ENS_L1);
       expect(proof).toEqual(newProof);
 
-      await expect(set.getAdd({ data: { fid, usernameProofBody: { name: fname } } })).rejects.toThrowError("NotFound");
+      await expect(set.getUsernameProofByFidAndName(fid, fname)).rejects.toThrowError("NotFound");
     });
 
     test("does not replace existing proof for name if timestamp is older", async () => {
