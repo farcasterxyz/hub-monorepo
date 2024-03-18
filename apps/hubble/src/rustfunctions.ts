@@ -264,21 +264,6 @@ export const rsDbForEachIteratorByOpts = async (
   return !stopped && allFinished;
 };
 
-let a = "Start";
-
-export async function globalFn(s: string) {
-  console.log(`ttt: In JS callback: ${s}`);
-  return `Got ${s}: Hello from ${a}`;
-}
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-(global as any).globalFn = globalFn;
-
-export const rsAsyncFunction = async () => {
-  a = "Middle";
-  const r = await lib.asyncCallback();
-  console.log(`ttt: In JS after all: ${r}`);
-};
-
 export const rsCreateStoreEventHandler = (
   epoch?: number,
   last_timestamp?: number,
