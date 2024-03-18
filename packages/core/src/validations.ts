@@ -792,6 +792,9 @@ export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubRes
   if (validateBytesAsString(body.transactionId, 256).isErr()) {
     return err(new HubError("bad_request.validation_failure", "invalid transaction ID"));
   }
+  if (validateBytesAsString(body.address, 64).isErr()) {
+    return err(new HubError("bad_request.validation_failure", "invalid address"));
+  }
 
   if (body.castId !== undefined) {
     const result = validateCastId(body.castId);

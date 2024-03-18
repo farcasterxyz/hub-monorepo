@@ -1,9 +1,9 @@
-use crate::store::StoreEventHandler;
+use crate::store::{CastStore, StoreEventHandler};
 use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
 use std::convert::TryInto;
-use store::{ReactionStore, Store, UserDataStore};
+use store::{ReactionStore, Store, LinkStore, UserDataStore};
 
 mod db;
 mod logger;
@@ -130,6 +130,15 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("pruneMessages", Store::js_prune_messages)?;
     cx.export_function("getAllMessagesByFid", Store::js_get_all_messages_by_fid)?;
 
+    // LinkStore methods
+    cx.export_function("createLinkStore", LinkStore::create_link_store)?;
+    cx.export_function("getLinkAdd", LinkStore::js_get_link_add)?;
+    cx.export_function("getLinkRemove", LinkStore::js_get_link_remove)?;
+    cx.export_function("getLinksByTarget", LinkStore::js_get_links_by_target)?;
+    cx.export_function("getLinkAddsByFid", LinkStore::js_get_link_adds_by_fid)?;
+    cx.export_function("getLinkRemovesByFid", LinkStore::js_get_link_removes_by_fid)?;
+    cx.export_function("getAllLinkMessagesByFid", LinkStore::js_get_all_link_messages_by_fid)?;
+
     // ReactionStore methods
     cx.export_function("createReactionStore", ReactionStore::create_reaction_store)?;
     cx.export_function("getReactionAdd", ReactionStore::js_get_reaction_add)?;
@@ -147,6 +156,16 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         ReactionStore::js_get_reactions_by_target,
     )?;
 
+    // CastStore methods
+    cx.export_function("createCastStore", CastStore::create_cast_store)?;
+    cx.export_function("getCastAdd", CastStore::js_get_cast_add)?;
+    cx.export_function("getCastRemove", CastStore::js_get_cast_remove)?;
+    cx.export_function("getCastAddsByFid", CastStore::js_get_cast_adds_by_fid)?;
+    cx.export_function("getCastRemovesByFid", CastStore::js_get_cast_removes_by_fid)?;
+    cx.export_function("getCastsByParent", CastStore::js_get_casts_by_parent)?;
+    cx.export_function("getCastsByMention", CastStore::js_get_casts_by_mention)?;
+
+
     // UserDataStore methods
     cx.export_function("createUserDataStore", UserDataStore::create_userdata_store)?;
     cx.export_function("getUserDataAdd", UserDataStore::js_get_userdata_add)?;
@@ -160,6 +179,32 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         UserDataStore::js_get_username_proof_by_fid,
     )?;
     cx.export_function("mergeUserNameProof", UserDataStore::js_merge_username_proof)?;
+
+    // VerificationStore methods
+    cx.export_function(
+        "createVerificationStore",
+        store::VerificationStore::create_verification_store,
+    )?;
+    cx.export_function(
+        "getVerificationAdd",
+        store::VerificationStore::js_get_verification_add,
+    )?;
+    cx.export_function(
+        "getVerificationAddsByFid",
+        store::VerificationStore::js_get_verification_adds_by_fid,
+    )?;
+    cx.export_function(
+        "getVerificationRemove",
+        store::VerificationStore::js_get_verification_remove,
+    )?;
+    cx.export_function(
+        "getVerificationRemovesByFid",
+        store::VerificationStore::js_get_verification_removes_by_fid,
+    )?;
+    cx.export_function(
+        "migrateVerifications",
+        store::VerificationStore::js_migrate_verifications,
+    )?;
 
     Ok(())
 }

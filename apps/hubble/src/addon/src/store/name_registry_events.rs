@@ -16,6 +16,7 @@ pub fn make_fname_username_proof_key(name: &[u8]) -> Vec<u8> {
 
 pub fn make_fname_username_proof_by_fid_key(fid: u32) -> Vec<u8> {
     let mut key = Vec::with_capacity(1 + 4 + 1 + 32);
+
     key.push(RootPrefix::FNameUserNameProofByFid as u8);
     key.extend_from_slice(&fid.to_le_bytes());
     key

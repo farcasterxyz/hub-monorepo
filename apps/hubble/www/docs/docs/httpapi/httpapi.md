@@ -111,4 +111,4 @@ $ curl "http://127.0.0.1:2281/v1/castById?fid=invalid"
 You can set a custom CORS header in the HTTP server by using the `--http-cors-origin` parameter when running your Hubble instance. Setting this to `*` will allow requests from any origin.
 
 ## Limitations
-The HTTP API currently does not support any of the Sync APIs that are available in the gRPC vesion. When Hubs sync with each other, they will use the gRPC APIs instead of the HTTP APIs. 
+The HTTP API currently does not support any of the Sync APIs that are available in the gRPC version. When Hubs sync with each other, they will use the gRPC APIs instead of the HTTP APIs. 

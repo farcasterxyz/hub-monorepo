@@ -23,7 +23,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use tar::Builder;
 use walkdir::WalkDir;
 
-/** Hold a transaction. List of key/value pairs that will be commited together */
+/** Hold a transaction. List of key/value pairs that will be committed together */
 pub struct RocksDbTransactionBatch {
     pub batch: Vec<(Vec<u8>, Option<Vec<u8>>)>,
 }
@@ -303,7 +303,6 @@ impl RocksDB {
                     all_done = false;
                     break;
                 }
-
                 if page_options.page_size.is_some() {
                     count += 1;
                     if count >= page_options.page_size.unwrap() {
@@ -321,6 +320,25 @@ impl RocksDB {
         }
 
         Ok(all_done)
+    }
+
+    // Same as for_each_iterator_by_prefix above, but does not limit by page size. To be used in
+    // cases where higher level callers are doing custom filtering
+    pub fn for_each_iterator_by_prefix_unbounded<F>(
+        &self,
+        prefix: &[u8],
+        page_options: &PageOptions,
+        f: F,
+    ) -> Result<bool, HubError>
+        where
+            F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
+    {
+        let unbounded_page_options = PageOptions {
+            page_size: None,
+            page_token: page_options.page_token.clone(),
+            reverse: page_options.reverse
+        };
+        self.for_each_iterator_by_prefix(prefix, &unbounded_page_options, f)
     }
 
     /**

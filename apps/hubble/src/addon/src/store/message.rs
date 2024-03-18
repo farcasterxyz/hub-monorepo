@@ -6,10 +6,12 @@ use crate::{
 use prost::Message as _;
 use std::convert::TryFrom;
 
+pub const FID_BYTES: usize = 4;
+
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;
 
-const TRUE_VALUE: u8 = 1;
+pub const TRUE_VALUE: u8 = 1;
 
 /** Copied from the JS code */
 pub enum RootPrefix {
@@ -73,6 +75,7 @@ pub enum RootPrefix {
 }
 
 /** Copied from the JS code */
+#[repr(u8)]
 pub enum UserPostfix {
     /* Message records (1-85) */
     CastMessage = 1,
@@ -117,10 +120,35 @@ pub enum UserPostfix {
     UserNameProofAdds = 99,
 }
 
+impl UserPostfix {
+    pub fn as_u8(self) -> u8 {
+        self as u8
+    }
+}
+
 /** A page of messages returned from various APIs */
 pub struct MessagesPage {
     pub messages: Vec<MessageProto>,
     pub next_page_token: Option<Vec<u8>>,
+}
+
+pub trait IntoU8 {
+    fn into_u8(self) -> u8;
+}
+impl IntoU8 for MessageType {
+    fn into_u8(self) -> u8 {
+        self as u8
+    }
+}
+
+pub trait IntoI32 {
+    fn into_i32(self) -> i32;
+}
+
+impl IntoI32 for MessageType {
+    fn into_i32(self) -> i32 {
+        self as i32
+    }
 }
 
 /** Convert a specific message type (CastAdd / CastRemove) to a class of message (CastMessage) */
@@ -186,6 +214,12 @@ pub fn unpack_ts_hash(ts_hash: &[u8; TS_HASH_LENGTH]) -> (u32, [u8; HASH_LENGTH]
 
 pub fn make_fid_key(fid: u32) -> Vec<u8> {
     fid.to_be_bytes().to_vec()
+}
+
+pub fn read_fid_key(key: &[u8]) -> u32 {
+    let mut fid_bytes = [0u8; 4];
+    fid_bytes.copy_from_slice(&key[0..4]);
+    u32::from_be_bytes(fid_bytes)
 }
 
 pub fn make_user_key(fid: u32) -> Vec<u8> {
@@ -301,10 +335,8 @@ where
     let mut messages = Vec::new();
     let mut last_key = vec![];
 
-    db.for_each_iterator_by_prefix(
-        prefix,
-        page_options,
-        |key, value| match MessageProto::decode(value) {
+    db.for_each_iterator_by_prefix_unbounded(prefix, page_options, |key, value| {
+        match MessageProto::decode(value) {
             Ok(message) => {
                 if filter(&message) {
                     messages.push(message);
@@ -321,8 +353,8 @@ where
                 code: "db.internal_error".to_string(),
                 message: format!("could not decode message: {}", e),
             }),
-        },
-    )?;
+        }
+    })?;
 
     let next_page_token = if last_key.len() > 0 {
         Some(last_key[prefix.len()..].to_vec())
