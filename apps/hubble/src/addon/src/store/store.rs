@@ -19,7 +19,6 @@ use prost::Message as _;
 use rocksdb;
 use slog::{o, warn};
 use std::clone::Clone;
-use std::num::IntErrorKind::Empty;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
@@ -301,6 +300,14 @@ impl Store {
             db,
             logger: LOGGER.new(o!("component" => "Store")),
         }
+    }
+
+    pub fn logger(&self) -> &slog::Logger {
+        &self.logger
+    }
+
+    pub fn store_def(&self) -> &dyn StoreDef {
+        self.store_def.as_ref()
     }
 
     pub fn db(&self) -> Arc<RocksDB> {

@@ -71,6 +71,7 @@ impl StoreDef for VerificationStoreDef {
 
     fn find_merge_add_conflicts(
         &self,
+        _db: &RocksDB,
         _message: &protos::Message,
     ) -> Result<(), super::store::HubError> {
         // For verifications, there will be no conflicts
@@ -79,13 +80,14 @@ impl StoreDef for VerificationStoreDef {
 
     fn find_merge_remove_conflicts(
         &self,
+        _db: &RocksDB,
         _message: &protos::Message,
     ) -> Result<(), super::store::HubError> {
         // For verifications, there will be no conflicts
         Ok(())
     }
 
-    fn build_secondary_indicies(
+    fn build_secondary_indices(
         &self,
         txn: &mut RocksDbTransactionBatch,
         _ts_hash: &[u8; TS_HASH_LENGTH],
@@ -118,7 +120,7 @@ impl StoreDef for VerificationStoreDef {
         Ok(())
     }
 
-    fn delete_secondary_indicies(
+    fn delete_secondary_indices(
         &self,
         txn: &mut RocksDbTransactionBatch,
         _ts_hash: &[u8; TS_HASH_LENGTH],
