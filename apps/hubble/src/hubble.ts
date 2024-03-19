@@ -83,6 +83,7 @@ import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
+import { SnapshotMetadata } from "./utils/snapshot.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -1652,14 +1653,22 @@ export class Hub implements HubInterface {
       partSize: 1000 * 1024 * 1024, // 1 GB
     });
 
+    const dbStats = await this.syncEngine.getDbStats();
+    // NOTE: The sync engine type `DbStats` does not match the type in packages/core used by SnapshotMetadata.
+    //       As a result, avoid spread operator and instead pass in each attribute explicitly.
+    const metadata: SnapshotMetadata = {
+      key,
+      timestamp: Date.now(),
+      serverDate: new Date().toISOString(),
+      numMessages: dbStats.numItems,
+      numFidEvents: dbStats.numFids,
+      numFnameEvents: dbStats.numFnames,
+    };
+
     const latestJsonParams = {
       Bucket: this.s3_snapshot_bucket,
       Key: `${this.getSnapshotFolder()}/latest.json`,
-      Body: JSON.stringify({
-        key,
-        timestamp: Date.now(),
-        serverDate: new Date().toISOString(),
-      }),
+      Body: JSON.stringify(metadata, null, 2),
     };
 
     targzParams.on("httpUploadProgress", (progress) => {
