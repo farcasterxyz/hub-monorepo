@@ -198,6 +198,10 @@ class MerkleTrie {
     return result;
   }
 
+  public static numItems(): number {
+    return 0;
+  }
+
   public async stop(): Promise<void> {
     await this.callMethod("stop");
     this._worker.removeAllListeners("message");
