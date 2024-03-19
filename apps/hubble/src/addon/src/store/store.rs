@@ -809,7 +809,7 @@ impl Store {
         let store = get_store(&mut cx)?;
 
         let message_bytes = cx.argument::<JsBuffer>(0);
-        let message = message_decode(message_bytes.unwrap().as_slice(&cx));
+        let message = Message::decode(message_bytes.unwrap().as_slice(&cx));
 
         let result = if message.is_err() {
             Err(message.unwrap_err())
