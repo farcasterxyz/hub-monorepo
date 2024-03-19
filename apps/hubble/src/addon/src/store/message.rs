@@ -368,18 +368,6 @@ where
     })
 }
 
-pub fn message_encode(message: &MessageProto) -> Vec<u8> {
-    if message.data_bytes.is_some() && message.data_bytes.as_ref().unwrap().len() > 0 {
-        // Clone the message
-        let mut cloned = message.clone();
-        cloned.data = None;
-
-        cloned.encode_to_vec()
-    } else {
-        message.encode_to_vec()
-    }
-}
-
 pub fn message_decode(bytes: &[u8]) -> Result<MessageProto, HubError> {
     if let Ok(mut msg) = MessageProto::decode(bytes) {
         if msg.data.is_none()
@@ -403,6 +391,7 @@ pub fn message_decode(bytes: &[u8]) -> Result<MessageProto, HubError> {
 pub fn put_message_transaction(
     txn: &mut RocksDbTransactionBatch,
     message: &MessageProto,
+    message_bytes: &Vec<u8>,
 ) -> Result<(), HubError> {
     let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
 
@@ -412,7 +401,7 @@ pub fn put_message_transaction(
             as u8,
         Some(&ts_hash),
     );
-    txn.put(primary_key, message_encode(message));
+    txn.put(primary_key, message_bytes.to_vec());
 
     let by_signer_key = make_message_by_signer_key(
         message.data.as_ref().unwrap().fid as u32,
