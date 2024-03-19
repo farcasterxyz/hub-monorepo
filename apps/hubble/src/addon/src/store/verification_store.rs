@@ -416,7 +416,7 @@ impl VerificationStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(fid, page_options, Some(|message: &Message| true))
+        store.get_adds_by_fid(fid, page_options, Some(|_message: &Message| true))
     }
 
     pub fn js_get_verification_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -621,7 +621,7 @@ impl VerificationStore {
             .argument::<JsNumber>(2)
             .map(|n| n.value(&mut cx) as u32)?;
 
-        Ok(cx.boxed(Arc::new(VerificationStore::new(
+        Ok(cx.boxed(Arc::new(Self::new(
             db,
             store_event_handler,
             prune_size_limit,
