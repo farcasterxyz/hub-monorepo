@@ -823,18 +823,18 @@ export class Hub implements HubInterface {
     }
 
     // compare current db statistics with latest snapshot metadata
-    const data: SnapshotMetadata = metadata.value;
-    if (data.numMessages) {
-      const delta = Math.abs(data.numMessages - dbStats.numItems);
+    const snapshotMetadata: SnapshotMetadata = metadata.value;
+    if (snapshotMetadata.numMessages) {
+      const delta = snapshotMetadata.numMessages - dbStats.numItems;
       if (delta > limit) {
         log.info({ delta, limit }, "catchup sync using snapshot");
         shouldCatchupSync = true;
       }
     } else {
-      // Older snapshot metadata JSON may not contain database statistics (i.e. data.numMessages).
+      // Older snapshot metadata JSON may not contain database statistics (e.g. numMessages).
       // As a result, we perform conservative calculations to determine if
       // catchup sync using snapshot is necessary
-      const metadataTimestampMs = data.timestamp;
+      const metadataTimestampMs = snapshotMetadata.timestamp;
       const metadataTimeDeltaMs = toFarcasterTime(metadataTimestampMs);
       if (metadataTimeDeltaMs.isErr()) {
         log.error("failed to convert snapshot metadata timestamp to farcaster time", {
@@ -861,7 +861,7 @@ export class Hub implements HubInterface {
       await this.syncEngine.stop();
       // sleep before start
       await sleep(SHUTDOWN_GRACE_PERIOD_MS);
-      const snapshotResult = await this.snapshotSync();
+      const snapshotResult = await this.snapshotSync(true);
       if (snapshotResult.isErr()) {
         log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to diff sync");
         catchupSyncSuccess = false;
@@ -871,7 +871,7 @@ export class Hub implements HubInterface {
 
     return ok(catchupSyncSuccess);
   }
-  async snapshotSync(): HubAsyncResult<boolean> {
+  async snapshotSync(overwrite?: boolean): HubAsyncResult<boolean> {
     return new Promise((resolve) => {
       (async () => {
         let progressBar: SingleBar | undefined;
@@ -883,8 +883,15 @@ export class Hub implements HubInterface {
             (e) => e,
           )();
 
-          if (dbFiles.isErr() || dbFiles.value.length === 0) {
-            log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
+          if (dbFiles.isErr() || dbFiles.value.length === 0 || overwrite) {
+            log.info(
+              {
+                db_location: dbLocation,
+                file_count: dbFiles.isErr() ? 0 : dbFiles.value.length,
+                overwrite,
+              },
+              "DB is empty or overwrite is true, fetching snapshot from S3",
+            );
 
             let prevVersion = 0;
             let latestSnapshotKey;
@@ -920,6 +927,7 @@ export class Hub implements HubInterface {
             const totalSize = parseInt(response2.headers["content-length"], 10);
 
             let downloadedSize = 0;
+            log.info({ totalSize }, "Getting snapshot...");
             progressBar = addProgressBar("Getting snapshot", totalSize);
 
             const handleError = (e: Error) => {
