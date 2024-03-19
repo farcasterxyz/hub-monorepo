@@ -812,7 +812,10 @@ impl Store {
         let message = Message::decode(message_bytes.unwrap().as_slice(&cx));
 
         let result = if message.is_err() {
-            Err(message.unwrap_err())
+            Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: message.unwrap_err().to_string(),
+            })
         } else {
             let m = message.unwrap();
             store.revoke(&m)
