@@ -731,7 +731,7 @@ export class Hub implements HubInterface {
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
     // This way, when starting up, we'll know if the previous shutdown was clean or not.
-    await this.writeHubCleanShutdown(false);
+    await this.writeHubCleanShutdown(false, HubShutdownReason.UNKNOWN);
   }
 
   /** Apply the new the network config. Will return true if the Hub should exit */
@@ -1543,7 +1543,7 @@ export class Hub implements HubInterface {
       (e) => e as HubError,
     );
     if (shutdownResult.isErr()) {
-      return shutdownResult;
+      return err(shutdownResult.error);
     }
     const shutdownReason = shutdownResult.value[1] ?? -1;
     const cleanShutdown = shutdownResult.value[0] === 1;
@@ -1557,7 +1557,7 @@ export class Hub implements HubInterface {
     statsd().increment("hub.restart", 1, tags);
     logger.info({ clean: cleanShutdown, reason: shutdownReason, unexpected }, "Hub restarted");
 
-    return cleanShutdown;
+    return ok(cleanShutdown);
   }
 
   async getDbNetwork(): HubAsyncResult<FarcasterNetwork | undefined> {
