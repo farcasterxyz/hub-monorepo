@@ -1,7 +1,7 @@
 use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
-    protos::{self, CastId, Message as MessageProto, MessageType},
+    protos::{self, CastId, Message as MessageProto, MessageData, MessageType},
 };
 use prost::Message as _;
 use std::convert::TryFrom;
@@ -277,7 +277,7 @@ pub fn get_message(
     // println!("get_message key: {:?}", key);
 
     match db.get(&key)? {
-        Some(bytes) => match MessageProto::decode(bytes.as_slice()) {
+        Some(bytes) => match message_decode(bytes.as_slice()) {
             Ok(message) => Ok(Some(message)),
             Err(_) => Err(HubError {
                 code: "db.internal_error".to_string(),
@@ -301,7 +301,7 @@ pub fn get_many_messages(
 
     for key in primary_keys {
         if let Ok(Some(value)) = db.get(&key) {
-            match MessageProto::decode(value.as_slice()) {
+            match message_decode(value.as_slice()) {
                 Ok(message) => {
                     messages.push(message);
                 }
@@ -336,7 +336,7 @@ where
     let mut last_key = vec![];
 
     db.for_each_iterator_by_prefix_unbounded(prefix, page_options, |key, value| {
-        match MessageProto::decode(value) {
+        match message_decode(value) {
             Ok(message) => {
                 if filter(&message) {
                     messages.push(message);
@@ -368,6 +368,38 @@ where
     })
 }
 
+pub fn message_encode(message: &MessageProto) -> Vec<u8> {
+    if message.data_bytes.is_some() && message.data_bytes.as_ref().unwrap().len() > 0 {
+        // Clone the message
+        let mut cloned = message.clone();
+        cloned.data = None;
+
+        cloned.encode_to_vec()
+    } else {
+        message.encode_to_vec()
+    }
+}
+
+pub fn message_decode(bytes: &[u8]) -> Result<MessageProto, HubError> {
+    if let Ok(mut msg) = MessageProto::decode(bytes) {
+        if msg.data.is_none()
+            && msg.data_bytes.is_some()
+            && msg.data_bytes.as_ref().unwrap().len() > 0
+        {
+            if let Ok(msg_data) = MessageData::decode(msg.data_bytes.as_ref().unwrap().as_slice()) {
+                msg.data = Some(msg_data);
+            }
+        }
+
+        Ok(msg)
+    } else {
+        Err(HubError {
+            code: "db.internal_error".to_string(),
+            message: "could not decode message".to_string(),
+        })
+    }
+}
+
 pub fn put_message_transaction(
     txn: &mut RocksDbTransactionBatch,
     message: &MessageProto,
@@ -380,8 +412,7 @@ pub fn put_message_transaction(
             as u8,
         Some(&ts_hash),
     );
-    txn.put(primary_key, message.encode_to_vec());
-    // println!("put_message_transaction primary_key: {:?}", primary_key);
+    txn.put(primary_key, message_encode(message));
 
     let by_signer_key = make_message_by_signer_key(
         message.data.as_ref().unwrap().fid as u32,

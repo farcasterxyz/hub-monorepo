@@ -1,6 +1,6 @@
 use super::{
     bytes_compare, delete_message_transaction, get_message, hub_error_to_js_throw,
-    make_message_primary_key, message, put_message_transaction,
+    make_message_primary_key, message, message_decode, put_message_transaction,
     utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
     MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
 };
@@ -18,9 +18,9 @@ use once_cell::sync::Lazy;
 use prost::Message as _;
 use rocksdb;
 use slog::{o, warn};
-use std::clone::Clone;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
+use std::{clone::Clone, fmt::Display};
 use threadpool::ThreadPool;
 
 #[derive(Debug)]
@@ -42,6 +42,12 @@ impl HubError {
             code: "bad_request.invalid_param".to_string(),
             message: error_message.to_string(),
         }
+    }
+}
+
+impl Display for HubError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.code, self.message)
     }
 }
 
@@ -699,40 +705,12 @@ impl Store {
         let prune_size_limit = self.store_def.get_prune_size_limit();
 
         let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
-        self.db
-            .for_each_iterator_by_prefix_unbounded(prefix, &PageOptions::default(), |_key, value| {
+        self.db.for_each_iterator_by_prefix_unbounded(
+            prefix,
+            &PageOptions::default(),
+            |_key, value| {
                 // Value is a message, so try to decode it
-                let message = match protos::Message::decode(value) {
-                    Ok(message) => message,
-                    Err(e) => {
-                        return Err(HubError {
-                            code: "bad_request.internal_error".to_string(),
-                            message: e.to_string(),
-                        })
-                    }
-                };
-
-                if message.data.is_none() {
-                    // This shouldn't happen, but if it does, skip it                    
-                    if message.data_bytes.is_none() {
-                        warn!(self.logger, "Missing message_data: Message data and data_bytes are both missing"; "full_message" => format!("{:?}", message));
-                        return Ok(false); // Continue the iteration
-                    }
-
-                    // Try to interpret the message data
-                    let bytes = message.data_bytes.as_ref().unwrap().as_slice();
-                    let data = match protos::MessageData::decode(bytes) {
-                        Ok(data) => data,
-                        Err(e) => {
-                            warn!(self.logger, "Missing message_data: : Failed to decode message data"; "full_message" => format!("{:?}", message), "error" => e.to_string());
-                            return Ok(false); // Continue the iteration
-                        }
-                    };
-
-                    // Print the message data
-                    warn!(self.logger, "Missing message_data: Message data is missing, but data_bytes is present"; "full_message" => format!("{:?}", message), "data" => format!("{:?}", data));
-                    return Ok(false); // Continue the iteration
-                }
+                let message = message_decode(value)?;
 
                 if count <= (prune_size_limit as u64) * units {
                     return Ok(true); // Stop the iteration, nothing left to prune
@@ -762,7 +740,8 @@ impl Store {
                 pruned_events.push(hub_event);
 
                 Ok(false) // Continue the iteration
-            })?;
+            },
+        )?;
 
         Ok(pruned_events)
     }
@@ -793,7 +772,7 @@ impl Store {
         let store = get_store(&mut cx)?;
 
         let message_bytes = cx.argument::<JsBuffer>(0);
-        let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
+        let message = message_decode(message_bytes.unwrap().as_slice(&cx));
 
         // let pool = store.pool.clone();
         // pool.lock().unwrap().execute(move || {
@@ -829,14 +808,10 @@ impl Store {
         let store = get_store(&mut cx)?;
 
         let message_bytes = cx.argument::<JsBuffer>(0);
-        let message = protos::Message::decode(message_bytes.unwrap().as_slice(&cx));
+        let message = message_decode(message_bytes.unwrap().as_slice(&cx));
 
         let result = if message.is_err() {
-            let e = message.unwrap_err();
-            Err(HubError {
-                code: "bad_request.validation_failure".to_string(),
-                message: e.to_string(),
-            })
+            Err(message.unwrap_err())
         } else {
             let m = message.unwrap();
             store.revoke(&m)

@@ -154,7 +154,7 @@ export class FNameRegistryEventsProvider {
     try {
       return await this.client.getTransfers(params);
     } catch (err) {
-      log.error(err, `Failed to get transfers ${params}`);
+      log.error({ err, params }, "Failed to get transfers from fname registry");
       return [];
     }
   }

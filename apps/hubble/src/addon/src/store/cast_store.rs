@@ -1,5 +1,11 @@
-use super::{hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message, store::{Store, StoreDef}, utils::{encode_messages_to_js_object, get_page_options, get_store}, HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH, TRUE_VALUE, HASH_LENGTH, bytes_compare};
-use crate::protos::{CastRemoveBody, message_data};
+use super::{
+    bytes_compare, hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
+    store::{Store, StoreDef},
+    utils::{encode_messages_to_js_object, get_page_options, get_store},
+    HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, HASH_LENGTH,
+    PAGE_SIZE_MAX, TRUE_VALUE, TS_HASH_LENGTH,
+};
+use crate::protos::{message_data, CastRemoveBody};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, Message, MessageType},
@@ -121,7 +127,9 @@ impl StoreDef for CastStoreDef {
         // Compare message types to enforce that RemoveWins in case of LWW ties.
         if (a_type == MessageType::CastRemove as u8) && (b_type == MessageType::CastAdd as u8) {
             return 1;
-        } else if (a_type == MessageType::CastAdd as u8) && (b_type == MessageType::CastRemove as u8) {
+        } else if (a_type == MessageType::CastAdd as u8)
+            && (b_type == MessageType::CastRemove as u8)
+        {
             return -1;
         }
 
@@ -176,7 +184,9 @@ impl StoreDef for CastStoreDef {
     fn make_add_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let hash = match message.data.as_ref().unwrap().body.as_ref() {
             Some(message_data::Body::CastAddBody(_)) => message.hash.as_ref(),
-            Some(message_data::Body::CastRemoveBody(cast_remove_body)) => cast_remove_body.target_hash.as_ref(),
+            Some(message_data::Body::CastRemoveBody(cast_remove_body)) => {
+                cast_remove_body.target_hash.as_ref()
+            }
             _ => {
                 return Err(HubError {
                     code: "bad_request.validation_failure".to_string(),
@@ -193,7 +203,9 @@ impl StoreDef for CastStoreDef {
     fn make_remove_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let hash = match message.data.as_ref().unwrap().body.as_ref() {
             Some(message_data::Body::CastAddBody(_)) => message.hash.as_ref(),
-            Some(message_data::Body::CastRemoveBody(cast_remove_body)) => cast_remove_body.target_hash.as_ref(),
+            Some(message_data::Body::CastRemoveBody(cast_remove_body)) => {
+                cast_remove_body.target_hash.as_ref()
+            }
             _ => {
                 return Err(HubError {
                     code: "bad_request.validation_failure".to_string(),
@@ -300,10 +312,7 @@ impl CastStoreDef {
     }
 
     // Generates unique keys used to store or fetch CastAdd messages in the adds set index
-    pub fn make_cast_adds_key(
-        fid: u32,
-        hash: &Vec<u8>,
-    ) -> Vec<u8> {
+    pub fn make_cast_adds_key(fid: u32, hash: &Vec<u8>) -> Vec<u8> {
         let mut key = Vec::with_capacity(5 + 1 + 20);
 
         key.extend_from_slice(&make_user_key(fid));
@@ -334,10 +343,7 @@ impl CastStoreDef {
     }
 
     // Generates unique keys used to store or fetch CastRemove messages in the removes set index
-    pub fn make_cast_removes_key(
-        fid: u32,
-        hash: &Vec<u8>,
-    ) -> Vec<u8> {
+    pub fn make_cast_removes_key(fid: u32, hash: &Vec<u8>) -> Vec<u8> {
         let mut key = Vec::with_capacity(5 + 1 + 20);
 
         key.extend_from_slice(&make_user_key(fid));
@@ -374,9 +380,11 @@ impl CastStore {
             data: Some(protos::MessageData {
                 fid: fid as u64,
                 r#type: MessageType::CastAdd.into(),
-                body: Some(protos::message_data::Body::CastAddBody(protos::CastAddBody {
-                    ..Default::default()
-                })),
+                body: Some(protos::message_data::Body::CastAddBody(
+                    protos::CastAddBody {
+                        ..Default::default()
+                    },
+                )),
                 ..Default::default()
             }),
             hash,
@@ -466,11 +474,7 @@ impl CastStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(
-            fid,
-            page_options,
-            Some(|message: &Message| true),
-        )
+        store.get_adds_by_fid(fid, page_options, Some(|message: &Message| true))
     }
 
     pub fn create_cast_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
@@ -499,11 +503,10 @@ impl CastStore {
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
 
-        let messages =
-            match Self::get_cast_adds_by_fid(&store, fid, &page_options) {
-                Ok(messages) => messages,
-                Err(e) => return hub_error_to_js_throw(&mut cx, e),
-            };
+        let messages = match Self::get_cast_adds_by_fid(&store, fid, &page_options) {
+            Ok(messages) => messages,
+            Err(e) => return hub_error_to_js_throw(&mut cx, e),
+        };
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
@@ -519,11 +522,7 @@ impl CastStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_removes_by_fid(
-            fid,
-            page_options,
-            Some(|message: &Message| true),
-        )
+        store.get_removes_by_fid(fid, page_options, Some(|message: &Message| true))
     }
 
     pub fn js_get_cast_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -532,11 +531,7 @@ impl CastStore {
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
 
-        let messages = match Self::get_cast_removes_by_fid(
-            &store,
-            fid,
-            &page_options,
-        ) {
+        let messages = match Self::get_cast_removes_by_fid(&store, fid, &page_options) {
             Ok(messages) => messages,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
@@ -563,12 +558,10 @@ impl CastStore {
         store
             .db()
             .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
-
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
-                let fid =
-                    u32::from_be_bytes(key[fid_offset..fid_offset + 4].try_into().unwrap());
+                let fid = u32::from_be_bytes(key[fid_offset..fid_offset + 4].try_into().unwrap());
                 let ts_hash = key[ts_hash_offset..ts_hash_offset + TS_HASH_LENGTH]
                     .try_into()
                     .unwrap();
@@ -629,11 +622,7 @@ impl CastStore {
 
         let page_options = get_page_options(&mut cx, 2)?;
 
-        let messages = match Self::get_casts_by_parent(
-            &store,
-            &target,
-            &page_options,
-        ) {
+        let messages = match Self::get_casts_by_parent(&store, &target, &page_options) {
             Ok(messages) => messages,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
@@ -663,8 +652,7 @@ impl CastStore {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
-                let fid =
-                    u32::from_be_bytes(key[fid_offset..fid_offset + 4].try_into().unwrap());
+                let fid = u32::from_be_bytes(key[fid_offset..fid_offset + 4].try_into().unwrap());
                 let ts_hash = key[ts_hash_offset..ts_hash_offset + TS_HASH_LENGTH]
                     .try_into()
                     .unwrap();
@@ -703,11 +691,7 @@ impl CastStore {
         let mention = mention.value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
 
-        let messages = match Self::get_casts_by_mention(
-            &store,
-            mention,
-            &page_options,
-        ) {
+        let messages = match Self::get_casts_by_mention(&store, mention, &page_options) {
             Ok(messages) => messages,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
