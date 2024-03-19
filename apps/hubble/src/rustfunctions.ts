@@ -504,6 +504,38 @@ export const rsGetVerificationRemovesByFid = async (
 export const rsMigrateVerifications = async (store: RustDynStore): Promise<{ total: number; duplicates: number }> => {
   return await lib.migrateVerifications.call(store);
 };
+
+/** Username Proofs store */
+export const rsCreateUsernameProofStore = (
+  db: RustDb,
+  eventHandler: RustStoreEventHandler,
+  pruneSizeLimit: number,
+): RustDynStore => {
+  const store = lib.createUsernameProofStore(db, eventHandler, pruneSizeLimit);
+
+  return store as RustDynStore;
+};
+
+export const rsGetUsernameProof = async (store: RustDynStore, name: Uint8Array, type: number): Promise<Buffer> => {
+  return await lib.getUsernameProof.call(store, name, type);
+};
+
+export const rsGetUsernameProofsByFid = async (
+  store: RustDynStore,
+  fid: number,
+  pageOptions: PageOptions,
+): Promise<RustMessagesPage> => {
+  return await lib.getUsernameProofsByFid.call(store, fid, pageOptions);
+};
+
+export const rsGetUsernameProofByFidAndName = async (
+  store: RustDynStore,
+  fid: number,
+  name: Uint8Array,
+): Promise<Buffer> => {
+  return await lib.getUsernameProofByFidAndName.call(store, fid, name);
+};
+
 export namespace rsLinkStore {
   export const CreateLinkStore = (
     db: RustDb,

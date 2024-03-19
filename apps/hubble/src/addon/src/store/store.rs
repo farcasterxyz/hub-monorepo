@@ -268,6 +268,41 @@ pub trait StoreDef: Send + Sync {
         // Compare the rest of the ts_hash to break ties
         bytes_compare(&a_ts_hash[4..24], &b_ts_hash[4..24])
     }
+
+    fn revoke_event_args(&self, message: &Message) -> HubEvent {
+        HubEvent {
+            r#type: HubEventType::RevokeMessage as i32,
+            body: Some(hub_event::Body::RevokeMessageBody(
+                protos::RevokeMessageBody {
+                    message: Some(message.clone()),
+                },
+            )),
+            id: 0,
+        }
+    }
+
+    fn merge_event_args(&self, message: &Message, merge_conflicts: Vec<Message>) -> HubEvent {
+        HubEvent {
+            r#type: HubEventType::MergeMessage as i32,
+            body: Some(hub_event::Body::MergeMessageBody(MergeMessageBody {
+                message: Some(message.clone()),
+                deleted_messages: merge_conflicts,
+            })),
+            id: 0,
+        }
+    }
+
+    fn prune_event_args(&self, message: &Message) -> HubEvent {
+        HubEvent {
+            r#type: HubEventType::PruneMessage as i32,
+            body: Some(hub_event::Body::PruneMessageBody(
+                protos::PruneMessageBody {
+                    message: Some(message.clone()),
+                },
+            )),
+            id: 0,
+        }
+    }
 }
 
 pub struct Store {
@@ -564,7 +599,7 @@ impl Store {
             });
         }
 
-        let mut hub_event = self.revoke_event_args(message);
+        let mut hub_event = self.store_def.revoke_event_args(message);
 
         let id = self
             .store_event_handler
@@ -600,7 +635,7 @@ impl Store {
         self.put_add_transaction(&mut txn, &ts_hash, message)?;
 
         // Event handler
-        let mut hub_event = self.merge_event_args(message, merge_conflicts);
+        let mut hub_event = self.store_def.merge_event_args(message, merge_conflicts);
 
         let id = self
             .store_event_handler
@@ -636,7 +671,7 @@ impl Store {
         self.put_remove_transaction(&mut txn, ts_hash, message)?;
 
         // Event handler
-        let mut hub_event = self.merge_event_args(message, merge_conflicts);
+        let mut hub_event = self.store_def.merge_event_args(message, merge_conflicts);
 
         let id = self
             .store_event_handler
@@ -715,7 +750,7 @@ impl Store {
                 }
 
                 // Event Handler
-                let mut hub_event = self.prune_event_args(&message);
+                let mut hub_event = self.store_def.prune_event_args(&message);
                 let id = self
                     .store_event_handler
                     .commit_transaction(&mut txn, &mut hub_event)?;
@@ -730,41 +765,6 @@ impl Store {
             })?;
 
         Ok(pruned_events)
-    }
-
-    fn revoke_event_args(&self, message: &Message) -> HubEvent {
-        HubEvent {
-            r#type: HubEventType::RevokeMessage as i32,
-            body: Some(hub_event::Body::RevokeMessageBody(
-                protos::RevokeMessageBody {
-                    message: Some(message.clone()),
-                },
-            )),
-            id: 0,
-        }
-    }
-
-    fn merge_event_args(&self, message: &Message, merge_conflicts: Vec<Message>) -> HubEvent {
-        HubEvent {
-            r#type: HubEventType::MergeMessage as i32,
-            body: Some(hub_event::Body::MergeMessageBody(MergeMessageBody {
-                message: Some(message.clone()),
-                deleted_messages: merge_conflicts,
-            })),
-            id: 0,
-        }
-    }
-
-    fn prune_event_args(&self, message: &Message) -> HubEvent {
-        HubEvent {
-            r#type: HubEventType::PruneMessage as i32,
-            body: Some(hub_event::Body::PruneMessageBody(
-                protos::PruneMessageBody {
-                    message: Some(message.clone()),
-                },
-            )),
-            id: 0,
-        }
     }
 
     pub fn get_all_messages_by_fid(

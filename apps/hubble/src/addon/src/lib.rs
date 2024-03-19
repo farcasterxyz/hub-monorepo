@@ -1,4 +1,4 @@
-use crate::store::{CastStore, StoreEventHandler};
+use crate::store::{CastStore, StoreEventHandler, UsernameProofStore, VerificationStore};
 use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
@@ -183,27 +183,45 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     // VerificationStore methods
     cx.export_function(
         "createVerificationStore",
-        store::VerificationStore::create_verification_store,
+        VerificationStore::create_verification_store,
     )?;
     cx.export_function(
         "getVerificationAdd",
-        store::VerificationStore::js_get_verification_add,
+        VerificationStore::js_get_verification_add,
     )?;
     cx.export_function(
         "getVerificationAddsByFid",
-        store::VerificationStore::js_get_verification_adds_by_fid,
+        VerificationStore::js_get_verification_adds_by_fid,
     )?;
     cx.export_function(
         "getVerificationRemove",
-        store::VerificationStore::js_get_verification_remove,
+        VerificationStore::js_get_verification_remove,
     )?;
     cx.export_function(
         "getVerificationRemovesByFid",
-        store::VerificationStore::js_get_verification_removes_by_fid,
+        VerificationStore::js_get_verification_removes_by_fid,
     )?;
     cx.export_function(
         "migrateVerifications",
-        store::VerificationStore::js_migrate_verifications,
+        VerificationStore::js_migrate_verifications,
+    )?;
+
+    // Username Proof methods
+    cx.export_function(
+        "createUsernameProofStore",
+        UsernameProofStore::create_username_proof_store,
+    )?;
+    cx.export_function(
+        "getUsernameProof",
+        UsernameProofStore::js_get_username_proof,
+    )?;
+    cx.export_function(
+        "getUsernameProofsByFid",
+        UsernameProofStore::js_get_username_proofs_by_fid,
+    )?;
+    cx.export_function(
+        "getUsernameProofByFidAndName",
+        UsernameProofStore::js_get_username_proof_by_fid_and_name,
     )?;
 
     Ok(())
