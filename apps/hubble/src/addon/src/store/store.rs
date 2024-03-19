@@ -474,9 +474,8 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
-        message_bytes: &Vec<u8>,
     ) -> Result<(), HubError> {
-        put_message_transaction(txn, &message, message_bytes)?;
+        put_message_transaction(txn, &message)?;
 
         let adds_key = self.store_def.make_add_key(message)?;
 
@@ -508,7 +507,6 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
-        message_bytes: &Vec<u8>,
     ) -> Result<(), HubError> {
         if !self.store_def.remove_type_supported() {
             return Err(HubError {
@@ -517,7 +515,7 @@ impl Store {
             });
         }
 
-        put_message_transaction(txn, &message, message_bytes)?;
+        put_message_transaction(txn, &message)?;
 
         let removes_key = self.store_def.make_remove_key(message)?;
         txn.put(removes_key, ts_hash.to_vec());
@@ -562,7 +560,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn merge(&self, message: &Message, message_bytes: &Vec<u8>) -> Result<Vec<u8>, HubError> {
+    pub fn merge(&self, message: &Message) -> Result<Vec<u8>, HubError> {
         // Grab a merge lock. The typescript code does this by individual fid, but we don't have a
         // good way of doing that efficiently here. We'll just use an array of locks, with each fid
         // deterministically mapped to a lock.
@@ -583,9 +581,9 @@ impl Store {
         let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
 
         if self.store_def.is_add_type(message) {
-            self.merge_add(&ts_hash, message, message_bytes)
+            self.merge_add(&ts_hash, message)
         } else {
-            self.merge_remove(&ts_hash, message, message_bytes)
+            self.merge_remove(&ts_hash, message)
         }
     }
 
@@ -628,7 +626,6 @@ impl Store {
         &self,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
-        message_bytes: &Vec<u8>,
     ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
         let merge_conflicts = self
@@ -641,7 +638,7 @@ impl Store {
         self.delete_many_transaction(&mut txn, merge_conflicts.clone())?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
-        self.put_add_transaction(&mut txn, &ts_hash, message, message_bytes)?;
+        self.put_add_transaction(&mut txn, &ts_hash, message)?;
 
         // Event handler
         let mut hub_event = self.store_def.merge_event_args(message, merge_conflicts);
@@ -664,7 +661,6 @@ impl Store {
         &self,
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
-        message_bytes: &Vec<u8>,
     ) -> Result<Vec<u8>, HubError> {
         // Get the merge conflicts first
         let merge_conflicts = self
@@ -678,7 +674,7 @@ impl Store {
         self.delete_many_transaction(&mut txn, merge_conflicts.clone())?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
-        self.put_remove_transaction(&mut txn, ts_hash, message, message_bytes)?;
+        self.put_remove_transaction(&mut txn, ts_hash, message)?;
 
         // Event handler
         let mut hub_event = self.store_def.merge_event_args(message, merge_conflicts);
@@ -777,7 +773,6 @@ impl Store {
 
         let message_bytes_result = cx.argument::<JsBuffer>(0);
         let message_bytes = message_bytes_result.unwrap().as_slice(&cx).to_vec();
-
         let message = Message::decode(message_bytes.as_slice());
 
         // let pool = store.pool.clone();
@@ -790,7 +785,7 @@ impl Store {
             })
         } else {
             let m = message.unwrap();
-            store.merge(&m, &message_bytes)
+            store.merge(&m)
         };
 
         let channel = cx.channel();
