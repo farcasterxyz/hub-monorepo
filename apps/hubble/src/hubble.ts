@@ -1653,6 +1653,7 @@ export class Hub implements HubInterface {
       partSize: 1000 * 1024 * 1024, // 1 GB
     });
 
+    // NOTE: db stats requires sync trie and database to be initialized, otherwise there may be zero values
     const dbStats = await this.syncEngine.getDbStats();
     // NOTE: The sync engine type `DbStats` does not match the type in packages/core used by SnapshotMetadata.
     //       As a result, avoid spread operator and instead pass in each attribute explicitly.
