@@ -7,9 +7,8 @@ import {
   Message,
 } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
-import { makeCastIdKey, makeFidKey, makeUserKey } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
-import { RootPrefix, UserPostfix } from "../db/types.js";
+import { UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions, StorePruneOptions } from "../stores/types.js";
 import { RustStoreBase } from "./rustStoreBase.js";
 import StoreEventHandler from "./storeEventHandler.js";
