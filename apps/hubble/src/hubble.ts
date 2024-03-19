@@ -19,6 +19,7 @@ import {
   ClientOptions,
   validations,
   HashScheme,
+  toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
@@ -49,6 +50,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from "./utils/p2p.js";
+import { fetchSnapshotMetadata, snapshotDirectoryPath, SnapshotMetadata } from "./utils/snapshot.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
 import { ensureAboveMinFarcasterVersion, getMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
@@ -83,6 +85,7 @@ import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
+import { CONSERVATIVE_HUB_MESSAGES_PER_SECOND, DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -270,6 +273,17 @@ export interface HubOptions {
 
   /** Enable daily backups to S3 */
   enableSnapshotToS3?: boolean;
+
+  /** If set, check catchupSyncSnapshotMessageLimit and if message difference
+   * exceeds that limit, clear existing db and replace with downloaded snapshot
+   * */
+  catchupSyncWithSnapshot?: boolean;
+
+  /**
+   * Message limit - when exceeded, trigger catchup sync using snapshot
+   * NOTE: Catchup sync using snapshot WILL RESET THE DATABASE
+   */
+  catchupSyncSnapshotMessageLimit?: number;
 
   /** S3 bucket to upload snapshots to */
   s3SnapshotBucket?: string;
@@ -665,6 +679,21 @@ export class Hub implements HubInterface {
     // Start the sync engine
     await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
+    // Check if we need to catchup sync using snapshot - this needs to happen after sync engine
+    // starts because db and trie statistics are available only after sync engine starts
+    if (this.options.catchupSyncWithSnapshot) {
+      const catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
+      if (catchupSyncResult.isErr()) {
+        log.error("failed to catchup sync using snapshot", {
+          error: catchupSyncResult.error,
+        });
+      } else if (catchupSyncResult.value) {
+        log.info("catchup sync using snapshot successful");
+      } else if (!catchupSyncResult.value) {
+        log.error("failed to catchup sync using snapshot");
+      }
+    }
+
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
     if (!this.options.httpServerDisabled) {
@@ -772,6 +801,76 @@ export class Hub implements HubInterface {
     }
   }
 
+  // Attempt to catchup sync using snapshot.
+  // NOTE: Requires sync engine to have started before this method is called.
+  // This method will stop and start the sync engine if catchup sync using snapshot is required.
+  async attemptCatchupSyncWithSnapshot(): HubAsyncResult<boolean> {
+    if (!this.syncEngine) {
+      return err(new HubError("unavailable", "sync engine not available"));
+    }
+    const dbStats = await this.syncEngine.getDbStats();
+    const limit = this.options.catchupSyncSnapshotMessageLimit ?? DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT;
+    const snapURL = snapshotDirectoryPath(this.options.network, 0);
+    const metadata = await fetchSnapshotMetadata(snapURL);
+
+    let shouldCatchupSync = false;
+    if (metadata.isErr()) {
+      log.error("failed to fetch snapshot metadata", {
+        error: metadata.error,
+        snapshotURL: snapURL,
+      });
+      return err(new HubError("unavailable", `failed to fetch snapshot metadata - ${metadata.error.message}`));
+    }
+
+    // compare current db statistics with latest snapshot metadata
+    const data: SnapshotMetadata = metadata.value;
+    if (data.numMessages) {
+      const delta = Math.abs(data.numMessages - dbStats.numItems);
+      if (delta > limit) {
+        log.info({ delta, limit }, "catchup sync using snapshot");
+        shouldCatchupSync = true;
+      }
+    } else {
+      // Older snapshot metadata JSON may not contain database statistics (i.e. data.numMessages).
+      // As a result, we perform conservative calculations to determine if
+      // catchup sync using snapshot is necessary
+      const metadataTimestampMs = data.timestamp;
+      const metadataTimeDeltaMs = toFarcasterTime(metadataTimestampMs);
+      if (metadataTimeDeltaMs.isErr()) {
+        log.error("failed to convert snapshot metadata timestamp to farcaster time", {
+          error: metadataTimeDeltaMs.error,
+          timestamp: metadataTimestampMs,
+        });
+      } else {
+        // When snapshot metadata does not contain database statistics,
+        // we use conservative estimates to determine if snapshot should be used
+        const deltaMs = metadataTimeDeltaMs.value;
+        const estimate_message_count = Math.floor(deltaMs / 1000) * CONSERVATIVE_HUB_MESSAGES_PER_SECOND;
+        const delta = Math.abs(estimate_message_count - dbStats.numItems);
+        if (delta > limit) {
+          log.info({ delta, limit }, "catchup sync using snapshot");
+          shouldCatchupSync = true;
+        }
+      }
+    }
+
+    let catchupSyncSuccess = true;
+    if (shouldCatchupSync) {
+      const SHUTDOWN_GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
+      log.info(`beginning snapshot sync in ${SHUTDOWN_GRACE_PERIOD_MS.toString()}ms - THIS WILL RESET THE DATABASE`);
+      await this.syncEngine.stop();
+      // sleep before start
+      await sleep(SHUTDOWN_GRACE_PERIOD_MS);
+      const snapshotResult = await this.snapshotSync();
+      if (snapshotResult.isErr()) {
+        log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to diff sync");
+        catchupSyncSuccess = false;
+      }
+      await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
+    }
+
+    return ok(catchupSyncSuccess);
+  }
   async snapshotSync(): HubAsyncResult<boolean> {
     return new Promise((resolve) => {
       (async () => {
@@ -1652,14 +1751,18 @@ export class Hub implements HubInterface {
       partSize: 1000 * 1024 * 1024, // 1 GB
     });
 
+    const dbStats = await this.syncEngine.getDbStats();
+
+    const metadata: SnapshotMetadata = {
+      key,
+      timestamp: Date.now(),
+      serverDate: new Date().toISOString(),
+      ...dbStats,
+    };
     const latestJsonParams = {
       Bucket: this.s3_snapshot_bucket,
       Key: `${this.getSnapshotFolder()}/latest.json`,
-      Body: JSON.stringify({
-        key,
-        timestamp: Date.now(),
-        serverDate: new Date().toISOString(),
-      }),
+      Body: JSON.stringify(metadata, null, 2),
     };
 
     targzParams.on("httpUploadProgress", (progress) => {

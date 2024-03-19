@@ -27,6 +27,7 @@
     "lint:rust": "cargo fmt --manifest-path ./src/addon/Cargo.toml",
     "lint:ci": "yarn lint:customjs && biome ci src/",
     "lint:customjs": "node scripts/linter.cjs",
+    "snapshot-bucket": "node --no-warnings build/cli.js snapshot-bucket",
     "start": "node --max-old-space-size=8192 --no-warnings build/cli.js start",
     "identity": "node --no-warnings build/cli.js identity",
     "dbreset": "node build/cli.js dbreset",
