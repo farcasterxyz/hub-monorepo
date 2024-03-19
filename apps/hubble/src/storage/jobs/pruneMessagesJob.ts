@@ -8,6 +8,10 @@ import { sleep } from "../../utils/crypto.js";
 
 export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = "0 */2 * * *"; // Every two hours
 
+// How much time to allocate to pruning each fid.
+// 1000 fids per second = 1 fid per ms. 500k fids will take under 10 minutes
+const TIME_SCHEDULED_PER_FID_MS = 1;
+
 const log = logger.child({
   component: "PruneMessagesJob",
 });
@@ -18,11 +22,9 @@ export class PruneMessagesJobScheduler {
   private _engine: Engine;
   private _cronTask?: cron.ScheduledTask;
   private _running = false;
-  private _getSyncTrieQSizeFn: () => number;
 
-  constructor(engine: Engine, getSyncTrieQSizeFn: () => number) {
+  constructor(engine: Engine) {
     this._engine = engine;
-    this._getSyncTrieQSizeFn = getSyncTrieQSizeFn;
   }
 
   start(cronSchedule?: string) {
@@ -82,13 +84,21 @@ export class PruneMessagesJobScheduler {
 
       for (const fid of fids) {
         totalPruned += (await this._engine.pruneMessages(fid)).unwrapOr(0);
-      }
 
-      // Sleep for a bit avoid overloading the Merkle Trie
-      const syncTrieQSize = this._getSyncTrieQSizeFn();
-      if (syncTrieQSize > 10_000) {
-        log.info({ syncTrieQSize }, "sync trie Q is large, sleeping for 30s");
-        await sleep(30_000);
+        // We prune at the rate of 1000 fids per second. If we are running ahead of schedule, we sleep to catch up
+        // We do this so that:
+        // 1. Each fid is pruned at the same time at every hub, reducing thrash
+        // 2. Don't overload the DB or Sync Trie, causing spikes in latency
+        if (fid % 100 === 0) {
+          // See if we are running ahead of schedule
+          const scheduledTime = TIME_SCHEDULED_PER_FID_MS * fid;
+          const elapsedTime = Date.now() - start;
+          if (scheduledTime > elapsedTime) {
+            const sleepTime = scheduledTime - elapsedTime;
+            // Sleep for the remaining time
+            await sleep(sleepTime);
+          }
+        }
       }
     } while (!finished);
 

@@ -471,7 +471,7 @@ export class Hub implements HubInterface {
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers
-    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine, () => this.syncEngine.syncTrieQSize);
+    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
