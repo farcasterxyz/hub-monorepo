@@ -647,10 +647,10 @@ app
   });
 
 /*//////////////////////////////////////////////////////////////
-                          SNAPSHOT-BUCKET COMMAND
+                          SNAPSHOT-URL COMMAND
 //////////////////////////////////////////////////////////////*/
-const snapshotBucket = new Command("snapshot-bucket")
-  .description("Print latest snapshot bucket")
+const s3SnapshotURL = new Command("snapshot-url")
+  .description("Print latest snapshot URL and metadata from S3")
   .option("-n --network <network>", "ID of the Farcaster Network (default: 1 (mainnet))", parseNetwork)
   .action(async (options) => {
     const network = farcasterNetworkFromJSON(options.network ?? FarcasterNetwork.MAINNET);
@@ -665,7 +665,7 @@ const snapshotBucket = new Command("snapshot-bucket")
     exit(0);
   });
 
-app.addCommand(snapshotBucket);
+app.addCommand(s3SnapshotURL);
 
 /*//////////////////////////////////////////////////////////////
                         IDENTITY COMMAND

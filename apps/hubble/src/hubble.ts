@@ -1752,13 +1752,17 @@ export class Hub implements HubInterface {
     });
 
     const dbStats = await this.syncEngine.getDbStats();
-
+    // NOTE: The sync engine type `DbStats` does not match the type in packages/core used by SnapshotMetadata.
+    //       As a result, avoid spread operator and instead pass in each attribute explicitly.
     const metadata: SnapshotMetadata = {
       key,
       timestamp: Date.now(),
       serverDate: new Date().toISOString(),
-      ...dbStats,
+      numMessages: dbStats.numItems,
+      numFidEvents: dbStats.numFids,
+      numFnameEvents: dbStats.numFnames,
     };
+
     const latestJsonParams = {
       Bucket: this.s3_snapshot_bucket,
       Key: `${this.getSnapshotFolder()}/latest.json`,

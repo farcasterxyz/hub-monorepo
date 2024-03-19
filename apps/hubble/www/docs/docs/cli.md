@@ -158,3 +158,14 @@ Options:
   --insecure          Allow insecure connections to the RPC server (default: false)
   -h, --help          display help for command
 ```
+
+### snapshot-url
+```
+Usage: hub snapshot-url [options]
+
+Print latest snapshot URL and metadata from S3
+
+Options:
+  -n --network <network>  ID of the Farcaster Network (default: 1 (mainnet))
+  -h, --help              display help for command
+```
