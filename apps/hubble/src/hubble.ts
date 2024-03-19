@@ -858,17 +858,26 @@ export class Hub implements HubInterface {
     if (shouldCatchupSync) {
       const SHUTDOWN_GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
       log.info(`beginning snapshot sync in ${SHUTDOWN_GRACE_PERIOD_MS.toString()}ms - THIS WILL RESET THE DATABASE`);
+      // this.rocksDB.clear();
       await this.syncEngine.stop();
+      log.info("sync engine stopped");
+      await sleep(1000 * 30);
+      this.rocksDB.close();
       // sleep before start
       await sleep(SHUTDOWN_GRACE_PERIOD_MS);
       const snapshotResult = await this.snapshotSync(true);
       if (snapshotResult.isErr()) {
         log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to diff sync");
         catchupSyncSuccess = false;
+      } else {
+        catchupSyncSuccess = snapshotResult.value;
       }
+      log.info("snapshot sync complete, restarting sync engine");
+      await this.rocksDB.open();
       await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
     }
 
+    log.info({ catchupSyncSuccess }, "catchup sync using snapshot complete");
     return ok(catchupSyncSuccess);
   }
   async snapshotSync(overwrite?: boolean): HubAsyncResult<boolean> {
@@ -966,13 +975,21 @@ export class Hub implements HubInterface {
               .on("error", handleError)
               // biome-ignore lint/suspicious/noExplicitAny: <explanation>
               .on("data", (chunk: any) => {
+                const largeChunk = 1024 * 1024 * 1024;
+                let chunk_count = 0;
+
                 downloadedSize += chunk.length;
                 progressBar?.update(downloadedSize);
 
-                if (downloadedSize - lastDownloadedSize > 1024 * 1024 * 1024) {
+                if (downloadedSize - lastDownloadedSize > largeChunk) {
                   log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
                   lastDownloadedSize = downloadedSize;
                 }
+
+                if (chunk_count % 20 === 0) {
+                  log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
+                }
+                ++chunk_count;
               })
               .pipe(gunzip)
               .on("error", handleError)

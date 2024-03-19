@@ -89,12 +89,19 @@ export class StorageCache {
     this._earliestTsHashes = new Map();
 
     // Start prepopulating the cache in the background
-    this.prepopulateMessageCounts();
+    if (this._db.status === "open") {
+      this.prepopulateMessageCounts();
+    }
 
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
   }
 
   async prepopulateMessageCounts(): Promise<void> {
+    if (this._db.status !== "open") {
+      log.error("cannot prepopulate message counts, db is not open");
+      return;
+    }
+
     let prevFid = 0;
     let prevPostfix = 0;
     let totalFids = 0;
@@ -104,6 +111,11 @@ export class StorageCache {
 
     const prefix = Buffer.from([RootPrefix.User]);
     await this._db.forEachIteratorByPrefix(prefix, async (key) => {
+      if (this._db.status !== "open") {
+        log.error("cannot iterate by prefix, db is not open");
+        return;
+      }
+
       const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
       if (postfix < UserMessagePostfixMax) {
         const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
