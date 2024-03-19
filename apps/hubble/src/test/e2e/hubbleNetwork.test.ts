@@ -1,6 +1,6 @@
-import { Factories, FarcasterNetwork, Message, bytesToHexString } from "@farcaster/hub-nodejs";
-import { deployStorageRegistry, testClient } from "../utils.js";
-import { Hub, HubOptions, randomDbName } from "../../hubble.js";
+import { bytesToHexString, Factories, FarcasterNetwork, Message } from "@farcaster/hub-nodejs";
+import { deployStorageRegistry } from "../utils.js";
+import { Hub, HubOptions, HubShutdownReason, randomDbName } from "../../hubble.js";
 import { localHttpUrl } from "../constants.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { DB_DIRECTORY } from "../../storage/db/rocksdb.js";
@@ -132,8 +132,8 @@ describe("hubble gossip and sync tests", () => {
         const result2 = await hub2.engine.getCast(fid, castAdd2.hash);
         expect(result2.isOk()).toBeTruthy();
       } finally {
-        await hub1?.stop();
-        await hub2?.stop();
+        await hub1?.stop(HubShutdownReason.SELF_TERMINATED);
+        await hub2?.stop(HubShutdownReason.SELF_TERMINATED);
       }
     },
     100 * TEST_TIMEOUT_SHORT,
