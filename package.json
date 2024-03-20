@@ -41,7 +41,8 @@
     "typescript": "^5.0.2"
   },
   "lint-staged": {
-    "*.ts": ["biome check"]
+    "*.ts": ["biome check"],
+    "*.rs": ["rustfmt --check"]
   },
   "dependencies": {
     "semver": "^7.5.4"
