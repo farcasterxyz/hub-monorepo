@@ -1,28 +1,23 @@
 use std::{borrow::Borrow, convert::TryInto, sync::Arc};
+
+use crate::db::{RocksDB, RocksDbTransactionBatch};
+use crate::protos;
+use crate::protos::link_body::Target;
+use crate::protos::message_data::Body;
+use crate::protos::{message_data, LinkBody, Message, MessageData, MessageType};
+use crate::store::{
+    encode_messages_to_js_object, get_page_options, get_store, hub_error_to_js_throw, make_fid_key,
+    make_user_key, message, HubError, IntoI32, IntoU8, MessagesPage, PageOptions, RootPrefix,
+    Store, StoreDef, StoreEventHandler, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
+};
+use neon::prelude::{JsPromise, JsString};
+use neon::types::buffer::TypedArray;
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
     types::{JsBox, JsNumber},
 };
-use neon::prelude::{JsPromise, JsString};
-use neon::types::buffer::TypedArray;
 use prost::Message as _;
-use crate::db::{RocksDB, RocksDbTransactionBatch};
-use crate::protos;
-use crate::protos::{LinkBody, Message, message_data, MessageData, MessageType};
-use crate::protos::link_body::Target;
-use crate::protos::message_data::Body;
-use crate::store::{
-    encode_messages_to_js_object, get_page_options, get_store,
-    hub_error_to_js_throw, HubError,
-    IntoI32, IntoU8,
-    make_fid_key, make_user_key, message, MessagesPage,
-    PAGE_SIZE_MAX, PageOptions,
-    RootPrefix,
-    Store, StoreDef, StoreEventHandler,
-    TS_HASH_LENGTH,
-    UserPostfix
-};
 
 /**
  * LinkStore persists Link Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -68,7 +63,7 @@ impl LinkStore {
         Store::new_with_store_def(
             db,
             store_event_handler,
-            Box::new(LinkStore{prune_size_limit})
+            Box::new(LinkStore { prune_size_limit }),
         )
     }
 
@@ -110,7 +105,7 @@ impl LinkStore {
             data: Some(MessageData {
                 fid: fid as u64,
                 r#type: MessageType::LinkAdd.into(),
-                body: Some(message_data::Body::LinkBody(LinkBody{
+                body: Some(message_data::Body::LinkBody(LinkBody {
                     r#type,
                     target,
                     ..Default::default()
@@ -133,30 +128,25 @@ impl LinkStore {
             fid,
             page_options,
             Some(|message: &Message| {
-                message.data.as_ref().is_some_and(|data| {
-                    match data.body.as_ref() {
+                message
+                    .data
+                    .as_ref()
+                    .is_some_and(|data| match data.body.as_ref() {
                         Some(message_data::Body::LinkBody(body)) => {
                             r#type.is_empty() || body.r#type == r#type
                         }
-                        _ => {
-                            false
-                        }
-                    }
-                })
-            })
+                        _ => false,
+                    })
+            }),
         )
     }
-
 
     pub fn get_all_link_messages_by_fid(
         store: &Store,
         fid: u32,
-        page_options: &PageOptions
+        page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_all_messages_by_fid(
-            fid,
-            page_options
-        )
+        store.get_all_messages_by_fid(fid, page_options)
     }
 
     pub fn get_links_by_target(
@@ -177,7 +167,8 @@ impl LinkStore {
                     let ts_hash_offset = prefix.len();
                     let fid_offset: usize = ts_hash_offset + TS_HASH_LENGTH;
 
-                    let fid = u32::from_be_bytes(key[fid_offset..fid_offset + 4].try_into().unwrap());
+                    let fid =
+                        u32::from_be_bytes(key[fid_offset..fid_offset + 4].try_into().unwrap());
                     let ts_hash = key[ts_hash_offset..ts_hash_offset + TS_HASH_LENGTH]
                         .try_into()
                         .unwrap();
@@ -204,12 +195,10 @@ impl LinkStore {
             None
         };
 
-        Ok(
-            MessagesPage{
-                messages,
-                next_page_token,
-            }
-        )
+        Ok(MessagesPage {
+            messages,
+            next_page_token,
+        })
     }
 
     /// Finds a LinkRemove Message by checking the Remove Set index.
@@ -224,13 +213,13 @@ impl LinkStore {
         store: &Store,
         fid: u32,
         r#type: String,
-        target: Option<Target>
+        target: Option<Target>,
     ) -> Result<Option<Message>, HubError> {
         let partial_message = protos::Message {
             data: Some(MessageData {
                 fid: fid as u64,
                 r#type: MessageType::LinkRemove.into(),
-                body: Some(message_data::Body::LinkBody(LinkBody{
+                body: Some(message_data::Body::LinkBody(LinkBody {
                     r#type,
                     target,
                     ..Default::default()
@@ -252,17 +241,27 @@ impl LinkStore {
     /// * `link_body` - body of link that contains type of link created and target ID of the object
     ///                 being reacted to
     fn link_add_key(fid: u32, link_body: &LinkBody) -> Result<Vec<u8>, HubError> {
-        if link_body.target.is_some() && (link_body.r#type.is_empty() || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure("targetId provided without type"));
+        if link_body.target.is_some()
+            && (link_body.r#type.is_empty() || link_body.r#type.len() == 0)
+        {
+            return Err(HubError::validation_failure(
+                "targetId provided without type",
+            ));
         }
 
         if !link_body.r#type.is_empty()
-            && (link_body.r#type.len() > Self::LINK_TYPE_BYTE_SIZE || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure("link type invalid - non-empty link type found with invalid length"));
+            && (link_body.r#type.len() > Self::LINK_TYPE_BYTE_SIZE || link_body.r#type.len() == 0)
+        {
+            return Err(HubError::validation_failure(
+                "link type invalid - non-empty link type found with invalid length",
+            ));
         }
 
         let mut key = Vec::with_capacity(
-            Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE + Self::TARGET_ID_BYTE_SIZE
+            Self::ROOT_PREFIXED_FID_BYTE_SIZE
+                + Self::POSTFIX_BYTE_SIZE
+                + Self::LINK_TYPE_BYTE_SIZE
+                + Self::TARGET_ID_BYTE_SIZE,
         );
 
         // TODO: does the fid and rtype need to be padded? Is it okay not the check their lengths?
@@ -279,7 +278,6 @@ impl LinkStore {
         Ok(key)
     }
 
-
     /// Generates a unique key used to store a LinkRemove message key in the LinksRemove Set index.
     /// Returns RocksDB key of the form <RootPrefix>:<fid>:<UserPostfix>:<targetKey?>:<type?>
     ///
@@ -288,17 +286,27 @@ impl LinkStore {
     /// * `link_body` - body of link that contains type of link created and target ID of the object
     ///                 being reacted to
     fn link_remove_key(fid: u32, link_body: &LinkBody) -> Result<Vec<u8>, HubError> {
-        if link_body.target.is_some() && (link_body.r#type.is_empty() || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure("targetID provided without type"));
+        if link_body.target.is_some()
+            && (link_body.r#type.is_empty() || link_body.r#type.len() == 0)
+        {
+            return Err(HubError::validation_failure(
+                "targetID provided without type",
+            ));
         }
 
         if !link_body.r#type.is_empty()
-            && (link_body.r#type.len() > Self::LINK_TYPE_BYTE_SIZE || link_body.r#type.len() == 0) {
-            return Err(HubError::validation_failure("link type invalid - non-empty link type found with invalid length"));
+            && (link_body.r#type.len() > Self::LINK_TYPE_BYTE_SIZE || link_body.r#type.len() == 0)
+        {
+            return Err(HubError::validation_failure(
+                "link type invalid - non-empty link type found with invalid length",
+            ));
         }
 
         let mut key = Vec::with_capacity(
-            Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE + Self::TARGET_ID_BYTE_SIZE
+            Self::ROOT_PREFIXED_FID_BYTE_SIZE
+                + Self::POSTFIX_BYTE_SIZE
+                + Self::LINK_TYPE_BYTE_SIZE
+                + Self::TARGET_ID_BYTE_SIZE,
         );
 
         // TODO: does the fid and rtype need to be padded? Is it okay not the check their lengths?
@@ -328,15 +336,22 @@ impl LinkStore {
         ts_hash: Option<&[u8; TS_HASH_LENGTH]>,
     ) -> Result<Vec<u8>, HubError> {
         if fid != 0 && (ts_hash.is_none() || ts_hash.is_some_and(|tsh| tsh.len() == 0)) {
-            return Err(HubError::validation_failure("fid provided without timestamp hash"));
+            return Err(HubError::validation_failure(
+                "fid provided without timestamp hash",
+            ));
         }
 
         if ts_hash.is_some() && fid == 0 {
-            return Err(HubError::validation_failure("timestamp hash provided without fid"));
+            return Err(HubError::validation_failure(
+                "timestamp hash provided without fid",
+            ));
         }
 
         let mut key = Vec::with_capacity(
-            Self::ROOT_PREFIX_BYTE_SIZE + Self::TARGET_ID_BYTE_SIZE + TS_HASH_LENGTH + Self::FID_BYTE_SIZE
+            Self::ROOT_PREFIX_BYTE_SIZE
+                + Self::TARGET_ID_BYTE_SIZE
+                + TS_HASH_LENGTH
+                + Self::FID_BYTE_SIZE,
         );
 
         key.push(RootPrefix::LinksByTarget as u8);
@@ -372,24 +387,27 @@ impl LinkStore {
             .as_ref()
             .ok_or(HubError::invalid_parameter("invalid message data"))
             .and_then(|data| {
-                data.body.as_ref().ok_or(HubError::invalid_parameter("invalid message data body"))
+                data.body
+                    .as_ref()
+                    .ok_or(HubError::invalid_parameter("invalid message data body"))
                     .and_then(|body| match body {
                         Body::LinkBody(link_body) => {
                             return link_body
-                                .target.as_ref().ok_or(HubError::invalid_parameter("target ID not specified"))
+                                .target
+                                .as_ref()
+                                .ok_or(HubError::invalid_parameter("target ID not specified"))
                                 .and_then(|target| {
                                     LinkStore::links_by_target_key(
                                         target,
                                         data.fid as u32,
                                         Some(ts_hash),
-                                    ).and_then(|target_key| {
+                                    )
+                                    .and_then(|target_key| {
                                         Ok((target_key, link_body.r#type.as_bytes().to_vec()))
                                     })
                                 });
                         }
-                        _ => {
-                            Err(HubError::invalid_parameter("link body not specified"))
-                        }
+                        _ => Err(HubError::invalid_parameter("link body not specified")),
                     })
             })
     }
@@ -436,28 +454,26 @@ impl LinkStore {
         Ok(promise)
     }
 
-
     pub fn get_link_removes_by_fid(
         store: &Store,
         fid: u32,
         r#type: String,
-        page_options: &PageOptions
+        page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
         store.get_removes_by_fid(
             fid,
             page_options,
             Some(|message: &Message| {
-                message.data.as_ref().is_some_and(|data| {
-                    match data.body.as_ref() {
+                message
+                    .data
+                    .as_ref()
+                    .is_some_and(|data| match data.body.as_ref() {
                         Some(message_data::Body::LinkBody(body)) => {
                             r#type.is_empty() || body.r#type == r#type
                         }
-                        _ => {
-                            false
-                        }
-                    }
-                })
-            })
+                        _ => false,
+                    })
+            }),
         )
     }
 
@@ -475,7 +491,9 @@ impl LinkStore {
             return cx.throw_error("target fid is required");
         }
 
-        let target = Some(crate::protos::link_body::Target::TargetFid(target_fid as u64));
+        let target = Some(crate::protos::link_body::Target::TargetFid(
+            target_fid as u64,
+        ));
 
         let result = match Self::get_link_add(&store, fid, link_type, target) {
             Ok(Some(message)) => message.encode_to_vec(),
@@ -511,7 +529,9 @@ impl LinkStore {
             return cx.throw_error("target_fid is required");
         }
 
-        let target = Some(crate::protos::link_body::Target::TargetFid(target_fid as u64));
+        let target = Some(crate::protos::link_body::Target::TargetFid(
+            target_fid as u64,
+        ));
 
         let result = match Self::get_link_remove(&store, fid, link_type, target) {
             Ok(Some(message)) => message.encode_to_vec(),
@@ -532,9 +552,7 @@ impl LinkStore {
         Ok(promise)
     }
 
-    pub fn js_get_links_by_target(
-        mut cx: FunctionContext
-    ) -> JsResult<JsPromise> {
+    pub fn js_get_links_by_target(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let store = get_store(&mut cx)?;
 
         let target_fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
@@ -562,9 +580,7 @@ impl LinkStore {
         Ok(promise)
     }
 
-    pub fn js_get_all_link_messages_by_fid(
-        mut cx: FunctionContext
-    ) -> JsResult<JsPromise> {
+    pub fn js_get_all_link_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let store = get_store(&mut cx)?;
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
@@ -588,7 +604,6 @@ impl LinkStore {
 
         Ok(promise)
     }
-
 }
 
 impl StoreDef for LinkStore {
@@ -608,21 +623,24 @@ impl StoreDef for LinkStore {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
             && message.data.as_ref().is_some_and(|data| {
-            data.r#type == MessageType::LinkAdd.into_i32() &&
-                data.body.is_some()
-        })
+                data.r#type == MessageType::LinkAdd.into_i32() && data.body.is_some()
+            })
     }
 
     fn is_remove_type(&self, message: &Message) -> bool {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
-        && message.data.is_some()
+            && message.data.is_some()
             && message.data.as_ref().is_some_and(|data| {
-            data.r#type == MessageType::LinkRemove.into_i32() &&
-                data.body.is_some()
-        })
+                data.r#type == MessageType::LinkRemove.into_i32() && data.body.is_some()
+            })
     }
 
-    fn build_secondary_indices(&self, txn: &mut RocksDbTransactionBatch, ts_hash: &[u8; TS_HASH_LENGTH], message: &Message) -> Result<(), HubError> {
+    fn build_secondary_indices(
+        &self,
+        txn: &mut RocksDbTransactionBatch,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+        message: &Message,
+    ) -> Result<(), HubError> {
         let (by_target_key, rtype) = self.secondary_index_key(ts_hash, message)?;
 
         txn.put(by_target_key, rtype);
@@ -630,7 +648,12 @@ impl StoreDef for LinkStore {
         Ok(())
     }
 
-    fn delete_secondary_indices(&self, txn: &mut RocksDbTransactionBatch, ts_hash: &[u8; TS_HASH_LENGTH], message: &Message) -> Result<(), HubError> {
+    fn delete_secondary_indices(
+        &self,
+        txn: &mut RocksDbTransactionBatch,
+        ts_hash: &[u8; TS_HASH_LENGTH],
+        message: &Message,
+    ) -> Result<(), HubError> {
         let (by_target_key, _) = self.secondary_index_key(ts_hash, message)?;
 
         txn.delete(by_target_key);
@@ -643,7 +666,11 @@ impl StoreDef for LinkStore {
         Ok(())
     }
 
-    fn find_merge_remove_conflicts(&self, _db: &RocksDB, _message: &Message) -> Result<(), HubError> {
+    fn find_merge_remove_conflicts(
+        &self,
+        _db: &RocksDB,
+        _message: &Message,
+    ) -> Result<(), HubError> {
         // For links, there will be no additional conflict logic
         Ok(())
     }
@@ -654,12 +681,12 @@ impl StoreDef for LinkStore {
             .as_ref()
             .ok_or(HubError::invalid_parameter("invalid message data"))
             .and_then(|data| {
-                data.body.as_ref().ok_or(HubError::invalid_parameter("invalid message data body"))
+                data.body
+                    .as_ref()
+                    .ok_or(HubError::invalid_parameter("invalid message data body"))
                     .and_then(|body_option| match body_option {
-                        Body::LinkBody(link_body) => {
-                            Self::link_add_key(data.fid as u32, link_body)
-                        },
-                        _ => Err(HubError::invalid_parameter("link body not specified"))
+                        Body::LinkBody(link_body) => Self::link_add_key(data.fid as u32, link_body),
+                        _ => Err(HubError::invalid_parameter("link body not specified")),
                     })
             })
     }
@@ -670,12 +697,14 @@ impl StoreDef for LinkStore {
             .as_ref()
             .ok_or(HubError::invalid_parameter("invalid message data"))
             .and_then(|data| {
-                data.body.as_ref().ok_or(HubError::invalid_parameter("invalid message data body"))
+                data.body
+                    .as_ref()
+                    .ok_or(HubError::invalid_parameter("invalid message data body"))
                     .and_then(|body_option| match body_option {
                         Body::LinkBody(link_body) => {
                             Self::link_remove_key(data.fid as u32, link_body)
-                        },
-                        _ => Err(HubError::invalid_parameter("link body not specified"))
+                        }
+                        _ => Err(HubError::invalid_parameter("link body not specified")),
                     })
             })
     }
