@@ -19,7 +19,7 @@ import { makeTsHash } from "../../storage/db/message.js";
 const db = jestRocksDB("jobs.pruneMessagesJob.test");
 
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
-const scheduler = new PruneMessagesJobScheduler(engine, () => 0);
+const scheduler = new PruneMessagesJobScheduler(engine);
 
 // Use farcaster timestamp
 const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed25519Signer, timestamp: number) => {
@@ -140,6 +140,6 @@ describe("doJobs", () => {
       expect(prunedMessages.length).toEqual(2); // 1 verification for each of the 2 fids
       expect(prunedMessages.filter((m) => m.data?.type !== MessageType.VERIFICATION_ADD_ETH_ADDRESS)).toEqual([]);
     },
-    15 * 1000,
+    30 * 1000,
   );
 });

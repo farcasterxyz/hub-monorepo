@@ -319,6 +319,13 @@ export const randomDbName = () => {
   return `rocksdb.tmp.${(new Date().getUTCDate() * Math.random()).toString(36).substring(2)}`;
 };
 
+export enum HubShutdownReason {
+  SELF_TERMINATED = 0,
+  SIG_TERM = 1,
+  EXCEPTION = 2,
+  UNKNOWN = 3,
+}
+
 const log = logger.child({
   component: "Hub",
 });
@@ -473,7 +480,7 @@ export class Hub implements HubInterface {
             console.log(prettyPrintTable(profile.resultBytesToPrettyPrintObject()));
           }
 
-          await this.stop();
+          await this.stop(HubShutdownReason.SELF_TERMINATED);
           process.exit(0);
         }
       });
@@ -492,7 +499,7 @@ export class Hub implements HubInterface {
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
 
     // Setup job schedulers/workers
-    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine, () => this.syncEngine.syncTrieQSize);
+    this.pruneMessagesJobScheduler = new PruneMessagesJobScheduler(this.engine);
     this.periodSyncJobScheduler = new PeriodicSyncJobScheduler(this, this.syncEngine);
     this.pruneEventsJobScheduler = new PruneEventsJobScheduler(this.engine);
     this.checkFarcasterVersionJobScheduler = new CheckFarcasterVersionJobScheduler(this);
@@ -770,7 +777,7 @@ export class Hub implements HubInterface {
     // When we startup, we write into the DB that we have not yet cleanly shutdown. And when we do
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
     // This way, when starting up, we'll know if the previous shutdown was clean or not.
-    await this.writeHubCleanShutdown(false);
+    await this.writeHubCleanShutdown(false, HubShutdownReason.UNKNOWN);
   }
 
   /** Apply the new the network config. Will return true if the Hub should exit */
@@ -1109,12 +1116,12 @@ export class Hub implements HubInterface {
     return ok(content);
   }
 
-  async teardown() {
-    await this.stop();
+  async teardown(reason: HubShutdownReason) {
+    await this.stop(reason);
   }
 
   /** Stop the GossipNode and RPC Server */
-  async stop(terminateGossipWorker = true) {
+  async stop(reason: HubShutdownReason, terminateGossipWorker = true) {
     log.info("Stopping Hubble...");
     clearInterval(this.contactTimer);
 
@@ -1149,7 +1156,7 @@ export class Hub implements HubInterface {
 
     // Close the DB, which will flush all data to disk. Just before we close, though, write that
     // we've cleanly shutdown.
-    await this.writeHubCleanShutdown(true);
+    await this.writeHubCleanShutdown(true, reason);
     await this.rocksDB.close();
 
     log.info("Hubble stopped, exiting normally");
@@ -1677,19 +1684,37 @@ export class Hub implements HubInterface {
     return mergeResult;
   }
 
-  async writeHubCleanShutdown(clean: boolean): HubAsyncResult<void> {
+  // Create an enum for hub shutdown reasons
+
+  async writeHubCleanShutdown(clean: boolean, reason: HubShutdownReason): HubAsyncResult<void> {
     const txn = this.rocksDB.transaction();
-    const value = clean ? Buffer.from([1]) : Buffer.from([0]);
+    const value = clean ? Buffer.from([1, reason]) : Buffer.from([0, reason]);
     txn.put(Buffer.from([RootPrefix.HubCleanShutdown]), value);
 
     return ResultAsync.fromPromise(this.rocksDB.commit(txn), (e) => e as HubError);
   }
 
   async wasHubCleanShutdown(): HubAsyncResult<boolean> {
-    return ResultAsync.fromPromise(
+    const shutdownResult = await ResultAsync.fromPromise(
       this.rocksDB.get(Buffer.from([RootPrefix.HubCleanShutdown])),
       (e) => e as HubError,
-    ).map((value) => value?.[0] === 1);
+    );
+    if (shutdownResult.isErr()) {
+      return err(shutdownResult.error);
+    }
+    const shutdownReason = shutdownResult.value[1] ?? -1;
+    const cleanShutdown = shutdownResult.value[0] === 1;
+    // Anything other than HubShutdownReason.SELF_TERMINATED or SIG_TERM is considered unexpected
+    const unexpected = shutdownReason > 1;
+    const tags: { [key: string]: string } = {
+      reason: shutdownReason.toString(),
+      clean: cleanShutdown.toString(),
+      unexpected: unexpected.toString(),
+    };
+    statsd().increment("hub.restart", 1, tags);
+    logger.info({ clean: cleanShutdown, reason: shutdownReason, unexpected }, "Hub restarted");
+
+    return ok(cleanShutdown);
   }
 
   async getDbNetwork(): HubAsyncResult<FarcasterNetwork | undefined> {

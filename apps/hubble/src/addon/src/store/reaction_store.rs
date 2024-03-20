@@ -1,4 +1,10 @@
-use super::{hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message, store::{Store, StoreDef}, utils::{encode_messages_to_js_object, get_page_options, get_store}, HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH, IntoU8};
+use super::{
+    hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
+    store::{Store, StoreDef},
+    utils::{encode_messages_to_js_object, get_page_options, get_store},
+    HubError, IntoU8, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix,
+    PAGE_SIZE_MAX, TS_HASH_LENGTH,
+};
 use crate::protos::message_data;
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},

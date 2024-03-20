@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { Result, ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
 import { exit } from "process";
-import { APP_VERSION, FARCASTER_VERSION, Hub, HubOptions, S3_REGION } from "./hubble.js";
+import { APP_VERSION, FARCASTER_VERSION, Hub, HubOptions, HubShutdownReason, S3_REGION } from "./hubble.js";
 import { logger } from "./utils/logger.js";
 import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo, parseAddress } from "./utils/p2p.js";
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
@@ -163,10 +163,28 @@ app
       logger.flush();
 
       logger.warn(`signal '${signalName}' received`);
+      let shutdownReason: HubShutdownReason;
+      switch (signalName) {
+        case "SIGTERM":
+          shutdownReason = HubShutdownReason.SIG_TERM;
+          break;
+        case "uncaughtException":
+          shutdownReason = HubShutdownReason.EXCEPTION;
+          break;
+        case "unhandledRejection":
+          shutdownReason = HubShutdownReason.EXCEPTION;
+          break;
+        case "S3SnapshotUpload":
+          shutdownReason = HubShutdownReason.SELF_TERMINATED;
+          break;
+        default:
+          shutdownReason = HubShutdownReason.UNKNOWN;
+      }
+
       if (!isExiting) {
         isExiting = true;
         hub
-          .teardown()
+          .teardown(shutdownReason)
           .then(() => {
             logger.info("Hub stopped gracefully");
             process.exit(0);
@@ -636,7 +654,7 @@ app
       logger.fatal(startResult.error);
       logger.fatal({ reason: "Hub Startup failed" }, "shutting down hub");
       try {
-        await hub.teardown();
+        await hub.teardown(HubShutdownReason.EXCEPTION);
       } finally {
         logger.flush();
         process.exit(1);
