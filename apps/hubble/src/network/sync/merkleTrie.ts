@@ -207,7 +207,9 @@ class MerkleTrie {
       return err(new HubError("unavailable", "RocksDB not provided"));
     }
 
+    let wasOpen = true;
     if (db.status !== "open") {
+      wasOpen = false;
       await db.open();
     }
 
@@ -218,7 +220,11 @@ class MerkleTrie {
       }
 
       const root = TrieNode.deserialize(rootBytes);
-      db.close();
+      // If db was open prior to this method call, leave it open after the method call.
+      // Otherwise, close the db.
+      if (!wasOpen) {
+        db.close();
+      }
       return ok(root.items);
     }
 
