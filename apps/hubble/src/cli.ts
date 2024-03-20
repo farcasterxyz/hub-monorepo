@@ -644,9 +644,10 @@ app
 const s3SnapshotURL = new Command("snapshot-url")
   .description("Print latest snapshot URL and metadata from S3")
   .option("-n --network <network>", "ID of the Farcaster Network (default: 1 (mainnet))", parseNetwork)
+  .option("-b --s3-snapshot-bucket <bucket>", "The S3 bucket that holds snapshot(s)")
   .action(async (options) => {
     const network = farcasterNetworkFromJSON(options.network ?? FarcasterNetwork.MAINNET);
-    const response = await snapshotURL(network, 0);
+    const response = await snapshotURL(network, 0, options.s3SnapshotBucket);
     if (response.isErr()) {
       console.error("error fetching snapshot data", response.error);
       exit(1);
