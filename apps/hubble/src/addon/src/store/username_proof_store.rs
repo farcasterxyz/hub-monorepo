@@ -97,13 +97,6 @@ impl StoreDef for UsernameProofStoreDef {
         }
 
         let data = message.data.as_ref().unwrap();
-        if data.body.is_none() {
-            return Err(HubError {
-                code: "bad_request.validation_failure".to_string(),
-                message: "Message body is missing".to_string(),
-            });
-        }
-
         if let Some(Body::UsernameProofBody(body)) = &data.body {
             if body.name.len() == 0 {
                 return Err(HubError {
@@ -121,7 +114,7 @@ impl StoreDef for UsernameProofStoreDef {
         } else {
             Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
-                message: "Message body is missing".to_string(),
+                message: "Message body is missing or incorrect".to_string(),
             })
         }
     }
@@ -140,13 +133,6 @@ impl StoreDef for UsernameProofStoreDef {
         }
 
         let data = message.data.as_ref().unwrap();
-        if data.body.is_none() {
-            return Err(HubError {
-                code: "bad_request.validation_failure".to_string(),
-                message: "Message body is missing".to_string(),
-            });
-        }
-
         if let Some(Body::UsernameProofBody(body)) = &data.body {
             if body.name.len() == 0 {
                 return Err(HubError {
@@ -161,7 +147,7 @@ impl StoreDef for UsernameProofStoreDef {
         } else {
             Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
-                message: "Message body is missing".to_string(),
+                message: "Message data body is missing or incorrect".to_string(),
             })
         }
     }
@@ -180,19 +166,12 @@ impl StoreDef for UsernameProofStoreDef {
         }
 
         let data = message.data.as_ref().unwrap();
-        if data.body.is_none() {
-            return Err(HubError {
-                code: "bad_request.validation_failure".to_string(),
-                message: "Message body is missing".to_string(),
-            });
-        }
-
         let name = match &data.body {
             Some(Body::UsernameProofBody(body)) => &body.name,
             _ => {
                 return Err(HubError {
                     code: "bad_request.validation_failure".to_string(),
-                    message: "Message body is missing".to_string(),
+                    message: "Message data body is missing".to_string(),
                 })
             }
         };

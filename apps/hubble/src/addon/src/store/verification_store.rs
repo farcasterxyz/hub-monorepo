@@ -1,5 +1,6 @@
 use super::{
-    get_message, hub_error_to_js_throw, make_fid_key, make_ts_hash, make_user_key, read_fid_key,
+    get_message, hub_error_to_js_throw, make_fid_key, make_ts_hash, make_user_key, message_decode,
+    read_fid_key,
     store::{Store, StoreDef},
     utils::{self, encode_messages_to_js_object, get_page_options, get_store},
     HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, FID_BYTES,
@@ -444,7 +445,7 @@ impl VerificationStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_removes_by_fid(fid, page_options, Some(|message: &Message| true))
+        store.get_removes_by_fid(fid, page_options, Some(|_message: &Message| true))
     }
 
     pub fn js_get_verification_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -482,7 +483,7 @@ impl VerificationStore {
                         return Ok(false); // Ignore non-verification messages
                     }
 
-                    let message = match Message::decode(value) {
+                    let message = match message_decode(value) {
                         Ok(message) => message,
                         Err(_) => return Ok(false), // Ignore invalid messages
                     };
