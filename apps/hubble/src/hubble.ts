@@ -86,7 +86,7 @@ import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 import { CONSERVATIVE_HUB_MESSAGES_PER_SECOND, DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
-import { MerkleTrie } from "network/sync/merkleTrie.js";
+import { MerkleTrie } from "./network/sync/merkleTrie.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -677,14 +677,7 @@ export class Hub implements HubInterface {
       }
     }
 
-    // Start the CRDT engine
-    await this.engine.start();
-
-    // Start the sync engine
-    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
-
-    // Check if we need to catchup sync using snapshot - this needs to happen after sync engine
-    // starts because db and trie statistics are available only after sync engine starts
+    // Check if we need to catchup sync using snapshot
     if (this.options.catchupSyncWithSnapshot) {
       const catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
       if (catchupSyncResult.isErr()) {
@@ -693,10 +686,16 @@ export class Hub implements HubInterface {
         });
       } else if (catchupSyncResult.value) {
         log.info("catchup sync using snapshot successful");
-      } else if (!catchupSyncResult.value) {
-        log.error("failed to catchup sync using snapshot");
+      } else {
+        log.error("catchup sync skipped");
       }
     }
+
+    // Start the CRDT engine
+    await this.engine.start();
+
+    // Start the sync engine
+    await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
@@ -812,12 +811,10 @@ export class Hub implements HubInterface {
     if (!this.syncEngine) {
       return err(new HubError("unavailable", "sync engine not available"));
     }
-    const dbStats = await this.syncEngine.getDbStats();
     const limit = this.options.catchupSyncSnapshotMessageLimit ?? DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT;
     const snapURL = snapshotDirectoryPath(this.options.network, 0);
     const metadata = await fetchSnapshotMetadata(snapURL);
 
-    let shouldCatchupSync = false;
     if (metadata.isErr()) {
       log.error("failed to fetch snapshot metadata", {
         error: metadata.error,
@@ -826,10 +823,21 @@ export class Hub implements HubInterface {
       return err(new HubError("unavailable", `failed to fetch snapshot metadata - ${metadata.error.message}`));
     }
 
+    const itemCount = await MerkleTrie.numItems(this.syncEngine.trie);
+    if (itemCount.isErr()) {
+      log.error("failed to get merkle trie item count", {
+        error: itemCount.error,
+      });
+      return err(new HubError("unavailable", `failed to get merkle trie item count - ${itemCount.error.message}`));
+    }
+
+    const currentItemCount = itemCount.value;
+    let shouldCatchupSync = false;
     // compare current db statistics with latest snapshot metadata
     const snapshotMetadata: SnapshotMetadata = metadata.value;
+    let delta = -1;
     if (snapshotMetadata.numMessages) {
-      const delta = snapshotMetadata.numMessages - dbStats.numItems;
+      delta = snapshotMetadata.numMessages - currentItemCount;
       if (delta > limit) {
         log.info({ delta, limit }, "catchup sync using snapshot");
         shouldCatchupSync = true;
@@ -850,7 +858,11 @@ export class Hub implements HubInterface {
         // we use conservative estimates to determine if snapshot should be used
         const deltaMs = metadataTimeDeltaMs.value;
         const estimate_message_count = Math.floor(deltaMs / 1000) * CONSERVATIVE_HUB_MESSAGES_PER_SECOND;
-        const delta = Math.abs(estimate_message_count - dbStats.numItems);
+        delta = Math.abs(estimate_message_count - currentItemCount);
+        log.info(
+          { delta, estimate_message_count, currentItemCount },
+          "conservative catchup sync using snapshot estimate",
+        );
         if (delta > limit) {
           log.info({ delta, limit }, "catchup sync using snapshot");
           shouldCatchupSync = true;
@@ -858,31 +870,45 @@ export class Hub implements HubInterface {
       }
     }
 
-    let catchupSyncSuccess = true;
     if (shouldCatchupSync) {
       const SHUTDOWN_GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
       log.info(`beginning snapshot sync in ${SHUTDOWN_GRACE_PERIOD_MS.toString()}ms - THIS WILL RESET THE DATABASE`);
-      // this.rocksDB.clear();
-      await this.syncEngine.stop();
-      log.info("sync engine stopped");
-      await sleep(1000 * 30);
+      // We use the item count in the trie DB to determine if catchup sync is warranted.
+      // However, the entire RocksDB will be cleared and replaced with the downloaded snapshot.
+      if (this.rocksDB.status !== "open") {
+        log.error("rocksdb is not open, cannot perform catchup sync using snapshot");
+        return err(new HubError("unavailable", "rocksdb is not open"));
+      }
+      this.rocksDB.clear();
       this.rocksDB.close();
       // sleep before start
       await sleep(SHUTDOWN_GRACE_PERIOD_MS);
       const snapshotResult = await this.snapshotSync(true);
       if (snapshotResult.isErr()) {
         log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to diff sync");
-        catchupSyncSuccess = false;
-      } else {
-        catchupSyncSuccess = snapshotResult.value;
+        return err(new HubError("unavailable", `failed to sync snapshot - ${snapshotResult.error.message}`));
       }
-      log.info("snapshot sync complete, restarting sync engine");
+      log.info("snapshot sync complete, restarting rocksdb");
       await this.rocksDB.open();
-      await this.syncEngine.start(this.options.rebuildSyncTrie ?? false);
+      log.info(
+        {
+          delta,
+          limit,
+          snapshot_metadata: snapshotMetadata.numMessages,
+        },
+        "catchup sync using snapshot complete",
+      );
+      return ok(true);
+    } else {
+      log.info(
+        {
+          delta,
+          limit,
+        },
+        "catchup sync using snapshot not required",
+      );
+      return ok(false);
     }
-
-    log.info({ catchupSyncSuccess }, "catchup sync using snapshot complete");
-    return ok(catchupSyncSuccess);
   }
   async snapshotSync(overwrite?: boolean): HubAsyncResult<boolean> {
     return new Promise((resolve) => {
@@ -1780,7 +1806,7 @@ export class Hub implements HubInterface {
       partSize: 1000 * 1024 * 1024, // 1 GB
     });
 
-    const messageCount = await MerkleTrie.numItems(this.rocksDB);
+    const messageCount = await MerkleTrie.numItems(this.syncEngine.trie);
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }
