@@ -1,6 +1,6 @@
-import { Result, ResultAsync } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { Worker } from "worker_threads";
-import { HubError, Message, OnChainEvent, UserNameProof } from "@farcaster/hub-nodejs";
+import { HubAsyncResult, HubError, Message, OnChainEvent, UserNameProof } from "@farcaster/hub-nodejs";
 import { SyncId } from "./syncId.js";
 import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -198,8 +198,31 @@ class MerkleTrie {
     return result;
   }
 
-  public static numItems(): number {
-    return 0;
+  // This is a static method that can be called to get the number of items in the trie.
+  // NOTE: Calling this method requires exclusive open on RocksDB for given database path.
+  // If there are any other processes that operate on RocksDB while this is running, there may be
+  // inconsistencies or errors.
+  public static async numItems(db?: RocksDB): HubAsyncResult<number> {
+    if (!db) {
+      return err(new HubError("unavailable", "RocksDB not provided"));
+    }
+
+    if (db.status !== "open") {
+      await db.open();
+    }
+
+    if (db.status === "open") {
+      const rootBytes = await db.get(TrieNode.makePrimaryKey(new Uint8Array()));
+      if (!(rootBytes && rootBytes.length > 0)) {
+        return ok(0);
+      }
+
+      const root = TrieNode.deserialize(rootBytes);
+      db.close();
+      return ok(root.items);
+    }
+
+    return err(new HubError("unavailable", "Unable to open RocksDB"));
   }
 
   public async stop(): Promise<void> {
