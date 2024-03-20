@@ -826,8 +826,7 @@ export class Hub implements HubInterface {
   }
 
   // Attempt to catchup sync using snapshot.
-  // NOTE: Requires sync engine to have started before this method is called.
-  // This method will stop and start the sync engine if catchup sync using snapshot is required.
+  // NOTE: This method will clear the existing DB and replace it with the downloaded snapshot.
   async attemptCatchupSyncWithSnapshot(): HubAsyncResult<boolean> {
     if (!this.syncEngine) {
       return err(new HubError("unavailable", "sync engine not available"));
