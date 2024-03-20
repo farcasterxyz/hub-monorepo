@@ -39,7 +39,13 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { rsCreateTarBackup, rsCreateTarGzip, rsValidationMethods, rustErrorToHubError } from "./rustfunctions.js";
+import {
+  rsCreateTarBackup,
+  rsCreateTarGzip,
+  rsDbDestroy,
+  rsValidationMethods,
+  rustErrorToHubError,
+} from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -575,6 +581,23 @@ export class Hub implements HubInterface {
       }
     }
 
+    // Check if we need to catchup sync using snapshot
+    if (this.options.catchupSyncWithSnapshot) {
+      const catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
+      if (catchupSyncResult.isErr()) {
+        log.error("failed to catchup sync using snapshot", {
+          error: catchupSyncResult.error,
+        });
+        // There is a risk that an error occurred after the database was cleared but before the snapshot
+        // was downloaded. In this case, we should throw error and exit.
+        throw catchupSyncResult.error;
+      } else if (catchupSyncResult.value) {
+        log.info("catchup sync using snapshot successful");
+      } else {
+        log.error("catchup sync skipped");
+      }
+    }
+
     let dbResult: Result<void, Error>;
     let retryCount = 0;
 
@@ -608,8 +631,13 @@ export class Hub implements HubInterface {
     }
 
     if (this.options.resetDB === true) {
-      log.info("clearing rocksdb");
-      await this.rocksDB.clear();
+      // Sync using catchup sync clears the database, so we don't need to do it again.
+      if (this.options.catchupSyncWithSnapshot) {
+        log.info("skipping db reset as catchup sync with snapshot is enabled, which already clears the db");
+      } else {
+        log.info("clearing rocksdb");
+        this.rocksDB.clear();
+      }
     } else {
       // Read if the Hub was cleanly shutdown last time
       const cleanShutdownR = await this.wasHubCleanShutdown();
@@ -674,20 +702,6 @@ export class Hub implements HubInterface {
         if (shouldExit) {
           throw new HubError("unavailable", "Quitting due to network config");
         }
-      }
-    }
-
-    // Check if we need to catchup sync using snapshot
-    if (this.options.catchupSyncWithSnapshot) {
-      const catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
-      if (catchupSyncResult.isErr()) {
-        log.error("failed to catchup sync using snapshot", {
-          error: catchupSyncResult.error,
-        });
-      } else if (catchupSyncResult.value) {
-        log.info("catchup sync using snapshot successful");
-      } else {
-        log.error("catchup sync skipped");
       }
     }
 
@@ -858,7 +872,7 @@ export class Hub implements HubInterface {
         // we use conservative estimates to determine if snapshot should be used
         const deltaMs = metadataTimeDeltaMs.value;
         const estimate_message_count = Math.floor(deltaMs / 1000) * CONSERVATIVE_HUB_MESSAGES_PER_SECOND;
-        delta = Math.abs(estimate_message_count - currentItemCount);
+        delta = estimate_message_count - currentItemCount;
         log.info(
           { delta, estimate_message_count, currentItemCount },
           "conservative catchup sync using snapshot estimate",
@@ -871,30 +885,24 @@ export class Hub implements HubInterface {
     }
 
     if (shouldCatchupSync) {
-      const SHUTDOWN_GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
+      const SHUTDOWN_GRACE_PERIOD_MS = 10 * 1000; // 10 seconds
       log.info(`beginning snapshot sync in ${SHUTDOWN_GRACE_PERIOD_MS.toString()}ms - THIS WILL RESET THE DATABASE`);
-      // We use the item count in the trie DB to determine if catchup sync is warranted.
-      // However, the entire RocksDB will be cleared and replaced with the downloaded snapshot.
-      if (this.rocksDB.status !== "open") {
-        log.error("rocksdb is not open, cannot perform catchup sync using snapshot");
-        return err(new HubError("unavailable", "rocksdb is not open"));
-      }
-      this.rocksDB.clear();
-      this.rocksDB.close();
-      // sleep before start
+      // Sleep for a bit to allow user some time to cancel the operation before we purge the DB
       await sleep(SHUTDOWN_GRACE_PERIOD_MS);
+      // We use the item count in the trie RocksDB to determine if catchup sync is warranted.
+      // However, the messages RocksDB will be cleared and replaced with the downloaded snapshot which contains both DBs.
+      rsDbDestroy(this.rocksDB.rustDb);
       const snapshotResult = await this.snapshotSync(true);
       if (snapshotResult.isErr()) {
         log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to diff sync");
         return err(new HubError("unavailable", `failed to sync snapshot - ${snapshotResult.error.message}`));
       }
-      log.info("snapshot sync complete, restarting rocksdb");
-      await this.rocksDB.open();
       log.info(
         {
+          currentItemCount,
+          snapshot_metadata: snapshotMetadata.numMessages ?? -1,
           delta,
           limit,
-          snapshot_metadata: snapshotMetadata.numMessages,
         },
         "catchup sync using snapshot complete",
       );
@@ -902,6 +910,7 @@ export class Hub implements HubInterface {
     } else {
       log.info(
         {
+          currentItemCount,
           delta,
           limit,
         },
@@ -1006,7 +1015,6 @@ export class Hub implements HubInterface {
               // biome-ignore lint/suspicious/noExplicitAny: <explanation>
               .on("data", (chunk: any) => {
                 const largeChunk = 1024 * 1024 * 1024;
-                let chunk_count = 0;
 
                 downloadedSize += chunk.length;
                 progressBar?.update(downloadedSize);
@@ -1015,11 +1023,6 @@ export class Hub implements HubInterface {
                   log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
                   lastDownloadedSize = downloadedSize;
                 }
-
-                if (chunk_count % 20 === 0) {
-                  log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
-                }
-                ++chunk_count;
               })
               .pipe(gunzip)
               .on("error", handleError)

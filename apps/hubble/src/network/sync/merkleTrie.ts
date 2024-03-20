@@ -75,6 +75,7 @@ export type MerkleTrieInterfaceMethodGenericMessage = {
   };
 }[MerkleTrieInterfaceMethodNames];
 
+export const TrieDBPathPrefix = "trieDb";
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
  * two hubs on the network.
@@ -206,7 +207,7 @@ class MerkleTrie {
   public static async numItems(trie: MerkleTrie): HubAsyncResult<number> {
     // MerkleTrie has rocksdb instance, however the merkle trie worker
     // uses a separate instance under trieDb prefix which needs to be used here instead.
-    const db = new RocksDB(`${path.basename(trie._db.location)}/trieDb`);
+    const db = new RocksDB(`${path.basename(trie._db.location)}/${TrieDBPathPrefix}`);
     if (!db) {
       return err(new HubError("unavailable", "RocksDB not provided"));
     }
