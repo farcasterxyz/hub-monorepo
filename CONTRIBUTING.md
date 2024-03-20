@@ -261,6 +261,8 @@ Called Signer.verify with the correct parameter to ensure that older signature
 types would not pass verification in our Signer Sets
 ```
 
+Make sure that all your files are formatted correctly. We use `biome` to format TypeScript files and `rustfmt` for the Rust files. To auto-format all the files run `yarn lint` to format all source files.
+
 ### 3.5. Adding Changesets
 
 All PRs with meaningful changes should have a [changeset](https://github.com/changesets/changesets) which is a short
