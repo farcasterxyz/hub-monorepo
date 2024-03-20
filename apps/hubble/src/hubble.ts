@@ -86,6 +86,7 @@ import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 import { CONSERVATIVE_HUB_MESSAGES_PER_SECOND, DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
+import { MerkleTrie } from "network/sync/merkleTrie.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -548,6 +549,9 @@ export class Hub implements HubInterface {
       }
     }
 
+    // NOTE: uploadToS3 performs open and close operations on RocksDB instance with a call to MerkleTrie.numItems.
+    // This is necessary to determine the number of messages in the trie and avoid
+    // race conditions with other entities that may open the DB.
     if (this.options.enableSnapshotToS3) {
       // Back up the DB before opening it
       const tarResult = await ResultAsync.fromPromise(rsCreateTarBackup(this.rocksDB.rustDb), (e) => e as Error);
@@ -1776,16 +1780,17 @@ export class Hub implements HubInterface {
       partSize: 1000 * 1024 * 1024, // 1 GB
     });
 
-    const dbStats = await this.syncEngine.getDbStats();
+    const messageCount = await MerkleTrie.numItems(this.rocksDB);
+    if (messageCount.isErr()) {
+      return err(messageCount.error);
+    }
     // NOTE: The sync engine type `DbStats` does not match the type in packages/core used by SnapshotMetadata.
     //       As a result, avoid spread operator and instead pass in each attribute explicitly.
     const metadata: SnapshotMetadata = {
       key,
       timestamp: Date.now(),
       serverDate: new Date().toISOString(),
-      numMessages: dbStats.numItems,
-      numFidEvents: dbStats.numFids,
-      numFnameEvents: dbStats.numFnames,
+      numMessages: messageCount.value,
     };
 
     const latestJsonParams = {
