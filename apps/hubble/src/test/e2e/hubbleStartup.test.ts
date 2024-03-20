@@ -1,6 +1,6 @@
 import { Factories, FarcasterNetwork, bytesToHexString } from "@farcaster/hub-nodejs";
 import { deployStorageRegistry } from "../utils.js";
-import { Hub, HubOptions, randomDbName } from "../../hubble.js";
+import { Hub, HubOptions, HubShutdownReason, randomDbName } from "../../hubble.js";
 import { localHttpUrl } from "../constants.js";
 import { sleep } from "../../utils/crypto.js";
 import { DB_DIRECTORY } from "../../storage/db/rocksdb.js";
@@ -72,7 +72,7 @@ describe("hubble startup tests", () => {
         const hubState = await hub.getHubState();
         expect(hubState.isOk()).toBe(true);
       } finally {
-        await hub?.teardown();
+        await hub?.teardown(HubShutdownReason.SELF_TERMINATED);
       }
     },
     TEST_TIMEOUT_SHORT,

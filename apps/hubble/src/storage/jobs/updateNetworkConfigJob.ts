@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { Hub, HubInterface } from "../../hubble.js";
+import { Hub, HubShutdownReason } from "../../hubble.js";
 import { logger } from "../../utils/logger.js";
 import { HubAsyncResult } from "@farcaster/core";
 import { fetchNetworkConfig } from "../../network/utils/networkConfig.js";
@@ -51,7 +51,7 @@ export class UpdateNetworkConfigJobScheduler {
 
     if (shouldRestart) {
       log.info({}, "Network config restart signal");
-      await this._hub.stop(false);
+      await this._hub.stop(HubShutdownReason.SELF_TERMINATED, false);
       await this._hub.start();
     }
 

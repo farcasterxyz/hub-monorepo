@@ -1,7 +1,7 @@
 import { HubAsyncResult } from "@farcaster/hub-nodejs";
 import { ok } from "neverthrow";
 import cron from "node-cron";
-import { Hub } from "../../hubble.js";
+import { Hub, HubShutdownReason } from "../../hubble.js";
 import { logger } from "../../utils/logger.js";
 import { getMinFarcasterVersion } from "../../utils/versions.js";
 
@@ -42,7 +42,7 @@ export class CheckFarcasterVersionJobScheduler {
 
     if (minVersion.isErr()) {
       log.info({}, "Farcaster version expired, shutting down hub");
-      await this._hub.stop();
+      await this._hub.stop(HubShutdownReason.SELF_TERMINATED);
     }
 
     return ok(undefined);
