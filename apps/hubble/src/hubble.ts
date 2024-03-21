@@ -796,7 +796,7 @@ export class Hub implements HubInterface {
             let latestSnapshotKey;
             do {
               const response = await axios.get(
-                `https://download.farcaster.xyz/${this.getSnapshotFolder(prevVersion)}/latest.json`,
+                `https://${this.options.s3SnapshotBucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
               );
               const { key } = response.data;
 
@@ -819,7 +819,7 @@ export class Hub implements HubInterface {
               log.info({ latestSnapshotKey }, "found latest S3 snapshot");
             }
 
-            const snapshotUrl = `https://download.farcaster.xyz/${latestSnapshotKey}`;
+            const snapshotUrl = `https://${this.options.s3SnapshotBucket}/${latestSnapshotKey}`;
             const response2 = await axios.get(snapshotUrl, {
               responseType: "stream",
             });
@@ -1638,7 +1638,7 @@ export class Hub implements HubInterface {
     )}.tar.gz`;
 
     start = Date.now();
-    log.info({ filePath, key }, "Uploading snapshot to S3");
+    log.info({ filePath, key, bucket: this.options.s3SnapshotBucket }, "Uploading snapshot to S3");
 
     const fileStream = fs.createReadStream(filePath);
     fileStream.on("error", function (err) {
