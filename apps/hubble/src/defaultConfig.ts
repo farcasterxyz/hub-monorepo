@@ -11,10 +11,6 @@ const DEFAULT_HTTP_API_PORT = 2281;
 const DEFAULT_NETWORK = 3; // Farcaster Devnet
 export const DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT = 3_000_000;
 
-// Conservative estimate for number of messages per second that the hub processes.
-// This is used to estimate message deltas during catchup sync.
-export const CONSERVATIVE_HUB_MESSAGES_PER_SECOND = 300;
-
 export const Config = {
   /** Path to a PeerId file */
   id: "./.hub/default_id.protobuf",

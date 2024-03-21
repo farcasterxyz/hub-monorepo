@@ -19,7 +19,6 @@ import {
   ClientOptions,
   validations,
   HashScheme,
-  toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
@@ -73,7 +72,7 @@ import {
   LATEST_DB_SCHEMA_VERSION,
   performDbMigrations,
 } from "./storage/db/migrations/migrations.js";
-import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
@@ -85,7 +84,7 @@ import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
-import { CONSERVATIVE_HUB_MESSAGES_PER_SECOND, DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
+import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
