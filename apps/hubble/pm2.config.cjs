@@ -18,7 +18,7 @@ module.exports = {
       // This is only necessary when running via PM2.
       args: process.env.HUBBLE_ARGS,
       env: {
-        "CATCHUP_SYNC_WITH_SNAPSHOT": (process.env.CATCHUP_SYNC_WITH_SNAPSHOT === "true").toString(),
+        "CATCHUP_SYNC_WITH_SNAPSHOT": process.env.CATCHUP_SYNC_WITH_SNAPSHOT ? (process.env.CATCHUP_SYNC_WITH_SNAPSHOT === "true").toString() : "true",
       },
       watch: false,
       log_type: "json",

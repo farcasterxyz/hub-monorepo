@@ -17,7 +17,6 @@ services:
     restart: always
     command: ["npx", "pm2-runtime", "start", "pm2.config.cjs"]
     environment:
-      CATCHUP_SYNC_WITH_SNAPSHOT: "true" # Sync using S3 snapshot if hub is too far behind
       NODE_OPTIONS: "--no-warnings --max-old-space-size=8192"
       HUBBLE_ARGS: >-
         start
