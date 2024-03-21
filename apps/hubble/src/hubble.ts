@@ -83,7 +83,7 @@ import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
-import { SnapshotMetadata } from "./utils/snapshot.js";
+import { SnapshotMetadata, uploadToS3 } from "./utils/snapshot.js";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
@@ -546,7 +546,22 @@ export class Hub implements HubInterface {
       if (tarResult.isOk()) {
         // Upload to S3. Run this in the background so we don't block startup.
         setTimeout(async () => {
-          const s3Result = await this.uploadToS3(tarResult.value);
+          const messages = await MerkleTrie.numItems(this.syncEngine.trie);
+          if (messages.isErr()) {
+            log.error(
+              {
+                error: messages.error,
+              },
+              "failed to get message count from sync engine trie",
+            );
+          }
+          const messageCount = messages.isErr() ? -1 : messages.value;
+          const s3Result = await uploadToS3(
+            this.options.network,
+            tarResult.value,
+            this.options.s3SnapshotBucket,
+            messageCount,
+          );
           if (s3Result.isErr()) {
             log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
           }
@@ -1612,82 +1627,6 @@ export class Hub implements HubInterface {
   private getSnapshotFolder(prevVersionCounter?: number): string {
     const network = FarcasterNetwork[this.options.network].toString();
     return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
-  }
-
-  async uploadToS3(tarFilePath: string): HubAsyncResult<string> {
-    let start = Date.now();
-    log.info({ tarFilePath }, "Creating tar.gz file ...");
-
-    // First, gzip the file. Do it in rust, which can run the CPU intensive gzip in a separate thread
-    const gzipResult = await ResultAsync.fromPromise(rsCreateTarGzip(tarFilePath), rustErrorToHubError);
-    if (gzipResult.isErr()) {
-      log.error({ error: gzipResult.error }, "Error creating tar.gz file");
-      return err(gzipResult.error);
-    }
-
-    log.info({ timeTakenMs: Date.now() - start, gzipResult }, "Finished creating tar.gz file created");
-    const filePath = gzipResult.value;
-
-    const s3 = new S3Client({
-      region: S3_REGION,
-    });
-
-    // The AWS key is "snapshots/{network}/{DB_SCHEMA_VERSION}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
-    const key = `${this.getSnapshotFolder()}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
-      Date.now() / 1000,
-    )}.tar.gz`;
-
-    start = Date.now();
-    log.info({ filePath, key, bucket: this.options.s3SnapshotBucket }, "Uploading snapshot to S3");
-
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.on("error", function (err) {
-      log.error(`S3 File Error: ${err}`);
-    });
-
-    // The targz should be uploaded via multipart upload to S3
-    const targzParams = new Upload({
-      client: s3,
-      params: {
-        Bucket: this.s3_snapshot_bucket,
-        Key: key,
-        Body: fileStream,
-      },
-      queueSize: 4, // 4 concurrent uploads
-      partSize: 1000 * 1024 * 1024, // 1 GB
-    });
-
-    const messageCount = await MerkleTrie.numItems(this.syncEngine.trie);
-    if (messageCount.isErr()) {
-      return err(messageCount.error);
-    }
-    // NOTE: The sync engine type `DbStats` does not match the type in packages/core used by SnapshotMetadata.
-    //       As a result, avoid spread operator and instead pass in each attribute explicitly.
-    const metadata: SnapshotMetadata = {
-      key,
-      timestamp: Date.now(),
-      serverDate: new Date().toISOString(),
-      numMessages: messageCount.value,
-    };
-
-    const latestJsonParams = {
-      Bucket: this.s3_snapshot_bucket,
-      Key: `${this.getSnapshotFolder()}/latest.json`,
-      Body: JSON.stringify(metadata, null, 2),
-    };
-
-    targzParams.on("httpUploadProgress", (progress) => {
-      log.info({ progress }, "Uploading snapshot to S3");
-    });
-
-    try {
-      await targzParams.done();
-      await s3.send(new PutObjectCommand(latestJsonParams));
-      log.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
-      return ok(key);
-    } catch (e: unknown) {
-      return err(new HubError("unavailable.network_failure", (e as Error).message));
-    }
   }
 
   async listS3Snapshots(): HubAsyncResult<

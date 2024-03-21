@@ -27,7 +27,7 @@ import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 import axios from "axios";
-import { snapshotURL } from "./utils/snapshot.js";
+import { snapshotURLAndMetadata } from "./utils/snapshot.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -647,7 +647,7 @@ const s3SnapshotURL = new Command("snapshot-url")
   .option("-b --s3-snapshot-bucket <bucket>", "The S3 bucket that holds snapshot(s)")
   .action(async (options) => {
     const network = farcasterNetworkFromJSON(options.network ?? FarcasterNetwork.MAINNET);
-    const response = await snapshotURL(network, 0, options.s3SnapshotBucket);
+    const response = await snapshotURLAndMetadata(network, 0, options.s3SnapshotBucket);
     if (response.isErr()) {
       console.error("error fetching snapshot data", response.error);
       exit(1);
