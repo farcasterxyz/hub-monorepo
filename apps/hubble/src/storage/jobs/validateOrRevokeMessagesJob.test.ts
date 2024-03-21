@@ -5,12 +5,9 @@ import { FarcasterNetwork, Factories, Message, toFarcasterTime, OnChainEvent } f
 import {
   HubState,
   IdRegisterOnChainEvent,
-  UserDataAddMessage,
-  UserDataType,
   UserNameType,
   UsernameProofMessage,
   bytesToHexString,
-  bytesToUtf8String,
 } from "@farcaster/core";
 import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
@@ -19,7 +16,7 @@ import { getHubState, putHubState } from "../../storage/db/hubState.js";
 const db = jestRocksDB("jobs.ValidateOrRevokeMessagesJob.test");
 
 const network = FarcasterNetwork.TESTNET;
-const fid = Factories.Fid.build();
+const fid = 1; // Fixed FID because if a validateOrRevokeMessagesJob runs is dependent on fid
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
@@ -28,7 +25,6 @@ let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 let castAdd: Message;
 
-let addFname: UserDataAddMessage;
 let ensNameProof: UsernameProofMessage;
 
 beforeAll(async () => {
@@ -63,16 +59,22 @@ beforeAll(async () => {
 describe("ValidateOrRevokeMessagesJob", () => {
   let engine: Engine;
   let job: ValidateOrRevokeMessagesJobScheduler;
+  let nowOrig: typeof Date.now;
 
   beforeEach(async () => {
     engine = new Engine(db, network, undefined, publicClient);
     job = new ValidateOrRevokeMessagesJobScheduler(db, engine);
 
+    nowOrig = Date.now;
+    Date.now = () => 1711056649337; // 21 march 2024
+
     await engine.start();
   });
 
   afterAll(async () => {
+    Date.now = nowOrig;
     await engine.stop();
+    job.stop();
   });
 
   test("doJobForFid checks message when no fid or lastJobTimestamp", async () => {
@@ -86,6 +88,31 @@ describe("ValidateOrRevokeMessagesJob", () => {
     const result = await job.doJobForFid(0, fid);
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toBe(1);
+  });
+
+  test("doJobForFid checks message when fid % 14 matches", async () => {
+    // There is nothing in the DB, so if we add a message, it should get checked.
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
+
+    await engine.mergeMessage(castAdd);
+
+    const blockTimeToFCTime = toFarcasterTime(1000 * signerEvent.blockTimestamp)._unsafeUnwrap();
+
+    const nowOrig = Date.now;
+    Date.now = () => 1709328889000; // 1 march 2024
+    const result = await job.doJobForFid(blockTimeToFCTime + 1, fid);
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap()).toBe(1);
+
+    // But if date is 2nd, it should not check the message
+    Date.now = () => 1709415289000; // 2 march 2024
+    const result1 = await job.doJobForFid(blockTimeToFCTime + 1, fid);
+    expect(result1.isOk()).toBe(true);
+    expect(result1._unsafeUnwrap()).toBe(0);
+
+    Date.now = nowOrig;
   });
 
   test("doJobForFid doesn't check message if lastJobTimestamp > signer", async () => {
