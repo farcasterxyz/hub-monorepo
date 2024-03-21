@@ -1,6 +1,6 @@
-import { Result, ResultAsync } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { Worker } from "worker_threads";
-import { HubError, Message, OnChainEvent, UserNameProof } from "@farcaster/hub-nodejs";
+import { HubAsyncResult, HubError, Message, OnChainEvent, UserNameProof } from "@farcaster/hub-nodejs";
 import { SyncId } from "./syncId.js";
 import { TrieNode, TrieSnapshot } from "./trieNode.js";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -14,6 +14,7 @@ import {
 import { logger } from "../../utils/logger.js";
 import { getStatsdInitialization } from "../../utils/statsd.js";
 import { messageDecode } from "../../storage/db/message.js";
+import path from "path";
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -74,6 +75,7 @@ export type MerkleTrieInterfaceMethodGenericMessage = {
   };
 }[MerkleTrieInterfaceMethodNames];
 
+export const TrieDBPathPrefix = "trieDb";
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
  * two hubs on the network.
@@ -196,6 +198,42 @@ class MerkleTrie {
     });
 
     return result;
+  }
+
+  // This is a static method that can be called to get the number of items in the trie.
+  // NOTE: Calling this method requires exclusive open on RocksDB for given database path.
+  // If there are any other processes that operate on RocksDB while this is running, there may be
+  // inconsistencies or errors.
+  public static async numItems(trie: MerkleTrie): HubAsyncResult<number> {
+    // MerkleTrie has rocksdb instance, however the merkle trie worker
+    // uses a separate instance under trieDb prefix which needs to be used here instead.
+    const db = new RocksDB(`${path.basename(trie._db.location)}/${TrieDBPathPrefix}`);
+    if (!db) {
+      return err(new HubError("unavailable", "RocksDB not provided"));
+    }
+
+    let wasOpen = true;
+    if (db.status !== "open") {
+      wasOpen = false;
+      await db.open();
+    }
+
+    if (db.status === "open") {
+      const rootBytes = await db.get(TrieNode.makePrimaryKey(new Uint8Array()));
+      if (!(rootBytes && rootBytes.length > 0)) {
+        return ok(0);
+      }
+
+      const root = TrieNode.deserialize(rootBytes);
+      // If db was open prior to this method call, leave it open after the method call.
+      // Otherwise, close the db.
+      if (!wasOpen) {
+        db.close();
+      }
+      return ok(root.items);
+    }
+
+    return err(new HubError("unavailable", "Unable to open RocksDB"));
   }
 
   public async stop(): Promise<void> {

@@ -1,4 +1,4 @@
-import { FarcasterNetwork } from "@farcaster/hub-nodejs";
+import { FarcasterNetwork, farcasterNetworkFromJSON } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
@@ -27,6 +27,7 @@ import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 import axios from "axios";
+import { snapshotURLAndMetadata } from "./utils/snapshot.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -654,6 +655,28 @@ app
 
     process.stdin.resume();
   });
+
+/*//////////////////////////////////////////////////////////////
+                          SNAPSHOT-URL COMMAND
+//////////////////////////////////////////////////////////////*/
+const s3SnapshotURL = new Command("snapshot-url")
+  .description("Print latest snapshot URL and metadata from S3")
+  .option("-n --network <network>", "ID of the Farcaster Network (default: 1 (mainnet))", parseNetwork)
+  .option("-b --s3-snapshot-bucket <bucket>", "The S3 bucket that holds snapshot(s)")
+  .action(async (options) => {
+    const network = farcasterNetworkFromJSON(options.network ?? FarcasterNetwork.MAINNET);
+    const response = await snapshotURLAndMetadata(network, 0, options.s3SnapshotBucket);
+    if (response.isErr()) {
+      console.error("error fetching snapshot data", response.error);
+      exit(1);
+    }
+    const [url, metadata] = response.value;
+    console.log(`${JSON.stringify(metadata, null, 2)}`);
+    console.log(`Download at: ${url}`);
+    exit(0);
+  });
+
+app.addCommand(s3SnapshotURL);
 
 /*//////////////////////////////////////////////////////////////
                         IDENTITY COMMAND
