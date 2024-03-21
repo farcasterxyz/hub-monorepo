@@ -1,5 +1,23 @@
 # @farcaster/hubble
 
+## 1.11.0
+
+### Minor Changes
+
+- chore: Release 1.11
+
+### Patch Changes
+
+- dd1a3e46: chore: Migrate verifications store to rust
+- f115bce1: feat: Generate grpc rust code from protobufs
+- 63e2abe6: perf: Move username proof store to rust
+- 70603192: perf: Throttle prune job
+- ca42eaf0: perf: Migrate cast store to rust
+- 0b523281: fix: Read data_bytes properly when pruning
+- eb2b0e1d: Migrate link store to Rust
+- cfa701c9: feat: stats for hub restarts
+- d2b2f726: chore: Add rustfmt check before git commit
+
 ## 1.10.11
 
 ### Patch Changes
