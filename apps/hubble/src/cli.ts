@@ -129,11 +129,7 @@ app
   .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
   .option("--s3-snapshot-bucket <bucket>", "The S3 bucket to upload snapshots to")
   .option("--disable-snapshot-sync", "Disable syncing from snapshots. (default: enabled)")
-  .option(
-    "--no-catchup-sync-with-snapshot",
-    "Disable catchup sync using S3 snapshot - use if data loss is concern. (default: enabled)",
-  )
-  .option("--catchup-sync-with-snapshot", "Enable catchup sync with snapshot. (default: disabled)")
+  .option("--catchup-sync-with-snapshot [boolean]", "Enable catchup sync with snapshot. (default: disabled)")
   .option(
     "--catchup-sync-snapshot-message-limit <number>",
     `Difference in message count before triggering snapshot sync. (default: ${DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT})`,
@@ -494,7 +490,7 @@ app
     // Read catchupSyncWithSnapshot from 1. CLI option, 2. Environment variable, 3. Config file
     let catchupSyncWithSnapshot: boolean;
     if (cliOptions.catchupSyncWithSnapshot) {
-      catchupSyncWithSnapshot = cliOptions.catchupSyncWithSnapshot;
+      catchupSyncWithSnapshot = cliOptions.catchupSyncWithSnapshot === "true";
     } else if (process.env["CATCHUP_SYNC_WITH_SNAPSHOT"]) {
       catchupSyncWithSnapshot = process.env["CATCHUP_SYNC_WITH_SNAPSHOT"] === "true";
     } else {

@@ -17,9 +17,6 @@ module.exports = {
       // HACK: Allows us to pass arguments in a way recognized by the CLI flag processing library we use
       // This is only necessary when running via PM2.
       args: process.env.HUBBLE_ARGS,
-      env: {
-        "CATCHUP_SYNC_WITH_SNAPSHOT": (process.env.CATCHUP_SYNC_WITH_SNAPSHOT === "true").toString(),
-      },
       watch: false,
       log_type: "json",
       out_file: "/dev/null",
