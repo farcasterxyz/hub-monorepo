@@ -55,8 +55,8 @@ Snapshots Options:
   --enable-snapshot-to-s3               Enable daily snapshots to be uploaded to S3. (default: disabled)
   --s3-snapshot-bucket <bucket>         The S3 bucket to upload snapshots to
   --disable-snapshot-sync               Disable syncing from snapshots. (default: enabled)
-  --catchup-sync-with-snapshot          Enable catchup sync using S3 snapshot, recommended if Hub is too far behind. (default: enabled)
-  --no-catchup-sync-with-snapshot       Disable catchup sync using S3 snapshot - use if data loss is concern. (default: disabled)
+  --catchup-sync-with-snapshot          Enable catchup sync using S3 snapshot, recommended if Hub is too far behind. (default: disabled)
+  --no-catchup-sync-with-snapshot       Disable catchup sync using S3 snapshot - use if data loss is concern. (default: enabled)
   --catchup-sync-snapshot-message-limit <number> Difference in message count before triggering snapshot sync. (default: 3_000_000)
 
 Metrics:

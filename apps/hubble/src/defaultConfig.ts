@@ -62,7 +62,7 @@ export const Config = {
   /** Catchup sync with snapshot
    * NOTE: Catchup sync using snapshot WILL RESET THE DATABASE
    */
-  catchupSyncWithSnapshot: true,
+  catchupSyncWithSnapshot: false,
   /**
    * Message limit - when exceeded, trigger catchup sync using snapshot
    * NOTE: Catchup sync using snapshot WILL RESET THE DATABASE

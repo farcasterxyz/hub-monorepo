@@ -598,9 +598,10 @@ export class Hub implements HubInterface {
     }
 
     // Check if we need to catchup sync using snapshot
+    let catchupSyncResult: Result<boolean, Error> = ok(false);
     if (this.options.catchupSyncWithSnapshot) {
       log.info("attempting catchup sync with snapshot");
-      const catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
+      catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
       if (catchupSyncResult.isErr()) {
         log.error("failed to catchup sync using snapshot", {
           error: catchupSyncResult.error,
@@ -649,8 +650,8 @@ export class Hub implements HubInterface {
 
     if (this.options.resetDB === true) {
       // Sync using catchup sync clears the database, so we don't need to do it again.
-      if (this.options.catchupSyncWithSnapshot) {
-        log.info("skipping db reset as catchup sync with snapshot is enabled, which already clears the db");
+      if (this.options.catchupSyncWithSnapshot && catchupSyncResult.isOk() && catchupSyncResult.value) {
+        log.info("skipping db reset as catchup sync with snapshot is enabled, which already cleared the db");
       } else {
         log.info("clearing rocksdb");
         this.rocksDB.clear();
@@ -866,42 +867,19 @@ export class Hub implements HubInterface {
     // compare current db statistics with latest snapshot metadata
     const snapshotMetadata: SnapshotMetadata = metadata.value;
     let delta = -1;
-    if (snapshotMetadata.numMessages) {
-      delta = snapshotMetadata.numMessages - currentItemCount;
-      if (delta > limit) {
-        log.info({ delta, limit }, "catchup sync using snapshot");
-        shouldCatchupSync = true;
-      }
-    } else {
-      // Older snapshot metadata JSON may not contain database statistics (e.g. numMessages).
-      // As a result, we perform conservative calculations to determine if
-      // catchup sync using snapshot is necessary
-      const metadataTimestampMs = snapshotMetadata.timestamp;
-      const metadataTimeDeltaMs = toFarcasterTime(metadataTimestampMs);
-      if (metadataTimeDeltaMs.isErr()) {
-        log.error("failed to convert snapshot metadata timestamp to farcaster time", {
-          error: metadataTimeDeltaMs.error,
-          timestamp: metadataTimestampMs,
-        });
-      } else {
-        // When snapshot metadata does not contain database statistics,
-        // we use conservative estimates to determine if snapshot should be used
-        const deltaMs = metadataTimeDeltaMs.value;
-        const estimate_message_count = Math.floor(deltaMs / 1000) * CONSERVATIVE_HUB_MESSAGES_PER_SECOND;
-        delta = estimate_message_count - currentItemCount;
-        log.info(
-          { delta, estimate_message_count, currentItemCount },
-          "conservative catchup sync using snapshot estimate",
-        );
-        if (delta > limit) {
-          log.info({ delta, limit }, "catchup sync using snapshot");
-          shouldCatchupSync = true;
-        }
-      }
+    if (!snapshotMetadata.numMessages) {
+      log.error("snapshot metadata does not contain message count");
+      return err(new HubError("unavailable", "snapshot metadata does not contain message count"));
+    }
+
+    delta = snapshotMetadata.numMessages - currentItemCount;
+    if (delta > limit) {
+      log.info({ delta, limit }, "catchup sync using snapshot");
+      shouldCatchupSync = true;
     }
 
     if (shouldCatchupSync) {
-      const SHUTDOWN_GRACE_PERIOD_MS = 10 * 1000; // 10 seconds
+      const SHUTDOWN_GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
       log.info(`beginning snapshot sync in ${SHUTDOWN_GRACE_PERIOD_MS.toString()}ms - THIS WILL RESET THE DATABASE`);
       // Sleep for a bit to allow user some time to cancel the operation before we purge the DB
       await sleep(SHUTDOWN_GRACE_PERIOD_MS);

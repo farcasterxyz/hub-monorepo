@@ -89,9 +89,11 @@ export class StorageCache {
     this._earliestTsHashes = new Map();
 
     // Start prepopulating the cache in the background
-    if (this._db.status === "open") {
-      this.prepopulateMessageCounts();
+    if (this._db.status !== "open") {
+      log.error("cannot prepopulate message counts, db is not open");
+      throw new HubError("unavailable.storage_failure", "cannot prepopulate message counts, db is not open");
     }
+    this.prepopulateMessageCounts();
 
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
   }
