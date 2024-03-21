@@ -1122,7 +1122,9 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid hash")));
+    expect(result.isErr()).toBeTruthy();
+    expect(result._unsafeUnwrapErr().errCode).toEqual("bad_request.validation_failure");
+    expect(result._unsafeUnwrapErr().message).toContain("invalid hash");
   });
 
   test("fails with invalid hash and data_bytes", async () => {
@@ -1133,7 +1135,9 @@ describe("validateMessage", () => {
     message.dataBytes = protobufs.MessageData.encode(message.data!).finish();
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid hash")));
+    expect(result.isErr()).toBeTruthy();
+    expect(result._unsafeUnwrapErr().errCode).toEqual("bad_request.validation_failure");
+    expect(result._unsafeUnwrapErr().message).toContain("invalid hash");
   });
 
   test("fails with invalid signatureScheme", async () => {
@@ -1292,5 +1296,31 @@ describe("validateFrameActionBody", () => {
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid address");
+  });
+});
+
+describe("validateSingleBody", () => {
+  test("succeeds", async () => {
+    // Create a message with 2 bodies (reactionBody and linkBody)
+    const msg = protobufs.Message.create({
+      data: {
+        type: protobufs.MessageType.REACTION_ADD,
+        fid: 2,
+        timestamp: 101489960,
+        network: 1,
+        reactionBody: {
+          type: protobufs.ReactionType.LIKE,
+          targetCastId: {
+            fid: 3,
+            hash: new Uint8Array(),
+          },
+        },
+        linkBody: { type: "follow", displayTimestamp: 1768551184, targetFid: 4 },
+      },
+    });
+
+    const result = await validations.validateMessage(msg);
+    expect(result.isErr()).toBeTruthy();
+    expect(result._unsafeUnwrapErr().message).toMatch("only one body can be set");
   });
 });

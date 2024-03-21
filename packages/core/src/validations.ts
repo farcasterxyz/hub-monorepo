@@ -2,7 +2,7 @@ import * as protobufs from "./protobufs";
 import { Protocol, UserNameType } from "./protobufs";
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
-import { bytesCompare, bytesToBase58, bytesToUtf8String, utf8StringToBytes } from "./bytes";
+import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { getFarcasterTime, toFarcasterTime } from "./time";
@@ -238,7 +238,9 @@ export const validateMessage = async (
   if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
     // we have to use bytesCompare, because TypedArrays cannot be compared directly
     if (bytesCompare(hash, computedHash) !== 0) {
-      return err(new HubError("bad_request.validation_failure", "invalid hash"));
+      return err(
+        new HubError("bad_request.validation_failure", `invalid hash. Expected=${hash}, computed=${computedHash}`),
+      );
     }
   } else {
     return err(new HubError("bad_request.validation_failure", "invalid hashScheme"));
@@ -302,7 +304,17 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
     return err(validType.error);
   }
 
-  // 5. Validate body
+  // 5. Validate that only one body is set
+  const bodySet = Object.keys(data)
+    .filter((k) => k.endsWith("Body"))
+    // @ts-ignore: the compiler doesn't like us indexing into data with a string (k), but that's exactly what we want to do
+    .map((k) => (data[k] !== undefined ? 1 : 0))
+    .reduce((s: number, c: number) => s + c, 0);
+  if (bodySet !== 1) {
+    return err(new HubError("bad_request.validation_failure", "only one body can be set"));
+  }
+
+  // 6. Validate body
   // biome-ignore lint/suspicious/noExplicitAny: legacy from eslint migration
   let bodyResult: HubResult<any>;
   if (validType.value === protobufs.MessageType.CAST_ADD && !!data.castAddBody) {
@@ -455,6 +467,10 @@ export const validateParent = (parent: protobufs.CastId | string): HubResult<pro
 };
 
 export const validateEmbed = (embed: protobufs.Embed): HubResult<protobufs.Embed> => {
+  if (embed.url !== undefined && embed.castId !== undefined) {
+    return err(new HubError("bad_request.validation_failure", "cannot use both url and castId"));
+  }
+
   if (embed.url !== undefined) {
     return validateUrl(embed.url).map(() => embed);
   } else if (embed.castId !== undefined) {
@@ -505,6 +521,10 @@ export const validateCastAddBody = (
 
   if (body.embeds.length > 0 && body.embedsDeprecated.length > 0) {
     return err(new HubError("bad_request.validation_failure", "cannot use both embeds and string embeds"));
+  }
+
+  if (body.parentUrl !== undefined && body.parentCastId !== undefined) {
+    return err(new HubError("bad_request.validation_failure", "cannot use both parentUrl and parentCastId"));
   }
 
   if (
