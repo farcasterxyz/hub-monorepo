@@ -935,6 +935,7 @@ export class Hub implements HubInterface {
     }
   }
   async snapshotSync(overwrite?: boolean): HubAsyncResult<boolean> {
+    const s3Bucket = this.options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
     return new Promise((resolve) => {
       (async () => {
         let progressBar: SingleBar | undefined;
@@ -960,7 +961,7 @@ export class Hub implements HubInterface {
             let latestSnapshotKey;
             do {
               const response = await axios.get(
-                `https://${this.options.s3SnapshotBucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
+                `https://${s3Bucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
               );
               const { key } = response.data;
 
@@ -983,7 +984,7 @@ export class Hub implements HubInterface {
               log.info({ latestSnapshotKey }, "found latest S3 snapshot");
             }
 
-            const snapshotUrl = `https://${this.options.s3SnapshotBucket}/${latestSnapshotKey}`;
+            const snapshotUrl = `https://${s3Bucket}/${latestSnapshotKey}`;
             const response2 = await axios.get(snapshotUrl, {
               responseType: "stream",
             });
