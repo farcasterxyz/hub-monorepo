@@ -88,6 +88,11 @@ describe("ValidateOrRevokeMessagesJob", () => {
     const result = await job.doJobForFid(0, fid);
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toBe(1);
+
+    // If we run it again, it checks it again
+    const result2 = await job.doJobForFid(0, fid);
+    expect(result2.isOk()).toBe(true);
+    expect(result2._unsafeUnwrap()).toBe(1);
   });
 
   test("doJobForFid checks message when fid % 14 matches", async () => {
