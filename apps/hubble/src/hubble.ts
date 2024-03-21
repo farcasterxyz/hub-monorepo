@@ -599,6 +599,7 @@ export class Hub implements HubInterface {
 
     // Check if we need to catchup sync using snapshot
     if (this.options.catchupSyncWithSnapshot) {
+      log.info("attempting catchup sync with snapshot");
       const catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
       if (catchupSyncResult.isErr()) {
         log.error("failed to catchup sync using snapshot", {
