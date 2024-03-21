@@ -1657,7 +1657,7 @@ export class Hub implements HubInterface {
       partSize: 1000 * 1024 * 1024, // 1 GB
     });
 
-    const messageCount = await MerkleTrie.numItems(this.rocksDB);
+    const messageCount = await MerkleTrie.numItems(this.syncEngine.trie);
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }

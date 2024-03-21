@@ -14,6 +14,7 @@ import {
 import { logger } from "../../utils/logger.js";
 import { getStatsdInitialization } from "../../utils/statsd.js";
 import { messageDecode } from "../../storage/db/message.js";
+import path from "path";
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -74,6 +75,7 @@ export type MerkleTrieInterfaceMethodGenericMessage = {
   };
 }[MerkleTrieInterfaceMethodNames];
 
+export const TrieDBPathPrefix = "trieDb";
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
  * two hubs on the network.
@@ -202,7 +204,10 @@ class MerkleTrie {
   // NOTE: Calling this method requires exclusive open on RocksDB for given database path.
   // If there are any other processes that operate on RocksDB while this is running, there may be
   // inconsistencies or errors.
-  public static async numItems(db?: RocksDB): HubAsyncResult<number> {
+  public static async numItems(trie: MerkleTrie): HubAsyncResult<number> {
+    // MerkleTrie has rocksdb instance, however the merkle trie worker
+    // uses a separate instance under trieDb prefix which needs to be used here instead.
+    const db = new RocksDB(`${path.basename(trie._db.location)}/${TrieDBPathPrefix}`);
     if (!db) {
       return err(new HubError("unavailable", "RocksDB not provided"));
     }
