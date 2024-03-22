@@ -8,8 +8,13 @@ import Engine from "../engine/index.js";
 import { makeUserKey, messageDecode } from "../db/message.js";
 import { statsd } from "../../utils/statsd.js";
 import { getHubState, putHubState } from "../../storage/db/hubState.js";
+import { sleep } from "../../utils/crypto.js";
 
-export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "0 1 * * *"; // Every day at 01:00 UTC
+export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "0 8 * * *"; // Every day at 08:00 UTC (midnight PST)
+
+// How much time to allocate to validating and revoking each fid.
+// 50 fids per second, which translates to 1/14th of the FIDs will be checked in just over 2 hours.
+const TIME_SCHEDULED_PER_FID_PER_S = 50;
 
 const log = logger.child({
   component: "ValidateOrRevokeMessagesJob",
@@ -71,7 +76,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
     let finished = false;
     let pageToken: Uint8Array | undefined;
     do {
-      const fidsPage = await this._engine.getFids({ pageToken, pageSize: 100 });
+      const fidsPage = await this._engine.getFids({ pageToken });
       if (fidsPage.isErr()) {
         return err(fidsPage.error);
       }
@@ -107,6 +112,18 @@ export class ValidateOrRevokeMessagesJobScheduler {
             lastJobTimestamp,
           };
           await putHubState(this._db, hubState);
+        }
+
+        // Throttle the job.
+        // We run at the rate of 50 fids per second. If we are running ahead of schedule, we sleep to catch up
+        if (fid % 100 === 0) {
+          const allotedTimeMs = TIME_SCHEDULED_PER_FID_PER_S * fid * 1000;
+          const elapsedTimeMs = Date.now() - start;
+          if (allotedTimeMs > elapsedTimeMs) {
+            const sleepTimeMs = allotedTimeMs - elapsedTimeMs;
+            // Sleep for the remaining time
+            await sleep(sleepTimeMs);
+          }
         }
       }
     } while (!finished);
@@ -167,11 +184,17 @@ export class ValidateOrRevokeMessagesJobScheduler {
         }, 0),
     ).unwrapOr(0);
 
-    if (latestSignerEventTs < lastJobTimestamp) {
+    // Every 14 days, we do a full scan of all messages for this FID, to make sure we don't miss anything
+    const doFullScanForFid = fid % 14 === new Date(Date.now()).getDate() % 14;
+
+    if (!doFullScanForFid && latestSignerEventTs < lastJobTimestamp) {
       return ok(0);
     }
 
-    log.info({ fid, lastJobTimestamp, latestSignerEventTs }, "ValidateOrRevokeMessagesJob: checking FID");
+    log.info(
+      { fid, lastJobTimestamp, latestSignerEventTs, doFullScanForFid },
+      "ValidateOrRevokeMessagesJob: checking FID",
+    );
 
     let count = 0;
     await this._db.forEachIteratorByPrefix(prefix, async (key, value) => {
