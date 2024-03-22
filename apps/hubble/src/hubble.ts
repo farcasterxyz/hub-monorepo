@@ -575,6 +575,7 @@ export class Hub implements HubInterface {
             );
           }
           const messageCount = messages.isErr() ? -1 : messages.value;
+          log.info({ messageCount }, "uploading snapshot to S3");
           const s3Result = await uploadToS3(
             this.options.network,
             tarResult.value,
