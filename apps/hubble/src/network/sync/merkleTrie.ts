@@ -209,6 +209,9 @@ class MerkleTrie {
     // MerkleTrie has rocksdb instance, however the merkle trie worker
     // uses a separate instance under trieDb prefix which needs to be used here instead.
     const location = `${path.basename(trie._db.location)}/${TrieDBPathPrefix}`;
+    if (!fs.existsSync(path.basename(`.rocks/${location}`))) {
+      return ok(0);
+    }
     const db = new RocksDB(location);
     if (!db) {
       return err(new HubError("unavailable", "RocksDB not provided"));
