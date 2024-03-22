@@ -15,6 +15,7 @@ import { logger } from "../../utils/logger.js";
 import { getStatsdInitialization } from "../../utils/statsd.js";
 import { messageDecode } from "../../storage/db/message.js";
 import path from "path";
+import fs from "fs";
 
 /**
  * Represents a node in the trie, and it's immediate children
@@ -207,7 +208,11 @@ class MerkleTrie {
   public static async numItems(trie: MerkleTrie): HubAsyncResult<number> {
     // MerkleTrie has rocksdb instance, however the merkle trie worker
     // uses a separate instance under trieDb prefix which needs to be used here instead.
-    const db = new RocksDB(`${path.basename(trie._db.location)}/${TrieDBPathPrefix}`);
+    const location = `${path.basename(trie._db.location)}/${TrieDBPathPrefix}`;
+    if (!fs.existsSync(location)) {
+      return ok(0);
+    }
+    const db = new RocksDB(location);
     if (!db) {
       return err(new HubError("unavailable", "RocksDB not provided"));
     }

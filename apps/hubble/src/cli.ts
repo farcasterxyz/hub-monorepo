@@ -3,7 +3,7 @@ import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
-import { Command } from "commander";
+import { Command, OptionValues } from "commander";
 import fs, { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { Result, ResultAsync } from "neverthrow";
@@ -15,7 +15,7 @@ import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
 import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { parseNetwork } from "./utils/command.js";
-import { Config as DefaultConfig } from "./defaultConfig.js";
+import { Config as DefaultConfig, DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
@@ -129,6 +129,11 @@ app
   .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
   .option("--s3-snapshot-bucket <bucket>", "The S3 bucket to upload snapshots to")
   .option("--disable-snapshot-sync", "Disable syncing from snapshots. (default: enabled)")
+  .option("--catchup-sync-with-snapshot [boolean]", "Enable catchup sync with snapshot. (default: disabled)")
+  .option(
+    "--catchup-sync-snapshot-message-limit <number>",
+    `Difference in message count before triggering snapshot sync. (default: ${DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT})`,
+  )
 
   // Metrics
   .option(
@@ -482,6 +487,16 @@ app
       enableSnapshotToS3 = awsVerified;
     }
 
+    // Read catchupSyncWithSnapshot from 1. CLI option, 2. Environment variable, 3. Config file
+    let catchupSyncWithSnapshot: boolean;
+    if (cliOptions.catchupSyncWithSnapshot) {
+      catchupSyncWithSnapshot = cliOptions.catchupSyncWithSnapshot === "true";
+    } else if (process.env["CATCHUP_SYNC_WITH_SNAPSHOT"]) {
+      catchupSyncWithSnapshot = process.env["CATCHUP_SYNC_WITH_SNAPSHOT"] === "true";
+    } else {
+      catchupSyncWithSnapshot = hubConfig.catchupSyncWithSnapshot;
+    }
+
     const options: HubOptions = {
       peerId,
       ipMultiAddr: ipMultiAddrResult.value,
@@ -517,6 +532,9 @@ app
       resetDB: false,
       rebuildSyncTrie,
       profileSync,
+      catchupSyncWithSnapshot: catchupSyncWithSnapshot,
+      catchupSyncSnapshotMessageLimit:
+        cliOptions.catchupSyncSnapshotMessageLimit ?? hubConfig.catchupSyncSnapshotMessageLimit,
       resyncNameEvents: cliOptions.resyncNameEvents ?? hubConfig.resyncNameEvents ?? false,
       statsdParams: getStatsdInitialization(),
       commitLockTimeout: cliOptions.commitLockTimeout ?? hubConfig.commitLockTimeout,

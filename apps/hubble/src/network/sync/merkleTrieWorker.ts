@@ -6,6 +6,7 @@ import {
   MerkleTrieInterfaceMethodReturnType,
   MerkleTrieKV,
   NodeMetadata,
+  TrieDBPathPrefix,
 } from "./merkleTrie.js";
 import { logger } from "../../utils/logger.js";
 import ReadWriteLock from "rwlock";
@@ -57,7 +58,7 @@ class MerkleTrieImpl {
     // Don't open a separate DB for the trie during tests
     if (dbPath && process.env["NODE_ENV"] !== "test") {
       log.info({ dbPath }, "MerkleTrieImpl: initializing");
-      this._trieDb = new RocksDB(`${path.basename(dbPath)}/trieDb`);
+      this._trieDb = new RocksDB(`${path.basename(dbPath)}/${TrieDBPathPrefix}`);
       log.info({ triePath: this._trieDb.location }, "MerkleTrieImpl: created DB");
     } else {
       log.debug("MerkleTrieImpl: using main in-memory DB for tests");

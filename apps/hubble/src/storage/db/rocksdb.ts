@@ -1,4 +1,3 @@
-import { HubError } from "@farcaster/hub-nodejs";
 import { logger } from "../../utils/logger.js";
 import * as tar from "tar";
 import * as fs from "fs";

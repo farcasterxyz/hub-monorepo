@@ -356,7 +356,7 @@ export default class Server {
 
           const info = HubInfoResponse.create({
             version: APP_VERSION,
-            isSyncing: !this.syncEngine?.isSyncing(),
+            isSyncing: !!this.syncEngine?.isSyncing(),
             nickname: APP_NICKNAME,
             rootHash: (await this.syncEngine?.trie.rootHash()) ?? "",
             peerId: Result.fromThrowable(

@@ -38,7 +38,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { rsCreateTarBackup, rsCreateTarGzip, rsValidationMethods, rustErrorToHubError } from "./rustfunctions.js";
+import { rsCreateTarBackup, rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
@@ -49,6 +49,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from "./utils/p2p.js";
+import { fetchSnapshotMetadata, SnapshotMetadata, snapshotURL, uploadToS3 } from "./utils/snapshot.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
 import { ensureAboveMinFarcasterVersion, getMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
@@ -71,8 +72,7 @@ import {
   LATEST_DB_SCHEMA_VERSION,
   performDbMigrations,
 } from "./storage/db/migrations/migrations.js";
-import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
+import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
@@ -83,8 +83,8 @@ import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
-import { SnapshotMetadata, uploadToS3 } from "./utils/snapshot.js";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
+import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -273,6 +273,17 @@ export interface HubOptions {
 
   /** Enable daily backups to S3 */
   enableSnapshotToS3?: boolean;
+
+  /** If set, check catchupSyncSnapshotMessageLimit and if message difference
+   * exceeds that limit, clear existing db and replace with downloaded snapshot
+   * */
+  catchupSyncWithSnapshot?: boolean;
+
+  /**
+   * Message limit - when exceeded, trigger catchup sync using snapshot
+   * NOTE: Catchup sync using snapshot WILL RESET THE DATABASE
+   */
+  catchupSyncSnapshotMessageLimit?: number;
 
   /** S3 bucket to upload snapshots to */
   s3SnapshotBucket?: string;
@@ -585,6 +596,25 @@ export class Hub implements HubInterface {
       }
     }
 
+    // Check if we need to catchup sync using snapshot
+    let catchupSyncResult: Result<boolean, Error> = ok(false);
+    if (this.options.catchupSyncWithSnapshot) {
+      log.info("attempting catchup sync with snapshot");
+      catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
+      if (catchupSyncResult.isErr()) {
+        log.error("failed to catchup sync using snapshot", {
+          error: catchupSyncResult.error,
+        });
+        // There is a risk that an error occurred after the database was cleared but before the snapshot
+        // was downloaded. In this case, we should throw error and exit.
+        throw catchupSyncResult.error;
+      } else if (catchupSyncResult.value) {
+        log.info("catchup sync using snapshot successful");
+      } else {
+        log.error("catchup sync skipped");
+      }
+    }
+
     let dbResult: Result<void, Error>;
     let retryCount = 0;
 
@@ -618,8 +648,13 @@ export class Hub implements HubInterface {
     }
 
     if (this.options.resetDB === true) {
-      log.info("clearing rocksdb");
-      await this.rocksDB.clear();
+      // Sync using catchup sync clears the database, so we don't need to do it again.
+      if (this.options.catchupSyncWithSnapshot && catchupSyncResult.isOk() && catchupSyncResult.value) {
+        log.info("skipping db reset as catchup sync with snapshot is enabled, which already cleared the db");
+      } else {
+        log.info("clearing rocksdb");
+        this.rocksDB.clear();
+      }
     } else {
       // Read if the Hub was cleanly shutdown last time
       const cleanShutdownR = await this.wasHubCleanShutdown();
@@ -800,7 +835,85 @@ export class Hub implements HubInterface {
     }
   }
 
-  async snapshotSync(): HubAsyncResult<boolean> {
+  // Attempt to catchup sync using snapshot.
+  // NOTE: This method will clear the existing DB and replace it with the downloaded snapshot.
+  async attemptCatchupSyncWithSnapshot(): HubAsyncResult<boolean> {
+    if (!this.syncEngine) {
+      return err(new HubError("unavailable", "sync engine not available"));
+    }
+    const limit = this.options.catchupSyncSnapshotMessageLimit ?? DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT;
+    const snapURL = snapshotURL(this.options.network, 0);
+    const metadata = await fetchSnapshotMetadata(snapURL);
+
+    if (metadata.isErr()) {
+      log.error("failed to fetch snapshot metadata", {
+        error: metadata.error,
+        snapshotURL: snapURL,
+      });
+      return err(new HubError("unavailable", `failed to fetch snapshot metadata - ${metadata.error.message}`));
+    }
+
+    const itemCount = await MerkleTrie.numItems(this.syncEngine.trie);
+    if (itemCount.isErr()) {
+      log.error("failed to get merkle trie item count", {
+        error: itemCount.error,
+      });
+      return err(new HubError("unavailable", `failed to get merkle trie item count - ${itemCount.error.message}`));
+    }
+
+    const currentItemCount = itemCount.value;
+    let shouldCatchupSync = false;
+    // compare current db statistics with latest snapshot metadata
+    const snapshotMetadata: SnapshotMetadata = metadata.value;
+    let delta = -1;
+    if (!snapshotMetadata.numMessages) {
+      log.error("snapshot metadata does not contain message count");
+      return err(new HubError("unavailable", "snapshot metadata does not contain message count"));
+    }
+
+    delta = snapshotMetadata.numMessages - currentItemCount;
+    if (delta > limit) {
+      log.info({ delta, limit }, "catchup sync using snapshot");
+      shouldCatchupSync = true;
+    }
+
+    if (shouldCatchupSync) {
+      const SHUTDOWN_GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
+      log.info(`beginning snapshot sync in ${SHUTDOWN_GRACE_PERIOD_MS.toString()}ms - THIS WILL RESET THE DATABASE`);
+      // Sleep for a bit to allow user some time to cancel the operation before we purge the DB
+      await sleep(SHUTDOWN_GRACE_PERIOD_MS);
+      // We use the item count in the trie RocksDB to determine if catchup sync is warranted.
+      // However, the messages RocksDB will be cleared and replaced with the downloaded snapshot which contains both DBs.
+      rsDbDestroy(this.rocksDB.rustDb);
+      const snapshotResult = await this.snapshotSync(true);
+      if (snapshotResult.isErr()) {
+        log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to diff sync");
+        return err(new HubError("unavailable", `failed to sync snapshot - ${snapshotResult.error.message}`));
+      }
+      log.info(
+        {
+          currentItemCount,
+          snapshot_metadata: snapshotMetadata.numMessages ?? -1,
+          delta,
+          limit,
+        },
+        "catchup sync using snapshot complete",
+      );
+      return ok(true);
+    } else {
+      log.info(
+        {
+          currentItemCount,
+          delta,
+          limit,
+        },
+        "catchup sync using snapshot not required",
+      );
+      return ok(false);
+    }
+  }
+  async snapshotSync(overwrite?: boolean): HubAsyncResult<boolean> {
+    const s3Bucket = this.options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
     return new Promise((resolve) => {
       (async () => {
         let progressBar: SingleBar | undefined;
@@ -812,14 +925,21 @@ export class Hub implements HubInterface {
             (e) => e,
           )();
 
-          if (dbFiles.isErr() || dbFiles.value.length === 0) {
-            log.info({ dbLocation }, "DB is empty, fetching snapshot from S3");
+          if (dbFiles.isErr() || dbFiles.value.length === 0 || overwrite) {
+            log.info(
+              {
+                db_location: dbLocation,
+                file_count: dbFiles.isErr() ? 0 : dbFiles.value.length,
+                overwrite,
+              },
+              "DB is empty or overwrite is true, fetching snapshot from S3",
+            );
 
             let prevVersion = 0;
             let latestSnapshotKey;
             do {
               const response = await axios.get(
-                `https://${this.options.s3SnapshotBucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
+                `https://${s3Bucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
               );
               const { key } = response.data;
 
@@ -842,13 +962,14 @@ export class Hub implements HubInterface {
               log.info({ latestSnapshotKey }, "found latest S3 snapshot");
             }
 
-            const snapshotUrl = `https://${this.options.s3SnapshotBucket}/${latestSnapshotKey}`;
+            const snapshotUrl = `https://${s3Bucket}/${latestSnapshotKey}`;
             const response2 = await axios.get(snapshotUrl, {
               responseType: "stream",
             });
             const totalSize = parseInt(response2.headers["content-length"], 10);
 
             let downloadedSize = 0;
+            log.info({ totalSize }, "Getting snapshot...");
             progressBar = addProgressBar("Getting snapshot", totalSize);
 
             const handleError = (e: Error) => {
@@ -887,10 +1008,12 @@ export class Hub implements HubInterface {
               .on("error", handleError)
               // biome-ignore lint/suspicious/noExplicitAny: <explanation>
               .on("data", (chunk: any) => {
+                const largeChunk = 1024 * 1024 * 1024;
+
                 downloadedSize += chunk.length;
                 progressBar?.update(downloadedSize);
 
-                if (downloadedSize - lastDownloadedSize > 1024 * 1024 * 1024) {
+                if (downloadedSize - lastDownloadedSize > largeChunk) {
                   log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
                   lastDownloadedSize = downloadedSize;
                 }
