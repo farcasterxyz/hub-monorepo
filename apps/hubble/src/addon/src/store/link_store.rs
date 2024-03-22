@@ -355,14 +355,9 @@ impl LinkStore {
         );
 
         key.push(RootPrefix::LinksByTarget as u8);
-        match target {
-            Target::TargetFid(target_fid) => {
-                key.extend(make_fid_key(*target_fid as u32));
-            }
-            _ => {
-                return Err(HubError::validation_failure("invalid target specified"));
-            }
-        }
+        let Target::TargetFid(target_fid) = target;
+        key.extend(make_fid_key(*target_fid as u32));
+
         match ts_hash {
             Some(timestamp_hash) => {
                 key.extend_from_slice(timestamp_hash);
