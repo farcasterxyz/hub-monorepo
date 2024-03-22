@@ -82,7 +82,13 @@ export const uploadToS3 = async (
   messageCount?: number,
 ): HubAsyncResult<string> => {
   let start = Date.now();
-  logger.info({ tarFilePath }, "Creating tar.gz file ...");
+  logger.info(
+    {
+      tarFilePath,
+      message_count: messageCount ?? -1,
+    },
+    "Creating tar.gz file ...",
+  );
 
   // First, gzip the file. Do it in rust, which can run the CPU intensive gzip in a separate thread
   const gzipResult = await ResultAsync.fromPromise(rsCreateTarGzip(tarFilePath), rustErrorToHubError);
