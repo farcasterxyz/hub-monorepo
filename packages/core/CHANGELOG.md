@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.8
+
+### Patch Changes
+
+- e30297b9: bug: Enforce protobuf oneof constraints
+
 ## 0.14.7
 
 ### Patch Changes
