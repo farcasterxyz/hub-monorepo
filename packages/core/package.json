@@ -15,6 +15,10 @@
     "dist"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/core"
+  },
   "dependencies": {
     "@noble/curves": "^1.0.0",
     "@noble/hashes": "^1.3.0",
