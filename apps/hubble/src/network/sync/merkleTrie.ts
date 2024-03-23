@@ -229,6 +229,9 @@ class MerkleTrie {
     if (!fs.existsSync(path.dirname(path.resolve(normalizedPath)))) {
       return ok(0);
     }
+    if (!fs.existsSync(path.resolve(normalizedPath))) {
+      return ok(0);
+    }
     const db = new RocksDB(location);
     if (!db) {
       return err(new HubError("unavailable", "RocksDB not provided"));
