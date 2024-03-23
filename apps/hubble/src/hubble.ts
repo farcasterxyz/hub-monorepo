@@ -615,7 +615,8 @@ export class Hub implements HubInterface {
 
     // Check if we need to catchup sync using snapshot
     let catchupSyncResult: Result<boolean, Error> = ok(false);
-    if (this.options.catchupSyncWithSnapshot) {
+    // NOTE: catch up sync with snapshot is only supported on mainnet
+    if (this.options.catchupSyncWithSnapshot && this.options.network === FarcasterNetwork.MAINNET) {
       log.info("attempting catchup sync with snapshot");
       catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
       if (catchupSyncResult.isErr()) {
