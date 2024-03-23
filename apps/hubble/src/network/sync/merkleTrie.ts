@@ -14,7 +14,7 @@ import {
 import { logger } from "../../utils/logger.js";
 import { getStatsdInitialization } from "../../utils/statsd.js";
 import { messageDecode } from "../../storage/db/message.js";
-import path from "path";
+import path, { dirname } from "path";
 import fs from "fs";
 
 /**
@@ -208,8 +208,25 @@ class MerkleTrie {
   public static async numItems(trie: MerkleTrie): HubAsyncResult<number> {
     // MerkleTrie has rocksdb instance, however the merkle trie worker
     // uses a separate instance under trieDb prefix which needs to be used here instead.
-    const location = `${path.basename(trie._db.location)}/${TrieDBPathPrefix}`;
-    if (!fs.existsSync(path.basename(`.rocks/${location}`))) {
+    // The trie database is instantiated with new Rocksdb, which will prefix an input path with ".rocks"
+    const fullPath = `${trie._db.location}/${TrieDBPathPrefix}`;
+    const normalizedPath = path.normalize(fullPath);
+    const parts = normalizedPath.split(path.sep);
+    // Remove the first directory. Note that the first element might be empty
+    // if the path starts with a separator, indicating it's an absolute path.
+    // In such a case, remove the second element instead.
+    if (parts[0] === "") {
+      parts.splice(1, 1); // Remove the second element for absolute paths
+    } else {
+      parts.splice(0, 1); // Remove the first element for relative paths
+    }
+
+    // Location will be the path of the trie database without the first directory, since RocksDB creates prefix
+    // of ".rocks" for every input path.
+    const location = parts.join(path.sep);
+
+    // We need to check if the full directory path exists, otherwise instantiating RocksDB will throw an error
+    if (!fs.existsSync(path.dirname(path.resolve(normalizedPath)))) {
       return ok(0);
     }
     const db = new RocksDB(location);
@@ -228,7 +245,18 @@ class MerkleTrie {
     }
 
     if (db.status === "open") {
-      const rootBytes = await db.get(TrieNode.makePrimaryKey(new Uint8Array()));
+      const rootResult = await ResultAsync.fromPromise(
+        db.get(TrieNode.makePrimaryKey(new Uint8Array())),
+        (e) => e as HubError,
+      );
+
+      // If the directories exist but the root key was not found, return 0
+      if (rootResult.isErr()) {
+        return ok(0);
+      }
+
+      const rootBytes = rootResult.value;
+      // If the root is empty, return 0
       if (!(rootBytes && rootBytes.length > 0)) {
         return ok(0);
       }
