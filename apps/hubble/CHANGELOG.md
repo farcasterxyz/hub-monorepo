@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.11.2
+
+### Patch Changes
+
+- fix: Set catch up sync to true for hubble install script and docker compose
+
 ## 1.11.1
 
 ### Patch Changes
