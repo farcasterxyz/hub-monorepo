@@ -1,15 +1,5 @@
 # @farcaster/hubble
 
-## 1.11.1
-
-### Patch Changes
-
-- e30297b9: bug: Enforce protobuf oneof constraints
-- c678742f: feat(hubble): update s3 snapshot metadata to include database statistics, and add snapshot-url command
-- 751ed729: fix: Run full validateOrRevoke for all fids every 14 days
-- 935246bd: feat(hubble): Add support for using S3 snapshot for "catch up" sync.
-- @farcaster/hub-nodejs@0.11.8
-
 ## 1.11.0
 
 ### Minor Changes
