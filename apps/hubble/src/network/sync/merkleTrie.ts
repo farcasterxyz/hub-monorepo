@@ -209,7 +209,7 @@ class MerkleTrie {
     // MerkleTrie has rocksdb instance, however the merkle trie worker
     // uses a separate instance under trieDb prefix which needs to be used here instead.
     // The trie database is instantiated with new Rocksdb, which will prefix an input path with ".rocks"
-    const fullPath = `${trie._db.location}/${TrieDBPathPrefix}`;
+    const fullPath = path.join(trie._db.location, TrieDBPathPrefix);
     const normalizedPath = path.normalize(fullPath);
     const parts = normalizedPath.split(path.sep);
     // Remove the first directory. Note that the first element might be empty
