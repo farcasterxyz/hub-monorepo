@@ -234,7 +234,7 @@ impl CastStoreDef {
         // For cast add, make sure at least one of parentCastId or parentUrl is set
         let cast_body = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::CastAddBody(cast_add_body) => cast_add_body,
-            message_data::Body::CastRemoveBody(cast_remove_body) => return Ok(None),
+            message_data::Body::CastRemoveBody(_) => return Ok(None),
             _ => Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
                 message: "Invalid cast body".to_string(),
@@ -289,7 +289,7 @@ impl CastStoreDef {
         // For cast add, make sure at least one of parentCastId or parentUrl is set
         let cast_body = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::CastAddBody(cast_add_body) => cast_add_body,
-            message_data::Body::CastRemoveBody(cast_remove_body) => return Ok(None),
+            message_data::Body::CastRemoveBody(_) => return Ok(None),
             _ => Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
                 message: "Invalid cast body".to_string(),
@@ -474,7 +474,7 @@ impl CastStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(fid, page_options, Some(|message: &Message| true))
+        store.get_adds_by_fid(fid, page_options, Some(|_: &Message| true))
     }
 
     pub fn create_cast_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
@@ -522,7 +522,7 @@ impl CastStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_removes_by_fid(fid, page_options, Some(|message: &Message| true))
+        store.get_removes_by_fid(fid, page_options, Some(|_: &Message| true))
     }
 
     pub fn js_get_cast_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -557,7 +557,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
@@ -648,7 +648,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 

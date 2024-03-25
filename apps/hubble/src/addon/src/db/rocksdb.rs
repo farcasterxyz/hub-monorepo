@@ -9,7 +9,7 @@ use gzp::{
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
-use neon::result::{JsResult, ResultExt as _};
+use neon::result::JsResult;
 use neon::types::buffer::TypedArray;
 use neon::types::{
     Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
