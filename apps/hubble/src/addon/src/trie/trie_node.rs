@@ -7,6 +7,7 @@ use prost::Message as _;
 use std::{collections::HashMap, sync::Arc};
 
 pub const TIMESTAMP_LENGTH: usize = 10;
+const MAX_VALUES_RETURNED_PER_CALL: usize = 1024;
 
 /// Represents a node in a MerkleTrie. Automatically updates the hashes when items are added,
 /// and keeps track of the number of items in the subtree.
@@ -19,8 +20,8 @@ pub struct TrieNode {
 }
 
 // An empty struct that represents a serialized trie node, which will need to be loaded from the db
-struct SerializedTrieNode {
-    hash: Option<Vec<u8>>,
+pub struct SerializedTrieNode {
+    pub hash: Option<Vec<u8>>,
 }
 
 impl SerializedTrieNode {
@@ -171,6 +172,7 @@ impl TrieNode {
             self.items += 1;
 
             self.update_hash(db, &key[..current_index])?;
+            self.put_to_txn(txn, &key[..current_index]);
 
             return Ok(true);
         }
@@ -197,8 +199,8 @@ impl TrieNode {
 
         if result {
             self.items += 1;
-            self.update_hash(db, &key[..current_index])?;
 
+            self.update_hash(db, &key[..current_index])?;
             self.put_to_txn(txn, &key[..current_index]);
         }
 
@@ -419,33 +421,74 @@ impl TrieNode {
         txn.delete(key);
     }
 
-    pub fn print(&self, prefix: u8, depth: usize) -> Result<(), HubError> {
-        let indent = "  ".repeat(depth);
-        let key = self
-            .key
-            .as_ref()
-            .map(|k| format!("{:?}", k))
-            .unwrap_or("".to_string());
+    pub fn unload_children(&mut self) {
+        let mut serialized_children = HashMap::new();
+        for (char, child) in self.children.iter_mut() {
+            if let TrieNodeType::Node(child) = child {
+                serialized_children.insert(
+                    *char,
+                    TrieNodeType::Serialized(SerializedTrieNode::new(Some(child.hash.clone()))),
+                );
+            }
+        }
+        self.children = serialized_children;
+    }
 
-        println!(
-            "{}{}{:?}: {}",
-            indent,
-            prefix,
-            key,
-            hex::encode(self.hash.as_slice())
-        );
+    pub fn get_all_values(
+        &mut self,
+        db: &Arc<RocksDB>,
+        prefix: &[u8],
+    ) -> Result<Vec<Vec<u8>>, HubError> {
+        if self.is_leaf() {
+            return Ok(vec![self.key.clone().unwrap_or(vec![])]);
+        }
 
-        for (char, child) in self.children.iter() {
-            match child {
-                TrieNodeType::Node(child_node) => child_node.print(*char, depth + 1)?,
-                TrieNodeType::Serialized(_) => {
-                    println!("{}  {} (serialized):", indent, *char as char);
-                }
+        let mut values = vec![];
+        let child_chars = self.children.keys().map(|c| *c).collect::<Vec<_>>();
+
+        for char in child_chars {
+            let child_node = self.get_or_load_child(db, prefix, char)?;
+
+            let mut child_prefix = prefix.to_vec();
+            child_prefix.push(char);
+            values.extend(child_node.get_all_values(db, &child_prefix)?);
+
+            if values.len() > MAX_VALUES_RETURNED_PER_CALL {
+                break;
             }
         }
 
-        Ok(())
+        Ok(values)
     }
+
+    // Keeping this around since it is useful for debugging
+    // pub fn print(&self, prefix: u8, depth: usize) -> Result<(), HubError> {
+    //     let indent = "  ".repeat(depth);
+    //     let key = self
+    //         .key
+    //         .as_ref()
+    //         .map(|k| format!("{:?}", k))
+    //         .unwrap_or("".to_string());
+
+    //     println!(
+    //         "{}{}{:?}: {}",
+    //         indent,
+    //         prefix,
+    //         key,
+    //         hex::encode(self.hash.as_slice())
+    //     );
+
+    //     for (char, child) in self.children.iter() {
+    //         match child {
+    //             TrieNodeType::Node(child_node) => child_node.print(*char, depth + 1)?,
+    //             TrieNodeType::Serialized(_) => {
+    //                 println!("{}  {} (serialized):", indent, *char as char);
+    //             }
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
 }
 
 /**
