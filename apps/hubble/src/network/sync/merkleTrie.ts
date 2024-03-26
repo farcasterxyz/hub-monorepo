@@ -356,27 +356,35 @@ class MerkleTrie {
     let keys: Uint8Array[] = [];
     let values: Uint8Array[] = [];
 
+    // Migrate and delete the keys in batches
+    const migrateAndDelete = async () => {
+      const migrated = await this.migrate(keys, values);
+
+      log.info({ migrated, total: keys.length }, "Migrated keys to new trie");
+
+      // Delete from the DB
+      for (let i = 0; i < keys.length; i++) {
+        await this._db.del(Buffer.from(keys[i] as Uint8Array));
+      }
+
+      // Wait a bit before continuing
+      await sleep(1000);
+
+      keys = [];
+      values = [];
+    };
+
     await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.SyncMerkleTrieNode]), async (key, value) => {
       keys.push(new Uint8Array(key as Buffer));
       values.push(new Uint8Array(value as Buffer));
 
       if (keys.length >= 10_000) {
-        const migrated = await this.callMethod("migrate", keys, values);
-
-        log.info({ migrated, total: keys.length }, "Migrated keys to new trie");
-
-        // Delete from the DB
-        for (let i = 0; i < keys.length; i++) {
-          await this._db.del(Buffer.from(keys[i] as Uint8Array));
-        }
-
-        // Wait a bit before continuing
-        await sleep(1000);
-
-        keys = [];
-        values = [];
+        await migrateAndDelete();
       }
     });
+
+    // Delete any remaining keys from the DB
+    await migrateAndDelete();
 
     log.info({ duration: Date.now() - start }, "Finished migration of keys to new trie");
   }
