@@ -114,7 +114,7 @@ export class LibP2PNode {
     // default in gossipsub of 3s is not enough since hubs may experience I/O lag
     const gossipsubIWantFollowupMs = process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"]
       ? parseInt(process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"])
-      : 3 * 1000;
+      : 6 * 1000;
 
     if (options.p2pConnectTimeoutMs) {
       this._p2pConnectTimeoutMs = options.p2pConnectTimeoutMs;
@@ -125,14 +125,16 @@ export class LibP2PNode {
     }
 
     const gossip = gossipsub({
-      emitSelf: false,
-      gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       allowPublishToZeroPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
+      canRelayMessage: true,
+      directPeers: options.directPeers || [],
+      emitSelf: false,
+      fallbackToFloodsub: false,
+      floodPublish: false,
+      gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
-      directPeers: options.directPeers || [],
-      canRelayMessage: true,
       seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
       scoreParams: {
@@ -663,6 +665,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const specificMsg = msg as LibP2PNodeMessage<"gossipMessage">;
       const [message] = specificMsg.args;
 
+      statsd().gauge("gossip.worker.gossip_message_size_bytes", message.length, 1, { method: "gossipSubmitMessage" });
+      statsd().increment("gossip.worker.gossip_message_calls", 1, 1, { method: "gossipSubmitMessage" });
+
       const publishResult = Result.combine(await libp2pNode.gossipMessage(Message.decode(message)));
       const flattenedPeerIds = publishResult.isOk() ? publishResult.value.flatMap((r) => r.recipients) : [];
 
@@ -680,6 +685,8 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
     case "gossipContactInfo": {
       const specificMsg = msg as LibP2PNodeMessage<"gossipContactInfo">;
       const [contactInfo] = specificMsg.args;
+
+      statsd().gauge("gossip.worker.gossip_message_size_bytes", contactInfo.length, 1, { method: "gossipContactInfo" });
 
       const publishResult = Result.combine(await libp2pNode.gossipContactInfo(ContactInfoContent.decode(contactInfo)));
       const flattenedPeerIds = publishResult.isOk() ? publishResult.value.flatMap((r) => r.recipients) : [];

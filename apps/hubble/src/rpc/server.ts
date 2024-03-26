@@ -485,7 +485,11 @@ export default class Server {
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }
 
-            callback(null, MessagesResponse.create({ messages }));
+            const response = MessagesResponse.create({ messages });
+            const data = Buffer.from(MessagesResponse.encode(response).finish());
+
+            statsd().gauge("rpc.message_size_bytes", data.length, { method: "getAllMessagesBySyncIds", peer });
+            callback(null, response);
           },
           (err: HubError) => {
             callback(toServiceError(err));
