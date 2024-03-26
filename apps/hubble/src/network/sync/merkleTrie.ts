@@ -222,7 +222,7 @@ class MerkleTrie {
     // NOTE: trie._db.location has `.rocks` prefix. If we don't remove it, calling new RocksDB will end up with
     // `.rocks/.rocks` prefix. This will throw an error because RocksDB won't be able to find the parent path.
     const location = parts.join(path.sep);
-    if (!fs.existsSync(dirname(location))) {
+    if (!fs.existsSync(dirname(normalizedPath))) {
       return ok(0);
     }
 
