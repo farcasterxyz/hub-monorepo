@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.11.3
+
+### Patch Changes
+
+- e3f49976: fix(hubble): handle edge cases of rocksdb instantiation for snapshot uploads
+
 ## 1.11.2
 
 ### Patch Changes
