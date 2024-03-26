@@ -17,6 +17,7 @@ use neon::types::{
 };
 use rocksdb::{Options, TransactionDB};
 use slog::{info, o};
+use std::fmt::format;
 use std::fs::{self, File};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
