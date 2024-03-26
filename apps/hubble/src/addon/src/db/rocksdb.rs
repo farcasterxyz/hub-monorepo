@@ -9,7 +9,7 @@ use gzp::{
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
-use neon::result::{JsResult, ResultExt as _};
+use neon::result::JsResult;
 use neon::types::buffer::TypedArray;
 use neon::types::{
     Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
@@ -17,6 +17,7 @@ use neon::types::{
 };
 use rocksdb::{Options, TransactionDB};
 use slog::{info, o};
+use std::fmt::format;
 use std::fs::{self, File};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};

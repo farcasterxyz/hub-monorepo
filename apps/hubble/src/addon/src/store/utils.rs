@@ -217,6 +217,7 @@ pub fn bytes_compare(a: &[u8], b: &[u8]) -> i8 {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

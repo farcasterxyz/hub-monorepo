@@ -29,13 +29,6 @@ export const makeUserKey = (fid: number): Buffer => {
   return Buffer.concat([Buffer.from([RootPrefix.User]), makeFidKey(fid)]);
 };
 
-/**
- * Generates a key for referencing a CastId. Packed as <fid, hash>.
- */
-export const makeCastIdKey = (castId: CastId): Buffer => {
-  return Buffer.concat([makeFidKey(castId.fid), Buffer.from(castId.hash)]);
-};
-
 /** <user prefix byte, fid, set index byte, tsHash> */
 export const makeMessagePrimaryKey = (fid: number, set: UserMessagePostfix, tsHash?: Uint8Array): Buffer => {
   return Buffer.concat([makeUserKey(fid), Buffer.from([set]), Buffer.from(tsHash ?? "")]);

@@ -527,7 +527,6 @@ impl ReactionStore {
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
         let prefix = ReactionStoreDef::make_reactions_by_target_key(target, 0, None);
-        // println!("prefix: {:?}", prefix);
 
         let mut message_keys = vec![];
         let mut last_key = vec![];
@@ -535,8 +534,6 @@ impl ReactionStore {
         store
             .db()
             .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
-                // println!("key: {:x?}, value: {:x?}", key, value);
-
                 if reaction_type == ReactionType::None as i32
                     || (value.len() == 1 && value[0] == reaction_type as u8)
                 {

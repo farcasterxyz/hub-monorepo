@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 use std::{clone::Clone, fmt::Display};
 use threadpool::ThreadPool;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct HubError {
     pub code: String,
     pub message: String,

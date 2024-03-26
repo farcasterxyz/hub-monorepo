@@ -193,7 +193,6 @@ class TrieNode {
           this._children.delete(char);
           await this._updateHash(key.slice(0, current_index), dbGetter);
 
-          // Delete child
           const childPrefix = Buffer.concat([key.slice(0, current_index), new Uint8Array([char])]);
           child.deleteFromDbTx(dbUpdatesMap, childPrefix);
         }

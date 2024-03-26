@@ -9,6 +9,7 @@ mod db;
 mod logger;
 mod statsd;
 mod store;
+mod trie;
 
 mod protos {
     include!(concat!("./", "/proto/protobufs.rs"));
