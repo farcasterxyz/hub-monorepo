@@ -1,13 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use std::{sync::Arc, vec};
-
-    use hex::FromHex as _;
-
     use crate::{
         db::{RocksDB, RocksDbTransactionBatch},
-        trie::{TrieNode, TrieNodeType, TIMESTAMP_LENGTH},
+        trie::trie_node::{TrieNode, TrieNodeType, TIMESTAMP_LENGTH},
     };
+    use hex::FromHex as _;
+    use std::{sync::Arc, vec};
 
     fn empty_hash() -> Vec<u8> {
         blake3::hash(b"").as_bytes()[0..20].to_vec()
@@ -168,6 +166,54 @@ mod tests {
         assert_eq!(child_old.is_leaf(), false); // Not a leaf node because it is split at < timestamp length
         assert_eq!(child_old.items(), 2); // Still contains the 2 old keys
         assert_eq!(child_old.children().len(), 1); // The new key is the only child, which will split later
+
+        // Cleanup
+        db.destroy().unwrap();
+    }
+
+    #[test]
+    fn test_trie_node_insert_one_byte() {
+        // Create a new DB with a random temporary path
+        let tmp_path = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .as_os_str()
+            .to_string_lossy()
+            .to_string();
+        let db = Arc::new(RocksDB::new(&tmp_path).unwrap());
+        db.open().unwrap();
+        let mut txn = RocksDbTransactionBatch::new();
+
+        // Create a new TrieNode
+        let mut node = TrieNode::new();
+        assert_eq!(node.items(), 0);
+
+        let key1 = (0..=20).collect::<Vec<_>>();
+        let mut key2 = key1.clone();
+        key2[20] = 42;
+
+        let r = node.insert(&db, &mut txn, &key1, 0);
+        assert_eq!(r, Ok(true));
+
+        let r = node.insert(&db, &mut txn, &key2, 0);
+        assert_eq!(r, Ok(true));
+
+        // Check that both exists return true
+        let r = node.exists(&db, &key1, 0);
+        assert_eq!(r, Ok(true));
+
+        let r = node.exists(&db, &key2, 0);
+        assert_eq!(r, Ok(true));
+
+        // Make sure both delete Ok
+        let r = node.delete(&db, &mut txn, &key1, 0);
+        assert_eq!(r, Ok(true));
+        assert_eq!(node.items(), 1);
+
+        let r = node.delete(&db, &mut txn, &key2, 0);
+        assert_eq!(r, Ok(true));
+        assert_eq!(node.items(), 0);
+        assert_eq!(node.hash(), empty_hash());
 
         // Cleanup
         db.destroy().unwrap();

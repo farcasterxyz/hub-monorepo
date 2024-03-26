@@ -1,11 +1,8 @@
 import { performance } from "node:perf_hooks";
 import { Writable } from "node:stream";
 import v8 from "v8";
-
 import ProgressBar from "progress";
-
 import { MerkleTrie } from "../../network/sync/merkleTrie.js";
-
 import RocksDB from "../../storage/db/rocksdb.js";
 import { generateSyncIds } from "./helpers.js";
 import { yieldToEventLoop } from "./utils.js";
@@ -56,6 +53,7 @@ export const benchMerkleTrie = async ({
   await db.open();
 
   const trie = new MerkleTrie(db);
+  await trie.initialize();
 
   let i = 0;
   progress.tick(0);

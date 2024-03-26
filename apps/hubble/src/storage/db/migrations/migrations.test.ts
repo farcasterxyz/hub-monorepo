@@ -1,7 +1,7 @@
 import RocksDB from "../rocksdb.js";
 import { getDbSchemaVersion, LATEST_DB_SCHEMA_VERSION, performDbMigrations } from "./migrations.js";
 
-const dbName = "migrations.test.db";
+const dbName = "migrations.db.test";
 
 describe("migration", () => {
   let db: RocksDB;

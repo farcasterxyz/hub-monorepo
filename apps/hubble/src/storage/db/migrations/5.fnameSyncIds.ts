@@ -44,7 +44,7 @@ export const fnameSyncIds = async (db: RocksDB): Promise<boolean> => {
       }
     }
   });
-  await syncTrie.commitToDb();
+
   await syncTrie.stop();
   log.info({ duration: Date.now() - start }, `Finished fnameSyncIds migration. Removed ${count} fnames`);
   return true;

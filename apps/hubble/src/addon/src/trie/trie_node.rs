@@ -1,17 +1,19 @@
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::DbTrieNode,
-    store::{bytes_compare, HubError, RootPrefix},
+    store::{blake3_20, bytes_compare, HubError, RootPrefix},
 };
 use prost::Message as _;
 use std::{collections::HashMap, sync::Arc};
+
+use super::merkle_trie::{NodeMetadata, TrieSnapshot};
 
 pub const TIMESTAMP_LENGTH: usize = 10;
 const MAX_VALUES_RETURNED_PER_CALL: usize = 1024;
 
 /// Represents a node in a MerkleTrie. Automatically updates the hashes when items are added,
 /// and keeps track of the number of items in the subtree.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TrieNode {
     hash: Vec<u8>,
     items: usize,
@@ -20,6 +22,7 @@ pub struct TrieNode {
 }
 
 // An empty struct that represents a serialized trie node, which will need to be loaded from the db
+#[derive(Debug)]
 pub struct SerializedTrieNode {
     pub hash: Option<Vec<u8>>,
 }
@@ -31,6 +34,7 @@ impl SerializedTrieNode {
 }
 
 // An enum that represents the different types of trie nodes
+#[derive(Debug)]
 pub enum TrieNodeType {
     Node(TrieNode),
     Serialized(SerializedTrieNode),
@@ -46,7 +50,7 @@ impl TrieNode {
         }
     }
 
-    fn make_primary_key(prefix: &[u8], child_char: Option<u8>) -> Vec<u8> {
+    pub(crate) fn make_primary_key(prefix: &[u8], child_char: Option<u8>) -> Vec<u8> {
         let mut key = Vec::with_capacity(1 + prefix.len() + 1);
         key.push(RootPrefix::SyncMerkleTrieNode as u8);
         key.extend_from_slice(prefix);
@@ -68,7 +72,7 @@ impl TrieNode {
         db_trie_node.encode_to_vec()
     }
 
-    fn deserialize(serialized: &[u8]) -> Result<TrieNode, HubError> {
+    pub(crate) fn deserialize(serialized: &[u8]) -> Result<TrieNode, HubError> {
         let db_trie_node = DbTrieNode::decode(serialized).map_err(|e| HubError {
             code: "bad_request.invalid_param".to_string(),
             message: format!("Failed to decode trie node: {}", e),
@@ -122,7 +126,7 @@ impl TrieNode {
         db: &Arc<RocksDB>,
         prefix: &[u8],
         current_index: usize,
-    ) -> Option<&TrieNode> {
+    ) -> Option<&mut TrieNode> {
         if current_index == prefix.len() {
             return Some(self);
         }
@@ -155,15 +159,6 @@ impl TrieNode {
         key: &Vec<u8>,
         current_index: usize,
     ) -> Result<bool, HubError> {
-        if current_index >= key.len() {
-            return Err(HubError {
-                code: "bad_request.invalid_param".to_string(),
-                message: "Key length exceeded".to_string(),
-            });
-        }
-
-        let char = key[current_index];
-
         // Do not compact the timestamp portion of the trie, since it is used to compare snapshots
         if current_index >= TIMESTAMP_LENGTH && self.is_leaf() && self.key.is_none() {
             // Reached a leaf node with no value, insert it
@@ -188,6 +183,13 @@ impl TrieNode {
             self.split_leaf_node(db, txn, current_index)?;
         }
 
+        if current_index >= key.len() {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "Key length exceeded".to_string(),
+            });
+        }
+        let char = key[current_index];
         if !self.children.contains_key(&char) {
             self.children
                 .insert(char, TrieNodeType::Node(TrieNode::default()));
@@ -214,13 +216,6 @@ impl TrieNode {
         key: &[u8],
         current_index: usize,
     ) -> Result<bool, HubError> {
-        if current_index > key.len() {
-            return Err(HubError {
-                code: "bad_request.invalid_param".to_string(),
-                message: "Key length exceeded".to_string(),
-            });
-        }
-
         if self.is_leaf() {
             if bytes_compare(self.key.as_ref().unwrap_or(&vec![]), key) == 0 {
                 self.key = None;
@@ -234,6 +229,12 @@ impl TrieNode {
             return Ok(false);
         }
 
+        if current_index >= key.len() {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "Key length exceeded".to_string(),
+            });
+        }
         let char = key[current_index];
         if !self.children.contains_key(&char) {
             return Ok(false);
@@ -287,15 +288,14 @@ impl TrieNode {
         key: &[u8],
         current_index: usize,
     ) -> Result<bool, HubError> {
-        if current_index > key.len() {
-            return Ok(false);
-        }
-
-        let char = key[current_index];
-
         if self.is_leaf() {
             return Ok(bytes_compare(self.key.as_ref().unwrap_or(&vec![]), key) == 0);
         }
+
+        if current_index >= key.len() {
+            return Ok(false);
+        }
+        let char = key[current_index];
 
         if !self.children.contains_key(&char) {
             return Ok(false);
@@ -410,6 +410,31 @@ impl TrieNode {
         Ok(())
     }
 
+    fn excluded_hash(
+        &mut self,
+        db: &Arc<RocksDB>,
+        prefix: &[u8],
+        prefix_char: u8,
+    ) -> Result<(usize, String), HubError> {
+        let mut excluded_items = 0;
+        let mut child_hashes = vec![];
+
+        let mut sorted_children = self.children.keys().map(|c| *c).collect::<Vec<_>>();
+        sorted_children.sort();
+
+        for char in sorted_children {
+            if char != prefix_char {
+                let child_node = self.get_or_load_child(db, prefix, char)?;
+                child_hashes.push(child_node.hash.clone());
+                excluded_items += child_node.items;
+            }
+        }
+
+        let hash = blake3_20(&child_hashes.concat());
+
+        Ok((excluded_items, hex::encode(hash.as_slice())))
+    }
+
     fn put_to_txn(&self, txn: &mut RocksDbTransactionBatch, prefix: &[u8]) {
         let key = Self::make_primary_key(prefix, None);
         let serialized = Self::serialize(self);
@@ -444,9 +469,10 @@ impl TrieNode {
         }
 
         let mut values = vec![];
-        let child_chars = self.children.keys().map(|c| *c).collect::<Vec<_>>();
+        let mut sorted_children = self.children.iter().map(|(c, _)| *c).collect::<Vec<_>>();
+        sorted_children.sort();
 
-        for char in child_chars {
+        for char in sorted_children {
             let child_node = self.get_or_load_child(db, prefix, char)?;
 
             let mut child_prefix = prefix.to_vec();
@@ -459,6 +485,78 @@ impl TrieNode {
         }
 
         Ok(values)
+    }
+
+    pub fn get_node_metadata(
+        &mut self,
+        db: &Arc<RocksDB>,
+        prefix: &[u8],
+    ) -> Result<NodeMetadata, HubError> {
+        let mut children = HashMap::new();
+
+        let child_chars = self.children.keys().map(|c| *c).collect::<Vec<_>>();
+        for char in child_chars {
+            let child_node = self.get_or_load_child(db, prefix, char)?;
+
+            let mut child_prefix = prefix.to_vec();
+            child_prefix.push(char);
+
+            children.insert(
+                char,
+                NodeMetadata {
+                    prefix: child_prefix.clone(),
+                    num_messages: child_node.items,
+                    hash: hex::encode(child_node.hash.as_slice()),
+                    children: HashMap::new(),
+                },
+            );
+        }
+
+        Ok(NodeMetadata {
+            prefix: prefix.to_vec(),
+            num_messages: self.items,
+            hash: hex::encode(self.hash.as_slice()),
+            children,
+        })
+    }
+
+    pub fn get_snapshot(
+        &mut self,
+        db: &Arc<RocksDB>,
+        prefix: &[u8],
+        current_index: usize,
+    ) -> Result<TrieSnapshot, HubError> {
+        let mut excluded_hashes = vec![];
+        let mut num_messages = 0;
+
+        let mut current_node = self; // traverse from the current node
+        for (i, char) in prefix.iter().enumerate().skip(current_index) {
+            let current_prefix = prefix[0..i].to_vec();
+
+            let (excluded_items, excluded_hash) =
+                current_node.excluded_hash(db, &current_prefix, *char)?;
+
+            excluded_hashes.push(excluded_hash);
+            num_messages += excluded_items;
+
+            if !current_node.children.contains_key(char) {
+                return Ok(TrieSnapshot {
+                    prefix: current_prefix,
+                    excluded_hashes,
+                    num_messages,
+                });
+            }
+
+            current_node = current_node.get_or_load_child(db, &current_prefix, *char)?;
+        }
+
+        excluded_hashes.push(hex::encode(current_node.hash.as_slice()));
+
+        Ok(TrieSnapshot {
+            prefix: prefix.to_vec(),
+            excluded_hashes,
+            num_messages,
+        })
     }
 
     // Keeping this around since it is useful for debugging
@@ -489,13 +587,4 @@ impl TrieNode {
 
     //     Ok(())
     // }
-}
-
-/**
- * The hashes in the sync trie are 20 bytes (160 bits) long, so we use the first 20 bytes of the blake3 hash
- */
-fn blake3_20(input: &[u8]) -> Vec<u8> {
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(input);
-    hasher.finalize().as_bytes()[..20].to_vec()
 }

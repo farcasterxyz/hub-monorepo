@@ -14,6 +14,7 @@ import { MockHub } from "../../test/mocks.js";
 import Server from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { GossipNode } from "../../network/p2p/gossipNode.js";
+import { sleepWhile, SLEEPWHILE_TIMEOUT } from "../../utils/crypto.js";
 
 const db = jestRocksDB("protobufs.rpc.syncService.test");
 const network = FarcasterNetwork.TESTNET;
@@ -40,6 +41,10 @@ afterAll(async () => {
   await syncEngine.stop();
   await server.stop();
   await engine.stop();
+});
+
+beforeEach(async () => {
+  await syncEngine.trie.clear();
 });
 
 const fid = Factories.Fid.build();
@@ -70,6 +75,8 @@ describe("getInfo", () => {
     await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
     await engine.mergeMessage(castAdd2);
+
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const result = await client.getInfo(HubInfoRequest.create({ dbStats: true }));
     expect(result.isOk()).toBeTruthy();

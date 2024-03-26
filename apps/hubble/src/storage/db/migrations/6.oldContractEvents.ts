@@ -50,7 +50,7 @@ export const oldContractEvents = async (db: RocksDB): Promise<boolean> => {
       }
     },
   );
-  await syncTrie.commitToDb();
+
   await syncTrie.stop();
   log.info({ duration: Date.now() - start }, `Finished oldContractEvents migration. Removed ${count} events`);
   return true;

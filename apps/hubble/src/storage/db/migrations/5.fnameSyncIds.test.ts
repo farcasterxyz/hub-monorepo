@@ -16,6 +16,7 @@ describe("fnameSyncIds migration", () => {
     "should delete unpaddded fname syncIds",
     async () => {
       const syncTrie = new MerkleTrie(db);
+      const trieDb = syncTrie.getDb();
       await syncTrie.initialize();
 
       const proof1 = Factories.UserNameProof.build({ name: Buffer.from("test") });
@@ -40,13 +41,14 @@ describe("fnameSyncIds migration", () => {
       );
 
       await syncTrie.insert(paddedFnameSyncId);
-      await syncTrie.callMethod("insert", unpaddedFnameSyncId1Bytes);
-      await syncTrie.callMethod("insert", unpaddedFnameSyncId2Bytes);
-      await syncTrie.commitToDb();
+      await syncTrie.insertBytes(unpaddedFnameSyncId1Bytes);
+      await syncTrie.insertBytes(unpaddedFnameSyncId2Bytes);
 
       expect(await syncTrie.existsByBytes(paddedFnameSyncId.syncId())).toBe(true);
       expect(await syncTrie.existsByBytes(unpaddedFnameSyncId1Bytes)).toBe(true);
       expect(await syncTrie.existsByBytes(unpaddedFnameSyncId2Bytes)).toBe(true);
+
+      await syncTrie.stop();
 
       const success = await performDbMigrations(db, 4, 5);
       expect(success).toBe(true);

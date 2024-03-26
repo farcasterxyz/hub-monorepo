@@ -20,7 +20,7 @@ import SyncEngine from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
-import { sleepWhile } from "../../utils/crypto.js";
+import { SLEEPWHILE_TIMEOUT, sleepWhile } from "../../utils/crypto.js";
 import { NetworkFactories } from "../../network/utils/factories.js";
 import { HubInterface } from "../../hubble.js";
 import { MockHub } from "../../test/mocks.js";
@@ -30,7 +30,6 @@ import { IdRegisterOnChainEvent } from "@farcaster/core";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 
 const TEST_TIMEOUT_SHORT = 60 * 1000;
-const SLEEPWHILE_TIMEOUT = 10 * 1000;
 
 const testDb = jestRocksDB("engine.syncEngine.test");
 const testDb2 = jestRocksDB("engine2.syncEngine.test");
@@ -69,6 +68,7 @@ describe("SyncEngine", () => {
     hub = new MockHub(testDb, engine);
     syncEngine = new SyncEngine(hub, testDb);
     await syncEngine.start();
+    await syncEngine.trie.clear();
   }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {
@@ -93,7 +93,7 @@ describe("SyncEngine", () => {
     );
 
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
-    await syncEngine.trie.commitToDb();
+
     return results;
   };
 
@@ -207,6 +207,8 @@ describe("SyncEngine", () => {
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
     const existingItems = await syncEngine.trie.items();
     expect(existingItems).toEqual(3);
 
@@ -280,6 +282,8 @@ describe("SyncEngine", () => {
     const hub2 = new MockHub(testDb2, engine2);
     const syncEngine2 = new SyncEngine(hub2, testDb2);
     await syncEngine2.start();
+    await syncEngine2.trie.clear();
+
     await engine2.mergeOnChainEvent(custodyEvent);
     await engine2.mergeOnChainEvent(signerEvent);
     await engine2.mergeOnChainEvent(storageEvent);
@@ -424,13 +428,15 @@ describe("SyncEngine", () => {
     const messages = await addMessagesWithTimestamps([167, 169, 172]);
 
     expect(await syncEngine.trie.items()).toEqual(7); // 3 messages + 3 on chain events + 1 fname
+    const rootHash = await syncEngine.trie.rootHash();
+    await syncEngine.stop();
 
     const syncEngine2 = new SyncEngine(hub, testDb);
     await syncEngine2.start();
 
     // Make sure all messages exist
     expect(await syncEngine2.trie.items()).toEqual(7);
-    expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
+    expect(await syncEngine2.trie.rootHash()).toEqual(rootHash);
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[0] as Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[1] as Message))).toBeTruthy();
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[2] as Message))).toBeTruthy();
@@ -441,37 +447,6 @@ describe("SyncEngine", () => {
 
     await syncEngine2.stop();
   });
-
-  test(
-    "Rebuild trie from engine messages",
-    async () => {
-      await engine.mergeOnChainEvent(custodyEvent);
-      await engine.mergeOnChainEvent(signerEvent);
-      await engine.mergeOnChainEvent(storageEvent);
-      await engine.mergeUserNameProof(fnameProof);
-
-      const messages = await addMessagesWithTimestamps([167, 169, 172]);
-
-      expect(await syncEngine.trie.items()).toEqual(7); // 3 messages + 3 on chain events + 1 fname
-
-      const syncEngine2 = new SyncEngine(hub, testDb);
-      await syncEngine2.start(true); // Rebuild from engine messages
-
-      // Make sure all messages exist
-      expect(await syncEngine2.trie.items()).toEqual(7);
-      expect(await syncEngine2.trie.rootHash()).toEqual(await syncEngine.trie.rootHash());
-      expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[0] as Message))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[1] as Message))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(SyncId.fromMessage(messages[2] as Message))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(signerEvent))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(SyncId.fromOnChainEvent(storageEvent))).toBeTruthy();
-      expect(await syncEngine2.trie.exists(SyncId.fromFName(fnameProof))).toBeTruthy();
-
-      await syncEngine2.stop();
-    },
-    TEST_TIMEOUT_SHORT,
-  );
 
   test(
     "getSnapshot should use a prefix of 10-seconds resolution timestamp",
@@ -504,7 +479,6 @@ describe("SyncEngine", () => {
       );
 
       await Promise.all(syncIds.map((id) => syncEngine.trie.insert(id)));
-      await syncEngine.trie.commitToDb();
     };
 
     test("returns the prefix with the most common excluded hashes", async () => {

@@ -7,21 +7,42 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
-import { HubError, HubErrorCode, LinkAddMessage, validations } from "@farcaster/hub-nodejs";
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
+import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
+import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
 import { logger } from "./utils/logger.js";
 import { Result } from "neverthrow";
+import { NodeMetadata, TrieSnapshot } from "network/sync/merkleTrie.js";
 
 // Also set up the log flush listener
 logger.onFlushListener(() => {
   lib.flushLogBuffer();
 });
 
-export class RustDynStore {}
-export class RustDb {}
-export class RustStoreEventHandler {}
+const RustMerkleTrieBrand = Symbol("RustMerkleTrie");
+export class RustMerkleTrie {
+  // @ts-ignore
+  private [RustMerkleTrieBrand]: never;
+}
+
+const RustDynStoreBrand = Symbol("RustDynStore");
+export class RustDynStore {
+  // @ts-ignore
+  private [RustDynStoreBrand]: never;
+}
+
+const RustDbBrand = Symbol("RustDb");
+export class RustDb {
+  // @ts-ignore
+  private [RustDbBrand]: never;
+}
+
+const RustStoreEventHandlerBrand = Symbol("RustStoreEventHandler");
+export class RustStoreEventHandler {
+  // @ts-ignore
+  private [RustStoreEventHandlerBrand]: never;
+}
 
 // Type returned from Rust which is equivalent to the TypeScript type `MessagesPage`
 export class RustMessagesPage {
@@ -595,3 +616,106 @@ export namespace rsLinkStore {
     return await lib.getAllLinkMessagesByFid.call(store, fid, pageOptions);
   };
 }
+
+/**
+ * Merkle Trie Functions
+ */
+export const rsCreateMerkleTrie = (dbPath: string): RustMerkleTrie => {
+  const trie = lib.createMerkleTrie(dbPath);
+  return trie as RustMerkleTrie;
+};
+
+export const rsCreateMerkleTrieFromDb = (db: RustDb): RustMerkleTrie => {
+  const trie = lib.createMerkleTrieFromDb(db);
+  return trie as RustMerkleTrie;
+};
+
+export const rsMerkleTrieGetDb = (trie: RustMerkleTrie): RustDb => {
+  return lib.merkleTrieGetDb.call(trie) as RustDb;
+};
+
+export const rsMerkleTrieInitialize = async (trie: RustMerkleTrie): Promise<void> => {
+  await lib.merkleTrieInitialize.call(trie);
+};
+
+export const rsMerkleTrieClear = async (trie: RustMerkleTrie): Promise<void> => {
+  await lib.merkleTrieClear.call(trie);
+};
+
+export const rsMerkleTrieStop = async (trie: RustMerkleTrie): Promise<void> => {
+  await lib.merkleTrieStop.call(trie);
+};
+
+export const rsMerkleTrieInsert = (trie: RustMerkleTrie, key: Uint8Array): boolean => {
+  return lib.merkleTrieInsert.call(trie, key);
+};
+
+export const rsMerkleTrieDelete = async (trie: RustMerkleTrie, key: Uint8Array): Promise<boolean> => {
+  return await lib.merkleTrieDelete.call(trie, key);
+};
+
+export const rsMerkleTrieExists = (trie: RustMerkleTrie, key: Uint8Array): boolean => {
+  return lib.merkleTrieExists.call(trie, key);
+};
+
+export const rsMerkleTrieGetSnapshot = async (trie: RustMerkleTrie, prefix: Uint8Array): Promise<TrieSnapshot> => {
+  const snapshot = (await lib.merkleTrieGetSnapshot.call(trie, prefix)) as TrieSnapshot;
+  return {
+    prefix: new Uint8Array(snapshot.prefix),
+    excludedHashes: snapshot.excludedHashes,
+    numMessages: snapshot.numMessages,
+  };
+};
+
+export const rsMerkleTrieGetTrieNodeMetadata = async (
+  trie: RustMerkleTrie,
+  prefix: Uint8Array,
+): Promise<NodeMetadata | undefined> => {
+  try {
+    const metadata = await lib.merkleTrieGetTrieNodeMetadata.call(trie, prefix);
+
+    // The returned metadata has a childrenKeys and childrenValues, which need to be turned into a Map
+    const children = new Map<number, NodeMetadata>();
+    for (let i = 0; i < metadata.childrenKeys.length; i++) {
+      children.set(metadata.childrenKeys[i], metadata.childrenValues[i]);
+    }
+
+    return {
+      numMessages: metadata.numMessages,
+      hash: metadata.hash,
+      prefix: new Uint8Array(metadata.prefix),
+      children,
+    };
+  } catch (err) {
+    const e = err as HubError;
+    if (e.message.includes("Node not found")) {
+      return undefined;
+    } else {
+      throw err;
+    }
+  }
+};
+
+export const rsMerkleTrieGetAllValues = async (trie: RustMerkleTrie, prefix: Uint8Array): Promise<Uint8Array[]> => {
+  return await lib.merkleTrieGetAllValues.call(trie, prefix);
+};
+
+export const rsMerkleTrieItems = async (trie: RustMerkleTrie): Promise<number> => {
+  return await lib.merkleTrieItems.call(trie);
+};
+
+export const rsMerkleTrieRootHash = async (trie: RustMerkleTrie): Promise<string> => {
+  return Buffer.from(await lib.merkleTrieRootHash.call(trie)).toString("hex");
+};
+
+export const rsMerkleTrieMigrate = async (
+  trie: RustMerkleTrie,
+  keys: Uint8Array[],
+  values: Uint8Array[],
+): Promise<number> => {
+  return await lib.merkleTrieMigrate.call(trie, keys, values);
+};
+
+export const rsMerkleTrieUnloadChildren = async (trie: RustMerkleTrie): Promise<void> => {
+  return await lib.merkleTrieUnloadChildren.call(trie);
+};

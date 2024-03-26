@@ -1,8 +1,5 @@
 import { logger } from "../../utils/logger.js";
-import * as tar from "tar";
-import * as fs from "fs";
-import { err, ok, Result, ResultAsync } from "neverthrow";
-import path from "path";
+import { Result, ResultAsync } from "neverthrow";
 import {
   rsApproximateSize as rsDbApproximateSize,
   rsCreateDb,
@@ -85,6 +82,13 @@ class RocksDB {
 
     this._db = createdDb.value;
     this._status = "new";
+  }
+
+  static fromRustDb(db: RustDb): RocksDB {
+    const rocksDb = new RocksDB();
+    rocksDb._db = db;
+    rocksDb._status = "open";
+    return rocksDb;
   }
 
   get rustDb(): RustDb {

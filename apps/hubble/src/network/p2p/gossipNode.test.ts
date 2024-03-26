@@ -173,6 +173,7 @@ describe("GossipNode", () => {
       const hub = new MockHub(db, undefined, mockGossipNode);
 
       const syncEngine = new SyncEngine(hub, db);
+      await syncEngine.start();
       server = new Server(hub, hub.engine, syncEngine, mockGossipNode);
       const port = await server.start();
       client = getInsecureHubRpcClient(`127.0.0.1:${port}`);

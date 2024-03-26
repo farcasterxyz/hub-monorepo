@@ -20,8 +20,8 @@ import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
-import { EMPTY_HASH } from "./trieNode.js";
 import { ensureMessageData } from "../../storage/db/message.js";
+import { EMPTY_HASH } from "./merkleTrie.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -134,6 +134,8 @@ describe("Multi peer sync engine", () => {
     hub1 = new MockHub(testDb1, engine1);
     syncEngine1 = new SyncEngine(hub1, testDb1, undefined, undefined, undefined, 0);
     await syncEngine1.start();
+    await syncEngine1.trie.clear();
+
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
     clientForServer1 = getInsecureHubRpcClient(`127.0.0.1:${port1}`);
@@ -154,6 +156,7 @@ describe("Multi peer sync engine", () => {
     hub2 = new MockHub(testDb2, engine2);
     syncEngine2 = new SyncEngine(hub2, testDb2, l2EventsProvider, fnameEventsProvider, undefined, 0);
     await syncEngine2.start();
+    await syncEngine2.trie.clear();
   }, TEST_TIMEOUT_SHORT);
 
   afterEach(async () => {
@@ -190,11 +193,12 @@ describe("Multi peer sync engine", () => {
 
     // Create a new sync engine from the existing engine, and see if all the messages from the engine
     // are loaded into the sync engine Merkle Trie properly.
-    await syncEngine1.trie.commitToDb();
+    const rootHash = await syncEngine1.trie.rootHash();
+    await syncEngine1.stop();
     const reinitSyncEngine = new SyncEngine(hub1, testDb1);
     await reinitSyncEngine.start();
 
-    expect(await reinitSyncEngine.trie.rootHash()).toEqual(await syncEngine1.trie.rootHash());
+    expect(await reinitSyncEngine.trie.rootHash()).toEqual(rootHash);
 
     await reinitSyncEngine.stop();
   });
@@ -644,13 +648,12 @@ describe("Multi peer sync engine", () => {
     await engine1.mergeOnChainEvent(custodyEvent);
     await engine1.mergeOnChainEvent(signerEvent);
     await engine1.mergeOnChainEvent(storageEvent);
+    const initialEngine1Count = 3; // Added 3 events
 
     await engine2.mergeOnChainEvent(custodyEvent);
     await engine2.mergeOnChainEvent(signerEvent);
     await engine2.mergeOnChainEvent(storageEvent);
-
-    const initialEngine1Count = await syncEngine1.trie.items();
-    const initialEngine2Count = await syncEngine2.trie.items();
+    const initialEngine2Count = 3; // Added 3 events
 
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
     expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
