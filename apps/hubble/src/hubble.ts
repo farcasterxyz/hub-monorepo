@@ -563,18 +563,34 @@ export class Hub implements HubInterface {
       const tarResult = await ResultAsync.fromPromise(rsCreateTarBackup(this.rocksDB.rustDb), (e) => e as Error);
 
       if (tarResult.isOk()) {
-        // Upload to S3. Run this in the background so we don't block startup.
-        setTimeout(async () => {
-          const messages = await MerkleTrie.numItems(this.syncEngine.trie);
-          if (messages.isErr()) {
+        // Fetch the number of elements in the trie DB synchronously, to avoid race conditions with other services
+        // that may open and access the DB.
+        const messages = await MerkleTrie.numItems(this.syncEngine.trie);
+        let messageCount = 0;
+        messages.match(
+          (numMessages) => {
+            messageCount = numMessages;
+          },
+          (error) => {
             log.error(
               {
-                error: messages.error,
+                error: error,
               },
               "failed to get message count from sync engine trie",
             );
-          }
-          const messageCount = messages.isErr() ? -1 : messages.value;
+            // Throw an error if message count is not obtained, since it's required for snapshot upload
+            throw error;
+          },
+        );
+        // If snapshot to S3 flag is explicitly set, we throw an error if message count is zero,
+        // since it would be atypical to set this flag when there are no messages in the trie
+        if (messageCount <= 0) {
+          log.error("no messages found in sync engine trie, cannot upload snapshot");
+          throw new HubError("unavailable", "no messages found in sync engine trie, snapshot upload failed");
+        }
+
+        // Upload to S3. Run this in the background so we don't block startup.
+        setTimeout(async () => {
           log.info({ messageCount }, "uploading snapshot to S3");
           const s3Result = await uploadToS3(
             this.options.network,
@@ -599,7 +615,8 @@ export class Hub implements HubInterface {
 
     // Check if we need to catchup sync using snapshot
     let catchupSyncResult: Result<boolean, Error> = ok(false);
-    if (this.options.catchupSyncWithSnapshot) {
+    // NOTE: catch up sync with snapshot is only supported on mainnet
+    if (this.options.catchupSyncWithSnapshot && this.options.network === FarcasterNetwork.MAINNET) {
       log.info("attempting catchup sync with snapshot");
       catchupSyncResult = await this.attemptCatchupSyncWithSnapshot();
       if (catchupSyncResult.isErr()) {
@@ -874,7 +891,7 @@ export class Hub implements HubInterface {
 
     delta = snapshotMetadata.numMessages - currentItemCount;
     if (delta > limit) {
-      log.info({ delta, limit }, "catchup sync using snapshot");
+      log.info({ delta, limit, current_item_count: currentItemCount }, "catchup sync using snapshot");
       shouldCatchupSync = true;
     }
 
