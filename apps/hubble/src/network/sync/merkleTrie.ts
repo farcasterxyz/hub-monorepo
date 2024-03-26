@@ -206,8 +206,6 @@ class MerkleTrie {
   // If there are any other processes that operate on RocksDB while this is running, there may be
   // inconsistencies or errors.
   public static async numItems(trie: MerkleTrie): HubAsyncResult<number> {
-    // MerkleTrie has rocksdb instance, however the merkle trie worker
-    // uses a separate instance under trieDb prefix which needs to be used here instead.
     // The trie database is instantiated with new Rocksdb, which will prefix an input path with ".rocks"
     const fullPath = path.join(trie._db.location, TrieDBPathPrefix);
     const normalizedPath = path.normalize(fullPath);
@@ -221,59 +219,35 @@ class MerkleTrie {
       parts.splice(0, 1); // Remove the first element for relative paths
     }
 
-    // Location will be the path of the trie database without the first directory, since RocksDB creates prefix
-    // of ".rocks" for every input path.
+    // NOTE: trie._db.location has `.rocks` prefix. If we don't remove it, calling new RocksDB will end up with
+    // `.rocks/.rocks` prefix. This will throw an error because RocksDB won't be able to find the parent path.
     const location = parts.join(path.sep);
+    if (!fs.existsSync(dirname(location))) {
+      return ok(0);
+    }
 
-    // We need to check if the full directory path exists, otherwise instantiating RocksDB will throw an error
-    if (!fs.existsSync(path.dirname(path.resolve(normalizedPath)))) {
-      return ok(0);
-    }
-    if (!fs.existsSync(path.resolve(normalizedPath))) {
-      return ok(0);
-    }
     const db = new RocksDB(location);
-    if (!db) {
-      return err(new HubError("unavailable", "RocksDB not provided"));
-    }
-    const isEmptyDir = await fs.promises.readdir(path.resolve(db.location)).then((files) => files.length === 0);
-    if (isEmptyDir) {
+    await db.open();
+
+    const rootResult = await ResultAsync.fromPromise(
+      db.get(TrieNode.makePrimaryKey(new Uint8Array())),
+      (e) => e as HubError,
+    );
+    db.close();
+
+    // If the root key was not found, return 0
+    if (rootResult.isErr()) {
       return ok(0);
     }
 
-    let wasOpen = true;
-    if (db.status !== "open") {
-      wasOpen = false;
-      await db.open();
+    const rootBytes = rootResult.value;
+    // If the root is empty, return 0
+    if (!(rootBytes && rootBytes.length > 0)) {
+      return ok(0);
     }
 
-    if (db.status === "open") {
-      const rootResult = await ResultAsync.fromPromise(
-        db.get(TrieNode.makePrimaryKey(new Uint8Array())),
-        (e) => e as HubError,
-      );
-
-      // If the directories exist but the root key was not found, return 0
-      if (rootResult.isErr()) {
-        return ok(0);
-      }
-
-      const rootBytes = rootResult.value;
-      // If the root is empty, return 0
-      if (!(rootBytes && rootBytes.length > 0)) {
-        return ok(0);
-      }
-
-      const root = TrieNode.deserialize(rootBytes);
-      // If db was open prior to this method call, leave it open after the method call.
-      // Otherwise, close the db.
-      if (!wasOpen) {
-        db.close();
-      }
-      return ok(root.items);
-    }
-
-    return err(new HubError("unavailable", "Unable to open RocksDB"));
+    const root = TrieNode.deserialize(rootBytes);
+    return ok(root.items);
   }
 
   public async stop(): Promise<void> {
