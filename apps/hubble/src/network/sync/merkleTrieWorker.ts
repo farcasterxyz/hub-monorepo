@@ -268,6 +268,36 @@ class MerkleTrieImpl {
     });
   }
 
+  /**
+   * Migrate a set of key-values from the main DB to the trie DB. If the key exists in the DB, we
+   * skip it, otherwise we insert it into the trie DB.
+   *
+   * Return the number of keys migrated actually written to the trie DB.
+   */
+  public async migrate(keys: Uint8Array[], values: Uint8Array[]): Promise<number> {
+    return new Promise((resolve) => {
+      this._lock.writeLock(async (release) => {
+        let migrated = 0;
+        for (let i = 0; i < keys.length; i++) {
+          const key = keys[i] as Uint8Array;
+          const value = values[i] as Uint8Array;
+
+          const dbValue = await this._dbGet(Buffer.from(key));
+          if (dbValue && dbValue.length > 0) {
+            continue;
+          }
+
+          const dbKeyValues = [{ key, value }];
+          await this._dbPut(dbKeyValues);
+          migrated++;
+        }
+
+        resolve(migrated);
+        release();
+      });
+    });
+  }
+
   public async delete(id: Uint8Array): Promise<boolean> {
     return new Promise((resolve) => {
       this._lock.writeLock(async (release) => {
@@ -568,6 +598,13 @@ parentPort?.on(
         log.info("MerkleTrieImpl: stopping");
         await merkleTrie.stop();
         parentPort?.postMessage({ methodCallId, result: makeResult<"stop">(undefined) });
+        break;
+      }
+      case "migrate": {
+        const specificMsg = msg as MerkleTrieInterfaceMessage<"migrate">;
+        const [keys, values] = specificMsg.args;
+        const result = await merkleTrie.migrate(keys, values);
+        parentPort?.postMessage({ methodCallId, result: makeResult<"migrate">(result) });
         break;
       }
     }
