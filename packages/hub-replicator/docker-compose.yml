@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: 'postgres:16-alpine'
+    restart: unless-stopped
+    ports:
+      - '6541:5432' # Use a port unlikely to be in use so the example "Just Works"
+    environment:
+      - POSTGRES_DB=replicator
+      - POSTGRES_USER=replicator
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Need to specify name/user to avoid `FATAL: role "root" does not exist` errors in logs
+      test: [ 'CMD-SHELL', 'env', 'pg_isready', '--dbname', '$$POSTGRES_DB', '-U', '$$POSTGRES_USER' ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - replicator-network
+  redis:
+    image: 'redis:7.2-alpine'
+    restart: unless-stopped
+    command: --save 1 1 --loglevel warning --maxmemory-policy noeviction
+    volumes:
+      - redis-data:/data
+    ports:
+      - '16379:6379'
+    healthcheck:
+      test: [ 'CMD-SHELL', 'redis-cli', 'ping' ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - replicator-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  replicator-network:

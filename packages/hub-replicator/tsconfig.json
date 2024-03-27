@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "baseUrl": "./src",
+    "outDir": "build",
+    "rootDir": "src",
+    "isolatedModules": true,
+    "exactOptionalPropertyTypes": false,
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "exclude": ["build", "node_modules", "jest.config.ts"]
+}

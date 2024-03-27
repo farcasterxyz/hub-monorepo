@@ -1,0 +1,34 @@
+import { Redis, RedisOptions } from "ioredis";
+
+export const getRedisClient = (redisUrl: string, redisOpts?: RedisOptions) => {
+  const client = new Redis(redisUrl, {
+    connectTimeout: 5_000,
+    maxRetriesPerRequest: null, // BullMQ wants this set
+    ...redisOpts,
+  });
+  return client;
+};
+
+export class RedisClient {
+  private client: Redis;
+  constructor(client: Redis) {
+    this.client = client;
+  }
+  static create(redisUrl: string, redisOpts?: RedisOptions) {
+    const client = getRedisClient(redisUrl, redisOpts);
+    return new RedisClient(client);
+  }
+
+  async setLastProcessedEvent(hubId: string, eventId: number) {
+    await this.client.set(`hub:${hubId}:last-hub-event-id`, eventId.toString());
+  }
+
+  async getLastProcessedEvent(hubId: string) {
+    const eventId = await this.client.get(`hub:${hubId}:last-hub-event-id`);
+    return eventId ? parseInt(eventId) : 0;
+  }
+
+  async clearForTest() {
+    await this.client.flushdb();
+  }
+}
