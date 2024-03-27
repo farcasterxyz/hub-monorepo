@@ -271,7 +271,7 @@ class MerkleTrie {
     if (!(process.env["NODE_ENV"] === "test" || process.env["CI"])) {
       setTimeout(async () => {
         await this.doMigrate();
-      }, 1000);
+      }, 5 * 60 * 1000);
     }
 
     return this.callMethod("initialize");
@@ -373,7 +373,7 @@ class MerkleTrie {
       }
 
       // Wait a bit before continuing
-      await sleep(1000);
+      await sleep(2000);
 
       keys = [];
       values = [];
