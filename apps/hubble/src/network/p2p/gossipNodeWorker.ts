@@ -114,7 +114,7 @@ export class LibP2PNode {
     // default in gossipsub of 3s is not enough since hubs may experience I/O lag
     const gossipsubIWantFollowupMs = process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"]
       ? parseInt(process.env["GOSSIPSUB_IWANT_FOLLOWUP_MS"])
-      : 6 * 1000;
+      : 3 * 1000;
 
     if (options.p2pConnectTimeoutMs) {
       this._p2pConnectTimeoutMs = options.p2pConnectTimeoutMs;
