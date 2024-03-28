@@ -516,6 +516,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
 
+          statsd().gauge("gossip.message_size_bytes", data.length, { topic: detail.msg.topic });
+
           const tags: { [key: string]: string } = {
             topic: detail.msg.topic,
           };
