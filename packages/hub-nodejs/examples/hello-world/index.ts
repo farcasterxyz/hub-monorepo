@@ -18,7 +18,7 @@ import {
   ViemLocalEip712Signer,
   makeCastRemove,
 } from "@farcaster/hub-nodejs";
-import { mnemonicToAccount, toAccount } from "viem/accounts";
+import { privateKeyToAccount, toAccount } from "viem/accounts";
 import {
   createWalletClient,
   decodeEventLog,
@@ -37,7 +37,7 @@ import axios from "axios";
 /**
  * Populate the following constants with your own values
  */
-const MNEMONIC = "<REQUIRED>";
+const PRIVATE_KEY = "<REQUIRED>";
 const OP_PROVIDER_URL = "<REQUIRED>"; // Alchemy or Infura url
 const RECOVERY_ADDRESS = zeroAddress; // Optional, using the default value means the account will not be recoverable later if the mnemonic is lost
 const SIGNER_PRIVATE_KEY: Hex = zeroAddress; // Optional, using the default means a new signer will be created each time
@@ -45,9 +45,7 @@ const SIGNER_PRIVATE_KEY: Hex = zeroAddress; // Optional, using the default mean
 // Note: nemes is the Farcaster team's mainnet hub, which is password protected to prevent abuse. Use a 3rd party hub
 // provider like https://neynar.com/ Or, run your own mainnet hub and broadcast to it permissionlessly.
 const HUB_URL = "nemes.farcaster.xyz:2283"; // URL + Port of the Hub
-const HUB_USERNAME = ""; // Username for auth, leave blank if not using TLS
-const HUB_PASS = ""; // Password for auth, leave blank if not using TLS
-const USE_SSL = false; // set to true if talking to a hub that uses SSL (3rd party hosted hubs or hubs that require auth)
+const USE_SSL = false; // set to true if talking to a hub that uses SSL (3rd party hosted hubs like https://neynar.com/ or hubs that require auth)
 const FC_NETWORK = FarcasterNetwork.MAINNET; // Network of the Hub
 
 const CHAIN = optimism;
@@ -55,7 +53,7 @@ const IdGateway = { abi: idGatewayABI, address: ID_GATEWAY_ADDRESS, chain: CHAIN
 const IdContract = { abi: idRegistryABI, address: ID_REGISTRY_ADDRESS, chain: CHAIN };
 const KeyContract = { abi: keyGatewayABI, address: KEY_GATEWAY_ADDRESS, chain: CHAIN };
 
-const account = mnemonicToAccount(MNEMONIC);
+const account = privateKeyToAccount(PRIVATE_KEY);
 
 const walletClient = createWalletClient({
   account,
@@ -64,7 +62,6 @@ const walletClient = createWalletClient({
 }).extend(publicActions);
 
 const hubClient = USE_SSL ? getSSLHubRpcClient(HUB_URL) : getInsecureHubRpcClient(HUB_URL);
-const metadata = HUB_USERNAME !== "" && HUB_PASS !== "" ? getAuthMetadata(HUB_USERNAME, HUB_PASS) : new Metadata();
 
 const getOrRegisterFid = async (): Promise<number> => {
   const balance = await walletClient.getBalance({ address: account.address });
