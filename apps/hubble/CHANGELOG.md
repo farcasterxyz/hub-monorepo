@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.11.4
+
+### Patch Changes
+
+- ccd4d96a: fix(hubble): reduce hub bandwidth, can be toggled with GOSSIPSUB_FALLBACK_TO_FLOODSUB and GOSSIPSUB_FLOOD_PUBLISH
+- 5ec735b4: chore: Migrate trie node data to TrieDB
+
 ## 1.11.3
 
 ### Patch Changes
