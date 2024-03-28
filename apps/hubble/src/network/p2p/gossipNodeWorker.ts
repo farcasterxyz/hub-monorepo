@@ -124,14 +124,22 @@ export class LibP2PNode {
         : LIBP2P_CONNECT_TIMEOUT_MS;
     }
 
+    const fallbackToFloodsub = process.env["GOSSIPSUB_FALLBACK_TO_FLOODSUB"]
+      ? process.env["GOSSIPSUB_FALLBACK_TO_FLOODSUB"] === "true"
+      : false;
+
+    const floodPublish = process.env["GOSSIPSUB_FLOOD_PUBLISH"]
+      ? process.env["GOSSIPSUB_FLOOD_PUBLISH"] === "true"
+      : false;
+
     const gossip = gossipsub({
       allowPublishToZeroPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
       canRelayMessage: true,
       directPeers: options.directPeers || [],
       emitSelf: false,
-      fallbackToFloodsub: false,
-      floodPublish: false,
+      fallbackToFloodsub: fallbackToFloodsub,
+      floodPublish: floodPublish,
       gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",
       msgIdFn: this.getMessageId.bind(this),
@@ -666,7 +674,6 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [message] = specificMsg.args;
 
       statsd().gauge("gossip.worker.gossip_message_size_bytes", message.length, 1, { method: "gossipSubmitMessage" });
-      statsd().increment("gossip.worker.gossip_message_calls", 1, 1, { method: "gossipSubmitMessage" });
 
       const publishResult = Result.combine(await libp2pNode.gossipMessage(Message.decode(message)));
       const flattenedPeerIds = publishResult.isOk() ? publishResult.value.flatMap((r) => r.recipients) : [];
