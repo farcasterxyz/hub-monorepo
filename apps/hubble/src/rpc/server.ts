@@ -485,7 +485,8 @@ export default class Server {
               messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
             }
 
-            callback(null, MessagesResponse.create({ messages }));
+            const response = MessagesResponse.create({ messages });
+            callback(null, response);
           },
           (err: HubError) => {
             callback(toServiceError(err));
