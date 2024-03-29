@@ -344,15 +344,12 @@ impl TrieNode {
             Entry::Occupied(mut entry) => {
                 if let TrieNodeType::Serialized(_) = entry.get_mut() {
                     let child_prefix = Self::make_primary_key(prefix, Some(char));
-                    if let Some(serialized) = db.get(&child_prefix)? {
-                        let child_node = TrieNode::deserialize(&serialized).unwrap();
-                        *entry.get_mut() = TrieNodeType::Node(child_node);
-                    } else {
-                        return Err(HubError {
-                            code: "bad_request.invalid_param".to_string(),
-                            message: format!("Child {} at prefix {:?} was None", char, prefix),
-                        });
-                    }
+                    let child_node = db
+                        .get(&child_prefix)?
+                        .map(|b| TrieNode::deserialize(&b).unwrap())
+                        .unwrap_or_default();
+
+                    *entry.get_mut() = TrieNodeType::Node(child_node);
                 }
                 match entry.into_mut() {
                     TrieNodeType::Node(node) => Ok(node),

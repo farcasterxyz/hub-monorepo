@@ -157,7 +157,7 @@ class MerkleTrie {
     if (!(process.env["NODE_ENV"] === "test" || process.env["CI"])) {
       setTimeout(async () => {
         await this.doMigrate();
-      }, 1000);
+      }, 5 * 60 * 1000);
     }
 
     return rsMerkleTrieInitialize(this._rustTrie);
