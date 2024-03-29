@@ -2,6 +2,7 @@ use super::trie_node::TrieNode;
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     logger::LOGGER,
+    statsd::statsd,
     store::{encode_node_metadata_to_js_object, get_merkle_trie, hub_error_to_js_throw, HubError},
     THREAD_POOL,
 };
@@ -136,6 +137,9 @@ impl MerkleTrie {
             .op_count
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if force || op_count > TRIE_UNLOAD_THRESHOLD {
+            statsd().gauge("merkle_trie.num_messages", root.items() as u64);
+            info!(self.logger, "Unloading children from memory"; "force" => force);
+
             root.unload_children();
             self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
         }
