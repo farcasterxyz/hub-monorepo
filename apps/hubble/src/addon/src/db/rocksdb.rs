@@ -49,6 +49,10 @@ impl RocksDbTransactionBatch {
             self.batch.insert(key, value);
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.batch.len()
+    }
 }
 
 pub struct IteratorOptions {

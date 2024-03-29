@@ -143,12 +143,14 @@ impl MerkleTrie {
             .op_count
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if force || op_count > TRIE_UNLOAD_THRESHOLD {
-            statsd().gauge("merkle_trie.num_messages", root.items() as u64);
-            info!(self.logger, "Unloading children from memory"; "force" => force);
-
             // Take the txn_batch out of the lock and replace it with a new one
-            let mut lock_guard = self.txn_batch.lock().unwrap();
-            let txn_batch = std::mem::replace(&mut *lock_guard, RocksDbTransactionBatch::new());
+            let txn_batch = std::mem::replace(
+                &mut *self.txn_batch.lock().unwrap(),
+                RocksDbTransactionBatch::new(),
+            );
+
+            statsd().gauge("merkle_trie.num_messages", root.items() as u64);
+            info!(self.logger, "Unloading children from memory"; "force" => force, "pendingDbKeys" => txn_batch.len());
 
             // Commit the txn_batch
             self.db.commit(txn_batch)?;
