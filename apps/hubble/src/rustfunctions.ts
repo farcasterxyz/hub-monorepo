@@ -635,11 +635,11 @@ export const rsMerkleTrieGetDb = (trie: RustMerkleTrie): RustDb => {
 };
 
 export const rsMerkleTrieInitialize = async (trie: RustMerkleTrie): Promise<void> => {
-  await lib.merkleTrieInitialize.call(trie);
+  return await lib.merkleTrieInitialize.call(trie);
 };
 
 export const rsMerkleTrieClear = async (trie: RustMerkleTrie): Promise<void> => {
-  await lib.merkleTrieClear.call(trie);
+  return await lib.merkleTrieClear.call(trie);
 };
 
 export const rsMerkleTrieStop = async (trie: RustMerkleTrie): Promise<void> => {

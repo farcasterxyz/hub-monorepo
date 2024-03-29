@@ -3,6 +3,7 @@ use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     logger::LOGGER,
     store::{encode_node_metadata_to_js_object, get_merkle_trie, hub_error_to_js_throw, HubError},
+    THREAD_POOL,
 };
 use neon::object::Object as _;
 use neon::{
@@ -190,7 +191,7 @@ impl MerkleTrie {
     }
 
     pub fn items(&self) -> Result<usize, HubError> {
-        if let Some(root) = self.root.write().unwrap().as_ref() {
+        if let Some(root) = self.root.read().unwrap().as_ref() {
             Ok(root.items())
         } else {
             Err(HubError {
@@ -201,7 +202,7 @@ impl MerkleTrie {
     }
 
     pub fn root_hash(&self) -> Result<Vec<u8>, HubError> {
-        if let Some(root) = self.root.write().unwrap().as_ref() {
+        if let Some(root) = self.root.read().unwrap().as_ref() {
             Ok(root.hash())
         } else {
             Err(HubError {
@@ -353,7 +354,6 @@ impl MerkleTrie {
 
     pub fn js_stop(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
@@ -361,7 +361,6 @@ impl MerkleTrie {
             if let Err(e) = trie.stop() {
                 return hub_error_to_js_throw(&mut cx, e);
             }
-
             Ok(cx.undefined())
         });
 
@@ -496,6 +495,7 @@ impl MerkleTrie {
 
     pub fn js_items(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
+
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
@@ -573,9 +573,11 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        deferred.settle_with(&channel, move |mut tcx| match trie.migrate(keys, values) {
-            Ok(migrated) => Ok(tcx.number(migrated as f64)),
-            Err(e) => hub_error_to_js_throw(&mut tcx, e),
+        THREAD_POOL.lock().unwrap().execute(move || {
+            deferred.settle_with(&channel, move |mut tcx| match trie.migrate(keys, values) {
+                Ok(migrated) => Ok(tcx.number(migrated as f64)),
+                Err(e) => hub_error_to_js_throw(&mut tcx, e),
+            });
         });
 
         Ok(promise)

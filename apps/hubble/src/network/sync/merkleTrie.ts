@@ -145,11 +145,11 @@ class MerkleTrie {
   }
 
   public async clear(): Promise<void> {
-    rsMerkleTrieClear(this._rustTrie);
+    return await rsMerkleTrieClear(this._rustTrie);
   }
 
   public async stop(): Promise<void> {
-    rsMerkleTrieStop(this._rustTrie);
+    return await rsMerkleTrieStop(this._rustTrie);
   }
 
   public async initialize(): Promise<void> {
@@ -160,7 +160,7 @@ class MerkleTrie {
       }, 5 * 60 * 1000);
     }
 
-    return rsMerkleTrieInitialize(this._rustTrie);
+    return await rsMerkleTrieInitialize(this._rustTrie);
   }
 
   public async rebuild(): Promise<void> {
@@ -269,7 +269,7 @@ class MerkleTrie {
   }
 
   public async insertBytes(id: Uint8Array): Promise<boolean> {
-    return rsMerkleTrieInsert(this._rustTrie, id);
+    return await rsMerkleTrieInsert(this._rustTrie, id);
   }
 
   public async migrate(keys: Uint8Array[], values: Uint8Array[]): Promise<number> {
