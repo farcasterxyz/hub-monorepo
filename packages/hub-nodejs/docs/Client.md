@@ -544,7 +544,7 @@ client.$.waitForReady(Date.now() + 5000, async (e) => {
     const castHashHex = 'ee04762bea3060ce3cca154bced5947de04aa253';
     const castHashBytes = hexStringToBytes(castHashHex)._unsafeUnwrap(); // Safety: castHashHex is known
 
-    const castsResult = await client.getCastsByParent({ castId: { fid: 2, hash: castHashBytes } });
+    const castsResult = await client.getCastsByParent({ parentCastId: { fid: 2, hash: castHashBytes } });
 
     castsResult.map((casts) => console.log(casts.messages));
     client.close();
