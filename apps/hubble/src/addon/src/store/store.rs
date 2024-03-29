@@ -848,8 +848,11 @@ impl Store {
         // We run the prune in a threadpool because it can be very CPU intensive and it will block
         // the NodeJS main thread.
         THREAD_POOL.lock().unwrap().execute(move || {
+            // Run the prune job in a separate thread
+            let prune_result = store.prune_messages(fid, cached_count, units);
+
             deferred.settle_with(&channel, move |mut cx| {
-                let pruned_events = match store.prune_messages(fid, cached_count, units) {
+                let pruned_events = match prune_result {
                     Ok(pruned_events) => pruned_events,
                     Err(e) => return cx.throw_error(format!("{}/{}", e.code, e.message)),
                 };

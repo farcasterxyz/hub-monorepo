@@ -17,6 +17,7 @@ use neon::types::{
 };
 use rocksdb::{Options, TransactionDB};
 use slog::{info, o};
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
@@ -25,20 +26,28 @@ use walkdir::WalkDir;
 
 /** Hold a transaction. List of key/value pairs that will be committed together */
 pub struct RocksDbTransactionBatch {
-    pub batch: Vec<(Vec<u8>, Option<Vec<u8>>)>,
+    pub batch: HashMap<Vec<u8>, Option<Vec<u8>>>,
 }
 
 impl RocksDbTransactionBatch {
     pub fn new() -> RocksDbTransactionBatch {
-        RocksDbTransactionBatch { batch: Vec::new() }
+        RocksDbTransactionBatch {
+            batch: HashMap::new(),
+        }
     }
 
     pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
-        self.batch.push((key, Some(value)));
+        self.batch.insert(key, Some(value));
     }
 
     pub fn delete(&mut self, key: Vec<u8>) {
-        self.batch.push((key, None));
+        self.batch.insert(key, None);
+    }
+
+    pub fn merge(&mut self, other: RocksDbTransactionBatch) {
+        for (key, value) in other.batch {
+            self.batch.insert(key, value);
+        }
     }
 }
 
@@ -186,9 +195,6 @@ impl RocksDB {
         }
 
         let txn = db.as_ref().unwrap().transaction();
-
-        statsd().incr("rust.db.commit");
-
         for (key, value) in batch.batch {
             if value.is_none() {
                 // println!("rust txn is delete, key: {:?}", key);
@@ -199,6 +205,7 @@ impl RocksDB {
             }
         }
 
+        statsd().incr("rust.db.commit");
         txn.commit().map_err(|e| HubError {
             code: "db.internal_error".to_string(),
             message: e.to_string(),
@@ -882,5 +889,117 @@ impl RocksDB {
         deferred.settle_with(&channel, move |mut cx| Ok(cx.boolean(result.unwrap())));
 
         Ok(promise)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::db::RocksDbTransactionBatch;
+
+    #[test]
+    fn test_merge_rocksdb_transaction() {
+        let mut txn1 = RocksDbTransactionBatch::new();
+
+        let mut txn2 = RocksDbTransactionBatch::new();
+
+        // Add some txns to txn2
+        txn2.put(b"key1".to_vec(), b"value1".to_vec());
+        txn2.put(b"key2".to_vec(), b"value2".to_vec());
+        txn2.delete(b"key3".to_vec());
+
+        // Merge txn2 into txn1
+        txn1.merge(txn2);
+
+        // Check that txn1 has all the keys from txn2
+        assert_eq!(txn1.batch.len(), 3);
+        assert_eq!(
+            txn1.batch
+                .get(&b"key1".to_vec())
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .clone(),
+            b"value1".to_vec()
+        );
+        assert_eq!(
+            txn1.batch
+                .get(&b"key2".to_vec())
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .clone(),
+            b"value2".to_vec()
+        );
+        assert_eq!(txn1.batch.get(&b"key3".to_vec()).unwrap().is_none(), true);
+
+        // Add some more txns to txn3
+        let mut txn3 = RocksDbTransactionBatch::new();
+        txn3.put(b"key4".to_vec(), b"value4".to_vec());
+        txn3.put(b"key5".to_vec(), b"value5".to_vec());
+
+        // Merge txn3 into txn1
+        txn1.merge(txn3);
+
+        // Check that txn1 has all the keys from txn2 and txn3
+        assert_eq!(txn1.batch.len(), 5);
+        assert_eq!(
+            txn1.batch
+                .get(&b"key1".to_vec())
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .clone(),
+            b"value1".to_vec()
+        );
+        assert_eq!(
+            txn1.batch
+                .get(&b"key4".to_vec())
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .clone(),
+            b"value4".to_vec()
+        );
+
+        // Add some more txns to txn4 that overwrite existing keys
+        let mut txn4 = RocksDbTransactionBatch::new();
+
+        txn4.put(b"key1".to_vec(), b"value1_new".to_vec());
+        txn4.put(b"key4".to_vec(), b"value4_new".to_vec());
+        txn4.delete(b"key5".to_vec());
+
+        // Merge txn4 into txn1
+        txn1.merge(txn4);
+
+        // Check that txn1 has all the keys from txn2 and txn3, and the overwritten keys from txn4
+        assert_eq!(txn1.batch.len(), 5);
+        assert_eq!(
+            txn1.batch
+                .get(&b"key1".to_vec())
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .clone(),
+            b"value1_new".to_vec()
+        );
+        assert_eq!(
+            txn1.batch
+                .get(&b"key2".to_vec())
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .clone(),
+            b"value2".to_vec()
+        );
+        assert_eq!(
+            txn1.batch
+                .get(&b"key4".to_vec())
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .clone(),
+            b"value4_new".to_vec()
+        );
+        assert_eq!(txn1.batch.get(&b"key5".to_vec()).unwrap().is_none(), true);
     }
 }
