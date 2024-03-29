@@ -17,7 +17,6 @@ use neon::types::{
 };
 use rocksdb::{Options, TransactionDB};
 use slog::{info, o};
-use std::fmt::format;
 use std::fs::{self, File};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
@@ -82,10 +81,6 @@ impl RocksDB {
             path: path.to_string(),
             logger,
         })
-    }
-
-    pub fn is_open(&self) -> bool {
-        self.db.read().unwrap().is_some()
     }
 
     pub fn open(&self) -> Result<(), HubError> {

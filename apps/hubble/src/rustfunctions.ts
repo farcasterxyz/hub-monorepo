@@ -646,16 +646,16 @@ export const rsMerkleTrieStop = async (trie: RustMerkleTrie): Promise<void> => {
   await lib.merkleTrieStop.call(trie);
 };
 
-export const rsMerkleTrieInsert = (trie: RustMerkleTrie, key: Uint8Array): boolean => {
-  return lib.merkleTrieInsert.call(trie, key);
+export const rsMerkleTrieInsert = async (trie: RustMerkleTrie, key: Uint8Array): Promise<boolean> => {
+  return await lib.merkleTrieInsert.call(trie, key);
 };
 
 export const rsMerkleTrieDelete = async (trie: RustMerkleTrie, key: Uint8Array): Promise<boolean> => {
   return await lib.merkleTrieDelete.call(trie, key);
 };
 
-export const rsMerkleTrieExists = (trie: RustMerkleTrie, key: Uint8Array): boolean => {
-  return lib.merkleTrieExists.call(trie, key);
+export const rsMerkleTrieExists = async (trie: RustMerkleTrie, key: Uint8Array): Promise<boolean> => {
+  return await lib.merkleTrieExists.call(trie, key);
 };
 
 export const rsMerkleTrieGetSnapshot = async (trie: RustMerkleTrie, prefix: Uint8Array): Promise<TrieSnapshot> => {

@@ -265,7 +265,7 @@ class MerkleTrie {
   }
 
   public async insert(id: SyncId): Promise<boolean> {
-    return rsMerkleTrieInsert(this._rustTrie, id.syncId());
+    return await rsMerkleTrieInsert(this._rustTrie, id.syncId());
   }
 
   public async insertBytes(id: Uint8Array): Promise<boolean> {
@@ -273,62 +273,62 @@ class MerkleTrie {
   }
 
   public async migrate(keys: Uint8Array[], values: Uint8Array[]): Promise<number> {
-    return rsMerkleTrieMigrate(this._rustTrie, keys, values);
+    return await rsMerkleTrieMigrate(this._rustTrie, keys, values);
   }
 
   public async deleteBySyncId(id: SyncId): Promise<boolean> {
-    return rsMerkleTrieDelete(this._rustTrie, id.syncId());
+    return await rsMerkleTrieDelete(this._rustTrie, id.syncId());
   }
 
   public async deleteByBytes(id: Uint8Array): Promise<boolean> {
-    return rsMerkleTrieDelete(this._rustTrie, id);
+    return await rsMerkleTrieDelete(this._rustTrie, id);
   }
 
   /**
    * Check if the SyncId exists in the trie.
    */
   public async exists(id: SyncId): Promise<boolean> {
-    return rsMerkleTrieExists(this._rustTrie, id.syncId());
+    return await rsMerkleTrieExists(this._rustTrie, id.syncId());
   }
 
   /**
    * Check if we already have this syncID (expressed as bytes)
    */
   public async existsByBytes(id: Uint8Array): Promise<boolean> {
-    return rsMerkleTrieExists(this._rustTrie, id);
+    return await rsMerkleTrieExists(this._rustTrie, id);
   }
 
   /**
    * Get a snapshot of the trie at a given prefix.
    */
   public async getSnapshot(prefix: Uint8Array): Promise<TrieSnapshot> {
-    return rsMerkleTrieGetSnapshot(this._rustTrie, prefix);
+    return await rsMerkleTrieGetSnapshot(this._rustTrie, prefix);
   }
 
   /**
    * Get the metadata for a node in the trie at the given prefix.
    */
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {
-    return rsMerkleTrieGetTrieNodeMetadata(this._rustTrie, prefix);
+    return await rsMerkleTrieGetTrieNodeMetadata(this._rustTrie, prefix);
   }
 
   /**
    * Get all the values at the prefix.
    */
   public async getAllValues(prefix: Uint8Array): Promise<Uint8Array[]> {
-    return rsMerkleTrieGetAllValues(this._rustTrie, prefix);
+    return await rsMerkleTrieGetAllValues(this._rustTrie, prefix);
   }
 
   public async items(): Promise<number> {
-    return rsMerkleTrieItems(this._rustTrie);
+    return await rsMerkleTrieItems(this._rustTrie);
   }
 
   public async rootHash(): Promise<string> {
-    return rsMerkleTrieRootHash(this._rustTrie);
+    return await rsMerkleTrieRootHash(this._rustTrie);
   }
 
   public async unloadChidrenAtRoot(): Promise<void> {
-    return rsMerkleTrieUnloadChildren(this._rustTrie);
+    return await rsMerkleTrieUnloadChildren(this._rustTrie);
   }
 
   public getDb(): RocksDB {

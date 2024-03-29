@@ -49,7 +49,7 @@ export const benchMerkleTrie = async ({
   });
 
   const syncIds = generateSyncIds(count, 100_000, 300);
-  const db = new RocksDB("protobufs.bench.merkleTrie");
+  const db = new RocksDB("protobufs.bench.merkleTrie.test");
   await db.open();
 
   const trie = new MerkleTrie(db);

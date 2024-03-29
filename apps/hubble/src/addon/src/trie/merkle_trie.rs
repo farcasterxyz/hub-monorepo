@@ -1,9 +1,10 @@
+use super::trie_node::TrieNode;
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     logger::LOGGER,
     store::{encode_node_metadata_to_js_object, get_merkle_trie, hub_error_to_js_throw, HubError},
-    THREAD_POOL,
 };
+use neon::object::Object as _;
 use neon::{
     context::ModuleContext,
     result::NeonResult,
@@ -14,7 +15,6 @@ use neon::{
     result::JsResult,
     types::{Finalize, JsBox, JsBuffer, JsPromise, JsString},
 };
-use neon::{object::Object as _, types::JsBoolean};
 use slog::{info, o};
 use std::{
     borrow::Borrow,
@@ -24,8 +24,6 @@ use std::{
         Arc, RwLock,
     },
 };
-
-use super::trie_node::TrieNode;
 
 const TRIE_DBPATH_PREFIX: &str = "trieDb";
 const TRIE_UNLOAD_THRESHOLD: u64 = 10_000;
@@ -192,7 +190,7 @@ impl MerkleTrie {
     }
 
     pub fn items(&self) -> Result<usize, HubError> {
-        if let Some(root) = self.root.read().unwrap().as_ref() {
+        if let Some(root) = self.root.write().unwrap().as_ref() {
             Ok(root.items())
         } else {
             Err(HubError {
@@ -203,7 +201,7 @@ impl MerkleTrie {
     }
 
     pub fn root_hash(&self) -> Result<Vec<u8>, HubError> {
-        if let Some(root) = self.root.read().unwrap().as_ref() {
+        if let Some(root) = self.root.write().unwrap().as_ref() {
             Ok(root.hash())
         } else {
             Err(HubError {
@@ -318,14 +316,12 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut cx| {
-                if let Err(e) = trie.initialize() {
-                    return hub_error_to_js_throw(&mut cx, e);
-                }
+        deferred.settle_with(&channel, move |mut cx| {
+            if let Err(e) = trie.initialize() {
+                return hub_error_to_js_throw(&mut cx, e);
+            }
 
-                Ok(cx.undefined())
-            });
+            Ok(cx.undefined())
         });
 
         Ok(promise)
@@ -344,14 +340,12 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut cx| {
-                if let Err(e) = trie.clear() {
-                    return hub_error_to_js_throw(&mut cx, e);
-                }
+        deferred.settle_with(&channel, move |mut cx| {
+            if let Err(e) = trie.clear() {
+                return hub_error_to_js_throw(&mut cx, e);
+            }
 
-                Ok(cx.undefined())
-            });
+            Ok(cx.undefined())
         });
 
         Ok(promise)
@@ -363,27 +357,30 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut cx| {
-                if let Err(e) = trie.stop() {
-                    return hub_error_to_js_throw(&mut cx, e);
-                }
+        deferred.settle_with(&channel, move |mut cx| {
+            if let Err(e) = trie.stop() {
+                return hub_error_to_js_throw(&mut cx, e);
+            }
 
-                Ok(cx.undefined())
-            });
+            Ok(cx.undefined())
         });
 
         Ok(promise)
     }
 
-    pub fn js_insert(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    pub fn js_insert(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
         let key = cx.argument::<JsBuffer>(0)?.as_slice(&cx).to_vec();
 
-        match trie.insert(&key) {
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        deferred.settle_with(&channel, move |mut cx| match trie.insert(&key) {
             Ok(result) => Ok(cx.boolean(result)),
             Err(e) => hub_error_to_js_throw(&mut cx, e),
-        }
+        });
+
+        Ok(promise)
     }
 
     pub fn js_delete(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -393,24 +390,27 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut cx| match trie.delete(&key) {
-                Ok(result) => Ok(cx.boolean(result)),
-                Err(e) => hub_error_to_js_throw(&mut cx, e),
-            });
+        deferred.settle_with(&channel, move |mut cx| match trie.delete(&key) {
+            Ok(result) => Ok(cx.boolean(result)),
+            Err(e) => hub_error_to_js_throw(&mut cx, e),
         });
 
         Ok(promise)
     }
 
-    pub fn js_exists(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    pub fn js_exists(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
         let key = cx.argument::<JsBuffer>(0)?.as_slice(&cx).to_vec();
 
-        match trie.exists(&key) {
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        deferred.settle_with(&channel, move |mut cx| match trie.exists(&key) {
             Ok(exists) => Ok(cx.boolean(exists)),
             Err(e) => hub_error_to_js_throw(&mut cx, e),
-        }
+        });
+
+        Ok(promise)
     }
 
     pub fn js_get_snapshot(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -420,31 +420,29 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut tcx| match trie.get_snapshot(&prefix) {
-                Ok(snapshot) => {
-                    let js_object = JsObject::new(&mut tcx);
+        deferred.settle_with(&channel, move |mut tcx| match trie.get_snapshot(&prefix) {
+            Ok(snapshot) => {
+                let js_object = JsObject::new(&mut tcx);
 
-                    let mut js_prefix = tcx.buffer(snapshot.prefix.len())?;
-                    js_prefix
-                        .as_mut_slice(&mut tcx)
-                        .copy_from_slice(&snapshot.prefix);
-                    js_object.set(&mut tcx, "prefix", js_prefix)?;
+                let mut js_prefix = tcx.buffer(snapshot.prefix.len())?;
+                js_prefix
+                    .as_mut_slice(&mut tcx)
+                    .copy_from_slice(&snapshot.prefix);
+                js_object.set(&mut tcx, "prefix", js_prefix)?;
 
-                    let js_excluded_hashes = JsArray::new(&mut tcx, snapshot.excluded_hashes.len());
-                    for (i, excluded_hash) in snapshot.excluded_hashes.iter().enumerate() {
-                        let js_excluded_hash = tcx.string(excluded_hash.to_string());
-                        js_excluded_hashes.set(&mut tcx, i as u32, js_excluded_hash)?;
-                    }
-                    js_object.set(&mut tcx, "excludedHashes", js_excluded_hashes)?;
-
-                    let js_num_messages = tcx.number(snapshot.num_messages as f64);
-                    js_object.set(&mut tcx, "numMessages", js_num_messages)?;
-
-                    Ok(js_object)
+                let js_excluded_hashes = JsArray::new(&mut tcx, snapshot.excluded_hashes.len());
+                for (i, excluded_hash) in snapshot.excluded_hashes.iter().enumerate() {
+                    let js_excluded_hash = tcx.string(excluded_hash.to_string());
+                    js_excluded_hashes.set(&mut tcx, i as u32, js_excluded_hash)?;
                 }
-                Err(e) => hub_error_to_js_throw(&mut tcx, e),
-            });
+                js_object.set(&mut tcx, "excludedHashes", js_excluded_hashes)?;
+
+                let js_num_messages = tcx.number(snapshot.num_messages as f64);
+                js_object.set(&mut tcx, "numMessages", js_num_messages)?;
+
+                Ok(js_object)
+            }
+            Err(e) => hub_error_to_js_throw(&mut tcx, e),
         });
 
         Ok(promise)
@@ -457,17 +455,14 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut tcx| {
-                match trie.get_trie_node_metadata(&prefix) {
-                    Ok(node_metadata) => {
-                        let js_object =
-                            encode_node_metadata_to_js_object(&mut tcx, &node_metadata)?;
-                        Ok(js_object)
-                    }
-                    Err(e) => hub_error_to_js_throw(&mut tcx, e),
+        deferred.settle_with(&channel, move |mut tcx| {
+            match trie.get_trie_node_metadata(&prefix) {
+                Ok(node_metadata) => {
+                    let js_object = encode_node_metadata_to_js_object(&mut tcx, &node_metadata)?;
+                    Ok(js_object)
                 }
-            });
+                Err(e) => hub_error_to_js_throw(&mut tcx, e),
+            }
         });
 
         Ok(promise)
@@ -480,22 +475,20 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut tcx| {
-                match trie.get_all_values(&prefix) {
-                    Ok(values) => {
-                        let js_array = JsArray::new(&mut tcx, values.len());
-                        for (i, value) in values.iter().enumerate() {
-                            let mut js_buffer = tcx.buffer(value.len())?;
-                            js_buffer.as_mut_slice(&mut tcx).copy_from_slice(value);
-                            js_array.set(&mut tcx, i as u32, js_buffer)?;
-                        }
-
-                        Ok(js_array)
+        deferred.settle_with(&channel, move |mut tcx| {
+            match trie.get_all_values(&prefix) {
+                Ok(values) => {
+                    let js_array = JsArray::new(&mut tcx, values.len());
+                    for (i, value) in values.iter().enumerate() {
+                        let mut js_buffer = tcx.buffer(value.len())?;
+                        js_buffer.as_mut_slice(&mut tcx).copy_from_slice(value);
+                        js_array.set(&mut tcx, i as u32, js_buffer)?;
                     }
-                    Err(e) => hub_error_to_js_throw(&mut tcx, e),
+
+                    Ok(js_array)
                 }
-            });
+                Err(e) => hub_error_to_js_throw(&mut tcx, e),
+            }
         });
 
         Ok(promise)
@@ -503,7 +496,6 @@ impl MerkleTrie {
 
     pub fn js_items(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
@@ -517,7 +509,6 @@ impl MerkleTrie {
 
     pub fn js_root_hash(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
@@ -582,11 +573,9 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut tcx| match trie.migrate(keys, values) {
-                Ok(migrated) => Ok(tcx.number(migrated as f64)),
-                Err(e) => hub_error_to_js_throw(&mut tcx, e),
-            });
+        deferred.settle_with(&channel, move |mut tcx| match trie.migrate(keys, values) {
+            Ok(migrated) => Ok(tcx.number(migrated as f64)),
+            Err(e) => hub_error_to_js_throw(&mut tcx, e),
         });
 
         Ok(promise)
