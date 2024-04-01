@@ -41,7 +41,14 @@ import { sleep } from "./utils/crypto.js";
 import { rsCreateTarBackup, rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
-import { logger, messageToLog, messageTypeToName, onChainEventToLog, usernameProofToLog } from "./utils/logger.js";
+import {
+  SubmitMessageSuccessLogCache,
+  logger,
+  messageToLog,
+  messageTypeToName,
+  onChainEventToLog,
+  usernameProofToLog,
+} from "./utils/logger.js";
 import {
   addressInfoFromGossip,
   addressInfoToString,
@@ -132,6 +139,9 @@ export interface HubInterface {
 export interface HubOptions {
   /** Farcaster network */
   network: FarcasterNetwork;
+
+  /** Wether to log individual submitMessage status */
+  logIndividualMessages?: boolean;
 
   /** The PeerId of this Hub */
   peerId?: PeerId;
@@ -351,6 +361,8 @@ export class Hub implements HubInterface {
   private gossipContactInfoJobScheduler: GossipContactInfoJobScheduler;
   private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
+
+  private submitMessageLogger = new SubmitMessageSuccessLogCache(log);
 
   engine: Engine;
   fNameRegistryEventsProvider: FNameRegistryEventsProvider;
@@ -1598,19 +1610,23 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
-        const logData = {
-          eventId,
-          fid: message.data?.fid,
-          type: type,
-          submittedMessage: messageToLog(submittedMessage),
-          source,
-        };
-        const msg = "submitMessage success";
+        if (this.options.logIndividualMessages) {
+          const logData = {
+            eventId,
+            fid: message.data?.fid,
+            type: type,
+            submittedMessage: messageToLog(submittedMessage),
+            source,
+          };
+          const msg = "submitMessage success";
 
-        if (source === "sync") {
-          log.debug(logData, msg);
+          if (source === "sync") {
+            log.debug(logData, msg);
+          } else {
+            log.info(logData, msg);
+          }
         } else {
-          log.info(logData, msg);
+          this.submitMessageLogger.log(source ?? "unknown-source");
         }
       },
       (e) => {
@@ -1631,7 +1647,6 @@ export class Hub implements HubInterface {
 
     const now = Date.now();
     statsd().timing("hub.merge_message", now - start);
-    statsd().timing(`hub.merge_message.${type}`, now - start);
 
     return mergeResult;
   }

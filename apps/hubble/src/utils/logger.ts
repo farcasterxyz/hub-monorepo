@@ -167,3 +167,35 @@ export const usernameProofToLog = (usernameProof: UserNameProof) => {
     owner: bytesToHexString(usernameProof.owner)._unsafeUnwrap(),
   };
 };
+
+export class SubmitMessageSuccessLogCache {
+  counts: Map<string, number> = new Map();
+  logger: Logger;
+  lastLogTimestampMs: number;
+
+  constructor(logger: Logger) {
+    this.logger = logger;
+    this.lastLogTimestampMs = 0;
+  }
+
+  log(source: string) {
+    const count = this.counts.get(source) || 0;
+    this.counts.set(source, count + 1);
+
+    const now = Date.now();
+    if (now - this.lastLogTimestampMs > 1000) {
+      this.lastLogTimestampMs = now;
+
+      const total = Array.from(this.counts.values()).reduce((acc, val) => acc + val, 0);
+
+      // Collect the counts as an object for logging
+      const counts: { [source: string]: number } = {};
+      this.counts.forEach((value, key) => {
+        counts[key] = value;
+      });
+
+      this.logger.info({ ...counts, total }, "Successfully submitted messages");
+      this.counts.clear();
+    }
+  }
+}

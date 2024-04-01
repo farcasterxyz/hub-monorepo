@@ -33,6 +33,7 @@ Hubble Options:
   -c, --config <filepath>               Path to the config file.
   --db-name <name>                      The name of the RocksDB instance. (default: rocks.hub._default)
   --process-file-prefix <prefix>        Prefix for file to which hub process number is written. (default: "")
+  --log-individual-messages             Log individual submitMessage status. If disabled, log one line per second (default: disabled)"
 
 Ethereum Options:
   -m, --eth-mainnet-rpc-url <url>       RPC URL of a Mainnet ETH Node (or comma separated list of URLs)
