@@ -15,7 +15,7 @@ describe("oldContractEvents migration", () => {
     await expect(store.mergeOnChainEvent(event)).resolves.toBeTruthy();
     const syncId = SyncId.fromOnChainEvent(event);
     await trie.insert(syncId);
-    await trie.commitToDb();
+
     await expectExists(event, trie, true);
   };
 
@@ -45,6 +45,7 @@ describe("oldContractEvents migration", () => {
     await addEvent(keyRegistryV0Event, store, syncTrie);
     await addEvent(keyRegistryV2Event, store, syncTrie);
     await addEvent(storageRegistryV0Event, store, syncTrie);
+    await syncTrie.stop();
 
     const success = await performDbMigrations(db, 5, 6);
     expect(success).toBe(true);

@@ -1,5 +1,4 @@
-pub use self::trie_node::*;
-
+pub mod merkle_trie;
 mod trie_node;
 
 #[cfg(test)]

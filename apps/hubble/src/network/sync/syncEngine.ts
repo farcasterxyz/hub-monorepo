@@ -27,7 +27,7 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
-import { MerkleTrie, NodeMetadata } from "./merkleTrie.js";
+import { MerkleTrie, NodeMetadata, TrieSnapshot } from "./merkleTrie.js";
 import {
   formatPrefix,
   prefixToTimestamp,
@@ -36,7 +36,6 @@ import {
   TIMESTAMP_LENGTH,
   timestampToPaddedTimestampPrefix,
 } from "./syncId.js";
-import { TrieSnapshot } from "./trieNode.js";
 import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
@@ -231,10 +230,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this._syncTrieQ += totalMessages;
       statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
 
-      await this.addMessage(message);
+      const result = await ResultAsync.fromPromise(this.addMessage(message), (e) => e);
+      if (result.isErr()) {
+        log.error({ err: result.error }, "Failed to add message to sync trie");
+      }
 
       for (const deletedMessage of deletedMessages ?? []) {
-        await this.removeMessage(deletedMessage);
+        const result = await ResultAsync.fromPromise(this.removeMessage(deletedMessage), (e) => e);
+        if (result.isErr()) {
+          log.error({ err: result.error }, "Failed to remove message from sync trie");
+        }
       }
       this._syncTrieQ -= totalMessages;
     });
@@ -243,7 +248,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
       this._syncTrieQ += 1;
       statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
-      await this.addOnChainEvent(onChainEvent);
+      const result = await ResultAsync.fromPromise(this.addOnChainEvent(onChainEvent), (e) => e);
+      if (result.isErr()) {
+        log.error({ err: result.error }, "Failed to add on-chain event to sync trie");
+      }
       this._syncTrieQ -= 1;
 
       // Keep track of total FIDs
@@ -259,14 +267,20 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._hub.engine.eventHandler.on("pruneMessage", async (event: PruneMessageHubEvent) => {
       this._syncTrieQ += 1;
       statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
-      await this.removeMessage(event.pruneMessageBody.message);
+      const result = await ResultAsync.fromPromise(this.removeMessage(event.pruneMessageBody.message), (e) => e);
+      if (result.isErr()) {
+        log.error({ err: result.error }, "Failed to remove message from sync trie");
+      }
       this._syncTrieQ -= 1;
     });
 
     this._hub.engine.eventHandler.on("revokeMessage", async (event: RevokeMessageHubEvent) => {
       this._syncTrieQ += 1;
       statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
-      await this.removeMessage(event.revokeMessageBody.message);
+      const result = await ResultAsync.fromPromise(this.removeMessage(event.revokeMessageBody.message), (e) => e);
+      if (result.isErr()) {
+        log.error({ err: result.error }, "Failed to remove message from sync trie");
+      }
       this._syncTrieQ -= 1;
     });
 
@@ -274,13 +288,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (event.mergeUsernameProofBody.usernameProofMessage) {
         this._syncTrieQ += 1;
         statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
-        await this.addMessage(event.mergeUsernameProofBody.usernameProofMessage);
+        const result = await ResultAsync.fromPromise(
+          this.addMessage(event.mergeUsernameProofBody.usernameProofMessage),
+          (e) => e,
+        );
+        if (result.isErr()) {
+          log.error({ err: result.error }, "Failed to add username proof message to sync trie");
+        }
         this._syncTrieQ -= 1;
       }
       if (event.mergeUsernameProofBody.deletedUsernameProofMessage) {
         this._syncTrieQ += 1;
         statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
-        await this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage);
+        const result = await ResultAsync.fromPromise(
+          this.removeMessage(event.mergeUsernameProofBody.deletedUsernameProofMessage),
+          (e) => e,
+        );
+        if (result.isErr()) {
+          log.error({ err: result.error }, "Failed to remove username proof message from sync trie");
+        }
         this._syncTrieQ -= 1;
       }
       if (
@@ -290,7 +316,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       ) {
         this._syncTrieQ += 1;
         statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
-        await this.addFname(event.mergeUsernameProofBody.usernameProof);
+        const result = await ResultAsync.fromPromise(
+          this.addFname(event.mergeUsernameProofBody.usernameProof),
+          (e) => e,
+        );
+        if (result.isErr()) {
+          log.error({ err: result.error }, "Failed to add fname to sync trie");
+        }
         this._syncTrieQ -= 1;
 
         this._dbStats.numFnames += 1;
@@ -301,7 +333,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       ) {
         this._syncTrieQ += 1;
         statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
-        await this.removeFname(event.mergeUsernameProofBody.deletedUsernameProof);
+        const result = await ResultAsync.fromPromise(
+          this.removeFname(event.mergeUsernameProofBody.deletedUsernameProof),
+          (e) => e,
+        );
+        if (result.isErr()) {
+          log.error({ err: result.error }, "Failed to remove fname from sync trie");
+        }
         this._syncTrieQ -= 1;
 
         this._dbStats.numFnames -= 1;
@@ -310,13 +348,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._hub.engine.on("duplicateUserNameProofEvent", async (event: UserNameProof) => {
       const syncId = SyncId.fromFName(event);
       if (!(await this.trie.exists(syncId))) {
-        await this._trie.insert(syncId);
+        const result = await ResultAsync.fromPromise(this._trie.insert(syncId), (e) => e);
+        if (result.isErr()) {
+          log.error({ err: result.error }, "Failed to add fname to sync trie");
+        }
       }
     });
     this._hub.engine.on("duplicateOnChainEvent", async (event: OnChainEvent) => {
       const syncId = SyncId.fromOnChainEvent(event);
       if (!(await this.trie.exists(syncId))) {
-        await this._trie.insert(syncId);
+        const result = await ResultAsync.fromPromise(this._trie.insert(syncId), (e) => e);
+        if (result.isErr()) {
+          log.error({ err: result.error }, "Failed to add on-chain event to sync trie");
+        }
       }
     });
   }
@@ -357,10 +401,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     log.info({ rootHash }, "Sync engine initialized");
   }
 
-  public async clear() {
-    await this._trie.clear();
-  }
-
   /** Rebuild the entire Sync Trie */
   public async rebuildSyncTrie() {
     log.info("Rebuilding sync trie...");
@@ -379,16 +419,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Interrupt any ongoing sync
     this._currentSyncStatus.interruptSync = true;
 
-    // First, save the trie to disk
-    await this._trie.commitToDb();
-
     // Wait for syncing to stop.
     try {
       await sleepWhile(() => this._currentSyncStatus.isSyncing, SYNC_INTERRUPT_TIMEOUT);
       await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
-
-      // Write the trie to disk one last time, in case there were any changes
-      await this._trie.commitToDb();
     } catch (e) {
       log.error({ err: e }, "Interrupting sync timed out");
     }

@@ -15,7 +15,7 @@ describe("clearAdminResets migration", () => {
     await expect(store.mergeOnChainEvent(event)).resolves.toBeTruthy();
     const syncId = SyncId.fromOnChainEvent(event);
     await trie.insert(syncId);
-    await trie.commitToDb();
+
     await expectExists(event, trie, true);
   };
 
@@ -45,6 +45,7 @@ describe("clearAdminResets migration", () => {
     await addEvent(keyRegistryEvent, store, syncTrie);
     await addEvent(keyRegistryResetEvent, store, syncTrie);
     await addEvent(storageRegistryEvent, store, syncTrie);
+    await syncTrie.stop();
 
     const success = await performDbMigrations(db, 6, 7);
     expect(success).toBe(true);

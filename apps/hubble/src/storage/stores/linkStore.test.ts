@@ -2,7 +2,6 @@ import {
   bytesDecrement,
   bytesIncrement,
   Factories,
-  getDefaultStoreLimit,
   getFarcasterTime,
   HubError,
   LinkAddMessage,
@@ -13,7 +12,6 @@ import {
   MessageType,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
-  StoreType,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -27,7 +25,7 @@ const db = jestRocksDB("protobufs.linkStore.test");
 const eventHandler = new StoreEventHandler(db);
 const set = new LinkStore(db, eventHandler);
 const fid = Factories.Fid.build();
-const targetFid = Factories.Fid.build();
+const targetFid = fid + 1;
 
 let linkAdd: LinkAddMessage;
 let linkRemove: LinkRemoveMessage;
@@ -275,6 +273,7 @@ describe("getLinksByTarget", () => {
     test("returns links if they exist for the target and type", async () => {
       const linkLike2 = await Factories.LinkAddMessage.create({
         data: {
+          fid: fid + 2,
           timestamp: linkAddEndorse.data.timestamp + 1,
           linkBody: { type: "follow", targetFid: targetFid },
         },

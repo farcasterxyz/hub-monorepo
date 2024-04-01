@@ -38,6 +38,8 @@ import { APP_VERSION } from "../../hubble.js";
 import base58 from "bs58";
 
 const db = jestRocksDB("httpserver.rpc.server.test");
+const db2 = jestRocksDB("httpserver.rpc.cors.server.test");
+
 const network = FarcasterNetwork.TESTNET;
 const engine = new Engine(db, network, undefined, publicClient);
 const hub = new MockHub(db, engine);
@@ -53,6 +55,7 @@ function getFullUrl(path: string) {
 
 beforeAll(async () => {
   syncEngine = new SyncEngine(hub, db);
+  await syncEngine.start();
   server = new Server(hub, engine, syncEngine);
   httpServer = new HttpAPIServer(server.getImpl(), engine);
   httpServerAddress = (await httpServer.start())._unsafeUnwrap();
@@ -107,10 +110,14 @@ describe("httpServer", () => {
 
   describe("cors", () => {
     test("cors", async () => {
-      const syncEngine = new SyncEngine(hub, db);
-      const server = new Server(hub, engine, syncEngine);
-      const httpServer = new HttpAPIServer(server.getImpl(), engine, "http://example.com");
-      const addr = (await httpServer.start())._unsafeUnwrap();
+      const engine2 = new Engine(db2, network, undefined, publicClient);
+      const hub2 = new MockHub(db2, engine2);
+
+      const syncEngine2 = new SyncEngine(hub2, db2);
+      await syncEngine2.start();
+      const server2 = new Server(hub2, engine2, syncEngine2);
+      const httpServer2 = new HttpAPIServer(server2.getImpl(), engine, "http://example.com");
+      const addr = (await httpServer2.start())._unsafeUnwrap();
 
       const url = `${addr}/v1/info`;
       const response = await axios.get(url, { headers: { Origin: "http://example.com" } });
@@ -118,9 +125,10 @@ describe("httpServer", () => {
       expect(response.status).toBe(200);
       expect(response.headers["access-control-allow-origin"]).toBe("http://example.com");
 
-      await httpServer.stop();
-      await server.stop();
-      await syncEngine.stop();
+      await httpServer2.stop();
+      await server2.stop();
+      await syncEngine2.stop();
+      await engine2.stop();
     });
   });
 

@@ -1,9 +1,13 @@
-use crate::store::{CastStore, StoreEventHandler, UsernameProofStore, VerificationStore};
+use crate::{
+    store::{CastStore, StoreEventHandler, UsernameProofStore, VerificationStore},
+    trie::merkle_trie::MerkleTrie,
+};
 use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
-use std::convert::TryInto;
+use std::{convert::TryInto, sync::Mutex};
 use store::{LinkStore, ReactionStore, Store, UserDataStore};
+use threadpool::ThreadPool;
 
 mod db;
 mod logger;
@@ -65,7 +69,7 @@ fn ed25519_verify(mut cx: FunctionContext) -> JsResult<JsNumber> {
     }
 }
 
-fn blake3_20(mut cx: FunctionContext) -> JsResult<JsBuffer> {
+fn js_blake3_20(mut cx: FunctionContext) -> JsResult<JsBuffer> {
     let input = cx.argument::<JsBuffer>(0)?;
     let mut hasher = blake3::Hasher::new();
     hasher.update(&input.as_slice(&cx));
@@ -83,7 +87,7 @@ fn blake3_20(mut cx: FunctionContext) -> JsResult<JsBuffer> {
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_signMessageHash", ed25519_sign_message_hash)?;
     cx.export_function("ed25519_verify", ed25519_verify)?;
-    cx.export_function("blake3_20", blake3_20)?;
+    cx.export_function("blake3_20", js_blake3_20)?;
 
     cx.export_function("createStatsdClient", statsd::js_create_statsd_client)?;
 
@@ -159,7 +163,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     )?;
 
     // CastStore methods
-    cx.export_function("createCastStore", CastStore::create_cast_store)?;
+    cx.export_function("createCastStore", CastStore::js_create_cast_store)?;
     cx.export_function("getCastAdd", CastStore::js_get_cast_add)?;
     cx.export_function("getCastRemove", CastStore::js_get_cast_remove)?;
     cx.export_function("getCastAddsByFid", CastStore::js_get_cast_adds_by_fid)?;
@@ -225,5 +229,12 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         UsernameProofStore::js_get_username_proof_by_fid_and_name,
     )?;
 
+    // Register Merkle Trie methods
+    MerkleTrie::register_js_methods(&mut cx)?;
+
     Ok(())
 }
+
+// Threadpool for use in the store
+use once_cell::sync::Lazy;
+pub static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| Mutex::new(ThreadPool::new(4)));

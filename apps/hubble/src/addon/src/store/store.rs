@@ -4,24 +4,22 @@ use super::{
     utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
     MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
 };
-use crate::logger::LOGGER;
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, hub_event, HubEvent, HubEventType, MergeMessageBody, Message, MessageType},
     store::make_ts_hash,
 };
+use crate::{logger::LOGGER, THREAD_POOL};
 use neon::context::Context;
 use neon::types::{Finalize, JsBuffer, JsNumber};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use neon::{object::Object, types::buffer::TypedArray};
-use once_cell::sync::Lazy;
 use prost::Message as _;
 use rocksdb;
 use slog::{o, warn};
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use std::{clone::Clone, fmt::Display};
-use threadpool::ThreadPool;
 
 #[derive(Debug, PartialEq)]
 pub struct HubError {
@@ -928,6 +926,3 @@ impl Store {
         Ok(promise)
     }
 }
-
-// Threadpool for use in the store
-static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| Mutex::new(ThreadPool::new(1)));

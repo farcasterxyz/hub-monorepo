@@ -27,6 +27,7 @@ let client3: HubRpcClient;
 
 beforeAll(async () => {
   syncEngine = new SyncEngine(hub, db);
+  await syncEngine.start();
   server = new Server(hub, engine, syncEngine);
   const port = await server.start();
   client1 = getInsecureHubRpcClient(`127.0.0.1:${port}`);
@@ -39,9 +40,9 @@ afterAll(async () => {
   client2.close();
   client3.close();
 
+  await syncEngine.stop();
   await server.stop();
   await engine.stop();
-  await syncEngine.stop();
 });
 
 const fid = Factories.Fid.build();

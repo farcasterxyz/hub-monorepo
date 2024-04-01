@@ -1,13 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use std::{sync::Arc, vec};
-
-    use hex::FromHex as _;
-
     use crate::{
         db::{RocksDB, RocksDbTransactionBatch},
-        trie::{TrieNode, TrieNodeType, TIMESTAMP_LENGTH},
+        trie::trie_node::{TrieNode, TrieNodeType, TIMESTAMP_LENGTH},
     };
+    use hex::FromHex as _;
+    use std::{sync::Arc, vec};
 
     fn empty_hash() -> Vec<u8> {
         blake3::hash(b"").as_bytes()[0..20].to_vec()
@@ -77,8 +75,8 @@ mod tests {
         assert_eq!(path.value(), Some(key.clone()));
         assert_eq!(path.children().len(), 0);
 
-        // Make sure the txn is correctly populated with 10 entries
-        assert_eq!(txn.batch.len(), 10);
+        // Make sure the txn is correctly populated with all 11 entries (10 uncompacted nodes + 1 leaf node)
+        assert_eq!(txn.batch.len(), 11);
 
         db.commit(txn).unwrap();
         let mut txn = RocksDbTransactionBatch::new();
@@ -168,6 +166,54 @@ mod tests {
         assert_eq!(child_old.is_leaf(), false); // Not a leaf node because it is split at < timestamp length
         assert_eq!(child_old.items(), 2); // Still contains the 2 old keys
         assert_eq!(child_old.children().len(), 1); // The new key is the only child, which will split later
+
+        // Cleanup
+        db.destroy().unwrap();
+    }
+
+    #[test]
+    fn test_trie_node_insert_one_byte() {
+        // Create a new DB with a random temporary path
+        let tmp_path = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .as_os_str()
+            .to_string_lossy()
+            .to_string();
+        let db = Arc::new(RocksDB::new(&tmp_path).unwrap());
+        db.open().unwrap();
+        let mut txn = RocksDbTransactionBatch::new();
+
+        // Create a new TrieNode
+        let mut node = TrieNode::new();
+        assert_eq!(node.items(), 0);
+
+        let key1 = (0..=20).collect::<Vec<_>>();
+        let mut key2 = key1.clone();
+        key2[20] = 42;
+
+        let r = node.insert(&db, &mut txn, &key1, 0);
+        assert_eq!(r, Ok(true));
+
+        let r = node.insert(&db, &mut txn, &key2, 0);
+        assert_eq!(r, Ok(true));
+
+        // Check that both exists return true
+        let r = node.exists(&db, &key1, 0);
+        assert_eq!(r, Ok(true));
+
+        let r = node.exists(&db, &key2, 0);
+        assert_eq!(r, Ok(true));
+
+        // Make sure both delete Ok
+        let r = node.delete(&db, &mut txn, &key1, 0);
+        assert_eq!(r, Ok(true));
+        assert_eq!(node.items(), 1);
+
+        let r = node.delete(&db, &mut txn, &key2, 0);
+        assert_eq!(r, Ok(true));
+        assert_eq!(node.items(), 0);
+        assert_eq!(node.hash(), empty_hash());
 
         // Cleanup
         db.destroy().unwrap();
@@ -318,6 +364,85 @@ mod tests {
         for id in ids.iter().skip(1) {
             let r = node.delete(&db, &mut txn, id, 0).unwrap();
             assert_eq!(r, true);
+        }
+
+        // Cleanup
+        db.destroy().unwrap();
+    }
+
+    #[test]
+    fn test_trie_node_hashes() {
+        // Create a new DB with a random temporary path
+        let tmp_path = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .as_os_str()
+            .to_string_lossy()
+            .to_string();
+        let db = Arc::new(RocksDB::new(&tmp_path).unwrap());
+        db.open().unwrap();
+
+        // Create a new TrieNode
+        let mut node = TrieNode::new();
+        assert_eq!(node.items(), 0);
+        assert_eq!(node.hash(), Vec::<u8>::new());
+
+        let ids: Vec<Vec<u8>> = vec![
+            format!("{:0>width$}010680", "0", width = TIMESTAMP_LENGTH * 2),
+            format!("{:0>width$}010a10", "0", width = TIMESTAMP_LENGTH * 2),
+            format!("{:0>width$}05d220", "0", width = TIMESTAMP_LENGTH * 2),
+        ]
+        .into_iter()
+        .map(|id| Vec::from_hex(id).unwrap())
+        .collect();
+
+        // Add the ids in forward order
+        let mut txn = RocksDbTransactionBatch::new();
+        for id in ids.iter() {
+            let r = node.insert(&db, &mut txn, id, 0).unwrap();
+            assert_eq!(r, true);
+        }
+        db.commit(txn).unwrap();
+        let forward_hash = node.hash();
+
+        // Delete the ids in forward order
+        let mut txn = RocksDbTransactionBatch::new();
+        for id in ids.iter() {
+            let r = node.delete(&db, &mut txn, id, 0).unwrap();
+            assert_eq!(r, true);
+        }
+        db.commit(txn).unwrap();
+
+        // Ad the ids in reverse order
+        let mut txn = RocksDbTransactionBatch::new();
+        for id in ids.iter().rev() {
+            let r = node.insert(&db, &mut txn, id, 0).unwrap();
+            assert_eq!(r, true);
+        }
+        db.commit(txn).unwrap();
+        assert_eq!(node.hash(), forward_hash);
+
+        // Make sure that all the values are there
+        let all_values = node.get_all_values(&db, &[]).unwrap();
+        for id in ids.iter() {
+            assert_eq!(all_values.contains(id), true);
+        }
+
+        // Unload the children
+        node.unload_children();
+
+        // Make sure that all the children are serialized
+        node.children().values().for_each(|child| match child {
+            TrieNodeType::Node(_) => panic!("Not serialized!"),
+            TrieNodeType::Serialized(s) => {
+                assert!(s.hash.is_some());
+            }
+        });
+
+        // Now, calling get_all_values should still work because it should load the values from the DB
+        let all_values = node.get_all_values(&db, &[]).unwrap();
+        for id in ids.iter() {
+            assert_eq!(all_values.contains(id), true);
         }
 
         // Cleanup

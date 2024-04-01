@@ -45,7 +45,7 @@ export const clearAdminResets = async (db: RocksDB): Promise<boolean> => {
       }
     },
   );
-  await syncTrie.commitToDb();
+
   await syncTrie.stop();
   log.info({ duration: Date.now() - start }, `Finished clearAdminResets migration. Removed ${count} events`);
   return true;

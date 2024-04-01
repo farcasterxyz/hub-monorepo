@@ -477,7 +477,7 @@ impl CastStore {
         store.get_adds_by_fid(fid, page_options, Some(|_: &Message| true))
     }
 
-    pub fn create_cast_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
+    pub fn js_create_cast_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
         let db_js_box = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
         let db = (**db_js_box.borrow()).clone();
 

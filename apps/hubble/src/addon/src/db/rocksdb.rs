@@ -17,7 +17,6 @@ use neon::types::{
 };
 use rocksdb::{Options, TransactionDB};
 use slog::{info, o};
-use std::fmt::format;
 use std::fs::{self, File};
 use std::path::Path;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
@@ -64,6 +63,12 @@ pub struct RocksDB {
 
 /** Needed to make sure neon can clean up the RocksDB at the end */
 impl Finalize for RocksDB {}
+
+impl std::fmt::Debug for RocksDB {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RocksDB").field("path", &self.path).finish()
+    }
+}
 
 impl RocksDB {
     pub fn new(path: &str) -> Result<RocksDB, HubError> {
