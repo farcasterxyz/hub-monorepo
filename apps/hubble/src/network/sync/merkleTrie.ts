@@ -160,6 +160,7 @@ class MerkleTrie {
       }, 5 * 60 * 1000);
     }
 
+    log.info("Initializing Merkle Trie");
     return await rsMerkleTrieInitialize(this._rustTrie);
   }
 
@@ -334,6 +335,10 @@ class MerkleTrie {
   public getDb(): RocksDB {
     const rustDb = rsMerkleTrieGetDb(this._rustTrie);
     return RocksDB.fromRustDb(rustDb);
+  }
+
+  public async commitToDb(): Promise<void> {
+    return await this.unloadChidrenAtRoot();
   }
 }
 

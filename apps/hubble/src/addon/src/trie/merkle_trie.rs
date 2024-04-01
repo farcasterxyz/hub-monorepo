@@ -24,7 +24,7 @@ use std::{
     path::Path,
     sync::{
         atomic::{AtomicBool, AtomicU64},
-        Arc, RwLock,
+        Arc, Mutex, RwLock,
     },
 };
 
@@ -45,13 +45,13 @@ pub struct TrieSnapshot {
     pub num_messages: usize,
 }
 
-#[derive(Debug)]
 pub struct MerkleTrie {
     root: RwLock<Option<TrieNode>>,
     db: Arc<RocksDB>,
     logger: slog::Logger,
     op_count: AtomicU64,
     db_owned: AtomicBool,
+    txn_batch: Mutex<RocksDbTransactionBatch>,
 }
 
 // Implement Finalize so we can pass this struct between JS and Rust
@@ -76,6 +76,7 @@ impl MerkleTrie {
             logger,
             op_count: AtomicU64::new(0),
             db_owned: AtomicBool::new(true),
+            txn_batch: Mutex::new(RocksDbTransactionBatch::new()),
         })
     }
 
@@ -87,6 +88,7 @@ impl MerkleTrie {
             logger,
             op_count: AtomicU64::new(0),
             db_owned: AtomicBool::new(false),
+            txn_batch: Mutex::new(RocksDbTransactionBatch::new()),
         })
     }
 
@@ -118,19 +120,28 @@ impl MerkleTrie {
     }
 
     pub fn clear(&self) -> Result<(), HubError> {
+        self.txn_batch.lock().unwrap().batch.clear();
         self.db.clear()?;
         self.root.write().unwrap().replace(TrieNode::new());
+
         self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
 
         Ok(())
     }
 
     pub fn stop(&self) -> Result<(), HubError> {
+        // Grab the root with a write lock
+        let mut root = self.root.write().unwrap().take();
+        if let Some(root) = root.as_mut() {
+            // And write everything to disk
+            self.unload_from_memory(root, true)?;
+        }
+
+        // Close
         if self.db_owned.load(std::sync::atomic::Ordering::Relaxed) {
             self.db.close()?;
         }
 
-        self.root.write().unwrap().take();
         self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
@@ -145,8 +156,17 @@ impl MerkleTrie {
             .op_count
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if force || op_count > TRIE_UNLOAD_THRESHOLD {
+            // Take the txn_batch out of the lock and replace it with a new one
+            let txn_batch = std::mem::replace(
+                &mut *self.txn_batch.lock().unwrap(),
+                RocksDbTransactionBatch::new(),
+            );
+
             statsd().gauge("merkle_trie.num_messages", root.items() as u64);
-            info!(self.logger, "Unloading children from memory"; "force" => force);
+            info!(self.logger, "Unloading children from memory"; "force" => force, "pendingDbKeys" => txn_batch.len());
+
+            // Commit the txn_batch
+            self.db.commit(txn_batch)?;
 
             root.unload_children();
             self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
@@ -159,8 +179,7 @@ impl MerkleTrie {
             let mut txn = RocksDbTransactionBatch::new();
             let result = root.insert(&self.db, &mut txn, &key, 0)?;
 
-            self.db.commit(txn)?;
-
+            self.txn_batch.lock().unwrap().merge(txn);
             self.unload_from_memory(root, false)?;
 
             Ok(result)
@@ -177,7 +196,7 @@ impl MerkleTrie {
             let mut txn = RocksDbTransactionBatch::new();
             let result = root.delete(&self.db, &mut txn, &key, 0)?;
 
-            self.db.commit(txn)?;
+            self.txn_batch.lock().unwrap().merge(txn);
 
             self.unload_from_memory(root, false)?;
             Ok(result)
@@ -586,7 +605,10 @@ impl MerkleTrie {
         let (deferred, promise) = cx.promise();
 
         THREAD_POOL.lock().unwrap().execute(move || {
-            deferred.settle_with(&channel, move |mut tcx| match trie.migrate(keys, values) {
+            // Migrate the keys and values in the thread
+            let result = trie.migrate(keys, values);
+
+            deferred.settle_with(&channel, move |mut tcx| match result {
                 Ok(migrated) => Ok(tcx.number(migrated as f64)),
                 Err(e) => hub_error_to_js_throw(&mut tcx, e),
             });
