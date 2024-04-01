@@ -21,6 +21,7 @@ use slog::{info, o};
 use std::{
     borrow::Borrow,
     collections::HashMap,
+    path::Path,
     sync::{
         atomic::{AtomicBool, AtomicU64},
         Arc, RwLock,
@@ -30,6 +31,7 @@ use std::{
 const TRIE_DBPATH_PREFIX: &str = "trieDb";
 const TRIE_UNLOAD_THRESHOLD: u64 = 10_000;
 
+#[derive(Debug)]
 pub struct NodeMetadata {
     pub prefix: Vec<u8>,
     pub num_messages: usize,
@@ -57,9 +59,15 @@ impl Finalize for MerkleTrie {}
 
 impl MerkleTrie {
     pub fn new(main_db_path: &str) -> Result<Self, HubError> {
-        let db = Arc::new(RocksDB::new(
-            format!("{}/{}", main_db_path, TRIE_DBPATH_PREFIX).as_str(),
-        )?);
+        let path = Path::join(Path::new(main_db_path), Path::new(TRIE_DBPATH_PREFIX))
+            .into_os_string()
+            .into_string()
+            .map_err(|os_str| {
+                HubError::validation_failure(
+                    format!("error with Merkle Trie path {:?}", os_str).as_str(),
+                )
+            })?;
+        let db = Arc::new(RocksDB::new(path.as_str())?);
 
         let logger = LOGGER.new(o!("component" => "MerkleTrie"));
         Ok(MerkleTrie {

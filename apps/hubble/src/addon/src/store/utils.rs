@@ -266,10 +266,11 @@ pub fn bytes_compare(a: &[u8], b: &[u8]) -> i8 {
 /**
  * The hashes in the sync trie are 20 bytes (160 bits) long, so we use the first 20 bytes of the blake3 hash
  */
+const BLAKE3_HASH_LEN: usize = 20;
 pub fn blake3_20(input: &[u8]) -> Vec<u8> {
     let mut hasher = blake3::Hasher::new();
     hasher.update(input);
-    hasher.finalize().as_bytes()[..20].to_vec()
+    hasher.finalize().as_bytes()[..BLAKE3_HASH_LEN].to_vec()
 }
 
 #[cfg(test)]
