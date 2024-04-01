@@ -45,7 +45,6 @@ pub struct TrieSnapshot {
     pub num_messages: usize,
 }
 
-#[derive(Debug)]
 pub struct MerkleTrie {
     root: RwLock<Option<TrieNode>>,
     db: Arc<RocksDB>,
