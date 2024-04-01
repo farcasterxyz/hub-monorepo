@@ -5,7 +5,6 @@ use crate::{
 use db::RocksDB;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey, EXPANDED_SECRET_KEY_LENGTH};
 use neon::{prelude::*, types::buffer::TypedArray};
-use once_cell::sync::Lazy;
 use std::{convert::TryInto, sync::Mutex};
 use store::{LinkStore, ReactionStore, Store, UserDataStore};
 use threadpool::ThreadPool;
@@ -237,4 +236,5 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 }
 
 // Threadpool for use in the store
+use once_cell::sync::Lazy;
 pub static THREAD_POOL: Lazy<Mutex<ThreadPool>> = Lazy::new(|| Mutex::new(ThreadPool::new(4)));
