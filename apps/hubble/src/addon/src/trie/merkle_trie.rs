@@ -120,23 +120,28 @@ impl MerkleTrie {
     }
 
     pub fn clear(&self) -> Result<(), HubError> {
+        self.txn_batch.lock().unwrap().batch.clear();
         self.db.clear()?;
         self.root.write().unwrap().replace(TrieNode::new());
+
         self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
 
         Ok(())
     }
 
     pub fn stop(&self) -> Result<(), HubError> {
-        // First, commit the txn_batch
+        // Grab the root with a write lock
         let mut root = self.root.write().unwrap().take();
         if let Some(root) = root.as_mut() {
+            // And write everything to disk
             self.unload_from_memory(root, true)?;
         }
 
+        // Close
         if self.db_owned.load(std::sync::atomic::Ordering::Relaxed) {
             self.db.close()?;
         }
+
         self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
