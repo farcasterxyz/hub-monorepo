@@ -820,7 +820,7 @@ impl RocksDB {
         let gz_file = File::create(&output_gz_path)?;
 
         // Set up the GzEncoder for gzip compression with default compression level
-        let mut encoder = GzEncoder::new(gz_file, Compression::default());
+        let mut encoder = GzEncoder::new(gz_file, Compression::fast());
         std::io::copy(&mut tar_file, &mut encoder)?;
 
         encoder.finish().map_err(|e| HubError {
