@@ -71,6 +71,10 @@ app
   .option("-c, --config <filepath>", "Path to the config file.")
   .option("--db-name <name>", "The name of the RocksDB instance. (default: rocks.hub._default)")
   .option("--process-file-prefix <prefix>", 'Prefix for file to which hub process number is written. (default: "")')
+  .option(
+    "--log-individual-messages",
+    "Log individual submitMessage. If disabled, log one line per second (default: disabled)",
+  )
 
   // Ethereum Options
   .option("-m, --eth-mainnet-rpc-url <url>", "RPC URL of a Mainnet ETH Node (or comma separated list of URLs)")
@@ -499,6 +503,7 @@ app
 
     const options: HubOptions = {
       peerId,
+      logIndividualMessages: cliOptions.logIndividualMessages ?? hubConfig.logIndividualMessages ?? false,
       ipMultiAddr: ipMultiAddrResult.value,
       rpcServerHost: hubAddressInfo.value.address,
       announceIp: cliOptions.announceIp ?? hubConfig.announceIp,
