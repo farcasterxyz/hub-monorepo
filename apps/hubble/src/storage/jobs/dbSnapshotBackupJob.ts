@@ -38,6 +38,10 @@ export class DbSnapshotBackupJobScheduler {
     this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_DB_SNAPSHOT_BACKUP_JOB_CRON, () => this.doJobs(), {
       timezone: "Etc/UTC",
     });
+
+    setTimeout(async () => {
+      await this.doJobs();
+    }, 1000);
   }
 
   stop() {
@@ -88,15 +92,15 @@ export class DbSnapshotBackupJobScheduler {
           this._options.s3SnapshotBucket,
           messageCount,
         );
-        if (s3Result.isErr()) {
+        if (s3Result.isOk()) {
+          // Delete the tar file, ignore errors
+          fs.unlink(tarGzResult.value, () => {});
+
+          // Cleanup old files from S3
+          this.deleteOldSnapshotsFromS3();
+        } else {
           log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
         }
-
-        // Delete the tar file, ignore errors
-        fs.unlink(tarGzResult.value, () => {});
-
-        // Cleanup old files from S3
-        this.deleteOldSnapshotsFromS3();
       }, 10);
     } else {
       log.error({ error: tarGzResult.error }, "failed to create tar backup for S3");
