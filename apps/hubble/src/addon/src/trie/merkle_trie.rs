@@ -28,7 +28,7 @@ use std::{
     },
 };
 
-const TRIE_DBPATH_PREFIX: &str = "trieDb";
+pub const TRIE_DBPATH_PREFIX: &str = "trieDb";
 const TRIE_UNLOAD_THRESHOLD: u64 = 10_000;
 
 #[derive(Debug)]

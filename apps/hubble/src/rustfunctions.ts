@@ -116,14 +116,6 @@ export const rsApproximateSize = (db: RustDb): number => {
   return lib.dbApproximateSize.call(db);
 };
 
-export const rsCreateTarBackup = (db: RustDb): Promise<string> => {
-  return lib.dbCreateTarBackup.call(db);
-};
-
-export const rsCreateTarGzip = (filePath: string): Promise<string> => {
-  return lib.dbCreateTarGzip(filePath);
-};
-
 export const rsDbClear = (db: RustDb) => {
   return lib.dbClear.call(db);
 };
@@ -160,6 +152,10 @@ export const rsDbDel = async (db: RustDb, key: Uint8Array): Promise<void> => {
 
 export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<void> => {
   return await lib.dbCommit.call(db, keyValues);
+};
+
+export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb): Promise<string> => {
+  return await lib.dbSnapshotBackup(mainDb, trieDb);
 };
 
 /**

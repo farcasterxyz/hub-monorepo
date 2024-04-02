@@ -28,12 +28,12 @@ cadence = "1.2.0"
 slog-atomic = "3.1.0"
 walkdir = "2.5.0"
 tar = "0.4.40"
-gzp = "0.11.3"
 tonic = "0.11.0"
 tokio = {version="1.36.0", features=["macros", "rt-multi-thread"]}
 tempfile = "3.10.1"
 rand = "0.8.5"
 hex = "0.4.3"
+flate2 = "1.0.28"
 
 [build-dependencies]
 tonic-build = "0.11"
