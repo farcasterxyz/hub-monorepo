@@ -38,7 +38,7 @@ import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
-import { rsCreateTarBackup, rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
+import { rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import {
@@ -73,6 +73,7 @@ import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
 import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
+import { DbSnapshotBackupJobScheduler } from "./storage/jobs/dbSnapshotBackupJob.js";
 import { statsd, StatsDInitParams } from "./utils/statsd.js";
 import {
   getDbSchemaVersion,
@@ -350,8 +351,6 @@ export class Hub implements HubInterface {
   private strictNoSign: boolean;
   private performedFirstSync = false;
 
-  private s3_snapshot_bucket: string;
-
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
   private pruneEventsJobScheduler: PruneEventsJobScheduler;
@@ -361,6 +360,7 @@ export class Hub implements HubInterface {
   private gossipContactInfoJobScheduler: GossipContactInfoJobScheduler;
   private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
+  private dbSnapshotBackupJobScheduler: DbSnapshotBackupJobScheduler;
 
   private submitMessageLogger = new SubmitMessageSuccessLogCache(log);
 
@@ -414,8 +414,6 @@ export class Hub implements HubInterface {
 
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
     this.gossipNode = new GossipNode(this.rocksDB, this.options.network);
-
-    this.s3_snapshot_bucket = options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
       lockMaxPending: options.commitLockMaxPending,
@@ -512,6 +510,12 @@ export class Hub implements HubInterface {
     this.gossipContactInfoJobScheduler = new GossipContactInfoJobScheduler(this);
     this.checkIncomingPortsJobScheduler = new CheckIncomingPortsJobScheduler(this.rpcServer, this.gossipNode);
     this.updateNetworkConfigJobScheduler = new UpdateNetworkConfigJobScheduler(this);
+    this.dbSnapshotBackupJobScheduler = new DbSnapshotBackupJobScheduler(
+      this.rocksDB,
+      this.syncEngine.trie.getDb(),
+      this.syncEngine,
+      this.options,
+    );
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -564,64 +568,6 @@ export class Hub implements HubInterface {
       const snapshotResult = await this.snapshotSync();
       if (snapshotResult.isErr()) {
         log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to regular sync");
-      }
-    }
-
-    // NOTE: uploadToS3 performs open and close operations on RocksDB instance with a call to MerkleTrie.numItems.
-    // This is necessary to determine the number of messages in the trie and avoid
-    // race conditions with other entities that may open the DB.
-    if (this.options.enableSnapshotToS3) {
-      // Back up the DB before opening it
-      const tarResult = await ResultAsync.fromPromise(rsCreateTarBackup(this.rocksDB.rustDb), (e) => e as Error);
-
-      if (tarResult.isOk()) {
-        // Fetch the number of elements in the trie DB synchronously, to avoid race conditions with other services
-        // that may open and access the DB.
-        const messages = await MerkleTrie.numItems(this.syncEngine.trie);
-        let messageCount = 0;
-        messages.match(
-          (numMessages) => {
-            messageCount = numMessages;
-          },
-          (error) => {
-            log.error(
-              {
-                error: error,
-              },
-              "failed to get message count from sync engine trie",
-            );
-            // Throw an error if message count is not obtained, since it's required for snapshot upload
-            throw error;
-          },
-        );
-        // If snapshot to S3 flag is explicitly set, we throw an error if message count is zero,
-        // since it would be atypical to set this flag when there are no messages in the trie
-        if (messageCount <= 0) {
-          log.error("no messages found in sync engine trie, cannot upload snapshot");
-          throw new HubError("unavailable", "no messages found in sync engine trie, snapshot upload failed");
-        }
-
-        // Upload to S3. Run this in the background so we don't block startup.
-        setTimeout(async () => {
-          log.info({ messageCount }, "uploading snapshot to S3");
-          const s3Result = await uploadToS3(
-            this.options.network,
-            tarResult.value,
-            this.options.s3SnapshotBucket,
-            messageCount,
-          );
-          if (s3Result.isErr()) {
-            log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
-          }
-
-          // Delete the tar file, ignore errors
-          fs.unlink(tarResult.value, () => {});
-
-          // Cleanup old files from S3
-          this.deleteOldSnapshotsFromS3();
-        }, 10);
-      } else {
-        log.error({ error: tarResult.error }, "failed to create tar backup for S3");
       }
     }
 
@@ -806,6 +752,7 @@ export class Hub implements HubInterface {
     // Mainnet only jobs
     if (this.options.network === FarcasterNetwork.MAINNET) {
       this.updateNetworkConfigJobScheduler.start();
+      this.dbSnapshotBackupJobScheduler.start();
     }
 
     // Testnet/Devnet only jobs
@@ -1167,6 +1114,7 @@ export class Hub implements HubInterface {
     this.gossipContactInfoJobScheduler.stop();
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
+    this.dbSnapshotBackupJobScheduler.stop();
 
     // Stop the engine
     await this.engine.stop();
@@ -1809,88 +1757,5 @@ export class Hub implements HubInterface {
   private getSnapshotFolder(prevVersionCounter?: number): string {
     const network = FarcasterNetwork[this.options.network].toString();
     return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
-  }
-
-  async listS3Snapshots(): HubAsyncResult<
-    Array<{
-      Key: string | undefined;
-      Size: number | undefined;
-      LastModified: Date | undefined;
-    }>
-  > {
-    const network = FarcasterNetwork[this.options.network].toString();
-
-    const s3 = new S3Client({
-      region: S3_REGION,
-    });
-
-    // Note: We get the snapshots across all DB_SCHEMA versions
-    // when determining which snapshots to delete, we only delete snapshots from the current DB_SCHEMA version
-    const params = {
-      Bucket: this.s3_snapshot_bucket,
-      Prefix: `snapshots/${network}/`,
-    };
-
-    try {
-      const response = await s3.send(new ListObjectsV2Command(params));
-
-      if (response.Contents) {
-        return ok(
-          response.Contents.map((item) => ({
-            Key: item.Key,
-            Size: item.Size,
-            LastModified: item.LastModified,
-          })),
-        );
-      } else {
-        return ok([]);
-      }
-    } catch (e: unknown) {
-      return err(new HubError("unavailable.network_failure", (e as Error).message));
-    }
-  }
-
-  async deleteOldSnapshotsFromS3(): HubAsyncResult<void> {
-    try {
-      const fileListResult = await this.listS3Snapshots();
-
-      if (!fileListResult.isOk()) {
-        return err(new HubError("unavailable.network_failure", fileListResult.error.message));
-      }
-
-      if (fileListResult.value.length < 2) {
-        log.warn({ fileList: fileListResult.value }, "Not enough snapshot files to delete");
-        return ok(undefined);
-      }
-
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-
-      const oldFiles = fileListResult.value
-        .filter((file) => (file.LastModified ? new Date(file.LastModified) < oneMonthAgo : false))
-        .slice(0, 10);
-
-      if (oldFiles.length === 0) {
-        return ok(undefined);
-      }
-
-      log.warn({ oldFiles }, "Deleting old snapshot files from S3");
-
-      const deleteParams = {
-        Bucket: this.s3_snapshot_bucket,
-        Delete: {
-          Objects: oldFiles.map((file) => ({ Key: file.Key })),
-        },
-      };
-
-      const s3 = new S3Client({
-        region: S3_REGION,
-      });
-
-      await s3.send(new DeleteObjectsCommand(deleteParams));
-      return ok(undefined);
-    } catch (e: unknown) {
-      return err(new HubError("unavailable.network_failure", (e as Error).message));
-    }
   }
 }

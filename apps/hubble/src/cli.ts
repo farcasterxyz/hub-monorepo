@@ -588,19 +588,6 @@ app
       );
     }
 
-    if (options.enableSnapshotToS3) {
-      // Set the Hub to exit (and be automatically restarted) so that the snapshot is uploaded
-      // before the Hub starts syncing
-      // Calculate and set a timeout to run at 9:10 am UTC (2:10 am PST)
-      const millisTill9 = millisTillRestart();
-      logger.info({ millisTill9 }, "Scheduling Hub to exit at 9:10 am UTC to upload snapshot to S3");
-
-      setTimeout(async () => {
-        logger.info("Exiting Hub to upload snapshot to S3");
-        handleShutdownSignal("S3SnapshotUpload");
-      }, millisTill9);
-    }
-
     await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet, "L1");
     await startupCheck.rpcCheck(options.l2RpcUrl, optimism, "L2", options.l2ChainId);
 
@@ -910,16 +897,6 @@ app.parse(process.argv);
 ///////////////////////////////////////////////////////////////
 //                        UTILS
 ///////////////////////////////////////////////////////////////
-function millisTillRestart(): number {
-  // Calculate the number of milliseconds until 9:10 am UTC (2:10 am PST)
-  const now = new Date();
-  const timeAt9 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 10, 0, 0).getTime();
-
-  const millisTill9Tomorrow = timeAt9 + 24 * 60 * 60 * 1000 - now.getTime();
-  const millisTill9Today = timeAt9 - now.getTime();
-
-  return millisTill9Today > 0 ? millisTill9Today : millisTill9Tomorrow;
-}
 
 // Verify that we have access to the AWS credentials.
 // Either via environment variables or via the AWS credentials file

@@ -3,11 +3,9 @@ import { LATEST_DB_SCHEMA_VERSION } from "../storage/db/migrations/migrations.js
 import axios from "axios";
 import { err, ok, ResultAsync } from "neverthrow";
 import { S3_REGION, SNAPSHOT_S3_DEFAULT_BUCKET } from "../hubble.js";
-import { rsCreateTarGzip, rustErrorToHubError } from "../rustfunctions.js";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
 import { Upload } from "@aws-sdk/lib-storage";
-import { MerkleTrie } from "../network/sync/merkleTrie.js";
 import { logger } from "./logger.js";
 
 export type SnapshotMetadata = Partial<DbStats> & {
@@ -77,29 +75,11 @@ export const snapshotURL = (
 
 export const uploadToS3 = async (
   fcNetwork: FarcasterNetwork,
-  tarFilePath: string,
+  filePath: string,
   s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
   messageCount?: number,
 ): HubAsyncResult<string> => {
   let start = Date.now();
-  logger.info(
-    {
-      tarFilePath,
-      message_count: messageCount ?? -1,
-    },
-    "Creating tar.gz file ...",
-  );
-
-  // First, gzip the file. Do it in rust, which can run the CPU intensive gzip in a separate thread
-  const gzipResult = await ResultAsync.fromPromise(rsCreateTarGzip(tarFilePath), rustErrorToHubError);
-  if (gzipResult.isErr()) {
-    logger.error({ error: gzipResult.error }, "Error creating tar.gz file");
-    return err(gzipResult.error);
-  }
-
-  logger.info({ timeTakenMs: Date.now() - start, gzipResult }, "Finished creating tar.gz file created");
-  const filePath = gzipResult.value;
-
   const s3 = new S3Client({
     region: S3_REGION,
   });
@@ -110,7 +90,7 @@ export const uploadToS3 = async (
   )}.tar.gz`;
 
   start = Date.now();
-  logger.info({ filePath, key, bucket: s3Bucket }, "Uploading snapshot to S3");
+  logger.info({ filePath, key, bucket: s3Bucket }, "progress uploading snapshot to S3");
 
   const fileStream = fs.createReadStream(filePath);
   fileStream.on("error", function (err) {

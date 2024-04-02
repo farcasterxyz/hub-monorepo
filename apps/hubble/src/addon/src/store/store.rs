@@ -41,6 +41,13 @@ impl HubError {
             message: error_message.to_string(),
         }
     }
+
+    pub fn internal_db_error(error_message: &str) -> HubError {
+        HubError {
+            code: "db.internal_error".to_string(),
+            message: error_message.to_string(),
+        }
+    }
 }
 
 impl Display for HubError {
