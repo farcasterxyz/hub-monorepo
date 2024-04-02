@@ -4,7 +4,6 @@ import cron from "node-cron";
 import { logger } from "../../utils/logger.js";
 import { rsDbSnapshotBackup } from "../../rustfunctions.js";
 import RocksDB from "../../storage/db/rocksdb.js";
-import { MerkleTrie } from "../../network/sync/merkleTrie.js";
 import { uploadToS3 } from "../../utils/snapshot.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
