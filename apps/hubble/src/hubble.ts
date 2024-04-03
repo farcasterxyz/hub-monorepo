@@ -32,7 +32,7 @@ import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB from "./storage/db/rocksdb.js";
+import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
@@ -93,6 +93,7 @@ import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
+import heapdump from "heapdump";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -767,12 +768,25 @@ export class Hub implements HubInterface {
     await this.writeHubCleanShutdown(false, HubShutdownReason.UNKNOWN);
 
     // Set up a timer to log the memory usage every minute
+    let lastHeapDumpTime = 0;
     setInterval(() => {
       const memoryData = process.memoryUsage();
       statsd().gauge("memory.rss", memoryData.rss);
       statsd().gauge("memory.heap_total", memoryData.heapTotal);
       statsd().gauge("memory.heap_used", memoryData.heapUsed);
       statsd().gauge("memory.external", memoryData.external);
+
+      if (memoryData.heapUsed > 4 * 1024 * 1024 * 1024 && Date.now() - lastHeapDumpTime > 10 * 60 * 1000) {
+        const fileName = `${DB_DIRECTORY}/process/HeapDump-${Date.now()}.heapsnapshot`;
+        heapdump.writeSnapshot(fileName, (err) => {
+          if (err) {
+            log.error({ error: err }, "Failed to write heap dump");
+          } else {
+            log.info({ fileName }, "Heap dump written");
+          }
+        });
+        lastHeapDumpTime = Date.now();
+      }
     }, 60 * 1000);
   }
 

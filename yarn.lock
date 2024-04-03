@@ -4128,6 +4128,11 @@
   dependencies:
     "@types/node" "*"
 
+"@types/heapdump@^0.3.4":
+  version "0.3.4"
+  resolved "https://registry.npmjs.org/@types/heapdump/-/heapdump-0.3.4.tgz#59645b30165d832ea654449c8ffbed0c156ad60c"
+  integrity sha512-gTGn7W7i58F1yzvLZ5+hRE7M/VqgEzgccERJ9ZThC6qor5R8wo3oP7iiHvwgHIZzoqPF22ngu8mBagcqPWMVTg==
+
 "@types/http-cache-semantics@*":
   version "4.0.1"
   resolved "https://registry.npmjs.org/@types/http-cache-semantics/-/http-cache-semantics-4.0.1.tgz#0ea7b61496902b95890dc4c3a116b60cb8dae812"
@@ -6882,6 +6887,13 @@ hasown@^2.0.0:
   dependencies:
     function-bind "^1.1.2"
 
+heapdump@^0.3.15:
+  version "0.3.15"
+  resolved "https://registry.npmjs.org/heapdump/-/heapdump-0.3.15.tgz#631a8a2585588ea64778d8ec80a64c6c025f6a08"
+  integrity sha512-n8aSFscI9r3gfhOcAECAtXFaQ1uy4QSke6bnaL+iymYZ/dWs9cqDqHM+rALfsHUwukUbxsdlECZ0pKmJdQ/4OA==
+  dependencies:
+    nan "^2.13.2"
+
 help-me@^4.0.1:
   version "4.2.0"
   resolved "https://registry.npmjs.org/help-me/-/help-me-4.2.0.tgz#50712bfd799ff1854ae1d312c36eafcea85b0563"
@@ -9210,6 +9222,11 @@ mz@^2.7.0:
     any-promise "^1.0.0"
     object-assign "^4.0.1"
     thenify-all "^1.0.0"
+
+nan@^2.13.2:
+  version "2.19.0"
+  resolved "https://registry.npmjs.org/nan/-/nan-2.19.0.tgz#bb58122ad55a6c5bc973303908d5b16cfdd5a8c0"
+  integrity sha512-nO1xXxfh/RWNxfd/XPfbIfFk5vgLsAxUR9y5O0cHMJu/AW9U95JLXqthYHjEp+8gQ5p96K9jUp8nbVOxCdRbtw==
 
 nanoid@^4.0.0:
   version "4.0.1"

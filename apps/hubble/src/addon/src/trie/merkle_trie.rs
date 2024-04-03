@@ -21,6 +21,7 @@ use slog::{info, o};
 use std::{
     borrow::Borrow,
     collections::HashMap,
+    ops::Deref,
     path::Path,
     sync::{atomic::AtomicBool, Arc, Mutex, RwLock},
 };
