@@ -90,7 +90,7 @@ export const uploadToS3 = async (
   )}.tar.gz`;
 
   start = Date.now();
-  logger.info({ filePath, key, bucket: s3Bucket }, "progress uploading snapshot to S3");
+  logger.info({ filePath, key, bucket: s3Bucket }, "Uploading snapshot to S3");
 
   const fileStream = fs.createReadStream(filePath);
   fileStream.on("error", function (err) {
@@ -125,7 +125,7 @@ export const uploadToS3 = async (
   };
 
   targzParams.on("httpUploadProgress", (progress) => {
-    logger.info({ progress }, "Uploading snapshot to S3");
+    logger.info({ progress }, "Uploading snapshot to S3 - progress");
   });
 
   try {

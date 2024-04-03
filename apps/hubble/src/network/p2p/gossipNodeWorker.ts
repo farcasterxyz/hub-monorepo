@@ -217,6 +217,16 @@ export class LibP2PNode {
   async start() {
     await this._node?.start();
     this.registerEventListeners();
+
+    // Send memory usage stats to statsd every 10 seconds
+    setInterval(() => {
+      const memoryData = process.memoryUsage();
+
+      statsd().gauge("memory.gossipworker.rss", memoryData.rss);
+      statsd().gauge("memory.gossipworker.heap_total", memoryData.heapTotal);
+      statsd().gauge("memory.gossipworker.heap_used", memoryData.heapUsed);
+      statsd().gauge("memory.gossipworker.external", memoryData.external);
+    }, 10 * 1000);
   }
 
   async isStarted(): Promise<boolean> {
