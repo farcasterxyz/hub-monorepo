@@ -28,6 +28,7 @@ import {
   PublicClient,
   Hex,
   FallbackTransport,
+  HttpRequestError,
 } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
@@ -36,6 +37,7 @@ import { onChainEventSorter } from "../storage/db/onChainEvent.js";
 import { formatPercentage } from "../profile/profile.js";
 import { addProgressBar } from "../utils/progressBars.js";
 import { statsd } from "../utils/statsd.js";
+import { diagnosticReporter } from "../utils/diagnosticReport.js";
 
 const log = logger.child({
   component: "L2EventsProvider",
@@ -150,11 +152,24 @@ export class L2EventsProvider {
     expiryOverride?: number,
   ): L2EventsProvider {
     const l2RpcUrls = l2RpcUrl.split(",");
-    const transports = l2RpcUrls.map((url) => http(url, { retryCount: 10 }));
+    const transports = l2RpcUrls.map((url) =>
+      http(url, {
+        retryCount: 10,
+        fetchOptions: {
+          ...(process.env["AUTHORIZATION_HEADER"] && {
+            headers: {
+              Authorization: `${process.env["AUTHORIZATION_HEADER"]}`,
+            },
+          }),
+        },
+      }),
+    );
 
     const publicClient = createPublicClient({
       chain: optimismGoerli,
-      transport: fallback(transports, { rank: rankRpcs }),
+      transport: fallback(transports, {
+        rank: rankRpcs,
+      }),
     });
 
     const provider = new L2EventsProvider(
@@ -278,7 +293,7 @@ export class L2EventsProvider {
           );
         }
       } catch (e) {
-        log.error(e);
+        log.error(e, "error found while processing storage event");
         log.error({ event }, "failed to parse event args");
       }
     }
@@ -524,6 +539,7 @@ export class L2EventsProvider {
   private async connectAndSyncHistoricalEvents(): HubAsyncResult<number> {
     const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
     if (latestBlockResult.isErr()) {
+      diagnosticReporter().reportError(latestBlockResult.error as Error);
       const msg = "failed to connect to optimism node. Check your eth RPC URL (e.g. --l2-rpc-url)";
       log.error({ err: latestBlockResult.error }, msg);
       return err(new HubError("unavailable.network_failure", msg));
@@ -649,6 +665,7 @@ export class L2EventsProvider {
       pollingInterval: L2EventsProvider.blockPollingInterval,
       onBlockNumber: (blockNumber) => this.handleNewBlock(Number(blockNumber)),
       onError: (error) => {
+        diagnosticReporter().reportError(error);
         log.error(`Error watching new block numbers: ${error}`, { error });
       },
     });
@@ -778,6 +795,7 @@ export class L2EventsProvider {
       3, // attempts
       500, // initial delay in ms
     ).catch((err) => {
+      diagnosticReporter().reportError(err);
       log.error({ err, params }, "failed to get contract events");
       return [];
     });
@@ -844,6 +862,7 @@ export class L2EventsProvider {
           await this._hub.putHubState(hubState.value);
         }
       } else {
+        diagnosticReporter().reportError(hubState.error);
         log.error({ errCode: hubState.error.errCode }, `failed to get hub state: ${hubState.error.message}`);
       }
     }
