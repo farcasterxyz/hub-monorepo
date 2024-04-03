@@ -22,14 +22,11 @@ use std::{
     borrow::Borrow,
     collections::HashMap,
     path::Path,
-    sync::{
-        atomic::{AtomicBool, AtomicU64},
-        Arc, Mutex, RwLock,
-    },
+    sync::{atomic::AtomicBool, Arc, Mutex, RwLock},
 };
 
 pub const TRIE_DBPATH_PREFIX: &str = "trieDb";
-const TRIE_UNLOAD_THRESHOLD: u64 = 10_000;
+const TRIE_UNLOAD_THRESHOLD: usize = 10_000;
 
 #[derive(Debug)]
 pub struct NodeMetadata {
@@ -49,7 +46,6 @@ pub struct MerkleTrie {
     root: RwLock<Option<TrieNode>>,
     db: Arc<RocksDB>,
     logger: slog::Logger,
-    op_count: AtomicU64,
     db_owned: AtomicBool,
     txn_batch: Mutex<RocksDbTransactionBatch>,
 }
@@ -74,7 +70,6 @@ impl MerkleTrie {
             root: RwLock::new(None),
             db,
             logger,
-            op_count: AtomicU64::new(0),
             db_owned: AtomicBool::new(true),
             txn_batch: Mutex::new(RocksDbTransactionBatch::new()),
         })
@@ -86,7 +81,6 @@ impl MerkleTrie {
             root: RwLock::new(None),
             db,
             logger,
-            op_count: AtomicU64::new(0),
             db_owned: AtomicBool::new(false),
             txn_batch: Mutex::new(RocksDbTransactionBatch::new()),
         })
@@ -124,8 +118,6 @@ impl MerkleTrie {
         self.db.clear()?;
         self.root.write().unwrap().replace(TrieNode::new());
 
-        self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
-
         Ok(())
     }
 
@@ -142,7 +134,6 @@ impl MerkleTrie {
             self.db.close()?;
         }
 
-        self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
 
@@ -152,24 +143,19 @@ impl MerkleTrie {
      *  be supplied by the caller.
      */
     fn unload_from_memory(&self, root: &mut TrieNode, force: bool) -> Result<(), HubError> {
-        let op_count = self
-            .op_count
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        if force || op_count > TRIE_UNLOAD_THRESHOLD {
+        let mut txn_batch = self.txn_batch.lock().unwrap();
+        if force || txn_batch.batch.len() > TRIE_UNLOAD_THRESHOLD {
             // Take the txn_batch out of the lock and replace it with a new one
-            let txn_batch = std::mem::replace(
-                &mut *self.txn_batch.lock().unwrap(),
-                RocksDbTransactionBatch::new(),
-            );
+            let pending_txn_batch =
+                std::mem::replace(&mut *txn_batch, RocksDbTransactionBatch::new());
 
             statsd().gauge("merkle_trie.num_messages", root.items() as u64);
-            info!(self.logger, "Unloading children from memory"; "force" => force, "pendingDbKeys" => txn_batch.len());
+            info!(self.logger, "Unloading children from memory"; "force" => force, "pendingDbKeys" => pending_txn_batch.len());
 
             // Commit the txn_batch
-            self.db.commit(txn_batch)?;
+            self.db.commit(pending_txn_batch)?;
 
             root.unload_children();
-            self.op_count.store(0, std::sync::atomic::Ordering::Relaxed);
         }
         Ok(())
     }

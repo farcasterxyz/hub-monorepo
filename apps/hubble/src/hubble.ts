@@ -765,6 +765,15 @@ export class Hub implements HubInterface {
     // shutdown, we'll write "true" to this key, indicating that we've cleanly shutdown.
     // This way, when starting up, we'll know if the previous shutdown was clean or not.
     await this.writeHubCleanShutdown(false, HubShutdownReason.UNKNOWN);
+
+    // Set up a timer to log the memory usage every minute
+    setInterval(() => {
+      const memoryData = process.memoryUsage();
+      statsd().gauge("memory.rss", memoryData.rss);
+      statsd().gauge("memory.heap_total", memoryData.heapTotal);
+      statsd().gauge("memory.heap_used", memoryData.heapUsed);
+      statsd().gauge("memory.external", memoryData.external);
+    }, 60 * 1000);
   }
 
   /** Apply the new the network config. Will return true if the Hub should exit */
