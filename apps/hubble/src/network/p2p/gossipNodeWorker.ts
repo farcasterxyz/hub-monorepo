@@ -226,7 +226,7 @@ export class LibP2PNode {
       statsd().gauge("memory.gossipworker.heap_total", memoryData.heapTotal);
       statsd().gauge("memory.gossipworker.heap_used", memoryData.heapUsed);
       statsd().gauge("memory.gossipworker.external", memoryData.external);
-    }, 10 * 1000);
+    }, 60 * 1000);
   }
 
   async isStarted(): Promise<boolean> {
