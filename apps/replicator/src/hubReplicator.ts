@@ -130,10 +130,10 @@ export class HubReplicator {
     }
 
     // First ensure all current FIDs are backfilled, since many messages have a foreign key to fids table
-    await this.waitForFidRegistrationsBackfill({ maxFid });
+    // await this.waitForFidRegistrationsBackfill({ maxFid });
 
     // Then kick off backfill of all other data
-    await Promise.all([this.enqueueBackfillJobs({ maxFid }), this.waitForOtherChainEventsBackfill({ maxFid })]);
+    // await Promise.all([this.enqueueBackfillJobs({ maxFid }), this.waitForOtherChainEventsBackfill({ maxFid })]);
 
     // Finally, once all events have been processed, we can start subscribing to the event stream
     // and processing new events as they come in while backfilling messages.

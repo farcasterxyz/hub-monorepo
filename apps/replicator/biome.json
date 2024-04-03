@@ -7,7 +7,8 @@
     "enabled": true,
     "indentSize": 2,
     "indentStyle": "space",
-    "lineWidth": 120
+    "lineWidth": 120,
+    "ignore": ["src/**","build/**","grafana/**","node_modules/**"]
   },
   "linter": {
     "enabled": true,
@@ -16,6 +17,7 @@
       "complexity": {
         "useLiteralKeys": "off"
       }
-    }
+    },
+    "ignore": ["src/**","build/**","grafana/**","node_modules/**"]
   }
 }

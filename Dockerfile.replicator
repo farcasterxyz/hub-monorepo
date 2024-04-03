@@ -44,7 +44,11 @@ ENV RUSTFLAGS="-C target-feature=-crt-static"
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
 
-RUN yarn install --frozen-lockfile --network-timeout 1800000
+RUN yarn install --frozen-lockfile 
+RUN yarn add aws-sdk --ignore-workspace-root-check
+RUN  yarn add @aws-sdk/client-kinesis --ignore-workspace-root-check
+#--network-timeout 1800000
+
 
 # Copy source code (and all other relevant files)
 COPY --chown=node:node --from=prune /home/node/app/out/full/ .

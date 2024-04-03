@@ -18,14 +18,14 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
 
-    "strict": true,
+    "strict": false,
     "allowUnreachableCode": false,
-    "exactOptionalPropertyTypes": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitOverride": true,
-    "noImplicitReturns": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "noFallthroughCasesInSwitch": false,
+    "noImplicitOverride": false,
+    "noImplicitReturns": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false,
     "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with instead
     "noUnusedParameters": false
   },

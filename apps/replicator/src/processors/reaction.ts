@@ -10,6 +10,45 @@ import { buildAddRemoveMessageProcessor } from "../messageProcessor.js";
 import { bytesToHex, farcasterTimeToDate } from "../util.js";
 import { ReactionRow, executeTakeFirst } from "../db.js";
 import { AssertionError, HubEventProcessingBlockedError } from "../error.js";
+import AWS from "aws-sdk";
+import { Records } from "aws-sdk/clients/rdsdataservice.js";
+import {AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } from "../env.js";
+
+
+const credentials = new AWS.Credentials({
+  accessKeyId: AWS_ACCESS_KEY_ID,
+  secretAccessKey: AWS_SECRET_ACCESS_KEY
+});
+
+AWS.config.update({ 
+    credentials: credentials,
+    region: "eu-west-1" 
+  });
+
+const kinesis = new AWS.Kinesis();
+
+interface KinesisRecord {
+  Data: string;
+  PartitionKey: string;
+}
+
+async function putKinesisRecords(records: KinesisRecord[]) {
+  const params = {
+    Records: records,
+    StreamName: "farcaster-stream", // Replace 'your-stream-name' with your Kinesis stream name
+  };
+
+  // Put records into the Kinesis stream
+  kinesis.putRecords(params, (err, data) => {
+    if (err) {
+      console.error("Error putting records:", err);
+    } else {
+      console.log(data);
+      console.log("Successfully put records:", data.Records.length);
+    }
+  });
+}
+
 
 const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
   ReactionAddMessage,
@@ -113,6 +152,29 @@ const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
     } else if (!targetUrl) {
       throw new Error("Neither targetCastId nor targetUrl is defined");
     }
+    
+    let records = [];
+    
+    let recordsJson = {
+      timestamp: farcasterTimeToDate(message.data.timestamp),
+      deletedAt: deleted ? new Date() : null,
+      fid: message.data.fid,
+      targetCastFid: targetCastId?.fid || null,
+      type: message.data.reactionBody.type,
+      hash: message.hash,
+      targetCastHash: targetCastId?.hash || null,
+      targetUrl,
+    }
+    
+    records = [
+      {
+        Data: JSON.stringify(recordsJson),
+        PartitionKey: "REACTIONS_ADD",
+      },
+    ];
+    console.log(`push kinesis start`);
+    await putKinesisRecords(records);
+    console.log(`push kinesis end`);
 
     return await executeTakeFirst(
       trx

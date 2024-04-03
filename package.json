@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "private": true,
   "packageManager": "yarn@1.22.19",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "./node_modules/.bin/turbo run build",
     "clean": "./node_modules/.bin/turbo run clean",
@@ -41,10 +44,17 @@
     "typescript": "^5.0.2"
   },
   "lint-staged": {
-    "*.ts": ["biome check"],
-    "*.rs": ["rustfmt --check"]
+    "*.ts": [
+      "biome check"
+    ],
+    "*.rs": [
+      "rustfmt --check"
+    ]
   },
   "dependencies": {
+    "@aws-sdk/client-kinesis": "^3.540.0",
+    "@aws-sdk/client-location": "^3.540.0",
+    "aws-sdk": "^2.1590.0",
     "semver": "^7.5.4"
   }
 }

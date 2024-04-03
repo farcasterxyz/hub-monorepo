@@ -4,6 +4,42 @@ import { buildAddRemoveMessageProcessor } from "../messageProcessor.js";
 import { LinkRow, executeTakeFirst } from "../db.js";
 import { farcasterTimeToDate } from "../util.js";
 import { HubEventProcessingBlockedError } from "../error.js";
+import AWS from "aws-sdk";
+import { Records } from "aws-sdk/clients/rdsdataservice.js";
+import {AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } from "../env.js";
+
+const credentials = new AWS.Credentials({
+  accessKeyId: AWS_ACCESS_KEY_ID,
+  secretAccessKey: AWS_SECRET_ACCESS_KEY
+});
+
+AWS.config.update({ 
+    credentials: credentials,
+    region: "eu-west-1" 
+  });
+
+const kinesis = new AWS.Kinesis();
+interface KinesisRecord {
+  Data: string;
+  PartitionKey: string;
+}
+
+async function putKinesisRecords(records: KinesisRecord[]) {
+  const params = {
+    Records: records,
+    StreamName: "farcaster-stream", // Replace 'your-stream-name' with your Kinesis stream name
+  };
+
+  // Put records into the Kinesis stream
+  kinesis.putRecords(params, (err, data) => {
+    if (err) {
+      console.error("Error putting records:", err);
+    } else {
+      console.log(data);
+      console.log("Successfully put records:", data.Records.length);
+    }
+  });
+}
 
 const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
   LinkAddMessage,
@@ -64,6 +100,29 @@ const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
           blockedOnFid: targetFid,
         });
     }
+    
+    let records = [];
+    
+    let recordsJson = {
+      hash: message.hash,
+      fid: message.data.fid,
+      targetFid: message.data.linkBody.targetFid || null,
+      type: message.data.linkBody.type,
+      timestamp: farcasterTimeToDate(message.data.timestamp),
+      displayTimestamp: farcasterTimeToDate(displayTimestamp) || null,
+      deletedAt: deleted ? new Date() : null,
+    }
+    
+    records = [
+      {
+        Data: JSON.stringify(recordsJson),
+        PartitionKey: "LINK_ADD",
+      },
+    ];
+    
+    console.log(`push kinesis start`);
+    await putKinesisRecords(records);
+    console.log(`push kinesis end`);
 
     return await executeTakeFirst(
       trx

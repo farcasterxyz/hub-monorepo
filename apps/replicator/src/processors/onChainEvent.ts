@@ -20,7 +20,48 @@ import {
   farcasterTimeToDate,
 } from "../util.js";
 import { AssertionError } from "../error.js";
-import { PARTITIONS } from "../env.js";
+import { PARTITIONS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } from "../env.js";
+
+import AWS from "aws-sdk";
+import { KinesisClient, PutRecordsCommand } from "@aws-sdk/client-kinesis";
+// import { Records } from "aws-sdk/clients/rdsdataservice.js";
+
+
+const credentials = new AWS.Credentials({
+  accessKeyId: AWS_ACCESS_KEY_ID,
+  secretAccessKey: AWS_SECRET_ACCESS_KEY
+});
+
+AWS.config.update({ 
+    credentials: credentials,
+    region: "eu-west-1" 
+  });
+
+const kinesis = new AWS.Kinesis();
+
+interface KinesisRecord {
+  Data: string;
+  PartitionKey: string;
+}
+
+async function putKinesisRecords(records: KinesisRecord[]) {
+  const params = {
+    Records: records,
+    StreamName: "farcaster-stream", // Replace 'your-stream-name' with your Kinesis stream name
+  };
+
+  // Put records into the Kinesis stream
+  // const command = new PutRecordsCommand(params);
+  kinesis.putRecords(params, (err, data) => {
+    if (err) {
+      console.error("Error putting records:", err);
+    } else {
+      console.log(data);
+      console.log("Successfully put records:", data.Records.length);
+    }
+  });
+}
+
 
 export const storeChainEvent = async (
   event: OnChainEvent,
@@ -30,6 +71,31 @@ export const storeChainEvent = async (
   const raw = OnChainEvent.encode(event).finish();
 
   let alreadyStored = false;
+  let records = [];
+    
+  let recordsJson = {
+    blockTimestamp: new Date(event.blockTimestamp * 1000),
+    fid: event.fid,
+    chainId: event.chainId,
+    blockNumber: event.blockNumber,
+    transactionIndex: event.txIndex,
+    logIndex: event.logIndex,
+    blockHash: event.blockHash,
+    type: event.type,
+    transactionHash: event.transactionHash,
+    body,
+    raw,
+  }
+  
+  records = [
+    {
+      Data: JSON.stringify(recordsJson),
+      PartitionKey: "CHAIN_EVENT_ADD",
+    },
+  ];
+  console.log(`push kinesis start`);
+  await putKinesisRecords(records);
+  console.log(`push kinesis end`);
   let chainEvent = await executeTakeFirst(
     trx
       .insertInto("chainEvents")
@@ -88,6 +154,28 @@ const processSignerChainEvent = async (
         signature: signedKeyRequestMetadata.signature,
         deadline: Number(signedKeyRequestMetadata.deadline),
       };
+      let records = [];
+    
+      let recordsJson = {
+        addedAt: timestamp,
+        fid: event.fid,
+        requesterFid: metadataJson.requestFid,
+        addChainEventId: chainEvent.id,
+        key: body.key,
+        keyType: body.keyType,
+        metadata: JSON.stringify(metadataJson),
+        metadataType: body.metadataType,
+      }
+      
+      records = [
+        {
+          Data: JSON.stringify(recordsJson),
+          PartitionKey: "SIGNERS_ADD",
+        },
+      ];
+      console.log(`push kinesis start`);
+      await putKinesisRecords(records);
+      console.log(`push kinesis end`);
 
       await execute(
         trx
@@ -157,6 +245,26 @@ const processIdRegisterChainEvent = async (
 
   switch (body.eventType) {
     case IdRegisterEventType.REGISTER: {
+      
+      let records = [];
+    
+      let recordsJson = {
+        fid: event.fid,
+        registeredAt: chainEvent.blockTimestamp,
+        chainEventId: chainEvent.id,
+        custodyAddress,
+        recoveryAddress,
+      }
+      
+      records = [
+        {
+          Data: JSON.stringify(recordsJson),
+          PartitionKey: "FIDS_ADD",
+        },
+      ];
+      console.log(`push kinesis start`);
+      await putKinesisRecords(records);
+      console.log(`push kinesis end`);
       await trx
         .insertInto("fids")
         .values({
@@ -217,7 +325,26 @@ const processStorageRentChainEvent = async (
 ) => {
   const body = event.storageRentEventBody;
   const timestamp = new Date(event.blockTimestamp * 1000);
-
+  let records = [];
+    
+  let recordsJson = {
+    fid: event.fid,
+    units: body.units,
+    payer: body.payer,
+    rentedAt: timestamp,
+    expiresAt: farcasterTimeToDate(body.expiry),
+    chainEventId: chainEvent.id,
+  }
+  
+  records = [
+    {
+      Data: JSON.stringify(recordsJson),
+      PartitionKey: "STORAGE_ALLOCATIONS_ADD",
+    },
+  ];
+  console.log(`push kinesis start`);
+  await putKinesisRecords(records);
+  console.log(`push kinesis end`);
   await trx
     .insertInto("storageAllocations")
     .values({

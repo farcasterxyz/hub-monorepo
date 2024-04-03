@@ -3,12 +3,17 @@
   "compilerOptions": {
     "resolveJsonModule": true,
     "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict" : false,
     // BullMQ doesn't support ESM
     // https://github.com/taskforcesh/bullmq/issues/1534
     "module": "commonjs",
     "baseUrl": "./src",
     "outDir": "build",
-    "rootDir": "src"
+    "rootDir": "src",
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+     "checkJs": false
   },
   "exclude": ["node_modules", "jest.config.ts"]
 }

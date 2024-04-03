@@ -25,11 +25,13 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@aws-sdk/client-kinesis": "^3.540.0",
     "@bull-board/api": "^5.8.4",
     "@bull-board/fastify": "^5.8.4",
     "@commander-js/extra-typings": "^11.0.0",
     "@farcaster/hub-nodejs": "^0.11.6",
     "@figma/hot-shots": "^9.0.0-figma.1",
+    "aws-sdk": "^2.1590.0",
     "bullmq": "^4.11.4",
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",

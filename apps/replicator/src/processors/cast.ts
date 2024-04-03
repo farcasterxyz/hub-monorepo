@@ -1,11 +1,47 @@
-import { CastAddMessage, CastRemoveMessage, Embed, MessageType } from "@farcaster/hub-nodejs";
+import { CastAddMessage, CastRemoveMessage, Embed, MessageType, Message } from "@farcaster/hub-nodejs";
 import { Selectable, sql } from "kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { buildAddRemoveMessageProcessor } from "../messageProcessor.js";
-import { CastEmbedJson, CastRow, executeTakeFirst, executeTakeFirstOrThrow } from "../db.js";
-import { bytesToHex, farcasterTimeToDate } from "../util.js";
+import { CastEmbedJson, CastRow, executeTakeFirst, executeTakeFirstOrThrow, DBTransaction } from "../db.js";
+import { bytesToHex, farcasterTimeToDate, StoreMessageOperation } from "../util.js";
 import { AssertionError, HubEventProcessingBlockedError } from "../error.js";
-import { PARTITIONS } from "../env.js";
+import { PARTITIONS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } from "../env.js";
+import AWS from "aws-sdk";
+import { Records } from "aws-sdk/clients/rdsdataservice.js";
+
+const credentials = new AWS.Credentials({
+  accessKeyId: AWS_ACCESS_KEY_ID,
+  secretAccessKey: AWS_SECRET_ACCESS_KEY
+});
+
+AWS.config.update({ 
+    credentials: credentials,
+    region: "eu-west-1" 
+  });
+
+const kinesis = new AWS.Kinesis();
+
+interface KinesisRecord {
+  Data: string;
+  PartitionKey: string;
+}
+
+async function putKinesisRecords(records: KinesisRecord[]) {
+  const params = {
+    Records: records,
+    StreamName: "farcaster-stream", // Replace 'your-stream-name' with your Kinesis stream name
+  };
+
+  // Put records into the Kinesis stream
+  kinesis.putRecords(params, (err, data) => {
+    if (err) {
+      console.error("Error putting records:", err);
+    } else {
+      console.log(data);
+      console.log("Successfully put records:", data.Records.length);
+    }
+  });
+}
 
 const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
   CastAddMessage,
@@ -101,6 +137,33 @@ const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
       rootParentHash = parentCast.rootParentHash;
       rootParentUrl = parentCast.rootParentUrl;
     }
+    
+    let records = [];
+    
+    let recordsJson = {
+      timestamp: farcasterTimeToDate(timestamp),
+      deletedAt: deleted ? new Date() : null,
+      fid,
+      parentFid: parentCastId?.fid || null,
+      hash,
+      rootParentHash: rootParentHash || parentCastId?.hash || null,
+      parentHash: parentCastId?.hash || null,
+      rootParentUrl: rootParentUrl || parentUrl || null,
+      text,
+      embeds: JSON.stringify(transformedEmbeds),
+      mentions: JSON.stringify(mentions),
+      mentionsPositions: JSON.stringify(mentionsPositions),
+    }
+    
+    records = [
+      {
+        Data: JSON.stringify(recordsJson),
+        PartitionKey: "CAST_ADD",
+      },
+    ];
+    console.log(`push kinesis start`);
+    await putKinesisRecords(records);
+    console.log(`push kinesis end`);
 
     return await executeTakeFirstOrThrow(
       trx
@@ -146,4 +209,92 @@ const { processAdd, processRemove } = buildAddRemoveMessageProcessor<
   },
 });
 
-export { processAdd as processCastAdd, processRemove as processCastRemove };
+async function processCastsAddKinesis(message: Message,
+  deleted: StoreMessageOperation,
+  trx: DBTransaction,
+): Promise<void>  {
+  const {
+    hash,
+    data: {
+      fid,
+      timestamp,
+      castAddBody: { text, embeds, embedsDeprecated, mentions, mentionsPositions, parentCastId, parentUrl },
+    },
+  } = message;
+
+  const transformedEmbeds: CastEmbedJson[] = embedsDeprecated?.length
+    ? embedsDeprecated.map((url) => ({ url }))
+    : embeds.map(({ castId, url }) => {
+        if (castId) return { castId: { fid: castId.fid, hash: bytesToHex(castId.hash) } };
+        if (url) return { url };
+        throw new AssertionError("Neither castId nor url is defined in embed");
+      });
+
+  let rootParentHash = null;
+  let rootParentUrl = null;
+  if (parentCastId) {
+    const { parentFidExists, parentCast } = await executeTakeFirstOrThrow(
+      trx.selectNoFrom(({ eb, fn, selectFrom }) => [
+        eb(selectFrom("fids").select(fn.countAll().as("count")).where("fid", "=", parentCastId.fid), ">", 0).as(
+          "parentFidExists",
+        ),
+        jsonObjectFrom(
+          eb
+            .selectFrom("casts")
+            .select(["fid", "rootParentHash", "rootParentUrl"])
+            .where("hash", "=", parentCastId.hash),
+        ).as("parentCast"),
+      ]),
+      () => new AssertionError("No result"),
+    );
+
+    if (!parentFidExists) {
+      throw new HubEventProcessingBlockedError(
+        `Cast reply parent author with FID ${parentCastId.fid} has not yet been registered`,
+        {
+          blockedOnFid: parentCastId.fid,
+          blockedOnHash: parentCastId.hash,
+        },
+      );
+    }
+
+    if (!parentCast) {
+      throw new HubEventProcessingBlockedError(`Parent cast ${bytesToHex(parentCastId.hash)} has not yet been seen`, {
+        blockedOnHash: parentCastId.hash,
+      });
+    }
+
+    rootParentHash = parentCast.rootParentHash;
+    rootParentUrl = parentCast.rootParentUrl;
+  }
+  
+  let records = [];
+  
+  let recordsJson = {
+    timestamp: farcasterTimeToDate(timestamp),
+    deletedAt: deleted ? new Date() : null,
+    fid,
+    parentFid: parentCastId?.fid || null,
+    hash,
+    rootParentHash: rootParentHash || parentCastId?.hash || null,
+    parentHash: parentCastId?.hash || null,
+    rootParentUrl: rootParentUrl || parentUrl || null,
+    text,
+    embeds: JSON.stringify(transformedEmbeds),
+    mentions: JSON.stringify(mentions),
+    mentionsPositions: JSON.stringify(mentionsPositions),
+  }
+  
+  records = [
+    {
+      Data: JSON.stringify(recordsJson),
+      PartitionKey: "CAST_ADD",
+    },
+  ];
+  console.log(`push kinesis start`);
+  await putKinesisRecords(records);
+  console.log(`push kinesis end`);
+};
+
+
+export { processAdd as processCastAdd, processRemove as processCastRemove, processCastsAddKinesis };

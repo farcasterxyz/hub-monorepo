@@ -34,7 +34,7 @@ import {
 import { Redis } from "ioredis";
 import { sql } from "kysely";
 import { DB, DBTransaction, execute, executeTx } from "../db.js";
-import { PARTITIONS } from "../env.js";
+import { PARTITIONS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } from "../env.js";
 import { Logger } from "../log.js";
 import {
   bytesToHex,
@@ -54,6 +54,43 @@ import { processVerificationAddEthAddress, processVerificationRemove } from "./v
 import { processUserDataAdd } from "./userData.js";
 import { MergeMessage } from "../jobs/mergeMessage.js";
 import { statsd } from "../statsd.js";
+import AWS from "aws-sdk";
+import { Records } from "aws-sdk/clients/rdsdataservice.js";
+
+
+const credentials = new AWS.Credentials({
+  accessKeyId: AWS_ACCESS_KEY_ID,
+  secretAccessKey: AWS_SECRET_ACCESS_KEY
+});
+
+AWS.config.update({ 
+    credentials: credentials,
+    region: "eu-west-1" 
+  });
+
+const kinesis = new AWS.Kinesis();
+
+interface KinesisRecord {
+  Data: string;
+  PartitionKey: string;
+}
+
+async function putKinesisRecords(records: KinesisRecord[]) {
+  const params = {
+    Records: records,
+    StreamName: "farcaster-stream", // Replace 'your-stream-name' with your Kinesis stream name
+  };
+
+  // Put records into the Kinesis stream
+  kinesis.putRecords(params, (err, data) => {
+    if (err) {
+      console.error("Error putting records:", err);
+    } else {
+      console.log(data);
+      console.log("Successfully put records:", data.Records.length);
+    }
+  });
+}
 
 export async function processOnChainEvents(events: OnChainEvent[], db: DB, log: Logger, redis: Redis) {
   for (const event of events) {
@@ -127,7 +164,6 @@ export async function processMessage(
 
   const hash = bytesToHex(message.hash);
   const fid = message.data.fid;
-
   try {
     switch (message.data.type) {
       case MessageType.CAST_ADD:
@@ -165,7 +201,6 @@ export async function processMessage(
         if (!isVerificationAddAddressMessage(message))
           throw new AssertionError(`Invalid VerificationAddEthAddressMessage: ${message}`);
         log.debug(`Processing VerificationAddEthAddressMessage ${hash} (fid ${fid})`, { fid, hash });
-
         await processVerificationAddEthAddress(message, operation, trx);
         break;
       }
@@ -346,59 +381,129 @@ export async function storeMessage(
   operation: StoreMessageOperation,
   trx: DBTransaction,
   log: Logger,
-) {
+): Promise<void>  {
   if (!message.data) throw new Error("Message missing data!"); // Shouldn't happen
   const now = new Date();
 
   log.debug(`Storing message ${bytesToHex(message.hash)} via ${operation} operation`);
-  await execute(
-    trx
-      .insertInto("messages")
-      .values({
-        createdAt: now,
-        updatedAt: now,
-        fid: message.data.fid,
-        type: message.data.type,
-        timestamp: farcasterTimeToDate(message.data.timestamp),
-        hash: message.hash,
-        hashScheme: message.hashScheme,
-        signature: message.signature,
-        signatureScheme: message.signatureScheme,
-        signer: message.signer,
-        raw: Message.encode(message).finish(),
-        deletedAt: operation === "delete" ? now : null,
-        prunedAt: operation === "prune" ? now : null,
-        revokedAt: operation === "revoke" ? now : null,
-        body: JSON.stringify(convertProtobufMessageBodyToJson(message)),
-      })
-      .onConflict((oc) =>
-        oc
-          .$call((qb) => (PARTITIONS ? qb.columns(["hash", "fid"]) : qb.columns(["hash"])))
-          .doUpdateSet(({ ref }) => ({
-            updatedAt: now,
-            // Only the signer or message state could have changed
-            signature: ref("excluded.signature"),
-            signatureScheme: ref("excluded.signatureScheme"),
-            signer: ref("excluded.signer"),
-            deletedAt: operation === "delete" ? now : null,
-            prunedAt: operation === "prune" ? now : null,
-            revokedAt: operation === "revoke" ? now : null,
-          }))
-          .where(({ or, eb, ref }) =>
-            // Only update if a value has actually changed
-            or([
-              eb("excluded.signature", "!=", ref("messages.signature")),
-              eb("excluded.signatureScheme", "!=", ref("messages.signatureScheme")),
-              eb("excluded.signer", "!=", ref("messages.signer")),
-              eb("excluded.deletedAt", "is", sql`distinct from ${ref("messages.deletedAt")}`),
-              eb("excluded.prunedAt", "is", sql`distinct from ${ref("messages.prunedAt")}`),
-              eb("excluded.revokedAt", "is", sql`distinct from ${ref("messages.revokedAt")}`),
-            ]),
-          ),
-      )
-      .returning(["hash", "updatedAt", "createdAt"]),
-  );
+  let records = [];
+    
+  let recordsJson = {
+    createdAt: now,
+    updatedAt: now,
+    fid: message.data.fid,
+    type: message.data.type,
+    timestamp: farcasterTimeToDate(message.data.timestamp),
+    hash: message.hash,
+    hashScheme: message.hashScheme,
+    signature: message.signature,
+    signatureScheme: message.signatureScheme,
+    signer: message.signer,
+    raw: Message.encode(message).finish(),
+    deletedAt: operation === "delete" ? now : null,
+    prunedAt: operation === "prune" ? now : null,
+    revokedAt: operation === "revoke" ? now : null,
+    body: JSON.stringify(convertProtobufMessageBodyToJson(message)),
+  }
+  
+  records = [
+    {
+      Data: JSON.stringify(recordsJson),
+      PartitionKey: "MESSAGE_ADD",
+    },
+  ];
+  console.log(`push kinesis start`);
+  await putKinesisRecords(records);
+  console.log(`push kinesis end`);
 }
+
+// export async function storeMessage(
+//   message: Message,
+//   operation: StoreMessageOperation,
+//   trx: DBTransaction,
+//   log: Logger,
+// ) {
+//   if (!message.data) throw new Error("Message missing data!"); // Shouldn't happen
+//   const now = new Date();
+
+//   log.debug(`Storing message ${bytesToHex(message.hash)} via ${operation} operation`);
+//   let records = [];
+    
+//   let recordsJson = {
+//     createdAt: now,
+//     updatedAt: now,
+//     fid: message.data.fid,
+//     type: message.data.type,
+//     timestamp: farcasterTimeToDate(message.data.timestamp),
+//     hash: message.hash,
+//     hashScheme: message.hashScheme,
+//     signature: message.signature,
+//     signatureScheme: message.signatureScheme,
+//     signer: message.signer,
+//     raw: Message.encode(message).finish(),
+//     deletedAt: operation === "delete" ? now : null,
+//     prunedAt: operation === "prune" ? now : null,
+//     revokedAt: operation === "revoke" ? now : null,
+//     body: JSON.stringify(convertProtobufMessageBodyToJson(message)),
+//   }
+  
+//   records = [
+//     {
+//       Data: JSON.stringify(recordsJson),
+//       PartitionKey: "MESSAGE_ADD",
+//     },
+//   ];
+//   console.log(`push kinesis start`);
+//   await putKinesisRecords(records);
+//   console.log(`push kinesis end`);
+//   await execute(
+//     trx
+//       .insertInto("messages")
+//       .values({
+//         createdAt: now,
+//         updatedAt: now,
+//         fid: message.data.fid,
+//         type: message.data.type,
+//         timestamp: farcasterTimeToDate(message.data.timestamp),
+//         hash: message.hash,
+//         hashScheme: message.hashScheme,
+//         signature: message.signature,
+//         signatureScheme: message.signatureScheme,
+//         signer: message.signer,
+//         raw: Message.encode(message).finish(),
+//         deletedAt: operation === "delete" ? now : null,
+//         prunedAt: operation === "prune" ? now : null,
+//         revokedAt: operation === "revoke" ? now : null,
+//         body: JSON.stringify(convertProtobufMessageBodyToJson(message)),
+//       })
+//       .onConflict((oc) =>
+//         oc
+//           .$call((qb) => (PARTITIONS ? qb.columns(["hash", "fid"]) : qb.columns(["hash"])))
+//           .doUpdateSet(({ ref }) => ({
+//             updatedAt: now,
+//             // Only the signer or message state could have changed
+//             signature: ref("excluded.signature"),
+//             signatureScheme: ref("excluded.signatureScheme"),
+//             signer: ref("excluded.signer"),
+//             deletedAt: operation === "delete" ? now : null,
+//             prunedAt: operation === "prune" ? now : null,
+//             revokedAt: operation === "revoke" ? now : null,
+//           }))
+//           .where(({ or, eb, ref }) =>
+//             // Only update if a value has actually changed
+//             or([
+//               eb("excluded.signature", "!=", ref("messages.signature")),
+//               eb("excluded.signatureScheme", "!=", ref("messages.signatureScheme")),
+//               eb("excluded.signer", "!=", ref("messages.signer")),
+//               eb("excluded.deletedAt", "is", sql`distinct from ${ref("messages.deletedAt")}`),
+//               eb("excluded.prunedAt", "is", sql`distinct from ${ref("messages.prunedAt")}`),
+//               eb("excluded.revokedAt", "is", sql`distinct from ${ref("messages.revokedAt")}`),
+//             ]),
+//           ),
+//       )
+//       .returning(["hash", "updatedAt", "createdAt"]),
+//   );
+// }
 
 export async function processHubEvent(hubEvent: HubEvent, db: DB, log: Logger, redis: Redis) {
   switch (hubEvent.type) {

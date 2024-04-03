@@ -25,3 +25,5 @@ export const WORKER_TYPE = process.env["WORKER_TYPE"] || "process"; // or "threa
 // 0 = no partitioning.
 // Highly experimental. Don't use in production.
 export const PARTITIONS = Number(process.env["PARTITIONS"] || "0");
+export const AWS_ACCESS_KEY_ID = process.env["AWS_ACCESS_KEY_ID"] || "";
+export const AWS_SECRET_ACCESS_KEY = process.env["AWS_SECRET_ACCESS_KEY"] || "";

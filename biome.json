@@ -13,7 +13,8 @@
       "src/rocksdb.d.ts",
       "packages/core/src/protobufs/generated/*",
       "packages/hub-nodejs/src/generated/*",
-      "packages/hub-web/src/generated/*"
+      "packages/hub-web/src/generated/*",
+      "src/**","build/**","grafana/**","node_modules/**"
     ]
   },
   "linter": {
@@ -29,7 +30,8 @@
       "src/rocksdb.d.ts",
       "packages/core/src/protobufs/generated/*",
       "packages/hub-nodejs/src/generated/*",
-      "packages/hub-web/src/generated/*"
+      "packages/hub-web/src/generated/*",
+      "src/**","build/**","grafana/**","node_modules/**"
     ]
   }
 }

@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   replicator:
-    image: farcasterxyz/replicator:latest
+    image: farcasterxyz/replicator:mbd-0.3.7
     build:
         context: ../../
         dockerfile: Dockerfile.replicator

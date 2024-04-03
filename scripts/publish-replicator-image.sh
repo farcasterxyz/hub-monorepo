@@ -12,9 +12,14 @@ REPLICATOR_VERSION=$(node -e "console.log(require('./apps/replicator/package.jso
 
 echo "Publishing $REPLICATOR_VERSION"
 
-depot build -f Dockerfile.replicator \
-  --platform "linux/amd64,linux/arm64" \
-  --push \
-  -t farcasterxyz/replicator:${REPLICATOR_VERSION} \
+docker build -f Dockerfile.replicator \
+  -t farcasterxyz/replicator:mbd-${REPLICATOR_VERSION} \
   -t farcasterxyz/replicator:latest \
   .
+
+# depot build -f Dockerfile.replicator \
+#   --platform "linux/amd64,linux/arm64" \
+#   --push \
+#   -t farcasterxyz/replicator:${REPLICATOR_VERSION} \
+#   -t farcasterxyz/replicator:latest \
+#   .
