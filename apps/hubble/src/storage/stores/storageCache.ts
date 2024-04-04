@@ -97,7 +97,7 @@ export class StorageCache {
       throw new HubError("unavailable.storage_failure", "cannot prepopulate message counts, db is not open");
     }
 
-    // Run the prepopulation without waitinf for it to finish
+    // Run the prepopulation without waiting for it to finish
     void this.prepopulateMessageCounts();
 
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
@@ -274,7 +274,16 @@ export class StorageCache {
       const set = typeToSetPostfix(message.data.type);
       const fid = message.data.fid;
       const key = makeKey(fid, set);
-      const count = this._counts.get(key) ?? (await this.getMessageCount(fid, set)).unwrapOr(0);
+      let count = this._counts.get(key);
+      if (count === undefined) {
+        const msgCountResult = await this.getMessageCount(fid, set);
+        if (msgCountResult.isErr()) {
+          log.error({ err: msgCountResult.error }, "could not get message count");
+          return;
+        }
+        count = msgCountResult.value;
+      }
+
       this._counts.set(key, count + 1);
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
