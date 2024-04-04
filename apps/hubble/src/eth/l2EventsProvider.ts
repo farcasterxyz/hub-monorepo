@@ -156,9 +156,9 @@ export class L2EventsProvider {
       http(url, {
         retryCount: 10,
         fetchOptions: {
-          ...(process.env["AUTHORIZATION_HEADER"] && {
+          ...(process.env["L2_RPC_AUTHORIZATION_HEADER"] && {
             headers: {
-              Authorization: `${process.env["AUTHORIZATION_HEADER"]}`,
+              Authorization: `${process.env["L2_RPC_AUTHORIZATION_HEADER"]}`,
             },
           }),
         },
