@@ -2,6 +2,7 @@ use crate::logger::LOGGER;
 use crate::statsd::statsd;
 use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
 use crate::trie::merkle_trie::TRIE_DBPATH_PREFIX;
+use crate::THREAD_POOL;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use neon::context::{Context, FunctionContext};
@@ -287,6 +288,26 @@ impl RocksDB {
             opts,
             reverse: page_options.reverse,
         }
+    }
+
+    /**
+     * Count the number of keys with a given prefix.
+     */
+    pub fn count_keys_at_prefix(&self, prefix: &[u8]) -> Result<u32, HubError> {
+        let iter_opts = RocksDB::get_iterator_options(prefix, &PageOptions::default());
+
+        let db = self.db();
+        let mut iter = db.as_ref().unwrap().raw_iterator_opt(iter_opts.opts);
+
+        let mut count = 0;
+        iter.seek_to_first();
+        while iter.valid() {
+            count += 1;
+
+            iter.next();
+        }
+
+        Ok(count)
     }
 
     /**
@@ -719,6 +740,29 @@ impl RocksDB {
         Ok(result)
     }
 
+    pub fn js_count_keys_at_prefix(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let db = get_db(&mut cx)?;
+
+        // Prefix
+        let prefix = cx.argument::<JsBuffer>(0)?.as_slice(&cx).to_vec();
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let result = db.count_keys_at_prefix(&prefix);
+            deferred.settle_with(&channel, move |mut cx| {
+                let result = match result {
+                    Ok(r) => r,
+                    Err(e) => return hub_error_to_js_throw(&mut cx, e),
+                };
+
+                Ok(cx.number(result as f64))
+            });
+        });
+
+        Ok(promise)
+    }
+
     pub fn js_for_each_iterator_by_prefix(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let db = get_db(&mut cx)?;
 
@@ -1087,5 +1131,41 @@ mod tests {
             b"value4_new".to_vec()
         );
         assert_eq!(txn1.batch.get(&b"key5".to_vec()).unwrap().is_none(), true);
+    }
+
+    #[test]
+    fn test_count_keys_at_prefix() {
+        let db = crate::db::RocksDB::new("/tmp/testdb").unwrap();
+        db.open().unwrap();
+
+        // Add some keys
+        db.put(b"key100", b"value1").unwrap();
+        db.put(b"key101", b"value3").unwrap();
+        db.put(b"key104", b"value4").unwrap();
+        db.put(b"key200", b"value2").unwrap();
+
+        // Count all keys
+        let count = db.count_keys_at_prefix(b"key");
+        assert_eq!(count.unwrap(), 4);
+
+        // Count keys at prefix
+        let count = db.count_keys_at_prefix(b"key1");
+        assert_eq!(count.unwrap(), 3);
+
+        // Count keys at prefix with a specific prefix that doesn't exist
+        let count = db.count_keys_at_prefix(b"key11");
+        assert_eq!(count.unwrap(), 0);
+
+        // Count keys at prefix with a specific sub prefix
+        let count = db.count_keys_at_prefix(b"key10");
+        assert_eq!(count.unwrap(), 3);
+
+        // Count keys at prefix with a specific prefix
+        let count = db.count_keys_at_prefix(b"key200");
+        assert_eq!(count.unwrap(), 1);
+
+        // Count keys at prefix with a specific prefix that doesn't exist
+        let count = db.count_keys_at_prefix(b"key201");
+        assert_eq!(count.unwrap(), 0);
     }
 }

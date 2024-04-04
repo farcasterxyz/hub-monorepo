@@ -17,6 +17,7 @@ import {
   rsDbPut,
   RustDb,
   rustErrorToHubError,
+  rsDbCountKeysAtPrefix,
 } from "../../rustfunctions.js";
 import { PageOptions } from "storage/stores/types.js";
 
@@ -181,7 +182,11 @@ class RocksDB {
   }
 
   async commit(tsx: RocksDbTransaction): Promise<void> {
-    return rsDbCommit(this._db, tsx.getKeyValues());
+    return await rsDbCommit(this._db, tsx.getKeyValues());
+  }
+
+  async countKeysAtPrefix(prefix: Buffer): Promise<number> {
+    return await rsDbCountKeysAtPrefix(this._db, prefix);
   }
 
   /**
@@ -192,7 +197,7 @@ class RocksDB {
     callback: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
     pageOptions: PageOptions = {},
   ): Promise<boolean> {
-    return rsDbForEachIteratorByPrefix(this._db, prefix, pageOptions, callback);
+    return await rsDbForEachIteratorByPrefix(this._db, prefix, pageOptions, callback);
   }
 
   /**
@@ -203,7 +208,7 @@ class RocksDB {
     options: RocksDbIteratorOptions,
     callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<boolean> | boolean | void,
   ): Promise<boolean> {
-    return rsDbForEachIteratorByOpts(this._db, options, callback);
+    return await rsDbForEachIteratorByOpts(this._db, options, callback);
   }
 
   async approximateSize(): Promise<number> {

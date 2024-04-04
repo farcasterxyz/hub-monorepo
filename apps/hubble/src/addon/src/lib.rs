@@ -113,7 +113,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("dbDel", RocksDB::js_del)?;
     cx.export_function("dbCommit", RocksDB::js_commit_transaction)?;
     cx.export_function("dbSnapshotBackup", RocksDB::js_snapshot_backup)?;
-
+    cx.export_function("dbCountKeysAtPrefix", RocksDB::js_count_keys_at_prefix)?;
     cx.export_function(
         "dbForEachIteratorByPrefix",
         RocksDB::js_for_each_iterator_by_prefix,
