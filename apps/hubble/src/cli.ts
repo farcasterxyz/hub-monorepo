@@ -28,6 +28,7 @@ import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 import axios from "axios";
 import { snapshotURLAndMetadata } from "./utils/snapshot.js";
+import { initDiagnosticReporter } from "./utils/diagnosticReport.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -143,6 +144,14 @@ app
   .option(
     "--statsd-metrics-server <host>",
     'The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)',
+  )
+
+  // Opt-out Diagnostics Reporting
+  .option(
+    "--opt-out-diagnostics [boolean]",
+    "Opt-out of sending diagnostics data to Warpcast. " +
+      "Diagnostics are used to troubleshoot user issues and improve health of the network." +
+      "No sensitive information is shared with Warpcast team. (default: disabled)",
   )
 
   // Debugging options
@@ -596,6 +605,14 @@ app
       logger.flush();
       process.exit(1);
     }
+
+    // Opt-out Diagnostics Reporting
+    const optOut = cliOptions.optOutDiagnostics ? cliOptions.optOutDiagnostics === "true" : hubConfig.optOutDiagnostics;
+    initDiagnosticReporter({
+      optOut,
+      ...(options.hubOperatorFid && { fid: options.hubOperatorFid }),
+      ...(options.peerId && { peerId: options.peerId?.toString() }),
+    });
 
     const hubResult = Result.fromThrowable(
       () => new Hub(options),

@@ -61,6 +61,12 @@ Snapshots Options:
 
 Metrics:
   --statsd-metrics-server <host>        The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)
+  
+Diagnostics:
+    --opt-out-diagnostics [boolean]     Opt-out of sending diagnostics data to Warpcast.
+                                        Diagnostics are used to troubleshoot user issues and
+                                        improve health of the network.No sensitive
+                                        information is shared with Warpcast team. (default: disabled)
 
 Networking Options:
   -a, --allowed-peers <peerIds...>      Only peer with specific peer ids. (default: all peers allowed)

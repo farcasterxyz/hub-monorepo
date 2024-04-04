@@ -64,6 +64,12 @@ export const Config = {
    * NOTE: Catchup sync using snapshot WILL RESET THE DATABASE
    */
   catchupSyncSnapshotMessageLimit: DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT,
+  /**
+   * Opt-out of sending diagnostics data to Warpcast
+   * Diagnostics are used to troubleshoot user issues and improve health of the network
+   " No sensitive information is shared with Warpcast team
+   */
+  optOutDiagnostics: false,
   /** Start the admin server? */
   adminServerEnabled: false,
   /** The admin server bind host */
