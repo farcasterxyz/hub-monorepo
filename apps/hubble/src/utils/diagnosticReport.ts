@@ -14,7 +14,8 @@ export function diagnosticReporter() {
 }
 
 export enum DiagnosticReportMessageType {
-  Error = 0,
+  Unknown = 0,
+  Error = 1,
 }
 
 export interface DiagnosticReportErrorPayload extends DiagnosticReportConfig {
@@ -23,6 +24,7 @@ export interface DiagnosticReportErrorPayload extends DiagnosticReportConfig {
 }
 
 export interface DiagnosticReportMessageSpec {
+  [DiagnosticReportMessageType.Unknown]: never;
   [DiagnosticReportMessageType.Error]: DiagnosticReportErrorPayload;
 }
 
