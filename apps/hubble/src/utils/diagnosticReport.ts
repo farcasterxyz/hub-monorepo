@@ -45,7 +45,7 @@ class DiagnosticReporter {
   private readonly worker: Worker;
   constructor(config: DiagnosticReportConfig) {
     this.config = config;
-    // Create a worker thread to run the libp2p node. The path is relative to the current file
+    // Create a worker thread to run the diagnostics reporter. The path is relative to the current file
     // We use the "../../" to resolve the path from the build directory for transpiled code
     const workerPath = new URL("../../build/utils/diagnosticReportWorker.js", import.meta.url);
 
