@@ -92,65 +92,6 @@ export const publicClient = createPublicClient({
   transport: fallback([http(localHttpUrl)]),
 });
 
-function rateLimitedHttpTransport(url: string, config: HttpTransportConfig = {}): HttpTransport {
-  const { fetchOptions, key = "http", name = "Rate-Limited HTTP JSON-RPC", retryDelay } = config;
-  return ({ chain, retryCount: retryCount_, timeout: timeout_ }) => {
-    const retryCount: number = config.retryCount ?? retryCount_ ?? 0;
-    const timeout = timeout_ ?? config.timeout ?? 10_000;
-    const url_: string = url || chain?.rpcUrls.public.http[0] || chain?.rpcUrls.default.http[0] || "";
-    if (!url_ || url_.length === 0) throw new UrlRequiredError();
-    let count = 0;
-    return createTransport(
-      {
-        key,
-        name,
-        async request({ method, params }) {
-          const body = { method, params };
-
-          if (count > 0) {
-            throw new HttpRequestError({
-              body,
-              url: url_,
-              status: 429,
-            });
-          }
-          count++;
-          const fn = async (body: RpcRequest): Promise<RpcResponse[]> => [
-            await rpc.http(url_, {
-              body: body ?? {},
-              fetchOptions: fetchOptions ?? {},
-              timeout,
-            }),
-          ];
-
-          const response = await fn(body);
-          const [{ error, result }] = response ? response : [{ error: null, result: null }];
-          if (error)
-            throw new RpcRequestError({
-              body,
-              error,
-              url: url_,
-            });
-          return result;
-        },
-        retryCount,
-        retryDelay: retryDelay ?? 150,
-        timeout,
-        type: "http",
-      },
-      {
-        url,
-      },
-    );
-  };
-}
-
-export const rateLimitedClient = createPublicClient({
-  chain: anvilChain,
-  pollingInterval: 1_000,
-  transport: fallback([rateLimitedHttpTransport(localHttpUrl)]),
-});
-
 export const testClient = createTestClient({
   chain: anvilChain,
   mode: "anvil",

@@ -87,7 +87,6 @@
     "@libp2p/utils": "^3.0.2",
     "@multiformats/multiaddr": "^11.0.0",
     "@noble/curves": "^1.0.0",
-    "@sentry/node": "^7.109.0",
     "abitype": "^0.8.3",
     "async-lock": "^1.4.0",
     "axios": "^1.6.0",

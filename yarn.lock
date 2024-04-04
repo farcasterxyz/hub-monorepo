@@ -3165,45 +3165,6 @@
     "@noble/hashes" "~1.3.0"
     "@scure/base" "~1.1.0"
 
-"@sentry-internal/tracing@7.109.0":
-  version "7.109.0"
-  resolved "https://registry.npmjs.org/@sentry-internal/tracing/-/tracing-7.109.0.tgz#3effaa132c41a65378fa98146aea61228d528953"
-  integrity sha512-PzK/joC5tCuh2R/PRh+7dp+uuZl7pTsBIjPhVZHMTtb9+ls65WkdZJ1/uKXPouyz8NOo9Xok7aEvEo9seongyw==
-  dependencies:
-    "@sentry/core" "7.109.0"
-    "@sentry/types" "7.109.0"
-    "@sentry/utils" "7.109.0"
-
-"@sentry/core@7.109.0":
-  version "7.109.0"
-  resolved "https://registry.npmjs.org/@sentry/core/-/core-7.109.0.tgz#7a02f4af4a676950f6555f552a2a232d4458fcd5"
-  integrity sha512-xwD4U0IlvvlE/x/g/W1I8b4Cfb16SsCMmiEuBf6XxvAa3OfWBxKoqLifb3GyrbxMC4LbIIZCN/SvLlnGJPgszA==
-  dependencies:
-    "@sentry/types" "7.109.0"
-    "@sentry/utils" "7.109.0"
-
-"@sentry/node@^7.109.0":
-  version "7.109.0"
-  resolved "https://registry.npmjs.org/@sentry/node/-/node-7.109.0.tgz#dbf152212e42a9b1648ff758ec5bffcb6bb0fa49"
-  integrity sha512-tqMNAES4X/iBl1eZRCmc29p//0id01FBLEiesNo5nk6ECl6/SaGMFAEwu1gsn90h/Bjgr04slwFOS4cR45V2PQ==
-  dependencies:
-    "@sentry-internal/tracing" "7.109.0"
-    "@sentry/core" "7.109.0"
-    "@sentry/types" "7.109.0"
-    "@sentry/utils" "7.109.0"
-
-"@sentry/types@7.109.0":
-  version "7.109.0"
-  resolved "https://registry.npmjs.org/@sentry/types/-/types-7.109.0.tgz#d8778358114ed05be734661cc9e1e261f4494947"
-  integrity sha512-egCBnDv3YpVFoNzRLdP0soVrxVLCQ+rovREKJ1sw3rA2/MFH9WJ+DZZexsX89yeAFzy1IFsCp7/dEqudusml6g==
-
-"@sentry/utils@7.109.0":
-  version "7.109.0"
-  resolved "https://registry.npmjs.org/@sentry/utils/-/utils-7.109.0.tgz#7078e1400197abc1b0c436679bef980639500a86"
-  integrity sha512-3RjxMOLMBwZ5VSiH84+o/3NY2An4Zldjz0EbfEQNRY9yffRiCPJSQiCJID8EoylCFOh/PAhPimBhqbtWJxX6iw==
-  dependencies:
-    "@sentry/types" "7.109.0"
-
 "@sinclair/typebox@^0.25.16":
   version "0.25.24"
   resolved "https://registry.npmjs.org/@sinclair/typebox/-/typebox-0.25.24.tgz#8c7688559979f7079aacaf31aa881c3aa410b718"

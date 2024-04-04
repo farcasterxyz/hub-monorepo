@@ -3,13 +3,7 @@ import { StorageRegistry } from "./abis.js";
 import { jestRocksDB } from "../storage/db/jestUtils.js";
 import Engine from "../storage/engine/index.js";
 import { MockHub } from "../test/mocks.js";
-import {
-  deployStorageRegistry,
-  publicClient,
-  rateLimitedClient,
-  testClient,
-  walletClientWithAccount,
-} from "../test/utils.js";
+import { deployStorageRegistry, publicClient, testClient, walletClientWithAccount } from "../test/utils.js";
 import { accounts } from "../test/constants.js";
 import { sleep } from "../utils/crypto.js";
 import { L2EventsProvider, OptimismConstants } from "./l2EventsProvider.js";
