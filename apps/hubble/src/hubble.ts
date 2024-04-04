@@ -768,7 +768,6 @@ export class Hub implements HubInterface {
     await this.writeHubCleanShutdown(false, HubShutdownReason.UNKNOWN);
 
     // Set up a timer to log the memory usage every minute
-    let lastHeapDumpTime = 0;
     setInterval(() => {
       const memoryData = process.memoryUsage();
       statsd().gauge("memory.rss", memoryData.rss);
@@ -776,13 +775,14 @@ export class Hub implements HubInterface {
       statsd().gauge("memory.heap_used", memoryData.heapUsed);
       statsd().gauge("memory.external", memoryData.external);
 
-      if (memoryData.heapUsed > 4 * 1024 * 1024 * 1024 && Date.now() - lastHeapDumpTime > 10 * 60 * 1000) {
-        const fileName = `${DB_DIRECTORY}/process/HeapDump-${Date.now()}.heapsnapshot`;
+      // Uncomment this code to enable heap dumps
+      // if (memoryData.heapUsed > 3 * 1024 * 1024 * 1024 && Date.now() - lastHeapDumpTime > 10 * 60 * 1000) {
+      //   const fileName = `${DB_DIRECTORY}/process/HeapDump-${Date.now()}.heapsnapshot`;
 
-        const writtenFileName = v8.writeHeapSnapshot(fileName);
-        log.info({ writtenFileName }, "Wrote heap snapshot");
-        lastHeapDumpTime = Date.now();
-      }
+      //   const writtenFileName = v8.writeHeapSnapshot(fileName);
+      //   log.info({ writtenFileName }, "Wrote heap snapshot");
+      //   lastHeapDumpTime = Date.now();
+      // }
     }, 60 * 1000);
   }
 
