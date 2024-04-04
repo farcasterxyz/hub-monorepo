@@ -293,6 +293,7 @@ export class L2EventsProvider {
           );
         }
       } catch (e) {
+        diagnosticReporter().reportError(e as Error);
         log.error(e, "error found while processing storage event");
         log.error({ event }, "failed to parse event args");
       }
