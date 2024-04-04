@@ -65,9 +65,9 @@ export const Config = {
    */
   catchupSyncSnapshotMessageLimit: DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT,
   /**
-   * Opt-out of sending diagnostics data to Warpcast
+   * Opt-out of sending diagnostics data to the Farcaster foundation
    * Diagnostics are used to troubleshoot user issues and improve health of the network
-   * No sensitive information is shared with Warpcast team
+   * No sensitive information is shared with Farcaster foundation team
    */
   optOutDiagnostics: false,
   /** Start the admin server? */

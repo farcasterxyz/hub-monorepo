@@ -149,7 +149,7 @@ app
   // Opt-out Diagnostics Reporting
   .option(
     "--opt-out-diagnostics [boolean]",
-    "Opt-out of sending diagnostics data to Warpcast. " +
+    "Opt-out of sending diagnostics data to the Farcaster foundation. " +
       "Diagnostics are used to troubleshoot user issues and improve health of the network." +
       "No sensitive information is shared with Warpcast team. (default: disabled)",
   )
