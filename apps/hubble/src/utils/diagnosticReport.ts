@@ -43,7 +43,11 @@ class DiagnosticReporter {
   private readonly worker: Worker;
   constructor(config: DiagnosticReportConfig) {
     this.config = config;
-    this.worker = new Worker(new URL("./diagnosticReportWorker.ts", import.meta.url));
+    // Create a worker thread to run the libp2p node. The path is relative to the current file
+    // We use the "../../" to resolve the path from the build directory for transpiled code
+    const workerPath = new URL("../../build/utils/diagnosticReportWorker.js", import.meta.url);
+
+    this.worker = new Worker(workerPath);
 
     // By default the library will use the DD_API_KEY and DD_APP_KEY
     // environment variables to authenticate against the Datadog API
