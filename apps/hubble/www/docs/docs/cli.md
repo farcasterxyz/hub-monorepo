@@ -65,8 +65,7 @@ Metrics:
 Diagnostics:
     --opt-out-diagnostics [boolean]     Opt-out of sending diagnostics data to the Farcaster foundation.
                                         Diagnostics are used to troubleshoot user issues and
-                                        improve health of the network. No sensitive
-                                        information is shared with the Farcaster foundation team. (default: disabled)
+                                        improve health of the network. No sensitive information is shared. (default: disabled)
 
 Networking Options:
   -a, --allowed-peers <peerIds...>      Only peer with specific peer ids. (default: all peers allowed)
