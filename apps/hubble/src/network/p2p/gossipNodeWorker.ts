@@ -39,7 +39,7 @@ import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { logger } from "../../utils/logger.js";
 import { initializeStatsd, statsd } from "../../utils/statsd.js";
 import { DB_DIRECTORY } from "../../storage/db/rocksdb.js";
-import heapdump from "heapdump";
+import v8 from "v8";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -230,15 +230,11 @@ export class LibP2PNode {
       statsd().gauge("memory.gossipworker.heap_used", memoryData.heapUsed);
       statsd().gauge("memory.gossipworker.external", memoryData.external);
 
-      if (memoryData.heapUsed > 4 * 1024 * 1024 * 1024) {
+      if (memoryData.heapUsed > 4 * 1024 * 1024 * 1024 && Date.now() - lastHeapDumpTime > 10 * 60 * 1000) {
         const fileName = `${DB_DIRECTORY}/process/HeapDump-${Date.now()}.heapsnapshot`;
-        heapdump.writeSnapshot(fileName, (err) => {
-          if (err) {
-            log.error({ error: err }, "Failed to write heap dump");
-          } else {
-            log.info({ fileName }, "Heap dump written");
-          }
-        });
+
+        const writtenFileName = v8.writeHeapSnapshot(fileName);
+        log.info({ writtenFileName }, "Wrote heap snapshot");
         lastHeapDumpTime = Date.now();
       }
     }, 60 * 1000);
