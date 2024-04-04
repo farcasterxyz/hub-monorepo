@@ -38,6 +38,8 @@ import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { logger } from "../../utils/logger.js";
 import { initializeStatsd, statsd } from "../../utils/statsd.js";
+import { DB_DIRECTORY } from "../../storage/db/rocksdb.js";
+import v8 from "v8";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -218,7 +220,7 @@ export class LibP2PNode {
     await this._node?.start();
     this.registerEventListeners();
 
-    // Send memory usage stats to statsd every 10 seconds
+    // Set up a timer to log the memory usage every minute
     setInterval(() => {
       const memoryData = process.memoryUsage();
 
@@ -226,6 +228,15 @@ export class LibP2PNode {
       statsd().gauge("memory.gossipworker.heap_total", memoryData.heapTotal);
       statsd().gauge("memory.gossipworker.heap_used", memoryData.heapUsed);
       statsd().gauge("memory.gossipworker.external", memoryData.external);
+
+      // Uncomment this code to enable heap dumps
+      // if (memoryData.heapUsed > 3 * 1024 * 1024 * 1024 && Date.now() - lastHeapDumpTime > 10 * 60 * 1000) {
+      //   const fileName = `${DB_DIRECTORY}/process/HeapDump-${Date.now()}.heapsnapshot`;
+
+      //   const writtenFileName = v8.writeHeapSnapshot(fileName);
+      //   log.info({ writtenFileName }, "Wrote heap snapshot");
+      //   lastHeapDumpTime = Date.now();
+      // }
     }, 60 * 1000);
   }
 

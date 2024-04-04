@@ -32,7 +32,7 @@ import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB from "./storage/db/rocksdb.js";
+import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
@@ -93,6 +93,7 @@ import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
+import v8 from "v8";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -773,6 +774,15 @@ export class Hub implements HubInterface {
       statsd().gauge("memory.heap_total", memoryData.heapTotal);
       statsd().gauge("memory.heap_used", memoryData.heapUsed);
       statsd().gauge("memory.external", memoryData.external);
+
+      // Uncomment this code to enable heap dumps
+      // if (memoryData.heapUsed > 3 * 1024 * 1024 * 1024 && Date.now() - lastHeapDumpTime > 10 * 60 * 1000) {
+      //   const fileName = `${DB_DIRECTORY}/process/HeapDump-${Date.now()}.heapsnapshot`;
+
+      //   const writtenFileName = v8.writeHeapSnapshot(fileName);
+      //   log.info({ writtenFileName }, "Wrote heap snapshot");
+      //   lastHeapDumpTime = Date.now();
+      // }
     }, 60 * 1000);
   }
 

@@ -215,15 +215,15 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   }
 
   async getCacheMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
-    return this._storageCache.getMessageCount(fid, set, forceFetch);
+    return await this._storageCache.getMessageCount(fid, set, forceFetch);
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
-    return this._storageCache.getEarliestTsHash(fid, set);
+    return await this._storageCache.getEarliestTsHash(fid, set);
   }
 
   async syncCache(): HubAsyncResult<void> {
-    return ResultAsync.fromPromise(this._storageCache.syncFromDb(), (e) => e as HubError);
+    return await ResultAsync.fromPromise(this._storageCache.syncFromDb(), (e) => e as HubError);
   }
 
   async getEvent(id: number): HubAsyncResult<HubEvent> {

@@ -21,6 +21,8 @@ import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
 import { sleep } from "../../utils/crypto.js";
 
+const MAX_PENDING_MESSAGE_COUNT_SCANS = 100;
+
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
 };
@@ -38,6 +40,7 @@ export class StorageCache {
   private _earliestTsHashes: Map<string, Uint8Array>;
   private _activeStorageSlots: Map<number, StorageSlot>;
   private prepopulateComplete = false;
+  private _pendingMessageCountScans = 0;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
@@ -93,7 +96,9 @@ export class StorageCache {
       log.error("cannot prepopulate message counts, db is not open");
       throw new HubError("unavailable.storage_failure", "cannot prepopulate message counts, db is not open");
     }
-    this.prepopulateMessageCounts();
+
+    // Run the prepopulation without waiting for it to finish
+    void this.prepopulateMessageCounts();
 
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
   }
@@ -128,7 +133,7 @@ export class StorageCache {
           if (prevFid !== fid) {
             totalFids += 1;
             // Sleep to allow other threads to run between each fid
-            await sleep(1);
+            await sleep(100);
           }
 
           prevFid = fid;
@@ -143,6 +148,13 @@ export class StorageCache {
   async getMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
     const key = makeKey(fid, set);
     if (this._counts.get(key) === undefined && forceFetch) {
+      if (this._pendingMessageCountScans > MAX_PENDING_MESSAGE_COUNT_SCANS) {
+        log.error({ pendingScans: this._pendingMessageCountScans }, "too many pending message count scans");
+        return err(new HubError("unavailable.storage_failure", "too many pending message count scans"));
+      }
+
+      this._pendingMessageCountScans += 1;
+
       let total = 0;
       await this._db.forEachIteratorByPrefix(makeMessagePrimaryKey(fid, set), () => {
         total += 1;
@@ -155,6 +167,8 @@ export class StorageCache {
           log.debug({ fid, set, total }, `storage cache miss for fid: ${fid}`);
         }
       }
+
+      this._pendingMessageCountScans -= 1;
     }
 
     return ok(this._counts.get(key) ?? 0);
@@ -260,7 +274,16 @@ export class StorageCache {
       const set = typeToSetPostfix(message.data.type);
       const fid = message.data.fid;
       const key = makeKey(fid, set);
-      const count = this._counts.get(key) ?? (await this.getMessageCount(fid, set)).unwrapOr(0);
+      let count = this._counts.get(key);
+      if (count === undefined) {
+        const msgCountResult = await this.getMessageCount(fid, set);
+        if (msgCountResult.isErr()) {
+          log.error({ err: msgCountResult.error }, "could not get message count");
+          return;
+        }
+        count = msgCountResult.value;
+      }
+
       this._counts.set(key, count + 1);
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
@@ -280,12 +303,18 @@ export class StorageCache {
       const set = typeToSetPostfix(message.data.type);
       const fid = message.data.fid;
       const key = makeKey(fid, set);
-      const count = this._counts.get(key) ?? (await this.getMessageCount(fid, set)).unwrapOr(0);
-      if (count === 0) {
-        log.error(`error: ${set} store message count is already at 0 for fid ${fid}`);
-      } else {
-        this._counts.set(key, count - 1);
+
+      let count = this._counts.get(key);
+      if (count === undefined) {
+        const msgCountResult = await this.getMessageCount(fid, set);
+        if (msgCountResult.isErr()) {
+          log.error({ err: msgCountResult.error }, "could not get message count");
+          return;
+        }
+        count = msgCountResult.value;
       }
+
+      this._counts.set(key, count - 1);
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
       if (!tsHashResult.isOk()) {
