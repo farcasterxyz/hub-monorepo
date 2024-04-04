@@ -41,7 +41,7 @@ type DiagnosticReportConfig = {
 
 class DiagnosticReporter {
   private readonly config: DiagnosticReportConfig;
-  private readonly dataDogInstance: v1.EventsApi | undefined;
+  private readonly dataDogInstance: v1.EventsApi;
   private readonly worker: Worker;
   constructor(config: DiagnosticReportConfig) {
     this.config = config;
@@ -58,7 +58,7 @@ class DiagnosticReporter {
   }
 
   public reportError(error: Error) {
-    if (this.config.optOut || !this.dataDogInstance) {
+    if (this.config.optOut) {
       return;
     }
 
