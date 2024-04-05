@@ -133,6 +133,7 @@ const postDataDogEvent = (
   const baseURL = new URL(config.reportURL);
   const errorURL = new URL(DataDogRouteEventsAPI, baseURL);
   const requestConfig: AxiosRequestConfig = {
+    timeout: 2000, // 2 second timeout
     responseType: "json",
     headers: {
       "Content-Type": "application/json",
