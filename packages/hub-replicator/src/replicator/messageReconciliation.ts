@@ -1,17 +1,21 @@
 import { bytesToHexString, HubRpcClient, Message, MessageType } from "@farcaster/hub-nodejs";
-import { DB } from "../app/db";
+import { DB } from "./db";
 import { HubEventProcessor } from "./hubEventProcessor";
 import { log } from "../log";
+import { MessageHandler } from "./interfaces";
 
 const MAX_PAGE_SIZE = 3_000;
 
+// Ensures that all messages for a given FID are present in the database. Can be used for both backfilling and reconciliation.
 export class MessageReconciliation {
   private client: HubRpcClient;
   private db: DB;
+  private messageHandler: MessageHandler;
 
-  constructor(client: HubRpcClient, db: DB) {
+  constructor(client: HubRpcClient, db: DB, handler: MessageHandler) {
     this.client = client;
     this.db = db;
+    this.messageHandler = handler;
   }
 
   async reconcileMessagesForFid(fid: number) {
@@ -34,6 +38,11 @@ export class MessageReconciliation {
     for await (const messages of this.allHubMessagesOfTypeForFid(fid, type)) {
       const messageHashes = messages.map((msg) => msg.hash);
 
+      if (messageHashes.length === 0) {
+        log.info(`No messages of type ${type} for FID ${fid}`);
+        continue;
+      }
+
       const dbMessages = await this.db
         .selectFrom("messages")
         .select(["prunedAt", "revokedAt", "hash", "fid", "type", "raw"])
@@ -53,7 +62,7 @@ export class MessageReconciliation {
 
         if (dbMessageHashes[msgHashKey] === undefined) {
           log.warn(`Message ${msgHash} does not exist in the DB. Processing now.`, { messageHash: msgHash });
-          await HubEventProcessor.handleMissingMessage(this.db, message);
+          await HubEventProcessor.handleMissingMessage(this.db, message, this.messageHandler);
         }
       }
     }

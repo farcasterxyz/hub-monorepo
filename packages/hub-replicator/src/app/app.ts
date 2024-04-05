@@ -1,36 +1,31 @@
-import { getDbClient, migrateToLatest, Tables } from "./db";
+import { DB, getDbClient, Tables } from "../replicator/db";
+import { migrateToLatest } from "./migration";
 import { getHubClient } from "../replicator/hub";
 import { Kysely } from "kysely";
-import { HubEvent, MessageType } from "@farcaster/hub-nodejs";
+import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
 import { log } from "../log";
 import { HubSubscriber, HubSubscriberImpl } from "../replicator/hubSubscriber";
 import { RedisClient } from "../replicator/redis";
 import { HubEventProcessor } from "../replicator/hubEventProcessor";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
-import { HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL } from "./env";
+import { BACKFILL_FIDS, HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL } from "./env";
 import * as process from "node:process";
 import { MessageReconciliation } from "../replicator/messageReconciliation";
+import { MessageHandler, StoreMessageOperation } from "../replicator/interfaces";
 
 const hubId = "replicator";
 
-export class App {
-  private db: Kysely<Tables>;
+export class App implements MessageHandler {
+  private readonly db: DB;
   private hubSubscriber: HubSubscriber;
   private redis: RedisClient;
-  private hubId = "";
-  private reconciler: MessageReconciliation | undefined;
+  private readonly hubId;
 
-  constructor(
-    db: Kysely<Tables>,
-    redis: RedisClient,
-    hubSubscriber: HubSubscriber,
-    reconciler?: MessageReconciliation,
-  ) {
+  constructor(db: Kysely<Tables>, redis: RedisClient, hubSubscriber: HubSubscriber) {
     this.db = db;
     this.redis = redis;
     this.hubSubscriber = hubSubscriber;
-    this.reconciler = reconciler;
     this.hubId = "replicator";
 
     this.hubSubscriber.on("event", async (hubEvent) => {
@@ -45,24 +40,37 @@ export class App {
 
     const hubSubscriber = new HubSubscriberImpl(hubId, hub, log);
     const redis = RedisClient.create(redisUrl);
-    const reconciler = new MessageReconciliation(hub, db);
-    return new App(db, redis, hubSubscriber, reconciler);
+    return new App(db, redis, hubSubscriber);
+  }
+
+  async handleMessageMerge(
+    message: Message,
+    _txn: DB,
+    _operation: StoreMessageOperation,
+    wasMissed: false,
+  ): Promise<void> {
+    const messageDesc = wasMissed ? "missed message" : "message";
+    log.info(`Stored ${messageDesc} ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${message.data?.type})`);
   }
 
   async start() {
     await this.ensureMigrations();
 
-    if (this.reconciler) {
-      await this.reconciler.reconcileMessagesForFid(389);
-    }
+    const fromId = await this.redis.getLastProcessedEvent(hubId);
+    log.info(`Starting from hub event id ${fromId}`);
+    await this.hubSubscriber.start(fromId);
+  }
 
-    // const fromId = await this.redis.getLastProcessedEvent(hubId);
-    // log.info(`Starting from hub event id ${fromId}`);
-    // await this.hubSubscriber.start(fromId);
+  async reconcileFids(fids: number[]) {
+    // biome-ignore lint/style/noNonNullAssertion: client is always initialized
+    const reconciler = new MessageReconciliation(this.hubSubscriber.hubClient!, this.db, this);
+    for (const fid of fids) {
+      await reconciler.reconcileMessagesForFid(fid);
+    }
   }
 
   private async processHubEvent(hubEvent: HubEvent) {
-    await HubEventProcessor.processHubEvent(this.db, hubEvent);
+    await HubEventProcessor.processHubEvent(this.db, hubEvent, this);
   }
 
   async ensureMigrations() {
@@ -81,15 +89,20 @@ export class App {
 }
 
 //If the module is being run directly, start the replicator
-//Otherwise, export the start function
-
 if (import.meta.url.endsWith(process.argv[1] || "")) {
-  let app: App;
   async function start() {
     log.info(`Creating app connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
-    app = App.create(POSTGRES_URL, REDIS_URL, HUB_HOST, HUB_SSL);
+    const app = App.create(POSTGRES_URL, REDIS_URL, HUB_HOST, HUB_SSL);
     log.info("Starting replicator");
-    app.start();
+    await app.start();
+  }
+
+  async function backfill() {
+    log.info(`Creating app connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
+    const app = App.create(POSTGRES_URL, REDIS_URL, HUB_HOST, HUB_SSL);
+    const fids = BACKFILL_FIDS.split(",").map((fid) => parseInt(fid));
+    log.info(`Backfilling fids: ${fids}`);
+    await app.reconcileFids(fids);
   }
 
   // for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
@@ -111,6 +124,7 @@ if (import.meta.url.endsWith(process.argv[1] || "")) {
     .version(JSON.parse(readFileSync("./package.json").toString()).version);
 
   program.command("start").description("Starts the replicator").action(start);
+  program.command("backfill").description("Starts the replicator").action(backfill);
 
   program.parse(process.argv);
 }

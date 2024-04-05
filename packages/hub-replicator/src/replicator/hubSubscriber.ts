@@ -9,6 +9,8 @@ interface HubEventsEmitter {
 }
 
 export abstract class HubSubscriber extends TypedEmitter<HubEventsEmitter> {
+  public readonly hubClient?: HubRpcClient;
+
   public async start(fromId?: number): Promise<void> {
     throw new Error("Method not implemented.");
   }
@@ -31,7 +33,7 @@ const DEFAULT_EVENT_TYPES = [
 
 export class HubSubscriberImpl extends HubSubscriber {
   public label: string;
-  public hubClient: HubRpcClient;
+  public override hubClient: HubRpcClient;
   public stopped = true;
   private log: Logger;
   private eventTypes: HubEventType[];

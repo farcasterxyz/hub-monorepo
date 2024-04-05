@@ -1,10 +1,9 @@
 import { bytesToHexString, Message, validations } from "@farcaster/hub-nodejs";
-import { DB, InsertableMessageRow } from "../app/db";
+import { DB, InsertableMessageRow } from "./db";
 import { ok, Ok, Result } from "neverthrow";
 import { log } from "../log";
 import { convertProtobufMessageBodyToJson, farcasterTimeToDate } from "../utils";
-
-export type StoreMessageOperation = "merge" | "delete" | "revoke" | "prune";
+import { StoreMessageOperation } from "./interfaces";
 
 export class MessageProcessor {
   static async storeMessage(
@@ -87,13 +86,6 @@ export class MessageProcessor {
           ),
       )
       .executeTakeFirst();
-
-    log.info(
-      `Stored message ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${
-        message.data.type
-      }) with signer ${bytesToHexString(message.signer)._unsafeUnwrap()}`,
-    );
-
     return ok(!!result);
   }
 }

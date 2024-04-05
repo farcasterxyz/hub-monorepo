@@ -1,4 +1,5 @@
-import { getDbClient, migrateToLatest, Tables } from "./app/db";
+import { getDbClient, Tables } from "./replicator/db";
+import { migrateToLatest } from "./app/migration";
 import { log } from "./log";
 import { Kysely, sql } from "kysely";
 import { App } from "./app/app";

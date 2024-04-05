@@ -1,15 +1,10 @@
 import pg from "pg";
 import {
   CamelCasePlugin,
-  ColumnType,
   DeleteQueryBuilder,
-  FileMigrationProvider,
   Generated,
-  GeneratedAlways,
   InsertQueryBuilder,
   Kysely,
-  MigrationInfo,
-  Migrator,
   NoResultErrorConstructor,
   PostgresDialect,
   QueryNode,
@@ -29,13 +24,9 @@ import {
   UserNameType,
 } from "@farcaster/hub-nodejs";
 import { DrainOuterGeneric, SimplifySingleResult } from "kysely/dist/cjs/util/type-utils.js";
-import { err, ok, Result } from "neverthrow";
-import { Logger } from "../log";
-import path from "path";
-import { promises as fs } from "fs";
+
 import Cursor from "pg-cursor";
 import { extendStackTrace } from "../utils";
-import { fileURLToPath } from "node:url";
 
 // BigInts will not exceed Number.MAX_SAFE_INTEGER for our use case.
 // Return as JavaScript's `number` type so it's easier to work with.
@@ -161,89 +152,6 @@ export const getDbClient = (connectionString?: string) => {
     }),
     plugins: [new CamelCasePlugin()],
   });
-};
-
-// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-const createMigrator = async (db: Kysely<any>, log: Logger) => {
-  const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  const migrator = new Migrator({
-    db,
-    provider: new FileMigrationProvider({
-      fs,
-      path,
-      migrationFolder: path.join(currentDir, "migrations"),
-    }),
-  });
-
-  return migrator;
-};
-
-export const migrationStatus = async (
-  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-  db: Kysely<any>,
-  log: Logger,
-): Promise<{ executed: MigrationInfo[]; pending: MigrationInfo[] }> => {
-  const migrator = await createMigrator(db, log);
-
-  const migrations = await migrator.getMigrations();
-  const executed = [];
-  const pending = [];
-  for (const migration of migrations) {
-    if (migration.executedAt) {
-      executed.push(migration);
-    } else {
-      pending.push(migration);
-    }
-  }
-
-  return { executed, pending };
-};
-
-// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-export const migrateToLatest = async (db: Kysely<any>, log: Logger): Promise<Result<void, unknown>> => {
-  const migrator = await createMigrator(db, log);
-
-  const { error, results } = await migrator.migrateToLatest();
-
-  results?.forEach((it) => {
-    if (it.status === "Success") {
-      log.info(`Migration "${it.migrationName}" was executed successfully`);
-    } else if (it.status === "Error") {
-      log.error(`failed to execute migration "${it.migrationName}"`);
-    }
-  });
-
-  if (error) {
-    log.error("Failed to apply all database migrations");
-    log.error(error);
-    return err(error);
-  }
-
-  log.info("Migrations up to date");
-  return ok(undefined);
-};
-
-// biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-export const migrateOneUp = async (db: Kysely<any>, log: Logger): Promise<Result<void, unknown>> => {
-  const migrator = await createMigrator(db, log);
-
-  const { error, results } = await migrator.migrateUp();
-
-  results?.forEach((it) => {
-    if (it.status === "Success") {
-      log.info(`migration "${it.migrationName}" was executed successfully`);
-    } else if (it.status === "Error") {
-      log.error(`failed to execute migration "${it.migrationName}"`);
-    }
-  });
-
-  if (error) {
-    log.error("failed to migrate");
-    log.error(error);
-    return err(error);
-  }
-
-  return ok(undefined);
 };
 
 export async function execute<DB, UT extends keyof DB, TB extends keyof DB, O>(
