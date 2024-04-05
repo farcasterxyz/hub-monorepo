@@ -38,7 +38,6 @@ export class StorageCache {
   private _counts: Map<string, number>;
   private _earliestTsHashes: Map<string, Uint8Array>;
   private _activeStorageSlots: Map<number, StorageSlot>;
-  private prepopulateComplete = false;
   private _pendingMessageCountScans = 0;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
@@ -107,10 +106,9 @@ export class StorageCache {
 
       // Recheck the count in case it was set by another thread (i.e. no race conditions)
       if (this._counts.get(key) === undefined) {
+        // We should maybe turn this into a LRU cache, otherwise it scales by the number
+        // of fids*set types.
         this._counts.set(key, total);
-        if (this.prepopulateComplete) {
-          log.debug({ fid, set, total }, `storage cache miss for fid: ${fid}`);
-        }
       }
 
       this._pendingMessageCountScans -= 1;
