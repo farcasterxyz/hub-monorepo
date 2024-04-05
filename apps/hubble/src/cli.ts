@@ -150,8 +150,7 @@ app
   .option(
     "--opt-out-diagnostics [boolean]",
     "Opt-out of sending diagnostics data to the Farcaster foundation. " +
-      "Diagnostics are used to troubleshoot user issues and improve health of the network." +
-      "No sensitive information is shared. (default: disabled)",
+      "Diagnostics are used to troubleshoot user issues and improve health of the network. (default: disabled)",
   )
   .option(
     "--diagnostic-report-url <url>",

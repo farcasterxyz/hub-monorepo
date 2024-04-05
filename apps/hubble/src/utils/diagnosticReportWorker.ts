@@ -4,6 +4,7 @@ import {
   DiagnosticReportMessage,
   DiagnosticReportMessageSpec,
   DiagnosticReportMessageType,
+  DiagnosticReportUnavailablePayload,
 } from "./diagnosticReport.js";
 import { logger } from "./logger.js";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
@@ -87,40 +88,59 @@ const DataDogRouteEventsAPI = "/api/v1/events";
 
 parentPort?.on("message", async (message: unknown) => {
   const { type: messageType, payload } = message as DiagnosticReportMessage<keyof DiagnosticReportMessageSpec>;
+  if (payload.optOut) {
+    return;
+  }
+
+  let response: AxiosResponse<unknown, unknown> | null = null;
   switch (messageType) {
     case DiagnosticReportMessageType.Error: {
       const data = payload as DiagnosticReportMessageSpec[DiagnosticReportMessageType.Error];
-      if (data.optOut) {
-        return;
-      }
-
-      if (!data.reportURL || data.reportURL === "") {
-        logger.error("Diagnostic report URL is not provided");
-        return;
-      }
-
-      const response = await postErrorEvent(data.error, data);
-      if (response.status !== httpConstants.HTTP_STATUS_ACCEPTED) {
-        logger.error(
-          {
-            status: response.status,
-            response_data: JSON.stringify(response.data),
-          },
-          "Failed to report diagnostic error to Datadog",
-        );
-      }
+      response = await postErrorEvent(data.error, data);
+      break;
+    }
+    case DiagnosticReportMessageType.Unavailable: {
+      const data = payload as DiagnosticReportMessageSpec[DiagnosticReportMessageType.Unavailable];
+      response = await postUnavailableEvent(data, data);
       break;
     }
     default:
       logger.error({ type: messageType }, "Unknown diagnostic report message type");
   }
+
+  if (response && response.status !== httpConstants.HTTP_STATUS_ACCEPTED) {
+    logger.error(
+      {
+        status: response.status,
+        response_data: JSON.stringify(response.data),
+      },
+      "Failed to report diagnostic to Datadog",
+    );
+  }
 });
 
-export const postErrorEvent = async (error: Error, config: DiagnosticReportConfig): Promise<AxiosResponse> => {
+const postDataDogEvent = (
+  request: DataDogEventCreateRequest,
+  config: DiagnosticReportConfig,
+): Promise<AxiosResponse> => {
   if (config.optOut) {
     return Promise.resolve({} as AxiosResponse);
   }
 
+  const baseURL = new URL(config.reportURL);
+  const errorURL = new URL(DataDogRouteEventsAPI, baseURL);
+  const requestConfig: AxiosRequestConfig = {
+    responseType: "json",
+    headers: {
+      "Content-Type": "application/json",
+      ...(process.env["HUB_DIAGNOSTICS_API_KEY"] && { "DD-API-KEY": process.env["HUB_DIAGNOSTICS_API_KEY"] }),
+      ...(process.env["HUB_DIAGNOSTICS_APP_KEY"] && { "DD-APP-KEY": process.env["HUB_DIAGNOSTICS_APP_KEY"] }),
+    },
+  };
+  return axios.post(errorURL.toString(), request, requestConfig);
+};
+
+export const postErrorEvent = async (error: Error, config: DiagnosticReportConfig): Promise<AxiosResponse> => {
   const errorMessage: string = `[error]: ${error.message}`;
   // Check if the stack trace is available, as it might be undefined in some environments
   const stackTrace: string = error.stack ? `\n[stack_trace]:\n${error.stack}` : " [stack_trace: unavailable]";
@@ -133,15 +153,26 @@ export const postErrorEvent = async (error: Error, config: DiagnosticReportConfi
     priority: DataDogEventPriority.NORMAL,
     tags: ["error", ...((config.fid && [String(config.fid)]) || []), ...((config.peerId && [config.peerId]) || [])],
   };
-  const baseURL = new URL(config.reportURL);
-  const errorURL = new URL(DataDogRouteEventsAPI, baseURL);
-  const requestConfig: AxiosRequestConfig = {
-    responseType: "json",
-    headers: {
-      "Content-Type": "application/json",
-      ...(process.env["HUB_DIAGNOSTICS_API_KEY"] && { "DD-API-KEY": process.env["HUB_DIAGNOSTICS_API_KEY"] }),
-      ...(process.env["HUB_DIAGNOSTICS_APP_KEY"] && { "DD-APP-KEY": process.env["HUB_DIAGNOSTICS_APP_KEY"] }),
-    },
+
+  return postDataDogEvent(params, config);
+};
+
+export const postUnavailableEvent = async (
+  payload: DiagnosticReportUnavailablePayload,
+  config: DiagnosticReportConfig,
+) => {
+  const context = payload.context ? `\n[context]:\n${JSON.stringify(payload.context, null, 2)}` : "";
+  const text: string = `${payload.message}${context}`;
+  const params: DataDogEventCreateRequest = {
+    title: payload.method,
+    text: text,
+    priority: DataDogEventPriority.NORMAL,
+    tags: [
+      "unavailable",
+      ...((config.fid && [String(config.fid)]) || []),
+      ...((config.peerId && [config.peerId]) || []),
+    ],
   };
-  return await axios.post(errorURL.toString(), params, requestConfig);
+
+  return postDataDogEvent(params, config);
 };

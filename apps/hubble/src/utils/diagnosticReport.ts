@@ -15,15 +15,23 @@ export function diagnosticReporter() {
 export enum DiagnosticReportMessageType {
   Unknown = 0,
   Error = 1,
+  Unavailable = 2,
 }
 
 export interface DiagnosticReportErrorPayload extends DiagnosticReportConfig {
   error: Error;
 }
 
+export interface DiagnosticReportUnavailablePayload extends DiagnosticReportConfig {
+  method: string;
+  message: string;
+  context?: object;
+}
+
 export interface DiagnosticReportMessageSpec {
   [DiagnosticReportMessageType.Unknown]: never;
   [DiagnosticReportMessageType.Error]: DiagnosticReportErrorPayload;
+  [DiagnosticReportMessageType.Unavailable]: DiagnosticReportUnavailablePayload;
 }
 
 export type DiagnosticReportMessage<T extends DiagnosticReportMessageType> = {
@@ -70,5 +78,24 @@ class DiagnosticReporter {
     };
 
     this.worker.postMessage(errorMessage);
+  }
+
+  public reportUnavailable(method: string, message: string, context?: object) {
+    if (this.config.optOut) {
+      return;
+    }
+
+    // Publish unavailable report
+    const unavailableMessage: DiagnosticReportMessage<DiagnosticReportMessageType.Unavailable> = {
+      type: DiagnosticReportMessageType.Unavailable,
+      payload: {
+        method,
+        message,
+        ...(context && { context }),
+        ...this.config,
+      },
+    };
+
+    this.worker.postMessage(unavailableMessage);
   }
 }

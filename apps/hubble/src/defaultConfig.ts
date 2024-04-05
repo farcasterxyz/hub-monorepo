@@ -68,7 +68,6 @@ export const Config = {
   /**
    * Opt-out of sending diagnostics data to the Farcaster foundation
    * Diagnostics are used to troubleshoot user issues and improve health of the network
-   * No sensitive information is shared
    */
   optOutDiagnostics: false,
   /** The URL to send diagnostic reports to */

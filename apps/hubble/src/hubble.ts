@@ -93,6 +93,7 @@ import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
+import { diagnosticReporter } from "./utils/diagnosticReport.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -1197,14 +1198,19 @@ export class Hub implements HubInterface {
       if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
         // will eventually re-fetch and merge this message in anyway.
+        const msg = "Sync queue is full, dropping gossip message";
         log.warn(
           {
             syncTrieQ: this.syncEngine.syncTrieQSize,
             syncMergeQ: this.syncEngine.syncMergeQSize,
           },
-          "Sync queue is full, dropping gossip message",
+          msg,
         );
-        return err(new HubError("unavailable", "Sync queue is full"));
+        diagnosticReporter().reportUnavailable(this.handleGossipMessage.name, msg, {
+          syncTrieQ: this.syncEngine.syncTrieQSize,
+          syncMergeQ: this.syncEngine.syncMergeQSize,
+        });
+        return err(new HubError("unavailable", msg));
       }
 
       const currentTime = getFarcasterTime().unwrapOr(0);
