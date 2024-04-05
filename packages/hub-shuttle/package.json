@@ -1,6 +1,6 @@
 {
-  "name": "@farcaster/hub-replicator",
-  "version": "0.1.0",
+  "name": "@farcaster/hub-shuttle",
+  "version": "0.0.1",
   "main": "./dist/src/index.js",
   "module": "./dist/src/index.mjs",
   "types": "./dist/src/index.d.ts",

@@ -1,20 +1,20 @@
-import { DB, getDbClient, Tables } from "../replicator/db";
+import { DB, getDbClient, Tables } from "../shuttle/db";
 import { migrateToLatest } from "./migration";
-import { getHubClient } from "../replicator/hub";
+import { getHubClient } from "../shuttle/hub";
 import { Kysely } from "kysely";
 import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
 import { log } from "../log";
-import { HubSubscriber, HubSubscriberImpl } from "../replicator/hubSubscriber";
-import { RedisClient } from "../replicator/redis";
-import { HubEventProcessor } from "../replicator/hubEventProcessor";
+import { HubSubscriber, HubSubscriberImpl } from "../shuttle/hubSubscriber";
+import { RedisClient } from "../shuttle/redis";
+import { HubEventProcessor } from "../shuttle/hubEventProcessor";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
 import { BACKFILL_FIDS, HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL } from "./env";
 import * as process from "node:process";
-import { MessageReconciliation } from "../replicator/messageReconciliation";
-import { MessageHandler, StoreMessageOperation } from "../replicator/interfaces";
+import { MessageReconciliation } from "../shuttle/messageReconciliation";
+import { MessageHandler, StoreMessageOperation } from "../shuttle/interfaces";
 
-const hubId = "replicator";
+const hubId = "shuttle";
 
 export class App implements MessageHandler {
   private readonly db: DB;
@@ -26,7 +26,7 @@ export class App implements MessageHandler {
     this.db = db;
     this.redis = redis;
     this.hubSubscriber = hubSubscriber;
-    this.hubId = "replicator";
+    this.hubId = hubId;
 
     this.hubSubscriber.on("event", async (hubEvent) => {
       void this.processHubEvent(hubEvent);
@@ -88,12 +88,12 @@ export class App implements MessageHandler {
   }
 }
 
-//If the module is being run directly, start the replicator
+//If the module is being run directly, start the shuttle
 if (import.meta.url.endsWith(process.argv[1] || "")) {
   async function start() {
     log.info(`Creating app connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
     const app = App.create(POSTGRES_URL, REDIS_URL, HUB_HOST, HUB_SSL);
-    log.info("Starting replicator");
+    log.info("Starting shuttle");
     await app.start();
   }
 
@@ -119,12 +119,12 @@ if (import.meta.url.endsWith(process.argv[1] || "")) {
   // }
 
   const program = new Command()
-    .name("replicator")
+    .name("shuttle")
     .description("Synchronizes a Farcaster Hub with a Postgres database")
     .version(JSON.parse(readFileSync("./package.json").toString()).version);
 
-  program.command("start").description("Starts the replicator").action(start);
-  program.command("backfill").description("Starts the replicator").action(backfill);
+  program.command("start").description("Starts the shuttle").action(start);
+  program.command("backfill").description("Starts the shuttle").action(backfill);
 
   program.parse(process.argv);
 }

@@ -4,7 +4,7 @@ import { err, ok, Result } from "neverthrow";
 import path from "path";
 import { promises as fs } from "fs";
 import { fileURLToPath } from "node:url";
-import { Tables } from "../replicator/db";
+import { Tables } from "../shuttle/db";
 
 const createMigrator = async (db: Kysely<Tables>, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));

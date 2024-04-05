@@ -14,4 +14,4 @@ export const REDIS_URL = process.env["REDIS_URL"] || "redis://localhost:6379";
 export const BACKFILL_FIDS = process.env["FIDS"] || "1,9151";
 
 export const STATSD_HOST = process.env["STATSD_HOST"];
-export const STATSD_METRICS_PREFIX = process.env["STATSD_METRICS_PREFIX"] || "replicator.";
+export const STATSD_METRICS_PREFIX = process.env["STATSD_METRICS_PREFIX"] || "shuttle.";

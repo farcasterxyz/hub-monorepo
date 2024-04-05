@@ -7,8 +7,8 @@ services:
     ports:
       - '6541:5432' # Use a port unlikely to be in use so the example "Just Works"
     environment:
-      - POSTGRES_DB=replicator
-      - POSTGRES_USER=replicator
+      - POSTGRES_DB=shuttle
+      - POSTGRES_USER=shuttle
       - POSTGRES_PASSWORD=password
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -19,7 +19,7 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - replicator-network
+      - shuttle-network
   redis:
     image: 'redis:7.2-alpine'
     restart: unless-stopped
@@ -35,11 +35,11 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - replicator-network
+      - shuttle-network
 
 volumes:
   postgres-data:
   redis-data:
 
 networks:
-  replicator-network:
+  shuttle-network:

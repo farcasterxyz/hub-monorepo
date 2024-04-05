@@ -8,7 +8,7 @@ import {
   MessageType,
   Protocol,
 } from "@farcaster/hub-nodejs";
-import { MessageBodyJson, VerificationProtocol } from "./replicator/db";
+import { MessageBodyJson, VerificationProtocol } from "./shuttle/db";
 
 export function extendStackTrace(
   err: unknown,

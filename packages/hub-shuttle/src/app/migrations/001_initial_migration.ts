@@ -25,7 +25,7 @@ import { Kysely, sql } from "kysely";
  perform lookups on those hashes matching by prefix, whereas you can't do this with hash indexes.
 
  * Declares some indexes that we think might be useful for data analysis and general querying,
- but which aren't actually required by the replicator itself.
+ but which aren't actually required by the shuttle itself.
 
  * Declares partial indexes (via a WHERE predicate) to reduce the size of the index and ensure
  only relevant rows are returned (e.g. ignoring soft-deleted rows, etc.)
@@ -34,7 +34,7 @@ import { Kysely, sql } from "kysely";
  storage (JSON is treated like TEXT) at the cost of slightly slower querying time. JSON columns
  can also be more easily modified over time without requiring a schema migration.
 
- * Declares foreign keys to ensure correctness. This means that the replicator will not process
+ * Declares foreign keys to ensure correctness. This means that the shuttle will not process
  a message if it refers to content that has not yet been seen, since that would violate the FK
  constraint. Instead, it will put the message into an unprocessed message queue and try again
  once the content it references has been processed. If you want to remove data that was
