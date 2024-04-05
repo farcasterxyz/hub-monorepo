@@ -108,7 +108,10 @@ parentPort?.on("message", async (message: unknown) => {
       logger.error({ type: messageType }, "Unknown diagnostic report message type");
   }
 
-  if (response && response.status !== httpConstants.HTTP_STATUS_ACCEPTED) {
+  if (
+    response &&
+    !(response.status === httpConstants.HTTP_STATUS_ACCEPTED || response.status === httpConstants.HTTP_STATUS_OK)
+  ) {
     logger.error(
       {
         status: response.status,
