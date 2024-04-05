@@ -281,6 +281,10 @@ export const rsDbForEachIteratorByOpts = async (
   return !stopped && allFinished;
 };
 
+export const rsDbCountKeysAtPrefix = async (db: RustDb, prefix: Uint8Array): Promise<number> => {
+  return await lib.dbCountKeysAtPrefix.call(db, prefix);
+};
+
 export const rsCreateStoreEventHandler = (
   epoch?: number,
   last_timestamp?: number,
