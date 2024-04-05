@@ -14,7 +14,7 @@ export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "0 12 * * *"; // Every 
 
 // How much time to allocate to validating and revoking each fid.
 // 50 fids per second, which translates to 1/14th of the FIDs will be checked in just over 2 hours.
-const TIME_SCHEDULED_PER_FID_PER_S = 50;
+const TIME_SCHEDULED_PER_FID_MS = 1000 / 50;
 
 const log = logger.child({
   component: "ValidateOrRevokeMessagesJob",
@@ -117,7 +117,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         // Throttle the job.
         // We run at the rate of 50 fids per second. If we are running ahead of schedule, we sleep to catch up
         if (fid % 100 === 0) {
-          const allotedTimeMs = TIME_SCHEDULED_PER_FID_PER_S * fid * 1000;
+          const allotedTimeMs = fid * TIME_SCHEDULED_PER_FID_MS;
           const elapsedTimeMs = Date.now() - start;
           if (allotedTimeMs > elapsedTimeMs) {
             const sleepTimeMs = allotedTimeMs - elapsedTimeMs;
