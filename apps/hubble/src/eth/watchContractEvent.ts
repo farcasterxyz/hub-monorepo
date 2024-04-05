@@ -39,6 +39,7 @@ export class WatchContractEvent<
       ...this._params,
       onError: (error) => {
         diagnosticReporter().reportError(error);
+        this._log.error(`Error watching contract events: ${error}`, { error });
         const restartResult = this.restart();
         if (restartResult.isErr()) {
           // Note: restart returns error if start fails - if start fails, we throw the error since

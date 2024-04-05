@@ -4,6 +4,7 @@
  * Update or uncomment config fields as needed.
  * Note: CLI options take precedence over the options specified in a config file
  */
+import { DEFAULT_DIAGNOSTIC_REPORT_URL } from "./utils/diagnosticReport.js";
 
 const DEFAULT_GOSSIP_PORT = 2282;
 const DEFAULT_RPC_PORT = 2283;
@@ -70,6 +71,8 @@ export const Config = {
    * No sensitive information is shared
    */
   optOutDiagnostics: false,
+  /** The URL to send diagnostic reports to */
+  diagnosticReportUrl: DEFAULT_DIAGNOSTIC_REPORT_URL,
   /** Start the admin server? */
   adminServerEnabled: false,
   /** The admin server bind host */

@@ -1,5 +1,4 @@
 import { Worker } from "worker_threads";
-import { client, v1 } from "@datadog/datadog-api-client";
 
 let _diagnosticReporter: DiagnosticReporter;
 
@@ -20,7 +19,6 @@ export enum DiagnosticReportMessageType {
 
 export interface DiagnosticReportErrorPayload extends DiagnosticReportConfig {
   error: Error;
-  datadogInstance: v1.EventsApi;
 }
 
 export interface DiagnosticReportMessageSpec {
@@ -33,28 +31,28 @@ export type DiagnosticReportMessage<T extends DiagnosticReportMessageType> = {
   payload: DiagnosticReportMessageSpec[T];
 };
 
-type DiagnosticReportConfig = {
+export type DiagnosticReportConfig = {
   optOut: boolean;
+  reportURL: string;
   fid?: number;
   peerId?: string;
 };
 
+export const DEFAULT_DIAGNOSTIC_REPORT_URL = "https://report.farcaster.xyz";
+
 class DiagnosticReporter {
   private readonly config: DiagnosticReportConfig;
-  private readonly dataDogInstance: v1.EventsApi;
   private readonly worker: Worker;
   constructor(config: DiagnosticReportConfig) {
     this.config = config;
+    if (!this.config.reportURL) {
+      this.config.reportURL = DEFAULT_DIAGNOSTIC_REPORT_URL;
+    }
     // Create a worker thread to run the diagnostics reporter. The path is relative to the current file
     // We use the "../../" to resolve the path from the build directory for transpiled code
     const workerPath = new URL("../../build/utils/diagnosticReportWorker.js", import.meta.url);
 
     this.worker = new Worker(workerPath);
-
-    // By default the library will use the DD_API_KEY and DD_APP_KEY
-    // environment variables to authenticate against the Datadog API
-    const configuration = client.createConfiguration();
-    this.dataDogInstance = new v1.EventsApi(configuration);
   }
 
   public reportError(error: Error) {
@@ -67,7 +65,6 @@ class DiagnosticReporter {
       type: DiagnosticReportMessageType.Error,
       payload: {
         error: error,
-        datadogInstance: this.dataDogInstance,
         ...this.config,
       },
     };
