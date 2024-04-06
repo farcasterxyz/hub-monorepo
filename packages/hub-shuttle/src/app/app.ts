@@ -11,6 +11,7 @@ import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
 import { BACKFILL_FIDS, HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL } from "./env";
 import * as process from "node:process";
+import url from "node:url";
 import { MessageReconciliation } from "../shuttle/messageReconciliation";
 import { MessageHandler, StoreMessageOperation } from "../shuttle/interfaces";
 
@@ -89,7 +90,7 @@ export class App implements MessageHandler {
 }
 
 //If the module is being run directly, start the shuttle
-if (import.meta.url.endsWith(process.argv[1] || "")) {
+if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString())) {
   async function start() {
     log.info(`Creating app connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
     const app = App.create(POSTGRES_URL, REDIS_URL, HUB_HOST, HUB_SSL);
