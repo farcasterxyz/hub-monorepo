@@ -874,6 +874,7 @@ export class L2EventsProvider {
   private async handleNewBlock(blockNumber: number) {
     // Don't let multiple blocks be handled at once
     while (this._isHandlingBlock) {
+      log.info({ blockNumber }, "waiting for previous block to be handled");
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 

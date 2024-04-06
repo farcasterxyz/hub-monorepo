@@ -19,7 +19,8 @@ import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from 
 import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
 import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
-import { sleep } from "../../utils/crypto.js";
+
+const MAX_PENDING_MESSAGE_COUNT_SCANS = 100;
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
@@ -37,7 +38,7 @@ export class StorageCache {
   private _counts: Map<string, number>;
   private _earliestTsHashes: Map<string, Uint8Array>;
   private _activeStorageSlots: Map<number, StorageSlot>;
-  private prepopulateComplete = false;
+  private _pendingMessageCountScans = 0;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
@@ -51,13 +52,8 @@ export class StorageCache {
 
     const start = Date.now();
 
-    let totalFids = 0;
-
-    await this._db.forEachIteratorByPrefix(
+    const totalFids = await this._db.countKeysAtPrefix(
       Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid])]),
-      () => {
-        totalFids++;
-      },
     );
 
     const progressBar = addProgressBar("Syncing storage cache", totalFids * 2);
@@ -93,68 +89,29 @@ export class StorageCache {
       log.error("cannot prepopulate message counts, db is not open");
       throw new HubError("unavailable.storage_failure", "cannot prepopulate message counts, db is not open");
     }
-    this.prepopulateMessageCounts();
 
     log.info({ timeTakenMs: Date.now() - start }, "storage cache synced");
-  }
-
-  async prepopulateMessageCounts(): Promise<void> {
-    if (this._db.status !== "open") {
-      log.error("cannot prepopulate message counts, db is not open");
-      return;
-    }
-
-    let prevFid = 0;
-    let prevPostfix = 0;
-    let totalFids = 0;
-
-    const start = Date.now();
-    log.info("starting storage cache prepopulation");
-
-    const prefix = Buffer.from([RootPrefix.User]);
-    await this._db.forEachIteratorByPrefix(prefix, async (key) => {
-      if (this._db.status !== "open") {
-        log.error("cannot iterate by prefix, db is not open");
-        return;
-      }
-
-      const postfix = (key as Buffer).readUint8(1 + FID_BYTES);
-      if (postfix < UserMessagePostfixMax) {
-        const fid = (key as Buffer).subarray(1, 1 + FID_BYTES).readUInt32BE();
-
-        if (prevFid !== fid || prevPostfix !== postfix) {
-          await this.getMessageCount(fid, postfix);
-
-          if (prevFid !== fid) {
-            totalFids += 1;
-            // Sleep to allow other threads to run between each fid
-            await sleep(1);
-          }
-
-          prevFid = fid;
-          prevPostfix = postfix;
-        }
-      }
-    });
-    this.prepopulateComplete = true;
-    log.info({ timeTakenMs: Date.now() - start, totalFids }, "storage cache prepopulation finished");
   }
 
   async getMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
     const key = makeKey(fid, set);
     if (this._counts.get(key) === undefined && forceFetch) {
-      let total = 0;
-      await this._db.forEachIteratorByPrefix(makeMessagePrimaryKey(fid, set), () => {
-        total += 1;
-      });
+      if (this._pendingMessageCountScans > MAX_PENDING_MESSAGE_COUNT_SCANS) {
+        log.error({ pendingScans: this._pendingMessageCountScans }, "too many pending message count scans");
+        return err(new HubError("unavailable.storage_failure", "too many pending message count scans"));
+      }
+
+      this._pendingMessageCountScans += 1;
+      const total = await this._db.countKeysAtPrefix(makeMessagePrimaryKey(fid, set));
 
       // Recheck the count in case it was set by another thread (i.e. no race conditions)
       if (this._counts.get(key) === undefined) {
+        // We should maybe turn this into a LRU cache, otherwise it scales by the number
+        // of fids*set types.
         this._counts.set(key, total);
-        if (this.prepopulateComplete) {
-          log.debug({ fid, set, total }, `storage cache miss for fid: ${fid}`);
-        }
       }
+
+      this._pendingMessageCountScans -= 1;
     }
 
     return ok(this._counts.get(key) ?? 0);
@@ -260,7 +217,16 @@ export class StorageCache {
       const set = typeToSetPostfix(message.data.type);
       const fid = message.data.fid;
       const key = makeKey(fid, set);
-      const count = this._counts.get(key) ?? (await this.getMessageCount(fid, set)).unwrapOr(0);
+      let count = this._counts.get(key);
+      if (count === undefined) {
+        const msgCountResult = await this.getMessageCount(fid, set);
+        if (msgCountResult.isErr()) {
+          log.error({ err: msgCountResult.error }, "could not get message count");
+          return;
+        }
+        count = msgCountResult.value;
+      }
+
       this._counts.set(key, count + 1);
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
@@ -280,12 +246,18 @@ export class StorageCache {
       const set = typeToSetPostfix(message.data.type);
       const fid = message.data.fid;
       const key = makeKey(fid, set);
-      const count = this._counts.get(key) ?? (await this.getMessageCount(fid, set)).unwrapOr(0);
-      if (count === 0) {
-        log.error(`error: ${set} store message count is already at 0 for fid ${fid}`);
-      } else {
-        this._counts.set(key, count - 1);
+
+      let count = this._counts.get(key);
+      if (count === undefined) {
+        const msgCountResult = await this.getMessageCount(fid, set);
+        if (msgCountResult.isErr()) {
+          log.error({ err: msgCountResult.error }, "could not get message count");
+          return;
+        }
+        count = msgCountResult.value;
       }
+
+      this._counts.set(key, count - 1);
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
       if (!tsHashResult.isOk()) {
