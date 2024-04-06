@@ -10,7 +10,7 @@ import { statsd } from "../../utils/statsd.js";
 import { getHubState, putHubState } from "../../storage/db/hubState.js";
 import { sleep } from "../../utils/crypto.js";
 
-export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "0 12 * * *"; // Every day at 12:00 UTC (4 am PST)
+export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "10 8 * * *"; // Every day at 8:10 UTC (00:10 am PST)
 
 // How much time to allocate to validating and revoking each fid.
 // 50 fids per second, which translates to 1/14th of the FIDs will be checked in just over 2 hours.
