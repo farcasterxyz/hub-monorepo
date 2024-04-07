@@ -191,7 +191,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
       return ok(0);
     }
 
-    log.info(
+    log.debug(
       { fid, lastJobTimestamp, latestSignerEventTs, doFullScanForFid },
       "ValidateOrRevokeMessagesJob: checking FID",
     );
