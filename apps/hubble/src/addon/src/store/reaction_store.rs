@@ -1,15 +1,16 @@
 use super::{
-    hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
+    deferred_settle_messages, hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key,
+    message,
     store::{Store, StoreDef},
-    utils::{encode_messages_to_js_object, get_page_options, get_store},
+    utils::{get_page_options, get_store},
     HubError, IntoU8, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix,
     PAGE_SIZE_MAX, TS_HASH_LENGTH,
 };
-use crate::protos::message_data;
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, reaction_body::Target, Message, MessageType, ReactionBody, ReactionType},
 };
+use crate::{protos::message_data, THREAD_POOL};
 use neon::{
     context::{Context, FunctionContext},
     result::JsResult,
@@ -454,17 +455,14 @@ impl ReactionStore {
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
 
         let page_options = get_page_options(&mut cx, 2)?;
-
-        let messages =
-            match Self::get_reaction_adds_by_fid(&store, fid, reaction_type, &page_options) {
-                Ok(messages) => messages,
-                Err(e) => return hub_error_to_js_throw(&mut cx, e),
-            };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages =
+                ReactionStore::get_reaction_adds_by_fid(&store, fid, reaction_type, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
@@ -500,21 +498,18 @@ impl ReactionStore {
         let reaction_type = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as i32;
 
         let page_options = get_page_options(&mut cx, 2)?;
-
-        let messages = match ReactionStore::get_reaction_removes_by_fid(
-            &store,
-            fid,
-            reaction_type,
-            &page_options,
-        ) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = ReactionStore::get_reaction_removes_by_fid(
+                &store,
+                fid,
+                reaction_type,
+                &page_options,
+            );
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
@@ -607,20 +602,18 @@ impl ReactionStore {
 
         let page_options = get_page_options(&mut cx, 3)?;
 
-        let messages = match ReactionStore::get_reactions_by_target(
-            &store,
-            &target,
-            reaction_type,
-            &page_options,
-        ) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = ReactionStore::get_reactions_by_target(
+                &store,
+                &target,
+                reaction_type,
+                &page_options,
+            );
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)

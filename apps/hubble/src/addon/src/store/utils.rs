@@ -5,9 +5,12 @@ use crate::{
 };
 use neon::{
     context::{Context, FunctionContext, TaskContext},
+    event::Channel,
     object::Object,
     result::{JsResult, Throw},
-    types::{buffer::TypedArray, JsArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsObject},
+    types::{
+        buffer::TypedArray, Deferred, JsArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsObject,
+    },
 };
 use prost::Message as _;
 use std::{borrow::Borrow, sync::Arc};
@@ -209,6 +212,17 @@ pub fn get_merkle_trie(cx: &mut FunctionContext) -> Result<Arc<MerkleTrie>, Thro
 
 pub fn hub_error_to_js_throw<'a, T, U: Context<'a>>(cx: &mut U, e: HubError) -> Result<T, Throw> {
     cx.throw_error::<String, T>(format!("{}/{}", e.code, e.message))
+}
+
+pub fn deferred_settle_messages(
+    deferred: Deferred,
+    channel: &Channel,
+    messages: Result<MessagesPage, HubError>,
+) {
+    deferred.settle_with(&channel, |mut cx| match messages {
+        Ok(messages) => encode_messages_to_js_object(&mut cx, messages),
+        Err(e) => hub_error_to_js_throw(&mut cx, e),
+    });
 }
 
 pub fn to_farcaster_time(time_ms: u64) -> Result<u64, HubError> {

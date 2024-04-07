@@ -1,15 +1,15 @@
 use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 
 use crate::db::{RocksDB, RocksDbTransactionBatch};
-use crate::protos;
 use crate::protos::link_body::Target;
 use crate::protos::message_data::Body;
 use crate::protos::{message_data, LinkBody, Message, MessageData, MessageType};
 use crate::store::{
-    encode_messages_to_js_object, get_page_options, get_store, hub_error_to_js_throw, make_fid_key,
-    make_user_key, message, HubError, IntoI32, IntoU8, MessagesPage, PageOptions, RootPrefix,
-    Store, StoreDef, StoreEventHandler, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
+    get_page_options, get_store, hub_error_to_js_throw, make_fid_key, make_user_key, message,
+    HubError, IntoI32, IntoU8, MessagesPage, PageOptions, RootPrefix, Store, StoreDef,
+    StoreEventHandler, UserPostfix, PAGE_SIZE_MAX, TS_HASH_LENGTH,
 };
+use crate::{protos, THREAD_POOL};
 use neon::prelude::{JsPromise, JsString};
 use neon::types::buffer::TypedArray;
 use neon::{
@@ -18,6 +18,8 @@ use neon::{
     types::{JsBox, JsNumber},
 };
 use prost::Message as _;
+
+use super::deferred_settle_messages;
 
 /**
  * LinkStore persists Link Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -414,15 +416,13 @@ impl LinkStore {
         let link_type = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
         let page_options = get_page_options(&mut cx, 2)?;
 
-        let messages = match Self::get_link_adds_by_fid(&store, fid, link_type, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_link_adds_by_fid(&store, fid, link_type, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
@@ -435,15 +435,13 @@ impl LinkStore {
         let link_type = cx.argument::<JsString>(1).map(|s| s.value(&mut cx))?;
         let page_options = get_page_options(&mut cx, 2)?;
 
-        let messages = match Self::get_link_removes_by_fid(&store, fid, link_type, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_link_removes_by_fid(&store, fid, link_type, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
@@ -561,15 +559,13 @@ impl LinkStore {
 
         let target = crate::protos::link_body::Target::TargetFid(target_fid as u64);
 
-        let messages = match Self::get_links_by_target(&store, &target, link_type, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_links_by_target(&store, &target, link_type, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
@@ -586,15 +582,13 @@ impl LinkStore {
             return cx.throw_error("fid is required");
         }
 
-        let messages = match Self::get_all_link_messages_by_fid(&store, fid, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_all_link_messages_by_fid(&store, fid, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
