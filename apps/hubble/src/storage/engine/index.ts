@@ -254,7 +254,6 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     }
 
-    const start = Date.now();
     const mergeResult = await this.mergeMessageToStore(message);
 
     if (mergeResult.isOk() && limiter) {
