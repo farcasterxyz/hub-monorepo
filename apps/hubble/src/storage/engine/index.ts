@@ -211,8 +211,8 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._db;
   }
 
-  clearCache() {
-    this._onchainEventsStore.clearActiveSignerCache();
+  clearCaches() {
+    this._onchainEventsStore.clearCaches();
   }
 
   get solanaVerficationsEnabled(): boolean {

@@ -97,7 +97,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  engine.clearCache();
+  engine.clearCaches();
   engine.setSolanaVerifications(false);
 });
 
