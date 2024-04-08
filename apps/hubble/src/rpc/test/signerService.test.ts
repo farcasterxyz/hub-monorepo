@@ -39,7 +39,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  engine.clearCache();
+  engine.clearCaches();
 });
 
 afterAll(async () => {

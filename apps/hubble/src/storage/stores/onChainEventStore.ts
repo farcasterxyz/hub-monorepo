@@ -33,15 +33,10 @@ import { getHubState, putHubState } from "../db/hubState.js";
 import { PageOptions } from "./types.js";
 import { logger } from "../../utils/logger.js";
 import { bytesCompare } from "@farcaster/core";
+import { LRUCache } from "../../utils/lruCache.js";
 
 const SUPPORTED_SIGNER_SCHEMES = [1];
-
-const LRU_CACHE_SIZE = 1000;
-
-type LRUCacheItem = {
-  _event: SignerOnChainEvent;
-  _lastUsed: number;
-};
+const LRU_CACHE_SIZE = 50_000;
 
 /**
  * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
@@ -54,8 +49,11 @@ class OnChainEventStore {
   protected _db: RocksDB;
   protected _eventHandler: StoreEventHandler;
 
-  // Store the last 1000 active signers in memory to avoid hitting the database
-  protected _activeSignerCache = new Map<string, LRUCacheItem>();
+  // Store the last few active signers in memory to avoid hitting the database
+  protected _activeSignerCache = new LRUCache<string, SignerOnChainEvent>(LRU_CACHE_SIZE);
+
+  // Store the last few ID register events in memory to avoid hitting the database
+  protected _idRegisterByFidCache = new LRUCache<number, IdRegisterOnChainEvent>(LRU_CACHE_SIZE);
 
   constructor(db: RocksDB, eventHandler: StoreEventHandler) {
     this._db = db;
@@ -80,44 +78,28 @@ class OnChainEventStore {
     return `${fid}:${Buffer.from(signer).toString("hex")}`;
   };
 
-  clearActiveSignerCache() {
+  clearCaches() {
     this._activeSignerCache.clear();
+    this._idRegisterByFidCache.clear();
   }
 
   async getActiveSigner(fid: number, signer: Uint8Array): Promise<SignerOnChainEvent> {
     // See if we have this in the cache
     const cacheKey = this.getActiveSignerCacheKey(fid, signer);
-    const cacheItem = this._activeSignerCache.get(cacheKey);
-    if (cacheItem) {
-      cacheItem._lastUsed = Date.now();
-      return cacheItem._event;
-    }
 
-    // Otherwise, look it up in the database
-    const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
-    const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
-    if (
-      event.signerEventBody.eventType === SignerEventType.ADD &&
-      SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
-    ) {
-      // Add to the cache
-      if (this._activeSignerCache.size >= LRU_CACHE_SIZE) {
-        // Evict the least 10% recently used
-        const sortedCache = [...this._activeSignerCache.entries()].sort((a, b) => a[1]._lastUsed - b[1]._lastUsed);
-        const evictCount = Math.ceil(LRU_CACHE_SIZE * 0.1);
-        for (let i = 0; i < evictCount; i++) {
-          const key = sortedCache[i]?.[0] || "";
-          this._activeSignerCache.delete(key);
-        }
-
-        logger.info(`Evicted ${evictCount} items from the active signer cache`);
+    return await this._activeSignerCache.get(cacheKey, async () => {
+      // Otherwise, look it up in the database
+      const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
+      const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
+      if (
+        event.signerEventBody.eventType === SignerEventType.ADD &&
+        SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
+      ) {
+        return event;
+      } else {
+        throw new HubError("not_found", "no such active signer");
       }
-      this._activeSignerCache.set(cacheKey, { _event: event, _lastUsed: Date.now() });
-
-      return event;
-    } else {
-      throw new HubError("not_found", "no such active signer");
-    }
+    });
   }
 
   async getFids(pageOptions: PageOptions = {}): Promise<{
@@ -153,8 +135,10 @@ class OnChainEventStore {
   }
 
   async getIdRegisterEventByFid(fid: number): Promise<IdRegisterOnChainEvent> {
-    const idRegisterEventPrimaryKey = await this._db.get(makeIdRegisterEventByFidKey(fid));
-    return getOnChainEventByKey(this._db, idRegisterEventPrimaryKey);
+    return await this._idRegisterByFidCache.get(fid, async () => {
+      const idRegisterEventPrimaryKey = await this._db.get(makeIdRegisterEventByFidKey(fid));
+      return getOnChainEventByKey(this._db, idRegisterEventPrimaryKey);
+    });
   }
 
   async getIdRegisterEventByCustodyAddress(address: Uint8Array): Promise<IdRegisterOnChainEvent> {
@@ -222,7 +206,7 @@ class OnChainEventStore {
 
     if (event.signerEventBody.eventType === SignerEventType.REMOVE) {
       // Remove the signer from the cache
-      this._activeSignerCache.delete(this.getActiveSignerCacheKey(event.fid, event.signerEventBody.key));
+      this._activeSignerCache.invalidate(this.getActiveSignerCacheKey(event.fid, event.signerEventBody.key));
     }
 
     if (event.signerEventBody.eventType === SignerEventType.ADMIN_RESET) {
@@ -259,6 +243,9 @@ class OnChainEventStore {
       // change recovery events are not indexed (id and custody address are the same)
       return txn;
     }
+
+    this._idRegisterByFidCache.invalidate(event.fid);
+
     const byFidKey = makeIdRegisterEventByFidKey(event.fid);
     const existingEvent = await this._getEventBySecondaryKey<IdRegisterOnChainEvent>(byFidKey);
     if (existingEvent && existingEvent.blockNumber > event.blockNumber) {
