@@ -1166,7 +1166,8 @@ export default class Server {
         let lastEventId = 0;
         const eventListener = (event: HubEvent) => {
           if (event.id <= lastEventId) {
-            log.warn({ event, lastEventId }, "subscribe: Out-of-order event sent on subscribe()");
+            // log.warn({ event, lastEventId }, "subscribe: Out-of-order event sent on subscribe()");
+            statsd().increment("rpc.subscribe.out_of_order");
           }
           lastEventId = event.id;
           bufferedStreamWriter.writeToStream(event);
