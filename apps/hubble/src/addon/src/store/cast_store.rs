@@ -1,14 +1,18 @@
 use super::{
-    bytes_compare, hub_error_to_js_throw, make_cast_id_key, make_fid_key, make_user_key, message,
+    bytes_compare, deferred_settle_messages, hub_error_to_js_throw, make_cast_id_key, make_fid_key,
+    make_user_key, message,
     store::{Store, StoreDef},
     utils::{encode_messages_to_js_object, get_page_options, get_store},
     HubError, MessagesPage, PageOptions, RootPrefix, StoreEventHandler, UserPostfix, HASH_LENGTH,
     PAGE_SIZE_MAX, TRUE_VALUE, TS_HASH_LENGTH,
 };
-use crate::protos::{message_data, CastRemoveBody};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{self, Message, MessageType},
+};
+use crate::{
+    protos::{message_data, CastRemoveBody},
+    THREAD_POOL,
 };
 use neon::{
     context::{Context, FunctionContext},
@@ -503,15 +507,13 @@ impl CastStore {
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
 
-        let messages = match Self::get_cast_adds_by_fid(&store, fid, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_cast_adds_by_fid(&store, fid, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
@@ -531,15 +533,12 @@ impl CastStore {
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
 
-        let messages = match Self::get_cast_removes_by_fid(&store, fid, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_cast_removes_by_fid(&store, fid, &page_options);
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)
@@ -691,15 +690,13 @@ impl CastStore {
         let mention = mention.value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
 
-        let messages = match Self::get_casts_by_mention(&store, mention, &page_options) {
-            Ok(messages) => messages,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            encode_messages_to_js_object(&mut cx, messages)
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_casts_by_mention(&store, mention, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
         });
 
         Ok(promise)

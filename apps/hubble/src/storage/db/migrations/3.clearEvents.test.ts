@@ -21,6 +21,7 @@ describe("clearEvents migration", () => {
 
     const success = await performDbMigrations(db, 2, 3);
     expect(success).toBe(true);
+    store.clearCaches();
 
     await expect(store.getIdRegisterEventByFid(event1.fid)).rejects.toThrow("NotFound");
   });
@@ -36,6 +37,7 @@ describe("clearEvents migration", () => {
 
       const success = await performDbMigrations(db, 2, 3);
       expect(success).toBe(true);
+      store.clearCaches();
 
       await expect(store.getIdRegisterEventByFid(event.fid)).resolves.toEqual(event);
     } finally {

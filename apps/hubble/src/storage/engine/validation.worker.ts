@@ -3,11 +3,7 @@ import { rsValidationMethods } from "../../rustfunctions.js";
 import { workerData, parentPort } from "worker_threads";
 import { http, createPublicClient, fallback } from "viem";
 import { optimism, mainnet } from "viem/chains";
-
-export interface ValidationWorkerData {
-  l2RpcUrl: string;
-  ethMainnetRpcUrl: string;
-}
+import { ValidationWorkerData, ValidationWorkerMessage } from "./index.js";
 
 const config = workerData as ValidationWorkerData;
 const opMainnetRpcUrls = config.l2RpcUrl.split(",");
@@ -36,9 +32,15 @@ parentPort?.on("message", (data) => {
     const result = await validations.validateMessage(message, rsValidationMethods, publicClients);
 
     if (result.isErr()) {
-      parentPort?.postMessage({ id, errCode: result.error.errCode, errMessage: result.error.message });
+      const response: ValidationWorkerMessage = {
+        id,
+        errCode: result.error.errCode,
+        errMessage: result.error.message,
+      };
+      parentPort?.postMessage(response);
     } else {
-      parentPort?.postMessage({ id, message: result.value });
+      const response: ValidationWorkerMessage = { id, message: result.value };
+      parentPort?.postMessage(response);
     }
   })();
 });

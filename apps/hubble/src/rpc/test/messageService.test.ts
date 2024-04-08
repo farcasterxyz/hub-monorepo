@@ -26,6 +26,10 @@ let syncEngine: SyncEngine;
 let server: Server;
 let client: HubRpcClient;
 
+beforeEach(async () => {
+  engine.clearCaches();
+});
+
 beforeAll(async () => {
   syncEngine = new SyncEngine(hub, db);
   await syncEngine.start();

@@ -10,6 +10,7 @@ import {
   hexStringToBytes,
   HubAsyncResult,
   HubError,
+  HubErrorCode,
   HubEvent,
   HubResult,
   isSignerOnChainEvent,
@@ -68,8 +69,30 @@ import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByK
 import { rsValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
-import { ValidationWorkerData } from "./validation.worker.js";
-import { statsd } from "../../utils/statsd.js";
+
+export const NUM_VALIDATION_WORKERS = 2;
+
+export interface ValidationWorkerData {
+  l2RpcUrl: string;
+  ethMainnetRpcUrl: string;
+}
+
+export interface ValidationWorkerMessageWithMessage {
+  id: number;
+  message: Message;
+  errCode?: never;
+  errMessage?: never;
+}
+
+export interface ValidationWorkerMessageWithError {
+  id: number;
+  message?: never;
+  errCode: HubErrorCode;
+  errMessage: string;
+}
+
+// The type of response that the worker sends back to the main thread
+export type ValidationWorkerMessage = ValidationWorkerMessageWithMessage | ValidationWorkerMessageWithError;
 
 const log = logger.child({
   component: "Engine",
@@ -96,7 +119,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _onchainEventsStore: OnChainEventStore;
   private _usernameProofStore: UsernameProofStore;
 
-  private _validationWorker: Worker | undefined;
+  private _validationWorkers: Worker[] | undefined;
+  private _nextValidationWorker = 0;
 
   private _validationWorkerJobId = 0;
   private _validationWorkerPromiseMap = new Map<number, (resolve: HubResult<Message>) => void>();
@@ -155,14 +179,12 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     this._revokeSignerWorker.start();
 
-    if (!this._validationWorker) {
+    if (!this._validationWorkers) {
       const workerPath = "./build/storage/engine/validation.worker.js";
       try {
         if (fs.existsSync(workerPath)) {
-          this._validationWorker = new Worker(workerPath, { workerData: this.getWorkerData() });
-          log.info({ workerPath }, "created validation worker thread");
-
-          this._validationWorker.on("message", (data) => {
+          this._validationWorkers = [];
+          const validationWorkerHandler = (data: ValidationWorkerMessage) => {
             const { id, message, errCode, errMessage } = data;
             const resolve = this._validationWorkerPromiseMap.get(id);
 
@@ -176,7 +198,16 @@ class Engine extends TypedEmitter<EngineEvents> {
             } else {
               log.warn({ id }, "validation worker promise.response not found");
             }
-          });
+          };
+
+          const workerData = this.getWorkerData();
+          for (let i = 0; i < NUM_VALIDATION_WORKERS; i++) {
+            const validationWorker = new Worker(workerPath, { workerData });
+            validationWorker.on("message", validationWorkerHandler);
+            log.info({ workerPath }, "created validation worker thread");
+
+            this._validationWorkers.push(validationWorker);
+          }
         } else {
           log.warn({ workerPath }, "validation.worker.js not found, falling back to main thread");
         }
@@ -199,9 +230,12 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     this._revokeSignerWorker.start();
 
-    if (this._validationWorker) {
-      await this._validationWorker.terminate();
-      this._validationWorker = undefined;
+    if (this._validationWorkers) {
+      for (const worker of this._validationWorkers) {
+        await worker.terminate();
+      }
+
+      this._validationWorkers = undefined;
       log.info("validation worker thread terminated");
     }
     log.info("engine stopped");
@@ -211,8 +245,8 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._db;
   }
 
-  clearCache() {
-    this._onchainEventsStore.clearActiveSignerCache();
+  clearCaches() {
+    this._onchainEventsStore.clearCaches();
   }
 
   get solanaVerficationsEnabled(): boolean {
@@ -1037,8 +1071,11 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     // 6. Check message body and envelope
-    if (this._validationWorker) {
-      const worker = this._validationWorker;
+    if (this._validationWorkers) {
+      this._nextValidationWorker += 1;
+      this._nextValidationWorker = this._nextValidationWorker % this._validationWorkers.length;
+
+      const worker = this._validationWorkers[this._nextValidationWorker] as Worker;
       return new Promise<HubResult<Message>>((resolve) => {
         const id = this._validationWorkerJobId++;
         this._validationWorkerPromiseMap.set(id, resolve);
