@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.1.2
+
+### Patch Changes
+
+- 86cfa4f5: fix: add missing db and redis exports to hub-shuttle
+- 5282c730: fix: add support for windows file paths in example hub-shuttle app
+
 ## 0.1.1
 
 ### Patch Changes

@@ -1,5 +1,31 @@
 # @farcaster/hubble
 
+## 1.11.5
+
+### Patch Changes
+
+- 2dcb3e80: fix: Change out-of-order warning to statsd
+- 58b49138: perf: Count keys at prefix directly instead of forEachIterator
+- 0728546f: fix: Create online snapshots using snapshot iterators
+- d90b127d: perf: Support multiple validation workers
+- 5e04c0a7: perf: Move merkle trie to rust
+- b069d1e9: fix: Adjust nightly validateOrRevoke job time to run earlier
+- 5e04c0a7: chore: Migrate trie node data to TrieDB
+- 4fc41e1b: fix: Prune hub events in a threadpool
+- bbc94487: fix: Log memory usage every 60s
+- 05cb3397: perf: Cache trieDB writes
+- 651ba7ac: fix: Throttle storageCache prepopulation
+- c838795d: perf: Run long gRPC queries in a threadpool.
+- ab71a53b: perf: Add LRU Cache for active signer and ID registry events
+- 86e972ec: feat: Add --log-individual-messages to log each submitMessage status. If disabled (default) write one line per second
+- c46790ac: fix: Calculate sleep time correctly for throttling validateOrRevoke job
+- 436139f5: feat(hubble):
+
+  - Add opt-out diagnostics reporting sent to the Farcaster foundation. Users may opt out with CLI flag `--opt-out-diagnostics true` or environment variable `HUB_OPT_OUT_DIAGNOSTICS=true`. Diagnostics are used to troubleshoot user issues and improve health of the network.
+  - Add CLI flag `--diagnostic-report-url <url>`, and environment variables `HUB_DIAGNOSTICS_API_KEY`, `HUB_DIAGNOSTICS_APP_KEY` environment variables to pass in configurable DataDog-compatible URL and authorization tokens.
+
+  fix(hubble): Add `L2_RPC_AUTHORIZATION_HEADER` environment variable for use with L2 RPC URLs that require authorization headers for access.
+  
 ## 1.11.4
 
 ### Patch Changes
