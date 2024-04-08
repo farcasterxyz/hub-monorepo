@@ -285,6 +285,10 @@ export const rsDbCountKeysAtPrefix = async (db: RustDb, prefix: Uint8Array): Pro
   return await lib.dbCountKeysAtPrefix.call(db, prefix);
 };
 
+export const rsDbDeleteAllKeysInRange = async (db: RustDb, iteratorOpts: RocksDbIteratorOptions): Promise<boolean> => {
+  return await lib.dbDeleteAllKeysInRange.call(db, iteratorOpts);
+};
+
 export const rsCreateStoreEventHandler = (
   epoch?: number,
   last_timestamp?: number,

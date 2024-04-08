@@ -1,6 +1,9 @@
 use crate::logger::LOGGER;
 use crate::statsd::statsd;
-use crate::store::{self, get_db, hub_error_to_js_throw, increment_vec_u8, HubError, PageOptions};
+use crate::store::{
+    self, get_db, get_iterator_options, hub_error_to_js_throw, increment_vec_u8, HubError,
+    PageOptions,
+};
 use crate::trie::merkle_trie::TRIE_DBPATH_PREFIX;
 use crate::THREAD_POOL;
 use flate2::write::GzEncoder;
@@ -112,6 +115,15 @@ impl RocksDB {
         let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, &self.path)?;
         *db_lock = Some(db);
 
+        // We put the db in a RwLock to make the compiler happy, but it is strictly not required.
+        // We can use unsafe to replace the value directly, and this will work fine, and shave off
+        // 100ns per db read/write operation.
+        // eg:
+        // unsafe {
+        //     let db_ptr = &self.db as *const Option<TransactionDB> as *mut Option<TransactionDB>;
+        //     std::ptr::replace(db_ptr, Some(db));
+        // }
+
         info!(self.logger, "Opened database"; "path" => &self.path);
 
         Ok(())
@@ -127,6 +139,18 @@ impl RocksDB {
             let db = db_lock.take().unwrap();
             drop(db);
         }
+
+        // See the comment in open(). We strictly don't need to use the RwLock here, but we do it
+        // to make the compiler happy. We could use unsafe to replace the value directly, like this:
+        // if self.db.is_some() {
+        //     let db = unsafe {
+        //         let db_ptr = &self.db as *const Option<TransactionDB> as *mut Option<TransactionDB>;
+        //         std::ptr::replace(db_ptr, None)
+        //     };
+
+        //     // Strictly not needed, but writing so its clear we are dropping the DB here
+        //     db.map(|db| drop(db));
+        // }
 
         Ok(())
     }
@@ -193,7 +217,7 @@ impl RocksDB {
 
     pub fn commit(&self, batch: RocksDbTransactionBatch) -> Result<(), HubError> {
         let db = self.db();
-        if (*db).is_none() {
+        if db.is_none() {
             return Err(HubError {
                 code: "db.internal_error".to_string(),
                 message: "Database is not open".to_string(),
@@ -794,30 +818,8 @@ impl RocksDB {
     pub fn js_for_each_iterator_by_js_opts(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let db = get_db(&mut cx)?;
 
-        // Page options
-        let js_opts = cx.argument::<JsObject>(0)?;
-        let reverse = js_opts
-            .get_opt::<JsBoolean, _, _>(&mut cx, "reverse")?
-            .map_or(false, |js_boolean| js_boolean.value(&mut cx));
-        let gte = match js_opts.get_opt::<JsBuffer, _, _>(&mut cx, "gte")? {
-            Some(buffer) => Some(buffer.as_slice(&cx).to_vec()),
-            None => None,
-        };
-        let gt = match js_opts.get_opt::<JsBuffer, _, _>(&mut cx, "gt")? {
-            Some(buffer) => Some(buffer.as_slice(&cx).to_vec()),
-            None => None,
-        };
-        let lt = js_opts
-            .get::<JsBuffer, _, _>(&mut cx, "lt")?
-            .as_slice(&cx)
-            .to_vec();
-
-        let js_opts = JsIteratorOptions {
-            reverse,
-            gte,
-            gt,
-            lt,
-        };
+        // JS Iterator optionsoptions
+        let js_opts = get_iterator_options(&mut cx, 0)?;
 
         // The argument is a callback function
         let callback = cx.argument::<JsFunction>(1)?;
@@ -834,6 +836,29 @@ impl RocksDB {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
         deferred.settle_with(&channel, move |mut cx| Ok(cx.boolean(result.unwrap())));
+
+        Ok(promise)
+    }
+
+    pub fn js_delete_all_keys_in_range(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let db = get_db(&mut cx)?;
+
+        // JS Iterator optionsoptions
+        let js_opts = get_iterator_options(&mut cx, 0)?;
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            // Delete all keys in the range
+            let result =
+                db.for_each_iterator_by_jsopts(js_opts, |key, _| db.del(key).map(|_| false));
+
+            deferred.settle_with(&channel, move |mut cx| match result {
+                Ok(r) => Ok(cx.boolean(r)),
+                Err(e) => return hub_error_to_js_throw(&mut cx, e),
+            });
+        });
 
         Ok(promise)
     }

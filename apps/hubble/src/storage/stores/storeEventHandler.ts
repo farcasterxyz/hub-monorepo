@@ -364,21 +364,12 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(iteratorOpts.error);
     }
 
-    let error: HubError | undefined;
-    await this._db.forEachIteratorByOpts(iteratorOpts.value, async (key, _value) => {
-      const result = await ResultAsync.fromPromise(this._db.del(key as Buffer), (e) => e as HubError);
-      if (result.isErr()) {
-        error = result.error;
-        return true; // stop iteration
-      }
-      return false;
-    });
+    const result = await ResultAsync.fromPromise(
+      this._db.deleteAllKeysInRange(iteratorOpts.value),
+      (e) => e as HubError,
+    );
 
-    if (error) {
-      return err(error);
-    } else {
-      return ok(undefined);
-    }
+    return result.map((_) => {});
   }
 
   private broadcastEvent(event: HubEvent): HubResult<void> {
