@@ -28,6 +28,7 @@ import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 import axios from "axios";
 import { snapshotURLAndMetadata } from "./utils/snapshot.js";
+import { DEFAULT_DIAGNOSTIC_REPORT_URL, initDiagnosticReporter } from "./utils/diagnosticReport.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -143,6 +144,17 @@ app
   .option(
     "--statsd-metrics-server <host>",
     'The host to send statsd metrics to, eg "127.0.0.1:8125". (default: disabled)',
+  )
+
+  // Opt-out Diagnostics Reporting
+  .option(
+    "--opt-out-diagnostics [boolean]",
+    "Opt-out of sending diagnostics data to the Farcaster foundation. " +
+      "Diagnostics are used to troubleshoot user issues and improve health of the network. (default: disabled)",
+  )
+  .option(
+    "--diagnostic-report-url <url>",
+    `The URL to send diagnostic reports to. (default: ${DEFAULT_DIAGNOSTIC_REPORT_URL})`,
   )
 
   // Debugging options
@@ -596,6 +608,30 @@ app
       logger.flush();
       process.exit(1);
     }
+
+    // Opt-out Diagnostics Reporting
+    let optOut: boolean;
+    if (process.env["HUB_OPT_OUT_DIAGNOSTICS"] || process.env["HUB_OPT_OUT_DIAGNOSTIC"]) {
+      if (process.env["HUB_OPT_OUT_DIAGNOSTICS"]) {
+        optOut = process.env["HUB_OPT_OUT_DIAGNOSTICS"] === "true";
+      } else {
+        optOut = process.env["HUB_OPT_OUT_DIAGNOSTIC"] === "true";
+      }
+    } else {
+      optOut = cliOptions.optOutDiagnostics ? cliOptions.optOutDiagnostics === "true" : hubConfig.optOutDiagnostics;
+    }
+    let reportURL: string;
+    if (process.env["HUB_DIAGNOSTIC_REPORT_URL"]) {
+      reportURL = process.env["HUB_DIAGNOSTIC_REPORT_URL"];
+    } else {
+      reportURL = cliOptions.diagnosticReportUrl ?? DEFAULT_DIAGNOSTIC_REPORT_URL;
+    }
+    initDiagnosticReporter({
+      optOut,
+      reportURL,
+      ...(options.hubOperatorFid && { fid: options.hubOperatorFid }),
+      ...(options.peerId && { peerId: options.peerId?.toString() }),
+    });
 
     const hubResult = Result.fromThrowable(
       () => new Hub(options),

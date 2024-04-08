@@ -2,6 +2,7 @@ import fs, { existsSync } from "fs";
 import { ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
 import { Chain, createPublicClient, fallback, http } from "viem";
+import { diagnosticReporter } from "./diagnosticReport.js";
 
 export enum StartupCheckStatus {
   OK = "OK",

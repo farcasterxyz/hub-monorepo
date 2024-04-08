@@ -1,8 +1,9 @@
 import { Abi } from "abitype";
-import { PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
+import { HttpRequestError, PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
 import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
 import { err, ok, Result } from "neverthrow";
+import { diagnosticReporter } from "../utils/diagnosticReport.js";
 
 /**
  * Wrapper around watchContractEvent that restarts when an error
@@ -37,6 +38,7 @@ export class WatchContractEvent<
     this._unwatch = this._publicClient.watchContractEvent({
       ...this._params,
       onError: (error) => {
+        diagnosticReporter().reportError(error);
         this._log.error(`Error watching contract events: ${error}`, { error });
         const restartResult = this.restart();
         if (restartResult.isErr()) {

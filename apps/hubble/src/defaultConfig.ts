@@ -4,6 +4,7 @@
  * Update or uncomment config fields as needed.
  * Note: CLI options take precedence over the options specified in a config file
  */
+import { DEFAULT_DIAGNOSTIC_REPORT_URL } from "./utils/diagnosticReport.js";
 
 const DEFAULT_GOSSIP_PORT = 2282;
 const DEFAULT_RPC_PORT = 2283;
@@ -64,6 +65,13 @@ export const Config = {
    * NOTE: Catchup sync using snapshot WILL RESET THE DATABASE
    */
   catchupSyncSnapshotMessageLimit: DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT,
+  /**
+   * Opt-out of sending diagnostics data to the Farcaster foundation
+   * Diagnostics are used to troubleshoot user issues and improve health of the network
+   */
+  optOutDiagnostics: false,
+  /** The URL to send diagnostic reports to */
+  diagnosticReportUrl: DEFAULT_DIAGNOSTIC_REPORT_URL,
   /** Start the admin server? */
   adminServerEnabled: false,
   /** The admin server bind host */
