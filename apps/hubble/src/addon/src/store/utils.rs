@@ -1,6 +1,6 @@
 use super::{HubError, MessagesPage, PageOptions, Store, FARCASTER_EPOCH};
 use crate::{
-    db::RocksDB,
+    db::{JsIteratorOptions, RocksDB},
     trie::merkle_trie::{MerkleTrie, NodeMetadata},
 };
 use neon::{
@@ -162,6 +162,7 @@ pub fn encode_node_metadata_to_js_object<'a>(
 
     Ok(js_object)
 }
+
 /**
 * Extract the page options from a JavaScript object at the given index. Fills in default values
 * if they are not provided.
@@ -189,6 +190,38 @@ pub fn get_page_options(cx: &mut FunctionContext, at: usize) -> Result<PageOptio
             Some(page_token)
         },
         reverse,
+    })
+}
+
+/**
+ * Extract the iteator opts
+ */
+pub fn get_iterator_options(
+    cx: &mut FunctionContext,
+    at: usize,
+) -> Result<JsIteratorOptions, Throw> {
+    let js_opts = cx.argument::<JsObject>(at)?;
+    let reverse = js_opts
+        .get_opt::<JsBoolean, _, _>(cx, "reverse")?
+        .map_or(false, |js_boolean| js_boolean.value(cx));
+    let gte = match js_opts.get_opt::<JsBuffer, _, _>(cx, "gte")? {
+        Some(buffer) => Some(buffer.as_slice(cx).to_vec()),
+        None => None,
+    };
+    let gt = match js_opts.get_opt::<JsBuffer, _, _>(cx, "gt")? {
+        Some(buffer) => Some(buffer.as_slice(cx).to_vec()),
+        None => None,
+    };
+    let lt = js_opts
+        .get::<JsBuffer, _, _>(cx, "lt")?
+        .as_slice(cx)
+        .to_vec();
+
+    Ok(JsIteratorOptions {
+        reverse,
+        gte,
+        gt,
+        lt,
     })
 }
 

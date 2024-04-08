@@ -18,6 +18,7 @@ import {
   RustDb,
   rustErrorToHubError,
   rsDbCountKeysAtPrefix,
+  rsDbDeleteAllKeysInRange,
 } from "../../rustfunctions.js";
 import { PageOptions } from "storage/stores/types.js";
 
@@ -187,6 +188,10 @@ class RocksDB {
 
   async countKeysAtPrefix(prefix: Buffer): Promise<number> {
     return await rsDbCountKeysAtPrefix(this._db, prefix);
+  }
+
+  async deleteAllKeysInRange(options: RocksDbIteratorOptions): Promise<boolean> {
+    return await rsDbDeleteAllKeysInRange(this._db, options);
   }
 
   /**

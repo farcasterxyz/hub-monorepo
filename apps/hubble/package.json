@@ -39,7 +39,7 @@
     "test": "yarn test:ts && yarn test:rust",
     "test:ts": "yarn build:all && NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest",
     "test:rust": "cargo test --manifest-path ./src/addon/Cargo.toml",
-    "test:ci": "yarn build:all && yarn test:rust --release && ENVIRONMENT=test NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest --ci --forceExit --coverage -w 3"
+    "test:ci": "yarn build:all && yarn test:rust --release && ENVIRONMENT=test NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest --ci --forceExit --coverage -w 2"
   },
   "devDependencies": {
     "@libp2p/interface-mocks": "^9.0.0",

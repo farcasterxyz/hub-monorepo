@@ -115,6 +115,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("dbSnapshotBackup", RocksDB::js_snapshot_backup)?;
     cx.export_function("dbCountKeysAtPrefix", RocksDB::js_count_keys_at_prefix)?;
     cx.export_function(
+        "dbDeleteAllKeysInRange",
+        RocksDB::js_delete_all_keys_in_range,
+    )?;
+    cx.export_function(
         "dbForEachIteratorByPrefix",
         RocksDB::js_for_each_iterator_by_prefix,
     )?;
