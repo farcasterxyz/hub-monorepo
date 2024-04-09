@@ -136,11 +136,11 @@ export class LibP2PNode {
     const gossip = gossipsub({
       allowPublishToZeroTopicPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
-      batchPublish: false,
+      batchPublish: true,
       canRelayMessage: true,
-      // messageProcessingConcurrency: 8192,
-      // maxInboundStreams: 8192,
-      // maxOutboundStreams: 8192,
+      messageProcessingConcurrency: 8192,
+      maxInboundStreams: 8192,
+      maxOutboundStreams: 8192,
       directPeers: options.directPeers || [],
       emitSelf: false,
       fallbackToFloodsub: fallbackToFloodsub,
