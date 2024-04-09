@@ -137,12 +137,12 @@ export type MessageRow = Selectable<MessagesTable>;
 export type InsertableMessageRow = Insertable<MessagesTable>;
 
 // ALL TABLES -------------------------------------------------------------------------------------
-export interface Tables {
-  messages: MessageRow;
+export interface HubTables {
+  messages: MessagesTable;
 }
 
 export const getDbClient = (connectionString?: string) => {
-  return new Kysely<Tables>({
+  return new Kysely<HubTables>({
     dialect: new PostgresDialect({
       pool: new Pool({
         max: 10,
@@ -227,7 +227,7 @@ export async function stream<DB, UT extends keyof DB, TB extends keyof DB, O>(
   }
 }
 
-export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof Tables>) {
+export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof HubTables>) {
   try {
     return sql<{ tableName: string; estimate: number }>`SELECT relname AS table_name, reltuples AS estimate
                FROM pg_class
@@ -237,5 +237,5 @@ export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof
   }
 }
 
-export type DBTransaction = Transaction<Tables>;
-export type DB = Kysely<Tables>;
+export type DBTransaction = Transaction<HubTables>;
+export type DB = Kysely<HubTables>;
