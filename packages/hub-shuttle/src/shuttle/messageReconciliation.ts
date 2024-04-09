@@ -1,8 +1,6 @@
-import { bytesToHexString, HubRpcClient, Message, MessageType } from "@farcaster/hub-nodejs";
-import { DB } from "./db";
-import { HubEventProcessor } from "./hubEventProcessor";
-import { log } from "../log";
-import { MessageHandler } from "./interfaces";
+import { HubRpcClient, Message, MessageType } from "@farcaster/hub-nodejs";
+import { DB, MessageRow } from "./db";
+import { pino } from "pino";
 
 const MAX_PAGE_SIZE = 3_000;
 
@@ -10,15 +8,18 @@ const MAX_PAGE_SIZE = 3_000;
 export class MessageReconciliation {
   private client: HubRpcClient;
   private db: DB;
-  private messageHandler: MessageHandler;
+  private log: pino.Logger;
 
-  constructor(client: HubRpcClient, db: DB, handler: MessageHandler) {
+  constructor(client: HubRpcClient, db: DB, log: pino.Logger) {
     this.client = client;
     this.db = db;
-    this.messageHandler = handler;
+    this.log = log;
   }
 
-  async reconcileMessagesForFid(fid: number) {
+  async reconcileMessagesForFid(
+    fid: number,
+    onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
+  ) {
     for (const type of [
       MessageType.CAST_ADD,
       MessageType.REACTION_ADD,
@@ -26,12 +27,16 @@ export class MessageReconciliation {
       MessageType.VERIFICATION_ADD_ETH_ADDRESS,
       MessageType.USER_DATA_ADD,
     ]) {
-      log.info(`Reconciling messages for FID ${fid} of type ${type}`);
-      await this.reconcileMessagesOfTypeForFid(fid, type);
+      this.log.info(`Reconciling messages for FID ${fid} of type ${type}`);
+      await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage);
     }
   }
 
-  async reconcileMessagesOfTypeForFid(fid: number, type: MessageType, republish = false) {
+  async reconcileMessagesOfTypeForFid(
+    fid: number,
+    type: MessageType,
+    onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
+  ) {
     // todo: Username proofs, and on chain events
 
     const hubMessagesByHash: Record<string, Message> = {};
@@ -39,7 +44,7 @@ export class MessageReconciliation {
       const messageHashes = messages.map((msg) => msg.hash);
 
       if (messageHashes.length === 0) {
-        log.info(`No messages of type ${type} for FID ${fid}`);
+        this.log.info(`No messages of type ${type} for FID ${fid}`);
         continue;
       }
 
@@ -51,18 +56,27 @@ export class MessageReconciliation {
 
       const dbMessageHashes = dbMessages.reduce((acc, msg) => {
         const key = Buffer.from(msg.hash).toString("hex");
-        acc[key] = true;
+        acc[key] = msg;
         return acc;
-      }, {} as Record<string, boolean>);
+      }, {} as Record<string, Pick<MessageRow, "revokedAt" | "prunedAt" | "fid" | "type" | "hash" | "raw">>);
 
       for (const message of messages) {
-        const msgHash = bytesToHexString(message.hash)._unsafeUnwrap();
         const msgHashKey = Buffer.from(message.hash).toString("hex");
         hubMessagesByHash[msgHashKey] = message;
 
-        if (dbMessageHashes[msgHashKey] === undefined) {
-          log.warn(`Message ${msgHash} does not exist in the DB. Processing now.`, { messageHash: msgHash });
-          await HubEventProcessor.handleMissingMessage(this.db, message, this.messageHandler);
+        const dbMessage = dbMessageHashes[msgHashKey];
+        if (dbMessage === undefined) {
+          await onHubMessage(message, true, false, false);
+        } else {
+          let wasPruned = false;
+          let wasRevoked = false;
+          if (dbMessage?.prunedAt) {
+            wasPruned = true;
+          }
+          if (dbMessage?.revokedAt) {
+            wasRevoked = true;
+          }
+          await onHubMessage(message, false, wasPruned, wasRevoked);
         }
       }
     }

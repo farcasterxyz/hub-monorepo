@@ -4,9 +4,9 @@ import { err, ok, Result } from "neverthrow";
 import path from "path";
 import { promises as fs } from "fs";
 import { fileURLToPath } from "node:url";
-import { Tables } from "../shuttle/db";
+import { HubTables } from "../shuttle/db";
 
-const createMigrator = async (db: Kysely<Tables>, log: Logger) => {
+const createMigrator = async (db: Kysely<HubTables>, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const migrator = new Migrator({
     db,
@@ -21,7 +21,7 @@ const createMigrator = async (db: Kysely<Tables>, log: Logger) => {
 };
 
 export const migrationStatus = async (
-  db: Kysely<Tables>,
+  db: Kysely<HubTables>,
   log: Logger,
 ): Promise<{ executed: MigrationInfo[]; pending: MigrationInfo[] }> => {
   const migrator = await createMigrator(db, log);
@@ -40,7 +40,7 @@ export const migrationStatus = async (
   return { executed, pending };
 };
 
-export const migrateToLatest = async (db: Kysely<Tables>, log: Logger): Promise<Result<void, unknown>> => {
+export const migrateToLatest = async (db: Kysely<HubTables>, log: Logger): Promise<Result<void, unknown>> => {
   const migrator = await createMigrator(db, log);
 
   const { error, results } = await migrator.migrateToLatest();
@@ -63,7 +63,7 @@ export const migrateToLatest = async (db: Kysely<Tables>, log: Logger): Promise<
   return ok(undefined);
 };
 
-export const migrateOneUp = async (db: Kysely<Tables>, log: Logger): Promise<Result<void, unknown>> => {
+export const migrateOneUp = async (db: Kysely<HubTables>, log: Logger): Promise<Result<void, unknown>> => {
   const migrator = await createMigrator(db, log);
 
   const { error, results } = await migrator.migrateUp();

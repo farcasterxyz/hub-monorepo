@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.1.3
+
+### Patch Changes
+
+- feat: Refactor message reconciliation to accept function
+
 ## 0.1.2
 
 ### Patch Changes
