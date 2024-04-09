@@ -91,6 +91,13 @@ export interface ValidationWorkerMessageWithError {
   errMessage: string;
 }
 
+interface IndexedMessage {
+  i: number;
+  message: Message;
+  fid?: number;
+  limiter?: RateLimiterAbstract;
+}
+
 // The type of response that the worker sends back to the main thread
 export type ValidationWorkerMessage = ValidationWorkerMessageWithMessage | ValidationWorkerMessageWithError;
 
@@ -260,8 +267,61 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
   }
 
-  async mergeMessages(messages: Message[]): Promise<Array<HubResult<number>>> {
-    return Promise.all(messages.map((message) => this.mergeMessage(message)));
+  async mergeMessages(messages: Message[]): Promise<Map<number, HubResult<number>>> {
+    const mergeResults: Map<number, HubResult<number>> = new Map();
+    const validatedMessages: IndexedMessage[] = [];
+
+    // Validate all messages first
+    await Promise.all(
+      messages.map(async (message, i) => {
+        const validatedMessage = await this.validateMessage(message);
+        if (validatedMessage.isErr()) {
+          mergeResults.set(i, err(validatedMessage.error));
+          return;
+        }
+
+        // Extract the FID that this message was signed by
+        const fid = message.data?.fid ?? 0;
+        const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
+
+        if (storageUnits.isErr()) {
+          mergeResults.set(i, err(storageUnits.error));
+          return;
+        }
+
+        if (storageUnits.value === 0) {
+          mergeResults.set(i, err(new HubError("bad_request.prunable", "no storage")));
+          return;
+        }
+
+        // We rate limit the number of messages that can be merged per FID
+        const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
+        const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
+        if (isRateLimited) {
+          log.warn({ fid }, "rate limit exceeded for FID");
+          mergeResults.set(i, err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`)));
+          return;
+        }
+
+        validatedMessages.push({ i, fid, limiter, message });
+      }),
+    );
+
+    const results: Map<number, HubResult<number>> = await this.mergeMessagesToStore(
+      validatedMessages.map((m) => m.message),
+    );
+
+    // Go over the results and update the results map
+    for (const [j, result] of results.entries()) {
+      const fid = validatedMessages[j]?.fid as number;
+      const limiter = validatedMessages[j]?.limiter;
+      if (result.isOk() && limiter) {
+        consumeRateLimitByKey(`${fid}`, limiter);
+      }
+      mergeResults.set(validatedMessages[j]?.i as number, result);
+    }
+
+    return mergeResults;
   }
 
   async mergeMessage(message: Message): HubAsyncResult<number> {
@@ -273,19 +333,21 @@ class Engine extends TypedEmitter<EngineEvents> {
     // Extract the FID that this message was signed by
     const fid = message.data?.fid ?? 0;
     const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
-    let limiter: RateLimiterAbstract | undefined;
 
-    if (storageUnits.isOk()) {
-      if (storageUnits.value === 0) {
-        return err(new HubError("bad_request.prunable", "no storage"));
-      }
-      // We rate limit the number of messages that can be merged per FID
-      limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
-      const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
-      if (isRateLimited) {
-        log.warn({ fid }, "rate limit exceeded for FID");
-        return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
-      }
+    if (storageUnits.isErr()) {
+      return err(storageUnits.error);
+    }
+
+    if (storageUnits.value === 0) {
+      return err(new HubError("bad_request.prunable", "no storage"));
+    }
+
+    // We rate limit the number of messages that can be merged per FID
+    const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
+    const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
+    if (isRateLimited) {
+      log.warn({ fid }, "rate limit exceeded for FID");
+      return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
     }
 
     const mergeResult = await this.mergeMessageToStore(message);
@@ -295,6 +357,97 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     return mergeResult;
+  }
+
+  async mergeMessagesToStore(messages: Message[]): Promise<Map<number, HubResult<number>>> {
+    const linkMessages: IndexedMessage[] = [];
+    const reactionMessages: IndexedMessage[] = [];
+    const castMessages: IndexedMessage[] = [];
+    const userDataMessages: IndexedMessage[] = [];
+    const verificationMessages: IndexedMessage[] = [];
+    const usernameProofMessages: IndexedMessage[] = [];
+
+    const results: Map<number, HubResult<number>> = new Map();
+
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i] as Message;
+      if (message.data?.type === MessageType.FRAME_ACTION) {
+        results.set(i, err(new HubError("bad_request.validation_failure", "invalid message type")));
+        continue;
+      }
+
+      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
+      const setPostfix = typeToSetPostfix(message.data!.type);
+
+      switch (setPostfix) {
+        case UserPostfix.LinkMessage: {
+          const versionCheck = ensureAboveTargetFarcasterVersion("2023.4.19");
+          if (versionCheck.isErr()) {
+            results.set(i, err(versionCheck.error));
+            continue;
+          }
+
+          linkMessages.push({ i, message });
+          break;
+        }
+        case UserPostfix.ReactionMessage: {
+          reactionMessages.push({ i, message });
+          break;
+        }
+        case UserPostfix.CastMessage: {
+          castMessages.push({ i, message });
+          break;
+        }
+        case UserPostfix.UserDataMessage: {
+          userDataMessages.push({ i, message });
+          break;
+        }
+        case UserPostfix.VerificationMessage: {
+          verificationMessages.push({ i, message });
+          break;
+        }
+        case UserPostfix.UsernameProofMessage: {
+          usernameProofMessages.push({ i, message });
+          break;
+        }
+        default: {
+          results.set(i, err(new HubError("bad_request.validation_failure", "invalid message type")));
+        }
+      }
+    }
+
+    const stores = [
+      this._linkStore,
+      this._reactionStore,
+      this._castStore,
+      this._userDataStore,
+      this._verificationStore,
+      this._usernameProofStore,
+    ];
+    const messagesByStore = [
+      linkMessages,
+      reactionMessages,
+      castMessages,
+      userDataMessages,
+      verificationMessages,
+      usernameProofMessages,
+    ];
+
+    await Promise.all(
+      stores.map(async (store, j) => {
+        const storeMessages = messagesByStore[j] as IndexedMessage[];
+
+        const storeResults: Map<number, HubResult<number>> = await store.mergeMessages(
+          storeMessages.map((m) => m.message),
+        );
+
+        for (const [j, v] of storeResults.entries()) {
+          results.set(storeMessages[j]?.i as number, v);
+        }
+      }),
+    );
+
+    return results;
   }
 
   async mergeMessageToStore(message: Message): HubAsyncResult<number> {

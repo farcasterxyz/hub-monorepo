@@ -986,8 +986,8 @@ describe("mergeMessages", () => {
 
   test("succeeds and merges messages in parallel", async () => {
     const results = await engine.mergeMessages([castAdd, reactionAdd, linkAdd, userDataAdd, verificationAdd]);
-    for (const result of results) {
-      expect(result).toBeInstanceOf(Ok);
+    for (let i = 0; i < results.size; i++) {
+      expect(results.get(i)).toBeInstanceOf(Ok);
     }
     expect(new Set(mergedMessages)).toEqual(new Set([castAdd, reactionAdd, linkAdd, userDataAdd, verificationAdd]));
   });

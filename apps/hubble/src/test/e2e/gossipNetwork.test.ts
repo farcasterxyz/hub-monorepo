@@ -1,14 +1,6 @@
 import { GossipNode } from "../../network/p2p/gossipNode.js";
 import { sleep } from "../../utils/crypto.js";
-import {
-  Factories,
-  GossipMessage,
-  isCastAddMessage,
-  isReactionAddMessage,
-  Message,
-  MessageData,
-  MessageType,
-} from "@farcaster/hub-nodejs";
+import { Factories, GossipMessage, isReactionAddMessage, Message, MessageData } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
 
 const NUM_NODES = 10;
