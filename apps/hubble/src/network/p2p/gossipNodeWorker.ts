@@ -136,11 +136,11 @@ export class LibP2PNode {
     const gossip = gossipsub({
       allowPublishToZeroTopicPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
-      batchPublish: true,
+      batchPublish: false,
       canRelayMessage: true,
-      messageProcessingConcurrency: 128,
-      maxInboundStreams: 32,
-      maxOutboundStreams: 32,
+      // messageProcessingConcurrency: 8192,
+      // maxInboundStreams: 8192,
+      // maxOutboundStreams: 8192,
       directPeers: options.directPeers || [],
       emitSelf: false,
       fallbackToFloodsub: fallbackToFloodsub,
@@ -154,7 +154,7 @@ export class LibP2PNode {
         appSpecificScore: (peerId) => {
           const score = this._peerScores?.get(peerId) ?? 0;
           if (options.allowlistedImmunePeers?.includes(peerId)) {
-            if (score < -10) {
+            if (score < -100) {
               log.warn({ peerId, score }, "GossipSub: Allowlisted peer would have been kicked out.");
             }
 
