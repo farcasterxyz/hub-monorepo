@@ -1,4 +1,4 @@
-import { getDbClient, Tables } from "./shuttle/db";
+import { DB, getDbClient } from "./shuttle/db";
 import { migrateToLatest } from "./app/migration";
 import { log } from "./log";
 import { Kysely, sql } from "kysely";
@@ -9,7 +9,7 @@ import { HubSubscriber } from "./shuttle/hubSubscriber";
 import { sleep } from "./utils";
 import { MessageReconciliation } from "./shuttle/messageReconciliation";
 
-let db: Kysely<Tables>;
+let db: DB;
 let subscriber: FakeHubSubscriber;
 let redis: RedisClient;
 
