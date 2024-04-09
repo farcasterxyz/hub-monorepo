@@ -1,4 +1,4 @@
-import { PublishResult } from "@libp2p/interface-pubsub";
+import { PublishResult } from "@libp2p/interface";
 import { Worker } from "worker_threads";
 import {
   ContactInfoContent,
@@ -11,8 +11,8 @@ import {
   HubResult,
   Message,
 } from "@farcaster/hub-nodejs";
-import { Connection } from "@libp2p/interface-connection";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { Connection } from "@libp2p/interface";
+import { PeerId } from "@libp2p/interface";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
 import { err, ok, Result } from "neverthrow";
@@ -471,13 +471,16 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   async registerListeners() {
-    this._nodeEvents?.addListener("peer:connect", (detail) => {
+    this._nodeEvents?.addListener("peer:connect", (detail: Connection) => {
       // console.log("Peer Connected", JSON.stringify(detail, null, 2));
       log.info(
         {
           peer: detail.remotePeer,
           addrs: detail.remoteAddr,
-          type: detail.stat.direction,
+          type: detail.direction,
+          detail: JSON.stringify(detail, null, 2),
+          detail_remote: detail.remotePeer,
+          detail_remoteAddr: detail.remoteAddr,
         },
         "P2P Connection established",
       );
@@ -486,9 +489,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
       // When we successfully connect to a peer, we store it in the DB, so we can connect to it again
       // if we restart
-      this.putPeerAddrToDB(detail.remotePeer.toString(), detail.remoteAddr.toString());
+      if (detail.remotePeer && detail.remoteAddr) {
+        this.putPeerAddrToDB(detail.remotePeer.toString(), detail.remoteAddr.toString());
+      } else {
+        log.warn("No peerId or address in connection details");
+      }
     });
-    this._nodeEvents?.addListener("peer:disconnect", (detail) => {
+    this._nodeEvents?.addListener("peer:disconnect", (detail: Connection) => {
       log.info({ peer: detail.remotePeer }, "P2P Connection disconnected");
       this.emit("peerDisconnect", detail);
       this.updateStatsdPeerGauges();

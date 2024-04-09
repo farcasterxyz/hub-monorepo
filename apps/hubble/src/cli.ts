@@ -1,6 +1,6 @@
 import { FarcasterNetwork, farcasterNetworkFromJSON } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { Command, OptionValues } from "commander";
@@ -313,7 +313,7 @@ app
     }
 
     // Read PeerID from 1. CLI option, 2. Environment variable, 3. Config file
-    let peerId;
+    let peerId: PeerId;
     if (cliOptions.id) {
       const peerIdR = await ResultAsync.fromPromise(readPeerId(resolve(cliOptions.id)), (e) => e);
       if (peerIdR.isErr()) {

@@ -20,7 +20,7 @@ import {
   validations,
   HashScheme,
 } from "@farcaster/hub-nodejs";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { Connection, PeerId } from "@libp2p/interface";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
@@ -1214,6 +1214,10 @@ export class Hub implements HubInterface {
     if (gossipMessage.message) {
       const message = gossipMessage.message;
 
+      statsd().increment("gossip.message_received", 1, {
+        message_type: messageTypeToName(message.data?.type),
+        ...(message.data?.fid && { fid: message.data.fid.toString() }),
+      });
       if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
         // will eventually re-fetch and merge this message in anyway.
@@ -1545,9 +1549,14 @@ export class Hub implements HubInterface {
       statsd().increment("peer_connect.count");
     });
 
-    this.gossipNode.on("peerDisconnect", async (connection) => {
+    this.gossipNode.on("peerDisconnect", async (connection: Connection) => {
       // Remove this peer's connection
-      this.syncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
+      console.log("Peer disconnected", connection.id, connection.remotePeer);
+      if (connection.remotePeer) {
+        this.syncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
+      } else {
+        logger.warn("Peer disconnected without remote peer", connection.id);
+      }
       statsd().increment("peer_disconnect.count");
     });
   }

@@ -1,5 +1,5 @@
-import { mockMultiaddrConnPair } from "@libp2p/interface-mocks";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { mockMultiaddrConnPair } from "@libp2p/interface-compliance-tests/mocks";
+import { PeerId } from "@libp2p/interface";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 import { multiaddr } from "@multiformats/multiaddr";
 import { ConnectionFilter } from "./connectionFilter.js";
@@ -28,7 +28,7 @@ describe("connectionFilter tests", () => {
       remotePeer: allowedPeerId,
     });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeTruthy();
-    await expect(filter.denyDialMultiaddr(allowedPeerId, multiaddr(allowedMultiAddrStr))).resolves.toBeTruthy();
+    await expect(filter.denyDialMultiaddr(multiaddr(allowedMultiAddrStr))).resolves.toBeTruthy();
     // Incepient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyInboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
@@ -46,7 +46,7 @@ describe("connectionFilter tests", () => {
       remotePeer: allowedPeerId,
     });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
-    await expect(filter.denyDialMultiaddr(allowedPeerId, multiaddr(allowedMultiAddrStr))).resolves.toBeFalsy();
+    await expect(filter.denyDialMultiaddr(multiaddr(allowedMultiAddrStr))).resolves.toBeFalsy();
     // Incepient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyInboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
@@ -92,7 +92,7 @@ describe("connectionFilter tests", () => {
       remotePeer: blockedPeerId,
     });
     await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeTruthy();
-    await expect(filter.denyDialMultiaddr(blockedPeerId, multiaddr(allowedMultiAddrStr))).resolves.toBeTruthy();
+    await expect(filter.denyDialMultiaddr(multiaddr(filteredMultiAddrStr))).resolves.toBeTruthy();
     // Incepient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();

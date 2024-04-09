@@ -1,7 +1,7 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult, TopicValidatorResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult, TopicValidatorResult, PeerId } from "@libp2p/interface";
 import {
   GossipNode,
   LibP2PNodeInterface,
@@ -34,7 +34,6 @@ import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
 import { noise } from "@chainsafe/libp2p-noise";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign } from "./protocol.js";
-import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { logger } from "../../utils/logger.js";
 import { initializeStatsd, statsd } from "../../utils/statsd.js";
@@ -76,7 +75,7 @@ export class LibP2PNode {
 
   /** Returns the GossipSub instance used by the Node */
   get gossip() {
-    const pubsub = this._node?.pubsub;
+    const pubsub = this._node?.services["pubsub"];
     return pubsub ? (pubsub as GossipSub) : undefined;
   }
 
@@ -135,9 +134,13 @@ export class LibP2PNode {
       : false;
 
     const gossip = gossipsub({
-      allowPublishToZeroPeers: true,
+      allowPublishToZeroTopicPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
+      batchPublish: true,
       canRelayMessage: true,
+      messageProcessingConcurrency: 128,
+      maxInboundStreams: 32,
+      maxOutboundStreams: 32,
       directPeers: options.directPeers || [],
       emitSelf: false,
       fallbackToFloodsub: fallbackToFloodsub,
@@ -151,7 +154,7 @@ export class LibP2PNode {
         appSpecificScore: (peerId) => {
           const score = this._peerScores?.get(peerId) ?? 0;
           if (options.allowlistedImmunePeers?.includes(peerId)) {
-            if (score < -100) {
+            if (score < -10) {
               log.warn({ peerId, score }, "GossipSub: Allowlisted peer would have been kicked out.");
             }
 
@@ -197,7 +200,9 @@ export class LibP2PNode {
         transports: [tcp()],
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
-        pubsub: gossip,
+        services: {
+          pubsub: gossip,
+        },
       }),
       (e) => {
         log.error({ identity: this.identity, error: e }, "failed to create libp2p node");
@@ -241,7 +246,7 @@ export class LibP2PNode {
   }
 
   async isStarted(): Promise<boolean> {
-    return this._node?.isStarted() ?? false;
+    return this._node?.status === "started";
   }
 
   async stop() {
@@ -250,7 +255,7 @@ export class LibP2PNode {
 
   /** Return if we have any inbound P2P connections */
   hasInboundConnections(): boolean {
-    return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
+    return this._node?.getConnections().some((conn) => conn.direction === "inbound") ?? false;
   }
 
   allPeerIds(): string[] {
@@ -272,7 +277,7 @@ export class LibP2PNode {
    * @param message - The message to generate an ID for
    * @returns The message ID as an Uint8Array
    */
-  getMessageId(message: GossipSubMessage): Uint8Array {
+  async getMessageId(message: GossipSubMessage): Promise<Uint8Array> {
     if (message.topic.includes(GossipNode.primaryTopicForNetwork(this._network))) {
       // check if message is a Farcaster Protocol Message
       const protocolMessage = LibP2PNode.decodeMessage(message.data);
@@ -282,7 +287,7 @@ export class LibP2PNode {
         }
       }
     }
-    return msgIdFnStrictNoSign(message);
+    return await msgIdFnStrictNoSign(message);
   }
 
   static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
@@ -331,17 +336,16 @@ export class LibP2PNode {
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: MultiAddr.Multiaddr) {
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
-      log.error({}, "address book missing for gossipNode");
-    } else {
-      const addResult = await ResultAsync.fromPromise(
-        addressBook.add(peerId, [multiaddr]),
-        (error) => new HubError("unavailable", error as Error),
-      );
-      if (addResult.isErr()) {
-        log.error({ error: addResult.error, peerId }, "failed to add contact info to address book");
-      }
+    if (!this._node?.peerStore) {
+      log.error({}, "peer store missing for gossipNode");
+      return;
+    }
+    const result = await ResultAsync.fromPromise(
+      this._node.peerStore.save(peerId, { multiaddrs: [multiaddr] }),
+      (error) => new HubError("unavailable", error as Error),
+    );
+    if (result.isErr()) {
+      log.error({ error: result.error, peerId }, "failed to add contact info to address book");
     }
   }
 
@@ -362,18 +366,17 @@ export class LibP2PNode {
       }
     }
 
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
+    if (!this._node?.peerStore) {
       log.error({}, "address book missing for gossipNode");
     } else {
-      await addressBook.delete(peerId);
+      await this._node.peerStore.delete(peerId);
     }
   }
 
   async connectionStats(): Promise<{ inbound: number; outbound: number }> {
     const [inbound, outbound] = this._node?.getConnections()?.reduce(
       (acc, conn) => {
-        acc[conn.stat.direction === "inbound" ? 0 : 1]++;
+        acc[conn.direction === "inbound" ? 0 : 1]++;
         return acc;
       },
       [0, 0],
@@ -384,9 +387,11 @@ export class LibP2PNode {
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
     const existingConnections = this._node?.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
-      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
-      if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
+      const knownAddrs = await this._node?.peerStore.get(peerId);
+      if (knownAddrs && !knownAddrs.addresses.find((addr) => addr.multiaddr.equals({ bytes: conn.remoteAddr.bytes }))) {
+        await this._node?.peerStore.merge(peerId, {
+          multiaddrs: [conn.remoteAddr],
+        });
       }
     }
 
@@ -466,7 +471,7 @@ export class LibP2PNode {
 
     this.gossip?.reportMessageValidationResult(
       messageId,
-      propagationSource,
+      propagationSource.toString(),
       isValid ? TopicValidatorResult.Accept : TopicValidatorResult.Ignore,
     );
   }
@@ -717,7 +722,7 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       statsd().gauge("gossip.worker.gossip_message_size_bytes", contactInfo.length, 1, { method: "gossipContactInfo" });
 
       const publishResult = Result.combine(await libp2pNode.gossipContactInfo(ContactInfoContent.decode(contactInfo)));
-      const flattenedPeerIds = publishResult.isOk() ? publishResult.value.flatMap((r) => r.recipients) : [];
+      const flattenedPeerIds: PeerId[] = publishResult.isOk() ? publishResult.value.flatMap((r) => r.recipients) : [];
 
       parentPort?.postMessage({
         methodCallId,
