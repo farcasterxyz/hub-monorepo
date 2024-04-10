@@ -434,8 +434,8 @@ class Engine extends TypedEmitter<EngineEvents> {
     ];
 
     await Promise.all(
-      stores.map(async (store, j) => {
-        const storeMessages = messagesByStore[j] as IndexedMessage[];
+      stores.map(async (store, storeIndex) => {
+        const storeMessages = messagesByStore[storeIndex] as IndexedMessage[];
 
         const storeResults: Map<number, HubResult<number>> = await store.mergeMessages(
           storeMessages.map((m) => m.message),

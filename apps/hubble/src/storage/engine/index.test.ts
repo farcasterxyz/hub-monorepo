@@ -991,6 +991,75 @@ describe("mergeMessages", () => {
     }
     expect(new Set(mergedMessages)).toEqual(new Set([castAdd, reactionAdd, linkAdd, userDataAdd, verificationAdd]));
   });
+
+  test("Correctly handles incorrect messages per store", async () => {
+    const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+    const results = await engine.mergeMessages([castAdd, castAdd2, castAdd2, linkAdd]);
+    expect(results.size).toBe(4);
+
+    expect(results.get(0)).toBeInstanceOf(Ok);
+    expect(results.get(1)).toBeInstanceOf(Ok);
+    expect(results.get(2)).toMatchObject(err({ errCode: "bad_request.duplicate" }));
+    expect(results.get(3)).toBeInstanceOf(Ok);
+  });
+
+  test("Handles validation errors", async () => {
+    const badCastAdd = await Factories.CastAddMessage.create({ data: { fid: 0, network } }, { transient: { signer } });
+    let results = await engine.mergeMessages([verificationAdd, badCastAdd, castAdd]);
+    expect(results.size).toBe(3);
+
+    expect(results.get(0)).toBeInstanceOf(Ok);
+    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+    expect(results.get(2)).toBeInstanceOf(Ok);
+
+    const fid2 = Factories.Fid.build();
+    const signer2 = Factories.Ed25519Signer.build();
+    const custodySigner2 = Factories.Eip712Signer.build();
+    const signerKey2 = (await signer2.getSignerKey())._unsafeUnwrap();
+    const custodySignerKey2 = (await custodySigner2.getSignerKey())._unsafeUnwrap();
+    const custodyEvent2 = Factories.IdRegistryOnChainEvent.build(
+      { fid: fid2 },
+      { transient: { to: custodySignerKey2 } },
+    );
+    const signerAddEvent2 = Factories.SignerOnChainEvent.build({ fid: fid2 }, { transient: { signer: signerKey2 } });
+    const storageEvent2 = Factories.StorageRentOnChainEvent.build({ fid: fid2 });
+
+    const castAdd2 = await Factories.CastAddMessage.create(
+      { data: { fid: fid2, network } },
+      { transient: { signer: signer2 } },
+    );
+
+    // Adding without custody address is invalid
+    results = await engine.mergeMessages([reactionAdd, castAdd2]);
+    expect(results.size).toBe(2);
+
+    expect(results.get(0)).toBeInstanceOf(Ok);
+    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+
+    // Add custody address, but adding without signer is invalid
+    await engine.mergeOnChainEvent(custodyEvent2);
+    results = await engine.mergeMessages([castAdd2, linkAdd]);
+    expect(results.size).toBe(2);
+
+    expect(results.get(0)).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+    expect(results.get(1)).toBeInstanceOf(Ok);
+
+    // Add signer address, but adding without storage is invalid
+    await engine.mergeOnChainEvent(signerAddEvent2);
+    results = await engine.mergeMessages([userDataAdd, castAdd2]);
+    expect(results.size).toBe(2);
+
+    expect(results.get(0)).toBeInstanceOf(Ok);
+    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.prunable" }));
+
+    // Add the storage event, and now it should merge
+    await engine.mergeOnChainEvent(storageEvent2);
+    results = await engine.mergeMessages([castAdd2, verificationAdd]);
+    expect(results.size).toBe(2);
+
+    expect(results.get(0)).toBeInstanceOf(Ok);
+    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.duplicate" })); // verificationAdd is duplicate (It has already been merged above)
+  });
 });
 
 describe("revokeMessagesBySigner", () => {
