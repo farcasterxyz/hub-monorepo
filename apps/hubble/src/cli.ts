@@ -134,7 +134,7 @@ app
   .option("--enable-snapshot-to-s3", "Enable daily snapshots to be uploaded to S3. (default: disabled)")
   .option("--s3-snapshot-bucket <bucket>", "The S3 bucket to upload snapshots to")
   .option("--disable-snapshot-sync", "Disable syncing from snapshots. (default: enabled)")
-  .option("--catchup-sync-with-snapshot [boolean]", "Enable catchup sync with snapshot. (default: disabled)")
+  .option("--catchup-sync-with-snapshot [boolean]", "Enable catchup sync with snapshot. (default: enabled)")
   .option(
     "--catchup-sync-snapshot-message-limit <number>",
     `Difference in message count before triggering snapshot sync. (default: ${DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT})`,
