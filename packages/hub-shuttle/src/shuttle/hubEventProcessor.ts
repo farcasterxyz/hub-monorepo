@@ -2,6 +2,7 @@ import { HubEvent, isMergeMessageHubEvent, MergeMessageHubEvent, Message } from 
 import { DB } from "./db";
 import { MessageProcessor } from "./messageProcessor";
 import { MessageHandler } from "./interfaces";
+import { log } from "../log";
 
 export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {
@@ -17,7 +18,7 @@ export class HubEventProcessor {
 
   private static async processMergeMessage(db: DB, message: Message, handler: MessageHandler, wasMissed = false) {
     await db.transaction().execute(async (trx) => {
-      await MessageProcessor.storeMessage(message, trx, "merge");
+      await MessageProcessor.storeMessage(message, trx, "merge", log);
       await handler.handleMessageMerge(message, trx, "merge", wasMissed);
     });
   }
