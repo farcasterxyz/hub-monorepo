@@ -30,7 +30,7 @@
   },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
-    "start": "tsx src/app/app.ts",
+    "start": "tsx example-app/app.ts",
     "clean": "rimraf ./dist",
     "lint": "biome format src/ --write && biome check src/ --apply",
     "lint:ci": "biome ci src/",

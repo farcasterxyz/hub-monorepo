@@ -1,10 +1,10 @@
 import { FileMigrationProvider, Kysely, MigrationInfo, Migrator } from "kysely";
-import { Logger } from "../log";
+import { Logger } from "./log";
 import { err, ok, Result } from "neverthrow";
 import path from "path";
 import { promises as fs } from "fs";
 import { fileURLToPath } from "node:url";
-import { HubTables } from "../shuttle";
+import { HubTables } from "@farcaster/hub-shuttle";
 
 const createMigrator = async (db: Kysely<HubTables>, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
