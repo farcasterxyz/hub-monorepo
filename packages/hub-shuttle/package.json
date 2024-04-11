@@ -1,13 +1,13 @@
 {
   "name": "@farcaster/hub-shuttle",
   "version": "0.1.5",
-  "main": "./dist/src/index.js",
-  "module": "./dist/src/index.mjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "require": "./dist/src/index.js",
-      "import": "./dist/src/index.mjs",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
       "types": "./dist/index.d.ts"
     }
   },
