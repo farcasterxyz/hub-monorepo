@@ -1,13 +1,10 @@
-import { DB, getDbClient } from "./shuttle/db";
-import { migrateToLatest } from "./app/migration";
+import { migrateToLatest } from "./example-app/migration";
 import { log } from "./log";
-import { Kysely, sql } from "kysely";
-import { App } from "./app/app";
+import { sql } from "kysely";
+import { App } from "./example-app/app";
 import { Factories, HubEvent, HubEventType } from "@farcaster/hub-nodejs";
-import { RedisClient } from "./shuttle/redis";
-import { HubSubscriber } from "./shuttle/hubSubscriber";
+import { RedisClient, HubSubscriber, DB, getDbClient } from "./shuttle";
 import { sleep } from "./utils";
-import { MessageReconciliation } from "./shuttle/messageReconciliation";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;

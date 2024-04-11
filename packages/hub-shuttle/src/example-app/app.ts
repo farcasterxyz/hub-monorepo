@@ -1,19 +1,17 @@
-import { DB, getDbClient } from "../shuttle/db";
+import { DB, getDbClient } from "@farcaster/hub-shuttle";
 import { migrateToLatest } from "./migration";
-import { getHubClient } from "../shuttle/hub";
-import { Kysely } from "kysely";
+import { getHubClient } from "@farcaster/hub-shuttle";
 import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
-import { log } from "../log";
-import { HubSubscriber, HubSubscriberImpl } from "../shuttle/hubSubscriber";
-import { RedisClient } from "../shuttle/redis";
-import { HubEventProcessor } from "../shuttle/hubEventProcessor";
+import { log } from "./log";
+import { HubSubscriber, HubSubscriberImpl } from "@farcaster/hub-shuttle";
+import { RedisClient } from "@farcaster/hub-shuttle";
+import { HubEventProcessor } from "@farcaster/hub-shuttle";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
 import { BACKFILL_FIDS, HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL } from "./env";
 import * as process from "node:process";
 import url from "node:url";
-import { MessageReconciliation } from "../shuttle/messageReconciliation";
-import { MessageHandler, StoreMessageOperation } from "../shuttle/interfaces";
+import { MessageHandler, StoreMessageOperation, MessageReconciliation } from "@farcaster/hub-shuttle";
 
 const hubId = "shuttle";
 
