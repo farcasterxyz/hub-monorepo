@@ -1,7 +1,7 @@
 import { HubEvent, isMergeMessageHubEvent, MergeMessageHubEvent, Message } from "@farcaster/hub-nodejs";
 import { DB } from "./db";
 import { MessageProcessor } from "./messageProcessor";
-import { MessageHandler } from "./interfaces";
+import { MessageHandler } from "./";
 import { log } from "../log";
 
 export class HubEventProcessor {

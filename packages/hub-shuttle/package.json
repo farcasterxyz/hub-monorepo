@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hub-shuttle",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "./dist/src/index.js",
   "module": "./dist/src/index.mjs",
   "types": "./dist/index.d.ts",

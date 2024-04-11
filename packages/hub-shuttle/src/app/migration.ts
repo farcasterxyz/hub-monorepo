@@ -4,7 +4,7 @@ import { err, ok, Result } from "neverthrow";
 import path from "path";
 import { promises as fs } from "fs";
 import { fileURLToPath } from "node:url";
-import { HubTables } from "../shuttle/db";
+import { HubTables } from "../shuttle";
 
 const createMigrator = async (db: Kysely<HubTables>, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));

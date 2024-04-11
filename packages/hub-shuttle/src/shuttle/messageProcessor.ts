@@ -1,8 +1,8 @@
 import { Message, validations } from "@farcaster/hub-nodejs";
 import { DB, InsertableMessageRow } from "./db";
 import { bytesToHex, convertProtobufMessageBodyToJson, farcasterTimeToDate } from "../utils";
-import { StoreMessageOperation } from "./interfaces";
 import { pino } from "pino";
+import { StoreMessageOperation } from "./";
 
 export class MessageProcessor {
   static async storeMessage(
