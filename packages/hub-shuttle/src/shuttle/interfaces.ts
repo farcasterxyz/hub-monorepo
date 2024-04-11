@@ -12,3 +12,6 @@ export type StoreMessageOperation = "merge" | "delete" | "revoke" | "prune";
 export interface MessageHandler {
   handleMessageMerge(message: Message, txn: DB, operation: StoreMessageOperation, wasMissed: boolean): Promise<void>;
 }
+
+// export only typescript file creates an empty mjs which breaks imports. https://github.com/microsoft/TypeScript/issues/47470
+function noop() {}

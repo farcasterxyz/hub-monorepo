@@ -1,13 +1,6 @@
 import { DeleteQueryBuilder, InsertQueryBuilder, SelectQueryBuilder, UpdateQueryBuilder } from "kysely";
 import { format as formatSql } from "sql-formatter";
-import {
-  bytesToBase58,
-  bytesToHexString,
-  fromFarcasterTime,
-  Message,
-  MessageType,
-  Protocol,
-} from "@farcaster/hub-nodejs";
+import { bytesToBase58, fromFarcasterTime, Message, MessageType, Protocol } from "@farcaster/hub-nodejs";
 import { MessageBodyJson, VerificationProtocol } from "./shuttle/db";
 
 export function extendStackTrace(
@@ -69,6 +62,10 @@ export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function bytesToHex(value: Uint8Array): `0x${string}` {
+  return `0x${Buffer.from(value).toString("hex")}`;
+}
+
 export function farcasterTimeToDate(time: number | null | undefined): Date | null | undefined {
   if (time === undefined) return undefined;
   if (time === null) return null;
@@ -81,7 +78,7 @@ export function protocolBytesToString(bytes: Uint8Array, protocol: Protocol | Ve
   switch (protocol) {
     case Protocol.ETHEREUM:
     case "ethereum":
-      return bytesToHexString(bytes)._unsafeUnwrap();
+      return bytesToHex(bytes);
     case Protocol.SOLANA:
     case "solana":
       return bytesToBase58(bytes)._unsafeUnwrap();
@@ -117,7 +114,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
 
       for (const embed of embedsFromCastAddBody) {
         if (typeof embed.castId !== "undefined") {
-          embeds.push(bytesToHexString(embed.castId.hash)._unsafeUnwrap());
+          embeds.push(bytesToHex(embed.castId.hash));
         }
         // We are going "one of" approach on the embed Cast Id and URL.
         // If both are set its likely a client attributing itself with the same
@@ -135,16 +132,14 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         mentions,
         mentionsPositions,
         text,
-        parent: parentCastId
-          ? { fid: parentCastId.fid, hash: bytesToHexString(parentCastId.hash)._unsafeUnwrap() }
-          : parentUrl,
+        parent: parentCastId ? { fid: parentCastId.fid, hash: bytesToHex(parentCastId.hash) } : parentUrl,
       };
       break;
     }
     case MessageType.CAST_REMOVE: {
       if (!message.data.castRemoveBody) throw new Error("Missing castRemoveBody");
       const { targetHash } = message.data.castRemoveBody;
-      body = { targetHash: bytesToHexString(targetHash)._unsafeUnwrap() };
+      body = { targetHash: bytesToHex(targetHash) };
       break;
     }
     case MessageType.REACTION_ADD:
@@ -155,7 +150,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
           type,
           targetCastId: { fid, hash },
         } = message.data.reactionBody;
-        body = { type, target: { fid, hash: bytesToHexString(hash)._unsafeUnwrap() } };
+        body = { type, target: { fid, hash: bytesToHex(hash) } };
       } else if (message.data.reactionBody.targetUrl) {
         const { type, targetUrl } = message.data.reactionBody;
         body = { type, target: targetUrl };
@@ -211,9 +206,9 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       const { timestamp, name, owner, signature, fid, type } = message.data.usernameProofBody;
       body = {
         timestamp,
-        name: bytesToHexString(name)._unsafeUnwrap(),
-        owner: bytesToHexString(owner)._unsafeUnwrap(),
-        signature: bytesToHexString(signature)._unsafeUnwrap(),
+        name: bytesToHex(name),
+        owner: bytesToHex(owner),
+        signature: bytesToHex(signature),
         fid,
         type,
       };
