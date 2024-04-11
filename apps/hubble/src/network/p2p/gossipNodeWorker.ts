@@ -755,6 +755,25 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       });
       break;
     }
+    case "gossipBundle": {
+      const specificMsg = msg as LibP2PNodeMessage<"gossipBundle">;
+      const [messageBundle] = specificMsg.args;
+
+      const combinedResult = Result.combine(await libp2pNode.broadcastBundle(MessageBundle.decode(messageBundle)));
+
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"gossipBundle">({
+          success: combinedResult.isOk(),
+          errorMessage: combinedResult.isErr() ? combinedResult.error.message : undefined,
+          errorType: combinedResult.isErr() ? combinedResult.error.errCode : undefined,
+          peerIds: combinedResult?.isOk()
+            ? combinedResult.value.flatMap((r) => r.recipients).map((p) => exportToProtobuf(p))
+            : [],
+        }),
+      });
+      break;
+    }
     case "gossipContactInfo": {
       const specificMsg = msg as LibP2PNodeMessage<"gossipContactInfo">;
       const [contactInfo] = specificMsg.args;

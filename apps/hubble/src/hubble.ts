@@ -1626,6 +1626,8 @@ export class Hub implements HubInterface {
           }
         }),
       );
+    } else {
+      dedupedMessages.push(...messageBundle.messages.map((message, i) => ({ i, message: ensureMessageData(message) })));
     }
 
     // Merge the messages
@@ -1687,6 +1689,11 @@ export class Hub implements HubInterface {
         success += 1;
       }
       finalResults.push(result);
+    }
+
+    // When submitting a messageBundle via RPC, we want to gossip it to other nodes
+    if (success > 0 && source === "rpc") {
+      void this.gossipNode.gossipBundle(messageBundle);
     }
 
     log.info(

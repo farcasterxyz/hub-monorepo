@@ -29,7 +29,6 @@ import {
   bytesCompare,
   CastAddMessage,
   CastRemoveMessage,
-  getFarcasterTime,
   LinkAddMessage,
   LinkRemoveMessage,
   ReactionAddMessage,
