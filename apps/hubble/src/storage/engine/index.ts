@@ -325,6 +325,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   async mergeMessage(message: Message): HubAsyncResult<number> {
+    // TODO: Note, we can just call this.mergeMessages([message]) when bundles are fully rolled out, to
+    // remove the need for this method
     const validatedMessage = await this.validateMessage(message);
     if (validatedMessage.isErr()) {
       return err(validatedMessage.error);
@@ -381,12 +383,6 @@ class Engine extends TypedEmitter<EngineEvents> {
 
       switch (setPostfix) {
         case UserPostfix.LinkMessage: {
-          const versionCheck = ensureAboveTargetFarcasterVersion("2023.4.19");
-          if (versionCheck.isErr()) {
-            results.set(i, err(versionCheck.error));
-            continue;
-          }
-
           linkMessages.push({ i, message });
           break;
         }
@@ -461,11 +457,6 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     switch (setPostfix) {
       case UserPostfix.LinkMessage: {
-        const versionCheck = ensureAboveTargetFarcasterVersion("2023.4.19");
-        if (versionCheck.isErr()) {
-          return err(versionCheck.error);
-        }
-
         return ResultAsync.fromPromise(this._linkStore.merge(message), (e) => e as HubError);
       }
       case UserPostfix.ReactionMessage: {
