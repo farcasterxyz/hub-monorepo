@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.11.9
+
+### Patch Changes
+
+- 5ca5a4a5: feat: Add gossip MessageBundles
+- Updated dependencies [5ca5a4a5]
+  - @farcaster/core@0.14.9
+
 ## 0.11.8
 
 ### Patch Changes

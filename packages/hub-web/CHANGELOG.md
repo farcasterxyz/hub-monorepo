@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.8.6
+
+### Patch Changes
+
+- 5ca5a4a5: feat: Add gossip MessageBundles
+- Updated dependencies [5ca5a4a5]
+  - @farcaster/core@0.14.9
+
 ## 0.8.5
 
 ### Patch Changes
