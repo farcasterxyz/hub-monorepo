@@ -10,10 +10,10 @@ import { statsd } from "../../utils/statsd.js";
 import { getHubState, putHubState } from "../../storage/db/hubState.js";
 import { sleep } from "../../utils/crypto.js";
 
-export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "10 8 * * *"; // Every day at 8:10 UTC (00:10 am PST)
+export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "10 20 * * *"; // Every day at 20:10 UTC (00:10 pm PST)
 
 // How much time to allocate to validating and revoking each fid.
-// 50 fids per second, which translates to 1/14th of the FIDs will be checked in just over 2 hours.
+// 50 fids per second, which translates to 1/28th of the FIDs will be checked in just over 2 hours.
 const TIME_SCHEDULED_PER_FID_MS = 1000 / 50;
 
 const log = logger.child({
@@ -189,7 +189,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
     ).unwrapOr(0);
 
     // Every 14 days, we do a full scan of all messages for this FID, to make sure we don't miss anything
-    const doFullScanForFid = this._checkAllFids && fid % 14 === new Date(Date.now()).getDate() % 14;
+    const doFullScanForFid = this._checkAllFids && fid % 28 === new Date(Date.now()).getDate() % 28;
 
     if (!doFullScanForFid && latestSignerEventTs < lastJobTimestamp) {
       return ok(0);

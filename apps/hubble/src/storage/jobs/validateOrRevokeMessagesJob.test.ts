@@ -95,7 +95,7 @@ describe("ValidateOrRevokeMessagesJob", () => {
     expect(result2._unsafeUnwrap()).toBe(1);
   });
 
-  test("doJobForFid checks message when fid % 14 matches", async () => {
+  test("doJobForFid checks message when fid % 28 matches", async () => {
     const engine2 = new Engine(db, network, undefined, publicClient);
     const job2 = new ValidateOrRevokeMessagesJobScheduler(db, engine2);
     await engine2.start();
