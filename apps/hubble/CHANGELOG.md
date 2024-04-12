@@ -1,5 +1,18 @@
 # @farcaster/hubble
 
+## 1.11.6
+
+### Patch Changes
+
+- 6b4ea835: chore: Run validateOrRevokeMessagesJob once a month for each fid
+- f1ffdd73: fix: Cleanup DB directory after destroy and reset TrieDB before catchupSyncwithSnapshot
+- ce3f4241: perf: Use threadpool to getMany
+- 86566b15: tests: Cleanup after tests properly
+- 36191e5a: chore: update catchup sync with snapshot default to true
+- 5ca5a4a5: feat: Add gossip MessageBundles
+- Updated dependencies [5ca5a4a5]
+  - @farcaster/hub-nodejs@0.11.9
+
 ## 1.11.5
 
 ### Patch Changes
@@ -25,7 +38,7 @@
   - Add CLI flag `--diagnostic-report-url <url>`, and environment variables `HUB_DIAGNOSTICS_API_KEY`, `HUB_DIAGNOSTICS_APP_KEY` environment variables to pass in configurable DataDog-compatible URL and authorization tokens.
 
   fix(hubble): Add `L2_RPC_AUTHORIZATION_HEADER` environment variable for use with L2 RPC URLs that require authorization headers for access.
-  
+
 ## 1.11.4
 
 ### Patch Changes

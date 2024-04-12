@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.9
+
+### Patch Changes
+
+- 5ca5a4a5: feat: Add gossip MessageBundles
+
 ## 0.14.8
 
 ### Patch Changes
