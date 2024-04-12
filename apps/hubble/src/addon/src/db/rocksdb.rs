@@ -640,23 +640,28 @@ impl RocksDB {
             key_vec.push(key.as_slice(&cx).to_vec());
         }
 
-        let result = match db.get_many(&key_vec) {
-            Ok(result) => result,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            let js_array = JsArray::new(&mut cx, result.len());
-            for (i, value) in result.iter().enumerate() {
-                let mut buffer = cx.buffer(value.len())?;
-                let target = buffer.as_mut_slice(&mut cx);
-                target.copy_from_slice(&value);
-                js_array.set(&mut cx, i as u32, buffer)?;
-            }
 
-            Ok(js_array)
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let result = db.get_many(&key_vec);
+
+            deferred.settle_with(&channel, move |mut cx| {
+                let result = match result {
+                    Ok(r) => r,
+                    Err(e) => return hub_error_to_js_throw(&mut cx, e),
+                };
+
+                let js_array = JsArray::new(&mut cx, result.len());
+                for (i, value) in result.iter().enumerate() {
+                    let mut buffer = cx.buffer(value.len())?;
+                    let target = buffer.as_mut_slice(&mut cx);
+                    target.copy_from_slice(&value);
+                    js_array.set(&mut cx, i as u32, buffer)?;
+                }
+
+                Ok(js_array)
+            });
         });
 
         Ok(promise)
