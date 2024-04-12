@@ -49,7 +49,7 @@ describe("hubble startup tests", () => {
     };
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await fnameServer.stop();
 
     // rm -rf the rocksdb directory

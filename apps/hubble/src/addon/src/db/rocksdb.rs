@@ -1165,7 +1165,13 @@ mod tests {
 
     #[test]
     fn test_count_keys_at_prefix() {
-        let db = crate::db::RocksDB::new("/tmp/testdb").unwrap();
+        let tmp_path = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .as_os_str()
+            .to_string_lossy()
+            .to_string();
+        let db = crate::db::RocksDB::new(&tmp_path).unwrap();
         db.open().unwrap();
 
         // Add some keys
@@ -1197,5 +1203,8 @@ mod tests {
         // Count keys at prefix with a specific prefix that doesn't exist
         let count = db.count_keys_at_prefix(b"key201");
         assert_eq!(count.unwrap(), 0);
+
+        // Cleanup
+        db.destroy().unwrap();
     }
 }
