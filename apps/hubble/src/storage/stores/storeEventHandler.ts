@@ -29,7 +29,6 @@ import {
   bytesCompare,
   CastAddMessage,
   CastRemoveMessage,
-  getFarcasterTime,
   LinkAddMessage,
   LinkRemoveMessage,
   ReactionAddMessage,
@@ -180,9 +179,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       logger.debug({ fid }, "fid has no registered storage, would be pruned");
     }
 
-    return units.map((u) => {
-      return u;
-    });
+    return units;
   }
 
   async getUsage(fid: number, store: StoreType): HubAsyncResult<StoreUsage> {

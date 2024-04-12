@@ -7,12 +7,12 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
-import { HubError, HubErrorCode, validations } from "@farcaster/hub-nodejs";
+import { HubError, HubErrorCode, HubResult, validations } from "@farcaster/hub-nodejs";
 import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
 import { logger } from "./utils/logger.js";
-import { Result } from "neverthrow";
+import { Result, err, ok } from "neverthrow";
 import { NodeMetadata, TrieSnapshot } from "network/sync/merkleTrie.js";
 
 // Also set up the log flush listener
@@ -379,6 +379,32 @@ export const rsGetMessage = async (
 /** This is dynamically dispatched to any Store that you pass in */
 export const rsMerge = async (store: RustDynStore, messageBytes: Uint8Array): Promise<Buffer> => {
   return await lib.merge.call(store, messageBytes);
+};
+
+export const rsMergeMany = async (
+  store: RustDynStore,
+  messagesBytes: Uint8Array[],
+): Promise<Map<number, HubResult<Buffer>>> => {
+  const mergeResults: Map<number, HubResult<Buffer>> = new Map();
+
+  const results = await lib.mergeMany.call(store, messagesBytes);
+
+  // Parse the results
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (typeof result === "string") {
+      // This was an error
+      mergeResults.set(i, err(rustErrorToHubError(new Error(result))));
+    } else if (result instanceof Buffer) {
+      // This is a Buffer
+      mergeResults.set(i, ok(result));
+    } else {
+      // This is an unknown type
+      mergeResults.set(i, err(new HubError("unknown", `Unknown error in mergeMany: ${result}`)));
+    }
+  }
+
+  return mergeResults;
 };
 
 /** Revoke a message from the store */

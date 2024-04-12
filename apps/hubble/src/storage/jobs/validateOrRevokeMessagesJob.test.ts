@@ -63,7 +63,7 @@ describe("ValidateOrRevokeMessagesJob", () => {
 
   beforeEach(async () => {
     engine = new Engine(db, network, undefined, publicClient);
-    job = new ValidateOrRevokeMessagesJobScheduler(db, engine);
+    job = new ValidateOrRevokeMessagesJobScheduler(db, engine, false);
 
     nowOrig = Date.now;
     Date.now = () => 1711056649337; // 21 march 2024
@@ -96,28 +96,33 @@ describe("ValidateOrRevokeMessagesJob", () => {
   });
 
   test("doJobForFid checks message when fid % 14 matches", async () => {
-    // There is nothing in the DB, so if we add a message, it should get checked.
-    await engine.mergeOnChainEvent(custodyEvent);
-    await engine.mergeOnChainEvent(signerEvent);
-    await engine.mergeOnChainEvent(storageEvent);
+    const engine2 = new Engine(db, network, undefined, publicClient);
+    const job2 = new ValidateOrRevokeMessagesJobScheduler(db, engine2);
+    await engine2.start();
 
-    await engine.mergeMessage(castAdd);
+    // There is nothing in the DB, so if we add a message, it should get checked.
+    await engine2.mergeOnChainEvent(custodyEvent);
+    await engine2.mergeOnChainEvent(signerEvent);
+    await engine2.mergeOnChainEvent(storageEvent);
+
+    await engine2.mergeMessage(castAdd);
 
     const blockTimeToFCTime = toFarcasterTime(1000 * signerEvent.blockTimestamp)._unsafeUnwrap();
 
     const nowOrig = Date.now;
     Date.now = () => 1709328889000; // 1 march 2024
-    const result = await job.doJobForFid(blockTimeToFCTime + 1, fid);
+    const result = await job2.doJobForFid(blockTimeToFCTime + 1, fid);
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toBe(1);
 
     // But if date is 2nd, it should not check the message
     Date.now = () => 1709415289000; // 2 march 2024
-    const result1 = await job.doJobForFid(blockTimeToFCTime + 1, fid);
+    const result1 = await job2.doJobForFid(blockTimeToFCTime + 1, fid);
     expect(result1.isOk()).toBe(true);
     expect(result1._unsafeUnwrap()).toBe(0);
 
-    Date.now = nowOrig;
+    await engine2.stop();
+    job2.stop();
   });
 
   test("doJobForFid doesn't check message if lastJobTimestamp > signer", async () => {

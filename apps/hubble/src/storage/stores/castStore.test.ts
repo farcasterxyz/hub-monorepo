@@ -319,6 +319,15 @@ describe("merge", () => {
       expect(mergeEvents).toEqual([[castAdd, []]]);
     });
 
+    test("succeeds with mergeMany", async () => {
+      const results = await store.mergeMessages([castAdd]);
+      expect(results.size).toEqual(1);
+      expect(results.get(0)?._unsafeUnwrap()).toBeGreaterThan(0);
+      await assertCastAddWins(castAdd);
+
+      expect(mergeEvents).toEqual([[castAdd, []]]);
+    });
+
     test("fails if merged twice", async () => {
       await expect(store.merge(castAdd)).resolves.toBeGreaterThan(0);
       await expect(store.merge(castAdd)).rejects.toEqual(
@@ -672,7 +681,6 @@ describe("pruneMessages", () => {
   let add3: CastAddMessage;
   let add4: CastAddMessage;
   let add5: CastAddMessage;
-  let addOld1: CastAddMessage;
 
   let remove1: CastRemoveMessage;
   let remove2: CastRemoveMessage;
@@ -703,7 +711,6 @@ describe("pruneMessages", () => {
     add3 = await generateAddWithTimestamp(fid, time + 3);
     add4 = await generateAddWithTimestamp(fid, time + 4);
     add5 = await generateAddWithTimestamp(fid, time + 5);
-    addOld1 = await generateAddWithTimestamp(fid, time - 60 * 60);
 
     remove1 = await generateRemoveWithTimestamp(fid, time + 1, add1);
     remove2 = await generateRemoveWithTimestamp(fid, time + 2, add2);
@@ -725,6 +732,25 @@ describe("pruneMessages", () => {
       const messages = [add1, add2, add3, add4, add5];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
+      }
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+
+      expect(prunedMessages).toEqual([add1, add2]);
+
+      for (const message of prunedMessages as CastAddMessage[]) {
+        const getAdd = () => sizePrunedStore.getCastAdd(fid, message.hash);
+        await expect(getAdd()).rejects.toThrow(HubError);
+      }
+    });
+
+    test("prunes earliest add messages with bundles", async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      const mergeResults = await sizePrunedStore.mergeMessages(messages);
+      expect(mergeResults.size).toEqual(messages.length);
+      for (const result of mergeResults.values()) {
+        expect(result.isOk()).toBeTruthy();
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
@@ -822,6 +848,31 @@ describe("pruneMessages", () => {
       await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(
         makeTsHash(remove2.data.timestamp, remove2.hash),
       );
+
+      const result = await sizePrunedStore.pruneMessages(fid);
+      expect(result.isOk()).toBeTruthy();
+
+      expect(prunedMessages).toEqual([remove2]);
+    });
+
+    test("fails to merge messages in bundles which would be immediately pruned", async () => {
+      await expect(eventHandler.getEarliestTsHash(fid, UserPostfix.CastMessage)).resolves.toEqual(ok(undefined));
+
+      // These should all merge fine
+      let results = await sizePrunedStore.mergeMessages([add3, add2, remove2, add4]);
+      expect(results.size).toEqual(4);
+      for (const result of results.values()) {
+        expect(result.isOk()).toBeTruthy();
+        expect(result._unsafeUnwrap()).toBeGreaterThan(0);
+      }
+
+      // Since the size = 3, remove1 and add1 will fail to merge
+      results = await sizePrunedStore.mergeMessages([remove1, add1, add5]);
+      // remove1 and add1 should fail to merge
+      expect(results.size).toEqual(3);
+      expect(results.get(0)?._unsafeUnwrapErr().errCode).toEqual("bad_request.prunable");
+      expect(results.get(1)?._unsafeUnwrapErr().errCode).toEqual("bad_request.prunable");
+      expect(results.get(2)?._unsafeUnwrap()).toBeGreaterThan(0);
 
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
