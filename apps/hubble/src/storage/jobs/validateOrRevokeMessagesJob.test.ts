@@ -95,7 +95,7 @@ describe("ValidateOrRevokeMessagesJob", () => {
     expect(result2._unsafeUnwrap()).toBe(1);
   });
 
-  test("doJobForFid checks message when fid % 14 matches", async () => {
+  test("doJobForFid checks message when fid % 28 matches", async () => {
     // There is nothing in the DB, so if we add a message, it should get checked.
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
