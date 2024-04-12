@@ -28,9 +28,13 @@ export class ValidateOrRevokeMessagesJobScheduler {
   private _cronTask?: cron.ScheduledTask;
   private _running = false;
 
-  constructor(db: RocksDB, engine: Engine) {
+  // Wether to check all messages for fid%14 == new Date().getDate()%14
+  private _checkAllFids;
+
+  constructor(db: RocksDB, engine: Engine, checkAllFids = true) {
     this._db = db;
     this._engine = engine;
+    this._checkAllFids = checkAllFids;
   }
 
   start(cronSchedule?: string) {
@@ -184,8 +188,8 @@ export class ValidateOrRevokeMessagesJobScheduler {
         }, 0),
     ).unwrapOr(0);
 
-    // Every 28 days, we do a full scan of all messages for this FID, to make sure we don't miss anything
-    const doFullScanForFid = fid % 28 === new Date(Date.now()).getDate() % 28;
+    // Every 14 days, we do a full scan of all messages for this FID, to make sure we don't miss anything
+    const doFullScanForFid = this._checkAllFids && fid % 28 === new Date(Date.now()).getDate() % 28;
 
     if (!doFullScanForFid && latestSignerEventTs < lastJobTimestamp) {
       return ok(0);

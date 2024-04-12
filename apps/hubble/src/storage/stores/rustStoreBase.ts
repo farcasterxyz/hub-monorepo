@@ -1,4 +1,4 @@
-import { HubAsyncResult, HubError, HubEvent, Message, StoreType, getDefaultStoreLimit } from "@farcaster/hub-nodejs";
+import { HubAsyncResult, HubError, HubEvent, HubResult, Message } from "@farcaster/hub-nodejs";
 import {
   RustDynStore,
   rsGetAllMessagesByFid,
@@ -7,12 +7,13 @@ import {
   rsPruneMessages,
   revoke,
   rustErrorToHubError,
+  rsMergeMany,
 } from "../../rustfunctions.js";
 import StoreEventHandler from "./storeEventHandler.js";
-import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
-import { UserMessagePostfix, UserPostfix } from "../db/types.js";
+import { MessagesPage, PageOptions } from "./types.js";
+import { UserMessagePostfix } from "../db/types.js";
+import RocksDB from "../db/rocksdb.js";
 import { ResultAsync, err, ok } from "neverthrow";
-import RocksDB from "storage/db/rocksdb.js";
 
 /**
  * Base class with common methods for all stores implemented in Rust
@@ -40,6 +41,59 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
 
   get pruneSizeLimit(): number {
     return this._pruneSizeLimit;
+  }
+
+  async mergeMessages(messages: Message[]): Promise<Map<number, HubResult<number>>> {
+    const mergeResults: Map<number, HubResult<number>> = new Map();
+
+    // First, filter out any prunable messages
+    const encodedMessages: { i: number; bytes: Uint8Array }[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i] as Message;
+      const prunableResult = await this._eventHandler.isPrunable(
+        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+        message as any,
+        this._postfix,
+        this._pruneSizeLimit,
+      );
+      if (prunableResult.isErr()) {
+        mergeResults.set(i, err(prunableResult.error));
+      } else if (prunableResult.value) {
+        mergeResults.set(i, err(new HubError("bad_request.prunable", "message would be pruned")));
+      } else {
+        encodedMessages.push({ i, bytes: Message.encode(message).finish() });
+      }
+    }
+
+    const results: HubResult<Map<number, HubResult<Buffer>>> = await ResultAsync.fromPromise(
+      rsMergeMany(
+        this._rustStore,
+        encodedMessages.map((m) => m.bytes),
+      ),
+      rustErrorToHubError,
+    );
+
+    if (results.isErr()) {
+      // Set all the results to the error
+      for (const { i } of encodedMessages) {
+        mergeResults.set(i, err(results.error));
+      }
+      return mergeResults;
+    }
+
+    // Process the results
+    for (const [j, result] of results.value) {
+      const i = encodedMessages[j]?.i as number;
+      if (result.isErr()) {
+        mergeResults.set(i, err(result.error));
+      } else {
+        const hubEvent = HubEvent.decode(new Uint8Array(result.value));
+        void this._eventHandler.processRustCommitedTransaction(hubEvent);
+        mergeResults.set(i, ok(hubEvent.id));
+      }
+    }
+
+    return mergeResults;
   }
 
   async merge(message: Message): Promise<number> {

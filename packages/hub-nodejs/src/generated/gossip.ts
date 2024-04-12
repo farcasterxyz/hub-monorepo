@@ -87,6 +87,11 @@ export interface NetworkLatencyMessage {
   ackMessage?: AckMessageBody | undefined;
 }
 
+export interface MessageBundle {
+  hash: Uint8Array;
+  messages: Message[];
+}
+
 export interface GossipMessage {
   message?:
     | Message
@@ -97,6 +102,7 @@ export interface GossipMessage {
    */
   contactInfoContent?: ContactInfoContent | undefined;
   networkLatencyMessage?: NetworkLatencyMessage | undefined;
+  messageBundle?: MessageBundle | undefined;
   topics: string[];
   peerId: Uint8Array;
   version: GossipVersion;
@@ -852,11 +858,88 @@ export const NetworkLatencyMessage = {
   },
 };
 
+function createBaseMessageBundle(): MessageBundle {
+  return { hash: new Uint8Array(), messages: [] };
+}
+
+export const MessageBundle = {
+  encode(message: MessageBundle, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.hash.length !== 0) {
+      writer.uint32(10).bytes(message.hash);
+    }
+    for (const v of message.messages) {
+      Message.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MessageBundle {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMessageBundle();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.hash = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.messages.push(Message.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MessageBundle {
+    return {
+      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
+      messages: Array.isArray(object?.messages) ? object.messages.map((e: any) => Message.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: MessageBundle): unknown {
+    const obj: any = {};
+    message.hash !== undefined &&
+      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
+    if (message.messages) {
+      obj.messages = message.messages.map((e) => e ? Message.toJSON(e) : undefined);
+    } else {
+      obj.messages = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MessageBundle>, I>>(base?: I): MessageBundle {
+    return MessageBundle.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MessageBundle>, I>>(object: I): MessageBundle {
+    const message = createBaseMessageBundle();
+    message.hash = object.hash ?? new Uint8Array();
+    message.messages = object.messages?.map((e) => Message.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 function createBaseGossipMessage(): GossipMessage {
   return {
     message: undefined,
     contactInfoContent: undefined,
     networkLatencyMessage: undefined,
+    messageBundle: undefined,
     topics: [],
     peerId: new Uint8Array(),
     version: 0,
@@ -874,6 +957,9 @@ export const GossipMessage = {
     }
     if (message.networkLatencyMessage !== undefined) {
       NetworkLatencyMessage.encode(message.networkLatencyMessage, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.messageBundle !== undefined) {
+      MessageBundle.encode(message.messageBundle, writer.uint32(74).fork()).ldelim();
     }
     for (const v of message.topics) {
       writer.uint32(34).string(v!);
@@ -917,6 +1003,13 @@ export const GossipMessage = {
           }
 
           message.networkLatencyMessage = NetworkLatencyMessage.decode(reader, reader.uint32());
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.messageBundle = MessageBundle.decode(reader, reader.uint32());
           continue;
         case 4:
           if (tag != 34) {
@@ -964,6 +1057,7 @@ export const GossipMessage = {
       networkLatencyMessage: isSet(object.networkLatencyMessage)
         ? NetworkLatencyMessage.fromJSON(object.networkLatencyMessage)
         : undefined,
+      messageBundle: isSet(object.messageBundle) ? MessageBundle.fromJSON(object.messageBundle) : undefined,
       topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => String(e)) : [],
       peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
       version: isSet(object.version) ? gossipVersionFromJSON(object.version) : 0,
@@ -980,6 +1074,8 @@ export const GossipMessage = {
     message.networkLatencyMessage !== undefined && (obj.networkLatencyMessage = message.networkLatencyMessage
       ? NetworkLatencyMessage.toJSON(message.networkLatencyMessage)
       : undefined);
+    message.messageBundle !== undefined &&
+      (obj.messageBundle = message.messageBundle ? MessageBundle.toJSON(message.messageBundle) : undefined);
     if (message.topics) {
       obj.topics = message.topics.map((e) => e);
     } else {
@@ -1008,6 +1104,9 @@ export const GossipMessage = {
       (object.networkLatencyMessage !== undefined && object.networkLatencyMessage !== null)
         ? NetworkLatencyMessage.fromPartial(object.networkLatencyMessage)
         : undefined;
+    message.messageBundle = (object.messageBundle !== undefined && object.messageBundle !== null)
+      ? MessageBundle.fromPartial(object.messageBundle)
+      : undefined;
     message.topics = object.topics?.map((e) => e) || [];
     message.peerId = object.peerId ?? new Uint8Array();
     message.version = object.version ?? 0;

@@ -10,8 +10,8 @@ use crate::{
     store::make_ts_hash,
 };
 use crate::{logger::LOGGER, THREAD_POOL};
-use neon::context::Context;
-use neon::types::{Finalize, JsBuffer, JsNumber};
+use neon::types::{Finalize, JsBuffer, JsNumber, JsString};
+use neon::{context::Context, types::JsArray};
 use neon::{context::FunctionContext, result::JsResult, types::JsPromise};
 use neon::{object::Object, types::buffer::TypedArray};
 use prost::Message as _;
@@ -714,12 +714,12 @@ impl Store {
             prefix,
             &PageOptions::default(),
             |_key, value| {
-                // Value is a message, so try to decode it
-                let message = message_decode(value)?;
-
                 if count <= (prune_size_limit as u64) * units {
                     return Ok(true); // Stop the iteration, nothing left to prune
                 }
+
+                // Value is a message, so try to decode it
+                let message = message_decode(value)?;
 
                 let mut txn = self.db.txn();
                 if self.store_def.is_add_type(&message) {
@@ -780,8 +780,6 @@ impl Store {
         let message_bytes = message_bytes_result.unwrap().as_slice(&cx).to_vec();
         let message = Message::decode(message_bytes.as_slice());
 
-        // let pool = store.pool.clone();
-        // pool.lock().unwrap().execute(move || {
         let result = if message.is_err() {
             let e = message.unwrap_err();
             Err(HubError {
@@ -805,7 +803,65 @@ impl Store {
             }
             Err(e) => cx.throw_error(format!("{}/{}", e.code, e.message)),
         });
-        // });
+
+        Ok(promise)
+    }
+
+    pub fn js_merge_many(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let store = get_store(&mut cx)?;
+
+        // Get the messages array. Each message is a buffer in this array
+        let messages_array = cx.argument::<JsArray>(0).unwrap();
+        let messages = messages_array
+            .to_vec(&mut cx)?
+            .iter()
+            .map(|message_bytes| {
+                let message_bytes = message_bytes.downcast::<JsBuffer, _>(&mut cx).unwrap();
+                let message = Message::decode(message_bytes.as_slice(&cx));
+                if message.is_err() {
+                    return Err(HubError {
+                        code: "bad_request.validation_failure".to_string(),
+                        message: message.unwrap_err().to_string(),
+                    });
+                }
+                Ok(message.unwrap())
+            })
+            .collect::<Vec<_>>();
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        // We run the merge in a threadpool because it can be very CPU intensive and it will block
+        // the NodeJS main thread.
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let results = messages
+                .into_iter()
+                .map(|message| match message {
+                    Err(e) => return Err(e),
+                    Ok(message) => store.merge(&message),
+                })
+                .collect::<Vec<_>>();
+
+            deferred.settle_with(&channel, move |mut cx| {
+                let js_array = JsArray::new(&mut cx, results.len());
+                results.iter().enumerate().for_each(|(i, r)| match r {
+                    Ok(hub_event_bytes) => {
+                        let mut js_buffer = cx.buffer(hub_event_bytes.len()).unwrap();
+                        js_buffer
+                            .as_mut_slice(&mut cx)
+                            .copy_from_slice(&hub_event_bytes);
+                        js_array.set(&mut cx, i as u32, js_buffer).unwrap();
+                    }
+                    Err(e) => {
+                        let js_error_string =
+                            JsString::new(&mut cx, format!("{}/{}", e.code, e.message));
+                        js_array.set(&mut cx, i as u32, js_error_string).unwrap();
+                    }
+                });
+
+                Ok(js_array)
+            });
+        });
 
         Ok(promise)
     }

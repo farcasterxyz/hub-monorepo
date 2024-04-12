@@ -90,11 +90,12 @@ import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
-import { getFarcasterTime } from "@farcaster/core";
+import { HubResult, MessageBundle, getFarcasterTime } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import v8 from "v8";
+import { P } from "pino";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -815,6 +816,7 @@ export class Hub implements HubInterface {
       this.allowedPeerIds = allowedPeerIds;
 
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
+      this.gossipNode.updateBundleGossipPercent(networkConfig.bundleGossipPercent ?? 0);
       this.deniedPeerIds = deniedPeerIds;
 
       this.allowlistedImmunePeers = allowlistedImmunePeers;
@@ -1211,9 +1213,7 @@ export class Hub implements HubInterface {
       return Promise.resolve(err(peerIdResult.error));
     }
 
-    if (gossipMessage.message) {
-      const message = gossipMessage.message;
-
+    if (gossipMessage.message || gossipMessage.messageBundle) {
       if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
         // will eventually re-fetch and merge this message in anyway.
@@ -1237,44 +1237,88 @@ export class Hub implements HubInterface {
       const gossipMessageDelay = currentTime - messageFirstGossipedTime;
 
       // Merge the message
-      const result = await this.submitMessage(message, "gossip");
-      if (result.isOk()) {
-        if (!reportedAsInvalid) {
-          await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+      if (gossipMessage.message) {
+        const message = gossipMessage.message;
+        const result = await this.submitMessage(message, "gossip");
+        if (result.isOk()) {
+          if (!reportedAsInvalid) {
+            await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+          }
+        } else {
+          const tags: { [key: string]: string } = {
+            valid: reportedAsInvalid ? "false" : "true",
+            error_code: result.error.errCode,
+            message_type: messageTypeToName(message.data?.type),
+          };
+
+          statsd().increment("gossip.message_failure", 1, tags);
+          log.info(
+            {
+              errCode: result.error.errCode,
+              errMsg: result.error.message,
+              peerId: source.toString(),
+              origin: peerIdResult.value,
+              hash: bytesToHexString(message.hash).unwrapOr(""),
+              fid: message.data?.fid,
+              type: message.data?.type,
+              gossipDelay: gossipMessageDelay,
+              valid: !reportedAsInvalid,
+              msgId,
+            },
+            "Received bad gossip message from peer",
+          );
+          if (!reportedAsInvalid) {
+            await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+          }
         }
+        statsd().timing("gossip.message_delay", gossipMessageDelay);
+        const mergeResult = result.isOk() ? "success" : "failure";
+        statsd().timing(`gossip.message_delay.${mergeResult}`, gossipMessageDelay);
+
+        return result.map(() => undefined);
+      } else if (gossipMessage.messageBundle) {
+        const bundle = gossipMessage.messageBundle;
+        const results = await this.submitMessageBundle(bundle, "gossip");
+
+        // If at least one is Ok, report as valid
+        const atLeastOneOk = results.find((r) => r.isOk());
+        if (atLeastOneOk) {
+          if (!reportedAsInvalid) {
+            await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
+          }
+        } else {
+          const errCode = results[0]?._unsafeUnwrapErr()?.errCode as string;
+          const errMsg = results[0]?._unsafeUnwrapErr()?.message;
+
+          const tags: { [key: string]: string } = {
+            valid: reportedAsInvalid ? "false" : "true",
+            error_code: errCode,
+          };
+
+          statsd().increment("gossip.message_bundle_failure", 1, tags);
+          log.info(
+            {
+              errCode,
+              errMsg,
+              peerId: source.toString(),
+              origin: peerIdResult.value,
+              gossipDelay: gossipMessageDelay,
+              valid: !reportedAsInvalid,
+              msgId,
+            },
+            "Received bad gossip message bundle from peer",
+          );
+          if (!reportedAsInvalid) {
+            await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+          }
+        }
+        statsd().timing("gossip.message_bundle_delay", gossipMessageDelay);
+
+        return ok(undefined);
       } else {
-        const tags: { [key: string]: string } = {
-          valid: reportedAsInvalid ? "false" : "true",
-          error_code: result.error.errCode,
-          message_type: messageTypeToName(message.data?.type),
-        };
-
-        statsd().increment("gossip.message_failure", 1, tags);
-        log.info(
-          {
-            errCode: result.error.errCode,
-            errMsg: result.error.message,
-            peerId: source.toString(),
-            origin: peerIdResult.value,
-            hash: bytesToHexString(message.hash).unwrapOr(""),
-            fid: message.data?.fid,
-            type: message.data?.type,
-            gossipDelay: gossipMessageDelay,
-            valid: !reportedAsInvalid,
-            msgId,
-          },
-          "Received bad gossip message from peer",
-        );
-        if (!reportedAsInvalid) {
-          await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
-        }
+        // Return error, unknown type of message
+        return err(new HubError("bad_request.invalid_param", "Unknown message type while handlgGossipMessage"));
       }
-
-      statsd().timing("gossip.message_delay", gossipMessageDelay);
-      const mergeResult = result.isOk() ? "success" : "failure";
-      statsd().timing(`gossip.message_delay.${mergeResult}`, gossipMessageDelay);
-
-      return result.map(() => undefined);
     } else if (gossipMessage.contactInfoContent) {
       const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
       await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
@@ -1556,23 +1600,127 @@ export class Hub implements HubInterface {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
+  async submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]> {
+    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
+      // Since we're rejecting the full bundle, return an error for each message
+      return messageBundle.messages.map(() =>
+        err(new HubError("unavailable.storage_failure", "Sync trie queue is full")),
+      );
+    }
+
+    const start = Date.now();
+    const allResults: Map<number, HubResult<number>> = new Map();
+
+    const dedupedMessages: { i: number; message: Message }[] = [];
+    if (source === "gossip") {
+      // Go over all the messages and see if they are in the DB. If they are, don't bother processing them
+      await Promise.all(
+        messageBundle.messages.map(async (message, i) => {
+          if (await isMessageInDB(this.rocksDB, message)) {
+            log.debug({ source }, "submitMessageBundle rejected: Message already exists");
+            allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
+            return;
+          } else {
+            dedupedMessages.push({ i, message: ensureMessageData(message) });
+          }
+        }),
+      );
+    } else {
+      dedupedMessages.push(...messageBundle.messages.map((message, i) => ({ i, message: ensureMessageData(message) })));
+    }
+
+    // Merge the messages
+    const mergeResults = await this.engine.mergeMessages(dedupedMessages.map((m) => m.message));
+
+    for (const [j, result] of mergeResults.entries()) {
+      const message = dedupedMessages[j]?.message as Message;
+      const type = messageTypeToName(message.data?.type);
+
+      allResults.set(dedupedMessages[j]?.i as number, result);
+
+      result.match(
+        (eventId) => {
+          if (this.options.logIndividualMessages) {
+            const logData = {
+              eventId,
+              fid: message.data?.fid,
+              type: type,
+              submittedMessage: messageToLog(message),
+              source,
+            };
+            const msg = "submitMessage success";
+
+            if (source === "sync") {
+              log.debug(logData, msg);
+            } else {
+              log.info(logData, msg);
+            }
+          } else {
+            this.submitMessageLogger.log(source ?? "unknown-source");
+          }
+        },
+        (e) => {
+          // message is a reserved key in some logging systems, so we use submittedMessage instead
+          const logMessage = log.child({
+            submittedMessage: messageToLog(message),
+            source,
+          });
+          logMessage.warn({ errCode: e.errCode, source }, `submitMessage error: ${e.message}`);
+          const tags: { [key: string]: string } = {
+            error_code: e.errCode,
+            message_type: type,
+            source: source ?? "unknown-source",
+          };
+          statsd().increment("submit_message.error", 1, tags);
+        },
+      );
+    }
+
+    const totalTimeMilis = Date.now() - start;
+    statsd().timing("hub.bundle.merge_message", totalTimeMilis);
+
+    // Convert the merge results to an Array of HubResults with the key
+    const finalResults: HubResult<number>[] = [];
+    let success = 0;
+    for (let i = 0; i < allResults.size; i++) {
+      const result = allResults.get(i) as HubResult<number>;
+      if (result.isOk()) {
+        success += 1;
+      }
+      finalResults.push(result);
+    }
+
+    // When submitting a messageBundle via RPC, we want to gossip it to other nodes
+    if (success > 0 && source === "rpc") {
+      void this.gossipNode.gossipBundle(messageBundle);
+    }
+
+    log.info(
+      {
+        hash: messageBundle.hash,
+        success,
+        total: finalResults.length,
+        totalTimeMilis,
+        timePerMergeMs: totalTimeMilis / finalResults.length,
+      },
+      "submitMessageBundle merged",
+    );
+
+    return finalResults;
+  }
+
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
+    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
+      return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
+    }
+
     // If this is a dup, don't bother processing it. Only do this for gossip messages since rpc messages
     // haven't been validated yet
     if (source === "gossip" && (await isMessageInDB(this.rocksDB, submittedMessage))) {
       log.debug({ source }, "submitMessage rejected: Message already exists");
       return err(new HubError("bad_request.duplicate", "message has already been merged"));
-    }
-
-    // message is a reserved key in some logging systems, so we use submittedMessage instead
-    const logMessage = log.child({
-      submittedMessage: messageToLog(submittedMessage),
-      source,
-    });
-
-    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
-      log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
-      return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
     }
 
     const start = Date.now();
@@ -1603,6 +1751,11 @@ export class Hub implements HubInterface {
         }
       },
       (e) => {
+        // message is a reserved key in some logging systems, so we use submittedMessage instead
+        const logMessage = log.child({
+          submittedMessage: messageToLog(submittedMessage),
+          source,
+        });
         logMessage.warn({ errCode: e.errCode, source }, `submitMessage error: ${e.message}`);
         const tags: { [key: string]: string } = {
           error_code: e.errCode,

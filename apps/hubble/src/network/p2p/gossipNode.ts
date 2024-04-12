@@ -10,6 +10,7 @@ import {
   HubErrorCode,
   HubResult,
   Message,
+  MessageBundle,
 } from "@farcaster/hub-nodejs";
 import { Connection } from "@libp2p/interface-connection";
 import { PeerId } from "@libp2p/interface-peer-id";
@@ -82,6 +83,10 @@ export interface NodeOptions {
   statsdParams?: StatsDInitParams | undefined;
 }
 
+export type GossipMessageResult = {
+  bundled: boolean;
+} & PublishResult;
+
 // A common return type for several methods on the libp2p node.
 // Includes a success flag, an error message and an optional error type
 type SuccessOrError = {
@@ -108,10 +113,14 @@ export interface LibP2PNodeInterface {
   updateAllowedPeerIds: (peerIds: string[] | undefined) => Promise<void>;
   updateDeniedPeerIds: (peerIds: string[]) => Promise<void>;
   subscribe: (topic: string) => Promise<void>;
-  gossipMessage: (message: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
+  gossipMessage: (
+    message: Uint8Array,
+  ) => Promise<SuccessOrError & { bundled: boolean | undefined; peerIds: Uint8Array[] }>;
+  gossipBundle: (messages: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   reportValid: (messageId: string, propagationSource: Uint8Array, isValid: boolean) => Promise<void>;
   updateApplicationPeerScore: (peerId: string, score: number) => Promise<void>;
+  updateBundleGossipPercent: (percent: number) => Promise<void>;
 }
 
 // Extract the method names (as strings) from the LibP2PNodeInterface
@@ -391,8 +400,25 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   /** Serializes and publishes a Farcaster Message to the network */
-  async gossipMessage(message: Message): Promise<HubResult<PublishResult>> {
+  async gossipMessage(message: Message): HubAsyncResult<GossipMessageResult> {
     const result = await this.callMethod("gossipMessage", Message.encode(message).finish());
+    if (result.success) {
+      const peerIds = await Promise.all(
+        result.peerIds.map(async (peerId: Uint8Array) => await createFromProtobuf(peerId)),
+      );
+
+      return ok({
+        bundled: result.bundled ?? false,
+        recipients: peerIds,
+      });
+    } else {
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage as string));
+    }
+  }
+
+  /** Serializes and publishes a bundle to the network */
+  async gossipBundle(messageBundle: MessageBundle): HubAsyncResult<PublishResult> {
+    const result = await this.callMethod("gossipBundle", MessageBundle.encode(messageBundle).finish());
     if (result.success) {
       const peerIds = await Promise.all(
         result.peerIds.map(async (peerId: Uint8Array) => await createFromProtobuf(peerId)),
@@ -609,6 +635,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   updateApplicationPeerScore(peerId: string, score: number) {
     this.callMethod("updateApplicationPeerScore", peerId, score);
+  }
+
+  updateBundleGossipPercent(percent: number) {
+    statsd().gauge("gossip.bundle_percent", percent);
+    this.callMethod("updateBundleGossipPercent", percent);
   }
 
   async reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean): Promise<void> {

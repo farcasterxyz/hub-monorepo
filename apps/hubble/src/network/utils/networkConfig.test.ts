@@ -4,24 +4,28 @@ import { applyNetworkConfig } from "./networkConfig.js";
 
 describe("networkConfig", () => {
   const network = 2;
+  const defaultNetworkConfig = {
+    network: 2,
+    allowedPeers: [],
+    deniedPeers: [],
+    minAppVersion: APP_VERSION,
+    storageRegistryAddress: undefined,
+    keyRegistryAddress: undefined,
+    idRegistryAddress: undefined,
+    allowlistedImmunePeers: undefined,
+    strictContactInfoValidation: undefined,
+    strictNoSign: undefined,
+    keyRegistryV2Address: undefined,
+    idRegistryV2Address: undefined,
+    solanaVerificationsEnabled: undefined,
+    bundleGossipPercent: undefined,
+  };
 
   test("no change", () => {
     const existingPeerIds = ["1", "2", "3"];
 
     const networkConfig = {
-      network,
-      allowedPeers: [],
-      deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
+      ...defaultNetworkConfig,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
@@ -31,19 +35,9 @@ describe("networkConfig", () => {
 
   test("no change with undefined", () => {
     const networkConfig = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: undefined,
       deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined, undefined);
@@ -56,18 +50,9 @@ describe("networkConfig", () => {
     const existingPeerIds = undefined;
 
     const networkConfig = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: ["1", "2", "3"],
       deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
       solanaVerificationsEnabled: true,
     };
 
@@ -82,19 +67,9 @@ describe("networkConfig", () => {
     const existingPeerIds = ["1", "2", "3"];
 
     const networkConfig = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: ["4", "5"],
       deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
@@ -106,19 +81,10 @@ describe("networkConfig", () => {
     const existingPeerIds = ["1", "2", "3", "4", "5"];
 
     const networkConfig = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: [],
       deniedPeers: ["4", "5"],
       minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
@@ -131,19 +97,9 @@ describe("networkConfig", () => {
     const existingPeerIds = ["1", "2", "3"];
 
     const networkConfig = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: ["1", "2", "3", "4"],
       deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
@@ -153,19 +109,9 @@ describe("networkConfig", () => {
 
   test("denied peerIDs", () => {
     const networkConfig = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: undefined,
       deniedPeers: ["1", "2", "3"],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined, undefined);
@@ -178,19 +124,10 @@ describe("networkConfig", () => {
     const existingPeerIds = ["1", "2", "3"];
 
     const networkConfig = {
+      ...defaultNetworkConfig,
       network: 1,
       allowedPeers: ["4", "5"],
       deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
@@ -200,19 +137,10 @@ describe("networkConfig", () => {
 
   test("min app version", () => {
     const networkConfig = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: [],
       deniedPeers: [],
       minAppVersion: semver.inc(APP_VERSION, "patch") ?? "",
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result = applyNetworkConfig(networkConfig, [], [], network, [], undefined, undefined, undefined);
@@ -220,19 +148,10 @@ describe("networkConfig", () => {
 
     const prevVer = `${semver.major(APP_VERSION)}.${semver.minor(APP_VERSION)}.${semver.patch(APP_VERSION) - 1}`;
     const networkConfig2 = {
-      network,
+      ...defaultNetworkConfig,
       allowedPeers: [],
       deniedPeers: [],
       minAppVersion: prevVer,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result2 = applyNetworkConfig(networkConfig2, [], [], network, [], undefined, undefined, undefined);
@@ -243,19 +162,10 @@ describe("networkConfig", () => {
     const existingPeerIds = ["1", "2", "3"];
 
     const networkConfig = {
-      network: 2,
+      ...defaultNetworkConfig,
       allowedPeers: ["4", "5"],
       deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
       strictContactInfoValidation: true,
-      strictNoSign: undefined,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result1 = applyNetworkConfig(
@@ -279,19 +189,10 @@ describe("networkConfig", () => {
     const existingPeerIds = ["1", "2", "3"];
 
     const networkConfig = {
-      network: 2,
+      ...defaultNetworkConfig,
       allowedPeers: ["4", "5"],
       deniedPeers: [],
-      minAppVersion: APP_VERSION,
-      storageRegistryAddress: undefined,
-      keyRegistryAddress: undefined,
-      idRegistryAddress: undefined,
-      allowlistedImmunePeers: undefined,
-      strictContactInfoValidation: undefined,
       strictNoSign: true,
-      keyRegistryV2Address: undefined,
-      idRegistryV2Address: undefined,
-      solanaVerificationsEnabled: undefined,
     };
 
     const result1 = applyNetworkConfig(
