@@ -879,9 +879,12 @@ export class Hub implements HubInterface {
       log.info(`beginning snapshot sync in ${SHUTDOWN_GRACE_PERIOD_MS.toString()}ms - THIS WILL RESET THE DATABASE`);
       // Sleep for a bit to allow user some time to cancel the operation before we purge the DB
       await sleep(SHUTDOWN_GRACE_PERIOD_MS);
+
       // We use the item count in the trie RocksDB to determine if catchup sync is warranted.
       // However, the messages RocksDB will be cleared and replaced with the downloaded snapshot which contains both DBs.
+      rsDbDestroy(this.syncEngine.trie.getDb().rustDb);
       rsDbDestroy(this.rocksDB.rustDb);
+
       const snapshotResult = await this.snapshotSync(true);
       if (snapshotResult.isErr()) {
         log.error({ error: snapshotResult.error }, "failed to sync snapshot, falling back to diff sync");

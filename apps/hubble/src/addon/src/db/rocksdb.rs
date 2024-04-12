@@ -159,10 +159,16 @@ impl RocksDB {
         self.close()?;
         let path = Path::new(&self.path);
 
-        rocksdb::DB::destroy(&rocksdb::Options::default(), path).map_err(|e| HubError {
-            code: "db.internal_error".to_string(),
-            message: e.to_string(),
-        })
+        let result =
+            rocksdb::DB::destroy(&rocksdb::Options::default(), path).map_err(|e| HubError {
+                code: "db.internal_error".to_string(),
+                message: e.to_string(),
+            });
+
+        // Also rm -rf the directory, ignore any errors
+        let _ = fs::remove_dir_all(path);
+
+        result
     }
 
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
