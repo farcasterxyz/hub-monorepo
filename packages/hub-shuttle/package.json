@@ -43,6 +43,7 @@
     "@types/pg": "^8.10.3",
     "@types/pg-cursor": "^2.7.0",
     "@types/node": "^20.11.30",
+    "bullmq": "^5.7.1",
     "biome-config-custom": "*",
     "prettier-config-custom": "*"
   }

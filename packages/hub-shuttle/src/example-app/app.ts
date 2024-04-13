@@ -7,37 +7,33 @@ import {
   MessageReconciliation,
   RedisClient,
   HubEventProcessor,
-  HubSubscriber,
   EventStreamHubSubscriber,
   EventStreamConnection,
   HubEventStreamConsumer,
-  ProcessResult,
-} from "../index";
+  HubSubscriber,
+} from "../index"; // If you want to use this as a standalone app, replace this import with "@faracaster/hub-shuttle"
 import { migrateToLatest } from "./migration";
 import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
 import { log } from "./log";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
-import { BACKFILL_FIDS, HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL } from "./env";
+import { BACKFILL_FIDS, CONCURRENCY, HUB_HOST, HUB_SSL, MAX_FID, POSTGRES_URL, REDIS_URL } from "./env";
 import * as process from "node:process";
 import url from "node:url";
 import { ok, Result } from "neverthrow";
+import { getQueue, getWorker } from "./worker";
+import { Queue } from "bullmq";
 
 const hubId = "shuttle";
 
 export class App implements MessageHandler {
   private readonly db: DB;
-  private hubSubscriber: EventStreamHubSubscriber;
+  private hubSubscriber: HubSubscriber;
   private streamConsumer: HubEventStreamConsumer;
-  private redis: RedisClient;
+  public redis: RedisClient;
   private readonly hubId;
 
-  constructor(
-    db: DB,
-    redis: RedisClient,
-    hubSubscriber: EventStreamHubSubscriber,
-    streamConsumer: HubEventStreamConsumer,
-  ) {
+  constructor(db: DB, redis: RedisClient, hubSubscriber: HubSubscriber, streamConsumer: HubEventStreamConsumer) {
     this.db = db;
     this.redis = redis;
     this.hubSubscriber = hubSubscriber;
@@ -69,10 +65,6 @@ export class App implements MessageHandler {
 
   async start() {
     await this.ensureMigrations();
-
-    const fromId = await this.redis.getLastProcessedEvent(hubId);
-    log.info("Starting from hub event id ${fromId}");
-
     // Hub subscriber listens to events from the hub and writes them to a redis stream. This allows for scaling by
     // splitting events to multiple streams
     await this.hubSubscriber.start();
@@ -101,6 +93,34 @@ export class App implements MessageHandler {
         }
       });
     }
+  }
+
+  async backfillFids(fids: number[], backfillQueue: Queue) {
+    const startedAt = Date.now();
+    if (fids.length === 0) {
+      const maxFidResult = await this.hubSubscriber.hubClient.getFids({ pageSize: 1, reverse: true });
+      if (maxFidResult.isErr()) {
+        log.error("Failed to get max fid", maxFidResult.error);
+        throw maxFidResult.error;
+      }
+      const maxFid = MAX_FID ? parseInt(MAX_FID) : maxFidResult.value.fids[0];
+      if (!maxFid) {
+        log.error("Max fid was undefined");
+        throw new Error("Max fid was undefined");
+      }
+      log.info(`Queuing up fids upto: ${maxFid}`);
+      // create an array of arrays in batches of 100 upto maxFid
+      const batchSize = 10;
+      const fids = Array.from({ length: Math.ceil(maxFid / batchSize) }, (_, i) => i * batchSize).map((fid) => fid + 1);
+      for (const start of fids) {
+        const subset = Array.from({ length: batchSize }, (_, i) => start + i);
+        await backfillQueue.add("reconcile", { fids: subset });
+      }
+    } else {
+      await backfillQueue.add("reconcile", { fids });
+    }
+    await backfillQueue.add("completionMarker", { startedAt });
+    log.info("Backfill jobs queued");
   }
 
   private async processHubEvent(hubEvent: HubEvent) {
@@ -134,9 +154,18 @@ if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString()
   async function backfill() {
     log.info(`Creating app connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
     const app = App.create(POSTGRES_URL, REDIS_URL, HUB_HOST, HUB_SSL);
-    const fids = BACKFILL_FIDS.split(",").map((fid) => parseInt(fid));
+    const fids = BACKFILL_FIDS ? BACKFILL_FIDS.split(",").map((fid) => parseInt(fid)) : [];
     log.info(`Backfilling fids: ${fids}`);
-    await app.reconcileFids(fids);
+    const backfillQueue = getQueue(app.redis.client);
+    await app.backfillFids(fids, backfillQueue);
+    return;
+  }
+
+  async function worker() {
+    log.info(`Starting worker connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
+    const app = App.create(POSTGRES_URL, REDIS_URL, HUB_HOST, HUB_SSL);
+    const worker = getWorker(app, app.redis.client, log, CONCURRENCY);
+    await worker.run();
   }
 
   // for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
@@ -158,7 +187,8 @@ if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString()
     .version(JSON.parse(readFileSync("./package.json").toString()).version);
 
   program.command("start").description("Starts the shuttle").action(start);
-  program.command("backfill").description("Starts the shuttle").action(backfill);
+  program.command("backfill").description("Queue up backfill for the worker").action(backfill);
+  program.command("worker").description("Starts the backfill worker").action(worker);
 
   program.parse(process.argv);
 }
