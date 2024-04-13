@@ -35,11 +35,14 @@ yarn install && yarn build
 # Start the dependencies
 docker compose up postgres redis
  
+# To perform reconciliation/backfill, start the worker (can run multiple processes to speed this up)
+POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start worker
+
+# Kick off the backfill process (configure with MAX_FID=100 or BACKFILL_FIDS=1,2,3)
+POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start backfill 
+ 
 # Start the app and sync messages from the event stream
 POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start start
-
-# Backfill messages for fids
-POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start backfill 
 ```
 
 

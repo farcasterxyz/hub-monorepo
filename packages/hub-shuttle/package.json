@@ -30,7 +30,7 @@
   },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
-    "start": "tsx example-app/app.ts",
+    "start": "tsx src/example-app/app.ts",
     "clean": "rimraf ./dist",
     "lint": "biome format src/ --write && biome check src/ --apply",
     "lint:ci": "biome ci src/",
@@ -43,6 +43,7 @@
     "@types/pg": "^8.10.3",
     "@types/pg-cursor": "^2.7.0",
     "@types/node": "^20.11.30",
+    "bullmq": "^5.7.1",
     "biome-config-custom": "*",
     "prettier-config-custom": "*"
   }

@@ -4929,6 +4929,19 @@ bullmq@^4.11.4:
     tslib "^2.0.0"
     uuid "^9.0.0"
 
+bullmq@^5.7.1:
+  version "5.7.1"
+  resolved "https://registry.npmjs.org/bullmq/-/bullmq-5.7.1.tgz#18bbfd404fcc1cb007d0b9b255f04a52cdc76128"
+  integrity sha512-t7FhF2mCGgmjZ1rHuBYIcLwzONm4QFGrO1+9mF7hpjWtXalGfy+nGciVcb69L7aPcdJMR2XTe6bNMWHGbKy8mQ==
+  dependencies:
+    cron-parser "^4.6.0"
+    ioredis "^5.3.2"
+    msgpackr "^1.10.1"
+    node-abort-controller "^3.1.1"
+    semver "^7.5.4"
+    tslib "^2.0.0"
+    uuid "^9.0.0"
+
 bundle-require@^4.0.0:
   version "4.0.1"
   resolved "https://registry.npmjs.org/bundle-require/-/bundle-require-4.0.1.tgz#2cc1ad76428043d15e0e7f30990ee3d5404aa2e3"
@@ -9187,7 +9200,7 @@ msgpackr-extract@^3.0.2:
     "@msgpackr-extract/msgpackr-extract-linux-x64" "3.0.2"
     "@msgpackr-extract/msgpackr-extract-win32-x64" "3.0.2"
 
-msgpackr@^1.6.2:
+msgpackr@^1.10.1, msgpackr@^1.6.2:
   version "1.10.1"
   resolved "https://registry.npmjs.org/msgpackr/-/msgpackr-1.10.1.tgz#51953bb4ce4f3494f0c4af3f484f01cfbb306555"
   integrity sha512-r5VRLv9qouXuLiIBrLpl2d5ZvPt8svdQTl5/vMvE4nzDMyEX4sgW5yWhuBBj5UmgwOTWj8CIdSXn5sAfsHAWIQ==

@@ -18,8 +18,8 @@ export class HubEventProcessor {
 
   private static async processMergeMessage(db: DB, message: Message, handler: MessageHandler, wasMissed = false) {
     await db.transaction().execute(async (trx) => {
-      await MessageProcessor.storeMessage(message, trx, "merge", log);
-      await handler.handleMessageMerge(message, trx, "merge", wasMissed);
+      const isNew = await MessageProcessor.storeMessage(message, trx, "merge", log);
+      await handler.handleMessageMerge(message, trx, "merge", isNew, wasMissed);
     });
   }
 }
