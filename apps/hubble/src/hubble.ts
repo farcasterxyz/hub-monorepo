@@ -80,7 +80,6 @@ import {
   LATEST_DB_SCHEMA_VERSION,
   performDbMigrations,
 } from "./storage/db/migrations/migrations.js";
-import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
@@ -95,7 +94,6 @@ import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import v8 from "v8";
-import { P } from "pino";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -126,6 +124,7 @@ export interface HubInterface {
   identity: string;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]>;
   validateMessage(message: Message): HubAsyncResult<Message>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
@@ -1453,17 +1452,11 @@ export class Hub implements HubInterface {
     // Check if we already have this client
     const result = this.syncEngine.addContactInfoForPeerId(peerId, message);
     if (result.isOk() && !this.performedFirstSync) {
-      // Should only sync last ~day worth of messages with new peers. For now, only sync with the first peer so we are upto
-      // date on startup.
-      log.debug({ peerInfo: message }, "New peer but only performing first sync");
-      const syncResult = await ResultAsync.fromPromise(
-        this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
-        (e) => e,
-      );
-      if (syncResult.isErr()) {
-        log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
-      }
+      // Sync with the first peer so we are upto date on startup.
       this.performedFirstSync = true;
+      setTimeout(async () => {
+        await ResultAsync.fromPromise(this.syncEngine.diffSyncIfRequired(this), (e) => e);
+      }, 10 * 1000);
     } else {
       log.debug({ peerInfo: message }, "Already have this peer, skipping sync");
     }
@@ -1680,9 +1673,6 @@ export class Hub implements HubInterface {
       );
     }
 
-    const totalTimeMilis = Date.now() - start;
-    statsd().timing("hub.bundle.merge_message", totalTimeMilis);
-
     // Convert the merge results to an Array of HubResults with the key
     const finalResults: HubResult<number>[] = [];
     let success = 0;
@@ -1693,6 +1683,9 @@ export class Hub implements HubInterface {
       }
       finalResults.push(result);
     }
+
+    const totalTimeMilis = Date.now() - start;
+    statsd().timing("hub.merge_message", totalTimeMilis / finalResults.length);
 
     // When submitting a messageBundle via RPC, we want to gossip it to other nodes
     if (success > 0 && source === "rpc") {
@@ -1705,7 +1698,7 @@ export class Hub implements HubInterface {
         success,
         total: finalResults.length,
         totalTimeMilis,
-        timePerMergeMs: totalTimeMilis / finalResults.length,
+        timePerMergeMs: Math.round((10 ** 2 * totalTimeMilis) / finalResults.length) / 10 ** 2, // round to 2 places
       },
       "submitMessageBundle merged",
     );

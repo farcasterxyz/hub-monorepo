@@ -433,8 +433,6 @@ export default class Server {
                     inSync: status.inSync,
                     shouldSync: status.shouldSync,
                     lastBadSync: status.lastBadSync,
-                    divergencePrefix: status.divergencePrefix,
-                    divergenceSecondsAgo: status.divergenceSecondsAgo,
                     ourMessages: status.ourSnapshot.numMessages,
                     theirMessages: status.theirSnapshot.numMessages,
                     score: status.score,
