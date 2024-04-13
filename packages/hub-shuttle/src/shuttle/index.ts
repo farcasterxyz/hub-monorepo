@@ -23,5 +23,11 @@ export type ProcessResult = {
 // - The package will not process the same message twice
 
 export interface MessageHandler {
-  handleMessageMerge(message: Message, txn: DB, operation: StoreMessageOperation, wasMissed: boolean): Promise<void>;
+  handleMessageMerge(
+    message: Message,
+    txn: DB,
+    operation: StoreMessageOperation,
+    isNew: boolean,
+    wasMissed: boolean,
+  ): Promise<void>;
 }

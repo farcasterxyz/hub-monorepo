@@ -34,7 +34,8 @@ class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
     _message: Message,
     _txn: DB,
     _operation: StoreMessageOperation,
-    _wasMissed: false,
+    _isNew: boolean,
+    _wasMissed: boolean,
   ): Promise<void> {
     // noop
   }

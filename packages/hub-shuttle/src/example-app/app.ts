@@ -57,8 +57,13 @@ export class App implements MessageHandler {
     message: Message,
     _txn: DB,
     _operation: StoreMessageOperation,
-    wasMissed: false,
+    isNew: boolean,
+    wasMissed: boolean,
   ): Promise<void> {
+    if (!isNew) {
+      // Message was already in the db, no-op
+      return;
+    }
     const messageDesc = wasMissed ? "missed message" : "message";
     log.info(`Stored ${messageDesc} ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${message.data?.type})`);
   }
