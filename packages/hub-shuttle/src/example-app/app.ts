@@ -1,45 +1,60 @@
-import { DB, getDbClient } from "@farcaster/hub-shuttle";
+import {
+  DB,
+  getDbClient,
+  getHubClient,
+  MessageHandler,
+  StoreMessageOperation,
+  MessageReconciliation,
+  RedisClient,
+  HubEventProcessor,
+  HubSubscriber,
+  EventStreamHubSubscriber,
+  EventStreamConnection,
+  HubEventStreamConsumer,
+  ProcessResult,
+} from "../index";
 import { migrateToLatest } from "./migration";
-import { getHubClient } from "@farcaster/hub-shuttle";
 import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
 import { log } from "./log";
-import { HubSubscriber, HubSubscriberImpl } from "@farcaster/hub-shuttle";
-import { RedisClient } from "@farcaster/hub-shuttle";
-import { HubEventProcessor } from "@farcaster/hub-shuttle";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
 import { BACKFILL_FIDS, HUB_HOST, HUB_SSL, POSTGRES_URL, REDIS_URL } from "./env";
 import * as process from "node:process";
 import url from "node:url";
-import { MessageHandler, StoreMessageOperation, MessageReconciliation } from "@farcaster/hub-shuttle";
+import { ok, Result } from "neverthrow";
 
 const hubId = "shuttle";
 
 export class App implements MessageHandler {
   private readonly db: DB;
-  private hubSubscriber: HubSubscriber;
+  private hubSubscriber: EventStreamHubSubscriber;
+  private streamConsumer: HubEventStreamConsumer;
   private redis: RedisClient;
   private readonly hubId;
 
-  constructor(db: DB, redis: RedisClient, hubSubscriber: HubSubscriber) {
+  constructor(
+    db: DB,
+    redis: RedisClient,
+    hubSubscriber: EventStreamHubSubscriber,
+    streamConsumer: HubEventStreamConsumer,
+  ) {
     this.db = db;
     this.redis = redis;
     this.hubSubscriber = hubSubscriber;
     this.hubId = hubId;
-
-    this.hubSubscriber.on("event", async (hubEvent) => {
-      void this.processHubEvent(hubEvent);
-      await this.redis.setLastProcessedEvent(hubId, hubEvent.id);
-    });
+    this.streamConsumer = streamConsumer;
   }
 
   static create(dbUrl: string, redisUrl: string, hubUrl: string, hubSSL = false) {
     const db = getDbClient(dbUrl);
     const hub = getHubClient(hubUrl, { ssl: hubSSL });
-
-    const hubSubscriber = new HubSubscriberImpl(hubId, hub, log);
     const redis = RedisClient.create(redisUrl);
-    return new App(db, redis, hubSubscriber);
+    const eventStreamForWrite = new EventStreamConnection(redis.client);
+    const eventStreamForRead = new EventStreamConnection(redis.client);
+    const hubSubscriber = new EventStreamHubSubscriber(hubId, hub, eventStreamForWrite, redis, "all", log);
+    const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, "all");
+
+    return new App(db, redis, hubSubscriber, streamConsumer);
   }
 
   async handleMessageMerge(
@@ -56,8 +71,21 @@ export class App implements MessageHandler {
     await this.ensureMigrations();
 
     const fromId = await this.redis.getLastProcessedEvent(hubId);
-    log.info(`Starting from hub event id ${fromId}`);
-    await this.hubSubscriber.start(fromId);
+    log.info("Starting from hub event id ${fromId}");
+
+    // Hub subscriber listens to events from the hub and writes them to a redis stream. This allows for scaling by
+    // splitting events to multiple streams
+    await this.hubSubscriber.start();
+
+    // Sleep 10 seconds to give the subscriber a chance to create the stream for the first time.
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
+
+    log.info("Starting stream consumer");
+    // Stream consumer reads from the redis stream and inserts them into postgres
+    await this.streamConsumer.start(async (event) => {
+      void this.processHubEvent(event);
+      return ok({ skipped: false });
+    });
   }
 
   async reconcileFids(fids: number[]) {

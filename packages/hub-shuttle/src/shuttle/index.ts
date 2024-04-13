@@ -8,8 +8,13 @@ export * from "./hubSubscriber";
 export * from "./hubEventProcessor";
 export * from "./messageProcessor";
 export * from "./messageReconciliation";
+export * from "./eventStream";
 
 export type StoreMessageOperation = "merge" | "delete" | "revoke" | "prune";
+
+export type ProcessResult = {
+  skipped: boolean;
+};
 
 // Implement this interface in your app to handle messages. The package currently provides the following gurantees:
 // - Messages can be assumed to be processes in the same order as they were recieved by the hub as long as wasMissed in false
