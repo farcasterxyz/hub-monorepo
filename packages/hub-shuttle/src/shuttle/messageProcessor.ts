@@ -1,16 +1,16 @@
-import { bytesToHexString, Message, validations } from "@farcaster/hub-nodejs";
+import { Message, validations } from "@farcaster/hub-nodejs";
 import { DB, InsertableMessageRow } from "./db";
-import { ok, Ok, Result } from "neverthrow";
-import { log } from "../log";
-import { convertProtobufMessageBodyToJson, farcasterTimeToDate } from "../utils";
-import { StoreMessageOperation } from "./interfaces";
+import { bytesToHex, convertProtobufMessageBodyToJson, farcasterTimeToDate } from "../utils";
+import { pino } from "pino";
+import { StoreMessageOperation } from "./";
 
 export class MessageProcessor {
   static async storeMessage(
     message: Message,
     trx: DB,
     operation: StoreMessageOperation = "merge",
-  ): Promise<Result<boolean, null>> {
+    log: pino.Logger | undefined = undefined,
+  ): Promise<boolean> {
     // const log = createLogger(messageLogData(message));
     // if (ENVIRONMENT === "prod" && message.data?.network !== FC_NETWORK_ID) {
     //   throw new BadRequestError(
@@ -20,7 +20,7 @@ export class MessageProcessor {
 
     const validation = await validations.validateMessage(message);
     if (validation.isErr()) {
-      log.warn(`Invalid message ${bytesToHexString(message.hash)._unsafeUnwrap()}: ${validation.error.message}`);
+      log?.warn(`Invalid message ${bytesToHex(message.hash)}: ${validation.error.message}`);
       throw new Error(`Invalid message: ${validation.error.message}`);
     }
 
@@ -86,6 +86,6 @@ export class MessageProcessor {
           ),
       )
       .executeTakeFirst();
-    return ok(!!result);
+    return !!result;
   }
 }

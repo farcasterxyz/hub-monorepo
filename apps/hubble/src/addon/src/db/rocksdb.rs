@@ -159,10 +159,16 @@ impl RocksDB {
         self.close()?;
         let path = Path::new(&self.path);
 
-        rocksdb::DB::destroy(&rocksdb::Options::default(), path).map_err(|e| HubError {
-            code: "db.internal_error".to_string(),
-            message: e.to_string(),
-        })
+        let result =
+            rocksdb::DB::destroy(&rocksdb::Options::default(), path).map_err(|e| HubError {
+                code: "db.internal_error".to_string(),
+                message: e.to_string(),
+            });
+
+        // Also rm -rf the directory, ignore any errors
+        let _ = fs::remove_dir_all(path);
+
+        result
     }
 
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
@@ -640,23 +646,28 @@ impl RocksDB {
             key_vec.push(key.as_slice(&cx).to_vec());
         }
 
-        let result = match db.get_many(&key_vec) {
-            Ok(result) => result,
-            Err(e) => return hub_error_to_js_throw(&mut cx, e),
-        };
-
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
-        deferred.settle_with(&channel, move |mut cx| {
-            let js_array = JsArray::new(&mut cx, result.len());
-            for (i, value) in result.iter().enumerate() {
-                let mut buffer = cx.buffer(value.len())?;
-                let target = buffer.as_mut_slice(&mut cx);
-                target.copy_from_slice(&value);
-                js_array.set(&mut cx, i as u32, buffer)?;
-            }
 
-            Ok(js_array)
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let result = db.get_many(&key_vec);
+
+            deferred.settle_with(&channel, move |mut cx| {
+                let result = match result {
+                    Ok(r) => r,
+                    Err(e) => return hub_error_to_js_throw(&mut cx, e),
+                };
+
+                let js_array = JsArray::new(&mut cx, result.len());
+                for (i, value) in result.iter().enumerate() {
+                    let mut buffer = cx.buffer(value.len())?;
+                    let target = buffer.as_mut_slice(&mut cx);
+                    target.copy_from_slice(&value);
+                    js_array.set(&mut cx, i as u32, buffer)?;
+                }
+
+                Ok(js_array)
+            });
         });
 
         Ok(promise)
@@ -1160,7 +1171,13 @@ mod tests {
 
     #[test]
     fn test_count_keys_at_prefix() {
-        let db = crate::db::RocksDB::new("/tmp/testdb").unwrap();
+        let tmp_path = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .as_os_str()
+            .to_string_lossy()
+            .to_string();
+        let db = crate::db::RocksDB::new(&tmp_path).unwrap();
         db.open().unwrap();
 
         // Add some keys
@@ -1192,5 +1209,8 @@ mod tests {
         // Count keys at prefix with a specific prefix that doesn't exist
         let count = db.count_keys_at_prefix(b"key201");
         assert_eq!(count.unwrap(), 0);
+
+        // Cleanup
+        db.destroy().unwrap();
     }
 }

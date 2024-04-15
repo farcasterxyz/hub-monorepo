@@ -1,4 +1,4 @@
-import { bytesToHexString, Factories, FarcasterNetwork, Message } from "@farcaster/hub-nodejs";
+import { bytesToHexString, Factories, FarcasterNetwork, Message, MessageBundle } from "@farcaster/hub-nodejs";
 import { deployStorageRegistry } from "../utils.js";
 import { Hub, HubOptions, HubShutdownReason, randomDbName } from "../../hubble.js";
 import { localHttpUrl } from "../constants.js";
@@ -49,7 +49,7 @@ describe("hubble gossip and sync tests", () => {
     };
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await fnameServer.stop();
 
     // rm -rf the rocksdb directory
@@ -111,7 +111,7 @@ describe("hubble gossip and sync tests", () => {
         expect(errResult.isErr()).toBeTruthy();
         expect(errResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
 
-        // This should trigger a gossip message to hub2, where it should be merged
+        // Wait for the message to show up in hub2
         await sleepWhile(async () => (await (hub2 as Hub).engine.getCast(fid, castAdd.hash)).isErr(), 2000);
 
         const result = await hub2.engine.getCast(fid, castAdd.hash);
@@ -131,6 +131,77 @@ describe("hubble gossip and sync tests", () => {
         // Check that the cast message was merged into hub2
         const result2 = await hub2.engine.getCast(fid, castAdd2.hash);
         expect(result2.isOk()).toBeTruthy();
+
+        // Now try to send a message bundle from hub1 -> hub2
+        const castAddMessages: Message[] = [];
+        for (let i = 0; i < 5; i++) {
+          castAddMessages.push(
+            await Factories.CastAddMessage.create(
+              { data: { fid, network: FarcasterNetwork.DEVNET } },
+              { transient: { signer } },
+            ),
+          );
+        }
+        const messageBundle = MessageBundle.create({
+          hash: new Uint8Array([1, 2, 3, 4, 5]),
+          messages: castAddMessages,
+        });
+        // Submit it to hub1 via rpc so it gets gossiped
+        const bundleMergeResult = await hub1.submitMessageBundle(messageBundle, "rpc");
+        expect(bundleMergeResult.length).toEqual(5);
+        for (let i = 0; i < 5; i++) {
+          expect(bundleMergeResult[i]?.isOk()).toBeTruthy();
+        }
+
+        // Wait for the message bundle to show up in hub2
+        await sleepWhile(
+          async () => (await (hub2 as Hub).engine.getCast(fid, castAddMessages[4]?.hash as Uint8Array)).isErr(),
+          2000,
+        );
+
+        // Make sure all the messages in the bundle are in the db
+        for (let i = 0; i < 5; i++) {
+          const result = await hub2.engine.getCast(fid, castAddMessages[i]?.hash as Uint8Array);
+          expect(result.isOk()).toBeTruthy();
+          expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(castAddMessages[i] as Message));
+        }
+
+        // Submitting the same bundle again should result in a duplicate error if we submit via gossip
+        const errResult2 = await hub1.submitMessageBundle(messageBundle, "gossip");
+        // Expect all the messages to be duplicates
+        for (let i = 0; i < 5; i++) {
+          expect(errResult2[i]?.isErr()).toBeTruthy();
+          expect(errResult2[i]?._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+        }
+
+        // Submitting a different bundle but with some of the same messages should result in a duplicate error
+        // only for those
+        const castAddMessages2: Message[] = [];
+        for (let i = 0; i < 5; i++) {
+          castAddMessages2.push(
+            await Factories.CastAddMessage.create(
+              { data: { fid, network: FarcasterNetwork.DEVNET } },
+              { transient: { signer } },
+            ),
+          );
+        }
+        // Replacing some of the messages with messages from the previous bundle
+        castAddMessages2[1] = castAddMessages[0] as Message;
+        castAddMessages2[3] = castAddMessages[1] as Message;
+
+        const messageBundle2 = MessageBundle.create({
+          hash: new Uint8Array([0, 1, 2, 1, 2]),
+          messages: castAddMessages2,
+        });
+        const errResult3 = await hub1.submitMessageBundle(messageBundle2, "gossip");
+        expect(errResult3.length).toEqual(5);
+        expect(errResult3[0]?.isOk()).toBeTruthy();
+        expect(errResult3[1]?.isErr()).toBeTruthy();
+        expect(errResult3[1]?._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+        expect(errResult3[2]?.isOk()).toBeTruthy();
+        expect(errResult3[3]?.isErr()).toBeTruthy();
+        expect(errResult3[3]?._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
+        expect(errResult3[4]?.isOk()).toBeTruthy();
       } finally {
         await hub1?.stop(HubShutdownReason.SELF_TERMINATED);
         await hub2?.stop(HubShutdownReason.SELF_TERMINATED);

@@ -1,0 +1,31 @@
+{
+  "name": "@farcaster/hub-shuttle",
+  "version": "0.1.5",
+  "main": "./app.ts",
+  "license": "MIT",
+  "dependencies": {
+    "@farcaster/hub-shuttle": "^0.1.4",
+    "@figma/hot-shots": "^9.0.0-figma.1",
+    "commander": "^11.0.0",
+    "ioredis": "^5.3.2",
+    "neverthrow": "^6.0.0",
+    "pg": "^8.11.3",
+    "pg-cursor": "^2.10.3",
+    "pino": "^8.12.1",
+    "pino-pretty": "^10.0.0",
+    "bullmq": "^5.7.1",
+    "sql-formatter": "^13.0.0",
+    "tiny-typed-emitter": "^2.1.0"
+  },
+  "scripts": {
+    "start": "tsx app.ts"
+  },
+  "devDependencies": {
+    "@types/humanize-duration": "^3.27.1",
+    "@types/pg": "^8.10.3",
+    "@types/pg-cursor": "^2.7.0",
+    "@types/node": "^20.11.30",
+    "tsx": "^3.12.5",
+    "typescript": "^5.0.0"
+  }
+}

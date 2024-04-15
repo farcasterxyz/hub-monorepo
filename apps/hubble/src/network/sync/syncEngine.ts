@@ -321,7 +321,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           (e) => e,
         );
         if (result.isErr()) {
-          log.error({ err: result.error }, "Failed to add fname to sync trie");
+          log.error(
+            { err: result.error, usernameProof: event.mergeUsernameProofBody.usernameProof },
+            "Failed to add fname to sync trie",
+          );
         }
         this._syncTrieQ -= 1;
 
@@ -338,7 +341,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           (e) => e,
         );
         if (result.isErr()) {
-          log.error({ err: result.error }, "Failed to remove fname from sync trie");
+          log.error(
+            { err: result.error, deletedUsernameProof: event.mergeUsernameProofBody.deletedUsernameProof },
+            "Failed to remove fname from sync trie",
+          );
         }
         this._syncTrieQ -= 1;
 
@@ -350,7 +356,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (!(await this.trie.exists(syncId))) {
         const result = await ResultAsync.fromPromise(this._trie.insert(syncId), (e) => e);
         if (result.isErr()) {
-          log.error({ err: result.error }, "Failed to add fname to sync trie");
+          log.error({ err: result.error }, "Failed to add fname to sync trie (duplicateUserNameProofEvent)");
         }
       }
     });
