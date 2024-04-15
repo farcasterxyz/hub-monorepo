@@ -11,7 +11,7 @@ import {
   EventStreamConnection,
   HubEventStreamConsumer,
   HubSubscriber,
-} from "../index"; // If you want to use this as a standalone app, replace this import with "@faracaster/hub-shuttle"
+} from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
 import { migrateToLatest } from "./migration";
 import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
 import { log } from "./log";

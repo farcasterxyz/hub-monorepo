@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.2.0
+
+### Minor Changes
+
+- chore: Rename to shuttle and release beta
+
 ## 0.1.6
 
 ### Patch Changes
