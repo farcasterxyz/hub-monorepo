@@ -13,7 +13,7 @@ import {
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
-import { FID_BYTES, OnChainEventPostfix, RootPrefix, UserMessagePostfix, UserMessagePostfixMax } from "../db/types.js";
+import { FID_BYTES, OnChainEventPostfix, RootPrefix, UserMessagePostfix } from "../db/types.js";
 import { logger } from "../../utils/logger.js";
 import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from "../db/message.js";
 import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
@@ -36,9 +36,10 @@ type StorageSlot = {
 export class StorageCache {
   private _db: RocksDB;
   private _counts: Map<string, number>;
+  private _pendingMessageCountScans = new Map<string, Promise<number>>();
+
   private _earliestTsHashes: Map<string, Uint8Array>;
   private _activeStorageSlots: Map<number, StorageSlot>;
-  private _pendingMessageCountScans = 0;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
@@ -95,26 +96,35 @@ export class StorageCache {
 
   async getMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
     const key = makeKey(fid, set);
+
+    const pendingPromise = this._pendingMessageCountScans.get(key);
+    if (pendingPromise) {
+      return ok((await pendingPromise) ?? 0);
+    }
+
     if (this._counts.get(key) === undefined && forceFetch) {
-      if (this._pendingMessageCountScans > MAX_PENDING_MESSAGE_COUNT_SCANS) {
-        log.error({ pendingScans: this._pendingMessageCountScans }, "too many pending message count scans");
+      if (this._pendingMessageCountScans.size > MAX_PENDING_MESSAGE_COUNT_SCANS) {
         return err(new HubError("unavailable.storage_failure", "too many pending message count scans"));
       }
 
-      this._pendingMessageCountScans += 1;
-      const total = await this._db.countKeysAtPrefix(makeMessagePrimaryKey(fid, set));
+      const countPromise = new Promise<number>((resolve) => {
+        (async () => {
+          const total = await this._db.countKeysAtPrefix(makeMessagePrimaryKey(fid, set));
 
-      // Recheck the count in case it was set by another thread (i.e. no race conditions)
-      if (this._counts.get(key) === undefined) {
-        // We should maybe turn this into a LRU cache, otherwise it scales by the number
-        // of fids*set types.
-        this._counts.set(key, total);
-      }
+          // We should maybe turn this into a LRU cache, otherwise it scales by the number
+          // of fids*set types.
+          this._counts.set(key, total);
 
-      this._pendingMessageCountScans -= 1;
+          resolve(total);
+          this._pendingMessageCountScans.delete(key);
+        })();
+      });
+
+      this._pendingMessageCountScans.set(key, countPromise);
+      return ok(await countPromise);
+    } else {
+      return ok(this._counts.get(key) ?? 0);
     }
-
-    return ok(this._counts.get(key) ?? 0);
   }
 
   async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
@@ -218,8 +228,10 @@ export class StorageCache {
       const fid = message.data.fid;
       const key = makeKey(fid, set);
       let count = this._counts.get(key);
+
       if (count === undefined) {
         const msgCountResult = await this.getMessageCount(fid, set);
+
         if (msgCountResult.isErr()) {
           log.error({ err: msgCountResult.error }, "could not get message count");
           return;

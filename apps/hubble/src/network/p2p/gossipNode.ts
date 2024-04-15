@@ -291,7 +291,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       if (result.isOk()) {
         log.info({ peerIdStr, addr }, "Connected to peer from DB");
       } else {
-        log.warn({ peerIdStr, addr, error: result.error }, "Failed to connect to peer from DB");
+        log.debug({ peerIdStr, addr, error: result.error }, "Failed to connect to peer from DB");
       }
 
       // Sleep for a bit to avoid overwhelming the network
