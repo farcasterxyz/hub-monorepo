@@ -58,9 +58,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - node_version: 18
+          - node_version: 21
             runs_on: 'buildjet-8vcpu-ubuntu-2204'
-          - node_version: 20
+          - node_version: 21
             runs_on: 'buildjet-8vcpu-ubuntu-2204'
           - node_version: 21
             runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'

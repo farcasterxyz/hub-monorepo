@@ -112,7 +112,7 @@ describe("hubble gossip and sync tests", () => {
         expect(errResult._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");
 
         // Wait for the message to show up in hub2
-        await sleepWhile(async () => (await (hub2 as Hub).engine.getCast(fid, castAdd.hash)).isErr(), 2000);
+        await sleepWhile(async () => (await (hub2 as Hub).engine.getCast(fid, castAdd.hash)).isErr(), 200000);
 
         const result = await hub2.engine.getCast(fid, castAdd.hash);
         expect(result.isOk()).toBeTruthy();

@@ -135,6 +135,17 @@ export const ipFamilyToString = (family: number): string => {
   return family === 4 ? "IPv4" : "IPv6";
 };
 
+export const ipFamilyFromString = (familyString: string): 4 | 6 => {
+  switch (familyString) {
+    case "IPv4":
+      return 4;
+    case "IPv6":
+      return 6;
+    default:
+      throw new Error(`Invalid IP family string: ${familyString}`);
+  }
+};
+
 /* Converts AddressInfo to address string  */
 export const addressInfoToString = (addressInfo: AddressInfo): string => {
   if (addressInfo.family === "IPv4") {

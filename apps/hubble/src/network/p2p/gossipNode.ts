@@ -149,6 +149,11 @@ export type LibP2PNodeMethodGenericMessage = {
   };
 }[LibP2PInterfaceMethodNames];
 
+export interface GossipNodeConfig {
+  db?: RocksDB;
+  network?: FarcasterNetwork;
+}
+
 /**
  * A GossipNode allows a Hubble instance to connect and gossip messages to its peers.
  *
@@ -179,11 +184,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   private _multiaddrs?: Multiaddr[];
   private _isStarted = false;
 
-  constructor(db?: RocksDB, network?: FarcasterNetwork) {
+  constructor(config: GossipNodeConfig = {}) {
     super();
 
-    this._db = db;
-    this._network = network ?? FarcasterNetwork.NONE;
+    this._db = config.db;
+    this._network = config.network ?? FarcasterNetwork.NONE;
 
     // Create a worker thread to run the libp2p node. The path is relative to the current file
     // We use the "../../../" so that it works when running tests from the root directory
@@ -572,17 +577,21 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   registerDebugListeners() {
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
-      log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}  }`);
+      // log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}  }`);
     });
     this._nodeEvents?.addListener("peer:connect", (detail) => {
-      log.info({ identity: this.identity }, `Connection established to: ${detail.remotePeer.toString()}`);
+      // log.info({ identity: this.identity }, `Connection established to: ${detail.remotePeer.toString()}`);
     });
     this._nodeEvents?.addListener("peer:disconnect", (detail) => {
-      log.info({ identity: this.identity }, `Disconnected from: ${detail.remotePeer.toString()} `);
+      // const conn: Connection = detail;
+      // log.info({
+      //   peer: conn.remotePeer ? conn.remotePeer.toString() : "unknown-remote-peer",
+      //   identity: this.identity
+      // }, `Disconnected connection with id ${conn.id} `);
     });
     this._nodeEvents?.addListener("message", (detail) => {
       log.info(
-        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+        //   biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
         { identity: this.identity, from: (detail as any)["from"] },
         `Received message for topic: ${detail.topic}`,
       );

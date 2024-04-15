@@ -10,7 +10,7 @@ import {
   OnChainEvent,
 } from "@farcaster/hub-nodejs";
 import { multiaddr } from "@multiformats/multiaddr/";
-import { GossipNode } from "./gossipNode.js";
+import { GossipNode, GossipNodeConfig } from "./gossipNode.js";
 import Server from "../../rpc/server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import { MockHub } from "../../test/mocks.js";
@@ -23,12 +23,15 @@ import { LibP2PNode } from "./gossipNodeWorker.js";
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 30 * 1000;
 const db = jestRocksDB("network.p2p.gossipNode.test");
+const config: GossipNodeConfig = {
+  network: FarcasterNetwork.DEVNET,
+};
 
 describe("GossipNode", () => {
   let node: GossipNode;
 
   beforeEach(() => {
-    node = new GossipNode();
+    node = new GossipNode(config);
   });
 
   afterEach(async () => {
@@ -61,7 +64,7 @@ describe("GossipNode", () => {
     let result = await node.connectAddress(multiaddr());
     expect(result.isErr()).toBeTruthy();
 
-    const offlineNode = new GossipNode();
+    const offlineNode = new GossipNode(config);
     result = await node.connect(offlineNode);
     expect(result.isErr()).toBeTruthy();
   });
@@ -71,11 +74,11 @@ describe("GossipNode", () => {
     async () => {
       expect((await node.start([])).isOk()).toBeTruthy();
 
-      const node2 = new GossipNode();
+      const node2 = new GossipNode(config);
       expect((await node2.start([])).isOk()).toBeTruthy();
 
       // node 3 has node 1 in its allow list, but not node 2
-      const node3 = new GossipNode();
+      const node3 = new GossipNode(config);
 
       if (node.peerId()) {
         expect((await node3.start([], { allowedPeerIdStrs: [node.peerId()?.toString() ?? ""] })).isOk()).toBeTruthy();
@@ -105,7 +108,10 @@ describe("GossipNode", () => {
     async () => {
       await node.start([]);
 
-      const node2 = new GossipNode();
+      const config: GossipNodeConfig = {
+        network: FarcasterNetwork.DEVNET,
+      };
+      const node2 = new GossipNode(config);
       await node2.start([]);
 
       try {
@@ -138,7 +144,7 @@ describe("GossipNode", () => {
   );
 
   describe("gossip messages", () => {
-    const network = FarcasterNetwork.TESTNET;
+    const network = config.network ?? FarcasterNetwork.DEVNET;
     const fid = Factories.Fid.build();
     const signer = Factories.Ed25519Signer.build();
     const custodySigner = Factories.Eip712Signer.build();

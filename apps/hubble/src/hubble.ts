@@ -26,7 +26,7 @@ import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
-import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
+import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL, GossipNodeConfig } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
@@ -416,7 +416,11 @@ export class Hub implements HubInterface {
     }
 
     this.rocksDB = new RocksDB(options.rocksDBName ? options.rocksDBName : randomDbName());
-    this.gossipNode = new GossipNode(this.rocksDB, this.options.network);
+    const gossipNodeConfig: GossipNodeConfig = {
+      db: this.rocksDB,
+      network: this.options.network,
+    };
+    this.gossipNode = new GossipNode(gossipNodeConfig);
 
     const eventHandler = new StoreEventHandler(this.rocksDB, {
       lockMaxPending: options.commitLockMaxPending,
@@ -1583,12 +1587,16 @@ export class Hub implements HubInterface {
       );
     });
 
-    this.gossipNode.on("peerConnect", async () => {
+    this.gossipNode.on("peerConnect", async (details) => {
       // When we connect to a new node, gossip out our contact info 1 second later.
       // The setTimeout is to ensure that we have a chance to receive the peer's info properly.
       setTimeout(async () => {
         await this.gossipContactInfo();
       }, 1 * 1000);
+
+      if (details.remotePeer && details.remoteAddr) {
+        await this.gossipNode.addPeerToAddressBook(details.remotePeer, details.remoteAddr);
+      }
       statsd().increment("peer_connect.count");
     });
 

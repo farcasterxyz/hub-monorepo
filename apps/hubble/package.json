@@ -67,8 +67,8 @@
     "unified": "^11.0.3"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.550.0",
-    "@aws-sdk/lib-storage": "^3.550.0",
+    "@aws-sdk/client-s3": "^3.400.0",
+    "@aws-sdk/lib-storage": "^3.504.0",
     "@chainsafe/libp2p-gossipsub": "13.0.0",
     "@chainsafe/libp2p-noise": "^15.0.0",
     "@faker-js/faker": "~7.6.0",
@@ -81,6 +81,8 @@
     "@libp2p/peer-id-factory": "^4.0.9",
     "@libp2p/tcp": "^9.0.18",
     "@libp2p/utils": "^5.2.8",
+		"@libp2p/mdns": "^10.0.20",
+		"@libp2p/kad-dht": "^12.0.13",
     "@multiformats/multiaddr": "^11.0.0",
     "@noble/curves": "^1.0.0",
     "@noble/ed25519": "^2.1.0",

@@ -1,6 +1,6 @@
-import { GossipNode } from "../../network/p2p/gossipNode.js";
+import { GossipNode, GossipNodeConfig } from "../../network/p2p/gossipNode.js";
 import { sleep } from "../../utils/crypto.js";
-import { Factories, GossipMessage, MessageBundle } from "@farcaster/hub-nodejs";
+import { Factories, FarcasterNetwork, GossipMessage, MessageBundle } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
 
 const NUM_NODES = 5;
@@ -17,8 +17,13 @@ describe("gossip network with bundle tests", () => {
   let messageStore: Map<string, Map<string, GossipMessage[] | undefined>>;
   let nodes: GossipNode[];
 
+  const gossipNodeConfig: GossipNodeConfig = {
+    // NOTE: The network needs to match the network used by factories for generating messages.
+    //        Otherwise, messages may be published to the wrong topic and never received by peers.
+    network: FarcasterNetwork.DEVNET,
+  };
   beforeAll(async () => {
-    nodes = [...Array(NUM_NODES)].map(() => new GossipNode());
+    nodes = [...Array(NUM_NODES)].map(() => new GossipNode(gossipNodeConfig));
     messageStore = new Map();
   });
 
@@ -82,18 +87,31 @@ describe("gossip network with bundle tests", () => {
 
       const validMessages = [];
       for (let i = 0; i < 3; i++) {
-        validMessages.push(await Factories.CastAddMessage.create());
+        const msg = await Factories.CastAddMessage.create({
+          data: {
+            network: gossipNodeConfig.network ?? FarcasterNetwork.DEVNET,
+          },
+        });
+        validMessages.push(msg);
       }
       const validBundle = MessageBundle.create({ hash: new Uint8Array([1, 2, 3]), messages: validMessages });
 
       // Above, we treat messages with 4 messages as invalid, so create one with 4 messages
       const invalidMessages = [];
       for (let i = 0; i < 4; i++) {
-        invalidMessages.push(await Factories.ReactionAddMessage.create());
+        const msg = await Factories.ReactionAddMessage.create({
+          data: {
+            network: gossipNodeConfig.network ?? FarcasterNetwork.DEVNET,
+          },
+        });
+        invalidMessages.push(msg);
       }
       const invalidBundle = MessageBundle.create({ hash: new Uint8Array([4, 1, 2, 3, 4]), messages: invalidMessages });
 
       const validPublishResult = await randomNode.gossipBundle(validBundle);
+      // if (validPublishResult.isErr()) {
+      //   console.error("valid publish result error: ", validPublishResult._unsafeUnwrapErr());
+      // }
       expect(validPublishResult.isOk()).toBeTruthy();
       expect(validPublishResult._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
 

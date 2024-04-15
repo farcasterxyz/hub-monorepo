@@ -127,7 +127,7 @@
     "@aws-sdk/util-utf8-browser" "^3.0.0"
     tslib "^1.11.1"
 
-"@aws-sdk/client-s3@^3.550.0":
+"@aws-sdk/client-s3@^3.400.0":
   version "3.554.0"
   resolved "https://registry.npmjs.org/@aws-sdk/client-s3/-/client-s3-3.554.0.tgz#1097c2646ce749932a989eaf7ab081bcd1723fe3"
   integrity sha512-d5TKKtGWhN0vl9QovUFrf3UsM7jgFQkowDPx1O+E/yeQUj1FBDOoRfDCcQOKW/9ghloI6k7f0bBpNxdd+x0oKA==
@@ -431,7 +431,7 @@
     "@smithy/types" "^2.12.0"
     tslib "^2.6.2"
 
-"@aws-sdk/lib-storage@^3.550.0":
+"@aws-sdk/lib-storage@^3.504.0":
   version "3.554.0"
   resolved "https://registry.npmjs.org/@aws-sdk/lib-storage/-/lib-storage-3.554.0.tgz#23bd5b867e610369c6983ae687f1ab7fb1fbd5ac"
   integrity sha512-WMn2EObllRKI0ELi31SoUGPowQ23/LCAXkG1o1VEas5kqobwgVgp9D8zqs9A/MEaZYl0yDqd94uKQJd7rUM/yg==
@@ -3328,6 +3328,43 @@
   resolved "https://registry.npmjs.org/@libp2p/interfaces/-/interfaces-3.3.2.tgz#5d8079be845b0960939b5b18880e785a4714465a"
   integrity sha512-p/M7plbrxLzuQchvNwww1Was7ZeGE2NaOFulMaZBYIihU8z3fhaV+a033OqnC/0NTX/yhfdNOG7znhYq3XoR/g==
 
+"@libp2p/kad-dht@^12.0.13":
+  version "12.0.12"
+  resolved "https://registry.npmjs.org/@libp2p/kad-dht/-/kad-dht-12.0.12.tgz#508365e7d962993a89e11d3faf6dcca86fbb2a23"
+  integrity sha512-HISszB6MN9GJHgTmVnx9saoHG12aR/fE2+LmMACNGe0tL95PAA5KiTOa4chWua5QVEQSf2G07l5mloHDwZmJbw==
+  dependencies:
+    "@libp2p/crypto" "^4.0.6"
+    "@libp2p/interface" "^1.2.0"
+    "@libp2p/interface-internal" "^1.1.0"
+    "@libp2p/peer-collections" "^5.1.10"
+    "@libp2p/peer-id" "^4.0.10"
+    "@libp2p/record" "^4.0.0"
+    "@libp2p/utils" "^5.3.0"
+    "@multiformats/multiaddr" "^12.2.1"
+    any-signal "^4.1.1"
+    hashlru "^2.3.0"
+    interface-datastore "^8.2.11"
+    it-drain "^3.0.5"
+    it-length "^3.0.4"
+    it-length-prefixed "^9.0.4"
+    it-map "^3.0.5"
+    it-merge "^3.0.3"
+    it-parallel "^3.0.6"
+    it-pipe "^3.0.1"
+    it-protobuf-stream "^1.1.2"
+    it-pushable "^3.2.3"
+    it-take "^3.0.4"
+    multiformats "^13.1.0"
+    p-defer "^4.0.1"
+    p-event "^6.0.1"
+    p-queue "^8.0.1"
+    progress-events "^1.0.0"
+    protons-runtime "^5.4.0"
+    race-signal "^1.0.2"
+    uint8-varint "^2.0.4"
+    uint8arraylist "^2.4.8"
+    uint8arrays "^5.0.3"
+
 "@libp2p/logger@^4.0.10", "@libp2p/logger@^4.0.6":
   version "4.0.10"
   resolved "https://registry.npmjs.org/@libp2p/logger/-/logger-4.0.10.tgz#d59db10d74b20e78be37f8ec53c1139174c0afda"
@@ -3338,6 +3375,20 @@
     debug "^4.3.4"
     interface-datastore "^8.2.11"
     multiformats "^13.1.0"
+
+"@libp2p/mdns@^10.0.20":
+  version "10.0.19"
+  resolved "https://registry.npmjs.org/@libp2p/mdns/-/mdns-10.0.19.tgz#e6a18bdd3a871bdfc434efd12c05d5437905f931"
+  integrity sha512-YQPhE/zqKX76/ifE/GGkPTSOPxdFGnGkj9VAhp4QVMF5Wh5DdhWwI9CqI6b/v0kZmJDpNuzkpQZ0Wu5xDzb+hg==
+  dependencies:
+    "@libp2p/interface" "^1.2.0"
+    "@libp2p/interface-internal" "^1.1.0"
+    "@libp2p/peer-id" "^4.0.10"
+    "@libp2p/utils" "^5.3.0"
+    "@multiformats/multiaddr" "^12.2.1"
+    "@types/multicast-dns" "^7.2.4"
+    dns-packet "^5.6.1"
+    multicast-dns "^7.2.5"
 
 "@libp2p/mplex@^10.0.18":
   version "10.0.19"
@@ -3446,6 +3497,15 @@
     it-pushable "^3.2.3"
     multiformats "^13.1.0"
     p-queue "^8.0.1"
+    uint8arraylist "^2.4.8"
+    uint8arrays "^5.0.3"
+
+"@libp2p/record@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.npmjs.org/@libp2p/record/-/record-4.0.0.tgz#db71cf7ede58dd78ba6a77c67eddd2995bb5c777"
+  integrity sha512-qEbLgKj1DY6K0B9LFXXm0hdCmMJdkfrxFMa5/pOe9PufaRPCAOABYmbPYQQmDNI8UrwWJbf47tj+pmDS57SLTw==
+  dependencies:
+    protons-runtime "^5.4.0"
     uint8arraylist "^2.4.8"
     uint8arrays "^5.0.3"
 
@@ -5261,7 +5321,7 @@
   dependencies:
     "@types/ms" "*"
 
-"@types/dns-packet@^5.6.5":
+"@types/dns-packet@*", "@types/dns-packet@^5.6.5":
   version "5.6.5"
   resolved "https://registry.npmjs.org/@types/dns-packet/-/dns-packet-5.6.5.tgz#49fc29a40f5d30227ed028fa1ee82601d3745e15"
   integrity sha512-qXOC7XLOEe43ehtWJCMnQXvgcIpv6rPmQ1jXT98Ad8A3TB1Ue50jsCbSSSyuazScEuZ/Q026vHbrOTVkmwA+7Q==
@@ -5367,6 +5427,14 @@
   version "0.7.31"
   resolved "https://registry.npmjs.org/@types/ms/-/ms-0.7.31.tgz#31b7ca6407128a3d2bbc27fe2d21b345397f6197"
   integrity sha512-iiUgKzV9AuaEkZqkOLDIvlQiL6ltuZd9tGcW3gwpnX8JbuiuhFlEGmmFXEXkN50Cvq7Os88IY2v0dkDqXYWVgA==
+
+"@types/multicast-dns@^7.2.4":
+  version "7.2.4"
+  resolved "https://registry.npmjs.org/@types/multicast-dns/-/multicast-dns-7.2.4.tgz#50bc357f832c884ad8540e372169108855bceb05"
+  integrity sha512-ib5K4cIDR4Ro5SR3Sx/LROkMDa0BHz0OPaCBL/OSPDsAXEGZ3/KQeS6poBKYVN7BfjXDL9lWNwzyHVgt/wkyCw==
+  dependencies:
+    "@types/dns-packet" "*"
+    "@types/node" "*"
 
 "@types/node-cron@^3.0.7":
   version "3.0.7"
@@ -8105,7 +8173,7 @@ dns-over-http-resolver@^2.1.0:
     receptacle "^1.3.2"
     undici "^5.12.0"
 
-dns-packet@^5.6.1:
+dns-packet@^5.2.2, dns-packet@^5.6.1:
   version "5.6.1"
   resolved "https://registry.npmjs.org/dns-packet/-/dns-packet-5.6.1.tgz#ae888ad425a9d1478a0674256ab866de1012cf2f"
   integrity sha512-l4gcSouhcgIKRvyy99RNVOgxXiicE+2jZoNmaNmZ6JXiGajBOJAesk1OBlJuM5k2c+eudGdLxDqXuPCKIj6kpw==
@@ -11354,6 +11422,11 @@ it-length-prefixed@^9.0.1, it-length-prefixed@^9.0.4:
     uint8arraylist "^2.0.0"
     uint8arrays "^5.0.1"
 
+it-length@^3.0.4:
+  version "3.0.4"
+  resolved "https://registry.npmjs.org/it-length/-/it-length-3.0.4.tgz#d178a18a6baf2cb448aeed53b6c854262abf38a1"
+  integrity sha512-RS3thYkvqtWksrV7SaAnTv+pgY7ozpS17HlRvWvcnoRjVyNJMuffdCkIKpKNPTq5uZw9zVnkVKLO077pJn5Yhg==
+
 it-map@^3.0.5:
   version "3.0.5"
   resolved "https://registry.npmjs.org/it-map/-/it-map-3.0.5.tgz#30b1e1324cdb4aaadba29cd989485168d1dc4136"
@@ -13647,6 +13720,14 @@ msgpackr@^1.10.1, msgpackr@^1.6.2:
   integrity sha512-r5VRLv9qouXuLiIBrLpl2d5ZvPt8svdQTl5/vMvE4nzDMyEX4sgW5yWhuBBj5UmgwOTWj8CIdSXn5sAfsHAWIQ==
   optionalDependencies:
     msgpackr-extract "^3.0.2"
+
+multicast-dns@^7.2.5:
+  version "7.2.5"
+  resolved "https://registry.npmjs.org/multicast-dns/-/multicast-dns-7.2.5.tgz#77eb46057f4d7adbd16d9290fa7299f6fa64cced"
+  integrity sha512-2eznPJP8z2BFLX50tf0LuODrpINqP1RVIm/CObbTcBRITQgmC/TjcREF1NeTBzIcR5XO/ukWo+YHOjBbFwIupg==
+  dependencies:
+    dns-packet "^5.2.2"
+    thunky "^1.0.2"
 
 multiformats@^11.0.0:
   version "11.0.1"
@@ -17421,6 +17502,11 @@ through2@~2.0.0:
   version "2.3.8"
   resolved "https://registry.npmjs.org/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
   integrity sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==
+
+thunky@^1.0.2:
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/thunky/-/thunky-1.1.0.tgz#5abaf714a9405db0504732bbccd2cedd9ef9537d"
+  integrity sha512-eHY7nBftgThBqOyHGVN+l8gF0BucP09fMo0oO/Lb0w1OF80dJv+lDVpXG60WMQvkcxAkNybKsrEIE3ZtKGmPrA==
 
 time-span@^5.1.0:
   version "5.1.0"
