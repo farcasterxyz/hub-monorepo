@@ -1127,6 +1127,21 @@ impl RocksDB {
 
         Ok(promise)
     }
+
+    pub fn js_flush_write_cache(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let db = get_db(&mut cx)?;
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        let result = db.commit_to_db();
+        deferred.settle_with(&channel, move |mut cx| match result {
+            Ok(_) => Ok(cx.undefined()),
+            Err(e) => hub_error_to_js_throw(&mut cx, e),
+        });
+
+        Ok(promise)
+    }
 }
 
 #[cfg(test)]

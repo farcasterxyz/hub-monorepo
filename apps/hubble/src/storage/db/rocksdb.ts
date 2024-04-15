@@ -19,6 +19,7 @@ import {
   rustErrorToHubError,
   rsDbCountKeysAtPrefix,
   rsDbDeleteAllKeysInRange,
+  rsDbFlushWriteCache,
 } from "../../rustfunctions.js";
 import { PageOptions } from "storage/stores/types.js";
 
@@ -180,6 +181,10 @@ class RocksDB {
 
   transaction(): RocksDbTransaction {
     return new RocksDbTransaction();
+  }
+
+  async flushWriteCache(): Promise<void> {
+    return await rsDbFlushWriteCache(this._db);
   }
 
   async commit(tsx: RocksDbTransaction): Promise<void> {

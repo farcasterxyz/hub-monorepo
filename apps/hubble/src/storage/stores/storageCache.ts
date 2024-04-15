@@ -97,7 +97,6 @@ export class StorageCache {
     const key = makeKey(fid, set);
     if (this._counts.get(key) === undefined && forceFetch) {
       if (this._pendingMessageCountScans > MAX_PENDING_MESSAGE_COUNT_SCANS) {
-        log.error({ pendingScans: this._pendingMessageCountScans }, "too many pending message count scans");
         return err(new HubError("unavailable.storage_failure", "too many pending message count scans"));
       }
 

@@ -441,6 +441,8 @@ class Engine extends TypedEmitter<EngineEvents> {
       }),
     );
 
+    await this._db.flushWriteCache();
+
     return results;
   }
 
