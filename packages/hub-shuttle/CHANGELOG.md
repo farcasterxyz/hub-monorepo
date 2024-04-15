@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.1.6
+
+### Patch Changes
+
+- feat(shuttle): support prune, revokes and deletes
+- 1051b3dd: feat: Support redis streams for scalability and add reconciliation workers
+
 ## 0.1.5
 
 ### Patch Changes
