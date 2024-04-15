@@ -76,6 +76,7 @@ pub struct JsIteratorOptions {
 pub struct RocksDB {
     pub db: RwLock<Option<rocksdb::TransactionDB>>,
     pub path: String,
+    write_cache: RwLock<RocksDbTransactionBatch>,
     logger: slog::Logger,
 }
 
@@ -97,6 +98,7 @@ impl RocksDB {
         Ok(RocksDB {
             db: RwLock::new(None),
             path: path.to_string(),
+            write_cache: RwLock::new(RocksDbTransactionBatch::new()),
             logger,
         })
     }
@@ -134,6 +136,8 @@ impl RocksDB {
     }
 
     pub fn close(&self) -> Result<(), HubError> {
+        self.commit_to_db()?;
+
         let mut db_lock = self.db.write().unwrap();
         if db_lock.is_some() {
             let db = db_lock.take().unwrap();
@@ -171,57 +175,96 @@ impl RocksDB {
         result
     }
 
+    pub fn db(&self) -> RwLockReadGuard<'_, Option<TransactionDB>> {
+        self.db.read().unwrap()
+    }
+
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
+        // Read from the cache first
+        let cache = self.write_cache.read().unwrap();
+        if let Some(value) = cache.batch.get(key) {
+            return Ok(value.clone());
+        }
+        drop(cache); // Drop the read lock
+
         self.db().as_ref().unwrap().get(key).map_err(|e| HubError {
             code: "db.internal_error".to_string(),
             message: e.to_string(),
         })
     }
 
-    pub fn db(&self) -> RwLockReadGuard<'_, Option<TransactionDB>> {
-        self.db.read().unwrap()
-    }
-
     pub fn get_many(&self, keys: &Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, HubError> {
-        let results = self.db().as_ref().unwrap().multi_get(keys);
+        let cache = self.write_cache.read().unwrap();
+
+        let results = keys
+            .iter()
+            .map(|key| {
+                if let Some(value) = cache.batch.get(key) {
+                    (key, Some(value.clone()))
+                } else {
+                    (key, None)
+                }
+            })
+            .collect::<Vec<_>>();
+        drop(cache); // Drop the read lock
+
+        // Find all keys that were not in the cache, and get them from the DB in a single multi-get
+        let missing_keys = results
+            .iter()
+            .filter(|(_, maybe_value)| maybe_value.is_none())
+            .map(|(key, _)| key);
+        let missing_results = self.db().as_ref().unwrap().multi_get(missing_keys);
 
         // If any of the results are Errors, return an error
-        let results = results.into_iter().collect::<Result<Vec<_>, _>>()?;
-        let results = results
+        let missing_results = missing_results.into_iter().collect::<Result<Vec<_>, _>>()?;
+
+        // Zip up the two results
+        let mut missing_iter = missing_results.into_iter();
+        let merged_results = results
             .into_iter()
-            .map(|r| r.unwrap_or(vec![]))
+            .map(|(_, value)| {
+                if let Some(value) = value {
+                    value.unwrap_or(vec![])
+                } else {
+                    let missing_result = missing_iter.next().unwrap();
+                    missing_result.unwrap_or(vec![])
+                }
+            })
             .collect::<Vec<_>>();
 
-        Ok(results)
+        Ok(merged_results)
     }
 
     pub fn put(&self, key: &[u8], value: &[u8]) -> Result<(), HubError> {
-        self.db()
-            .as_ref()
-            .unwrap()
-            .put(key, value)
-            .map_err(|e| HubError {
-                code: "db.internal_error".to_string(),
-                message: e.to_string(),
-            })
+        // Put into the write cache
+        let mut txn = RocksDbTransactionBatch::new();
+        txn.put(key.to_vec(), value.to_vec());
+
+        self.write_txn(txn)
     }
 
     pub fn del(&self, key: &[u8]) -> Result<(), HubError> {
-        self.db()
-            .as_ref()
-            .unwrap()
-            .delete(key)
-            .map_err(|e| HubError {
-                code: "db.internal_error".to_string(),
-                message: e.to_string(),
-            })
+        let mut txn = RocksDbTransactionBatch::new();
+        txn.delete(key.to_vec());
+
+        self.write_txn(txn)
     }
 
     pub fn txn(&self) -> RocksDbTransactionBatch {
         RocksDbTransactionBatch::new()
     }
 
-    pub fn commit(&self, batch: RocksDbTransactionBatch) -> Result<(), HubError> {
+    pub fn commit_to_db(&self) -> Result<(), HubError> {
+        let mut write_cache = self.write_cache.write().unwrap();
+
+        // Replace the write_cache with a new empty one, while we get the old one to write to DB
+        let pending_txns = std::mem::replace(&mut *write_cache, RocksDbTransactionBatch::new());
+        drop(write_cache); // Drop the write lock
+
+        if pending_txns.len() == 0 {
+            return Ok(());
+        }
+
         let db = self.db();
         if db.is_none() {
             return Err(HubError {
@@ -231,7 +274,7 @@ impl RocksDB {
         }
 
         let txn = db.as_ref().unwrap().transaction();
-        for (key, value) in batch.batch {
+        for (key, value) in pending_txns.batch {
             if value.is_none() {
                 // println!("rust txn is delete, key: {:?}", key);
                 txn.delete(key)?;
@@ -246,6 +289,21 @@ impl RocksDB {
             code: "db.internal_error".to_string(),
             message: e.to_string(),
         })
+    }
+
+    pub fn write_txn(&self, batch: RocksDbTransactionBatch) -> Result<(), HubError> {
+        // Put the batch in the write cache
+        let mut write_cache = self.write_cache.write().unwrap();
+        write_cache.merge(batch);
+        let len = write_cache.len();
+        drop(write_cache); // Drop the write lock
+
+        // If the write cache is too big, commit it to the DB
+        if len > 10_000 {
+            self.commit_to_db()?;
+        }
+
+        Ok(())
     }
 
     fn get_iterator_options(prefix: &[u8], page_options: &PageOptions) -> IteratorOptions {
@@ -324,6 +382,9 @@ impl RocksDB {
      * Count the number of keys with a given prefix.
      */
     pub fn count_keys_at_prefix(&self, prefix: &[u8]) -> Result<u32, HubError> {
+        // Flush to DB before getting an iterator so the iterator is consistent
+        self.commit_to_db()?;
+
         let iter_opts = RocksDB::get_iterator_options(prefix, &PageOptions::default());
 
         let db = self.db();
@@ -353,6 +414,9 @@ impl RocksDB {
     where
         F: FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     {
+        // Flush to DB before getting an iterator so the iterator is consistent
+        self.commit_to_db()?;
+
         let iter_opts = RocksDB::get_iterator_options(prefix, page_options);
 
         let db = self.db();
@@ -419,6 +483,9 @@ impl RocksDB {
         js_opts: JsIteratorOptions,
         mut f: impl FnMut(&[u8], &[u8]) -> Result<bool, HubError>,
     ) -> Result<bool, HubError> {
+        // Flush to DB before getting an iterator so the iterator is consistent
+        self.commit_to_db()?;
+
         // Can't have both gte and gt set
         if js_opts.gte.is_some() && js_opts.gt.is_some() {
             return Err(HubError {
@@ -485,6 +552,9 @@ impl RocksDB {
     }
 
     pub fn clear(&self) -> Result<u32, HubError> {
+        // Clear aout any pending write keys
+        self.commit_to_db()?;
+
         let mut deleted;
 
         loop {
@@ -502,7 +572,8 @@ impl RocksDB {
                 }
             }
 
-            self.commit(txn)?;
+            self.write_txn(txn)?;
+            self.commit_to_db()?;
 
             // Check if we deleted anything
             if deleted == 0 {
@@ -728,7 +799,7 @@ impl RocksDB {
             }
         }
 
-        match db.commit(txn_batch) {
+        match db.write_txn(txn_batch) {
             Ok(_) => (),
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
@@ -1060,7 +1131,86 @@ impl RocksDB {
 
 #[cfg(test)]
 mod tests {
-    use crate::db::RocksDbTransactionBatch;
+    use crate::{db::RocksDbTransactionBatch, store};
+
+    #[test]
+    fn test_db_read_write() {
+        let tmp_path = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .as_os_str()
+            .to_string_lossy()
+            .to_string();
+        let db = crate::db::RocksDB::new(&tmp_path).unwrap();
+        db.open().unwrap();
+
+        // Write a key, this should be buffered
+        db.put(b"key1", b"value1").unwrap();
+
+        // Read the key
+        let value = db.get(b"key1").unwrap().unwrap();
+        assert_eq!(value, b"value1");
+
+        // Write another key
+        db.put(b"key2", b"value2").unwrap();
+
+        // Use an iterator to read all the keys, which should get us both keys
+        let mut keys = vec![];
+        db.for_each_iterator_by_prefix(b"", &store::PageOptions::default(), |key, _| {
+            keys.push(key.to_vec());
+            Ok(false)
+        })
+        .unwrap();
+        assert_eq!(keys.len(), 2);
+        assert_eq!(keys[0], b"key1".to_vec());
+        assert_eq!(keys[1], b"key2".to_vec());
+
+        // Write a new key
+        db.put(b"key3", b"value3").unwrap();
+
+        // Can read it
+        let value = db.get(b"key3").unwrap().unwrap();
+        assert_eq!(value, b"value3");
+
+        // Now delete the 1st key
+        db.del(b"key1").unwrap();
+
+        // Check that it's deleted, but we can read the other 2 keys
+        assert_eq!(db.get(b"key1").unwrap().is_none(), true);
+        assert_eq!(db.get(b"key2").unwrap().unwrap(), b"value2");
+        assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value3");
+
+        // Read via multi-get also works, including for the deleted key, which should return blank
+        let values = db
+            .get_many(&vec![b"key1".to_vec(), b"key2".to_vec(), b"key3".to_vec()])
+            .unwrap();
+        assert_eq!(values.len(), 3);
+        assert_eq!(values[0], Vec::<u8>::new());
+        assert_eq!(values[1], b"value2");
+        assert_eq!(values[2], b"value3");
+
+        // Write some new keys via a txn
+        let mut txn = RocksDbTransactionBatch::new();
+        txn.put(b"key4".to_vec(), b"value4".to_vec());
+        txn.put(b"key5".to_vec(), b"value5".to_vec());
+        txn.delete(b"key3".to_vec());
+        db.write_txn(txn).unwrap();
+
+        // Check that the new keys are written and the deleted key is deleted
+        assert_eq!(db.get(b"key3").unwrap().is_none(), true);
+        assert_eq!(db.get(b"key4").unwrap().unwrap(), b"value4");
+        assert_eq!(db.get(b"key5").unwrap().unwrap(), b"value5");
+
+        // Clear the DB, and make sure the keys disappear
+        db.clear().unwrap();
+
+        assert_eq!(db.get(b"key3").unwrap().is_none(), true);
+        assert_eq!(db.get(b"key4").unwrap().is_none(), true);
+        assert_eq!(db.get(b"key5").unwrap().is_none(), true);
+
+        // Cleanup
+        db.destroy().unwrap();
+    }
 
     #[test]
     fn test_merge_rocksdb_transaction() {

@@ -1,5 +1,5 @@
 import { ok, Result, ResultAsync } from "neverthrow";
-import { DbTrieNode, HubAsyncResult, HubError, Message, OnChainEvent, UserNameProof } from "@farcaster/hub-nodejs";
+import { DbTrieNode, HubAsyncResult, HubError, OnChainEvent, UserNameProof } from "@farcaster/hub-nodejs";
 import { SyncId } from "./syncId.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import {

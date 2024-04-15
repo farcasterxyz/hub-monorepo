@@ -78,7 +78,7 @@ mod tests {
         // Make sure the txn is correctly populated with all 11 entries (10 uncompacted nodes + 1 leaf node)
         assert_eq!(txn.batch.len(), 11);
 
-        db.commit(txn).unwrap();
+        db.write_txn(txn).unwrap();
         let mut txn = RocksDbTransactionBatch::new();
 
         // Inserting the same item again it idempotent
@@ -402,7 +402,7 @@ mod tests {
             let r = node.insert(&db, &mut txn, id, 0).unwrap();
             assert_eq!(r, true);
         }
-        db.commit(txn).unwrap();
+        db.write_txn(txn).unwrap();
         let forward_hash = node.hash();
 
         // Delete the ids in forward order
@@ -411,7 +411,7 @@ mod tests {
             let r = node.delete(&db, &mut txn, id, 0).unwrap();
             assert_eq!(r, true);
         }
-        db.commit(txn).unwrap();
+        db.write_txn(txn).unwrap();
 
         // Ad the ids in reverse order
         let mut txn = RocksDbTransactionBatch::new();
@@ -419,7 +419,7 @@ mod tests {
             let r = node.insert(&db, &mut txn, id, 0).unwrap();
             assert_eq!(r, true);
         }
-        db.commit(txn).unwrap();
+        db.write_txn(txn).unwrap();
         assert_eq!(node.hash(), forward_hash);
 
         // Make sure that all the values are there

@@ -576,7 +576,7 @@ impl VerificationStore {
                     }
 
                     verifications_count += 1;
-                    store.db().commit(txn)?;
+                    store.db().write_txn(txn)?;
 
                     Ok(false) // Continue iterating
                 },

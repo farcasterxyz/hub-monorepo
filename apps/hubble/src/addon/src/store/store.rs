@@ -617,7 +617,7 @@ impl Store {
             .commit_transaction(&mut txn, &mut hub_event)?;
 
         // Commit the transaction
-        self.db.commit(txn)?;
+        self.db.write_txn(txn)?;
 
         hub_event.id = id;
 
@@ -653,7 +653,7 @@ impl Store {
             .commit_transaction(&mut txn, &mut hub_event)?;
 
         // Commit the transaction
-        self.db.commit(txn)?;
+        self.db.write_txn(txn)?;
 
         hub_event.id = id;
         // Serialize the hub_event
@@ -689,7 +689,7 @@ impl Store {
             .commit_transaction(&mut txn, &mut hub_event)?;
 
         // Commit the transaction
-        self.db.commit(txn)?;
+        self.db.write_txn(txn)?;
 
         hub_event.id = id;
         // Serialize the hub_event
@@ -738,7 +738,7 @@ impl Store {
                     .store_event_handler
                     .commit_transaction(&mut txn, &mut hub_event)?;
 
-                self.db.commit(txn)?;
+                self.db.write_txn(txn)?;
                 count -= 1;
 
                 hub_event.id = id;

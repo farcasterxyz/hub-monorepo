@@ -298,7 +298,6 @@ class Engine extends TypedEmitter<EngineEvents> {
         const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
         const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
         if (isRateLimited) {
-          log.warn({ fid }, "rate limit exceeded for FID");
           mergeResults.set(i, err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`)));
           return;
         }
@@ -348,7 +347,6 @@ class Engine extends TypedEmitter<EngineEvents> {
     const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
     const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
     if (isRateLimited) {
-      log.warn({ fid }, "rate limit exceeded for FID");
       return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
     }
 

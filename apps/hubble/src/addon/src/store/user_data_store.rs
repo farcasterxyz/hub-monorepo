@@ -345,7 +345,7 @@ impl UserDataStore {
             .event_handler()
             .commit_transaction(&mut txn, &mut hub_event)?;
 
-        store.db().commit(txn)?;
+        store.db().write_txn(txn)?;
 
         hub_event.id = id;
         let hub_event_bytes = hub_event.encode_to_vec();
