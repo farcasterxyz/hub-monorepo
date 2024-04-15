@@ -6,8 +6,7 @@
   "packageManager": "yarn@1.22.19",
   "workspaces": [
     "apps/*",
-    "packages/*",
-		"path-scurry/*"
+    "packages/*"
   ],
   "scripts": {
     "build": "./node_modules/.bin/turbo run build",
