@@ -497,8 +497,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   async registerListeners() {
-    this._nodeEvents?.addListener("peer:connect", (detail: Connection) => {
-      // console.log("Peer Connected", JSON.stringify(detail, null, 2));
+    this._nodeEvents?.addListener("peer:connect", (detail) => {
       log.info(
         {
           peer: detail.remotePeer,

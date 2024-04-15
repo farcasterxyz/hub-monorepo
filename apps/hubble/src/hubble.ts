@@ -1594,7 +1594,6 @@ export class Hub implements HubInterface {
 
     this.gossipNode.on("peerDisconnect", async (connection) => {
       // Remove this peer's connection
-      console.log("Peer disconnected", connection.id, connection.remotePeer);
       if (connection.remotePeer) {
         this.syncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
       } else {

@@ -63,7 +63,7 @@ import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
-const HASHES_PER_FETCH = 256;
+const HASHES_PER_FETCH = 128;
 const SYNC_MAX_DURATION = 110 * 60 * 1000; // 110 minutes, just slightly less than the periodic sync job frequency
 // 4x the number of CPUs, clamped between 2 and 16
 const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length * 4, 16), 2);
@@ -1253,7 +1253,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let fetchMessagesThreshold = HASHES_PER_FETCH;
     // If we have more messages but the hashes still mismatch, we need to find the exact message that's missing.
     if (ourNode && ourNode.numMessages >= 1) {
-      fetchMessagesThreshold = HASHES_PER_FETCH;
+      fetchMessagesThreshold = HASHES_PER_FETCH / 2;
     }
 
     // If the other hub's node has fewer than the fetchMessagesThreshold, just fetch them all in go, otherwise, iterate through
