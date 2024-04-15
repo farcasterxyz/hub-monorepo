@@ -255,12 +255,11 @@ impl RocksDB {
     }
 
     pub fn commit_to_db(&self) -> Result<(), HubError> {
+        // Get the write cache lock and hold on to it for the full function (i.e., till after all the entries are flushed to DB)
         let mut write_cache = self.write_cache.write().unwrap();
 
         // Replace the write_cache with a new empty one, while we get the old one to write to DB
         let pending_txns = std::mem::replace(&mut *write_cache, RocksDbTransactionBatch::new());
-        drop(write_cache); // Drop the write lock
-
         if pending_txns.len() == 0 {
             return Ok(());
         }
@@ -296,7 +295,9 @@ impl RocksDB {
         let mut write_cache = self.write_cache.write().unwrap();
         write_cache.merge(batch);
         let len = write_cache.len();
-        drop(write_cache); // Drop the write lock
+
+        // Drop the write lock, otherwise we'll get a deadlock when commit_do_db tries to acquire the lock again
+        drop(write_cache);
 
         // If the write cache is too big, commit it to the DB
         if len > 10_000 {

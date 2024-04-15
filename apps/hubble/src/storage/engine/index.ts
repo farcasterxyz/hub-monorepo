@@ -441,6 +441,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }),
     );
 
+    // Commit the bundle to DB
     await this._db.flushWriteCache();
 
     return results;
