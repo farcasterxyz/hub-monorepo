@@ -1253,7 +1253,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let fetchMessagesThreshold = HASHES_PER_FETCH;
     // If we have more messages but the hashes still mismatch, we need to find the exact message that's missing.
     if (ourNode && ourNode.numMessages >= 1) {
-      fetchMessagesThreshold = 1;
+      fetchMessagesThreshold = HASHES_PER_FETCH / 2;
     }
 
     // If the other hub's node has fewer than the fetchMessagesThreshold, just fetch them all in go, otherwise, iterate through
