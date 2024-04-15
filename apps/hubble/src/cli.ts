@@ -3,7 +3,7 @@ import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
-import { Command, OptionValues } from "commander";
+import { Command } from "commander";
 import fs, { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { Result, ResultAsync } from "neverthrow";
@@ -25,7 +25,7 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
-import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import axios from "axios";
 import { snapshotURLAndMetadata } from "./utils/snapshot.js";
 import { DEFAULT_DIAGNOSTIC_REPORT_URL, initDiagnosticReporter } from "./utils/diagnosticReport.js";
@@ -711,6 +711,11 @@ const s3SnapshotURL = new Command("snapshot-url")
   .option("-b --s3-snapshot-bucket <bucket>", "The S3 bucket that holds snapshot(s)")
   .action(async (options) => {
     const network = farcasterNetworkFromJSON(options.network ?? FarcasterNetwork.MAINNET);
+    if (network !== FarcasterNetwork.MAINNET) {
+      console.error("Only mainnet snapshots are supported at this time");
+      exit(1);
+    }
+
     const response = await snapshotURLAndMetadata(network, 0, options.s3SnapshotBucket);
     if (response.isErr()) {
       console.error("error fetching snapshot data", response.error);
