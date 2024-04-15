@@ -149,13 +149,17 @@ export const postErrorEvent = async (error: Error, config: DiagnosticReportConfi
   // Check if the stack trace is available, as it might be undefined in some environments
   const stackTrace: string = error.stack ? `\n[stack_trace]:\n${error.stack}` : " [stack_trace: unavailable]";
   const text: string = `${errorMessage}${stackTrace}`;
-
+  const tags: string[] = [
+    "type:error",
+    ...((config.fid && [`fid:${config.fid.toString(10)}`]) || []),
+    ...((config.peerId && [`peer_id:${config.peerId}`]) || []),
+  ];
   const params: DataDogEventCreateRequest = {
     alertType: DataDogEventAlert.ERROR,
     title: error.name,
     text: text,
     priority: DataDogEventPriority.NORMAL,
-    tags: ["error", ...((config.fid && [String(config.fid)]) || []), ...((config.peerId && [config.peerId]) || [])],
+    tags: tags,
   };
 
   return postDataDogEvent(params, config);
@@ -167,15 +171,16 @@ export const postUnavailableEvent = async (
 ) => {
   const context = payload.context ? `\n[context]:\n${JSON.stringify(payload.context, null, 2)}` : "";
   const text: string = `${payload.message}${context}`;
+  const tags: string[] = [
+    "type:unavailable",
+    ...((config.fid && [`fid:${config.fid.toString(10)}`]) || []),
+    ...((config.peerId && [`peer_id:${config.peerId}`]) || []),
+  ];
   const params: DataDogEventCreateRequest = {
     title: payload.method,
     text: text,
     priority: DataDogEventPriority.NORMAL,
-    tags: [
-      "unavailable",
-      ...((config.fid && [String(config.fid)]) || []),
-      ...((config.peerId && [config.peerId]) || []),
-    ],
+    tags: tags,
   };
 
   return postDataDogEvent(params, config);
