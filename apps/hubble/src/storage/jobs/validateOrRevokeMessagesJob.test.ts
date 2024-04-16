@@ -27,11 +27,16 @@ let castAdd: Message;
 
 let ensNameProof: UsernameProofMessage;
 
+const fakeCurrentTimestamp = 1711056649337; // 21 march 2024
+
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
-  signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
+  signerEvent = Factories.SignerOnChainEvent.build(
+    { fid, blockTimestamp: fakeCurrentTimestamp / 1000 - 1 }, // blockTimestamp is previous second
+    { transient: { signer: signerKey } },
+  );
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
 
@@ -66,7 +71,7 @@ describe("ValidateOrRevokeMessagesJob", () => {
     job = new ValidateOrRevokeMessagesJobScheduler(db, engine, false);
 
     nowOrig = Date.now;
-    Date.now = () => 1711056649337; // 21 march 2024
+    Date.now = () => fakeCurrentTimestamp;
 
     await engine.start();
   });
