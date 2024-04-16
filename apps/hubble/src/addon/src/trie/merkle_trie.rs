@@ -471,14 +471,16 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        deferred.settle_with(&channel, move |mut tcx| {
-            match trie.get_trie_node_metadata(&prefix) {
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let result = trie.get_trie_node_metadata(&prefix);
+
+            deferred.settle_with(&channel, move |mut tcx| match result {
                 Ok(node_metadata) => {
                     let js_object = encode_node_metadata_to_js_object(&mut tcx, &node_metadata)?;
                     Ok(js_object)
                 }
                 Err(e) => hub_error_to_js_throw(&mut tcx, e),
-            }
+            });
         });
 
         Ok(promise)
@@ -491,8 +493,10 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        deferred.settle_with(&channel, move |mut tcx| {
-            match trie.get_all_values(&prefix) {
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let result = trie.get_all_values(&prefix);
+
+            deferred.settle_with(&channel, move |mut tcx| match result {
                 Ok(values) => {
                     let js_array = JsArray::new(&mut tcx, values.len());
                     for (i, value) in values.iter().enumerate() {
@@ -504,7 +508,7 @@ impl MerkleTrie {
                     Ok(js_array)
                 }
                 Err(e) => hub_error_to_js_throw(&mut tcx, e),
-            }
+            });
         });
 
         Ok(promise)
