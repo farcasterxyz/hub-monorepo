@@ -81,6 +81,8 @@ export interface Empty {
 export interface SubscribeRequest {
   eventTypes: HubEventType[];
   fromId?: number | undefined;
+  totalShards?: number | undefined;
+  shardIndex?: number | undefined;
 }
 
 export interface EventRequest {
@@ -345,7 +347,7 @@ export const Empty = {
 };
 
 function createBaseSubscribeRequest(): SubscribeRequest {
-  return { eventTypes: [], fromId: undefined };
+  return { eventTypes: [], fromId: undefined, totalShards: undefined, shardIndex: undefined };
 }
 
 export const SubscribeRequest = {
@@ -357,6 +359,12 @@ export const SubscribeRequest = {
     writer.ldelim();
     if (message.fromId !== undefined) {
       writer.uint32(16).uint64(message.fromId);
+    }
+    if (message.totalShards !== undefined) {
+      writer.uint32(24).uint64(message.totalShards);
+    }
+    if (message.shardIndex !== undefined) {
+      writer.uint32(32).uint64(message.shardIndex);
     }
     return writer;
   },
@@ -391,6 +399,20 @@ export const SubscribeRequest = {
 
           message.fromId = longToNumber(reader.uint64() as Long);
           continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.totalShards = longToNumber(reader.uint64() as Long);
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.shardIndex = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -404,6 +426,8 @@ export const SubscribeRequest = {
     return {
       eventTypes: Array.isArray(object?.eventTypes) ? object.eventTypes.map((e: any) => hubEventTypeFromJSON(e)) : [],
       fromId: isSet(object.fromId) ? Number(object.fromId) : undefined,
+      totalShards: isSet(object.totalShards) ? Number(object.totalShards) : undefined,
+      shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : undefined,
     };
   },
 
@@ -415,6 +439,8 @@ export const SubscribeRequest = {
       obj.eventTypes = [];
     }
     message.fromId !== undefined && (obj.fromId = Math.round(message.fromId));
+    message.totalShards !== undefined && (obj.totalShards = Math.round(message.totalShards));
+    message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
     return obj;
   },
 
@@ -426,6 +452,8 @@ export const SubscribeRequest = {
     const message = createBaseSubscribeRequest();
     message.eventTypes = object.eventTypes?.map((e) => e) || [];
     message.fromId = object.fromId ?? undefined;
+    message.totalShards = object.totalShards ?? undefined;
+    message.shardIndex = object.shardIndex ?? undefined;
     return message;
   },
 };

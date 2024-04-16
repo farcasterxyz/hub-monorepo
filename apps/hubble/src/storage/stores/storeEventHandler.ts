@@ -138,6 +138,22 @@ const putEventTransaction = (txn: RocksDbTransaction, event: HubEvent): RocksDbT
   return txn.put(key, value);
 };
 
+export const fidFromEvent = (event: HubEvent): number => {
+  if (isMergeMessageHubEvent(event)) {
+    return event.mergeMessageBody.message.data?.fid || 0;
+  } else if (isMergeOnChainHubEvent(event)) {
+    return event.mergeOnChainEventBody.onChainEvent.fid || 0;
+  } else if (isMergeUsernameProofHubEvent(event)) {
+    return event.mergeUsernameProofBody.usernameProof?.fid || 0;
+  } else if (isPruneMessageHubEvent(event)) {
+    return event.pruneMessageBody.message.data?.fid || 0;
+  } else if (isRevokeMessageHubEvent(event)) {
+    return event.revokeMessageBody.message.data?.fid || 0;
+  } else {
+    throw new Error("invalid hub event type for determining fid");
+  }
+};
+
 export type StoreEventHandlerOptions = {
   lockMaxPending?: number | undefined;
   lockExecutionTimeout?: number | undefined;
