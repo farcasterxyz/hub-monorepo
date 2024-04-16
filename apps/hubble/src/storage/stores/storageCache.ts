@@ -228,15 +228,9 @@ export class StorageCache {
       const fid = message.data.fid;
       const key = makeKey(fid, set);
       let count = this._counts.get(key);
-      // if (set === UserPostfix.VerificationMessage) {
-      //   console.log(`key: ${key} count: ${count} fid: ${fid} set: ${set}`);
-      // }
 
       if (count === undefined) {
         const msgCountResult = await this.getMessageCount(fid, set);
-        // if (set === UserPostfix.VerificationMessage) {
-        //   console.log(`msgCountResult: ${msgCountResult}`);
-        // }
 
         if (msgCountResult.isErr()) {
           log.error({ err: msgCountResult.error }, "could not get message count");

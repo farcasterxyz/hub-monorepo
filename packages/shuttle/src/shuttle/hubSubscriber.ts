@@ -167,14 +167,14 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     hubClient: HubClient,
     eventStream: EventStreamConnection,
     redis: RedisClient,
-    source: string,
+    shardKey: string,
     log: Logger,
     eventTypes?: HubEventType[],
   ) {
     super(label, hubClient.client, log, eventTypes);
     this.eventStream = eventStream;
     this.redis = redis;
-    this.streamKey = `hub:${hubClient.host}:evt:msg:${source}`;
+    this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
     this.eventsToAdd = [];
   }
 

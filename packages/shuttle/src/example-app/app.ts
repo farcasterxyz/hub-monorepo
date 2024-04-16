@@ -11,7 +11,7 @@ import {
   EventStreamConnection,
   HubEventStreamConsumer,
   HubSubscriber,
-} from "../index"; // If you want to use this as a standalone app, replace this import with "@faracaster/hub-shuttle"
+} from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
 import { migrateToLatest } from "./migration";
 import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
 import { log } from "./log";
@@ -56,7 +56,7 @@ export class App implements MessageHandler {
   async handleMessageMerge(
     message: Message,
     _txn: DB,
-    _operation: StoreMessageOperation,
+    operation: StoreMessageOperation,
     isNew: boolean,
     wasMissed: boolean,
   ): Promise<void> {
@@ -64,7 +64,7 @@ export class App implements MessageHandler {
       // Message was already in the db, no-op
       return;
     }
-    const messageDesc = wasMissed ? "missed message" : "message";
+    const messageDesc = wasMissed ? `missed message (${operation})` : `message (${operation})`;
     log.info(`Stored ${messageDesc} ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${message.data?.type})`);
   }
 
