@@ -320,7 +320,7 @@ export class HubEventStreamConsumer {
 
           if (eventIdsProcessed.length) {
             const startTime = Date.now();
-            await this.stream.ack(this.streamKey, GROUP_NAME, eventIdsProcessed);
+            await this.stream.ack(this.streamKey, this.groupName, eventIdsProcessed);
             statsd.timing("hub.event.stream.ack_time", Date.now() - startTime, {
               hub: this.hub.host,
               source: this.shardKey,
@@ -364,7 +364,7 @@ export class HubEventStreamConsumer {
       source: this.shardKey,
     });
 
-    await inBatchesOf(events, MESSAGE_PROCESSING_CONCURRENCY, async (batchedEvents) => {
+    await inBatchesOf(events, this.messageProcessingConcurrency, async (batchedEvents) => {
       const eventIdsProcessed: string[] = [];
       await Promise.allSettled(
         batchedEvents.map((event) =>

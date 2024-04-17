@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.2.2
+
+### Patch Changes
+
+- fix: ack the correct group name to fix stale bug
+
 ## 0.2.1
 
 ### Patch Changes
