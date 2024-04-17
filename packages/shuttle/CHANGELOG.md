@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.2.3
+
+### Patch Changes
+
+- feat(shuttle): add message state to handler
+
 ## 0.2.2
 
 ### Patch Changes
