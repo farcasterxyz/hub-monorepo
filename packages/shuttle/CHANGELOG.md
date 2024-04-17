@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.2.1
+
+### Patch Changes
+
+- feat(shuttle): Make event stream more customizable
+
 ## 0.2.0
 
 ### Minor Changes
