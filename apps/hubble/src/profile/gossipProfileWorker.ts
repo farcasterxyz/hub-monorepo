@@ -231,12 +231,10 @@ class GossipTestNode {
     });
 
     this.gossipNode.on("peerConnect", (peer) => {
-      // console.log("Peer connected", peer);
       this.connectedPeers++;
     });
 
     this.gossipNode.on("peerDisconnect", (peer) => {
-      // console.log("Peer disconnected", peer);
       this.connectedPeers--;
     });
   }

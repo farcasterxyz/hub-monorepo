@@ -1,6 +1,13 @@
-import { GossipNode } from "../../network/p2p/gossipNode.js";
+import { GossipNode, GossipNodeConfig } from "../../network/p2p/gossipNode.js";
 import { sleep } from "../../utils/crypto.js";
-import { Factories, GossipMessage, isReactionAddMessage, Message, MessageData } from "@farcaster/hub-nodejs";
+import {
+  Factories,
+  FarcasterNetwork,
+  GossipMessage,
+  isReactionAddMessage,
+  Message,
+  MessageData,
+} from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
 
 const NUM_NODES = 10;
@@ -8,6 +15,9 @@ const PROPAGATION_DELAY = 3 * 1000; // between 2 and 3 full heartbeat ticks
 
 const TEST_TIMEOUT_LONG = 60 * 1000;
 const TEST_TIMEOUT_SHORT = 10 * 1000;
+const gossipNodeConfig: GossipNodeConfig = {
+  network: FarcasterNetwork.DEVNET,
+};
 
 describe("gossip network tests", () => {
   /**
@@ -18,7 +28,7 @@ describe("gossip network tests", () => {
   let nodes: GossipNode[];
 
   beforeAll(async () => {
-    nodes = [...Array(NUM_NODES)].map(() => new GossipNode());
+    nodes = [...Array(NUM_NODES)].map(() => new GossipNode(gossipNodeConfig));
     messageStore = new Map();
   });
 
@@ -80,9 +90,14 @@ describe("gossip network tests", () => {
       });
 
       // Create a message and send it to a random node
-      const validMessage = await Factories.CastAddMessage.create();
-      const invalidMessage = await Factories.ReactionAddMessage.create();
+      const validMessage = await Factories.CastAddMessage.create({
+        data: { network: gossipNodeConfig.network ?? FarcasterNetwork.DEVNET },
+      });
+      const invalidMessage = await Factories.ReactionAddMessage.create({
+        data: { network: gossipNodeConfig.network ?? FarcasterNetwork.DEVNET },
+      });
       const validPublishResult = await randomNode.gossipMessage(validMessage);
+      expect(validPublishResult._unsafeUnwrapErr).toThrow();
       expect(validPublishResult.isOk()).toBeTruthy();
       expect(validPublishResult._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
       const invalidPublishResult = await randomNode.gossipMessage(invalidMessage);
@@ -121,6 +136,7 @@ describe("gossip network tests", () => {
         }
         // Cast add message must always be present, but it's ok for the reaction add message to be missing sometimes
         expect(castAddMessage).toBeDefined();
+        expect(castAddMessage?.data?.network).toBe(gossipNodeConfig.network);
       });
 
       expect(numCastAddMessages).toBe(NUM_NODES - 1);

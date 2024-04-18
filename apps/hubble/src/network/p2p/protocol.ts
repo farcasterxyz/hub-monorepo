@@ -1,5 +1,5 @@
 import { GossipVersion } from "@farcaster/hub-nodejs";
-import { Message as GossipSubMessage } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage } from "@libp2p/interface";
 import { msgId, noSignMsgId } from "@libp2p/pubsub/utils";
 
 // Current gossip protocol version
@@ -17,7 +17,12 @@ export const msgIdFnStrictSign = (message: GossipSubMessage): Uint8Array => {
 };
 
 /* This has been imported from the libp2p-gossipsub implementation as it's not public there */
-export function msgIdFnStrictNoSign(msg: GossipSubMessage): Uint8Array {
+export async function msgIdFnStrictNoSign(msg: GossipSubMessage): Promise<Uint8Array> {
   // Hashes the raw message data
-  return noSignMsgId(msg.data);
+  const id = noSignMsgId(msg.data);
+  if (id instanceof Promise) {
+    return await id;
+  } else {
+    return id;
+  }
 }

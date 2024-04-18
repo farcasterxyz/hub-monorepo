@@ -1,7 +1,9 @@
+import { kadDHT, removePublicAddressesMapper } from "@libp2p/kad-dht";
+import { mdns } from "@libp2p/mdns";
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult, TopicValidatorResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult, TopicValidatorResult, PeerId } from "@libp2p/interface";
 import {
   GossipNode,
   LibP2PNodeInterface,
@@ -24,7 +26,14 @@ import {
   Message,
   toFarcasterTime,
 } from "@farcaster/hub-nodejs";
-import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
+import {
+  addressInfoFromNodeAddress,
+  addressInfoFromParts,
+  checkNodeAddrs,
+  ipFamilyFromString,
+  ipMultiAddrStrFromAddressInfo,
+  p2pMultiAddrStr,
+} from "../../utils/p2p.js";
 import { createLibp2p, Libp2p } from "libp2p";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
@@ -33,13 +42,15 @@ import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
 import { noise } from "@chainsafe/libp2p-noise";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign } from "./protocol.js";
-import { PeerId } from "@libp2p/interface-peer-id";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { logger } from "../../utils/logger.js";
 import { initializeStatsd, statsd } from "../../utils/statsd.js";
 import v8 from "v8";
 import { MessageBundle } from "@farcaster/hub-nodejs";
 import { BundleCreator } from "./bundleCreator.js";
+import { Multiaddr } from "@multiformats/multiaddr";
+import { AddressInfo } from "net";
+import { TopicStr } from "@chainsafe/libp2p-gossipsub/types";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -81,17 +92,33 @@ export class LibP2PNode {
   }
 
   gossipTopics() {
+    // const topics = [GossipNode.primaryTopicForNetwork(this._network), GossipNode.contactInfoTopicForNetwork(this._network)];
+    // if (!this.gossip.getTopics().some((t) => t === topics[0] || t === topics[1])) {
+    //   throw new Error("Gossip topics not initialized");
+    // }
+    // return topics;
     return [GossipNode.primaryTopicForNetwork(this._network), GossipNode.contactInfoTopicForNetwork(this._network)];
   }
 
   /** Returns the GossipSub instance used by the Node */
   get gossip() {
-    const pubsub = this._node?.pubsub;
-    return pubsub ? (pubsub as GossipSub) : undefined;
+    if (!this._node) {
+      throw new Error("Node not initialized");
+    }
+
+    if (!this._node.services["pubsub"]) {
+      throw new Error("Pubsub service not initialized");
+    }
+    // const pubsub: GossipSub = this._node.services["pubsub"] as GossipSub;
+    // return pubsub ? (pubsub as GossipSub) : undefined;
+    return this._node.services["pubsub"] as GossipSub;
   }
 
   subscribe(topic: string) {
     this.gossip?.subscribe(topic);
+    if (!this.gossip?.getTopics().some((t) => t === topic)) {
+      throw err(new HubError("unavailable", { message: `failed to subscribe to topic: ${topic}` }));
+    }
   }
 
   async makeNode(options: NodeOptions): HubAsyncResult<boolean> {
@@ -108,11 +135,22 @@ export class LibP2PNode {
 
     let announceMultiAddrStrList: string[] = [];
     if (options.announceIp && options.gossipPort) {
-      const announceMultiAddr = addressInfoFromParts(options.announceIp, options.gossipPort).map((addressInfo) =>
-        ipMultiAddrStrFromAddressInfo(addressInfo),
-      );
-      if (announceMultiAddr.isOk() && announceMultiAddr.value.isOk()) {
+      const addressInfo: HubResult<AddressInfo> = addressInfoFromParts(options.announceIp, options.gossipPort);
+      const announceMultiAddr = addressInfo.map((addressInfo) => {
+        return ipMultiAddrStrFromAddressInfo(addressInfo);
+      });
+      if (addressInfo.isOk() && announceMultiAddr.isOk() && announceMultiAddr.value.isOk()) {
         // If we have a valid announce IP, use it
+        // const ma: Multiaddr = MultiAddr.fromNodeAddress({
+        //   address: addressInfo.value.address,
+        //   family: ipFamilyFromString(addressInfo.value.family),
+        //   port: addressInfo.value.port,
+        // }, 'tcp');
+        // announceMultiAddrStrList = [ma.toString()];
+        // if (peerId) {
+        //   const peerIDMultiAddr = ma.encapsulate(`/p2p/${peerId.toString()}`);
+        //   announceMultiAddrStrList.push(peerIDMultiAddr.toString());
+        // }
         const announceIpMultiaddr = announceMultiAddr.value.value;
         announceMultiAddrStrList = [`${announceIpMultiaddr}/tcp/${options.gossipPort}`];
       }
@@ -145,15 +183,25 @@ export class LibP2PNode {
       : false;
 
     const gossip = gossipsub({
-      allowPublishToZeroPeers: true,
+      allowPublishToZeroTopicPeers: false,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
+      // batchPublish: true,
       canRelayMessage: true,
+      // messageProcessingConcurrency: 1024,
+      // maxInboundStreams: 1024,
+      // maxOutboundStreams: 1024,
+      // directConnectTicks: 1,
       directPeers: options.directPeers || [],
-      emitSelf: false,
-      fallbackToFloodsub: fallbackToFloodsub,
-      floodPublish: floodPublish,
+      // doPX: true,
+      emitSelf: true,
+      enabled: true,
+      // fallbackToFloodsub: fallbackToFloodsub,
+      // floodPublish: floodPublish,
+      // fallbackToFloodsub: true,
+      // floodPublish: true,
       gossipsubIWantFollowupMs: gossipsubIWantFollowupMs,
       globalSignaturePolicy: options.strictNoSign ? "StrictNoSign" : "StrictSign",
+      // heartbeatInterval: 50,
       msgIdFn: this.getMessageId.bind(this),
       seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
@@ -193,21 +241,50 @@ export class LibP2PNode {
         "No PEER-ID RESTRICTIONS ENABLED. This node will accept connections from any peer",
       );
     }
-    this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs, options.deniedPeerIdStrs);
+    // this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs, options.deniedPeerIdStrs);
 
     const result = await ResultAsync.fromPromise(
       createLibp2p({
         // Only set optional fields if defined to avoid errors
         ...(peerId && { peerId }),
-        connectionGater: this._connectionGater,
+        // connectionGater: this._connectionGater,
         addresses: {
           listen: [listenMultiAddrStr],
           announce: announceMultiAddrStrList,
         },
-        transports: [tcp()],
+        transports: [
+          tcp({
+            dialOpts: {
+              keepAlive: true,
+            },
+          }),
+        ],
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
-        pubsub: gossip,
+        // connectionManager: {
+        // autoDialInterval: 250,
+        // dialTimeout: this._p2pConnectTimeoutMs,
+        // inboundUpgradeTimeout: 5 * 1000,
+        // minConnections: 1,
+        // },
+        // peerDiscovery: [
+        //   mdns({
+        //     broadcast: true,
+        //     interval: 250,
+        //   })
+        // ],
+        services: {
+          // lanDHT: kadDHT({
+          //   peerInfoMapper: removePublicAddressesMapper,
+          //   clientMode: false,
+          // dht: kadDHT({
+          //   initialQuerySelfInterval: 250,
+          //   pingTimeout: 5 * 1000,
+          //   querySelfInterval: 1000,
+          // }),
+          pubsub: gossip,
+          // }),
+        },
       }),
       (e) => {
         log.error({ identity: this.identity, error: e }, "failed to create libp2p node");
@@ -251,7 +328,7 @@ export class LibP2PNode {
   }
 
   async isStarted(): Promise<boolean> {
-    return this._node?.isStarted() ?? false;
+    return this._node?.status === "started";
   }
 
   async stop() {
@@ -260,7 +337,11 @@ export class LibP2PNode {
 
   /** Return if we have any inbound P2P connections */
   hasInboundConnections(): boolean {
-    return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
+    return (
+      this._node?.getConnections().some((conn) => {
+        return conn.direction === "inbound";
+      }) ?? false
+    );
   }
 
   allPeerIds(): string[] {
@@ -282,7 +363,7 @@ export class LibP2PNode {
    * @param message - The message to generate an ID for
    * @returns The message ID as an Uint8Array
    */
-  getMessageId(message: GossipSubMessage): Uint8Array {
+  async getMessageId(message: GossipSubMessage): Promise<Uint8Array> {
     if (message.topic.includes(GossipNode.primaryTopicForNetwork(this._network))) {
       // check if message is a Farcaster Protocol Message
       const protocolMessage = LibP2PNode.decodeMessage(message.data);
@@ -294,7 +375,7 @@ export class LibP2PNode {
         }
       }
     }
-    return msgIdFnStrictNoSign(message);
+    return await msgIdFnStrictNoSign(message);
   }
 
   static encodeMessage(message: GossipMessage): HubResult<Uint8Array> {
@@ -343,17 +424,16 @@ export class LibP2PNode {
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: MultiAddr.Multiaddr) {
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
-      log.error({}, "address book missing for gossipNode");
-    } else {
-      const addResult = await ResultAsync.fromPromise(
-        addressBook.add(peerId, [multiaddr]),
-        (error) => new HubError("unavailable", error as Error),
-      );
-      if (addResult.isErr()) {
-        log.error({ error: addResult.error, peerId }, "failed to add contact info to address book");
-      }
+    if (!this._node?.peerStore) {
+      log.error({}, "peer store missing for gossipNode");
+      throw new HubError("unavailable", new Error("peer store missing for gossipNode"));
+    }
+    const result = await ResultAsync.fromPromise(
+      this._node.peerStore.merge(peerId, { multiaddrs: [multiaddr] }),
+      (error) => new HubError("unavailable", error as Error),
+    );
+    if (result.isErr()) {
+      log.error({ error: result.error, peerId }, "failed to add contact info to address book");
     }
   }
 
@@ -374,18 +454,17 @@ export class LibP2PNode {
       }
     }
 
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
+    if (!this._node?.peerStore) {
       log.error({}, "address book missing for gossipNode");
     } else {
-      await addressBook.delete(peerId);
+      await this._node.peerStore.delete(peerId);
     }
   }
 
   async connectionStats(): Promise<{ inbound: number; outbound: number }> {
     const [inbound, outbound] = this._node?.getConnections()?.reduce(
       (acc, conn) => {
-        acc[conn.stat.direction === "inbound" ? 0 : 1]++;
+        acc[conn.direction === "inbound" ? 0 : 1]++;
         return acc;
       },
       [0, 0],
@@ -396,9 +475,11 @@ export class LibP2PNode {
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
     const existingConnections = this._node?.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
-      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
-      if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
+      const knownAddrs = await this._node?.peerStore.get(peerId);
+      if (knownAddrs && !knownAddrs.addresses.find((addr) => addr.multiaddr.equals({ bytes: conn.remoteAddr.bytes }))) {
+        await this._node?.peerStore.merge(peerId, {
+          multiaddrs: [conn.remoteAddr],
+        });
       }
     }
 
@@ -446,13 +527,25 @@ export class LibP2PNode {
 
   /** Serializes and publishes a Farcaster Message to the network */
   async broadcastMessage(message: Message): Promise<HubResult<PublishResult>[]> {
+    const topic: TopicStr = GossipNode.primaryTopicForNetwork(this._network);
     const gossipMessage = GossipMessage.create({
       message,
-      topics: [GossipNode.primaryTopicForNetwork(this._network)],
+      topics: [topic],
       peerId: this.peerId?.toBytes() ?? new Uint8Array(),
       version: GOSSIP_PROTOCOL_VERSION,
       timestamp: toFarcasterTime(Date.now()).unwrapOr(0),
     });
+    // const topicPeers = this.gossip.getSubscribers(topic)
+    // if (topicPeers.length === 0) {
+    //   throw new HubError("unavailable", new Error("No peers subscribed to topic"));
+    // }
+    // topicPeers.forEach((peer) => {
+    //   this.gossip.publish(topic, LibP2PNode.encodeMessage(gossipMessage)._unsafeUnwrap(), {
+    //     allowPublishToZeroTopicPeers: false,
+    //     batchPublish: true,
+    //     ignoreDuplicatePublishError: true,
+    //   });
+    // });
     return this.publish(gossipMessage);
   }
 
@@ -508,7 +601,7 @@ export class LibP2PNode {
 
     this.gossip?.reportMessageValidationResult(
       messageId,
-      propagationSource,
+      propagationSource.toString(),
       isValid ? TopicValidatorResult.Accept : TopicValidatorResult.Ignore,
     );
   }

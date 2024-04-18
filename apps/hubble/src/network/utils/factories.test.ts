@@ -1,5 +1,5 @@
 import { Factories, GossipMessage, Message, GossipAddressInfo } from "@farcaster/hub-nodejs";
-import { isPeerId } from "@libp2p/interface-peer-id";
+import { isPeerId } from "@libp2p/interface";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import { GOSSIP_PROTOCOL_VERSION } from "../p2p/protocol.js";
 import { NetworkFactories } from "./factories.js";

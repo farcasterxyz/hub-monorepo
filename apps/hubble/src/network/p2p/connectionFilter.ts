@@ -1,5 +1,5 @@
-import { ConnectionGater, MultiaddrConnection } from "@libp2p/interface-connection";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { ConnectionGater, MultiaddrConnection } from "@libp2p/interface";
+import { PeerId } from "@libp2p/interface";
 import { Multiaddr } from "@multiformats/multiaddr";
 import { logger } from "../../utils/logger.js";
 
@@ -42,12 +42,9 @@ export class ConnectionFilter implements ConnectionGater {
     return deny;
   };
 
-  denyDialMultiaddr = async (peerId: PeerId, _multiaddr: Multiaddr): Promise<boolean> => {
-    const deny = this.shouldDeny(peerId.toString());
-    if (deny) {
-      log.info({ peerId, filter: "denyDialMultiaddr" }, "denied a connection");
-    }
-    return deny;
+  denyDialMultiaddr = async (_multiaddr: Multiaddr): Promise<boolean> => {
+    const peerID = _multiaddr.getPeerId();
+    return peerID !== null && this.shouldDeny(peerID.toString());
   };
 
   denyInboundConnection = async (_maConn: MultiaddrConnection): Promise<boolean> => {

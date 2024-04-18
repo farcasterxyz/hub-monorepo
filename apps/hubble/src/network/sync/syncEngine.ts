@@ -23,7 +23,7 @@ import {
   UserNameProof,
   UserNameType,
 } from "@farcaster/hub-nodejs";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
@@ -1253,7 +1253,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     let fetchMessagesThreshold = HASHES_PER_FETCH;
     // If we have more messages but the hashes still mismatch, we need to find the exact message that's missing.
     if (ourNode && ourNode.numMessages >= 1) {
-      fetchMessagesThreshold = 1;
+      fetchMessagesThreshold = HASHES_PER_FETCH / 2;
     }
 
     // If the other hub's node has fewer than the fetchMessagesThreshold, just fetch them all in go, otherwise, iterate through
