@@ -28,7 +28,7 @@ import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
-import SyncEngine from "./network/sync/syncEngine.js";
+import SyncEngine, { FIRST_SYNC_DELAY } from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
@@ -1456,7 +1456,7 @@ export class Hub implements HubInterface {
       this.performedFirstSync = true;
       setTimeout(async () => {
         await ResultAsync.fromPromise(this.syncEngine.diffSyncIfRequired(this), (e) => e);
-      }, 10 * 1000);
+      }, FIRST_SYNC_DELAY);
     } else {
       log.debug({ peerInfo: message }, "Already have this peer, skipping sync");
     }
@@ -1616,7 +1616,6 @@ export class Hub implements HubInterface {
           if (await isMessageInDB(this.rocksDB, message)) {
             log.debug({ source }, "submitMessageBundle rejected: Message already exists");
             allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
-            return;
           } else {
             dedupedMessages.push({ i, message: ensureMessageData(message) });
           }
@@ -1675,11 +1674,16 @@ export class Hub implements HubInterface {
 
     // Convert the merge results to an Array of HubResults with the key
     const finalResults: HubResult<number>[] = [];
+    const finalFailures = new Map<string, number>();
     let success = 0;
     for (let i = 0; i < allResults.size; i++) {
       const result = allResults.get(i) as HubResult<number>;
       if (result.isOk()) {
         success += 1;
+      } else {
+        const errCode = result.error.errCode;
+        const count = finalFailures.get(errCode) ?? 0;
+        finalFailures.set(errCode, count + 1);
       }
       finalResults.push(result);
     }
@@ -1696,6 +1700,7 @@ export class Hub implements HubInterface {
       {
         hash: messageBundle.hash,
         success,
+        finalFailures: [...finalFailures],
         total: finalResults.length,
         totalTimeMilis,
         timePerMergeMs: Math.round((10 ** 2 * totalTimeMilis) / finalResults.length) / 10 ** 2, // round to 2 places

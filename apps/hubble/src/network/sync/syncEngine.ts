@@ -53,6 +53,7 @@ const SYNC_THRESHOLD_IN_SECONDS = 10;
 // The maximum number of nodes to enque in the work queue
 const MAX_WORK_QUEUE_SIZE = 100_000;
 
+export const FIRST_SYNC_DELAY = 10 * 1000; // How long to wait after startup to start syncing
 const SYNC_MAX_DURATION = 110 * 60 * 1000; // 110 minutes, just slightly less than the periodic sync job frequency
 
 // number of CPUs, clamped between 2 and 8
@@ -621,7 +622,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
       // Pick a more random peers, one per sync thread. It's OK if we pick the same twice, it might
       // happen if we don't have that many peers.
-      for (let i = 0; i < SYNC_PARALLELISM; i++) {
+      for (let i = 0; i < Math.max(SYNC_PARALLELISM, peers.length); i++) {
         const randomPeer = peers[Math.floor(Math.random() * peers.length)] as PeerContact;
         secondaryContacts.push(randomPeer);
       }
@@ -1198,6 +1199,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   async processSyncWorkQueue(): Promise<void> {
+    // Cap the sync parallelism to the number of secondary rpc clients we could get
+    const syncParallelism = Math.max(SYNC_PARALLELISM, this.curSync.secondaryRpcClients.length);
+
     while (this.curSync.workQueue.length > 0) {
       // Go over the work queue, and count how many items are in progress, and how many are completed
       const newWorkQueue: SyncEngineWorkItem[] = [];
@@ -1231,8 +1235,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this.curSync.workQueue = newWorkQueue;
 
       // If there is an opputunity to do more work, we will do it
-      if (this.curSync.executingWorkCount < SYNC_PARALLELISM) {
-        const n = Math.max(0, SYNC_PARALLELISM - this.curSync.executingWorkCount);
+      if (this.curSync.executingWorkCount < syncParallelism) {
+        const n = Math.max(0, syncParallelism - this.curSync.executingWorkCount);
         // Find the "n" best work items, and start them
         const bestWorkItems = scheduledItems.sort((a, b) => b.score - a.score).slice(0, n);
 
