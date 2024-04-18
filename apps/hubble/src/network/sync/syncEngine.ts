@@ -622,7 +622,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
       // Pick a more random peers, one per sync thread. It's OK if we pick the same twice, it might
       // happen if we don't have that many peers.
-      for (let i = 0; i < Math.max(SYNC_PARALLELISM, peers.length); i++) {
+      for (let i = 0; i < Math.min(SYNC_PARALLELISM, peers.length); i++) {
         const randomPeer = peers[Math.floor(Math.random() * peers.length)] as PeerContact;
         secondaryContacts.push(randomPeer);
       }
@@ -1200,7 +1200,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   async processSyncWorkQueue(): Promise<void> {
     // Cap the sync parallelism to the number of secondary rpc clients we could get
-    const syncParallelism = Math.max(SYNC_PARALLELISM, this.curSync.secondaryRpcClients.length);
+    const syncParallelism = Math.min(SYNC_PARALLELISM, this.curSync.secondaryRpcClients.length);
 
     while (this.curSync.workQueue.length > 0) {
       // Go over the work queue, and count how many items are in progress, and how many are completed

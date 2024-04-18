@@ -1698,7 +1698,7 @@ export class Hub implements HubInterface {
 
     log.info(
       {
-        hash: messageBundle.hash,
+        hash: bytesToHexString(messageBundle.hash).unwrapOr(messageBundle.hash),
         success,
         finalFailures: [...finalFailures],
         total: finalResults.length,
