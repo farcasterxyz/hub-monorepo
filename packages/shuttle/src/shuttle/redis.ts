@@ -10,7 +10,7 @@ export const getRedisClient = (redisUrl: string, redisOpts?: RedisOptions) => {
 };
 
 export class RedisClient {
-  private client: Redis;
+  public client: Redis;
   constructor(client: Redis) {
     this.client = client;
   }

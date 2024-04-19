@@ -9,6 +9,7 @@ import {
 import { logger } from "./logger.js";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import { constants as httpConstants } from "http2";
+import { Result, ResultAsync, ok } from "neverthrow";
 
 const DataDogEventAlert = {
   ERROR: "error",
@@ -92,7 +93,7 @@ parentPort?.on("message", async (message: unknown) => {
     return;
   }
 
-  let response: AxiosResponse<unknown, unknown> | null = null;
+  let response: Result<AxiosResponse<unknown, unknown>, Error> | null = null;
   switch (messageType) {
     case DiagnosticReportMessageType.Error: {
       const data = payload as DiagnosticReportMessageSpec[DiagnosticReportMessageType.Error];
@@ -108,26 +109,31 @@ parentPort?.on("message", async (message: unknown) => {
       logger.error({ type: messageType }, "Unknown diagnostic report message type");
   }
 
-  if (
-    response &&
-    !(response.status === httpConstants.HTTP_STATUS_ACCEPTED || response.status === httpConstants.HTTP_STATUS_OK)
+  if (response?.isErr()) {
+    logger.error({ error: response.error }, "Error while reporting diagnostic to Datadog");
+  } else if (
+    response?.isOk() &&
+    !(
+      response.value.status === httpConstants.HTTP_STATUS_ACCEPTED ||
+      response.value.status === httpConstants.HTTP_STATUS_OK
+    )
   ) {
     logger.error(
       {
-        status: response.status,
-        response_data: JSON.stringify(response.data),
+        status: response.value.status,
+        response_data: JSON.stringify(response.value.data),
       },
       "Failed to report diagnostic to Datadog",
     );
   }
 });
 
-const postDataDogEvent = (
+const postDataDogEvent = async (
   request: DataDogEventCreateRequest,
   config: DiagnosticReportConfig,
-): Promise<AxiosResponse> => {
+): Promise<Result<AxiosResponse, Error>> => {
   if (config.optOut) {
-    return Promise.resolve({} as AxiosResponse);
+    return Promise.resolve(ok({} as AxiosResponse));
   }
 
   const baseURL = new URL(config.reportURL);
@@ -141,21 +147,29 @@ const postDataDogEvent = (
       ...(process.env["HUB_DIAGNOSTICS_APP_KEY"] && { "DD-APP-KEY": process.env["HUB_DIAGNOSTICS_APP_KEY"] }),
     },
   };
-  return axios.post(errorURL.toString(), request, requestConfig);
+
+  return ResultAsync.fromPromise(axios.post(errorURL.toString(), request, requestConfig), (e) => e as Error);
 };
 
-export const postErrorEvent = async (error: Error, config: DiagnosticReportConfig): Promise<AxiosResponse> => {
+export const postErrorEvent = async (
+  error: Error,
+  config: DiagnosticReportConfig,
+): Promise<Result<AxiosResponse, Error>> => {
   const errorMessage: string = `[error]: ${error.message}`;
   // Check if the stack trace is available, as it might be undefined in some environments
   const stackTrace: string = error.stack ? `\n[stack_trace]:\n${error.stack}` : " [stack_trace: unavailable]";
   const text: string = `${errorMessage}${stackTrace}`;
-
+  const tags: string[] = [
+    "type:error",
+    ...((config.fid && [`fid:${config.fid.toString(10)}`]) || []),
+    ...((config.peerId && [`peer_id:${config.peerId}`]) || []),
+  ];
   const params: DataDogEventCreateRequest = {
     alertType: DataDogEventAlert.ERROR,
     title: error.name,
     text: text,
     priority: DataDogEventPriority.NORMAL,
-    tags: ["error", ...((config.fid && [String(config.fid)]) || []), ...((config.peerId && [config.peerId]) || [])],
+    tags: tags,
   };
 
   return postDataDogEvent(params, config);
@@ -164,18 +178,19 @@ export const postErrorEvent = async (error: Error, config: DiagnosticReportConfi
 export const postUnavailableEvent = async (
   payload: DiagnosticReportUnavailablePayload,
   config: DiagnosticReportConfig,
-) => {
+): Promise<Result<AxiosResponse, Error>> => {
   const context = payload.context ? `\n[context]:\n${JSON.stringify(payload.context, null, 2)}` : "";
   const text: string = `${payload.message}${context}`;
+  const tags: string[] = [
+    "type:unavailable",
+    ...((config.fid && [`fid:${config.fid.toString(10)}`]) || []),
+    ...((config.peerId && [`peer_id:${config.peerId}`]) || []),
+  ];
   const params: DataDogEventCreateRequest = {
     title: payload.method,
     text: text,
     priority: DataDogEventPriority.NORMAL,
-    tags: [
-      "unavailable",
-      ...((config.fid && [String(config.fid)]) || []),
-      ...((config.peerId && [config.peerId]) || []),
-    ],
+    tags: tags,
   };
 
   return postDataDogEvent(params, config);

@@ -138,3 +138,4 @@ jobs:
 
       - name: Upload coverage results
         uses: codecov/codecov-action@v4
+        continue-on-error: true
