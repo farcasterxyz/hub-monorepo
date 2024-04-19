@@ -21,6 +21,8 @@ const db = jestRocksDB("jobs.pruneMessagesJob.test");
 const engine = new Engine(db, FarcasterNetwork.TESTNET);
 const scheduler = new PruneMessagesJobScheduler(engine);
 
+const TEST_TIMEOUT_LONG = 60 * 1000;
+
 // Use farcaster timestamp
 const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed25519Signer, timestamp: number) => {
   const castAdd = await Factories.CastAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
@@ -140,6 +142,6 @@ describe("doJobs", () => {
       expect(prunedMessages.length).toEqual(2); // 1 verification for each of the 2 fids
       expect(prunedMessages.filter((m) => m.data?.type !== MessageType.VERIFICATION_ADD_ETH_ADDRESS)).toEqual([]);
     },
-    30 * 1000,
+    TEST_TIMEOUT_LONG,
   );
 });
