@@ -93,8 +93,8 @@ export class DbSnapshotBackupJobScheduler {
           messageCount,
         );
         if (s3Result.isOk()) {
-          // Delete the tar file, ignore errors
-          fs.unlink(tarGzResult.value, () => {});
+          // Delete the tar file chunks directory, ignore errors
+          fs.rmdirSync(tarGzResult.value);
 
           // Cleanup old files from S3
           this.deleteOldSnapshotsFromS3();
