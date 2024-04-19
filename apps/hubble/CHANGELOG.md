@@ -1,5 +1,20 @@
 # @farcaster/hubble
 
+## 1.11.7
+
+### Patch Changes
+
+- ee1e0543: fix: Restrict `yarn snapshot-url` to mainnet - snapshots are not supported on other networks
+- 4c9fb617: feat: allow sharding event stream by fid
+- dd10cdb1: fix: update diagnostics reports to prefix tags with fid and peer_id
+- 7a1ccc38: fix: Handle axios errors while reporting to Datadog
+- 51907b05: perf: DiffSync v2
+- 3977c682: fix: Don't allow parallel storage cache scans
+- a7b309ee: fix: Use threadpool for trie node ops
+- ac229e2e: fix: Use pagesize=1 when scanning for first key
+- Updated dependencies [4c9fb617]
+  - @farcaster/hub-nodejs@0.11.10
+
 ## 1.11.6
 
 ### Patch Changes
