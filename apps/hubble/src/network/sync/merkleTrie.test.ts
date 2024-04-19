@@ -135,7 +135,8 @@ describe("MerkleTrie", () => {
         blockTimestamp: event1.blockTimestamp,
         fid: event1.fid,
         txIndex: event1.txIndex,
-        logIndex: event1.logIndex + 1,
+        // make sure only last byte is different
+        logIndex: event1.logIndex + (event1.logIndex % 256 === 255 ? -1 : +1),
       });
       const syncId1 = SyncId.fromOnChainEvent(event1);
       const syncId2 = SyncId.fromOnChainEvent(event2);
