@@ -56,8 +56,10 @@ const MAX_WORK_QUEUE_SIZE = 100_000;
 export const FIRST_SYNC_DELAY = 10 * 1000; // How long to wait after startup to start syncing
 const SYNC_MAX_DURATION = 110 * 60 * 1000; // 110 minutes, just slightly less than the periodic sync job frequency
 
-// number of CPUs, clamped between 2 and 8
-const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length, 8), 2);
+// number of CPUs, clamped between 2 and 4
+// This should be clamped between 2 and 16, but because of a perf bug serving the sync trie
+// we are limiting it to 4 for now. Once this release is rolled out, we can increase it to 16.
+const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length, 4), 2);
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 // If a peer returns over 20 timeouts during sync, we abandon syncing with them
