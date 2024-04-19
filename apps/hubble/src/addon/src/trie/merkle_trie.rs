@@ -251,7 +251,6 @@ impl MerkleTrie {
         if let Some(root) = self.root.write().unwrap().as_mut() {
             let result = root.get_snapshot(&self.db, prefix, 0);
 
-            self.unload_from_memory(root, false)?;
             result
         } else {
             Err(HubError {
@@ -266,7 +265,6 @@ impl MerkleTrie {
             if let Some(node) = root.get_node(&self.db, prefix, 0) {
                 let result = node.get_node_metadata(&self.db, prefix);
 
-                self.unload_from_memory(root, false)?;
                 result
             } else {
                 Err(HubError {

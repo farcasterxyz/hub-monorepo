@@ -14,7 +14,7 @@ import { GossipNode } from "../network/p2p/gossipNode.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import Engine from "../storage/engine/index.js";
 import { PeerId } from "@libp2p/interface-peer-id";
-import { ContactInfoContent } from "@farcaster/core";
+import { ContactInfoContent, HubResult, MessageBundle } from "@farcaster/core";
 import { getHubState, putHubState } from "../storage/db/hubState.js";
 
 export class MockHub implements HubInterface {
@@ -27,6 +27,19 @@ export class MockHub implements HubInterface {
     this.db = db;
     this.engine = engine ?? new Engine(db, FarcasterNetwork.TESTNET);
     this.gossipNode = gossipNode;
+  }
+
+  async submitMessageBundle(
+    messageBundle: MessageBundle,
+    source?: HubSubmitSource | undefined,
+  ): Promise<HubResult<number>[]> {
+    const results: HubResult<number>[] = [];
+    for (const message of messageBundle.messages) {
+      const result = await this.submitMessage(message, source);
+      results.push(result);
+    }
+
+    return results;
   }
 
   identity = "mock";
