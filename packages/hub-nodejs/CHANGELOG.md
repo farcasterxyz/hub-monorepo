@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.11.10
+
+### Patch Changes
+
+- 4c9fb617: feat: allow sharding event stream by fid
+- Updated dependencies [4c9fb617]
+  - @farcaster/core@0.14.10
+
 ## 0.11.9
 
 ### Patch Changes

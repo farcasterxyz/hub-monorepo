@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.8.7
+
+### Patch Changes
+
+- 4c9fb617: feat: allow sharding event stream by fid
+- Updated dependencies [4c9fb617]
+  - @farcaster/core@0.14.10
+
 ## 0.8.6
 
 ### Patch Changes
