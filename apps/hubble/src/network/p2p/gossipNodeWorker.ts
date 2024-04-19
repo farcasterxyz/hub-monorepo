@@ -59,12 +59,10 @@ export class LibP2PNode {
   private _network: FarcasterNetwork;
   private _peerScores: Map<string, number>;
   private _p2pConnectTimeoutMs: number;
-  private _bundleGossipPercent: number;
   private _bundleCreator: BundleCreator;
 
   constructor(network: FarcasterNetwork) {
     this._network = network;
-    this._bundleGossipPercent = 0;
     this._peerScores = new Map<string, number>();
     this._p2pConnectTimeoutMs = LIBP2P_CONNECT_TIMEOUT_MS;
 
@@ -414,21 +412,8 @@ export class LibP2PNode {
     }
   }
 
-  updateBundleGossipPercent(percent: number) {
-    this._bundleGossipPercent = percent;
-  }
-
-  getBundleGossipPercent() {
-    return this._bundleGossipPercent;
-  }
-
   async gossipMessage(message: Message): Promise<GossipPublishResult> {
-    if (this._bundleGossipPercent === 0) {
-      const publishResults = await this.broadcastMessage(message);
-      return { bundled: false, publishResults };
-    } else {
-      return this._bundleCreator.gossipMessage(message);
-    }
+    return this._bundleCreator.gossipMessage(message);
   }
 
   /** Serializes and publishes a Farcaster Bundle to the network */
@@ -814,16 +799,6 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"updateApplicationPeerScore">(undefined),
-      });
-      break;
-    }
-    case "updateBundleGossipPercent": {
-      const specificMsg = msg as LibP2PNodeMessage<"updateBundleGossipPercent">;
-      const [percent] = specificMsg.args;
-      await libp2pNode.updateBundleGossipPercent(percent);
-      parentPort?.postMessage({
-        methodCallId,
-        result: makeResult<"updateBundleGossipPercent">(undefined),
       });
       break;
     }

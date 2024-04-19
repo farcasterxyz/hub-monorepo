@@ -10,7 +10,6 @@ export class BundleCreator {
   private _defaultBundleTimeMs: number;
 
   private _currentBundle: Message[] = [];
-  private _bundleIncomingMessages = false;
   private _libp2pNode: LibP2PNode;
 
   constructor(libp2pNode: LibP2PNode, maxBundleSize = MAX_BUNDLE_SIZE, defaultBundleTimeMs = DEFAULT_BUNDLE_TIME_MS) {
@@ -18,26 +17,9 @@ export class BundleCreator {
     this._maxBundleSize = maxBundleSize;
     this._defaultBundleTimeMs = defaultBundleTimeMs;
 
-    this.updateIfBundling();
-
     setInterval(async () => {
-      this.updateIfBundling();
       await this.broadcastBundle();
     }, this._defaultBundleTimeMs);
-  }
-
-  // Use the % chance of bundling incoming messages to determine whether to bundle incoming messages
-  // for the next second
-  updateIfBundling() {
-    const bundleGossipPercent = this._libp2pNode.getBundleGossipPercent();
-    if (bundleGossipPercent === 0) {
-      this._bundleIncomingMessages = false;
-    } else if (bundleGossipPercent === 1) {
-      this._bundleIncomingMessages = true;
-    } else {
-      // Update whether to bundle incoming messages based on %chance
-      this._bundleIncomingMessages = Math.random() < this._libp2pNode.getBundleGossipPercent();
-    }
   }
 
   async broadcastBundle(): Promise<void> {
@@ -61,18 +43,18 @@ export class BundleCreator {
   async gossipMessage(message: Message): Promise<GossipPublishResult> {
     // If we are currently bundling messages, store them in the bundle, else just broadcast them out
     // via the libp2p node
-    if (this._bundleIncomingMessages) {
-      this._currentBundle.push(message);
 
-      if (this._currentBundle.length >= this._maxBundleSize) {
-        await this.broadcastBundle();
-        this._currentBundle = [];
-      }
+    this._currentBundle.push(message);
 
-      return { bundled: true, publishResults: undefined };
-    } else {
-      const publishResults = await this._libp2pNode.broadcastMessage(message);
-      return { bundled: false, publishResults };
+    if (this._currentBundle.length >= this._maxBundleSize) {
+      await this.broadcastBundle();
+      this._currentBundle = [];
     }
+
+    return { bundled: true, publishResults: undefined };
+
+    // To disable bundles for whatever reason, use this code
+    // const publishResults = await this._libp2pNode.broadcastMessage(message);
+    // return { bundled: false, publishResults };
   }
 }

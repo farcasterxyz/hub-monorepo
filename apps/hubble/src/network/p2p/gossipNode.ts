@@ -120,7 +120,6 @@ export interface LibP2PNodeInterface {
   gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   reportValid: (messageId: string, propagationSource: Uint8Array, isValid: boolean) => Promise<void>;
   updateApplicationPeerScore: (peerId: string, score: number) => Promise<void>;
-  updateBundleGossipPercent: (percent: number) => Promise<void>;
 }
 
 // Extract the method names (as strings) from the LibP2PNodeInterface
@@ -635,11 +634,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   updateApplicationPeerScore(peerId: string, score: number) {
     this.callMethod("updateApplicationPeerScore", peerId, score);
-  }
-
-  updateBundleGossipPercent(percent: number) {
-    statsd().gauge("gossip.bundle_percent", percent);
-    this.callMethod("updateBundleGossipPercent", percent);
   }
 
   async reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean): Promise<void> {
