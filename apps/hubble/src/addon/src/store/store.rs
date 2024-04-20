@@ -709,6 +709,8 @@ impl Store {
         let mut count = cached_count;
         let prune_size_limit = self.store_def.get_prune_size_limit();
 
+        let mut txn = self.db.txn();
+
         let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
         self.db.for_each_iterator_by_prefix_unbounded(
             prefix,
@@ -721,7 +723,6 @@ impl Store {
                 // Value is a message, so try to decode it
                 let message = message_decode(value)?;
 
-                let mut txn = self.db.txn();
                 if self.store_def.is_add_type(&message) {
                     let ts_hash =
                         make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
@@ -738,7 +739,6 @@ impl Store {
                     .store_event_handler
                     .commit_transaction(&mut txn, &mut hub_event)?;
 
-                self.db.write_txn(txn)?;
                 count -= 1;
 
                 hub_event.id = id;
@@ -748,6 +748,7 @@ impl Store {
             },
         )?;
 
+        self.db.write_txn(txn)?;
         Ok(pruned_events)
     }
 

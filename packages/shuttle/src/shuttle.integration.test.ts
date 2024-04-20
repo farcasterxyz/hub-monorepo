@@ -1,4 +1,4 @@
-import { migrateToLatest } from "./example-app/migration";
+import { migrateToLatest } from "./example-app/db";
 import { log } from "./log";
 import { sql } from "kysely";
 import { Factories, HubEvent, HubEventType, Message } from "@farcaster/hub-nodejs";
@@ -10,6 +10,7 @@ import {
   MessageHandler,
   StoreMessageOperation,
   HubEventProcessor,
+  MessageState,
 } from "./shuttle";
 import { sleep } from "./utils";
 
@@ -27,7 +28,13 @@ class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
   public override stop(): void {}
   public override destroy(): void {}
   public messageCallbacks: (
-    | ((message: Message, operation: StoreMessageOperation, isNew: boolean, wasMissed: boolean) => void)
+    | ((
+        message: Message,
+        operation: StoreMessageOperation,
+        state: MessageState,
+        isNew: boolean,
+        wasMissed: boolean,
+      ) => void)
     | undefined
   )[] = [];
 
@@ -37,7 +44,13 @@ class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
   }
 
   addMessageCallback(
-    callback?: (message: Message, operation: StoreMessageOperation, isNew: boolean, wasMissed: boolean) => void,
+    callback?: (
+      message: Message,
+      operation: StoreMessageOperation,
+      state: MessageState,
+      isNew: boolean,
+      wasMissed: boolean,
+    ) => void,
   ) {
     this.messageCallbacks.push(callback);
   }
@@ -46,12 +59,13 @@ class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
     message: Message,
     _txn: DB,
     operation: StoreMessageOperation,
+    state: MessageState,
     isNew: boolean,
     wasMissed: boolean,
   ): Promise<void> {
     const callback = this.messageCallbacks.shift();
     if (callback) {
-      callback(message, operation, isNew, wasMissed);
+      callback(message, operation, state, isNew, wasMissed);
     }
   }
 }
@@ -100,9 +114,10 @@ describe("shuttle", () => {
   test("message handler callback is invoked correctly", async () => {
     const message = await Factories.CastAddMessage.create({}, { transient: { signer } });
 
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(msg.hash).toEqual(message.hash);
       expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
       expect(isNew).toEqual(true);
       expect(wasMissed).toEqual(false);
     });
@@ -111,9 +126,10 @@ describe("shuttle", () => {
     );
 
     // When same message is inserted again, it should still be called, but isNew should be false
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(msg.hash).toEqual(message.hash);
       expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
       expect(isNew).toEqual(false);
       expect(wasMissed).toEqual(false);
     });
@@ -130,19 +146,22 @@ describe("shuttle", () => {
     );
 
     // We expect 3 callbacks, one for the add, one for the delete of the add, and one for the remove, in that order
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
       expect(msg.hash).toEqual(addMessage.hash);
       expect(isNew).toEqual(true);
     });
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("delete");
+      expect(state).toEqual("deleted");
       expect(msg.hash).toEqual(addMessage.hash);
-      // isNew is true becaue the message was updated in the db
+      // isNew is true because the message was updated in the db
       expect(isNew).toEqual(true);
     });
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
+      expect(state).toEqual("deleted");
       expect(msg.hash).toEqual(removeMessage.hash);
       expect(isNew).toEqual(true);
     });
@@ -177,13 +196,15 @@ describe("shuttle", () => {
 
   test("marks messages as pruned", async () => {
     const addMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
       expect(msg.hash).toEqual(addMessage.hash);
       expect(isNew).toEqual(true);
     });
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("prune");
+      expect(state).toEqual("deleted");
       expect(msg.hash).toEqual(addMessage.hash);
       expect(isNew).toEqual(true);
     });
@@ -204,13 +225,15 @@ describe("shuttle", () => {
 
   test("marks messages as revoked", async () => {
     const addMessage = await Factories.LinkAddMessage.create({}, { transient: { signer } });
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
       expect(msg.hash).toEqual(addMessage.hash);
       expect(isNew).toEqual(true);
     });
-    subscriber.addMessageCallback((msg, operation, isNew, wasMissed) => {
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("revoke");
+      expect(state).toEqual("deleted");
       expect(msg.hash).toEqual(addMessage.hash);
       expect(isNew).toEqual(true);
     });

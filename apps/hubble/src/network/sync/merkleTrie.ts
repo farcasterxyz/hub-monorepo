@@ -153,13 +153,6 @@ class MerkleTrie {
   }
 
   public async initialize(): Promise<void> {
-    // We'll do a migration only in Prod (not in test)
-    if (!(process.env["NODE_ENV"] === "test" || process.env["CI"])) {
-      setTimeout(async () => {
-        await this.doMigrate();
-      }, 5 * 60 * 1000);
-    }
-
     log.info("Initializing Merkle Trie");
     return await rsMerkleTrieInitialize(this._rustTrie);
   }
@@ -220,49 +213,6 @@ class MerkleTrie {
       }
     });
     log.info({ count }, "Rebuilt fnmames trie");
-  }
-
-  async doMigrate() {
-    // We go over the trie keys in the DB and send them to the worker thread to migrate. When
-    // the worker thread returns, we delete from the DB and continue. We do this until we have no
-    // more keys left
-    const start = Date.now();
-    log.info("Starting migration of keys to new trie");
-
-    let keys: Uint8Array[] = [];
-    let values: Uint8Array[] = [];
-
-    // Migrate and delete the keys in batches
-    const migrateAndDelete = async () => {
-      const migrated = await this.migrate(keys, values);
-
-      log.info({ migrated, total: keys.length }, "Migrated keys to new trie");
-
-      // Delete from the DB
-      for (let i = 0; i < keys.length; i++) {
-        await this._db.del(Buffer.from(keys[i] as Uint8Array));
-      }
-
-      // Wait a bit before continuing
-      await sleep(1000);
-
-      keys = [];
-      values = [];
-    };
-
-    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.SyncMerkleTrieNode]), async (key, value) => {
-      keys.push(new Uint8Array(key as Buffer));
-      values.push(new Uint8Array(value as Buffer));
-
-      if (keys.length >= 10_000) {
-        await migrateAndDelete();
-      }
-    });
-
-    // Delete any remaining keys from the DB
-    await migrateAndDelete();
-
-    log.info({ duration: Date.now() - start }, "Finished migration of keys to new trie");
   }
 
   public async insert(id: SyncId): Promise<boolean> {

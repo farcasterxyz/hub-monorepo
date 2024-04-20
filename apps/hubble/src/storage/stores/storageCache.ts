@@ -179,10 +179,14 @@ export class StorageCache {
       const prefix = makeMessagePrimaryKey(fid, set);
 
       let firstKey: Buffer | undefined;
-      await this._db.forEachIteratorByPrefix(prefix, (key) => {
-        firstKey = key as Buffer;
-        return true; // Finish the iteration after the first key-value pair
-      });
+      await this._db.forEachIteratorByPrefix(
+        prefix,
+        (key) => {
+          firstKey = key as Buffer;
+          return true; // Finish the iteration after the first key-value pair
+        },
+        { pageSize: 1 },
+      );
 
       if (firstKey === undefined) {
         return ok(undefined);

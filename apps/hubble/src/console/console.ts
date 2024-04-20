@@ -18,6 +18,7 @@ import { FactoriesCommand, ProtobufCommand } from "./protobufCommand.js";
 import { RpcClientCommand } from "./rpcClientCommand.js";
 import { WarpcastTestCommand } from "./warpcastTestCommand.js";
 import { SyncId } from "../network/sync/syncId.js";
+import { TrackHubDelayCommand } from "./trackHubDelayCommand.js";
 
 export const DEFAULT_RPC_CONSOLE = "127.0.0.1:2283";
 
@@ -67,6 +68,7 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
     new GenCommand(rpcClient, adminClient),
     new WarpcastTestCommand(rpcClient, adminClient),
     new AdminCommand(adminClient),
+    new TrackHubDelayCommand(rpcClient),
   ];
 
   replServer.defineCommand("help", {

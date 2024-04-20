@@ -59,11 +59,13 @@ import { sleep } from "../utils/crypto.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
 import { statsd } from "../utils/statsd.js";
 import { SyncId } from "../network/sync/syncId.js";
+import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
 export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
+const MAX_EVENT_STREAM_SHARDS = 10;
 
 export type RpcUsers = Map<string, string[]>;
 
@@ -433,8 +435,6 @@ export default class Server {
                     inSync: status.inSync,
                     shouldSync: status.shouldSync,
                     lastBadSync: status.lastBadSync,
-                    divergencePrefix: status.divergencePrefix,
-                    divergenceSecondsAgo: status.divergenceSecondsAgo,
                     ourMessages: status.ourSnapshot.numMessages,
                     theirMessages: status.theirSnapshot.numMessages,
                     score: status.score,
@@ -1164,12 +1164,30 @@ export default class Server {
 
         // We'll listen to all events and write them to the stream as they happen
         let lastEventId = 0;
+        const totalShards = request.totalShards || 0;
+        if (totalShards > MAX_EVENT_STREAM_SHARDS) {
+          log.info({ r: request, peer, err: "invalid totalShards" }, "subscribe: rejected stream");
+          stream.destroy(new Error(`totalShards must be less than ${MAX_EVENT_STREAM_SHARDS}`));
+        }
+        if (totalShards > 0 && (request.shardIndex === undefined || request.shardIndex >= totalShards)) {
+          log.info({ r: request, peer, err: "invalid shard index" }, "subscribe: rejected stream");
+          stream.destroy(new Error("invalid shard index"));
+        }
+        const shardIndex = request.shardIndex || 0;
+
         const eventListener = (event: HubEvent) => {
           if (event.id <= lastEventId) {
             statsd().increment("rpc.subscribe.out_of_order");
           }
           lastEventId = event.id;
-          bufferedStreamWriter.writeToStream(event);
+          if (totalShards === 0) {
+            bufferedStreamWriter.writeToStream(event);
+          } else {
+            const fid = fidFromEvent(event);
+            if (fid % totalShards === shardIndex) {
+              bufferedStreamWriter.writeToStream(event);
+            }
+          }
         };
 
         // Register a close listener to remove all listeners before we start sending events
