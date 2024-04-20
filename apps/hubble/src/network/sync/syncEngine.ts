@@ -51,7 +51,7 @@ import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvid
 import { PeerScore, PeerScorer } from "./peerScore.js";
 import { getOnChainEvent } from "../../storage/db/onChainEvent.js";
 import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
-import { MaxPriorityQueue, PriorityQueue } from "@datastructures-js/priority-queue";
+import { MaxPriorityQueue } from "@datastructures-js/priority-queue";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -64,7 +64,7 @@ export const FIRST_SYNC_DELAY = 30 * 1000; // How long to wait after startup to 
 const SYNC_MAX_DURATION = 110 * 60 * 1000; // 110 minutes, just slightly less than the periodic sync job frequency
 
 // The max number of parallel syncs to run
-const MAX_SYNC_PARALLELISM = os.cpus().length;
+const MAX_SYNC_PARALLELISM = Math.min(os.cpus().length, 16);
 
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
@@ -891,8 +891,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       this.scheduleWorkItem(ourNode, fromNodeMetadataResponse(theirNodeResult.value));
       const numMessages = Math.max(0, theirNodeResult.value.numMessages - (ourNode?.numMessages ?? 0));
 
+      // If we have missing messages, we use the full parallelism, otherwise we use only half as many
+      const desiredSyncParallelism = this.curSync.secondaryRpcClients.length * (numMessages > 1_000 ? 1 : 0.5);
+
       // Sync parallelism = number secondary rpc clients we could get (bounded between 2 and MAX_SYNC_PARALLELISM)
-      const syncParallelism = Math.max(2, Math.min(this.curSync.secondaryRpcClients.length, MAX_SYNC_PARALLELISM));
+      const syncParallelism = Math.round(Math.max(2, Math.min(desiredSyncParallelism, MAX_SYNC_PARALLELISM)));
 
       log.info(
         { numMessages, syncParallelism, peerId, secondaryRpcPeers: secondaryRpcClients.length },
