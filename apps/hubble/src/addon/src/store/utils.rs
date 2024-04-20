@@ -66,6 +66,7 @@ pub fn increment_vec_u8(vec: &Vec<u8>) -> Vec<u8> {
 }
 
 /** Derement the bytes of a Vec<u8> as if it were a big-endian number */
+#[allow(dead_code)]
 pub fn decrement_vec_u8(vec: &Vec<u8>) -> Vec<u8> {
     let mut result = vec.clone(); // Clone the input vector to create a new one for the result
     let mut borrow = true; // Start with a borrow to simulate the decrement
@@ -258,6 +259,7 @@ pub fn deferred_settle_messages(
     });
 }
 
+#[allow(dead_code)]
 pub fn to_farcaster_time(time_ms: u64) -> Result<u64, HubError> {
     if time_ms < FARCASTER_EPOCH {
         return Err(HubError {
@@ -277,10 +279,12 @@ pub fn to_farcaster_time(time_ms: u64) -> Result<u64, HubError> {
     Ok(seconds_since_epoch as u64)
 }
 
+#[allow(dead_code)]
 pub fn from_farcaster_time(time: u64) -> u64 {
     time * 1000 + FARCASTER_EPOCH
 }
 
+#[allow(dead_code)]
 pub fn get_farcaster_time() -> Result<u64, HubError> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

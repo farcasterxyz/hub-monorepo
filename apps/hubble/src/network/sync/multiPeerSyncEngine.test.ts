@@ -74,9 +74,11 @@ beforeAll(async () => {
 describe("Multi peer sync engine", () => {
   jest.setTimeout(TEST_TIMEOUT_LONG);
   const addMessagesWithTimeDelta = async (engine: Engine, timeDelta: number[]) => {
+    // Take care that the farcasterTime is not in the future
+    const farcasterTime = getFarcasterTime()._unsafeUnwrap() - 1000;
+
     return await Promise.all(
       timeDelta.map(async (t) => {
-        const farcasterTime = getFarcasterTime()._unsafeUnwrap();
         const cast = await Factories.CastAddMessage.create(
           { data: { fid, network, timestamp: farcasterTime + t } },
           { transient: { signer } },
@@ -422,6 +424,60 @@ describe("Multi peer sync engine", () => {
       expect(fetchMessagesSpy).not.toHaveBeenCalled();
     }
   });
+
+  test(
+    "sync should not fetch messages after the sync start",
+    async () => {
+      // Add signer custody event to engine 1
+      await expect(engine1.mergeOnChainEvent(custodyEvent)).resolves.toBeDefined();
+      await expect(engine1.mergeOnChainEvent(signerEvent)).resolves.toBeDefined();
+      await expect(engine1.mergeOnChainEvent(storageEvent)).resolves.toBeDefined();
+      await expect(engine1.mergeUserNameProof(fname)).resolves.toBeDefined();
+
+      // Sync engine 2 with engine 1, this should get all the onchain events and fnames
+      await syncEngine2.performSync("engine1", clientForServer1);
+      await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+      // Make sure root hash matches
+      expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
+
+      // Add messages to engine 1.
+      const nowFsTime = getFarcasterTime()._unsafeUnwrap();
+      const futureFsTime = nowFsTime + 2 * 60;
+
+      const futureCast = await Factories.CastAddMessage.create(
+        { data: { fid, network, timestamp: futureFsTime } },
+        { transient: { signer } },
+      );
+      const currentCast = await Factories.CastAddMessage.create(
+        { data: { fid, network, timestamp: nowFsTime } },
+        { transient: { signer } },
+      );
+
+      // Merge the casts in
+      let result = await engine1.mergeMessage(futureCast);
+      expect(result.isOk()).toBeTruthy();
+      result = await engine1.mergeMessage(currentCast);
+      expect(result.isOk()).toBeTruthy();
+
+      await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+      // Engine 2 should sync with engine1 (including onchain events and fnames)
+      expect(
+        (await syncEngine2.syncStatus("engine2", (await syncEngine1.getSnapshot())._unsafeUnwrap()))._unsafeUnwrap()
+          .shouldSync,
+      ).toBeTruthy();
+
+      // Sync engine 2 with engine 1
+      await syncEngine2.performSync("engine1", clientForServer1);
+
+      // Expect the new cast to be in the sync trie, but not the old one, because it will be after
+      // the sync engine start time
+      expect(await syncEngine2.trie.exists(SyncId.fromMessage(currentCast))).toBeTruthy();
+      expect(await syncEngine2.trie.exists(SyncId.fromMessage(futureCast))).toBeFalsy();
+    },
+    100 * 60 * 1000,
+  );
 
   test("should fetch only the exact missing message", async () => {
     // Engine1 has 1 message
