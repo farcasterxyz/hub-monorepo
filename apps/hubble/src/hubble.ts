@@ -1020,7 +1020,7 @@ export class Hub implements HubInterface {
                   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
                   .on("data", (dataChunk: any) => {
                     downloadedSize += dataChunk.length;
-                    progressBar?.update((chunkCount - 1) * 100 + (downloadedSize * 100) / totalSize);
+                    progressBar?.update(Math.round((chunkCount - 1) * 100 + (downloadedSize * 100) / totalSize));
                   })
                   .on("end", () => {
                     resolve(true);

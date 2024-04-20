@@ -16,7 +16,7 @@ export type SnapshotMetadata = Partial<DbStats> & {
 };
 
 export const isValidSnapshotMetadata = (data: Record<string, unknown>): data is SnapshotMetadata => {
-  return data["key"] !== undefined && data["timestamp"] !== undefined && data["serverDate"] !== undefined;
+  return data["keyBase"] !== undefined && data["timestamp"] !== undefined && data["serverDate"] !== undefined;
 };
 
 export const fetchSnapshotMetadata = async (snapshotPrefixURI: string): HubAsyncResult<SnapshotMetadata> => {
