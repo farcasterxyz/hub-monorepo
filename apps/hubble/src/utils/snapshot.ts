@@ -9,13 +9,14 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { logger } from "./logger.js";
 
 export type SnapshotMetadata = Partial<DbStats> & {
-  key: string;
+  keyBase: string;
+  chunks: string[];
   timestamp: number;
   serverDate: string;
 };
 
 export const isValidSnapshotMetadata = (data: Record<string, unknown>): data is SnapshotMetadata => {
-  return data["key"] !== undefined && data["timestamp"] !== undefined && data["serverDate"] !== undefined;
+  return data["keyBase"] !== undefined && data["timestamp"] !== undefined && data["serverDate"] !== undefined;
 };
 
 export const fetchSnapshotMetadata = async (snapshotPrefixURI: string): HubAsyncResult<SnapshotMetadata> => {
@@ -63,7 +64,7 @@ export const snapshotURLAndMetadata = async (
     return err(response.error);
   }
   const data: SnapshotMetadata = response.value;
-  return ok([`https://${s3Bucket}/${data.key}`, data]);
+  return ok([`https://${s3Bucket}/${data.keyBase}`, data]);
 };
 export const snapshotURL = (
   fcNetwork: FarcasterNetwork,
@@ -75,46 +76,67 @@ export const snapshotURL = (
 
 export const uploadToS3 = async (
   fcNetwork: FarcasterNetwork,
-  filePath: string,
+  chunkedDirPath: string,
   s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
   messageCount?: number,
 ): HubAsyncResult<string> => {
-  let start = Date.now();
+  const startTimestamp = Date.now();
   const s3 = new S3Client({
     region: S3_REGION,
   });
 
   // The AWS key is "snapshots/{network}/{DB_SCHEMA_VERSION}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
-  const key = `${snapshotDirectory(fcNetwork)}/snapshot-${new Date().toISOString().split("T")[0]}-${Math.floor(
-    Date.now() / 1000,
-  )}.tar.gz`;
+  const keyBase = `${snapshotDirectory(fcNetwork)}/snapshot-${
+    new Date(startTimestamp).toISOString().split("T")[0]
+  }-${Math.floor(startTimestamp / 1000)}.tar.gz`;
 
-  start = Date.now();
-  logger.info({ filePath, key, bucket: s3Bucket }, "Uploading snapshot to S3");
+  logger.info({ chunkedDirPath, keyBase, s3Bucket }, "Uploading snapshot to S3");
 
-  const fileStream = fs.createReadStream(filePath);
-  fileStream.on("error", function (err) {
-    logger.error(`S3 File Error: ${err}`);
-  });
+  // Read all the chunks files in the chunkedDirPath and upload them to S3
 
-  // The targz should be uploaded via multipart upload to S3
-  const targzParams = new Upload({
-    client: s3,
-    params: {
-      Bucket: s3Bucket,
-      Key: key,
-      Body: fileStream,
-    },
-    queueSize: 4, // 4 concurrent uploads
-    partSize: 1000 * 1024 * 1024, // 1 GB
-  });
+  // Get all the files in the directory
+  const files = fs.readdirSync(chunkedDirPath);
+  files.sort();
 
-  // NOTE: The sync engine type `DbStats` does not match the type in packages/core used by SnapshotMetadata.
-  //       As a result, ensure keys match core package `DbStats`, NOT sync engine `DbStats`
+  // Upload each file to S3
+  for (const file of files) {
+    const key = `${keyBase}/${file}`;
+    const filePath = `${chunkedDirPath}/${file}`;
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on("error", function (err) {
+      logger.error(`S3 File Error: ${err}`);
+    });
+
+    // The chunks should be uploaded via multipart upload to S3
+    const chunkUploadParams = new Upload({
+      client: s3,
+      params: {
+        Bucket: s3Bucket,
+        Key: key,
+        Body: fileStream,
+      },
+      queueSize: 4, // 4 concurrent uploads
+      partSize: 1000 * 1024 * 1024, // 1 GB
+    });
+
+    chunkUploadParams.on("httpUploadProgress", (progress) => {
+      logger.info({ progress }, "Uploading snapshot to S3 - progress");
+    });
+
+    try {
+      await chunkUploadParams.done();
+      logger.info({ key, file, timeTakenMs: Date.now() - startTimestamp }, "Snapshot chunk uploaded to S3");
+    } catch (e: unknown) {
+      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    }
+  }
+
   const metadata: SnapshotMetadata = {
-    key,
-    timestamp: Date.now(),
-    serverDate: new Date().toISOString(),
+    keyBase,
+    chunks: files,
+    timestamp: startTimestamp,
+    serverDate: new Date(startTimestamp).toISOString(),
     ...(messageCount && { numMessages: messageCount }),
   };
 
@@ -124,15 +146,11 @@ export const uploadToS3 = async (
     Body: JSON.stringify(metadata, null, 2),
   };
 
-  targzParams.on("httpUploadProgress", (progress) => {
-    logger.info({ progress }, "Uploading snapshot to S3 - progress");
-  });
-
   try {
-    await targzParams.done();
+    logger.info({ latestJsonParams, metadata }, "Preparing latest.json for uploading to S3");
     await s3.send(new PutObjectCommand(latestJsonParams));
-    logger.info({ key, timeTakenMs: Date.now() - start }, "Snapshot uploaded to S3");
-    return ok(key);
+    logger.info({}, "Snapshot latest.json uploaded to S3");
+    return ok(keyBase);
   } catch (e: unknown) {
     return err(new HubError("unavailable.network_failure", (e as Error).message));
   }

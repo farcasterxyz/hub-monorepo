@@ -723,7 +723,7 @@ const s3SnapshotURL = new Command("snapshot-url")
     }
     const [url, metadata] = response.value;
     console.log(`${JSON.stringify(metadata, null, 2)}`);
-    console.log(`Download at: ${url}`);
+    console.log(`Download chunks under directory at: ${url}`);
     exit(0);
   });
 

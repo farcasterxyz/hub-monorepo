@@ -936,41 +936,33 @@ export class Hub implements HubInterface {
             );
 
             let prevVersion = 0;
-            let latestSnapshotKey;
+            let latestSnapshotKeyBase;
+            let latestChunks: string[] = [];
             do {
               const response = await axios.get(
                 `https://${s3Bucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
               );
-              const { key } = response.data;
+              const { keyBase, chunks } = response.data;
 
-              if (!key) {
+              if (!keyBase) {
                 log.error(
                   { data: response.data, folder: this.getSnapshotFolder(prevVersion) },
                   "No latest snapshot name found in latest.json",
                 );
                 prevVersion += 1;
               } else {
-                latestSnapshotKey = key as string;
+                latestSnapshotKeyBase = keyBase as string;
+                latestChunks = chunks as string[];
                 break;
               }
             } while (prevVersion < LATEST_DB_SCHEMA_VERSION);
 
-            if (!latestSnapshotKey) {
+            if (!latestSnapshotKeyBase) {
               resolve(err(new HubError("unavailable", "No latest snapshot name found in latest.json")));
               return;
             } else {
-              log.info({ latestSnapshotKey }, "found latest S3 snapshot");
+              log.info({ latestSnapshotKeyBase }, "found latest S3 snapshot");
             }
-
-            const snapshotUrl = `https://${s3Bucket}/${latestSnapshotKey}`;
-            const response2 = await axios.get(snapshotUrl, {
-              responseType: "stream",
-            });
-            const totalSize = parseInt(response2.headers["content-length"], 10);
-
-            let downloadedSize = 0;
-            log.info({ totalSize }, "Getting snapshot...");
-            progressBar = addProgressBar("Getting snapshot", totalSize);
 
             const handleError = (e: Error) => {
               log.error({ error: e }, "Error extracting snapshot");
@@ -978,50 +970,75 @@ export class Hub implements HubInterface {
               resolve(err(new HubError("unavailable", "Error extracting snapshot")));
             };
 
-            const gunzip = zlib.createGunzip();
             const parseStream = new tar.Parse();
+            const gunzip = zlib.createGunzip();
+            gunzip.pipe(parseStream);
+
+            gunzip.on("error", handleError);
 
             // We parse the tar file and extract it into the DB location, which might be different
             // than the location it was originally created in. So, we transform the top-level
             // directory name to the DB location.
-            parseStream.on("entry", (entry) => {
-              const newPath = path.join(dbLocation, ...entry.path.split(path.sep).slice(1));
-              const newDir = path.dirname(newPath);
+            const entryPromises: Promise<boolean>[] = [];
 
-              if (entry.type === "Directory") {
-                fs.mkdirSync(newPath, { recursive: true });
-                entry.resume();
-              } else {
-                fs.mkdirSync(newDir, { recursive: true });
-                entry.pipe(fs.createWriteStream(newPath));
-              }
+            parseStream.on("entry", (entry) => {
+              const promise = new Promise<boolean>((resolve, reject) => {
+                const newPath = path.join(dbLocation, ...entry.path.split(path.sep).slice(1));
+                const newDir = path.dirname(newPath);
+
+                if (entry.type === "Directory") {
+                  fs.mkdirSync(newPath, { recursive: true });
+                  entry.resume();
+                  resolve(true);
+                } else {
+                  fs.mkdirSync(newDir, { recursive: true });
+                  const outStream = fs.createWriteStream(newPath);
+                  entry.pipe(outStream);
+                  outStream.on("finish", resolve);
+                  outStream.on("error", reject);
+                }
+              });
+              entryPromises.push(promise);
             });
 
-            parseStream.on("end", () => {
+            parseStream.on("end", async () => {
+              await Promise.all(entryPromises);
               log.info({ dbLocation }, "Snapshot extracted from S3");
               progressBar?.stop();
               resolve(ok(true));
             });
 
-            let lastDownloadedSize = 0;
-            response2.data
-              .on("error", handleError)
-              // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-              .on("data", (chunk: any) => {
-                const largeChunk = 1024 * 1024 * 1024;
+            log.info({ numChunks: latestChunks.length }, "Getting snapshot chunks...");
+            progressBar = addProgressBar("Getting snapshot", latestChunks.length * 100);
 
-                downloadedSize += chunk.length;
-                progressBar?.update(downloadedSize);
+            let chunkCount = 0;
+            for (const chunk of latestChunks) {
+              let downloadedSize = 0;
+              chunkCount += 1;
+              log.info({ chunkCount, totalChunks: latestChunks.length }, "Downloading snapshot chunks...");
 
-                if (downloadedSize - lastDownloadedSize > largeChunk) {
-                  log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
-                  lastDownloadedSize = downloadedSize;
-                }
-              })
-              .pipe(gunzip)
-              .on("error", handleError)
-              .pipe(parseStream)
-              .on("error", handleError);
+              const chunkUrl = `https://${s3Bucket}/${latestSnapshotKeyBase}/${chunk}`;
+              const chunkResponse = await axios.get(chunkUrl, {
+                responseType: "stream",
+              });
+              const totalSize = parseInt(chunkResponse.headers["content-length"], 10);
+
+              await new Promise((resolve) => {
+                chunkResponse.data
+                  .on("error", handleError)
+                  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+                  .on("data", (dataChunk: any) => {
+                    downloadedSize += dataChunk.length;
+                    progressBar?.update(Math.round((chunkCount - 1) * 100 + (downloadedSize * 100) / totalSize));
+                  })
+                  .on("end", () => {
+                    resolve(true);
+                  })
+                  .pipe(gunzip, { end: false });
+              });
+            }
+
+            gunzip.end();
           } else {
             resolve(ok(false));
           }
