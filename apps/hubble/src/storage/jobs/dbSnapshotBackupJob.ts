@@ -85,7 +85,6 @@ export class DbSnapshotBackupJobScheduler {
 
       // Upload to S3. Run this in the background so we don't block startup.
       setTimeout(async () => {
-        log.info({ messageCount }, "uploading snapshot to S3");
         const s3Result = await uploadToS3(
           this._options.network,
           tarGzResult.value,

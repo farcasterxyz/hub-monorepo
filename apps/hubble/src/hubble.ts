@@ -980,20 +980,30 @@ export class Hub implements HubInterface {
             // We parse the tar file and extract it into the DB location, which might be different
             // than the location it was originally created in. So, we transform the top-level
             // directory name to the DB location.
-            parseStream.on("entry", (entry) => {
-              const newPath = path.join(dbLocation, ...entry.path.split(path.sep).slice(1));
-              const newDir = path.dirname(newPath);
+            const entryPromises: Promise<boolean>[] = [];
 
-              if (entry.type === "Directory") {
-                fs.mkdirSync(newPath, { recursive: true });
-                entry.resume();
-              } else {
-                fs.mkdirSync(newDir, { recursive: true });
-                entry.pipe(fs.createWriteStream(newPath));
-              }
+            parseStream.on("entry", (entry) => {
+              const promise = new Promise<boolean>((resolve, reject) => {
+                const newPath = path.join(dbLocation, ...entry.path.split(path.sep).slice(1));
+                const newDir = path.dirname(newPath);
+
+                if (entry.type === "Directory") {
+                  fs.mkdirSync(newPath, { recursive: true });
+                  entry.resume();
+                  resolve(true);
+                } else {
+                  fs.mkdirSync(newDir, { recursive: true });
+                  const outStream = fs.createWriteStream(newPath);
+                  entry.pipe(outStream);
+                  outStream.on("finish", resolve);
+                  outStream.on("error", reject);
+                }
+              });
+              entryPromises.push(promise);
             });
 
-            parseStream.on("end", () => {
+            parseStream.on("end", async () => {
+              await Promise.all(entryPromises);
               log.info({ dbLocation }, "Snapshot extracted from S3");
               progressBar?.stop();
               resolve(ok(true));
