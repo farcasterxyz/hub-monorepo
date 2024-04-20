@@ -1,5 +1,5 @@
 import { FarcasterNetwork, HubAsyncResult, HubError } from "@farcaster/hub-nodejs";
-import { ResultAsync, err, ok } from "neverthrow";
+import { Result, ResultAsync, err, ok } from "neverthrow";
 import cron from "node-cron";
 import { logger } from "../../utils/logger.js";
 import { rsDbSnapshotBackup } from "../../rustfunctions.js";
@@ -94,7 +94,16 @@ export class DbSnapshotBackupJobScheduler {
         );
         if (s3Result.isOk()) {
           // Delete the tar file chunks directory, ignore errors
-          fs.rmdirSync(tarGzResult.value);
+          const deleteResult = Result.fromThrowable(
+            () => fs.rmdirSync(tarGzResult.value, { recursive: true }),
+            (e) => e as Error,
+          )();
+          if (deleteResult.isErr()) {
+            log.warn(
+              { error: deleteResult.error, errMessaeg: deleteResult.error.message },
+              "failed to delete tar backup chunks",
+            );
+          }
 
           // Cleanup old files from S3
           this.deleteOldSnapshotsFromS3();
