@@ -1329,7 +1329,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // First, we'll check if our node is empty. If it is, then we can start importing all the messages from the other node
         // at this prefix
         if (!ourNode || ourNode.numMessages === 0 || theirNode.numMessages <= 1) {
-          await this.getMessagesFromOtherNode(workItem);
+          await this.getMessagesFromOtherNode(workItem, theirNode.numMessages);
         }
 
         // Recurse into the children to to schedule the next set of work. Note that we didn't after  the
@@ -1349,37 +1349,74 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     });
   }
 
-  async getMessagesFromOtherNode(workItem: SyncEngineWorkItem): Promise<void> {
-    const rpcClient = this.curSync.secondaryRpcClients[this.curSync.nextSecondaryRpcClient];
+  async getMessagesFromOtherNode(workItem: SyncEngineWorkItem, expectItems: number): Promise<void> {
+    const secondaryRpcClient = this.curSync.secondaryRpcClients[this.curSync.nextSecondaryRpcClient];
     this.curSync.nextSecondaryRpcClient =
       (this.curSync.nextSecondaryRpcClient + 1) % this.curSync.secondaryRpcClients.length;
 
-    if (!rpcClient) {
+    if (!secondaryRpcClient || !this.curSync.rpcClient) {
       log.warn("RPC client is not set");
       return;
     }
 
+    // Attempt to use the secondary RPC client to fetch the missing syncIds
+    // first. If it doesn't work, we'll fall back to the primary RPC client.
+    let rpcClient = secondaryRpcClient;
     const start = Date.now();
-    const result = await rpcClient.getAllSyncIdsByPrefix(
-      TrieNodePrefix.create({ prefix: workItem.prefix }),
-      new Metadata(),
-      rpcDeadline(),
-    );
+
+    // Fetch the missing syncIds from the rpcClient.
+    const fetchMissingSyncIds = async (rpcClient: HubRpcClient) => {
+      return await rpcClient?.getAllSyncIdsByPrefix(
+        TrieNodePrefix.create({ prefix: workItem.prefix }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+    };
+
+    const result = await fetchMissingSyncIds(rpcClient);
     statsd().timing("syncengine.peer.get_all_syncids_by_prefix_ms", Date.now() - start);
 
+    let missingHashes: Uint8Array[] = [];
     if (result.isErr()) {
       log.warn(result.error, `Error fetching ids for prefix ${workItem.prefix}`);
-      this._peerScorer.decrementScore(this.curSync.peerId?.toString());
-      return;
+    } else {
+      missingHashes = result.value.syncIds;
     }
 
-    let missingHashes = result.value.syncIds.filter((id) => id.length > 0);
+    if (missingHashes.length < expectItems) {
+      // Replace the rpcClient with the primary one
+      rpcClient = this.curSync.rpcClient;
+
+      // Get it directly from the primary peerId
+      const primaryResult = await fetchMissingSyncIds(rpcClient);
+
+      log.info(
+        {
+          prefix: Array.from(workItem.prefix),
+          gotItems: missingHashes.length,
+          expectItems,
+          retriedItems: primaryResult.unwrapOr(undefined)?.syncIds.length,
+          peerId: this.curSync.peerId,
+        },
+        "Perform Sync: Missing syncIds from secondary peer, fetched instead from primary peer",
+      );
+
+      if (primaryResult.isErr()) {
+        log.warn(primaryResult?.error, `Perform Sync: PeerError: Error fetching ids for prefix ${workItem.prefix}`);
+        return;
+      }
+
+      missingHashes = primaryResult.value.syncIds;
+    }
+
+    // Filter out any empty hashes
+    missingHashes = missingHashes.filter((id) => id.length > 0);
 
     // Verify that the returned syncIDs actually have the prefix we requested.
     if (!this.verifySyncIdForPrefix(workItem.prefix, missingHashes)) {
       log.warn(
         { prefix: workItem.prefix, syncIds: missingHashes, peerId: this.curSync.peerId },
-        "PeerError: Received syncIds that don't match prefix, aborting trie branch",
+        "Perform Sync: PeerError: Received syncIds that don't match prefix, aborting trie branch",
       );
       this._peerScorer.decrementScore(this.curSync.peerId?.toString());
       return;
@@ -1390,14 +1427,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // hub at this node.
     // Note that we can optimize this check for the common case of a single missing syncId, since the diff
     // algorithm will drill down right to the missing syncId.
-
-    let revokedSyncIds = 0;
     if (missingHashes.length === 1) {
       if (await this._trie.existsByBytes(missingHashes[0] as Uint8Array)) {
         missingHashes = [];
         statsd().increment("syncengine.peer_counts.get_all_syncids_by_prefix_already_exists", 1);
 
-        revokedSyncIds += await this.revokeCorruptedSyncIds(await this._trie.getTrieNodeMetadata(workItem.prefix));
+        await this.revokeCorruptedSyncIds(await this._trie.getTrieNodeMetadata(workItem.prefix));
       }
     }
 
