@@ -113,6 +113,7 @@ export interface LibP2PNodeInterface {
   updateAllowedPeerIds: (peerIds: string[] | undefined) => Promise<void>;
   updateDeniedPeerIds: (peerIds: string[]) => Promise<void>;
   subscribe: (topic: string) => Promise<void>;
+  broadcastMessage: (message: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   gossipMessage: (
     message: Uint8Array,
   ) => Promise<SuccessOrError & { bundled: boolean | undefined; peerIds: Uint8Array[] }>;
@@ -398,7 +399,29 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._peerId?.toString();
   }
 
-  /** Serializes and publishes a Farcaster Message to the network */
+  /** Serializes and publishes a Farcaster Message to the network. This message is gossiped individually
+   *  (i.e., not in a bundle). Do not use this method at scale, since it will cause a lot of traffic
+   *  on the network.
+   *
+   *  Prefer using `gossipMessage` or `gossipBundle` instead.
+   */
+  async broadcastMessage(message: Message): HubAsyncResult<PublishResult> {
+    const result = await this.callMethod("broadcastMessage", Message.encode(message).finish());
+    if (result.success) {
+      const peerIds = await Promise.all(
+        result.peerIds.map(async (peerId: Uint8Array) => await createFromProtobuf(peerId)),
+      );
+      return ok({ recipients: peerIds });
+    } else {
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage as string));
+    }
+  }
+
+  /** Serializes and publishes a Farcaster Message to the network. This message may not be immediately
+   *  sent to the gossip network as it may instead be bundled with other messages and sent as a bundle.
+   *
+   *  If you need to broadcast an individual message, use `broadcastMessage` instead.
+   */
   async gossipMessage(message: Message): HubAsyncResult<GossipMessageResult> {
     const result = await this.callMethod("gossipMessage", Message.encode(message).finish());
     if (result.success) {
