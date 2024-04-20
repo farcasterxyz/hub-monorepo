@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.11.8
+
+### Patch Changes
+
+- cd7db2dc: fix: Split the snapshot into 4GB chunks
+
 ## 1.11.7
 
 ### Patch Changes
