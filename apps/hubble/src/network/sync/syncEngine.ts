@@ -126,6 +126,11 @@ type DbStats = {
   numFnames: number;
 };
 
+type SecondaryRpcClient = {
+  peerId: string;
+  rpcClient: HubRpcClient;
+};
+
 // The Status of the node's sync with the network.
 type SyncStatus = {
   isSyncing: boolean;
@@ -150,7 +155,7 @@ export class CurrentSyncStatus {
   numParallelFetches = 0;
 
   rpcClient: HubRpcClient | undefined;
-  secondaryRpcClients: HubRpcClient[] = [];
+  secondaryRpcClients: SecondaryRpcClient[] = [];
   nextSecondaryRpcClient = 0;
 
   executingWorkCount = 0;
@@ -160,7 +165,12 @@ export class CurrentSyncStatus {
 
   fullResult: MergeResult = new MergeResult();
 
-  constructor(peerId?: string, rpcClient?: HubRpcClient, secondaryRpcClients: HubRpcClient[] = [], startTimestamp = 0) {
+  constructor(
+    peerId?: string,
+    rpcClient?: HubRpcClient,
+    secondaryRpcClients: SecondaryRpcClient[] = [],
+    startTimestamp = 0,
+  ) {
     if (peerId) {
       this.peerId = peerId;
       this.isSyncing = true;
@@ -666,19 +676,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     // Fill in the rpcClients for the secondary contacts
-    const secondaryRpcClients: HubRpcClient[] = (
+    const secondaryRpcClients: SecondaryRpcClient[] = (
       await Promise.all(
         secondaryContacts.map(async (c) => {
           const rpcClient = await hub.getRPCClientForPeer(c.peerId, c.contactInfo);
           const info = await rpcClient?.getInfo({ dbStats: false }, new Metadata(), rpcDeadline());
           if (rpcClient && info && info.isOk()) {
-            return rpcClient;
+            return { peerId: c.peerId.toString(), rpcClient };
           } else {
             return undefined;
           }
         }),
       )
-    ).filter((rpcClient) => rpcClient !== undefined) as HubRpcClient[];
+    ).filter((c) => c !== undefined) as SecondaryRpcClient[];
 
     // If a sync profile is enabled, wrap the rpcClient in a profiler
     if (this._syncProfiler) {
@@ -752,20 +762,17 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         const result = await this.performSync(updatedPeerIdString, rpcClient, true, secondaryRpcClients);
 
         log.info(
-          { peerContact, result, timeTakenMs: Date.now() - start, status: this.curSync.status() },
+          {
+            peerContact,
+            result,
+            timeTakenMs: Date.now() - start,
+            status: this.curSync.status(),
+            interrupted: this.curSync.interruptSync,
+          },
           "Diffsync: complete",
         );
+
         this.emit("syncComplete", true);
-
-        // If this peer was bad, and we interrupted the sync, we should retry with a different, random peer
-        if (this.curSync.interruptSync && this.curSync.peerTimeoutErrors > MAX_PEER_TIMEOUT_ERRORS) {
-          log.warn({ peerId }, "Diffsync: Peer was bad, retrying with a different peer");
-
-          setTimeout(() => {
-            this.diffSyncIfRequired(hub);
-          }, 10 * 1000);
-        }
-
         return;
       } else {
         log.info({ peerId }, "DiffSync: No need to sync");
@@ -784,7 +791,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // Close all the secondary RPC clients
       for (const secondaryRpcClient of secondaryRpcClients) {
         const closeResult = Result.fromThrowable(
-          () => secondaryRpcClient?.close(),
+          () => secondaryRpcClient?.rpcClient.close(),
           (e) => e as Error,
         )();
         if (closeResult.isErr()) {
@@ -839,11 +846,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     peerId: string,
     rpcClient: HubRpcClient,
     doAudit = false,
-    secondaryRpcClients: HubRpcClient[] = [],
+    secondaryRpcClients: SecondaryRpcClient[] = [],
   ): Promise<MergeResult> {
     // Make sure we have at least one
     if (secondaryRpcClients.length === 0) {
-      secondaryRpcClients.push(rpcClient);
+      secondaryRpcClients.push({ peerId, rpcClient });
     }
 
     const startTimestamp = Date.now();
@@ -1318,7 +1325,22 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               "PeerError: Too many errors, stopping sync",
             );
             this._peerScorer.decrementScore(this.curSync.peerId?.toString());
-            this.curSync.interruptSync = true;
+
+            // Remove this peer from the secondaryRpcClients
+            this.curSync.secondaryRpcClients = this.curSync.secondaryRpcClients.filter(
+              (c) => c.peerId !== this.curSync.peerId,
+            );
+
+            // If none left, then interrupt the sync
+            if (this.curSync.secondaryRpcClients.length === 0) {
+              this.curSync.interruptSync = true;
+              log.warn("Perform Sync: PeerError: No more secondary peers, interrupting sync");
+            } else {
+              // Replace the primary rpcClient with the next one in the list
+              this.curSync.rpcClient = this.curSync.secondaryRpcClients[0]?.rpcClient;
+              this.curSync.peerId = this.curSync.secondaryRpcClients[0]?.peerId;
+              this.curSync.peerTimeoutErrors = 0;
+            }
           }
 
           return;
@@ -1361,7 +1383,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // Attempt to use the secondary RPC client to fetch the missing syncIds
     // first. If it doesn't work, we'll fall back to the primary RPC client.
-    let rpcClient = secondaryRpcClient;
+    let rpcClient = secondaryRpcClient.rpcClient;
     const start = Date.now();
 
     // Fetch the missing syncIds from the rpcClient.
