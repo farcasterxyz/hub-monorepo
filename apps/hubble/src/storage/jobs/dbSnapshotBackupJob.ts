@@ -63,6 +63,7 @@ export class DbSnapshotBackupJobScheduler {
       log.info({}, "Db Snapshot Backup job already running, skipping");
       return ok(undefined);
     }
+    this._running = true;
 
     log.info({}, "starting Db Snapshot Backup job");
     const start = Date.now();
@@ -83,33 +84,30 @@ export class DbSnapshotBackupJobScheduler {
         throw new HubError("unavailable", "no messages found in sync engine trie, snapshot upload failed");
       }
 
-      // Upload to S3. Run this in the background so we don't block startup.
-      setTimeout(async () => {
-        const s3Result = await uploadToS3(
-          this._options.network,
-          tarGzResult.value,
-          this._options.s3SnapshotBucket,
-          messageCount,
-        );
-        if (s3Result.isOk()) {
-          // Delete the tar file chunks directory, ignore errors
-          const deleteResult = Result.fromThrowable(
-            () => fs.rmdirSync(tarGzResult.value, { recursive: true }),
-            (e) => e as Error,
-          )();
-          if (deleteResult.isErr()) {
-            log.warn(
-              { error: deleteResult.error, errMessaeg: deleteResult.error.message },
-              "failed to delete tar backup chunks",
-            );
-          }
-
-          // Cleanup old files from S3
-          this.deleteOldSnapshotsFromS3();
-        } else {
-          log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
+      const s3Result = await uploadToS3(
+        this._options.network,
+        tarGzResult.value,
+        this._options.s3SnapshotBucket,
+        messageCount,
+      );
+      if (s3Result.isOk()) {
+        // Delete the tar file chunks directory, ignore errors
+        const deleteResult = Result.fromThrowable(
+          () => fs.rmdirSync(tarGzResult.value, { recursive: true }),
+          (e) => e as Error,
+        )();
+        if (deleteResult.isErr()) {
+          log.warn(
+            { error: deleteResult.error, errMessaeg: deleteResult.error.message },
+            "failed to delete tar backup chunks",
+          );
         }
-      }, 10);
+
+        // Cleanup old files from S3
+        this.deleteOldSnapshotsFromS3();
+      } else {
+        log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
+      }
     } else {
       log.error({ error: tarGzResult.error }, "failed to create tar backup for S3");
     }
