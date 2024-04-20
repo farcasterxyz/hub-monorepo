@@ -66,11 +66,11 @@ export class DbSnapshotBackupJobScheduler {
     this._running = true;
 
     log.info({}, "starting Db Snapshot Backup job");
-    const start = Date.now();
+    const startTimestampMs = Date.now();
 
     // Back up the DB before opening it
     const tarGzResult = await ResultAsync.fromPromise(
-      rsDbSnapshotBackup(this._mainDb.rustDb, this._trieDb.rustDb),
+      rsDbSnapshotBackup(this._mainDb.rustDb, this._trieDb.rustDb, startTimestampMs),
       (e) => e as Error,
     );
 
@@ -89,6 +89,7 @@ export class DbSnapshotBackupJobScheduler {
         tarGzResult.value,
         this._options.s3SnapshotBucket,
         messageCount,
+        startTimestampMs,
       );
       if (s3Result.isOk()) {
         // Delete the tar file chunks directory, ignore errors
@@ -99,7 +100,7 @@ export class DbSnapshotBackupJobScheduler {
         if (deleteResult.isErr()) {
           log.warn(
             { error: deleteResult.error, errMessaeg: deleteResult.error.message },
-            "failed to delete tar backup chunks",
+            "failed to delete tar.gz snapshot backup chunks",
           );
         }
 
@@ -109,10 +110,10 @@ export class DbSnapshotBackupJobScheduler {
         log.error({ error: s3Result.error, errMsg: s3Result.error.message }, "failed to upload snapshot to S3");
       }
     } else {
-      log.error({ error: tarGzResult.error }, "failed to create tar backup for S3");
+      log.error({ error: tarGzResult.error }, "failed to create tar.gz snapshot backup for S3");
     }
 
-    log.info({ timeTakenMs: Date.now() - start }, "finished Db Snapshot Backup job");
+    log.info({ timeTakenMs: Date.now() - startTimestampMs }, "finished Db Snapshot Backup job");
     this._running = false;
 
     return ok(undefined);

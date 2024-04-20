@@ -154,8 +154,8 @@ export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<v
   return await lib.dbCommit.call(db, keyValues);
 };
 
-export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb): Promise<string> => {
-  return await lib.dbSnapshotBackup(mainDb, trieDb);
+export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb, timestamp: number): Promise<string> => {
+  return await lib.dbSnapshotBackup(mainDb, trieDb, timestamp);
 };
 
 /**
