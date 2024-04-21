@@ -41,14 +41,10 @@ export class BundleCreator {
   }
 
   async gossipMessage(message: Message): Promise<GossipPublishResult> {
-    // If we are currently bundling messages, store them in the bundle, else just broadcast them out
-    // via the libp2p node
-
     this._currentBundle.push(message);
 
     if (this._currentBundle.length >= this._maxBundleSize) {
       await this.broadcastBundle();
-      this._currentBundle = [];
     }
 
     return { bundled: true, publishResults: undefined };
