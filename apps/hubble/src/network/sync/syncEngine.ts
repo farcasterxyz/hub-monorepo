@@ -1405,14 +1405,15 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       missingHashes = result.value.syncIds;
     }
 
-    if (missingHashes.length < expectItems) {
+    // If we got no missing hashes, then we'll retry with the primary RPC client
+    if (missingHashes.length === 0) {
       // Replace the rpcClient with the primary one
       rpcClient = this.curSync.rpcClient;
 
       // Get it directly from the primary peerId
       const primaryResult = await fetchMissingSyncIds(rpcClient);
 
-      log.info(
+      log.debug(
         {
           prefix: Array.from(workItem.prefix),
           gotItems: missingHashes.length,
