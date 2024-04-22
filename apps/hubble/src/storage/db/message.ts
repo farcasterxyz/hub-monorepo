@@ -1,4 +1,4 @@
-import { bytesIncrement, CastId, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
+import { bytesIncrement, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import RocksDB, { RocksDbIteratorOptions, RocksDbTransaction } from "./rocksdb.js";
 import {

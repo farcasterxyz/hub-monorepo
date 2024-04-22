@@ -133,6 +133,9 @@ export enum UserPostfix {
 
   /* UserNameProof add set */
   UserNameProofAdds = 99,
+
+  /* Link Compact State set */
+  LinkCompactState = 100,
 }
 
 export enum OnChainEventPostfix {

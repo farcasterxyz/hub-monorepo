@@ -3,7 +3,9 @@ use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 use crate::db::{RocksDB, RocksDbTransactionBatch};
 use crate::protos::link_body::Target;
 use crate::protos::message_data::Body;
-use crate::protos::{message_data, LinkBody, Message, MessageData, MessageType};
+use crate::protos::{
+    message_data, LinkBody, LinkCompactStateBody, Message, MessageData, MessageType,
+};
 use crate::store::{
     get_page_options, get_store, hub_error_to_js_throw, make_fid_key, make_user_key, message,
     HubError, IntoI32, IntoU8, MessagesPage, PageOptions, RootPrefix, Store, StoreDef,
@@ -233,6 +235,22 @@ impl LinkStore {
 
         let r = store.get_remove(&partial_message);
         r
+    }
+
+    // Generates a unique key used to store a LinkCompactStae message key in the store
+    fn link_compact_state_add_key(
+        fid: u32,
+        link_compact_body: &LinkCompactStateBody,
+    ) -> Result<Vec<u8>, HubError> {
+        let mut key = Vec::with_capacity(
+            Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE,
+        );
+
+        key.extend_from_slice(&make_user_key(fid));
+        key.push(UserPostfix::LinkCompactState.as_u8());
+        key.extend_from_slice(&link_compact_body.r#type.as_bytes());
+
+        Ok(key)
     }
 
     /// Generates a unique key used to store a LinkAdd message key in the LinksAdd Set index.
@@ -608,6 +626,10 @@ impl StoreDef for LinkStore {
         MessageType::LinkRemove.into_u8()
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::LinkCompactState.into_u8()
+    }
+
     fn is_add_type(&self, message: &Message) -> bool {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
@@ -621,6 +643,14 @@ impl StoreDef for LinkStore {
             && message.data.is_some()
             && message.data.as_ref().is_some_and(|data| {
                 data.r#type == MessageType::LinkRemove.into_i32() && data.body.is_some()
+            })
+    }
+
+    fn is_compact_state_type(&self, message: &Message) -> bool {
+        message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
+            && message.data.is_some()
+            && message.data.as_ref().is_some_and(|data| {
+                data.r#type == MessageType::LinkCompactState.into_i32() && data.body.is_none()
             })
     }
 
@@ -662,6 +692,24 @@ impl StoreDef for LinkStore {
     ) -> Result<(), HubError> {
         // For links, there will be no additional conflict logic
         Ok(())
+    }
+
+    fn make_compact_state_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        message
+            .data
+            .as_ref()
+            .ok_or(HubError::invalid_parameter("invalid message data"))
+            .and_then(|data| {
+                data.body
+                    .as_ref()
+                    .ok_or(HubError::invalid_parameter("invalid message data body"))
+                    .and_then(|body_option| match body_option {
+                        Body::LinkCompactStateBody(link_compact_body) => {
+                            Self::link_compact_state_add_key(data.fid as u32, link_compact_body)
+                        }
+                        _ => Err(HubError::invalid_parameter("link body not specified")),
+                    })
+            })
     }
 
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError> {
