@@ -1,38 +1,38 @@
 import {
+  bytesToHexString,
+  bytesToUtf8String,
+  ClientOptions,
   ContactInfoContent,
   ContactInfoContentBody,
   FarcasterNetwork,
+  getInsecureHubRpcClient,
+  getSSLHubRpcClient,
   GossipAddressInfo,
   GossipMessage,
-  HubState,
-  Message,
+  HashScheme,
   HubAsyncResult,
   HubError,
-  bytesToHexString,
-  bytesToUtf8String,
   HubRpcClient,
-  getSSLHubRpcClient,
-  getInsecureHubRpcClient,
-  UserNameProof,
+  HubState,
+  Message,
   OnChainEvent,
   onChainEventTypeToJSON,
-  ClientOptions,
+  UserNameProof,
   validations,
-  HashScheme,
 } from "@farcaster/hub-nodejs";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
-import { Result, ResultAsync, err, ok } from "neverthrow";
-import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
+import { err, ok, Result, ResultAsync } from "neverthrow";
+import { GOSSIP_SEEN_TTL, GossipNode, MAX_MESSAGE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine, { FIRST_SYNC_DELAY } from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server, { checkPortAndPublicAddress, DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 } from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
+import RocksDB from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
@@ -42,11 +42,11 @@ import { rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import {
-  SubmitMessageSuccessLogCache,
   logger,
   messageToLog,
   messageTypeToName,
   onChainEventToLog,
+  SubmitMessageSuccessLogCache,
   usernameProofToLog,
 } from "./utils/logger.js";
 import {
@@ -56,7 +56,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from "./utils/p2p.js";
-import { fetchSnapshotMetadata, SnapshotMetadata, snapshotURL, uploadToS3 } from "./utils/snapshot.js";
+import { fetchSnapshotMetadata, SnapshotMetadata, snapshotURL } from "./utils/snapshot.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
 import { ensureAboveMinFarcasterVersion, getMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
@@ -71,7 +71,7 @@ import { createPublicClient, fallback, http } from "viem";
 import { mainnet, optimism } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
-import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
+import { applyNetworkConfig, fetchNetworkConfig, NetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { DbSnapshotBackupJobScheduler } from "./storage/jobs/dbSnapshotBackupJob.js";
 import { statsd, StatsDInitParams } from "./utils/statsd.js";
@@ -89,11 +89,11 @@ import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
 import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
-import { HubResult, MessageBundle, getFarcasterTime } from "@farcaster/core";
+import { getFarcasterTime, HubResult, MessageBundle } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
-import v8 from "v8";
+import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -728,6 +728,10 @@ export class Hub implements HubInterface {
         },
         errorMessage,
       );
+      // NOTE(wazzymandias): startup check is performed in hub start rather than cli.ts because rpc server port
+      // may change if initialized with zero value. We don't know correct rpc port until server starts, and hub start
+      // is blocking synchronous operation. In general startup checks should stay within cli.ts as much as possible.
+      startupCheck.printStartupCheckStatus(StartupCheckStatus.WARNING, errorMessage);
       // NOTE(wazzymandias): For now, we will not throw error here, in order to give hub operators enough time
       // to configure their network settings. We will throw error in the future.
       // throw new HubError("unavailable.network_failure", errorMessage);
