@@ -30,7 +30,7 @@ import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
-import Server from "./rpc/server.js";
+import Server, { checkPortAndPublicAddress, DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 } from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
 import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
@@ -558,7 +558,7 @@ export class Hub implements HubInterface {
   async start() {
     // See if we have to fetch the IP address
     if (!this.options.announceIp || this.options.announceIp.trim().length === 0) {
-      const ipResult = await getPublicIp();
+      const ipResult = await getPublicIp("text");
       if (ipResult.isErr()) {
         log.error({ error: ipResult.error }, `failed to fetch public IP address, using ${this.options.ipMultiAddr}`);
       } else {
@@ -709,6 +709,29 @@ export class Hub implements HubInterface {
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
+    const rpcPort = this.rpcServer.listenPort;
+    const rpcAddressCheck = await checkPortAndPublicAddress(
+      this.options.rpcServerHost ?? DEFAULT_SERVER_INTERNET_ADDRESS_IPV4,
+      rpcPort,
+      this.options.announceIp ?? undefined,
+    );
+    if (rpcAddressCheck.isErr()) {
+      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}. 
+        Please make sure RPC port value is valid and reachable from public internet.
+        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. 
+        Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT.
+        `;
+      log.error(
+        {
+          rpc_port: rpcPort,
+          local_address: this.options.rpcServerHost,
+          ...(this.options.announceIp && { public_ip: this.options.announceIp }),
+        },
+        errorMessage,
+      );
+      throw new HubError("unavailable.network_failure", errorMessage);
+    }
+
     if (!this.options.httpServerDisabled) {
       await this.httpApiServer.start(this.options.rpcServerHost, this.options.httpApiPort ?? 0);
     } else {

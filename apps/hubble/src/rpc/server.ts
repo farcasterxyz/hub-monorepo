@@ -39,8 +39,9 @@ import {
   SignerOnChainEvent,
   OnChainEvent,
   HubResult,
+  HubAsyncResult,
 } from "@farcaster/hub-nodejs";
-import { err, ok, Result } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
 import { GossipNode } from "../network/p2p/gossipNode.js";
 import { NodeMetadata } from "../network/sync/merkleTrie.js";
@@ -48,7 +49,7 @@ import SyncEngine from "../network/sync/syncEngine.js";
 import Engine from "../storage/engine/index.js";
 import { MessagesPage } from "../storage/stores/types.js";
 import { logger } from "../utils/logger.js";
-import { addressInfoFromParts, extractIPAddress } from "../utils/p2p.js";
+import { addressInfoFromParts, extractIPAddress, getPublicIp } from "../utils/p2p.js";
 import { RateLimiterMemory } from "rate-limiter-flexible";
 import {
   BufferedStreamWriter,
@@ -59,11 +60,15 @@ import { sleep } from "../utils/crypto.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
 import { statsd } from "../utils/statsd.js";
 import { SyncId } from "../network/sync/syncId.js";
+import { AddressInfo } from "net";
+import * as net from "node:net";
+import axios from "axios";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
 export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
+export const DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 = "0.0.0.0";
 
 export type RpcUsers = Map<string, string[]>;
 
@@ -102,6 +107,97 @@ export const authenticateUser = (metadata: Metadata, rpcUsers: RpcUsers): HubRes
     return ok(true);
   }
   return err(new HubError("unauthenticated", "No authorization header"));
+};
+
+async function retryAsyncOperation<T>(
+  operation: () => HubAsyncResult<T>,
+  retries = 3,
+  delayMs = 1000,
+): HubAsyncResult<T> {
+  const attempt = async (remainingRetries: number, delayMs: number): HubAsyncResult<T> => {
+    const result = await operation();
+    if (result.isErr()) {
+      if (remainingRetries > 0) {
+        await sleep(delayMs);
+        return attempt(remainingRetries - 1, delayMs * 2);
+      }
+
+      return err(result.error);
+    }
+
+    return ok(result.value);
+  };
+  return attempt(retries, delayMs);
+}
+
+export async function checkPort(ip: string, port: number): HubAsyncResult<void> {
+  if (ip === "") {
+    return err(new HubError("bad_request.invalid_param", "Invalid ip address"));
+  }
+
+  if (port === 0) {
+    return err(new HubError("bad_request.invalid_param", "Invalid port"));
+  }
+
+  return ResultAsync.fromPromise(
+    new Promise<void>((resolve, reject) => {
+      const socket = new net.Socket();
+      const socketTimeoutMs = 2000; // 2 seconds
+
+      socket.setTimeout(socketTimeoutMs);
+      socket
+        .once("connect", () => {
+          socket.destroy();
+          resolve();
+        })
+        .once("error", (err) => {
+          socket.destroy();
+          reject(err);
+        })
+        .once("timeout", () => {
+          socket.destroy();
+          reject(new HubError("unavailable.network_failure", `Timeout connecting to ${ip}:${port}`));
+        })
+        .connect(port, ip);
+    }),
+    (error) => {
+      return new HubError("unavailable.network_failure", `Failed to connect to ${ip}:${port}: ${error}`);
+    },
+  ).match(
+    async (okResult: void): HubAsyncResult<void> => ok(okResult),
+    async (errorResult: HubError): HubAsyncResult<void> => err(errorResult),
+  );
+}
+
+export const checkPortAndPublicAddress = async (
+  localIP: string,
+  port: number,
+  remoteIP?: string,
+): HubAsyncResult<void> => {
+  const retryCount = 3;
+  const localDelayMs = 50;
+  const localResult: Result<void, Error> = await retryAsyncOperation<void>(
+    () => checkPort(localIP, port),
+    retryCount,
+    localDelayMs, // local ping does not need high timeout
+  );
+
+  if (localResult.isErr()) {
+    return err(
+      new HubError("unavailable.network_failure", `Failed to connect to ${localIP}:${port}: ${localResult.error}`),
+    );
+  }
+
+  let publicIP: string = remoteIP ?? "";
+  if (publicIP === "") {
+    const publicIPResponse = await getPublicIp("json");
+    if (publicIPResponse.isErr()) {
+      return err(publicIPResponse.error);
+    }
+    publicIP = publicIPResponse.value;
+  }
+
+  return await retryAsyncOperation<void>(() => checkPort(publicIP, port), retryCount);
 };
 
 export const toServiceError = (err: HubError): ServiceError => {
@@ -283,7 +379,7 @@ export default class Server {
     );
   }
 
-  async start(ip = "0.0.0.0", port = 0): Promise<number> {
+  async start(ip = DEFAULT_SERVER_INTERNET_ADDRESS_IPV4, port = 0): Promise<number> {
     return new Promise((resolve, reject) => {
       this.grpcServer.bindAsync(`${ip}:${port}`, ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
@@ -322,7 +418,7 @@ export default class Server {
     });
   }
 
-  get address() {
+  get address(): HubResult<AddressInfo> {
     const addr = addressInfoFromParts(this.listenIp, this.port);
     return addr;
   }
