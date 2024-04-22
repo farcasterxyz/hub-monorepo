@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.10
+
+### Patch Changes
+
+- 4c9fb617: feat: allow sharding event stream by fid
+
 ## 0.14.9
 
 ### Patch Changes

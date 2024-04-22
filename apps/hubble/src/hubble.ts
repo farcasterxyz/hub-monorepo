@@ -28,7 +28,7 @@ import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { Result, ResultAsync, err, ok } from "neverthrow";
 import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
-import SyncEngine from "./network/sync/syncEngine.js";
+import SyncEngine, { FIRST_SYNC_DELAY } from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
 import Server, { checkPortAndPublicAddress, DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 } from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
@@ -80,7 +80,6 @@ import {
   LATEST_DB_SCHEMA_VERSION,
   performDbMigrations,
 } from "./storage/db/migrations/migrations.js";
-import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import { addProgressBar } from "./utils/progressBars.js";
 import * as fs from "fs";
@@ -95,7 +94,6 @@ import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import v8 from "v8";
-import { P } from "pino";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -126,6 +124,7 @@ export interface HubInterface {
   identity: string;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
+  submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]>;
   validateMessage(message: Message): HubAsyncResult<Message>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
@@ -961,41 +960,33 @@ export class Hub implements HubInterface {
             );
 
             let prevVersion = 0;
-            let latestSnapshotKey;
+            let latestSnapshotKeyBase;
+            let latestChunks: string[] = [];
             do {
               const response = await axios.get(
                 `https://${s3Bucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
               );
-              const { key } = response.data;
+              const { keyBase, chunks } = response.data;
 
-              if (!key) {
+              if (!keyBase) {
                 log.error(
                   { data: response.data, folder: this.getSnapshotFolder(prevVersion) },
                   "No latest snapshot name found in latest.json",
                 );
                 prevVersion += 1;
               } else {
-                latestSnapshotKey = key as string;
+                latestSnapshotKeyBase = keyBase as string;
+                latestChunks = chunks as string[];
                 break;
               }
             } while (prevVersion < LATEST_DB_SCHEMA_VERSION);
 
-            if (!latestSnapshotKey) {
+            if (!latestSnapshotKeyBase) {
               resolve(err(new HubError("unavailable", "No latest snapshot name found in latest.json")));
               return;
             } else {
-              log.info({ latestSnapshotKey }, "found latest S3 snapshot");
+              log.info({ latestSnapshotKeyBase }, "found latest S3 snapshot");
             }
-
-            const snapshotUrl = `https://${s3Bucket}/${latestSnapshotKey}`;
-            const response2 = await axios.get(snapshotUrl, {
-              responseType: "stream",
-            });
-            const totalSize = parseInt(response2.headers["content-length"], 10);
-
-            let downloadedSize = 0;
-            log.info({ totalSize }, "Getting snapshot...");
-            progressBar = addProgressBar("Getting snapshot", totalSize);
 
             const handleError = (e: Error) => {
               log.error({ error: e }, "Error extracting snapshot");
@@ -1003,50 +994,75 @@ export class Hub implements HubInterface {
               resolve(err(new HubError("unavailable", "Error extracting snapshot")));
             };
 
-            const gunzip = zlib.createGunzip();
             const parseStream = new tar.Parse();
+            const gunzip = zlib.createGunzip();
+            gunzip.pipe(parseStream);
+
+            gunzip.on("error", handleError);
 
             // We parse the tar file and extract it into the DB location, which might be different
             // than the location it was originally created in. So, we transform the top-level
             // directory name to the DB location.
-            parseStream.on("entry", (entry) => {
-              const newPath = path.join(dbLocation, ...entry.path.split(path.sep).slice(1));
-              const newDir = path.dirname(newPath);
+            const entryPromises: Promise<boolean>[] = [];
 
-              if (entry.type === "Directory") {
-                fs.mkdirSync(newPath, { recursive: true });
-                entry.resume();
-              } else {
-                fs.mkdirSync(newDir, { recursive: true });
-                entry.pipe(fs.createWriteStream(newPath));
-              }
+            parseStream.on("entry", (entry) => {
+              const promise = new Promise<boolean>((resolve, reject) => {
+                const newPath = path.join(dbLocation, ...entry.path.split(path.sep).slice(1));
+                const newDir = path.dirname(newPath);
+
+                if (entry.type === "Directory") {
+                  fs.mkdirSync(newPath, { recursive: true });
+                  entry.resume();
+                  resolve(true);
+                } else {
+                  fs.mkdirSync(newDir, { recursive: true });
+                  const outStream = fs.createWriteStream(newPath);
+                  entry.pipe(outStream);
+                  outStream.on("finish", resolve);
+                  outStream.on("error", reject);
+                }
+              });
+              entryPromises.push(promise);
             });
 
-            parseStream.on("end", () => {
+            parseStream.on("end", async () => {
+              await Promise.all(entryPromises);
               log.info({ dbLocation }, "Snapshot extracted from S3");
               progressBar?.stop();
               resolve(ok(true));
             });
 
-            let lastDownloadedSize = 0;
-            response2.data
-              .on("error", handleError)
-              // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-              .on("data", (chunk: any) => {
-                const largeChunk = 1024 * 1024 * 1024;
+            log.info({ numChunks: latestChunks.length }, "Getting snapshot chunks...");
+            progressBar = addProgressBar("Getting snapshot", latestChunks.length * 100);
 
-                downloadedSize += chunk.length;
-                progressBar?.update(downloadedSize);
+            let chunkCount = 0;
+            for (const chunk of latestChunks) {
+              let downloadedSize = 0;
+              chunkCount += 1;
+              log.info({ chunkCount, totalChunks: latestChunks.length }, "Downloading snapshot chunks...");
 
-                if (downloadedSize - lastDownloadedSize > largeChunk) {
-                  log.info({ downloadedSize, totalSize }, "Downloading snapshot...");
-                  lastDownloadedSize = downloadedSize;
-                }
-              })
-              .pipe(gunzip)
-              .on("error", handleError)
-              .pipe(parseStream)
-              .on("error", handleError);
+              const chunkUrl = `https://${s3Bucket}/${latestSnapshotKeyBase}/${chunk}`;
+              const chunkResponse = await axios.get(chunkUrl, {
+                responseType: "stream",
+              });
+              const totalSize = parseInt(chunkResponse.headers["content-length"], 10);
+
+              await new Promise((resolve) => {
+                chunkResponse.data
+                  .on("error", handleError)
+                  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+                  .on("data", (dataChunk: any) => {
+                    downloadedSize += dataChunk.length;
+                    progressBar?.update(Math.round((chunkCount - 1) * 100 + (downloadedSize * 100) / totalSize));
+                  })
+                  .on("end", () => {
+                    resolve(true);
+                  })
+                  .pipe(gunzip, { end: false });
+              });
+            }
+
+            gunzip.end();
           } else {
             resolve(ok(false));
           }
@@ -1476,17 +1492,11 @@ export class Hub implements HubInterface {
     // Check if we already have this client
     const result = this.syncEngine.addContactInfoForPeerId(peerId, message);
     if (result.isOk() && !this.performedFirstSync) {
-      // Should only sync last ~day worth of messages with new peers. For now, only sync with the first peer so we are upto
-      // date on startup.
-      log.debug({ peerInfo: message }, "New peer but only performing first sync");
-      const syncResult = await ResultAsync.fromPromise(
-        this.syncEngine.diffSyncIfRequired(this, peerId.toString()),
-        (e) => e,
-      );
-      if (syncResult.isErr()) {
-        log.error({ error: syncResult.error, peerId }, "Failed to sync with new peer");
-      }
+      // Sync with the first peer so we are upto date on startup.
       this.performedFirstSync = true;
+      setTimeout(async () => {
+        await ResultAsync.fromPromise(this.syncEngine.diffSyncIfRequired(this), (e) => e);
+      }, FIRST_SYNC_DELAY);
     } else {
       log.debug({ peerInfo: message }, "Already have this peer, skipping sync");
     }
@@ -1646,7 +1656,6 @@ export class Hub implements HubInterface {
           if (await isMessageInDB(this.rocksDB, message)) {
             log.debug({ source }, "submitMessageBundle rejected: Message already exists");
             allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
-            return;
           } else {
             dedupedMessages.push({ i, message: ensureMessageData(message) });
           }
@@ -1703,19 +1712,24 @@ export class Hub implements HubInterface {
       );
     }
 
-    const totalTimeMilis = Date.now() - start;
-    statsd().timing("hub.bundle.merge_message", totalTimeMilis);
-
     // Convert the merge results to an Array of HubResults with the key
     const finalResults: HubResult<number>[] = [];
+    const finalFailures = new Map<string, number>();
     let success = 0;
     for (let i = 0; i < allResults.size; i++) {
       const result = allResults.get(i) as HubResult<number>;
       if (result.isOk()) {
         success += 1;
+      } else {
+        const errCode = result.error.errCode;
+        const count = finalFailures.get(errCode) ?? 0;
+        finalFailures.set(errCode, count + 1);
       }
       finalResults.push(result);
     }
+
+    const totalTimeMilis = Date.now() - start;
+    statsd().timing("hub.merge_message", totalTimeMilis / finalResults.length);
 
     // When submitting a messageBundle via RPC, we want to gossip it to other nodes
     if (success > 0 && source === "rpc") {
@@ -1724,11 +1738,12 @@ export class Hub implements HubInterface {
 
     log.info(
       {
-        hash: messageBundle.hash,
+        hash: bytesToHexString(messageBundle.hash).unwrapOr(messageBundle.hash),
         success,
+        finalFailures: [...finalFailures],
         total: finalResults.length,
         totalTimeMilis,
-        timePerMergeMs: totalTimeMilis / finalResults.length,
+        timePerMergeMs: Math.round((10 ** 2 * totalTimeMilis) / finalResults.length) / 10 ** 2, // round to 2 places
       },
       "submitMessageBundle merged",
     );

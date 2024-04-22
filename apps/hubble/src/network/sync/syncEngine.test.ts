@@ -334,15 +334,7 @@ describe("SyncEngine", () => {
       });
       return Promise.resolve(ok(emptyMetadata));
     });
-    await syncEngine.performSync(
-      "test",
-      {
-        prefix: new Uint8Array(),
-        numMessages: 10,
-        excludedHashes: ["some-divergence"],
-      },
-      rpcClient,
-    );
+    await syncEngine.performSync("test", rpcClient);
     expect(called).toBeTruthy();
   });
 
@@ -469,55 +461,6 @@ describe("SyncEngine", () => {
     },
     TEST_TIMEOUT_SHORT,
   );
-
-  describe("getDivergencePrefix", () => {
-    const trieWithIds = async (timestamps: number[]) => {
-      const syncIds = await Promise.all(
-        timestamps.map(async (t) => {
-          return await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(t * 1000) } });
-        }),
-      );
-
-      await Promise.all(syncIds.map((id) => syncEngine.trie.insert(id)));
-    };
-
-    test("returns the prefix with the most common excluded hashes", async () => {
-      await trieWithIds([1665182332, 1665182343, 1665182345]);
-
-      const trie = syncEngine.trie;
-
-      const prefixToTest = new Uint8Array(Buffer.from("1665182343"));
-      const oldSnapshot = await trie.getSnapshot(prefixToTest);
-      trie.insert(await NetworkFactories.SyncId.create(undefined, { transient: { date: new Date(1665182353000) } }));
-
-      // Since message above was added at 1665182353, the two tries diverged at 16651823 for our prefix
-      let divergencePrefix = syncEngine.getDivergencePrefix(
-        await trie.getSnapshot(prefixToTest),
-        oldSnapshot.excludedHashes,
-      );
-      expect(divergencePrefix).toEqual(new Uint8Array(Buffer.from("16651823")));
-
-      // divergence prefix should be the full prefix, if snapshots are the same
-      const currentSnapshot = await trie.getSnapshot(prefixToTest);
-      divergencePrefix = syncEngine.getDivergencePrefix(
-        await trie.getSnapshot(prefixToTest),
-        currentSnapshot.excludedHashes,
-      );
-      expect(divergencePrefix).toEqual(prefixToTest);
-
-      // divergence prefix should empty if excluded hashes are empty
-      divergencePrefix = syncEngine.getDivergencePrefix(await trie.getSnapshot(prefixToTest), []);
-      expect(divergencePrefix.length).toEqual(0);
-
-      // divergence prefix should be our prefix if provided hashes are longer
-      const with5 = Buffer.concat([prefixToTest, new Uint8Array(Buffer.from("5"))]);
-      divergencePrefix = syncEngine.getDivergencePrefix(await trie.getSnapshot(with5), [
-        ...currentSnapshot.excludedHashes,
-        "different",
-      ]);
-      expect(divergencePrefix).toEqual(prefixToTest);
-    });
-  });
 
   describe("events in sync trie", () => {
     let userNameProof: UserNameProof;

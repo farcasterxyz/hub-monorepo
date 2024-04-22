@@ -1,10 +1,10 @@
 {
-  "name": "@farcaster/hub-shuttle",
-  "version": "0.1.5",
+  "name": "@farcaster/shuttle-example",
+  "version": "0.2.0",
   "main": "./app.ts",
   "license": "MIT",
   "dependencies": {
-    "@farcaster/hub-shuttle": "^0.1.4",
+    "@farcaster/shuttle": "^0.2.0",
     "@figma/hot-shots": "^9.0.0-figma.1",
     "commander": "^11.0.0",
     "ioredis": "^5.3.2",

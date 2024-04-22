@@ -11,9 +11,10 @@ import {
   EventStreamConnection,
   HubEventStreamConsumer,
   HubSubscriber,
-} from "../index"; // If you want to use this as a standalone app, replace this import with "@faracaster/hub-shuttle"
-import { migrateToLatest } from "./migration";
-import { bytesToHexString, HubEvent, Message } from "@farcaster/hub-nodejs";
+  MessageState,
+} from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
+import { AppDb, migrateToLatest, Tables } from "./db";
+import { bytesToHexString, HubEvent, isCastAddMessage, isCastRemoveMessage, Message } from "@farcaster/hub-nodejs";
 import { log } from "./log";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
@@ -23,6 +24,7 @@ import url from "node:url";
 import { ok, Result } from "neverthrow";
 import { getQueue, getWorker } from "./worker";
 import { Queue } from "bullmq";
+import { farcasterTimeToDate } from "../utils";
 
 const hubId = "shuttle";
 
@@ -55,8 +57,9 @@ export class App implements MessageHandler {
 
   async handleMessageMerge(
     message: Message,
-    _txn: DB,
-    _operation: StoreMessageOperation,
+    txn: DB,
+    operation: StoreMessageOperation,
+    state: MessageState,
     isNew: boolean,
     wasMissed: boolean,
   ): Promise<void> {
@@ -64,8 +67,34 @@ export class App implements MessageHandler {
       // Message was already in the db, no-op
       return;
     }
-    const messageDesc = wasMissed ? "missed message" : "message";
-    log.info(`Stored ${messageDesc} ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${message.data?.type})`);
+
+    const appDB = txn as unknown as AppDb; // Need this to make typescript happy, not clean way to "inherit" table types
+
+    // Example of how to materialize casts into a separate table. Insert casts into a separate table, and mark them as deleted when removed
+    // Note that since we're relying on "state", this can sometimes be invoked twice. e.g. when a CastRemove is merged, this call will be invoked 2 twice:
+    // castAdd, operation=delete, state=deleted (the cast that the remove is removing)
+    // castRemove, operation=merge, state=deleted (the actual remove message)
+    const isCastMessage = isCastAddMessage(message) || isCastRemoveMessage(message);
+    if (isCastMessage && state === "created") {
+      await appDB
+        .insertInto("casts")
+        .values({
+          fid: message.data.fid,
+          hash: message.hash,
+          text: message.data.castAddBody?.text || "",
+          timestamp: farcasterTimeToDate(message.data.timestamp) || new Date(),
+        })
+        .execute();
+    } else if (isCastMessage && state === "deleted") {
+      await appDB
+        .updateTable("casts")
+        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) || new Date() })
+        .where("hash", "=", message.hash)
+        .execute();
+    }
+
+    const messageDesc = wasMissed ? `missed message (${operation})` : `message (${operation})`;
+    log.info(`${state} ${messageDesc} ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${message.data?.type})`);
   }
 
   async start() {

@@ -1,3 +1,4 @@
+use crate::db::multi_chunk_writer::MultiChunkWriter;
 use crate::logger::LOGGER;
 use crate::statsd::statsd;
 use crate::store::{
@@ -6,8 +7,6 @@ use crate::store::{
 };
 use crate::trie::merkle_trie::TRIE_DBPATH_PREFIX;
 use crate::THREAD_POOL;
-use flate2::write::GzEncoder;
-use flate2::Compression;
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
@@ -21,8 +20,8 @@ use rocksdb::{Options, TransactionDB, DB};
 use slog::{info, o, Logger};
 use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::fs::{self, File};
-use std::path::Path;
+use std::fs::{self};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use tar::Builder;
 use walkdir::WalkDir;
@@ -882,7 +881,7 @@ impl RocksDB {
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or("rocks.hub._default".to_string());
 
-        let output_file_path = Path::new(DB_DIRECTORY)
+        let chunked_output_dir = Path::new(DB_DIRECTORY)
             .join(format!(
                 "{}-{}.tar.gz",
                 base_name,
@@ -894,33 +893,31 @@ impl RocksDB {
             .to_string();
 
         let start = std::time::SystemTime::now();
-        info!(logger, "Creating tar.gz for directory: {}", 
-            input_dir; o!("output_file_path" => &output_file_path, "base_name" => &base_name));
+        info!(logger, "Creating chunked tar.gz snapshot for directory: {}", 
+            input_dir; o!("output_file_path" => &chunked_output_dir, "base_name" => &base_name));
 
-        let gz_file = File::create(&output_file_path)?;
-        let mut encoder = GzEncoder::new(gz_file, Compression::default());
+        let mut multi_chunk_writer = MultiChunkWriter::new(
+            PathBuf::from(chunked_output_dir.clone()),
+            4 * 1024 * 1024 * 1024, // 4GB
+        );
 
-        let mut tar = Builder::new(&mut encoder);
+        let mut tar = Builder::new(&mut multi_chunk_writer);
         tar.append_dir_all(base_name, input_dir)?;
         tar.finish()?;
-        drop(tar); // Needed so we can call encoder.finish() next
+        drop(tar); // Needed so we can call multi_chunk_writer.finish() next
+        multi_chunk_writer.finish()?;
 
-        encoder.finish().map_err(|e| HubError {
-            code: "db.internal_error".to_string(),
-            message: format!("Error creating gzip file: {}", e.to_string()),
-        })?;
-
-        let metadata = fs::metadata(&output_file_path)?;
+        let metadata = fs::metadata(&chunked_output_dir)?;
         let time_taken = start.elapsed().expect("Time went backwards");
         info!(
             logger,
-            "Created tar.gz archive: path = {}, size = {} bytes, time taken = {:?}",
-            output_file_path,
+            "Created chunked tar.gz archive for snapshot: path = {}, size = {} bytes, time taken = {:?}",
+            chunked_output_dir,
             metadata.len(),
             time_taken
         );
 
-        Ok(output_file_path)
+        Ok(chunked_output_dir)
     }
 
     fn snapshot_backup(main_db: Arc<RocksDB>, trie_db: Arc<RocksDB>) -> Result<String, HubError> {

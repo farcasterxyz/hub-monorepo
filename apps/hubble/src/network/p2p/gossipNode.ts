@@ -31,7 +31,7 @@ import { RootPrefix } from "../../storage/db/types.js";
 import { sleep } from "../../utils/crypto.js";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
-export const MAX_MESSAGE_QUEUE_SIZE = 100_000;
+export const MAX_MESSAGE_QUEUE_SIZE = 5000;
 /** The TTL for messages in the seen cache */
 export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
 
@@ -291,7 +291,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       if (result.isOk()) {
         log.info({ peerIdStr, addr }, "Connected to peer from DB");
       } else {
-        log.warn({ peerIdStr, addr, error: result.error }, "Failed to connect to peer from DB");
+        log.debug({ peerIdStr, addr, error: result.error }, "Failed to connect to peer from DB");
       }
 
       // Sleep for a bit to avoid overwhelming the network

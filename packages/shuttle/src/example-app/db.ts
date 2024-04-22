@@ -1,10 +1,11 @@
-import { FileMigrationProvider, Kysely, MigrationInfo, Migrator } from "kysely";
+import { ColumnType, FileMigrationProvider, Generated, GeneratedAlways, Kysely, MigrationInfo, Migrator } from "kysely";
 import { Logger } from "./log";
 import { err, ok, Result } from "neverthrow";
 import path from "path";
 import { promises as fs } from "fs";
 import { fileURLToPath } from "node:url";
 import { HubTables } from "@farcaster/hub-shuttle";
+import { Fid } from "../shuttle";
 
 const createMigrator = async (db: Kysely<HubTables>, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -18,26 +19,6 @@ const createMigrator = async (db: Kysely<HubTables>, log: Logger) => {
   });
 
   return migrator;
-};
-
-export const migrationStatus = async (
-  db: Kysely<HubTables>,
-  log: Logger,
-): Promise<{ executed: MigrationInfo[]; pending: MigrationInfo[] }> => {
-  const migrator = await createMigrator(db, log);
-
-  const migrations = await migrator.getMigrations();
-  const executed = [];
-  const pending = [];
-  for (const migration of migrations) {
-    if (migration.executedAt) {
-      executed.push(migration);
-    } else {
-      pending.push(migration);
-    }
-  }
-
-  return { executed, pending };
 };
 
 export const migrateToLatest = async (db: Kysely<HubTables>, log: Logger): Promise<Result<void, unknown>> => {
@@ -63,24 +44,19 @@ export const migrateToLatest = async (db: Kysely<HubTables>, log: Logger): Promi
   return ok(undefined);
 };
 
-export const migrateOneUp = async (db: Kysely<HubTables>, log: Logger): Promise<Result<void, unknown>> => {
-  const migrator = await createMigrator(db, log);
-
-  const { error, results } = await migrator.migrateUp();
-
-  results?.forEach((it) => {
-    if (it.status === "Success") {
-      log.info(`migration "${it.migrationName}" was executed successfully`);
-    } else if (it.status === "Error") {
-      log.error(`failed to execute migration "${it.migrationName}"`);
-    }
-  });
-
-  if (error) {
-    log.error("failed to migrate");
-    log.error(error);
-    return err(error);
-  }
-
-  return ok(undefined);
+export type CastRow = {
+  id: Generated<string>;
+  createdAt: Generated<Date>;
+  updatedAt: Generated<Date>;
+  deletedAt: Date | null;
+  timestamp: Date;
+  fid: Fid;
+  hash: Uint8Array;
+  text: string;
 };
+
+export interface Tables extends HubTables {
+  casts: CastRow;
+}
+
+export type AppDb = Kysely<Tables>;

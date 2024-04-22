@@ -55,8 +55,8 @@ afterAll(async () => {
   await engine.stop();
 });
 
-const fid = Factories.Fid.build();
-const fname = Factories.Fname.build();
+let fid: number;
+let fname: Uint8Array;
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 let usernameProof: UserNameProof;
@@ -79,21 +79,27 @@ afterEach(async () => {
   }
 });
 
-beforeAll(async () => {
+const setupMessages = async (fidToUse: number, fnameToUse: Uint8Array) => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
-  usernameProof = Factories.UserNameProof.build({ owner: custodySignerKey, name: fname });
+  fid = fidToUse;
+  fname = fnameToUse;
+  usernameProof = Factories.UserNameProof.build({ owner: custodySignerKey, name: fname, fid });
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
   signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
   castAdd = await Factories.CastAddMessage.create({ data: { fid } }, { transient: { signer } });
   reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid } }, { transient: { signer } });
+};
+
+beforeAll(async () => {
+  await setupMessages(Factories.Fid.build(), Factories.Fname.build());
 });
 
 const setupSubscription = async (
   // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   events: [HubEventType, any][],
-  options: { eventTypes?: HubEventType[]; fromId?: number } = {},
+  options: { eventTypes?: HubEventType[]; fromId?: number; totalShards?: number; shardIndex?: number } = {},
 ): Promise<ClientReadableStream<HubEvent>> => {
   // First, clear the rate limits
   server.clearRateLimiters();
@@ -307,6 +313,44 @@ describe("subscribe", () => {
         [HubEventType.MERGE_MESSAGE, Message.toJSON(castAdd)],
         [HubEventType.MERGE_MESSAGE, Message.toJSON(reactionAdd)],
       ]);
+    });
+  });
+});
+
+describe("sharded event stream", () => {
+  test("emits events only for fids that match", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+    const evenEvents: [HubEventType, any][] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+    const oddEvents: [HubEventType, any][] = [];
+    await setupSubscription(evenEvents, { totalShards: 2, shardIndex: 0 });
+    await setupSubscription(oddEvents, { totalShards: 2, shardIndex: 1 });
+
+    // Merge even events
+    await setupMessages(202, Factories.Fname.build());
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
+    await engine.mergeMessage(castAdd);
+    await engine.mergeUserNameProof(usernameProof);
+
+    // Merge odd  events
+    await setupMessages(303, Factories.Fname.build());
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
+    await engine.mergeMessage(castAdd);
+    await engine.mergeUserNameProof(usernameProof);
+    await sleep(100); // Wait for server to send events over stream
+
+    expect(evenEvents).toHaveLength(5);
+    expect(oddEvents).toHaveLength(5);
+
+    evenEvents.map(([, event]) => {
+      expect(event.fid || event.data.fid).toBe(202);
+    });
+    oddEvents.map(([, event]) => {
+      expect(event.fid || event.data.fid).toBe(303);
     });
   });
 });

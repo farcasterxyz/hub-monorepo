@@ -119,7 +119,7 @@ All PR's should have supporting documentation that makes reviewing and understan
 
 Errors are not handled using `throw` and `try / catch` as is common with Javascript programs. This pattern makes it hard for people to reason about whether methods are safe which leads to incomplete test coverage, unexpected errors and less safety. Instead we use a more functional approach to dealing with errors. See [this issue](https://github.com/farcasterxyz/hub/issues/213) for the rationale behind this approach.
 
-All errors must be constructed using the `HubError` class which extends Error. It is stricter than error and requires a Hub Error Code (e.g. `unavailable.database_error`) and some additional context. Codes are used a replacement for error subclassing since they can be easily serialized over network calls. Codes also have multiple levels (e.g. `database_error` is a type of `unavailable`) which help with making decisions about error handling.
+All errors must be constructed using the `HubError` class which extends Error. It is stricter than error and requires a Hub Error Code (e.g. `unavailable.database_error`) and some additional context. Codes are used as a replacement for error subclassing since they can be easily serialized over network calls. Codes also have multiple levels (e.g. `database_error` is a type of `unavailable`) which help with making decisions about error handling.
 
 Functions that can fail should always return `HubResult` which is a type that can either be the desired value or an error. Callers of the function should inspect the value and handle the success and failure case explicitly. The HubResult is an alias over [neverthrow's Result](https://github.com/supermacro/neverthrow). If you have never used a language where this is common (like Rust) you may want to start with the [API docs](https://github.com/supermacro/neverthrow#api-documentation). This pattern ensures that:
 
@@ -272,7 +272,7 @@ when the repo manager runs a release process.
 1. Run `yarn changeset` to start the process
 2. Select the packages being modified with the space key
 3. Select minor version if breaking change or patch otherwise, since we haven't release 1.0 yet
-4. Commit the generates files into your branch.
+4. Commit the generated files into your branch.
 
 ### 3.6 Releasing Versions
 
@@ -300,7 +300,7 @@ Some of the CPU intensive code is written in Rust for speed. We import the Rust 
 To add new code to Rust,
 1. Add it to `packages/core/src/addon/`
 2. Add a bridge implementation and types into `packages/core/src/addon/addon.js` and `packages/core/src/addon/addon.d.ts`
-3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throught the project to transparently call into Rust from Typescript
+3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throughout the project to transparently call into Rust from Typescript
 
 ### 3.8 DB Migrations
 
