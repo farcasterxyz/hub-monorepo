@@ -151,7 +151,8 @@ export const getPublicIp = async (format: "text" | "json"): HubAsyncResult<strin
   const publicIPResponse = await ResultAsync.fromPromise(
     axios.get(publicAddressAPI, { timeout: apiTimeoutMs }),
     (error) => {
-      return new HubError("unavailable.network_failure", `Failed to get public IP [${error}]`);
+      const err = error as Error;
+      return new HubError("unavailable.network_failure", `Failed to get public IP [${err.message}]`);
     },
   );
   if (publicIPResponse.isErr()) {
