@@ -1,6 +1,7 @@
 pub use self::rocksdb::*;
 
 mod compaction;
+mod multi_chunk_writer;
 mod rocksdb;
 
 #[cfg(test)]

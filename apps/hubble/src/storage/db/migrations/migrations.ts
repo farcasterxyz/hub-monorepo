@@ -46,7 +46,7 @@ migrations.set(7, async (db: RocksDB) => {
   return await clearAdminResets(db);
 });
 
-migrations.set(8, async (db: RocksDB) => {
+migrations.set(8, async (_db: RocksDB) => {
   /**
    * This is the rust DB migration. There's no actual migration
    * to be done, but we set a new version to mark the migration
@@ -56,6 +56,16 @@ migrations.set(8, async (db: RocksDB) => {
 
 migrations.set(9, async (db: RocksDB) => {
   return await fnameUserNameProofByFidPrefix(db);
+});
+
+migrations.set(10, async (_db: RocksDB) => {
+  /**
+   * This is the snapshot chunking migration. There's no actual migration
+   * to be done, but we set a new version to mark the migration so that snapshots
+   * will work correctly (i.e. the snapshot metadata will be correctly fetched
+   * by compatible versions of the hub)
+   */
+  return true;
 });
 
 // To Add a new migration

@@ -5,6 +5,7 @@ import { makeTsHash, putMessage } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { StorageCache } from "./storageCache.js";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
+import { sleep } from "../../utils/crypto.js";
 
 const db = jestRocksDB("engine.storageCache.test");
 
@@ -111,6 +112,32 @@ describe("getMessageCount", () => {
       ok(1),
     );
     await expect(cache.getMessageCount(Factories.Fid.build(), UserPostfix.CastMessage)).resolves.toEqual(ok(0));
+  });
+
+  test("count is correct even if called multiple times at once", async () => {
+    const fid = Factories.Fid.build();
+    const message = await Factories.CastAddMessage.create({ data: { fid } });
+    await putMessage(db, message);
+
+    const origDbCountKeysAtPrefix = db.countKeysAtPrefix;
+    try {
+      let callCount = 0;
+      db.countKeysAtPrefix = async (prefix: Buffer): Promise<number> => {
+        callCount++;
+        await sleep(1000);
+        return origDbCountKeysAtPrefix.call(db, prefix);
+      };
+
+      // Call the function multiple 110 times at once
+      const promises = await Promise.all(
+        Array.from({ length: 110 }, () => cache.getMessageCount(fid, UserPostfix.CastMessage)),
+      );
+      expect(promises.length).toEqual(110);
+      expect(callCount).toEqual(1);
+      promises.forEach((promise) => expect(promise).toEqual(ok(1)));
+    } finally {
+      db.countKeysAtPrefix = origDbCountKeysAtPrefix;
+    }
   });
 });
 
@@ -264,13 +291,13 @@ describe("processEvent", () => {
       makeTsHash(firstMessage.data.timestamp, firstMessage.hash),
     );
 
-    cache.processEvent(laterEvent);
+    await cache.processEvent(laterEvent);
     // Unchanged
     await expect(cache.getEarliestTsHash(fid, UserPostfix.ReactionMessage)).resolves.toEqual(
       makeTsHash(firstMessage.data.timestamp, firstMessage.hash),
     );
 
-    cache.processEvent(firstEvent);
+    await cache.processEvent(firstEvent);
     // Unset
     await expect(cache.getEarliestTsHash(fid, UserPostfix.ReactionMessage)).resolves.toEqual(ok(undefined));
   });

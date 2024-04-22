@@ -222,3 +222,13 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
 
   return body;
 }
+
+// biome-ignore lint/suspicious/noExplicitAny: generic
+export async function inBatchesOf<T>(items: T[], batchSize: number, fn: (batch: T[]) => any) {
+  let offset = 0;
+  while (offset < items.length) {
+    const batch = items.slice(offset, offset + batchSize);
+    await fn(batch);
+    offset += batchSize;
+  }
+}
