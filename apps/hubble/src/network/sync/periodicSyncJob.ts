@@ -26,8 +26,8 @@ export class PeriodicSyncJobScheduler {
   }
 
   start(cronSchedule?: string) {
-    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PERIODIC_SYNC_JOB_CRON, () => {
-      return this.doJobs();
+    this._cronTask = cron.schedule(cronSchedule ?? DEFAULT_PERIODIC_SYNC_JOB_CRON, () => this.doJobs(), {
+      timezone: "Etc/UTC",
     });
   }
 

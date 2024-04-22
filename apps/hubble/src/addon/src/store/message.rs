@@ -14,6 +14,7 @@ pub const HASH_LENGTH: usize = 20;
 pub const TRUE_VALUE: u8 = 1;
 
 /** Copied from the JS code */
+#[allow(dead_code)]
 pub enum RootPrefix {
     /* Used for multiple purposes, starts with a 4-byte fid */
     User = 1,
@@ -201,6 +202,7 @@ pub fn make_ts_hash(timestamp: u32, hash: &Vec<u8>) -> Result<[u8; TS_HASH_LENGT
     Ok(ts_hash)
 }
 
+#[allow(dead_code)]
 pub fn unpack_ts_hash(ts_hash: &[u8; TS_HASH_LENGTH]) -> (u32, [u8; HASH_LENGTH]) {
     let mut timestamp_bytes = [0u8; 4];
     timestamp_bytes.copy_from_slice(&ts_hash[0..4]);

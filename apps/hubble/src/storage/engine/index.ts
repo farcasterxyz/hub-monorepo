@@ -243,7 +243,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
 
       this._validationWorkers = undefined;
-      log.info("validation worker thread terminated");
+      log.info("All validation worker threads terminated");
     }
     log.info("engine stopped");
   }

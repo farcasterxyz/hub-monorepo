@@ -4,7 +4,6 @@ import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import { MockHub } from "../../test/mocks.js";
 import { MockRpcClient } from "./mock.js";
 import { getFarcasterTime } from "@farcaster/core";
-import { EMPTY_HASH } from "./merkleTrie.js";
 
 const testDb = jestRocksDB("engine.syncEnginePerf.test");
 const testDb2 = jestRocksDB("engine2.syncEnginePerf.test");
