@@ -23,7 +23,13 @@ import {
   UserNameProof,
   UserNameType,
 } from "@farcaster/hub-nodejs";
-import { bytesCompare, bytesStartsWith, isIdRegisterOnChainEvent, MessageBundle } from "@farcaster/core";
+import {
+  bytesCompare,
+  bytesStartsWith,
+  isIdRegisterOnChainEvent,
+  MessageBundle,
+  toFarcasterTime,
+} from "@farcaster/core";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
@@ -31,7 +37,7 @@ import os from "os";
 import { SemVer } from "semver";
 import { APP_VERSION, FARCASTER_VERSION, Hub, HubInterface } from "../../hubble.js";
 import { MerkleTrie, NodeMetadata, TrieSnapshot } from "./merkleTrie.js";
-import { SyncId, SyncIdType, TIMESTAMP_LENGTH, timestampToPaddedTimestampPrefix } from "./syncId.js";
+import { prefixToTimestamp, SyncId, SyncIdType, TIMESTAMP_LENGTH, timestampToPaddedTimestampPrefix } from "./syncId.js";
 import { getManyMessages } from "../../storage/db/message.js";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { sleepWhile } from "../../utils/crypto.js";
@@ -45,6 +51,7 @@ import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvid
 import { PeerScore, PeerScorer } from "./peerScore.js";
 import { getOnChainEvent } from "../../storage/db/onChainEvent.js";
 import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
+import { MaxPriorityQueue } from "@datastructures-js/priority-queue";
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -53,13 +60,12 @@ const SYNC_THRESHOLD_IN_SECONDS = 10;
 // The maximum number of nodes to enque in the work queue
 const MAX_WORK_QUEUE_SIZE = 100_000;
 
-export const FIRST_SYNC_DELAY = 10 * 1000; // How long to wait after startup to start syncing
+export const FIRST_SYNC_DELAY = 30 * 1000; // How long to wait after startup to start syncing
 const SYNC_MAX_DURATION = 110 * 60 * 1000; // 110 minutes, just slightly less than the periodic sync job frequency
 
-// number of CPUs, clamped between 2 and 4
-// This should be clamped between 2 and 16, but because of a perf bug serving the sync trie
-// we are limiting it to 4 for now. Once this release is rolled out, we can increase it to 16.
-const SYNC_PARALLELISM = Math.max(Math.min(os.cpus().length, 4), 2);
+// The max number of parallel syncs to run
+const MAX_SYNC_PARALLELISM = Math.min(os.cpus().length, 16);
+
 const SYNC_INTERRUPT_TIMEOUT = 30 * 1000; // 30 seconds
 
 // If a peer returns over 20 timeouts during sync, we abandon syncing with them
@@ -120,6 +126,11 @@ type DbStats = {
   numFnames: number;
 };
 
+type SecondaryRpcClient = {
+  peerId: string;
+  rpcClient: HubRpcClient;
+};
+
 // The Status of the node's sync with the network.
 type SyncStatus = {
   isSyncing: boolean;
@@ -132,37 +143,44 @@ type SyncStatus = {
 };
 
 // Status of the current (ongoing) sync.
-class CurrentSyncStatus {
+export class CurrentSyncStatus {
   isSyncing = false;
   interruptSync = false;
   peerId: string | undefined;
   peerTimeoutErrors = 0;
-  startTimestamp: number;
+  startTimestampMs: number;
+  cutoffTimestampFs = 0;
   fidRetryMessageQ = new Map<number, Message[]>();
   seriousValidationFailures = 0;
   numParallelFetches = 0;
 
   rpcClient: HubRpcClient | undefined;
-  secondaryRpcClients: HubRpcClient[] = [];
+  secondaryRpcClients: SecondaryRpcClient[] = [];
   nextSecondaryRpcClient = 0;
 
-  scheduledWorkCount = 0;
   executingWorkCount = 0;
   completedWorkCount = 0;
 
-  workQueue: SyncEngineWorkItem[] = [];
+  workQueue: MaxPriorityQueue<SyncEngineWorkItem> = new MaxPriorityQueue((workItem) => workItem.score);
 
   fullResult: MergeResult = new MergeResult();
 
-  constructor(peerId?: string, rpcClient?: HubRpcClient, secondaryRpcClients: HubRpcClient[] = []) {
+  constructor(
+    peerId?: string,
+    rpcClient?: HubRpcClient,
+    secondaryRpcClients: SecondaryRpcClient[] = [],
+    startTimestamp = 0,
+  ) {
     if (peerId) {
       this.peerId = peerId;
       this.isSyncing = true;
-      this.startTimestamp = Date.now();
+      this.startTimestampMs = startTimestamp;
+      this.cutoffTimestampFs = toFarcasterTime(startTimestamp).unwrapOr(0);
     } else {
       this.peerId = undefined;
       this.isSyncing = false;
-      this.startTimestamp = 0;
+      this.startTimestampMs = 0;
+      this.cutoffTimestampFs = 0;
     }
 
     this.rpcClient = rpcClient;
@@ -174,16 +192,16 @@ class CurrentSyncStatus {
 
   status() {
     const fullResult = this.fullResult.status();
-    const timeElapsedMs = Date.now() - this.startTimestamp;
+    const timeElapsedMs = Date.now() - this.startTimestampMs;
     const msgRate = Math.round(fullResult.successCount / (timeElapsedMs / 1000));
     return {
       isSyncing: this.isSyncing,
-      scheduledCount: this.scheduledWorkCount,
       executingCount: this.executingWorkCount,
       completedCount: this.completedWorkCount,
       peerId: this.peerId,
       peerTimeoutErrors: this.peerTimeoutErrors,
-      workQueueLen: this.workQueue.length,
+      workQueueLen: this.workQueue.size(),
+      cutoffTimestamp: this.cutoffTimestampFs,
       msgRate,
       ...fullResult,
     };
@@ -196,7 +214,7 @@ enum SyncEngineWorkItemStatus {
   Completed = 2,
 }
 
-class SyncEngineWorkItem {
+export class SyncEngineWorkItem {
   status: SyncEngineWorkItemStatus = SyncEngineWorkItemStatus.Scheduled;
 
   prefix: Uint8Array;
@@ -622,11 +640,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       peerContact = peers[Math.floor(Math.random() * peers.length)] as PeerContact;
       secondaryContacts.push(peerContact);
 
-      // Pick a more random peers, one per sync thread. It's OK if we pick the same twice, it might
-      // happen if we don't have that many peers.
-      for (let i = 0; i < Math.min(SYNC_PARALLELISM, peers.length); i++) {
+      // Pick random peers, one per sync thread.
+      for (let i = 0; i < Math.min(MAX_SYNC_PARALLELISM, peers.length); i++) {
         const randomPeer = peers[Math.floor(Math.random() * peers.length)] as PeerContact;
-        secondaryContacts.push(randomPeer);
+        if (!secondaryContacts.find((c) => c.peerId.equals(randomPeer.peerId))) {
+          secondaryContacts.push(randomPeer);
+        }
       }
     }
 
@@ -657,19 +676,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     // Fill in the rpcClients for the secondary contacts
-    const secondaryRpcClients: HubRpcClient[] = (
+    const secondaryRpcClients: SecondaryRpcClient[] = (
       await Promise.all(
         secondaryContacts.map(async (c) => {
           const rpcClient = await hub.getRPCClientForPeer(c.peerId, c.contactInfo);
           const info = await rpcClient?.getInfo({ dbStats: false }, new Metadata(), rpcDeadline());
           if (rpcClient && info && info.isOk()) {
-            return rpcClient;
+            return { peerId: c.peerId.toString(), rpcClient };
           } else {
             return undefined;
           }
         }),
       )
-    ).filter((rpcClient) => rpcClient !== undefined) as HubRpcClient[];
+    ).filter((c) => c !== undefined) as SecondaryRpcClient[];
 
     // If a sync profile is enabled, wrap the rpcClient in a profiler
     if (this._syncProfiler) {
@@ -737,26 +756,23 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         const start = Date.now();
 
         log.info(
-          { peerId: peerContact.peerId, secondaries: secondaryContacts.map((s) => s.peerId) },
+          { peerId: peerContact.peerId, secondaryRpcClients: secondaryContacts.map((s) => s.peerId) },
           "Diffsync: Starting Sync with peer",
         );
         const result = await this.performSync(updatedPeerIdString, rpcClient, true, secondaryRpcClients);
 
         log.info(
-          { peerContact, result, timeTakenMs: Date.now() - start, status: this.curSync.status() },
+          {
+            peerContact,
+            result,
+            timeTakenMs: Date.now() - start,
+            status: this.curSync.status(),
+            interrupted: this.curSync.interruptSync,
+          },
           "Diffsync: complete",
         );
+
         this.emit("syncComplete", true);
-
-        // If this peer was bad, and we interrupted the sync, we should retry with a different, random peer
-        if (this.curSync.interruptSync && this.curSync.peerTimeoutErrors > MAX_PEER_TIMEOUT_ERRORS) {
-          log.warn({ peerId }, "Diffsync: Peer was bad, retrying with a different peer");
-
-          setTimeout(() => {
-            this.diffSyncIfRequired(hub);
-          }, 10 * 1000);
-        }
-
         return;
       } else {
         log.info({ peerId }, "DiffSync: No need to sync");
@@ -775,7 +791,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // Close all the secondary RPC clients
       for (const secondaryRpcClient of secondaryRpcClients) {
         const closeResult = Result.fromThrowable(
-          () => secondaryRpcClient?.close(),
+          () => secondaryRpcClient?.rpcClient.close(),
           (e) => e as Error,
         )();
         if (closeResult.isErr()) {
@@ -830,21 +846,19 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     peerId: string,
     rpcClient: HubRpcClient,
     doAudit = false,
-    secondaryRpcClients: HubRpcClient[] = [],
+    secondaryRpcClients: SecondaryRpcClient[] = [],
   ): Promise<MergeResult> {
-    log.info({ peerId }, "Perform sync: Start");
-
     // Make sure we have at least one
     if (secondaryRpcClients.length === 0) {
-      secondaryRpcClients.push(rpcClient);
+      secondaryRpcClients.push({ peerId, rpcClient });
     }
 
-    const start = Date.now();
+    const startTimestamp = Date.now();
 
-    this.curSync = new CurrentSyncStatus(peerId, rpcClient, secondaryRpcClients);
+    this.curSync = new CurrentSyncStatus(peerId, rpcClient, secondaryRpcClients, startTimestamp);
     const syncTimeout = setTimeout(() => {
       this.curSync.interruptSync = true;
-      log.warn({ peerId, durationMs: Date.now() - start }, "Perform sync: Sync timed out, interrupting sync");
+      log.warn({ peerId, durationMs: Date.now() - startTimestamp }, "Perform sync: Sync timed out, interrupting sync");
     }, SYNC_MAX_DURATION);
 
     if (!this.curSync.rpcClient) {
@@ -880,14 +894,27 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         return this.curSync.fullResult;
       }
 
+      // Schedule the root node
       this.scheduleWorkItem(ourNode, fromNodeMetadataResponse(theirNodeResult.value));
+      const numMessages = Math.max(0, theirNodeResult.value.numMessages - (ourNode?.numMessages ?? 0));
 
-      await this.processSyncWorkQueue();
+      // If we have missing messages, we use the full parallelism, otherwise we use only half as many
+      const desiredSyncParallelism = this.curSync.secondaryRpcClients.length * (numMessages > 1_000 ? 1 : 0.5);
+
+      // Sync parallelism = number secondary rpc clients we could get (bounded between 2 and MAX_SYNC_PARALLELISM)
+      const syncParallelism = Math.round(Math.max(2, Math.min(desiredSyncParallelism, MAX_SYNC_PARALLELISM)));
+
+      log.info(
+        { numMessages, syncParallelism, peerId, secondaryRpcPeers: secondaryRpcClients.length },
+        "Perform sync: Starting sync",
+      );
+
+      await this.processSyncWorkQueue(syncParallelism);
 
       await auditPeerPromise; // Wait for audit to complete
 
       log.info({ syncResult: this.curSync.fullResult }, "Perform sync: Sync Complete");
-      statsd().timing("syncengine.sync_time_ms", Date.now() - start);
+      statsd().timing("syncengine.sync_time_ms", Date.now() - startTimestamp);
     } catch (e) {
       log.warn(e, "Perform sync: Error");
     } finally {
@@ -1194,37 +1221,36 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // If there are no messages to fetch, don't enque the work item
     if (theirNode.numMessages === 0) return;
 
-    if (this.curSync.workQueue.length > MAX_WORK_QUEUE_SIZE) return;
+    // Don't let the queue grow too large
+    if (this.curSync.workQueue.size() > MAX_WORK_QUEUE_SIZE) return;
+
+    // If the timestamp of the node is after the sync started, then gossip will take
+    // care of it, so we don't need to do anything
+    if (prefixToTimestamp(Buffer.from(theirNode.prefix.slice(0, 10)).toString()) > this.curSync.cutoffTimestampFs) {
+      return;
+    }
 
     // Otherwise, we will schedule the work item
-    this.curSync.workQueue.push(new SyncEngineWorkItem(ourNode, theirNode));
+    this.curSync.workQueue.enqueue(new SyncEngineWorkItem(ourNode, theirNode));
   }
 
-  async processSyncWorkQueue(): Promise<void> {
-    // Cap the sync parallelism to the number of secondary rpc clients we could get
-    const syncParallelism = Math.min(SYNC_PARALLELISM, this.curSync.secondaryRpcClients.length);
+  async processSyncWorkQueue(syncParallelism: number): Promise<void> {
+    let runningWorkItems: SyncEngineWorkItem[] = [];
 
-    while (this.curSync.workQueue.length > 0) {
-      // Go over the work queue, and count how many items are in progress, and how many are completed
-      const newWorkQueue: SyncEngineWorkItem[] = [];
-      const scheduledItems: SyncEngineWorkItem[] = [];
-      const executingItems: SyncEngineWorkItem[] = [];
+    while (this.curSync.workQueue.size() > 0 || runningWorkItems.length > 0) {
+      // Go over the currently running work items and count how many are completed
+      const newRunningWorkItems: SyncEngineWorkItem[] = [];
 
-      this.curSync.executingWorkCount = 0;
-      this.curSync.scheduledWorkCount = 0;
-      for (const workItem of this.curSync.workQueue) {
+      // Clear any pending work if the sync was interrupted, so we'll only
+      // wait for the existing running work items to finish
+      if (this.curSync.interruptSync) {
+        this.curSync.workQueue.clear();
+      }
+
+      for (const workItem of runningWorkItems) {
         switch (workItem.status) {
-          case SyncEngineWorkItemStatus.Scheduled:
-            this.curSync.scheduledWorkCount++;
-            if (!this.curSync.interruptSync) {
-              newWorkQueue.push(workItem);
-              scheduledItems.push(workItem);
-            }
-            break;
           case SyncEngineWorkItemStatus.Executing:
-            this.curSync.executingWorkCount++;
-            newWorkQueue.push(workItem);
-            executingItems.push(workItem);
+            newRunningWorkItems.push(workItem);
             break;
           case SyncEngineWorkItemStatus.Completed:
             this.curSync.completedWorkCount++;
@@ -1234,27 +1260,30 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       }
 
       // Replace the work queue with only the items that are not completed
-      this.curSync.workQueue = newWorkQueue;
+      runningWorkItems = newRunningWorkItems;
 
-      // If there is an opputunity to do more work, we will do it
+      // If there is an oppurtunity to do more work, we will do it
       if (this.curSync.executingWorkCount < syncParallelism) {
         const n = Math.max(0, syncParallelism - this.curSync.executingWorkCount);
-        // Find the "n" best work items, and start them
-        const bestWorkItems = scheduledItems.sort((a, b) => b.score - a.score).slice(0, n);
 
-        for (const workItem of bestWorkItems) {
-          workItem.status = SyncEngineWorkItemStatus.Executing;
-          workItem.finishPromise = this.executeWorkItem(workItem);
-          executingItems.push(workItem);
+        // Find the "n" best work items, and start them
+        for (let i = 0; i < n; i++) {
+          const bestWorkItem = this.curSync.workQueue.pop();
+
+          if (bestWorkItem) {
+            bestWorkItem.status = SyncEngineWorkItemStatus.Executing;
+            bestWorkItem.finishPromise = this.executeWorkItem(bestWorkItem);
+            runningWorkItems.push(bestWorkItem);
+          }
         }
       }
+      this.curSync.executingWorkCount = runningWorkItems.length;
 
-      statsd().gauge("sync_engine.work.scheduled", this.curSync.scheduledWorkCount);
       statsd().gauge("sync_engine.work.executing", this.curSync.executingWorkCount);
       statsd().gauge("sync_engine.work.completed", this.curSync.completedWorkCount);
 
       // Now the work queue is updated, and we can wait for at least one item to finish
-      const pendingPromises = executingItems.map((item) => item.finishPromise);
+      const pendingPromises = runningWorkItems.map((item) => item.finishPromise);
       if (pendingPromises.length > 0) {
         await Promise.race(pendingPromises);
       }
@@ -1296,7 +1325,22 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               "PeerError: Too many errors, stopping sync",
             );
             this._peerScorer.decrementScore(this.curSync.peerId?.toString());
-            this.curSync.interruptSync = true;
+
+            // Remove this peer from the secondaryRpcClients
+            this.curSync.secondaryRpcClients = this.curSync.secondaryRpcClients.filter(
+              (c) => c.peerId !== this.curSync.peerId,
+            );
+
+            // If none left, then interrupt the sync
+            if (this.curSync.secondaryRpcClients.length === 0) {
+              this.curSync.interruptSync = true;
+              log.warn("Perform Sync: PeerError: No more secondary peers, interrupting sync");
+            } else {
+              // Replace the primary rpcClient with the next one in the list
+              this.curSync.rpcClient = this.curSync.secondaryRpcClients[0]?.rpcClient;
+              this.curSync.peerId = this.curSync.secondaryRpcClients[0]?.peerId;
+              this.curSync.peerTimeoutErrors = 0;
+            }
           }
 
           return;
@@ -1307,7 +1351,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // First, we'll check if our node is empty. If it is, then we can start importing all the messages from the other node
         // at this prefix
         if (!ourNode || ourNode.numMessages === 0 || theirNode.numMessages <= 1) {
-          await this.getMessagesFromOtherNode(workItem);
+          await this.getMessagesFromOtherNode(workItem, theirNode.numMessages);
         }
 
         // Recurse into the children to to schedule the next set of work. Note that we didn't after  the
@@ -1327,37 +1371,75 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     });
   }
 
-  async getMessagesFromOtherNode(workItem: SyncEngineWorkItem): Promise<void> {
-    const rpcClient = this.curSync.secondaryRpcClients[this.curSync.nextSecondaryRpcClient];
+  async getMessagesFromOtherNode(workItem: SyncEngineWorkItem, expectItems: number): Promise<void> {
+    const secondaryRpcClient = this.curSync.secondaryRpcClients[this.curSync.nextSecondaryRpcClient];
     this.curSync.nextSecondaryRpcClient =
       (this.curSync.nextSecondaryRpcClient + 1) % this.curSync.secondaryRpcClients.length;
 
-    if (!rpcClient) {
+    if (!secondaryRpcClient || !this.curSync.rpcClient) {
       log.warn("RPC client is not set");
       return;
     }
 
+    // Attempt to use the secondary RPC client to fetch the missing syncIds
+    // first. If it doesn't work, we'll fall back to the primary RPC client.
+    let rpcClient = secondaryRpcClient.rpcClient;
     const start = Date.now();
-    const result = await rpcClient.getAllSyncIdsByPrefix(
-      TrieNodePrefix.create({ prefix: workItem.prefix }),
-      new Metadata(),
-      rpcDeadline(),
-    );
+
+    // Fetch the missing syncIds from the rpcClient.
+    const fetchMissingSyncIds = async (rpcClient: HubRpcClient) => {
+      return await rpcClient?.getAllSyncIdsByPrefix(
+        TrieNodePrefix.create({ prefix: workItem.prefix }),
+        new Metadata(),
+        rpcDeadline(),
+      );
+    };
+
+    const result = await fetchMissingSyncIds(rpcClient);
     statsd().timing("syncengine.peer.get_all_syncids_by_prefix_ms", Date.now() - start);
 
+    let missingHashes: Uint8Array[] = [];
     if (result.isErr()) {
       log.warn(result.error, `Error fetching ids for prefix ${workItem.prefix}`);
-      this._peerScorer.decrementScore(this.curSync.peerId?.toString());
-      return;
+    } else {
+      missingHashes = result.value.syncIds;
     }
 
-    let missingHashes = result.value.syncIds.filter((id) => id.length > 0);
+    // If we got no missing hashes, then we'll retry with the primary RPC client
+    if (missingHashes.length === 0) {
+      // Replace the rpcClient with the primary one
+      rpcClient = this.curSync.rpcClient;
+
+      // Get it directly from the primary peerId
+      const primaryResult = await fetchMissingSyncIds(rpcClient);
+
+      log.debug(
+        {
+          prefix: Array.from(workItem.prefix),
+          gotItems: missingHashes.length,
+          expectItems,
+          retriedItems: primaryResult.unwrapOr(undefined)?.syncIds.length,
+          peerId: this.curSync.peerId,
+        },
+        "Perform Sync: Missing syncIds from secondary peer, fetched instead from primary peer",
+      );
+
+      if (primaryResult.isErr()) {
+        log.warn(primaryResult?.error, `Perform Sync: PeerError: Error fetching ids for prefix ${workItem.prefix}`);
+        return;
+      }
+
+      missingHashes = primaryResult.value.syncIds;
+    }
+
+    // Filter out any empty hashes
+    missingHashes = missingHashes.filter((id) => id.length > 0);
 
     // Verify that the returned syncIDs actually have the prefix we requested.
     if (!this.verifySyncIdForPrefix(workItem.prefix, missingHashes)) {
       log.warn(
         { prefix: workItem.prefix, syncIds: missingHashes, peerId: this.curSync.peerId },
-        "PeerError: Received syncIds that don't match prefix, aborting trie branch",
+        "Perform Sync: PeerError: Received syncIds that don't match prefix, aborting trie branch",
       );
       this._peerScorer.decrementScore(this.curSync.peerId?.toString());
       return;
@@ -1368,14 +1450,12 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // hub at this node.
     // Note that we can optimize this check for the common case of a single missing syncId, since the diff
     // algorithm will drill down right to the missing syncId.
-
-    let revokedSyncIds = 0;
     if (missingHashes.length === 1) {
       if (await this._trie.existsByBytes(missingHashes[0] as Uint8Array)) {
         missingHashes = [];
         statsd().increment("syncengine.peer_counts.get_all_syncids_by_prefix_already_exists", 1);
 
-        revokedSyncIds += await this.revokeCorruptedSyncIds(await this._trie.getTrieNodeMetadata(workItem.prefix));
+        await this.revokeCorruptedSyncIds(await this._trie.getTrieNodeMetadata(workItem.prefix));
       }
     }
 

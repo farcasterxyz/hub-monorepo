@@ -12,7 +12,7 @@ import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
 import { logger } from "./utils/logger.js";
-import { Result, err, ok } from "neverthrow";
+import { Result, ResultAsync, err, ok } from "neverthrow";
 import { NodeMetadata, TrieSnapshot } from "network/sync/merkleTrie.js";
 
 // Also set up the log flush listener
@@ -154,8 +154,8 @@ export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<v
   return await lib.dbCommit.call(db, keyValues);
 };
 
-export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb): Promise<string> => {
-  return await lib.dbSnapshotBackup(mainDb, trieDb);
+export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb, timestamp: number): Promise<string> => {
+  return await lib.dbSnapshotBackup(mainDb, trieDb, timestamp);
 };
 
 /**
@@ -385,6 +385,12 @@ export const rsMergeMany = async (
   store: RustDynStore,
   messagesBytes: Uint8Array[],
 ): Promise<Map<number, HubResult<Buffer>>> => {
+  // Short-circuit if there are is just one message
+  if (messagesBytes.length === 1) {
+    const result = await ResultAsync.fromPromise(rsMerge(store, messagesBytes[0] as Uint8Array), rustErrorToHubError);
+    return new Map([[0, result]]);
+  }
+
   const mergeResults: Map<number, HubResult<Buffer>> = new Map();
 
   const results = await lib.mergeMany.call(store, messagesBytes);

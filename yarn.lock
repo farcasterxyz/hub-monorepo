@@ -1320,6 +1320,18 @@
   dependencies:
     "@jridgewell/trace-mapping" "0.3.9"
 
+"@datastructures-js/heap@^4.3.3":
+  version "4.3.3"
+  resolved "https://registry.npmjs.org/@datastructures-js/heap/-/heap-4.3.3.tgz#824c10f092ab03180702f0dea8ce96227ffe50a8"
+  integrity sha512-UcUu/DLh/aM4W3C8zZfwxxm6/6FIZUlm3mcAXuNOCa6Aj4iizNvNXQyb8DjZQH2jKSQbMRyNlngP6TPimuGjpQ==
+
+"@datastructures-js/priority-queue@^6.3.1":
+  version "6.3.1"
+  resolved "https://registry.npmjs.org/@datastructures-js/priority-queue/-/priority-queue-6.3.1.tgz#42971d509b457d8fbc42918f192d0ce7c6b2f5f3"
+  integrity sha512-eoxkWql/j0VJ0UFMFTpnyJz4KbEEVQ6aZ/JuJUgenu0Im4tYKylAycNGsYCHGXiVNEd7OKGVwfx1Ac3oYkuu7A==
+  dependencies:
+    "@datastructures-js/heap" "^4.3.3"
+
 "@esbuild-kit/cjs-loader@^2.4.2":
   version "2.4.2"
   resolved "https://registry.npmjs.org/@esbuild-kit/cjs-loader/-/cjs-loader-2.4.2.tgz#cb4dde00fbf744a68c4f20162ea15a8242d0fa54"

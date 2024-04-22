@@ -243,7 +243,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
 
       this._validationWorkers = undefined;
-      log.info("validation worker thread terminated");
+      log.info("All validation worker threads terminated");
     }
     log.info("engine stopped");
   }
@@ -325,39 +325,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   async mergeMessage(message: Message): HubAsyncResult<number> {
-    // TODO: Note, we can just call this.mergeMessages([message]) when bundles are fully rolled out, to
-    // remove the need for this method
-    const validatedMessage = await this.validateMessage(message);
-    if (validatedMessage.isErr()) {
-      return err(validatedMessage.error);
-    }
-
-    // Extract the FID that this message was signed by
-    const fid = message.data?.fid ?? 0;
-    const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
-
-    if (storageUnits.isErr()) {
-      return err(storageUnits.error);
-    }
-
-    if (storageUnits.value === 0) {
-      return err(new HubError("bad_request.prunable", "no storage"));
-    }
-
-    // We rate limit the number of messages that can be merged per FID
-    const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
-    const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
-    if (isRateLimited) {
-      return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
-    }
-
-    const mergeResult = await this.mergeMessageToStore(message);
-
-    if (mergeResult.isOk() && limiter) {
-      consumeRateLimitByKey(`${fid}`, limiter);
-    }
-
-    return mergeResult;
+    const result = await this.mergeMessages([message]);
+    return result.get(0) ?? err(new HubError("unavailable", "missing result"));
   }
 
   async mergeMessagesToStore(messages: Message[]): Promise<Map<number, HubResult<number>>> {
@@ -443,40 +412,6 @@ class Engine extends TypedEmitter<EngineEvents> {
     );
 
     return results;
-  }
-
-  async mergeMessageToStore(message: Message): HubAsyncResult<number> {
-    // Frame actions cannot be stored
-    if (message.data?.type === MessageType.FRAME_ACTION) {
-      return err(new HubError("bad_request.validation_failure", "invalid message type"));
-    }
-
-    // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-    const setPostfix = typeToSetPostfix(message.data!.type);
-
-    switch (setPostfix) {
-      case UserPostfix.LinkMessage: {
-        return ResultAsync.fromPromise(this._linkStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.ReactionMessage: {
-        return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.CastMessage: {
-        return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.UserDataMessage: {
-        return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.VerificationMessage: {
-        return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.UsernameProofMessage: {
-        return ResultAsync.fromPromise(this._usernameProofStore.merge(message), (e) => e as HubError);
-      }
-      default: {
-        return err(new HubError("bad_request.validation_failure", "invalid message type"));
-      }
-    }
   }
 
   async mergeOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {

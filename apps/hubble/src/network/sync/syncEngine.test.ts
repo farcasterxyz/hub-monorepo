@@ -16,7 +16,7 @@ import {
 } from "@farcaster/hub-nodejs";
 import { Err, Ok, ok } from "neverthrow";
 import { anything, instance, mock, when } from "ts-mockito";
-import SyncEngine from "./syncEngine.js";
+import SyncEngine, { CurrentSyncStatus, SyncEngineWorkItem } from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
@@ -571,7 +571,7 @@ describe("SyncEngine", () => {
 
   describe("addContactInfoForPeerId", () => {
     test("adds contact info for peer id", async () => {
-      const contactInfo = await NetworkFactories.GossipContactInfoContent.build();
+      const contactInfo = NetworkFactories.GossipContactInfoContent.build();
       const peerId = await createEd25519PeerId();
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())).toBeUndefined();
 
@@ -582,9 +582,9 @@ describe("SyncEngine", () => {
 
     test("replaces contact info if newer", async () => {
       const now = Date.now();
-      const contactInfo = await NetworkFactories.GossipContactInfoContent.build({ timestamp: now });
-      const olderContactInfo = await NetworkFactories.GossipContactInfoContent.build({ timestamp: now - 10 });
-      const newerContactInfo = await NetworkFactories.GossipContactInfoContent.build({ timestamp: now + 10 });
+      const contactInfo = NetworkFactories.GossipContactInfoContent.build({ timestamp: now });
+      const olderContactInfo = NetworkFactories.GossipContactInfoContent.build({ timestamp: now - 10 });
+      const newerContactInfo = NetworkFactories.GossipContactInfoContent.build({ timestamp: now + 10 });
       const peerId = await createEd25519PeerId();
 
       expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo)).toBeInstanceOf(Ok);
@@ -598,5 +598,32 @@ describe("SyncEngine", () => {
       expect(syncEngine.addContactInfoForPeerId(peerId, newerContactInfo)).toBeInstanceOf(Err);
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(newerContactInfo);
     });
+  });
+});
+
+describe("PriorityQueue", () => {
+  test("PriorityQueue sorts by priority", () => {
+    const c = new CurrentSyncStatus("peerId1");
+    expect(c.workQueue.size()).toEqual(0);
+
+    // Add a work item
+    c.workQueue.enqueue({ score: 5 } as SyncEngineWorkItem);
+
+    expect(c.workQueue.size()).toEqual(1);
+    expect(c.workQueue.pop()).toEqual({ score: 5 });
+
+    expect(c.workQueue.pop()).toBeNull();
+
+    // Add multiple work items
+    c.workQueue.enqueue({ score: 5 } as SyncEngineWorkItem);
+    c.workQueue.enqueue({ score: 3 } as SyncEngineWorkItem);
+    c.workQueue.enqueue({ score: 7 } as SyncEngineWorkItem);
+
+    expect(c.workQueue.size()).toEqual(3);
+
+    expect(c.workQueue.pop()).toEqual({ score: 7 });
+    expect(c.workQueue.pop()).toEqual({ score: 5 });
+    expect(c.workQueue.pop()).toEqual({ score: 3 });
+    expect(c.workQueue.pop()).toBeNull();
   });
 });

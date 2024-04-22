@@ -7,6 +7,7 @@ use crate::store::{
 };
 use crate::trie::merkle_trie::TRIE_DBPATH_PREFIX;
 use crate::THREAD_POOL;
+use chrono::NaiveDateTime;
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
@@ -16,7 +17,7 @@ use neon::types::{
     Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
     JsString,
 };
-use rocksdb::{Options, TransactionDB, DB};
+use rocksdb::{Options, TransactionDB, WriteBatch, WriteOptions, DB};
 use slog::{info, o, Logger};
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -875,7 +876,11 @@ impl RocksDB {
 }
 
 impl RocksDB {
-    fn create_tar_gzip(logger: &Logger, input_dir: &str) -> Result<String, HubError> {
+    fn create_tar_gzip(
+        logger: &Logger,
+        input_dir: &str,
+        timestamp: NaiveDateTime,
+    ) -> Result<String, HubError> {
         let base_name = Path::new(input_dir)
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -885,7 +890,7 @@ impl RocksDB {
             .join(format!(
                 "{}-{}.tar.gz",
                 base_name,
-                chrono::Local::now().format("%Y-%m-%d-%s")
+                timestamp.format("%Y-%m-%d-%s")
             ))
             .as_os_str()
             .to_str()
@@ -920,14 +925,21 @@ impl RocksDB {
         Ok(chunked_output_dir)
     }
 
-    fn snapshot_backup(main_db: Arc<RocksDB>, trie_db: Arc<RocksDB>) -> Result<String, HubError> {
+    fn snapshot_backup(
+        main_db: Arc<RocksDB>,
+        trie_db: Arc<RocksDB>,
+        timestamp_ms: i64,
+    ) -> Result<String, HubError> {
         let snapshot_logger = LOGGER.new(o! ("component" => "RocksDBSnapshotBackup"));
         let main_db_path = main_db.location();
+
+        let timestamp = chrono::NaiveDateTime::from_timestamp_millis(timestamp_ms)
+            .unwrap_or(chrono::Utc::now().naive_utc());
 
         let main_backup_path = Path::new(&format!(
             "{}-{}.backup",
             main_db_path,
-            chrono::Local::now().format("%Y-%m-%d-%s")
+            timestamp.format("%Y-%m-%d-%s")
         ))
         .join("rocks.hub._default");
 
@@ -950,6 +962,11 @@ impl RocksDB {
 
         let backup_main = DB::open_default(&main_backup_path)
             .map_err(|e| HubError::internal_db_error(&e.to_string()))?;
+        // Prepare write options to disable WAL
+        let mut write_opts = WriteOptions::default();
+        write_opts.disable_wal(true);
+        let mut write_batch = WriteBatch::default();
+
         let backup_trie = DB::open_default(&triedb_backup_path)
             .map_err(|e| HubError::internal_db_error(&e.to_string()))?;
 
@@ -962,7 +979,11 @@ impl RocksDB {
             let mut count = 0;
             for item in iterator {
                 let (key, value) = item.unwrap();
-                backup_main.put(key, value).unwrap();
+                write_batch.put(key, value);
+                if write_batch.len() >= 10_000 {
+                    backup_main.write_opt(write_batch, &write_opts).unwrap();
+                    write_batch = WriteBatch::default();
+                }
 
                 count += 1;
                 if count % 1_000_000 == 0 {
@@ -975,12 +996,20 @@ impl RocksDB {
                 }
             }
 
+            // write any leftover keys
+            backup_main.write_opt(write_batch, &write_opts).unwrap();
+
             info!(logger, "mainDB Snapshot backup completed: {}", count);
             drop(main_db_snapshot);
             drop(backup_main);
         });
 
         let logger = snapshot_logger.clone();
+        // Prepare write options to disable WAL
+        let mut write_opts = WriteOptions::default();
+        write_opts.disable_wal(true);
+        let mut write_batch = WriteBatch::default();
+
         let trie_backup_thread = std::thread::spawn(move || {
             let trie_db = trie_db.db();
             let trie_db_snapshot = trie_db.as_ref().unwrap().snapshot();
@@ -989,7 +1018,11 @@ impl RocksDB {
             let mut count = 0;
             for item in iterator {
                 let (key, value) = item.unwrap();
-                backup_trie.put(key, value).unwrap();
+                write_batch.put(key, value);
+                if write_batch.len() >= 10_000 {
+                    backup_trie.write_opt(write_batch, &write_opts).unwrap();
+                    write_batch = WriteBatch::default();
+                }
 
                 count += 1;
                 if count % 1_000_000 == 0 {
@@ -1001,6 +1034,9 @@ impl RocksDB {
                     );
                 }
             }
+
+            // write any leftover keys
+            backup_trie.write_opt(write_batch, &write_opts).unwrap();
 
             info!(logger, "trieDB Snapshot backup completed: {}", count);
             drop(trie_db_snapshot);
@@ -1017,7 +1053,7 @@ impl RocksDB {
             start.elapsed().expect("Time went backwards")
         );
 
-        let tar_gz_path = Self::create_tar_gzip(&snapshot_logger, &main_backup_path)?;
+        let tar_gz_path = Self::create_tar_gzip(&snapshot_logger, &main_backup_path, timestamp)?;
         info!(
             snapshot_logger,
             "Full DB Snapshot Backup tar.gz created: path = {}", tar_gz_path,
@@ -1038,12 +1074,14 @@ impl RocksDB {
         let trie_db_handle = cx.argument::<JsBox<Arc<RocksDB>>>(1)?;
         let trie_db = (**trie_db_handle.borrow()).clone();
 
+        let timestamp_ms = cx.argument::<JsNumber>(2)?.value(&mut cx) as i64;
+
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
         // Spawn a new thread to create the tarball
         std::thread::spawn(move || {
-            let result = Self::snapshot_backup(main_db, trie_db);
+            let result = Self::snapshot_backup(main_db, trie_db, timestamp_ms);
 
             deferred.settle_with(&channel, move |mut tcx| match result {
                 Ok(output_path) => Ok(tcx.string(output_path)),
