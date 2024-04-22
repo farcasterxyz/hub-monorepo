@@ -720,7 +720,7 @@ export class Hub implements HubInterface {
         Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. 
         Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT.
         `;
-      log.error(
+      log.warn(
         {
           rpc_port: rpcPort,
           local_address: this.options.rpcServerHost,
@@ -728,7 +728,9 @@ export class Hub implements HubInterface {
         },
         errorMessage,
       );
-      throw new HubError("unavailable.network_failure", errorMessage);
+      // NOTE(wazzymandias): For now, we will not throw error here, in order to give hub operators enough time
+      // to configure their network settings. We will throw error in the future.
+      // throw new HubError("unavailable.network_failure", errorMessage);
     }
 
     if (!this.options.httpServerDisabled) {
