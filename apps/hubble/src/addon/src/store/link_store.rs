@@ -3,9 +3,7 @@ use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 use crate::db::{RocksDB, RocksDbTransactionBatch};
 use crate::protos::link_body::Target;
 use crate::protos::message_data::Body;
-use crate::protos::{
-    message_data, LinkBody, LinkCompactStateBody, Message, MessageData, MessageType,
-};
+use crate::protos::{message_data, LinkBody, Message, MessageData, MessageType};
 use crate::store::{
     get_page_options, get_store, hub_error_to_js_throw, make_fid_key, make_user_key, message,
     HubError, IntoI32, IntoU8, MessagesPage, PageOptions, RootPrefix, Store, StoreDef,
@@ -238,17 +236,14 @@ impl LinkStore {
     }
 
     // Generates a unique key used to store a LinkCompactStae message key in the store
-    fn link_compact_state_add_key(
-        fid: u32,
-        link_compact_body: &LinkCompactStateBody,
-    ) -> Result<Vec<u8>, HubError> {
+    fn link_compact_state_add_key(fid: u32, link_type: &String) -> Result<Vec<u8>, HubError> {
         let mut key = Vec::with_capacity(
             Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE,
         );
 
         key.extend_from_slice(&make_user_key(fid));
-        key.push(UserPostfix::LinkCompactState.as_u8());
-        key.extend_from_slice(&link_compact_body.r#type.as_bytes());
+        key.push(UserPostfix::LinkCompactStateMessage.as_u8());
+        key.extend_from_slice(&link_type.as_bytes());
 
         Ok(key)
     }
@@ -650,7 +645,7 @@ impl StoreDef for LinkStore {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
             && message.data.as_ref().is_some_and(|data| {
-                data.r#type == MessageType::LinkCompactState.into_i32() && data.body.is_none()
+                data.r#type == MessageType::LinkCompactState.into_i32() && data.body.is_some()
             })
     }
 
@@ -705,9 +700,17 @@ impl StoreDef for LinkStore {
                     .ok_or(HubError::invalid_parameter("invalid message data body"))
                     .and_then(|body_option| match body_option {
                         Body::LinkCompactStateBody(link_compact_body) => {
-                            Self::link_compact_state_add_key(data.fid as u32, link_compact_body)
+                            Self::link_compact_state_add_key(
+                                data.fid as u32,
+                                &link_compact_body.r#type,
+                            )
                         }
-                        _ => Err(HubError::invalid_parameter("link body not specified")),
+                        Body::LinkBody(link_body) => {
+                            Self::link_compact_state_add_key(data.fid as u32, &link_body.r#type)
+                        }
+                        _ => Err(HubError::invalid_parameter(
+                            "link_compact_body not specified",
+                        )),
                     })
             })
     }

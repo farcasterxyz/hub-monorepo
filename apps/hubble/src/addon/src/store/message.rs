@@ -121,7 +121,7 @@ pub enum UserPostfix {
     UserNameProofAdds = 99,
 
     /* Link Compact State set */
-    LinkCompactState = 100,
+    LinkCompactStateMessage = 100,
 }
 
 impl UserPostfix {

@@ -123,7 +123,7 @@ pub trait StoreDef: Send + Sync {
     fn is_compact_state_type(&self, message: &Message) -> bool;
 
     // If the store supports compaction state messages, this should return true
-    fn compaction_state_type_supported(&self) -> bool {
+    fn compact_state_type_supported(&self) -> bool {
         self.compact_state_message_type() != MessageType::None as u8
     }
 
@@ -491,7 +491,7 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         message: &Message,
     ) -> Result<(), HubError> {
-        if !self.store_def.compaction_state_type_supported() {
+        if !self.store_def.compact_state_type_supported() {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
                 message: "compact state type not supported".to_string(),
@@ -527,7 +527,7 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         message: &Message,
     ) -> Result<(), HubError> {
-        if !self.store_def.compaction_state_type_supported() {
+        if !self.store_def.compact_state_type_supported() {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
                 message: "compact state type not supported".to_string(),
@@ -597,9 +597,9 @@ impl Store {
     fn delete_many_transaction(
         &self,
         txn: &mut RocksDbTransactionBatch,
-        messages: Vec<Message>,
+        messages: &Vec<Message>,
     ) -> Result<(), HubError> {
-        for message in &messages {
+        for message in messages {
             if self.store_def.is_compact_state_type(message) {
                 self.delete_compact_state_transaction(txn, message)?;
             } else if self.store_def.is_add_type(message) {
@@ -625,7 +625,9 @@ impl Store {
             .unwrap();
 
         if !self.store_def.is_add_type(message)
-            && (!self.store_def.remove_type_supported() || !self.store_def.is_remove_type(message))
+            && !(self.store_def.remove_type_supported() && self.store_def.is_remove_type(message))
+            && !(self.store_def.compact_state_type_supported()
+                && self.store_def.is_compact_state_type(message))
         {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
@@ -651,7 +653,9 @@ impl Store {
         // Get the message ts_hash
         let ts_hash = make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
 
-        if self.store_def.is_add_type(message) {
+        if self.store_def().is_compact_state_type(message) {
+            self.delete_compact_state_transaction(&mut txn, message)?;
+        } else if self.store_def.is_add_type(message) {
             self.delete_add_transaction(&mut txn, &ts_hash, message)?;
         } else if self.store_def.remove_type_supported() && self.store_def.is_remove_type(message) {
             self.delete_remove_transaction(&mut txn, message)?;
@@ -679,6 +683,32 @@ impl Store {
         Ok(hub_event_bytes)
     }
 
+    fn read_compact_state_details(
+        &self,
+        message: &Message,
+    ) -> Result<(u32, u32, Vec<u64>), HubError> {
+        if let Some(data) = &message.data {
+            if let Some(Body::LinkCompactStateBody(link_compact_body)) = &data.body {
+                Ok((
+                    data.fid as u32,
+                    data.timestamp,
+                    link_compact_body.target_fids.clone(),
+                ))
+            } else {
+                return Err(HubError {
+                    code: "bad_request.validation_failure".to_string(),
+                    message: "Invalid compact state message: No link compact state body"
+                        .to_string(),
+                });
+            }
+        } else {
+            return Err(HubError {
+                code: "bad_request.validation_failure".to_string(),
+                message: "Invalid compact state message: no data".to_string(),
+            });
+        }
+    }
+
     pub fn merge_compact_state(&self, message: &Message) -> Result<Vec<u8>, HubError> {
         let mut merge_conflicts = vec![];
 
@@ -699,32 +729,18 @@ impl Store {
                     < message.data.as_ref().unwrap().timestamp
                 {
                     merge_conflicts.push(existing_compact_state_message);
+                } else {
+                    // Can't merge an older compact state message
+                    return Err(HubError {
+                        code: "bad_request.conflict".to_string(),
+                        message: "A newer Compact State message is already merged".to_string(),
+                    });
                 }
             }
         }
 
-        let (fid, compact_state_timestamp, target_fids) = {
-            if let Some(data) = &message.data {
-                if let Some(Body::LinkCompactStateBody(link_compact_body)) = &data.body {
-                    (
-                        data.fid as u32,
-                        data.timestamp,
-                        link_compact_body.target_fids.clone(),
-                    )
-                } else {
-                    return Err(HubError {
-                        code: "bad_request.validation_failure".to_string(),
-                        message: "Invalid compact state message: No link compact state body"
-                            .to_string(),
-                    });
-                }
-            } else {
-                return Err(HubError {
-                    code: "bad_request.validation_failure".to_string(),
-                    message: "Invalid compact state message: no data".to_string(),
-                });
-            }
-        };
+        let (fid, compact_state_timestamp, target_fids) =
+            self.read_compact_state_details(message)?;
 
         // Go over all the messages for this Fid, that are older than the compact state message and
         // 1. Delete all remove messages
@@ -763,7 +779,7 @@ impl Store {
 
         let mut txn = self.db.txn();
         // Delete all the merge conflicts
-        self.delete_many_transaction(&mut txn, merge_conflicts.clone())?;
+        self.delete_many_transaction(&mut txn, &merge_conflicts)?;
 
         // Add the Link compact state message
         self.put_add_compact_state_transaction(&mut txn, message)?;
@@ -790,6 +806,35 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
+        // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
+        if self.store_def.compact_state_type_supported() {
+            // Get the compact state message
+            let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
+            if let Some(compact_state_message_bytes) = self.db.get(&compact_state_key)? {
+                let compact_state_message = message_decode(compact_state_message_bytes.as_ref())?;
+
+                let (_, compact_state_timestamp, target_fids) =
+                    self.read_compact_state_details(&compact_state_message)?;
+
+                if let Some(Body::LinkBody(link_body)) = &message.data.as_ref().unwrap().body {
+                    if let Some(Target::TargetFid(target_fid)) = link_body.target {
+                        // If the message is older than the compact state message, and the target fid is not in the target_fids list
+                        if message.data.as_ref().unwrap().timestamp < compact_state_timestamp
+                            && !target_fids.contains(&message.data.as_ref().unwrap().fid)
+                        {
+                            return Err(HubError {
+                                code: "bad_request.conflict".to_string(),
+                                message: format!(
+                                    "Target fid {} not in the compact state target fids",
+                                    target_fid
+                                ),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         // Get the merge conflicts first
         let merge_conflicts = self
             .store_def
@@ -798,7 +843,7 @@ impl Store {
         // start a transaction
         let mut txn = self.db.txn();
         // Delete all the merge conflicts
-        self.delete_many_transaction(&mut txn, merge_conflicts.clone())?;
+        self.delete_many_transaction(&mut txn, &merge_conflicts)?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
         self.put_add_transaction(&mut txn, &ts_hash, message)?;
@@ -825,6 +870,29 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
+        // If the store supports compact state messages, we don't merge remove messages before its timestamp
+        // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
+        if self.store_def.compact_state_type_supported() {
+            // Get the compact state message
+            let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
+            if let Some(compact_state_message_bytes) = self.db.get(&compact_state_key)? {
+                let compact_state_message = message_decode(compact_state_message_bytes.as_ref())?;
+
+                let (_, compact_state_timestamp, _) =
+                    self.read_compact_state_details(&compact_state_message)?;
+
+                // If the message is older than the compact state message, and the target fid is not in the target_fids list
+                if message.data.as_ref().unwrap().timestamp < compact_state_timestamp {
+                    return Err(HubError {
+                        code: "bad_request.prunable".to_string(),
+                        message: format!(
+                            "Remove message earlier than the compact state message will be immediately pruned",
+                        ),
+                    });
+                }
+            }
+        }
+
         // Get the merge conflicts first
         let merge_conflicts = self
             .store_def
@@ -834,7 +902,7 @@ impl Store {
         let mut txn = self.db.txn();
 
         // Delete all the merge conflicts
-        self.delete_many_transaction(&mut txn, merge_conflicts.clone())?;
+        self.delete_many_transaction(&mut txn, &merge_conflicts)?;
 
         // Add ops to store the message by messageKey and index the the messageKey by set and by target
         self.put_remove_transaction(&mut txn, ts_hash, message)?;
@@ -881,7 +949,12 @@ impl Store {
                 // Value is a message, so try to decode it
                 let message = message_decode(value)?;
 
-                if self.store_def.is_add_type(&message) {
+                // Note that compact state messages are not pruned
+                if self.store_def.compact_state_type_supported()
+                    && self.store_def.is_compact_state_type(&message)
+                {
+                    return Ok(false); // Continue the iteration
+                } else if self.store_def.is_add_type(&message) {
                     let ts_hash =
                         make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash)?;
                     self.delete_add_transaction(&mut txn, &ts_hash, &message)?;

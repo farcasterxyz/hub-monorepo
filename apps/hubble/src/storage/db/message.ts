@@ -109,6 +109,10 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.UsernameProofMessage;
   }
 
+  if (type === MessageType.LINK_COMPACT_STATE) {
+    return UserPostfix.LinkCompactStateMessage;
+  }
+
   throw new Error(`invalid type: ${type}`);
 };
 

@@ -135,7 +135,7 @@ export enum UserPostfix {
   UserNameProofAdds = 99,
 
   /* Link Compact State set */
-  LinkCompactState = 100,
+  LinkCompactStateMessage = 100,
 }
 
 export enum OnChainEventPostfix {
@@ -159,4 +159,5 @@ export type UserMessagePostfix =
   | UserPostfix.VerificationMessage
   | UserPostfix.ReactionMessage
   | UserPostfix.UserDataMessage
-  | UserPostfix.UsernameProofMessage;
+  | UserPostfix.UsernameProofMessage
+  | UserPostfix.LinkCompactStateMessage;

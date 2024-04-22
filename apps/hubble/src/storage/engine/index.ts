@@ -350,6 +350,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       const setPostfix = typeToSetPostfix(message.data!.type);
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           linkMessages.push({ i, message });
           break;
@@ -465,6 +466,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           return this._linkStore.revoke(message.value);
         }
@@ -558,6 +560,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       const setPostfix = typeToSetPostfix(message.data.type);
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           return this._linkStore.revoke(message);
         }
