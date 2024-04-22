@@ -3,8 +3,6 @@ import {
   getFarcasterTime,
   HubError,
   HubEvent,
-  LinkAddMessage,
-  LinkRemoveMessage,
   Message,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
@@ -20,9 +18,6 @@ const eventHandler = new StoreEventHandler(db);
 const set = new LinkStore(db, eventHandler);
 const fid = Factories.Fid.build();
 const targetFid = fid + 1;
-
-let linkAdd: LinkAddMessage;
-let linkRemove: LinkRemoveMessage;
 
 beforeAll(async () => {
   const rent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
@@ -315,6 +310,78 @@ describe("Merge LinkCompactState messages", () => {
     // Expect the hub event to be proper. The deleted messages should also have the previous compact state
     expect(hubEvent?.mergeMessageBody?.message?.data?.fid).toEqual(fid);
     expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([linkCompactState, linkAdd2]);
+  });
+
+  test("link compact can be inserted in the middle of a set", async () => {
+    // Create 2 link adds
+    const timestamp = getFarcasterTime()._unsafeUnwrap();
+    const linkAdd1 = await Factories.LinkAddMessage.create({
+      data: { fid, linkBody: Factories.LinkBody.build({ type: "follow", targetFid }), timestamp },
+    });
+    const linkAdd2 = await Factories.LinkAddMessage.create({
+      data: { fid, linkBody: Factories.LinkBody.build({ type: "follow", targetFid: targetFid + 1 }), timestamp },
+    });
+    const linkRemove1 = await Factories.LinkRemoveMessage.create({
+      data: { fid, linkBody: linkAdd1.data.linkBody, timestamp: linkAdd1.data.timestamp + 1 },
+    });
+
+    // Merge all of them
+    await set.mergeMessages([linkAdd1, linkAdd2, linkRemove1]);
+
+    // Both messages are in the set
+    const allMessages = (await set.getAllLinkMessagesByFid(fid)).messages;
+    expect(allMessages.length).toEqual(2);
+    expect(allMessages).toContainEqual(linkAdd2);
+    expect(allMessages).toContainEqual(linkRemove1);
+
+    // Now, create more linkadds and removes 10s later
+    const timestamp2 = timestamp + 10;
+    const linkAdd3 = await Factories.LinkAddMessage.create({
+      data: {
+        fid,
+        linkBody: Factories.LinkBody.build({ type: "follow", targetFid: targetFid + 2 }),
+        timestamp: timestamp2,
+      },
+    });
+    const linkAdd4 = await Factories.LinkAddMessage.create({
+      data: {
+        fid,
+        linkBody: Factories.LinkBody.build({ type: "follow", targetFid: targetFid + 3 }),
+        timestamp: timestamp2,
+      },
+    });
+    // Merge all of them
+    await set.mergeMessages([linkAdd3, linkAdd4]);
+
+    // Both messages are in the set
+    const allMessages2 = (await set.getAllLinkMessagesByFid(fid)).messages;
+    expect(allMessages2.length).toEqual(4);
+
+    // Now, create a compact state message that only has linkAdd1 and linkAdd2, and put it in the middle
+    const linkCompactState = await Factories.LinkCompactStateMessage.create({
+      data: {
+        fid,
+        linkCompactStateBody: {
+          targetFids: [
+            linkAdd1.data.linkBody.targetFid as number,
+            linkAdd2.data.linkBody.targetFid as number,
+            linkAdd3.data.linkBody.targetFid as number,
+          ],
+        },
+        timestamp: timestamp + 5,
+      },
+    });
+
+    // expect it to merge successfully
+    const result = await set.merge(linkCompactState);
+    expect(result).toBeGreaterThan(0);
+
+    // Now only linkAdd2, (linkRemove1 is gone) and linkAdd3 + linkAdd4 are in the set
+    const allMessages3 = (await set.getAllLinkMessagesByFid(fid)).messages;
+    expect(allMessages3.length).toEqual(3);
+    expect(allMessages3).toContainEqual(linkAdd2);
+    expect(allMessages3).toContainEqual(linkAdd3);
+    expect(allMessages3).toContainEqual(linkAdd4);
   });
 
   describe("Pruning", () => {
