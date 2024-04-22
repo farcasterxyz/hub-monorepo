@@ -53,6 +53,7 @@ export const snapshotDirectory = (fcNetwork: FarcasterNetwork, prevVersionCounte
   const network = FarcasterNetwork[fcNetwork].toString();
   return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
 };
+
 export const snapshotURLAndMetadata = async (
   fcNetwork: FarcasterNetwork,
   prevVersionCounter?: number,
@@ -66,6 +67,7 @@ export const snapshotURLAndMetadata = async (
   const data: SnapshotMetadata = response.value;
   return ok([`https://${s3Bucket}/${data.keyBase}`, data]);
 };
+
 export const snapshotURL = (
   fcNetwork: FarcasterNetwork,
   prevVersionCounter?: number,
@@ -79,8 +81,10 @@ export const uploadToS3 = async (
   chunkedDirPath: string,
   s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
   messageCount?: number,
+  timestamp?: number,
 ): HubAsyncResult<string> => {
-  const startTimestamp = Date.now();
+  const startTimestamp = timestamp ?? Date.now();
+
   const s3 = new S3Client({
     region: S3_REGION,
   });
