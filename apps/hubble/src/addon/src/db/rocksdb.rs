@@ -1,3 +1,4 @@
+use crate::db::compaction::CompressionFilter;
 use crate::logger::LOGGER;
 use crate::statsd::statsd;
 use crate::store::{
@@ -17,7 +18,8 @@ use neon::types::{
     Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
     JsString,
 };
-use rocksdb::{Options, TransactionDB, DB};
+use rocksdb::compaction_filter_factory::CompactionFilterContext;
+use rocksdb::{DBCommon, Options, TransactionDB, WaitForCompactOptions, DB};
 use slog::{info, o, Logger};
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -100,19 +102,39 @@ impl RocksDB {
             logger,
         })
     }
-
     pub fn open(&self) -> Result<(), HubError> {
         let mut db_lock = self.db.write().unwrap();
 
         // Create RocksDB options
-        let mut opts = Options::default();
+        let mut opts: Options = Options::default();
+        // opts.enable_statistics();
+
+        const COMPACTION_FILTER_CONTEXT: CompactionFilterContext = CompactionFilterContext {
+            is_full_compaction: true,
+            is_manual_compaction: false,
+        };
+        opts.set_bottommost_compression_type(rocksdb::DBCompressionType::Zstd);
+        opts.set_compaction_filter_factory(CompressionFilter::new(COMPACTION_FILTER_CONTEXT));
+        opts.set_stats_dump_period_sec(10);
+        opts.set_blob_compression_type(rocksdb::DBCompressionType::Zstd);
         opts.create_if_missing(true); // Creates a database if it does not exist
+                                      // let test = rocksdb::DB::open(&opts, &self.path)?;
+                                      // rocksdb::DB::compact_range(&test, None::<&[u8]>, None::<&[u8]>);
+                                      // let mut wait_opts = WaitForCompactOptions::default();
+                                      // wait_opts.set_timeout(1000);
+                                      // wait_opts.set_abort_on_pause(true);
+
+        // let compact_result = rocksdb::DB::wait_for_compact(&test, &wait_opts);
+        // if compact_result.is_err() {
+        //     println!("Error compacting: {:?}", compact_result.err());
+        // }
 
         let mut tx_db_opts = rocksdb::TransactionDBOptions::default();
         tx_db_opts.set_default_lock_timeout(5000); // 5 seconds
 
         // Open the database with multi-threaded support
         let db = rocksdb::TransactionDB::open(&opts, &tx_db_opts, &self.path)?;
+        // let db: DBCommon<_, rocksdb::MultiThreaded> = rocksdb::DBCommon::open(&opts,  &self.path)?;
         *db_lock = Some(db);
 
         // We put the db in a RwLock to make the compiler happy, but it is strictly not required.
@@ -544,6 +566,7 @@ impl RocksDB {
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };
 
+        println!("we opened");
         Ok(cx.boolean(result))
     }
 

@@ -21,6 +21,7 @@ import {
   rsDbDeleteAllKeysInRange,
 } from "../../rustfunctions.js";
 import { PageOptions } from "storage/stores/types.js";
+import { statsd } from "../../utils/statsd.js";
 
 export type DbStatus = "new" | "opening" | "open" | "closing" | "closed";
 
@@ -115,29 +116,35 @@ class RocksDB {
   }
 
   async get(key: Buffer): Promise<Buffer> {
+    const start = new Date();
     const v = await ResultAsync.fromPromise(rsDbGet(this._db, key), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
     }
 
+    statsd().timing("rocksdb.get", start);
     return v.value;
   }
 
   async getMany(keys: Buffer[]): Promise<(Buffer | undefined)[]> {
+    const start = new Date();
     const v = await ResultAsync.fromPromise(rsDbGetMany(this._db, keys), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
     }
 
+    statsd().timing("rocksdb.getMany", start);
     return v.value;
   }
 
   async del(key: Buffer): Promise<void> {
+    const start = new Date();
     const v = await ResultAsync.fromPromise(rsDbDel(this._db, key), (e) => rustErrorToHubError(e));
     if (v.isErr()) {
       throw v.error;
     }
 
+    statsd().timing("rocksdb.del", start);
     return v.value;
   }
 
@@ -183,15 +190,24 @@ class RocksDB {
   }
 
   async commit(tsx: RocksDbTransaction): Promise<void> {
-    return await rsDbCommit(this._db, tsx.getKeyValues());
+    const start = new Date();
+    const result = await rsDbCommit(this._db, tsx.getKeyValues());
+    statsd().timing("rocksdb.commit", start);
+    return result;
   }
 
   async countKeysAtPrefix(prefix: Buffer): Promise<number> {
-    return await rsDbCountKeysAtPrefix(this._db, prefix);
+    const start = new Date();
+    const result = await rsDbCountKeysAtPrefix(this._db, prefix);
+    statsd().timing("rocksdb.countKeysAtPrefix", start);
+    return result;
   }
 
   async deleteAllKeysInRange(options: RocksDbIteratorOptions): Promise<boolean> {
-    return await rsDbDeleteAllKeysInRange(this._db, options);
+    const start = new Date();
+    const result = await rsDbDeleteAllKeysInRange(this._db, options);
+    statsd().timing("rocksdb.deleteAllKeysInRange", start);
+    return result;
   }
 
   /**
@@ -202,7 +218,10 @@ class RocksDB {
     callback: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
     pageOptions: PageOptions = {},
   ): Promise<boolean> {
-    return await rsDbForEachIteratorByPrefix(this._db, prefix, pageOptions, callback);
+    const start = new Date();
+    const result = await rsDbForEachIteratorByPrefix(this._db, prefix, pageOptions, callback);
+    statsd().timing("rocksdb.forEachIteratorByPrefix", start);
+    return result;
   }
 
   /**
@@ -213,7 +232,10 @@ class RocksDB {
     options: RocksDbIteratorOptions,
     callback: (key: Buffer | undefined, value: Buffer | undefined) => Promise<boolean> | boolean | void,
   ): Promise<boolean> {
-    return await rsDbForEachIteratorByOpts(this._db, options, callback);
+    const start = new Date();
+    const result = await rsDbForEachIteratorByOpts(this._db, options, callback);
+    statsd().timing("rocksdb.forEachIteratorByOpts", start);
+    return result;
   }
 
   async approximateSize(): Promise<number> {

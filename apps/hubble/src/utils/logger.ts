@@ -194,7 +194,7 @@ export class SubmitMessageSuccessLogCache {
         counts[key] = value;
       });
 
-      this.logger.info({ ...counts, total }, "Successfully submitted messages");
+      // this.logger.info({ ...counts, total }, "Successfully submitted messages");
       this.counts.clear();
     }
   }

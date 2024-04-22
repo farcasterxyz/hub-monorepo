@@ -556,6 +556,7 @@ export class Hub implements HubInterface {
   /* Start the GossipNode and RPC server  */
   async start() {
     // See if we have to fetch the IP address
+    console.log("wtf starting");
     if (!this.options.announceIp || this.options.announceIp.trim().length === 0) {
       const ipResult = await getPublicIp();
       if (ipResult.isErr()) {
@@ -598,9 +599,11 @@ export class Hub implements HubInterface {
 
     // It is possible that we can't get a lock on the DB in prod, so we retry a few times.
     // This happens if the EFS volume is not mounted yet or is still attached to another instance.
+    console.log("wtf?");
     do {
       dbResult = await ResultAsync.fromPromise(this.rocksDB.open(), (e) => e as Error);
       if (dbResult.isErr()) {
+        console.log("retrying?");
         retryCount++;
         logger.error(
           {
@@ -618,6 +621,7 @@ export class Hub implements HubInterface {
       }
     } while (dbResult.isErr() && retryCount < 5);
 
+    console.log("finished db open");
     // If the DB is still not open, we throw an error
     if (dbResult.isErr()) {
       throw dbResult.error;
@@ -1692,16 +1696,16 @@ export class Hub implements HubInterface {
       void this.gossipNode.gossipBundle(messageBundle);
     }
 
-    log.info(
-      {
-        hash: messageBundle.hash,
-        success,
-        total: finalResults.length,
-        totalTimeMilis,
-        timePerMergeMs: Math.round((10 ** 2 * totalTimeMilis) / finalResults.length) / 10 ** 2, // round to 2 places
-      },
-      "submitMessageBundle merged",
-    );
+    // log.info(
+    //   {
+    //     hash: messageBundle.hash,
+    //     success,
+    //     total: finalResults.length,
+    //     totalTimeMilis,
+    //     timePerMergeMs: Math.round((10 ** 2 * totalTimeMilis) / finalResults.length) / 10 ** 2, // round to 2 places
+    //   },
+    //   "submitMessageBundle merged",
+    // );
 
     return finalResults;
   }
