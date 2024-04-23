@@ -80,7 +80,16 @@ class StartupCheck {
     }
 
     const rpcUrls = rpcUrl.split(",");
-    const transports = rpcUrls.map((url) => http(url));
+    const transports = rpcUrls.map((url) =>
+      http(url, {
+        onFetchRequest(request) {
+          console.log("---- on fetch request:", JSON.stringify(request));
+        },
+        onFetchResponse(response) {
+          console.log("---- on fetch response:", JSON.stringify(response));
+        },
+      }),
+    );
 
     const publicClient = createPublicClient({
       chain,
