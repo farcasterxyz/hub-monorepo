@@ -64,6 +64,7 @@ import { AddressInfo } from "net";
 import * as net from "node:net";
 import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
+import { ServerUnaryCall } from "@grpc/grpc-js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -339,6 +340,8 @@ export default class Server {
   private submitMessageRateLimiter: RateLimiterMemory;
   private subscribeIpLimiter: IpConnectionLimiter;
 
+  private trustXForwardedFor = false;
+
   constructor(
     hub?: HubInterface,
     engine?: Engine,
@@ -347,6 +350,7 @@ export default class Server {
     rpcAuth?: string,
     rpcRateLimit?: number,
     rpcSubscribePerIpLimit?: number,
+    trustXForwardedFor?: boolean,
   ) {
     this.hub = hub;
     this.engine = engine;
@@ -379,6 +383,7 @@ export default class Server {
       rpcSubscribePerIpLimit ?? DEFAULT_SUBSCRIBE_PERIP_LIMIT,
       DEFAULT_SUBSCRIBE_GLOBAL_LIMIT,
     );
+    this.trustXForwardedFor = trustXForwardedFor ?? false;
   }
 
   async start(ip = DEFAULT_SERVER_INTERNET_ADDRESS_IPV4, port = 0): Promise<number> {
@@ -439,6 +444,17 @@ export default class Server {
 
   public clearRateLimiters() {
     this.subscribeIpLimiter.clear();
+  }
+
+  private extractPeer(call: ServerUnaryCall<unknown, unknown>) {
+    if (this.trustXForwardedFor) {
+      const xForwardedFor = call.metadata.get("x-forwarded-for");
+      if (xForwardedFor) {
+        return xForwardedFor[0];
+      }
+    }
+
+    return self;
   }
 
   getImpl(): HubServiceServer {
