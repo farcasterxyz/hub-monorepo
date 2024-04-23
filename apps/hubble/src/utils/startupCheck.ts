@@ -91,6 +91,8 @@ class StartupCheck {
     logger.info({ rpcUrls, rpcUrl }, `Checking ${prefix} ${type} node at %${rpcUrls}% of length ${rpcUrls.length}`);
     const transports = rpcUrls.map((url) =>
       http(url, {
+        batch: false,
+        timeout: 5000,
         onFetchRequest(request) {
           requestCount++;
           console.log(`---- on fetch request ${requestCount}:`, JSON.stringify(request));
