@@ -1295,18 +1295,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   private getWorkerData(): ValidationWorkerData {
-    const l1Transports: string[] = [];
-    this._publicClient?.transport["transports"].forEach((transport: { value?: { url: string } }) => {
-      if (transport?.value) {
-        l1Transports.push(transport.value["url"]);
-      }
-    });
-    const l2Transports: string[] = [];
-    this._l2PublicClient?.transport["transports"].forEach((transport: { value?: { url: string } }) => {
-      if (transport?.value) {
-        l2Transports.push(transport.value["url"]);
-      }
-    });
+    const l1Transports: string[] = [this._publicClient?.transport["url"]];
+    const l2Transports: string[] = [this._l2PublicClient?.transport["url"]];
 
     return {
       ethMainnetRpcUrl: l1Transports.join(","),
