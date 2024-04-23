@@ -959,11 +959,11 @@ async function verifyAWSCredentials(): Promise<boolean> {
   try {
     const params = {
       Bucket: SNAPSHOT_S3_UPLOAD_BUCKET,
-      Prefix: "/",
+      Prefix: "snapshots/",
     };
 
     const result = await s3.send(new ListObjectsV2Command(params));
-    logger.info({ result }, "Verified R2 credentials for snapshots");
+    logger.info({ keys: result.KeyCount }, "Verified R2 credentials for snapshots");
 
     return true;
   } catch (error) {
