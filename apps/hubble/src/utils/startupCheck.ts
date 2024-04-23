@@ -80,6 +80,11 @@ class StartupCheck {
     }
 
     const rpcUrls = rpcUrl.split(",");
+    console.log(
+      `Checking ${prefix} ${type} with --${rpcUrl}-- node at ${rpcUrls} (${JSON.stringify(rpcUrls)}) with length ${
+        rpcUrls.length
+      }`,
+    );
     const transports = rpcUrls.map((url) =>
       http(url, {
         onFetchRequest(request) {
