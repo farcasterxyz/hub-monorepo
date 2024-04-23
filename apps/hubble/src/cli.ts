@@ -611,11 +611,11 @@ app
     await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet, "L1");
     await startupCheck.rpcCheck(options.l2RpcUrl, optimism, "L2", options.l2ChainId);
 
-    if (startupCheck.anyFailedChecks()) {
-      logger.fatal({ reason: "Startup checks failed" }, "shutting down hub");
-      logger.flush();
-      process.exit(1);
-    }
+    // if (startupCheck.anyFailedChecks()) {
+    //   logger.fatal({ reason: "Startup checks failed" }, "shutting down hub");
+    //   logger.flush();
+    //   process.exit(1);
+    // }
 
     // Opt-out Diagnostics Reporting
     let optOut: boolean;

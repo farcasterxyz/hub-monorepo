@@ -3,6 +3,7 @@ import { ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
 import { Chain, createPublicClient, fallback, http } from "viem";
 import { diagnosticReporter } from "./diagnosticReport.js";
+import { logger } from "./logger.js";
 
 export enum StartupCheckStatus {
   OK = "OK",
@@ -91,6 +92,12 @@ class StartupCheck {
 
     if (chainIdResult.isErr() || chainIdResult.value !== (chainId ?? chain.id)) {
       console.log(chainIdResult);
+      if (chainIdResult.isErr()) {
+        logger.error(
+          { chainIdResult, str: JSON.stringify(chainIdResult) },
+          `Failed to connect to ${prefix} ${type} node.`,
+        );
+      }
       this.printStartupCheckStatus(
         status,
         `Failed to connect to ${prefix} ${type} node.`,
