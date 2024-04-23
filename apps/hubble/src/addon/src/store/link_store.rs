@@ -235,7 +235,7 @@ impl LinkStore {
         r
     }
 
-    // Generates a unique key used to store a LinkCompactStae message key in the store
+    // Generates a unique key used to store a LinkCompactState message key in the store
     fn link_compact_state_add_key(fid: u32, link_type: &String) -> Result<Vec<u8>, HubError> {
         let mut key = Vec::with_capacity(
             Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE,
