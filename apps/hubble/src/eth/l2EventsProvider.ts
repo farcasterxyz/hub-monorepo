@@ -155,7 +155,6 @@ export class L2EventsProvider {
     const l2RpcUrls = l2RpcUrl.split(",");
     const transports = l2RpcUrls.map((url) =>
       http(url, {
-        retryCount: 10,
         fetchOptions: {
           ...(process.env["L2_RPC_AUTHORIZATION_HEADER"] && {
             headers: {
@@ -173,7 +172,7 @@ export class L2EventsProvider {
 
     const provider = new L2EventsProvider(
       hub,
-      publicClient,
+      publicClient as PublicClient<HttpTransport>,
       storageRegistryAddress,
       keyRegistryV2Address,
       idRegistryV2Address,
@@ -636,7 +635,7 @@ export class L2EventsProvider {
         strict: true,
       },
       "StorageRegistry",
-    );
+    ) as WatchContractEvent<typeof StorageRegistry.abi, string, true>;
 
     this._watchKeyRegistryV2ContractEvents = new WatchContractEvent(
       this._publicClient,
@@ -648,7 +647,7 @@ export class L2EventsProvider {
         strict: true,
       },
       "KeyRegistryV2",
-    );
+    ) as WatchContractEvent<typeof KeyRegistry.abi, string, true>;
 
     this._watchIdRegistryV2ContractEvents = new WatchContractEvent(
       this._publicClient,
@@ -660,7 +659,7 @@ export class L2EventsProvider {
         strict: true,
       },
       "IdRegistryV2",
-    );
+    ) as WatchContractEvent<typeof IdRegistry.abi, string, true>;
 
     this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
       pollingInterval: L2EventsProvider.blockPollingInterval,

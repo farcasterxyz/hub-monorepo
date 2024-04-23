@@ -17,15 +17,13 @@ export class WatchContractEvent<
   TStrict extends boolean | undefined = undefined,
 > {
   private _publicClient: PublicClient;
-  private _params: WatchContractEventParameters<TAbi, TEventName, TStrict>;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  private _params: WatchContractEventParameters<TAbi, any, TStrict>;
   private _unwatch?: WatchContractEventReturnType;
   private _log: Logger;
 
-  constructor(
-    publicClient: PublicClient,
-    params: WatchContractEventParameters<TAbi, TEventName, TStrict>,
-    key: string,
-  ) {
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  constructor(publicClient: PublicClient, params: WatchContractEventParameters<TAbi, any, TStrict>, key: string) {
     this._publicClient = publicClient;
     this._params = params;
     this._log = logger.child({

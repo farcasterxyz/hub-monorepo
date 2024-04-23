@@ -89,6 +89,7 @@ class StartupCheck {
 
     // Check that the publicClient is reachable and returns the goerli chainId
     const chainIdResult = await ResultAsync.fromPromise(publicClient.getChainId(), (err) => err);
+    console.log(JSON.stringify(chainIdResult));
 
     if (chainIdResult.isErr() || chainIdResult.value !== (chainId ?? chain.id)) {
       console.log(chainIdResult);

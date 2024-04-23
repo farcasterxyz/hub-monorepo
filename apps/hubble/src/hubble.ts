@@ -67,7 +67,7 @@ import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameReg
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
 import { prettyPrintTable } from "./profile/profile.js";
 import packageJson from "./package.json" assert { type: "json" };
-import { createPublicClient, fallback, http, HttpTransport } from "viem";
+import { createPublicClient, fallback, http, HttpTransport, PublicClient } from "viem";
 import { mainnet, optimism } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
@@ -424,19 +424,19 @@ export class Hub implements HubInterface {
     });
 
     const opMainnetRpcUrls = options.l2RpcUrl.split(",");
-    const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 3, retryDelay: 500 }));
+    const opTransports = opMainnetRpcUrls.map((url) => http(url));
     const opClient = createPublicClient({
       chain: optimism,
       transport: opTransports[0] as HttpTransport,
     });
 
     const ethMainnetRpcUrls = options.ethMainnetRpcUrl.split(",");
-    const transports = ethMainnetRpcUrls.map((url) => http(url, { retryCount: 3, retryDelay: 500 }));
+    const transports = ethMainnetRpcUrls.map((url) => http(url));
     const mainnetClient = createPublicClient({
       chain: mainnet,
       transport: transports[0] as HttpTransport,
     });
-    this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient, opClient);
+    this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient, opClient as PublicClient);
 
     const profileSync = options.profileSync ?? false;
     this.syncEngine = new SyncEngine(

@@ -7,14 +7,14 @@ import { ValidationWorkerData, ValidationWorkerMessage } from "./index.js";
 
 const config = workerData as ValidationWorkerData;
 const opMainnetRpcUrls = config.l2RpcUrl.split(",");
-const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
+const opTransports = opMainnetRpcUrls.map((url) => http(url));
 const opClient = createPublicClient({
   chain: optimism,
   transport: opTransports[0] as HttpTransport,
 });
 
 const ethMainnetRpcUrls = config.ethMainnetRpcUrl.split(",");
-const transports = ethMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
+const transports = ethMainnetRpcUrls.map((url) => http(url));
 const mainnetClient = createPublicClient({
   chain: mainnet,
   transport: transports[0] as HttpTransport,
