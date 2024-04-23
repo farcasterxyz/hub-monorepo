@@ -80,7 +80,7 @@ class StartupCheck {
     }
 
     const rpcUrls = rpcUrl.split(",");
-    const transports = rpcUrls.map((url) => http(url, { retryCount: 1 }));
+    const transports = rpcUrls.map((url) => http(url));
 
     const publicClient = createPublicClient({
       chain,
