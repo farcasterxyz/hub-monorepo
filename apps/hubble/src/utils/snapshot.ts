@@ -2,7 +2,7 @@ import { DbStats, FarcasterNetwork, HubAsyncResult, HubError } from "@farcaster/
 import { LATEST_DB_SCHEMA_VERSION } from "../storage/db/migrations/migrations.js";
 import axios from "axios";
 import { err, ok, ResultAsync } from "neverthrow";
-import { S3_REGION, SNAPSHOT_S3_DEFAULT_BUCKET } from "../hubble.js";
+import { S3_REGION, SNAPSHOT_S3_DEFAULT_BUCKET, SNAPSHOT_S3_UPLOAD_BUCKET } from "../hubble.js";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
 import { Upload } from "@aws-sdk/lib-storage";
@@ -76,10 +76,14 @@ export const snapshotURL = (
   return `https://${s3Bucket}/${snapshotDirectory(fcNetwork, prevVersionCounter)}`;
 };
 
+export const r2Endpoint = (): string => {
+  return process.env["R2_ENDPOINT"] ?? "";
+};
+
 export const uploadToS3 = async (
   fcNetwork: FarcasterNetwork,
   chunkedDirPath: string,
-  s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
+  s3Bucket: string = SNAPSHOT_S3_UPLOAD_BUCKET,
   messageCount?: number,
   timestamp?: number,
 ): HubAsyncResult<string> => {
@@ -87,6 +91,8 @@ export const uploadToS3 = async (
 
   const s3 = new S3Client({
     region: S3_REGION,
+    endpoint: r2Endpoint(),
+    forcePathStyle: true,
   });
 
   // The AWS key is "snapshots/{network}/{DB_SCHEMA_VERSION}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
