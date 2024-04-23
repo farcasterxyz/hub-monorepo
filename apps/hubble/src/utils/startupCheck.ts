@@ -1,7 +1,7 @@
 import fs, { existsSync } from "fs";
 import { ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
-import { Chain, createPublicClient, fallback, http } from "viem";
+import { Chain, HttpTransport, createPublicClient, fallback, http } from "viem";
 import { diagnosticReporter } from "./diagnosticReport.js";
 import { logger } from "./logger.js";
 
@@ -84,7 +84,7 @@ class StartupCheck {
 
     const publicClient = createPublicClient({
       chain,
-      transport: fallback(transports),
+      transport: transports[0] as HttpTransport,
     });
 
     // Check that the publicClient is reachable and returns the goerli chainId

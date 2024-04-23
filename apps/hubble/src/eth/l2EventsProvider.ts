@@ -18,7 +18,7 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { IdRegistry, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
-import { optimismGoerli } from "viem/chains";
+import { optimism } from "viem/chains";
 import {
   createPublicClient,
   fallback,
@@ -29,6 +29,7 @@ import {
   Hex,
   FallbackTransport,
   HttpRequestError,
+  HttpTransport,
 } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
@@ -59,7 +60,7 @@ const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
  */
 export class L2EventsProvider {
   private _hub: HubInterface;
-  private _publicClient: PublicClient<FallbackTransport>;
+  private _publicClient: PublicClient<HttpTransport>;
 
   private _firstBlock: number;
   private _chunkSize: number;
@@ -100,7 +101,7 @@ export class L2EventsProvider {
 
   constructor(
     hub: HubInterface,
-    publicClient: PublicClient<FallbackTransport>,
+    publicClient: PublicClient<HttpTransport>,
     storageRegistryAddress: `0x${string}`,
     keyRegistryV2Address: `0x${string}`,
     idRegistryV2Address: `0x${string}`,
@@ -166,10 +167,8 @@ export class L2EventsProvider {
     );
 
     const publicClient = createPublicClient({
-      chain: optimismGoerli,
-      transport: fallback(transports, {
-        rank: rankRpcs,
-      }),
+      chain: optimism,
+      transport: transports[0] as HttpTransport,
     });
 
     const provider = new L2EventsProvider(
@@ -806,16 +805,12 @@ export class L2EventsProvider {
   /** Detect whether the configured RPC provider supports filters */
   private async detectFilterSupport() {
     // Set up a client with fewer retries and shorter timeout
-    const urls: string[] = [];
-    this._publicClient.transport["transports"].forEach((transport) => {
-      if (transport?.value) {
-        urls.push(transport.value["url"]);
-      }
-    });
-    const transports = urls.map((url) => http(url, { retryCount: 1, timeout: 1000 }));
+
+    const url = this._publicClient.transport?.url;
+
     const testClient = createPublicClient({
-      chain: optimismGoerli,
-      transport: fallback(transports),
+      chain: optimism,
+      transport: http(url),
     });
 
     // Handling: intentionally catch to test for filter support

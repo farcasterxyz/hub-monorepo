@@ -1,7 +1,7 @@
 import { validations } from "@farcaster/hub-nodejs";
 import { rsValidationMethods } from "../../rustfunctions.js";
 import { workerData, parentPort } from "worker_threads";
-import { http, createPublicClient, fallback } from "viem";
+import { http, createPublicClient, fallback, HttpTransport } from "viem";
 import { optimism, mainnet } from "viem/chains";
 import { ValidationWorkerData, ValidationWorkerMessage } from "./index.js";
 
@@ -10,14 +10,14 @@ const opMainnetRpcUrls = config.l2RpcUrl.split(",");
 const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
 const opClient = createPublicClient({
   chain: optimism,
-  transport: fallback(opTransports, { rank: false }),
+  transport: opTransports[0] as HttpTransport,
 });
 
 const ethMainnetRpcUrls = config.ethMainnetRpcUrl.split(",");
 const transports = ethMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
 const mainnetClient = createPublicClient({
   chain: mainnet,
-  transport: fallback(transports, { rank: false }),
+  transport: transports[0] as HttpTransport,
 });
 
 const publicClients = {

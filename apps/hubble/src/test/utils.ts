@@ -89,7 +89,7 @@ export const httpClient = createPublicClient({
 export const publicClient = createPublicClient({
   chain: anvilChain,
   pollingInterval: 1_000,
-  transport: fallback([http(localHttpUrl)]),
+  transport: http(localHttpUrl),
 });
 
 export const testClient = createTestClient({
