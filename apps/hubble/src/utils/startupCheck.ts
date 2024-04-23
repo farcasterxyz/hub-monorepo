@@ -80,6 +80,9 @@ class StartupCheck {
     }
 
     const rpcUrls = rpcUrl.split(",");
+    let requestCount = 0;
+    let responseCount = 0;
+
     console.log(
       `Checking ${prefix} ${type} with --${rpcUrl}-- node at ${rpcUrls} (${JSON.stringify(rpcUrls)}) with length ${
         rpcUrls.length
@@ -89,10 +92,12 @@ class StartupCheck {
     const transports = rpcUrls.map((url) =>
       http(url, {
         onFetchRequest(request) {
-          console.log("---- on fetch request:", JSON.stringify(request));
+          requestCount++;
+          console.log(`---- on fetch request ${requestCount}:`, JSON.stringify(request));
         },
         onFetchResponse(response) {
-          console.log("---- on fetch response:", JSON.stringify(response));
+          responseCount++;
+          console.log(`---- on fetch response ${responseCount}:`, JSON.stringify(response));
         },
       }),
     );
