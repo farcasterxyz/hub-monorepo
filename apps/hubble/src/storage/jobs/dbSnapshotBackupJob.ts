@@ -8,7 +8,7 @@ import { uploadToS3 } from "../../utils/snapshot.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import fs from "fs";
-import { HubOptions, S3_REGION, SNAPSHOT_S3_DEFAULT_BUCKET } from "../../hubble.js";
+import { HubOptions, S3_REGION, SNAPSHOT_S3_UPLOAD_BUCKET } from "../../hubble.js";
 
 export const DEFAULT_DB_SNAPSHOT_BACKUP_JOB_CRON = "15 2 * * *"; // 2:15 am everyday
 
@@ -56,6 +56,7 @@ export class DbSnapshotBackupJobScheduler {
 
   async doJobs(): HubAsyncResult<void> {
     if (!this._options.enableSnapshotToS3) {
+      log.info({}, "Db Snapshot Backup job disabled, skipping");
       return ok(undefined);
     }
 
@@ -145,9 +146,8 @@ export class DbSnapshotBackupJobScheduler {
 
       log.warn({ oldFiles }, "Deleting old snapshot files from S3");
 
-      const s3Bucket = this._options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
       const deleteParams = {
-        Bucket: s3Bucket,
+        Bucket: SNAPSHOT_S3_UPLOAD_BUCKET,
         Delete: {
           Objects: oldFiles.map((file) => ({ Key: file.Key })),
         },
@@ -179,9 +179,8 @@ export class DbSnapshotBackupJobScheduler {
 
     // Note: We get the snapshots across all DB_SCHEMA versions
     // when determining which snapshots to delete, we only delete snapshots from the current DB_SCHEMA version
-    const s3Bucket = this._options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
     const params = {
-      Bucket: s3Bucket,
+      Bucket: SNAPSHOT_S3_UPLOAD_BUCKET,
       Prefix: `snapshots/${network}/`,
     };
 
