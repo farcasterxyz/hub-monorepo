@@ -15,6 +15,29 @@ import { UserMessagePostfix } from "../db/types.js";
 import RocksDB from "../db/rocksdb.js";
 import { ResultAsync, err, ok } from "neverthrow";
 
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
+
+const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
+  if (typeof partial === "object") {
+    for (const key in partial) {
+      if (partial[key] !== undefined) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+        if (!deepPartialEquals(partial[key] as any, whole[key as keyof T] as any)) {
+          return false;
+        }
+      }
+    }
+  } else {
+    return partial === whole;
+  }
+
+  return true;
+};
+
 /**
  * Base class with common methods for all stores implemented in Rust
  */
