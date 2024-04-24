@@ -38,7 +38,8 @@ export const isLinkCompactStateMessage = (message: protobufs.Message): message i
   return (
     message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
     typeof message.data !== "undefined" &&
-    message.data.type === protobufs.MessageType.LINK_COMPACT_STATE
+    message.data.type === protobufs.MessageType.LINK_COMPACT_STATE &&
+    message.data.linkCompactStateBody !== undefined
   );
 };
 
