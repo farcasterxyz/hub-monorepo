@@ -92,7 +92,12 @@ class StartupCheck {
     const transports = rpcUrls.map((url) =>
       http(url, {
         batch: false,
+        fetchOptions: {
+          cache: "no-cache",
+        },
+        retryDelay: 1000,
         timeout: 5000,
+        retryCount: 3,
         onFetchRequest(request) {
           requestCount++;
           console.log(`---- on fetch request ${requestCount}:`, JSON.stringify(request));
