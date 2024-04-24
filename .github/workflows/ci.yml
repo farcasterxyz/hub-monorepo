@@ -60,7 +60,7 @@ jobs:
         include:
           - node_version: 20
             runs_on: 'buildjet-8vcpu-ubuntu-2204'
-          - node_version: 21
+          - node_version: 21.6
             runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     runs-on: ${{ matrix.runs_on }}
