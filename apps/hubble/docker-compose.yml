@@ -72,6 +72,12 @@ services:
   grafana:
     image: grafana/grafana:10.0.3
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1m
     # Mount the grafana config file
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
